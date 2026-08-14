@@ -65,7 +65,7 @@ packages/
   editor/      React Flow UI
 tools/
   migrate/     Python, one-off: AST extraction from the old MechDesign package
-               + differential verification against it
+
 ```
 
 `tools/` is the **only** place old code is executed, and none of it is shipped. It reads the predecessor repo, emits catalogue data, and is deleted or
@@ -119,10 +119,10 @@ These follow from settled decisions; do not relitigate them in code.
 
 - The valuable, testable core is the catalogue and the evaluation kernel. PLAN.md
   sequences them ahead of any UI deliberately; keep that order.
-- Migration correctness is the whole game. Differential testing proves the
-  migration is *faithful*, not that a formula is *correct* — the known defects
-  pass differential testing because both sides are wrong identically. Defects are
+- Migration correctness is the whole game. Reproducing the golden values proves
+  the transcription is *faithful*, not that a formula is *correct* — the known
+  defects would survive it, because the error is in the source. Defects are
   reported and signed off explicitly, never fixed silently and never carried
-  across silently.
+  across silently. Anything no golden exercises stays `unverified`.
 - When a formula's meaning is ambiguous, that is a content question for the
   user, not a guess. R&M is the authority, and only the user has it.

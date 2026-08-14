@@ -53,7 +53,7 @@ unit symbols, `Helpers.py`, the chapter classes, the notebooks as a runtime.
 | `MechDesign/RnM/Table/` | ISO fit and tolerance lookup data |
 | The defect findings below | Errors to not transcribe a second time |
 
-`tools/` is the only place old code is executed, and none of it is shipped.
+`tools/` only ever *parses* the old code — it is never imported or executed — and none of it is shipped.
 
 ## Direction
 
@@ -84,7 +84,7 @@ calculation. The editor is both the product and the authoring tool for formulas.
 | Verification | The old notebooks' worked examples, frozen as fixtures. |
 | Known defects | Reported and signed off explicitly, never migrated silently. |
 | Packaging | This repo is **MIT** and holds no textbook content; the R&M catalogue lives in a **separate private repository**. |
-| Python | Retained only as one-off migration and verification tooling. Not shipped. |
+| Python | One-off extraction scripts only, parsing the old source with stdlib `ast`. Never imported, never shipped. |
 
 ### Scope warning
 
@@ -107,11 +107,10 @@ packages/
                  Unrestricted: no textbook content
   editor/        React Flow UI, plus the notebook view and output nodes
 tools/
-  extract/       Python, one-off scripts — one per chapter (S52). Reads the old
-                 MechDesign docstrings and symbol dicts into catalogue data
-  difftest/      Python: runs the old implementation and the new kernel on the
-                 same random inputs and diffs. Kept at any size — this is what
-                 proves a transcription faithful
+  extract/       Python, one-off scripts — one per chapter (S52). Parses the old
+                 MechDesign source with stdlib `ast`; reads docstrings and
+                 symbol dicts into catalogue data. Never imports or runs it, so
+                 no sympy and no dependencies at all
 ```
 
 **A separate private repository** holds the restricted catalogue (S45):
@@ -239,16 +238,18 @@ The heart of the work, and where correctness is won or lost.
    re-reading all 539 by hand. The grouping is what makes forward-only
    evaluation (S16) feel complete: the editor offers "same equation, solved
    for…" instead of a solver.
-2. **Differentially verify**: evaluate the original Python implementation and
-   the new data-driven kernel on randomised inputs, and diff. Any divergence is
-   an extraction error.
+2. **Review the generated file.** Extraction is scripted, so its errors are
+   systematic — a parser bug shows up across many formulas at once, and 55
+   expressions read in one sitting.
 3. **Dimensionally check** every migrated formula against its declared units.
 
-**These prove different things, and the distinction matters.** Differential
-testing proves the migration is *faithful*; it does not prove the formulas are
-*correct*. The twelve known defects will pass differential testing, because both
-sides are wrong in the same way. They must be surfaced and corrected as an
-explicit, signed-off step — never carried across silently.
+**These prove different things, and the distinction matters.** Reading the
+generated file and reproducing the goldens proves the transcription is
+*faithful*; neither proves a formula is *correct*. The twelve known defects
+would survive both, because the error is in the source. They must be surfaced
+and corrected as an explicit, signed-off step — never carried across silently.
+Anything no golden path exercises stays `unverified` (S19) rather than being
+implied correct by a green test run.
 
 4. **Golden values** from the old notebooks then verify end-to-end behaviour
    (verified reproducible in the predecessor repo at `348e2f0`):
@@ -326,11 +327,11 @@ S25 migration.
 
 ### Prerequisites, verified 2026-08-14
 
-- **The old package needs a Python environment.** `sympy` is not installed
-  system-wide, so `MechDesign` cannot currently be imported and the differential
-  test (S52) cannot run. A plain `python3 -m venv` with `sympy` and `numpy`
-  works and needs no root — confirmed with sympy 1.14, numpy 2.5.2. Document it
-  in `tools/`; do not install into the system interpreter.
+- **None.** Extraction parses the old source rather than running it, so the
+  absent `sympy` does not matter and no environment setup is needed. Confirmed
+  on `C16_Belt` with stdlib `ast` alone: 55 formula methods and 81 symbols,
+  each yielding its docstring form, its code expression and its `[unit]
+  description` — enough to build a catalogue record.
 - **Belt's unit tags are clean.** `[]`, `[%]`, `[kg/dm³]`, `[m]`, `[mm]`,
   `[mm²]`, `[m/s]`, `[N]`, `[Nm]`, `[N/mm]`, `[N/mm²]`, `[Nm/mm]`, `[rpm]`,
   `[s-1]`, `[W]`, `[W/mm]` — **no junk tags**, so D7's sign-off does not gate
@@ -355,8 +356,10 @@ S25 migration.
 4. **Evaluation kernel** — topological sort, vectorised ranges, the predicate
    layer (S39).
 5. **Extract `C16_Belt`** — 55 formulas, self-contained, no tables and no
-   categoricals. A one-off script (S52), not a migration tool. Differentially
-   verify against the old Python; that test is the point, not the script.
+   categoricals. A one-off script (S52) over stdlib `ast`. The old package is a
+   source to transcribe from, never a dependency. Read the generated file: 55
+   expressions is a reviewable diff, and a script's errors are systematic
+   rather than scattered typos.
 6. **Golden values** from `notebooks/belt/Lab_belt.ipynb` and
    `Lab_belt_incl_Fa.ipynb`, noting both use `d_dg = 400 mm` where the
    assignment text says 420.
@@ -381,7 +384,9 @@ That slice is a working tool for one chapter, end to end.
 
 ## Verification
 
-- Differential test: all 539 formulas, randomised inputs, old vs new agree.
+- Belt golden values reproduce end to end through the kernel (the table above).
+  Any formula no golden path exercises stays `unverified` under S19 rather than
+  being implied correct.
 - Dimensional check passes for every formula except entries parked in
   `DEFECTS.md`.
 - Golden values reproduce the notebook results end-to-end through the kernel.

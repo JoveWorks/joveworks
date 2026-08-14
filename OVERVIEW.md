@@ -323,13 +323,15 @@ wrong, finding out after 55 formulas costs a morning.
 ## Where the numbers come from
 
 Correctness is checked against the old course notebooks, whose results are
-frozen as fixtures — for example the chain drive's `i = 2.478`, `a = 1007 mm`,
-`F_Ab = 4224 N`. Migration is verified by evaluating the old implementation and
-the new one on the same random inputs and diffing.
+frozen as fixtures — the belt lab's `i = 4.444`, `v = 7.069 m/s`,
+`F_t = 435.7 N`, or the chain drive's `i = 2.478`, `a = 1007 mm`. The formulas
+themselves are transcribed by parsing the old Python source, which is a
+reference to read, never a system to run.
 
-That proves the migration is *faithful*. It does not prove a formula is
-*correct* — the known defects pass differential testing precisely because both
-sides are wrong in the same way. Hence sign-off, and hence quarantine.
+Reproducing those numbers proves the transcription is *faithful*. It does not
+prove a formula is *correct* — the known defects would survive it, because the
+error is in the source. Hence sign-off, hence quarantine, and hence formulas no
+golden exercises stay marked unverified rather than assumed sound.
 
 ---
 
