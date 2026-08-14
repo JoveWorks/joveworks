@@ -185,3 +185,58 @@ describe('catalogues', () => {
     );
   });
 });
+
+describe('generic formulas (S59)', () => {
+  const generic = (unit: string) => ({ kind: 'numeric', name: 'a', unit });
+
+  it('accepts an output monomial built from the variables its inputs bind', () => {
+    const formula = parseFormula(
+      {
+        id: 'multiply',
+        version: 1,
+        output: { kind: 'numeric', name: 'product', unit: '$A*$B' },
+        inputs: [generic('$A'), { kind: 'numeric', name: 'b', unit: '$B' }],
+        expression: 'a * b',
+        description: 'Product.',
+        status: 'unverified',
+      },
+      '',
+    );
+    expect(formula.output.kind).toBe('numeric');
+    expect(serializeFormula(formula)['output']).toMatchObject({ unit: '$A*$B' });
+  });
+
+  it('rejects an output variable no input binds', () => {
+    expect(() =>
+      parseFormula(
+        {
+          id: 'nonsense',
+          version: 1,
+          output: { kind: 'numeric', name: 'out', unit: '$A*$B' },
+          inputs: [generic('$A')],
+          expression: 'a',
+          description: 'Unbound.',
+          status: 'unverified',
+        },
+        '',
+      ),
+    ).toThrow(/'\$B' is not bound by any input port/);
+  });
+
+  it('rejects a compound signature on an input', () => {
+    expect(() =>
+      parseFormula(
+        {
+          id: 'nonsense',
+          version: 1,
+          output: { kind: 'numeric', name: 'out', unit: '$A' },
+          inputs: [generic('$A*$B')],
+          expression: 'a',
+          description: 'Unsolvable.',
+          status: 'unverified',
+        },
+        '',
+      ),
+    ).toThrow(/not a bare variable/);
+  });
+});

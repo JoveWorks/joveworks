@@ -8,6 +8,12 @@
  * parses. `portDimension` is the derivation, and it is what connection checking
  * compares.
  *
+ * A numeric or spectrum port may declare a **generic signature** instead of a
+ * unit — `$A`, `$A*$B` — which is how the base node library says "whatever is
+ * wired here" (S59). No catalogue formula uses one: R&M names every unit. An
+ * input's signature must be a bare variable, so that binding it is an assignment
+ * rather than an equation; the output may be any monomial in those variables.
+ *
  * Three kinds, and the third is the one that is easy to miss:
  *
  * - **numeric** — a dimensioned scalar. Sweepable by any range kind (S29).
@@ -20,7 +26,13 @@
  *   in `value.ts`.
  */
 
-import { DIMENSIONLESS, type Dimension } from '@mds/units';
+import {
+  DIMENSIONLESS,
+  bareVariable,
+  isGenericDimension,
+  type Dimension,
+  type GenericDimension,
+} from '@mds/units';
 
 import {
   fail,
@@ -37,8 +49,18 @@ import {
   type JsonObject,
   type JsonValue,
 } from './json.js';
-import { parseUnitField } from './quantity.js';
+import { parsePortUnitField } from './quantity.js';
 import type { Unit } from '@mds/units';
+
+/**
+ * What a numeric or spectrum port declares: a concrete display unit, or a
+ * generic signature standing for whatever is wired to it (S59).
+ */
+export type PortUnit = Unit | GenericDimension;
+
+export function isGenericPort(port: Port): boolean {
+  return port.kind !== 'categorical' && isGenericDimension(port.unit);
+}
 
 export const PORT_KINDS = ['numeric', 'categorical', 'spectrum'] as const;
 export type PortKind = (typeof PORT_KINDS)[number];
@@ -66,9 +88,13 @@ interface PortBase {
 
 export interface NumericPort extends PortBase {
   readonly kind: 'numeric';
-  /** Display unit; its dimension is the port's type. `''` is dimensionless. */
-  readonly unit: Unit;
-  /** A starting value, in `unit`. */
+  /**
+   * Display unit; its dimension is the port's type. `''` is dimensionless. A
+   * `GenericDimension` here means the port has no display unit of its own and
+   * takes both unit and dimension from what is wired to it (S59).
+   */
+  readonly unit: PortUnit;
+  /** A starting value, in `unit`. Never set on a generic port — no unit to be in. */
   readonly default?: number;
   /** In `unit`. See `ValidRange`. */
   readonly validRange?: ValidRange;
@@ -89,7 +115,7 @@ export interface CategoricalPort extends PortBase {
 
 export interface SpectrumPort extends PortBase {
   readonly kind: 'spectrum';
-  readonly unit: Unit;
+  readonly unit: PortUnit;
 }
 
 export type Port = NumericPort | CategoricalPort | SpectrumPort;
@@ -97,9 +123,13 @@ export type Port = NumericPort | CategoricalPort | SpectrumPort;
 /** What a formula may produce. A spectrum is consumed, never produced (S36). */
 export type OutputPort = NumericPort | CategoricalPort;
 
-/** The dimension a connection is checked against (S6). */
-export function portDimension(port: Port): Dimension {
-  return port.kind === 'categorical' ? DIMENSIONLESS : port.unit.dimension;
+/**
+ * The dimension a connection is checked against (S6), or `undefined` for a
+ * generic port — which has no dimension until the wiring binds one (S59).
+ */
+export function portDimension(port: Port): Dimension | undefined {
+  if (port.kind === 'categorical') return DIMENSIONLESS;
+  return isGenericDimension(port.unit) ? undefined : port.unit.dimension;
 }
 
 function parseValidRange(value: JsonValue, path: string): ValidRange {
@@ -133,7 +163,7 @@ export function parsePort(value: JsonValue, path: string): Port {
     return { kind, name, domain, ...put('description', description), ...put('default', fallback) };
   }
 
-  const unit = parseUnitField(required(object, 'unit', path), join(path, 'unit'));
+  const unit = parsePortUnitField(required(object, 'unit', path), join(path, 'unit'));
   if (kind === 'spectrum') {
     return { kind, name, unit, ...put('description', description) };
   }
@@ -141,6 +171,9 @@ export function parsePort(value: JsonValue, path: string): Port {
   const fallback = optional(object, 'default', path, readNumber);
   const validRange = optional(object, 'validRange', path, parseValidRange);
   const monotonic = optional(object, 'monotonic', path, (v, p) => readEnum(v, p, MONOTONICITY));
+  if (isGenericDimension(unit) && (fallback !== undefined || validRange !== undefined)) {
+    fail(path, `'${unit.symbol}' is generic, so there is no unit for a default or a range to be in`);
+  }
   if (fallback !== undefined && validRange !== undefined && !withinRange(fallback, validRange)) {
     fail(join(path, 'default'), `${fallback} is outside the declared valid range`);
   }
@@ -185,6 +218,27 @@ export function serializePort(port: Port): JsonObject {
     ),
     ...put('monotonic', port.monotonic),
   };
+}
+
+/**
+ * Reject a generic *input* whose signature is not a bare variable (S59).
+ *
+ * `$A` wired to `N` binds `A` to force — an assignment. `$A*$B` wired to `N`
+ * would be an equation with infinitely many solutions, and `$A**2` wired to `N`
+ * has none. Outputs are exempt because they are computed from the bindings, not
+ * used to make them: `$A*$B` is exactly what `multiply` produces.
+ */
+export function asInputPort(port: Port, path: string): Port {
+  if (port.kind !== 'categorical' && isGenericDimension(port.unit)) {
+    if (bareVariable(port.unit) === undefined) {
+      fail(
+        join(path, 'unit'),
+        `'${port.unit.symbol}' is not a bare variable — an input's generic unit must be ` +
+          "one variable to the first power, like '$A' (S59)",
+      );
+    }
+  }
+  return port;
 }
 
 /** Reject an output port declared as a spectrum, which S36 forbids. */

@@ -28,8 +28,22 @@ import {
   type JsonValue,
 } from './json.js';
 import { hashRecord } from './hash.js';
-import { asOutputPort, parsePort, serializePort, type OutputPort, type Port } from './port.js';
+import {
+  asInputPort,
+  asOutputPort,
+  parsePort,
+  serializePort,
+  type OutputPort,
+  type Port,
+} from './port.js';
 import { readSchemaVersion } from './version.js';
+import { genericVariables, isGenericDimension } from '@mds/units';
+
+/** The dimension variables a port mentions — none, unless it is generic (S59). */
+function portVariables(port: Port): readonly string[] {
+  if (port.kind === 'categorical' || !isGenericDimension(port.unit)) return [];
+  return genericVariables(port.unit);
+}
 
 /**
  * S19/S20. `verified` means a golden value exercises it and the result matched;
@@ -92,8 +106,18 @@ export function parseFormula(value: JsonValue, path: string): Formula {
   );
 
   const inputs = readArray(required(object, 'inputs', path), join(path, 'inputs')).map((entry, i) =>
-    parsePort(entry, `${join(path, 'inputs')}[${i}]`),
+    asInputPort(parsePort(entry, `${join(path, 'inputs')}[${i}]`), `${join(path, 'inputs')}[${i}]`),
   );
+
+  // A generic output can only be built from variables the inputs bind (S59).
+  if (output.kind === 'numeric' && isGenericDimension(output.unit)) {
+    const bound = new Set(inputs.flatMap(portVariables));
+    for (const name of genericVariables(output.unit)) {
+      if (!bound.has(name)) {
+        fail(join(path, 'output.unit'), `'$${name}' is not bound by any input port (S59)`);
+      }
+    }
+  }
 
   const seen = new Set([output.name]);
   for (const [i, port] of inputs.entries()) {

@@ -12,7 +12,15 @@
  * `canonicalValue` is the one function that crosses it.
  */
 
-import { UnitError, parseUnit, toCanonical, type Unit } from '@mds/units';
+import {
+  UnitError,
+  isGenericSignature,
+  parseGenericDimension,
+  parseUnit,
+  toCanonical,
+  type GenericDimension,
+  type Unit,
+} from '@mds/units';
 
 import { fail, readNumber, readString, type JsonObject, type JsonValue } from './json.js';
 
@@ -27,6 +35,24 @@ export function parseUnitField(value: JsonValue | undefined, path: string): Unit
   const text = readString(value, path);
   try {
     return parseUnit(text);
+  } catch (error) {
+    if (error instanceof UnitError) fail(path, error.message);
+    throw error;
+  }
+}
+
+/**
+ * A port's unit field, which may also carry a generic signature (S59). Only
+ * ports accept one: a `Quantity` is a number someone typed, and `5 $A` is not a
+ * number anyone can type.
+ */
+export function parsePortUnitField(
+  value: JsonValue | undefined,
+  path: string,
+): Unit | GenericDimension {
+  const text = readString(value, path);
+  try {
+    return isGenericSignature(text) ? parseGenericDimension(text) : parseUnit(text);
   } catch (error) {
     if (error instanceof UnitError) fail(path, error.message);
     throw error;

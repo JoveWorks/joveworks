@@ -12,8 +12,8 @@ the graph becomes a design study.
 ## Start here
 
 **Milestone 1, in progress.** As of 2026-08-14 the pnpm workspace exists and
-`packages/units` and `packages/schema` are built and tested; `kernel`, `nodes`
-and `editor` are placeholders carrying only a comment. `pnpm test` runs
+`packages/units`, `packages/schema` and `packages/nodes` are built and tested;
+`kernel` and `editor` are placeholders carrying only a comment. `pnpm test` runs
 everything; `pnpm build` (`tsc -b`) is also the dependency-direction check.
 
 Read [OVERVIEW.md](OVERVIEW.md) first — it is the whole project in one pass.
@@ -22,7 +22,7 @@ Then [PLAN.md](PLAN.md) for the build sequence and
 
 **The next concrete step** is in [NEXT.md](NEXT.md), which carries a
 ready-to-paste prompt for the current chunk of work and the ordered list after
-it. Right now that is milestone 1 step 4: the base node library. Do not start by
+it. Right now that is milestone 1 step 5: the evaluation kernel. Do not start by
 extracting all 539 formulas — see the scope note below. **Keep NEXT.md current**:
 when a session finishes the chunk it describes, update it to name the next one.
 
@@ -126,7 +126,9 @@ These follow from settled decisions; do not relitigate them in code.
   (S54) — belt's wrap angles are tagged `[]` in the source.
 - **Dimensions are port types**, enforced at connection time. Ports are
   numeric-with-dimension or **categorical**; categoricals declare an enumerated
-  domain and sweep by explicit list only.
+  domain and sweep by explicit list only. A port may also declare a **generic
+  dimension** — `$A`, `$A*$B` — which is how the base node library says "whatever
+  is wired here" (S59). No catalogue formula uses one; R&M names every unit.
 - **Forward evaluation only.** No solver. Cycles are rejected at connect time,
   the same way a dimension mismatch is. Rearranged forms are catalogue content
   linked by `variantOf` — not computed.

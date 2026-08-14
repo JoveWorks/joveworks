@@ -15,20 +15,29 @@ export { canonicalJson } from './json.js';
 
 export { SCHEMA_VERSION } from './version.js';
 
-export { canonicalValue, serializeQuantity, parseUnitField } from './quantity.js';
+export {
+  canonicalValue,
+  serializeQuantity,
+  parseUnitField,
+  parsePortUnitField,
+} from './quantity.js';
 export type { Quantity } from './quantity.js';
 
 export {
   PORT_KINDS,
   MONOTONICITY,
   portDimension,
+  isGenericPort,
   withinRange,
   parsePort,
   serializePort,
+  asInputPort,
+  asOutputPort,
 } from './port.js';
 export type {
   Port,
   PortKind,
+  PortUnit,
   OutputPort,
   NumericPort,
   CategoricalPort,

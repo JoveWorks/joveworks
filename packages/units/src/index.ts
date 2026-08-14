@@ -51,6 +51,16 @@ export { parseUnit, parseUnitExpression, parseUnitTag } from './parse.js';
 export type { UnitTag } from './parse.js';
 
 export {
+  bareVariable,
+  genericVariables,
+  isGenericDimension,
+  isGenericSignature,
+  parseGenericDimension,
+  resolveGeneric,
+} from './generic.js';
+export type { GenericDimension } from './generic.js';
+
+export {
   toCanonical,
   fromCanonical,
   convert,

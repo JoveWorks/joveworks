@@ -3,7 +3,15 @@ import { describe, expect, it } from 'vitest';
 import { FORCE, LENGTH, DIMENSIONLESS } from '@mds/units';
 
 import { SchemaError } from './errors.js';
-import { asOutputPort, parsePort, portDimension, serializePort, withinRange } from './port.js';
+import {
+  asInputPort,
+  asOutputPort,
+  isGenericPort,
+  parsePort,
+  portDimension,
+  serializePort,
+  withinRange,
+} from './port.js';
 import type { JsonValue } from './json.js';
 
 const numeric: JsonValue = { kind: 'numeric', name: 'F_t', unit: 'N' };
@@ -101,4 +109,48 @@ it('reports the path of the field at fault', () => {
     expect(error).toBeInstanceOf(SchemaError);
     expect((error as SchemaError).path).toBe('formulas[2].inputs[1].name');
   }
+});
+
+describe('generic ports (S59)', () => {
+  it('has no dimension until the wiring binds one', () => {
+    const port = parsePort({ kind: 'numeric', name: 'a', unit: '$A' }, 'port');
+    expect(portDimension(port)).toBeUndefined();
+    expect(isGenericPort(port)).toBe(true);
+    expect(isGenericPort(parsePort(numeric, 'port'))).toBe(false);
+  });
+
+  it('keeps the signature as written, so a record round-trips', () => {
+    const port = parsePort({ kind: 'numeric', name: 'p', unit: '$A*$B' }, 'port');
+    expect(serializePort(port)['unit']).toBe('$A*$B');
+  });
+
+  it('refuses a default or a valid range — there is no unit for one to be in', () => {
+    expect(() => parsePort({ kind: 'numeric', name: 'a', unit: '$A', default: 3 }, 'port')).toThrow(
+      /is generic, so there is no unit/,
+    );
+    expect(() =>
+      parsePort({ kind: 'numeric', name: 'a', unit: '$A', validRange: { min: 0 } }, 'port'),
+    ).toThrow(/is generic, so there is no unit/);
+  });
+
+  it('requires an input signature to be a bare variable', () => {
+    const bare = parsePort({ kind: 'numeric', name: 'a', unit: '$A' }, 'inputs[0]');
+    expect(asInputPort(bare, 'inputs[0]')).toBe(bare);
+    const compound = parsePort({ kind: 'numeric', name: 'a', unit: '$A*$B' }, 'inputs[0]');
+    expect(() => asInputPort(compound, 'inputs[0]')).toThrow(/not a bare variable/);
+    const squared = parsePort({ kind: 'numeric', name: 'a', unit: '$A**2' }, 'inputs[0]');
+    expect(() => asInputPort(squared, 'inputs[0]')).toThrow(/not a bare variable/);
+  });
+
+  it('lets a spectrum port be generic — sum consumes a series of anything (S36)', () => {
+    const port = parsePort({ kind: 'spectrum', name: 'xs', unit: '$A' }, 'port');
+    expect(isGenericPort(port)).toBe(true);
+    expect(portDimension(port)).toBeUndefined();
+  });
+
+  it('reports a malformed signature at the field that carried it', () => {
+    expect(() => parsePort({ kind: 'numeric', name: 'a', unit: '$A*mm' }, 'port')).toThrow(
+      /port\.unit:.*cannot mix in a concrete unit/,
+    );
+  });
 });
