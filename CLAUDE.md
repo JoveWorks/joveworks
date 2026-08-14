@@ -11,7 +11,7 @@ outputs on a canvas; the graph is the calculation.
 **Greenfield.** As of 2026-08-14 the repository contains documentation only —
 no source, no build system, no dependencies. [PLAN.md](PLAN.md) holds the build
 sequence; [DECISIONS.md](DECISIONS.md) holds what is settled (`S1`–`S28`). All
-twelve original open questions are closed and **nothing blocks the first code**.
+nineteen open questions are closed and **nothing blocks the first code**.
 Still outstanding, none of it gating the first commit: **D14–D15**, two
 sweep/plot details that touch the schema and so want settling before step 2;
 defect and unit-tag sign-off against R&M, which quarantines individual formulas
@@ -93,8 +93,14 @@ These follow from settled decisions; do not relitigate them in code.
   governs notebook export: citation and values by default, expressions only
   behind an explicitly marked toggle.
 - **Sweeps are the primary use of the kernel**, not a secondary mode. Ranges are
-  linear, logarithmic, explicit lists or table columns, controlled by point
-  count rather than step size. Log spacing is a teaching requirement.
+  linear, logarithmic, explicit lists, table columns or categorical lists,
+  controlled by point count rather than step size. Log spacing is a teaching
+  requirement.
+- **Expressions are strings, parsed to an AST and compiled to closures.** Never
+  `eval` or `new Function` — catalogues are files students exchange. The corpus
+  has no branching; it does need `sum`/`prod` aggregation over load spectra.
+- **Ports are numeric-with-dimension or categorical.** Categoricals declare an
+  enumerated domain and sweep by explicit list only.
 - **The notebook is a view over the graph**, not a second document. Titled group
   frames are its sections, so they are load-bearing schema, not decoration.
 - **Canonical units: mm, N, s, rad, K.** Convert at the boundary. Undeclared

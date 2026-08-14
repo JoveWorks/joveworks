@@ -80,7 +80,7 @@ tool rather than a plot.
 
 ### Range kinds
 
-A range is not just `start..stop..step`. Four kinds, each earning its place:
+A range is not just `start..stop..step`. Five kinds, each earning its place:
 
 | Range kind | Use |
 |---|---|
@@ -88,6 +88,7 @@ A range is not just `start..stop..step`. Four kinds, each earning its place:
 | **Logarithmic** — `logspace(1e4, 1e8, 40)` | Power laws and anything spanning decades |
 | **Explicit list** — `{25, 30, 35, 40}` | **Standard sizes** — the realistic design case |
 | **Table column** | A series pulled from catalogue data |
+| **Categorical list** — `{H7, H8, K7}` | Fit classes and other named values, on an ordinal axis |
 
 **Logarithmic ranges are not optional for this course.** Fatigue and Wöhler S–N
 curves are log–log by construction; bearing life is a power law
@@ -105,6 +106,12 @@ two-input grid is simply `n × m`.
 Sweeping the sizes you can actually buy — the explicit list — is usually the
 question worth asking. Linear and log spacing are for understanding *behaviour*;
 the list is for choosing a *part*.
+
+**Not everything swept is a number.** Fit classes (`H7`, `K7`) are categorical
+values with a declared set of allowed entries, so a typo is rejected rather than
+computed. They sweep as lists on an ordinal axis — and the study worth having
+mixes the two: sweep diameter numerically *and* fit class categorically, and you
+get one curve per fit class on a shared numeric axis.
 
 ### Why this replaces solving for an input
 
@@ -288,7 +295,7 @@ sides are wrong in the same way. Hence sign-off, and hence quarantine.
 | Document | For |
 |---|---|
 | [PLAN.md](PLAN.md) | Build sequence, migration strategy, verification plan |
-| [DECISIONS.md](DECISIONS.md) | Every settled decision (S1–S33) and its reasoning |
+| [DECISIONS.md](DECISIONS.md) | Every settled decision (S1–S38) and its reasoning |
 | [CLAUDE.md](CLAUDE.md) | Conventions and the distribution restriction |
 
 ---

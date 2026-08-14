@@ -1,7 +1,7 @@
 # Plan: machine-design-studio
 
 Status: **agreed, not started.** Written 2026-08-14; revised the same day once
-D1–D12 closed as S13–S33. **No decision blocks the first commit**; D14–D15 want
+D1–D19 closed as S13–S38. **No decision blocks the first commit**; D14–D15 want
 settling before step 2.
 
 Supersedes the plan in the predecessor repository (`mechanical-design`, commit
@@ -76,7 +76,9 @@ calculation. The editor is both the product and the authoring tool for formulas.
 | Traceability | Every formula carries a citation (`R&M 17.1B`), so a node shows which textbook equation it implements. |
 | Sources | Roloff & Matek, other standards, and user-authored formulas, distinguished by the citation field. |
 | Units | **Canonical internal base: mm, N, s, rad, K.** Convert at the boundary. Undeclared unit is a **hard error**. |
-| Dimensions | Become **port types** — a force output will not connect to a length input. |
+| Dimensions | Become **port types** — a force output will not connect to a length input. Ports are numeric-with-dimension or **categorical** (fit classes), the latter with a declared domain. |
+| Expressions | **Strings**, parsed to an AST and compiled to closures. Never `eval`. Pure — no branching in the corpus; aggregation over a series instead. |
+| Tables | Banded-numeric × categorical **step lookups**. No interpolation by default; a missing entry raises. |
 | Verification | The old notebooks' worked examples, frozen as fixtures. |
 | Known defects | Reported and signed off explicitly, never migrated silently. |
 | Packaging | Editor and kernel unrestricted; the R&M formula catalogue stays under its distribution restriction. |
@@ -103,6 +105,30 @@ tools/
   migrate/       Python, one-off: AST extraction from the old MechDesign package
                  + differential verification against its implementation
 ```
+
+### Expressions, tables and port kinds
+
+Established by surveying the predecessor corpus, not assumed:
+
+- **Expressions are pure.** Zero mathematical branching across ~550 methods —
+  the 8 `if` statements are all Python guards on a list argument, six of them
+  the known `C14` defects. No piecewise support is needed (S35).
+- **What those guards hid is aggregation** — `P = (Σ Pᵢᵖ·nᵢ/n_m·qᵢ/100)^(1/p)`
+  over a load spectrum, `Σ segments_delta` in `C8`. A sweep *produces* a series,
+  an aggregation *consumes* one; a spectrum port takes an explicit list and
+  cannot itself be swept (S36).
+- **Stored as strings, parsed to an AST, compiled to closures** (S34). Never
+  `eval` or `new Function` — catalogues are files students exchange.
+- **Whitelist**: the eleven functions the corpus uses (`cos` 94, `sqrt` 89,
+  `tan` 72, `cbrt` 37, `sin` 21, `abs` 15, `acos` 5, `log` 4, `atan` 4, `asin`
+  2, `exp` 2) plus `pi`, `**`, and `min`/`max`/`floor`/`ceil`/`round` and the
+  hyperbolics for non-R&M formulas. Trig, log and exp require dimensionless
+  arguments; `min`/`max` require matching dimensions (S35).
+- **Tables are step functions**: a diameter band crossed with a categorical
+  class, in µm. No interpolation unless a table opts in, and a missing entry
+  **raises** (S37). This is where the `[E-6m]` tag of D7 comes from.
+- **Ports are numeric-with-dimension or categorical** (S38). Categoricals carry
+  an enumerated domain and sweep by explicit list only.
 
 ### Formula data model
 
@@ -226,13 +252,17 @@ Also recorded: the `P_1 = 300*W_` typo across four TopDown notebooks, the `d_dg`
 400-vs-420 discrepancy, the duplicate `'F_sp'` key in `C8_ThreadConnection`
 silently discarding a description, and the ~30 junk unit tags.
 
+From the 2026-08-14 corpus survey: `Table/FitAndTolerance.py` executes
+`HoleDim(100, 'M', '6')` and **prints at module import**, and its `None` entries
+— meaning "this fit is not defined" — propagate to callers instead of raising.
+
 Note that the docstring-vs-code differential — the technique that found most of
 these — becomes unnecessary after migration. It exists to police drift between
 two representations of the same formula, and the new model has one.
 
 ## Sequencing
 
-0. ~~Resolve the blocking decisions.~~ **Done** — D1–D12 closed as S13–S33 on
+0. ~~Resolve the blocking decisions.~~ **Done** — D1–D19 closed as S13–S38 on
    2026-08-14. Nothing gates the first commit. Settle **D14–D15** before step 2:
    both touch the schema, and retrofitting them would mean an S25 migration.
 1. **DEFECTS.md.** Extract and report against the old repo; no fixes without
