@@ -7,9 +7,9 @@ Built for the KU Leuven course on dimensioning of machine parts. Formulas follow
 **Roloff & Matek, 6th edition**, and each one carries a citation back to its
 textbook equation number.
 
-Status: **greenfield, nothing built yet.** Every decision that gates the first
-commit is closed; what remains is two schema details, content sign-off against
-the textbook, and the licence.
+Status: **greenfield, nothing built yet.** Every design decision is closed
+(S1–S52). What remains is content sign-off against the textbook, which gates
+individual formulas rather than any build step.
 
 **New here? Start with [OVERVIEW.md](OVERVIEW.md)** — the whole project in one
 read. Then [PLAN.md](PLAN.md) for the build sequence and
