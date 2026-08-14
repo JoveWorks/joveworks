@@ -11,8 +11,10 @@ the graph becomes a design study.
 
 ## Start here
 
-**Greenfield.** As of 2026-08-14 the repository is documentation only — no
-source, no build system, no dependencies. **Nothing blocks the first commit.**
+**Milestone 1, in progress.** As of 2026-08-14 the pnpm workspace exists and
+`packages/units` is built and tested; `schema`, `kernel`, `nodes` and `editor`
+are placeholders carrying only a comment. `pnpm test` runs everything; `pnpm
+build` (`tsc -b`) is also the dependency-direction check.
 
 Read [OVERVIEW.md](OVERVIEW.md) first — it is the whole project in one pass.
 Then [PLAN.md](PLAN.md) for the build sequence and
@@ -20,10 +22,9 @@ Then [PLAN.md](PLAN.md) for the build sequence and
 
 **The next concrete step** is in [NEXT.md](NEXT.md), which carries a
 ready-to-paste prompt for the current chunk of work and the ordered list after
-it. Right now that is milestone 1 steps 1–2: scaffold the pnpm workspace, then
-build the `units` package. Do not start by extracting all 539 formulas — see the
-scope note below. **Keep NEXT.md current**: when a session finishes the chunk it
-describes, update it to name the next one.
+it. Right now that is milestone 1 step 3: the `schema` package. Do not start by
+extracting all 539 formulas — see the scope note below. **Keep NEXT.md current**:
+when a session finishes the chunk it describes, update it to name the next one.
 
 Still outstanding, none of it gating code: defect and unit-tag sign-off against
 R&M, which quarantines individual formulas rather than holding up a build step.
@@ -117,8 +118,12 @@ These follow from settled decisions; do not relitigate them in code.
   or Nx. Project references are load-bearing: they keep React out of the kernel.
 - **Canonical units: mm, N, s, rad, K.** Convert at the boundary. Undeclared unit
   is a hard error. Mass is therefore tonnes and density t/mm³ — the classic
-  silent corruption, so the dimension checker must catch it.
-- **Angles: radians internally, degrees at the display boundary.**
+  silent corruption — and one the dimension checker **cannot** catch, because a
+  wrong scale factor is dimensionally sound (S53). Conversion at the boundary is
+  the defence; the goldens are the confirmation.
+- **Angles: radians internally, degrees at the display boundary.** Angle is a
+  tracked dimension, so trig accepts an angle *or* a dimensionless argument
+  (S54) — belt's wrap angles are tagged `[]` in the source.
 - **Dimensions are port types**, enforced at connection time. Ports are
   numeric-with-dimension or **categorical**; categoricals declare an enumerated
   domain and sweep by explicit list only.

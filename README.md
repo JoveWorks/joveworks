@@ -7,9 +7,17 @@ Built for the KU Leuven course on dimensioning of machine parts. Formulas follow
 **Roloff & Matek, 6th edition**, and each one carries a citation back to its
 textbook equation number.
 
-Status: **greenfield, nothing built yet.** Every design decision is closed
-(S1–S52). What remains is content sign-off against the textbook, which gates
-individual formulas rather than any build step.
+Status: **milestone 1 under way.** The pnpm workspace is scaffolded and the
+`units` package is built and tested; schema, kernel, nodes and editor are
+placeholders. Every design decision is closed (S1–S55). What remains besides
+code is content sign-off against the textbook, which gates individual formulas
+rather than any build step.
+
+```
+pnpm install
+pnpm test        # vitest
+pnpm build       # tsc -b; an undeclared cross-package import fails here (S55)
+```
 
 **New here? Start with [OVERVIEW.md](OVERVIEW.md)** — the whole project in one
 read. Then [PLAN.md](PLAN.md) for the build sequence and

@@ -214,10 +214,12 @@ Three traps, all confirmed present in the source material:
   migration.
 - **Mass is tonnes, density t/mm³** in a consistent mm-N-s system — the classic
   silent corruption. The old `C16_Belt.py:155` already fudged it with
-  `1E-6 * 1E3 * rho`. Enforce in the checker.
+  `1E-6 * 1E3 * rho`. **The dimension checker cannot catch this** — see S53; the
+  boundary conversion is what removes it, and the goldens are what confirm it.
 - **Angles: radians internally, degrees at the boundary.** Dissolves the three
   incompatible conventions coexisting in the old code (`deg_`-carrying, bare
-  `/180*pi`, and raw radians) rather than reconciling 72 sites.
+  `/180*pi`, and raw radians) rather than reconciling 72 sites. Angle is a
+  tracked dimension rather than a flavour of dimensionless (S54).
 
 ~500 tags need normalising (`[N/mm²]`, `[N/mm**2]`, `[MPa]`; `[rpm]`, `[1/min]`,
 `[min-1]`; `[deg]`, `[°]`, `[rad]`). 315 are already `[]`. ~30 are junk
@@ -340,8 +342,11 @@ S25 migration.
   `[%]` (dimensionless with display scale, as S21), and `[s-1]`.
 - **Belt's defect exposure is one line.** None of the ~12 confirmed defects are
   in `C16`. The density fudge at `C16_Belt.py:154-155`
-  (`F_c = A_S * 1E-6 * 1E3 * rho * v**2`) is the one item, and it is precisely
-  the case the dimension checker must catch.
+  (`F_c = A_S * 1E-6 * 1E3 * rho * v**2`) is the one item — and it is a
+  transcription hazard rather than a checkable defect, because those constants
+  are a unit conversion and the expression is dimensionally sound with or
+  without them (S53). Transcribe the expression without them; the boundary
+  conversion supplies the same factor.
 
 ### Milestone 1 — vertical slice
 

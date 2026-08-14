@@ -1,0 +1,17 @@
+{
+  "name": "@mds/editor",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@mds/kernel": "workspace:*",
+    "@mds/nodes": "workspace:*",
+    "@mds/schema": "workspace:*",
+    "@mds/units": "workspace:*"
+  }
+}
