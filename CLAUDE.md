@@ -12,17 +12,17 @@ the graph becomes a design study.
 ## Start here
 
 **Milestone 1, in progress.** As of 2026-08-14 the pnpm workspace exists and
-`packages/units` is built and tested; `schema`, `kernel`, `nodes` and `editor`
-are placeholders carrying only a comment. `pnpm test` runs everything; `pnpm
-build` (`tsc -b`) is also the dependency-direction check.
+`packages/units` and `packages/schema` are built and tested; `kernel`, `nodes`
+and `editor` are placeholders carrying only a comment. `pnpm test` runs
+everything; `pnpm build` (`tsc -b`) is also the dependency-direction check.
 
 Read [OVERVIEW.md](OVERVIEW.md) first — it is the whole project in one pass.
 Then [PLAN.md](PLAN.md) for the build sequence and
-[DECISIONS.md](DECISIONS.md) for what is settled (`S1`–`S52`) and why.
+[DECISIONS.md](DECISIONS.md) for what is settled (`S1`–`S58`) and why.
 
 **The next concrete step** is in [NEXT.md](NEXT.md), which carries a
 ready-to-paste prompt for the current chunk of work and the ordered list after
-it. Right now that is milestone 1 step 3: the `schema` package. Do not start by
+it. Right now that is milestone 1 step 4: the base node library. Do not start by
 extracting all 539 formulas — see the scope note below. **Keep NEXT.md current**:
 when a session finishes the chunk it describes, update it to name the next one.
 
@@ -143,9 +143,11 @@ These follow from settled decisions; do not relitigate them in code.
   variants and states the condition in prose; formulas carry it as a
   machine-readable `appliesWhen` predicate, and using a formula outside its
   condition warns. One predicate layer serves this, check nodes and thresholds.
-- **Every formula carries** a citation (`R&M 17.1B`), description, per-port
-  dimension and display unit, `variantOf`, `appliesWhen`, `status`, and optional
-  default and valid range. Valid range is load-bearing — it is a sweep bound.
+- **Every formula carries** a citation (`R&M 17.1B`), description, a display
+  unit per port — the port's dimension is *derived* from it rather than declared
+  twice (S56) — `variantOf`, `appliesWhen`, `status`, and optional default and
+  valid range. Valid range is load-bearing: it is a sweep bound and S17's
+  bracketing interval.
 - **Client-side web app.** No backend, no Node-only APIs in app code; file I/O
   sits behind an adapter so a Tauri build can drop in later.
 - **Graphs reference formulas by ID, version and hash** — never embed them.

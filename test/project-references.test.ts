@@ -65,7 +65,7 @@ describe('dependency direction (S22)', () => {
     const dir = workspaceCopy();
     writeFileSync(
       join(dir, 'packages/units/src/illegal.ts'),
-      `import { SCHEMA_PACKAGE_PLACEHOLDER } from '@mds/schema';\nexport const x = SCHEMA_PACKAGE_PLACEHOLDER;\n`,
+      `import { SCHEMA_VERSION } from '@mds/schema';\nexport const x = SCHEMA_VERSION;\n`,
     );
     const result = build(dir);
     expect(result.ok).toBe(false);
@@ -120,7 +120,7 @@ describe('dependency direction (S22)', () => {
     );
     writeFileSync(
       join(dir, 'packages/kernel/src/illegal.ts'),
-      `import { SCHEMA_PACKAGE_PLACEHOLDER } from '@mds/schema';\nexport const x = SCHEMA_PACKAGE_PLACEHOLDER;\n`,
+      `import { SCHEMA_VERSION } from '@mds/schema';\nexport const x = SCHEMA_VERSION;\n`,
     );
     expect(build(dir).ok).toBe(true);
   }, 120_000);
