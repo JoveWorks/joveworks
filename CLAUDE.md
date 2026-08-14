@@ -23,8 +23,8 @@ workspace, then the `units` and `schema` packages, then the belt extraction
 script. Do not start by extracting all 539 formulas — see the scope note below.
 
 Still outstanding, none of it gating code: defect and unit-tag sign-off against
-R&M (quarantines individual formulas, never a build step), and creating the
-private catalogue repository (S45). Nothing has been pushed to `origin` yet.
+R&M, which quarantines individual formulas rather than holding up a build step.
+Nothing has been pushed to `origin` in either repository yet.
 
 ## Milestone 1 is a vertical slice — do not widen it
 
@@ -70,8 +70,13 @@ check DECISIONS.md — most such calls are already settled against it.
 Roloff & Matek expressions are for internal student reference and **may never be
 distributed or shared**. Consequences:
 
-- The R&M catalogue lives in a **separate private repository** (S45), not in this
-  one. A repository boundary, not a `.gitignore` — this repo is MIT and public.
+- The R&M catalogue lives in a **separate private repository** (S45), not in
+  this one: `~/source/machine-design-catalogue`. A repository boundary, not a
+  `.gitignore` — this repo is MIT and public.
+- **Never use a real R&M formula as a test fixture here.** It is natural to
+  reach for one because it is at hand; use an invented formula instead —
+  `y = a*b + c` exercises a topological sort perfectly well and carries no
+  citation for anyone to copy.
 - Never surface R&M formula content outside the repo — artifacts, issues, pasted
   output — unless the user explicitly asks.
 - The public app ships **no textbook content**; the catalogue reaches students as
@@ -96,7 +101,9 @@ tools/
                with stdlib `ast`. Never imports or runs it
 ```
 
-The restricted catalogue lives in its own private repo (S45).
+The restricted catalogue lives in its own private repo (S45), primed at
+`~/source/machine-design-catalogue`. The extraction *script* is public — it holds
+no textbook content; its *output* goes there.
 
 ## Conventions
 

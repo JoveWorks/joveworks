@@ -113,7 +113,8 @@ tools/
                  no sympy and no dependencies at all
 ```
 
-**A separate private repository** holds the restricted catalogue (S45):
+**A separate private repository** holds the restricted catalogue (S45), primed
+at `~/source/machine-design-catalogue`:
 
 ```
 catalogue/       RESTRICTED — the R&M formulas as data. Built and delivered to
