@@ -18,9 +18,12 @@ Read [OVERVIEW.md](OVERVIEW.md) first — it is the whole project in one pass.
 Then [PLAN.md](PLAN.md) for the build sequence and
 [DECISIONS.md](DECISIONS.md) for what is settled (`S1`–`S52`) and why.
 
-**The next concrete step** is milestone 1, step 1 in PLAN.md: scaffold the pnpm
-workspace, then the `units` and `schema` packages, then the belt extraction
-script. Do not start by extracting all 539 formulas — see the scope note below.
+**The next concrete step** is in [NEXT.md](NEXT.md), which carries a
+ready-to-paste prompt for the current chunk of work and the ordered list after
+it. Right now that is milestone 1 steps 1–2: scaffold the pnpm workspace, then
+build the `units` package. Do not start by extracting all 539 formulas — see the
+scope note below. **Keep NEXT.md current**: when a session finishes the chunk it
+describes, update it to name the next one.
 
 Still outstanding, none of it gating code: defect and unit-tag sign-off against
 R&M, which quarantines individual formulas rather than holding up a build step.

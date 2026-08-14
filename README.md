@@ -14,6 +14,7 @@ the textbook, and the licence.
 **New here? Start with [OVERVIEW.md](OVERVIEW.md)** — the whole project in one
 read. Then [PLAN.md](PLAN.md) for the build sequence and
 [DECISIONS.md](DECISIONS.md) for the settled decisions and their reasoning.
+[NEXT.md](NEXT.md) names the immediate next piece of work.
 
 ## What it is
 
