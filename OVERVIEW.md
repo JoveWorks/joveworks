@@ -132,6 +132,44 @@ graph shows you both.
 
 ---
 
+## What it looks like
+
+Three columns; the canvas is always the middle and always dominant. Both side
+panels collapse.
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│  ▸ palette   [ belt-drive.mds ]                notebook  ◂   │
+├────────────┬──────────────────────────────┬──────────────────┤
+│ ┌────────┐ │  ┌─ Belt forces ──────────┐  │ ## Belt forces   │
+│ │search  │ │  │  ┌──────────────────┐  │  │ Sizing for the   │
+│ └────────┘ │  │  │ F_t    R&M 16.4  │  │  │ lab rig…         │
+│ 16.1 speed │  │  │ 2457 N           │  │  │                  │
+│ 16.4 force │  │  └──────────────────┘  │  │ F_t = 2457 N     │
+│ 16.7 power │  │  ┌──────────────────┐  │  │ ✓ S = 1.8 ≥ 1.5  │
+│ 16.9 …     │  │  │ S      R&M 16.9  │  │  │                  │
+│            │  │  │ ▁▂▃▅▆█  d        │  │  │ ▁▂▃▅▆█           │
+│            │  │  └──────────────────┘  │  │ Fig 2 — S rises  │
+│            │  └────────────────────────┘  │ past 1.5 at 38mm │
+└────────────┴──────────────────────────────┴──────────────────┘
+```
+
+**There is no properties panel.** Values, units and ranges are edited directly
+on the node — otherwise the canvas would show a diagram while the real work
+happened beside it, and the graph would stop being the calculation.
+
+**Nodes are compact by default** — name, citation, result — and open on
+selection or hover. You can pin one open while working elsewhere, and a node
+missing a required input says so even while compact.
+
+**A swept value shows a sparkline** where a scalar shows a number, labelled with
+the axis it varies along, so you can watch a sweep propagate through the graph.
+
+**Units are text on the port; colour means state.** With `N`, `mm`, `N/mm²`,
+`W`, `Nm`, `m/s`, `rpm`, `%` and more in a single chapter, colour-coding
+dimensions would produce a palette nobody could learn. Colour is spent where it
+earns its keep: quarantined, out of applicability, failing check, error.
+
 ## Outputs and the notebook
 
 The graph replaces the *calculation*. It does not replace the *document* — what
@@ -300,7 +338,7 @@ sides are wrong in the same way. Hence sign-off, and hence quarantine.
 | Document | For |
 |---|---|
 | [PLAN.md](PLAN.md) | Build sequence, migration strategy, verification plan |
-| [DECISIONS.md](DECISIONS.md) | Every settled decision (S1–S45) and its reasoning |
+| [DECISIONS.md](DECISIONS.md) | Every settled decision (S1–S51) and its reasoning |
 | [CLAUDE.md](CLAUDE.md) | Conventions and the distribution restriction |
 
 ---

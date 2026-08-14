@@ -53,7 +53,7 @@ unit symbols, `Helpers.py`, the chapter classes, the notebooks as a runtime.
 | `MechDesign/RnM/Table/` | ISO fit and tolerance lookup data |
 | The defect findings below | Errors to not transcribe a second time |
 
-`tools/migrate/` is the only place old code is executed, and it is not shipped.
+`tools/` is the only place old code is executed, and none of it is shipped.
 
 ## Direction
 
@@ -66,12 +66,13 @@ calculation. The editor is both the product and the authoring tool for formulas.
 | Language | **TypeScript**, kernel as a standalone package with no React dependency. |
 | Delivery | **Static web app, no backend.** Students open a link. Tauri wrapper possible later, so no Node-only APIs and file I/O sits behind an adapter. |
 | Persistence | **IndexedDB autosave + explicit file export.** Graphs reference formulas by ID, version and hash — never embed them. |
-| Versioning | **Integer schema version**, forward migration chain, with a stored fixture per version asserted to still load. |
+| Versioning | **Integer version stamped from day one**; the migration chain is deferred until real student graphs exist to protect. |
 | Plotting | **Observable Plot** for sweeps; **`d3-contour`** over the kernel's own grid for the one contour case. |
 | Sweeps | Values carry **labelled axes**; a range introduces one, operations broadcast over the union, so grids are cartesian by default. |
 | Narrative | **Titled group frames with markdown notes**, on the graph document — never on the catalogue. |
 | Outputs | Four kinds: **value, check, plot, table.** The check (`S ≥ 1.5`) is what makes a report a dimensioning report. |
-| Notebook | A **live side-panel view over the graph**; frames are its sections. Export carries citation and values, not expressions. |
+| Notebook | A **live side-panel view over the graph**; frames are its sections. Prose at two levels — section notes and per-output captions — edited in place. Export carries citation and values, not expressions. |
+| Editor layout | Collapsible palette left, canvas centre, collapsible notebook right. **No permanent inspector**; values, units and ranges are edited on the node. |
 | Tooling | **pnpm workspaces**, TypeScript project references, Vitest, Vite. No Turborepo or Nx. |
 | Formulas | **Data**, in the editor's save format. Created and edited in the editor, not hand-written. |
 | Traceability | Every formula carries a citation (`R&M 17.1B`), so a node shows which textbook equation it implements. |
@@ -106,8 +107,11 @@ packages/
                  Unrestricted: no textbook content
   editor/        React Flow UI, plus the notebook view and output nodes
 tools/
-  migrate/       Python, one-off: AST extraction from the old MechDesign package
-                 + differential verification against its implementation
+  extract/       Python, one-off scripts — one per chapter (S52). Reads the old
+                 MechDesign docstrings and symbol dicts into catalogue data
+  difftest/      Python: runs the old implementation and the new kernel on the
+                 same random inputs and diffs. Kept at any size — this is what
+                 proves a transcription faithful
 ```
 
 **A separate private repository** holds the restricted catalogue (S45):
@@ -310,12 +314,17 @@ S25 migration.
    kernel testable end to end before any catalogue exists.
 4. **Evaluation kernel** — topological sort, vectorised ranges, the predicate
    layer (S39).
-5. **Migrate `C16_Belt`** — 55 formulas, self-contained, no tables and no
-   categoricals. Differentially verify against the old Python.
+5. **Extract `C16_Belt`** — 55 formulas, self-contained, no tables and no
+   categoricals. A one-off script (S52), not a migration tool. Differentially
+   verify against the old Python; that test is the point, not the script.
 6. **Golden values** from `notebooks/belt/Lab_belt.ipynb` and
    `Lab_belt_incl_Fa.ipynb`, noting both use `d_dg = 400 mm` where the
    assignment text says 420.
-7. **Minimal editor** — canvas, wiring, a sweep, and one plot.
+7. **Minimal editor** — collapsible palette left, canvas centre, collapsible
+   notebook right (S46). Node-first editing, compact nodes with sparklines for
+   swept values (S47, S50). Wiring, one sweep, one plot. **No formula-authoring
+   UI** (S51): the catalogue is a regenerated artefact of the extraction script, so a
+   correction is a re-run rather than an in-app edit.
 
 That slice is a working tool for one chapter, end to end.
 
@@ -323,7 +332,8 @@ That slice is a working tool for one chapter, end to end.
 
 8. **DEFECTS.md** across the whole corpus. Per S19 this runs alongside
    migration, not ahead of it — flagged formulas are quarantined by `status`.
-9. **Migrate the remaining chapters.** A second slice should be chosen to
+9. **Extract the remaining chapters.** Generalise the per-chapter script only
+   if their number justifies it. A second slice should be chosen to
    exercise tables and categorical ports (S37, S38), which belt does not touch —
    `C2_Tolerance` or the press-fit material in `C12` are the candidates.
 10. **Full notebook view** (S30–S33). Group frames carry its section structure,
@@ -337,8 +347,9 @@ That slice is a working tool for one chapter, end to end.
 - Golden values reproduce the notebook results end-to-end through the kernel.
 - Schema round-trips: save, reload, and confirm every formula's ports,
   dimensions, citation, defaults, ranges, `variantOf` links and status survive.
-- A document saved under each historical schema version still loads (S25). The
-  fixtures live in the repo; this test is what makes the promise real.
+- Every document carries a schema version stamp (S25). The N→N+1 migration
+  chain and its per-version fixtures arrive with the first real student graphs;
+  until then documents are regenerated rather than migrated.
 - Port typing rejects a force-to-length connection.
 - A connection closing a cycle is rejected at connect time (S18).
 - **A quarantined formula cannot be evaluated** — whether flagged for a defect

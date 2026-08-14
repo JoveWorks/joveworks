@@ -10,7 +10,7 @@ outputs on a canvas; the graph is the calculation.
 
 **Greenfield.** As of 2026-08-14 the repository contains documentation only —
 no source, no build system, no dependencies. [PLAN.md](PLAN.md) holds the build
-sequence; [DECISIONS.md](DECISIONS.md) holds what is settled (`S1`–`S45`). All
+sequence; [DECISIONS.md](DECISIONS.md) holds what is settled (`S1`–`S51`). All
 nineteen open questions are closed and **nothing blocks the first code**.
 Still outstanding, and none of it gating: defect and unit-tag sign-off against
 R&M, which quarantines individual formulas rather than holding up a build step.
@@ -68,15 +68,14 @@ tools/
                + differential verification against it
 ```
 
-`tools/migrate/` is the **only** place old code is executed, and it is not
-shipped. It reads the predecessor repo, emits catalogue data, and is deleted or
+`tools/` is the **only** place old code is executed, and none of it is shipped. It reads the predecessor repo, emits catalogue data, and is deleted or
 frozen once migration is verified.
 
 ## Conventions
 
 These follow from settled decisions; do not relitigate them in code.
 
-- **TypeScript** throughout, except `tools/migrate/`. No runtime CAS.
+- **TypeScript** throughout, except the Python in `tools/`. No runtime CAS.
 - **pnpm workspaces**, TypeScript project references, Vitest, Vite. No Turborepo
   or Nx. Project references are load-bearing: they are what keeps React out of
   the kernel and the restricted catalogue unimportable from published packages.
