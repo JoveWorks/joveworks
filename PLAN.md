@@ -1,8 +1,8 @@
 # Plan: machine-design-studio
 
 Status: **agreed, not started.** Written 2026-08-14; revised the same day once
-D1–D19 closed as S13–S38. **No decision blocks the first commit**; D14–D15 want
-settling before step 2.
+D1–D19 closed as S13–S42. **No decision blocks the first commit**; D14 wants
+settling before step 2 (D15 resolved by S39).
 
 Supersedes the plan in the predecessor repository (`mechanical-design`, commit
 `348e2f0`, `PLAN.md`), which framed the work as a refactor of that package. The
@@ -110,9 +110,17 @@ tools/
 
 Established by surveying the predecessor corpus, not assumed:
 
-- **Expressions are pure.** Zero mathematical branching across ~550 methods —
-  the 8 `if` statements are all Python guards on a list argument, six of them
-  the known `C14` defects. No piecewise support is needed (S35).
+- **Value expressions are pure.** Zero conditionals inside an expression across
+  ~550 methods — the 8 `if` statements are all Python guards on a list argument,
+  six of them the known `C14` defects. No piecewise support is needed (S35).
+- **But branching exists between formulas** (S40). R&M numbers case variants and
+  states the condition in prose: `E8_9A/B/C` select on where `D_A` falls
+  relative to `d_w` and `d_w + l_k`, `E2_4A/B` on nominal-size band, `E8_32B/C`
+  on thinned vs threaded. Seven such conditions survive in docstrings and the
+  old library read none of them — a student could use `E8_9B` while `D_A < d_w`
+  and get a confident wrong number. Migration captures these as `appliesWhen`.
+- **One boolean predicate layer** (S39) serves check nodes, plot thresholds and
+  `appliesWhen`. Predicates are boolean-valued and sit outside value expressions.
 - **What those guards hid is aggregation** — `P = (Σ Pᵢᵖ·nᵢ/n_m·qᵢ/100)^(1/p)`
   over a load spectrum, `Σ segments_delta` in `C8`. A sweep *produces* a series,
   an aggregation *consumes* one; a spectrum port takes an explicit list and
@@ -133,7 +141,8 @@ Established by surveying the predecessor corpus, not assumed:
 ### Formula data model
 
 Per formula: output port, input ports, expression, per-port dimension and
-display unit, description, citation, and optional default and valid range.
+display unit, description, citation, `variantOf`, `appliesWhen`, status, and
+optional default and valid range.
 
 The old `MySymbol` carried `def_value` and `range` fields that were declared but
 never set anywhere — hooks for exactly this. Populate them deliberately.
@@ -262,24 +271,46 @@ two representations of the same formula, and the new model has one.
 
 ## Sequencing
 
-0. ~~Resolve the blocking decisions.~~ **Done** — D1–D19 closed as S13–S38 on
-   2026-08-14. Nothing gates the first commit. Settle **D14–D15** before step 2:
-   both touch the schema, and retrofitting them would mean an S25 migration.
-1. **DEFECTS.md.** Extract and report against the old repo; no fixes without
-   sign-off. Per S19 this runs *alongside* migration rather than ahead of it —
-   flagged formulas are quarantined by `status`, not held out of extraction.
-2. **Schema + units package.** The contract everything else depends on.
-3. **Migration tooling + extraction** of all 539 formulas into data.
-4. **Evaluation kernel** and differential verification against the old Python
-   implementation.
-5. **Golden-value tests** end-to-end.
-6. **Editor UI**, including the notebook view (S30–S33). Note that group frames
-   are no longer a late nicety: they carry the notebook's section structure, so
-   the schema must reserve them from step 2 (S28, as upgraded by S30).
+**Milestone 1 is a vertical slice, not the full corpus** (S41). Fifty-five belt
+formulas prove the schema; 539 would only prove it more expensively. If the
+contract is wrong, finding out after 55 costs a morning — after 539 it costs an
+S25 migration.
 
-Steps 1–5 deliver a verified, unit-checked formula catalogue with a working
-evaluation kernel and no UI. That is independently useful and is the natural
-checkpoint to reassess before committing to step 6.
+0. ~~Resolve the blocking decisions.~~ **Done** — D1–D19 closed as S13–S42 on
+   2026-08-14. Nothing gates the first commit. **D14** (grid-sweep expression)
+   wants settling before step 2; D15 was resolved by S39.
+
+### Milestone 1 — vertical slice
+
+1. **Workspace scaffolding.** pnpm workspaces, TypeScript project references,
+   Vitest, Vite (S22).
+2. **Schema + units package.** The contract everything else depends on. Belt
+   deliberately exercises the hard cases: `[kg/dm³]` is the density trap that
+   `C16_Belt.py:155` fudges as `1E-6 * 1E3 * rho`, and `[%]` needs the
+   dimensionless-with-display-scale handling of S21.
+3. **Base node library** (S42) — literal inputs, arithmetic and math operations,
+   output nodes. No textbook content, so it is unrestricted, and it makes the
+   kernel testable end to end before any catalogue exists.
+4. **Evaluation kernel** — topological sort, vectorised ranges, the predicate
+   layer (S39).
+5. **Migrate `C16_Belt`** — 55 formulas, self-contained, no tables and no
+   categoricals. Differentially verify against the old Python.
+6. **Golden values** from `notebooks/belt/Lab_belt.ipynb` and
+   `Lab_belt_incl_Fa.ipynb`, noting both use `d_dg = 400 mm` where the
+   assignment text says 420.
+7. **Minimal editor** — canvas, wiring, a sweep, and one plot.
+
+That slice is a working tool for one chapter, end to end.
+
+### Milestone 2 — breadth
+
+8. **DEFECTS.md** across the whole corpus. Per S19 this runs alongside
+   migration, not ahead of it — flagged formulas are quarantined by `status`.
+9. **Migrate the remaining chapters.** A second slice should be chosen to
+   exercise tables and categorical ports (S37, S38), which belt does not touch —
+   `C2_Tolerance` or the press-fit material in `C12` are the candidates.
+10. **Full notebook view** (S30–S33). Group frames carry its section structure,
+    so the schema reserves them from step 2 (S28, as upgraded by S30).
 
 ## Verification
 

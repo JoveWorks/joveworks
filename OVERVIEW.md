@@ -295,7 +295,7 @@ sides are wrong in the same way. Hence sign-off, and hence quarantine.
 | Document | For |
 |---|---|
 | [PLAN.md](PLAN.md) | Build sequence, migration strategy, verification plan |
-| [DECISIONS.md](DECISIONS.md) | Every settled decision (S1–S38) and its reasoning |
+| [DECISIONS.md](DECISIONS.md) | Every settled decision (S1–S42) and its reasoning |
 | [CLAUDE.md](CLAUDE.md) | Conventions and the distribution restriction |
 
 ---

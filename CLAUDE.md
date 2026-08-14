@@ -10,10 +10,10 @@ outputs on a canvas; the graph is the calculation.
 
 **Greenfield.** As of 2026-08-14 the repository contains documentation only —
 no source, no build system, no dependencies. [PLAN.md](PLAN.md) holds the build
-sequence; [DECISIONS.md](DECISIONS.md) holds what is settled (`S1`–`S28`). All
+sequence; [DECISIONS.md](DECISIONS.md) holds what is settled (`S1`–`S42`). All
 nineteen open questions are closed and **nothing blocks the first code**.
-Still outstanding, none of it gating the first commit: **D14–D15**, two
-sweep/plot details that touch the schema and so want settling before step 2;
+Still outstanding, none of it gating the first commit: **D14**, one
+sweep detail that touches the schema and so wants settling before step 2;
 defect and unit-tag sign-off against R&M, which quarantines individual formulas
 rather than holding up a build step; and **D13**, the engine/editor licence,
 which only bites at publication.
@@ -98,7 +98,12 @@ These follow from settled decisions; do not relitigate them in code.
   requirement.
 - **Expressions are strings, parsed to an AST and compiled to closures.** Never
   `eval` or `new Function` — catalogues are files students exchange. The corpus
-  has no branching; it does need `sum`/`prod` aggregation over load spectra.
+  has no conditionals *inside* an expression; it does need `sum`/`prod`
+  aggregation over load spectra.
+- **Branching selects formulas, it does not live inside them.** R&M numbers case
+  variants and states the condition in prose; formulas carry it as a
+  machine-readable `appliesWhen` predicate, and using a formula outside its
+  condition warns. One predicate layer serves this, check nodes and thresholds.
 - **Ports are numeric-with-dimension or categorical.** Categoricals declare an
   enumerated domain and sweep by explicit list only.
 - **The notebook is a view over the graph**, not a second document. Titled group

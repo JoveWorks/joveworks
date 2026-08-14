@@ -3,11 +3,12 @@
 Companion to [PLAN.md](PLAN.md). Records what is settled and why. Last updated
 2026-08-14.
 
-**Nothing blocks the first commit.** S1–S38 are settled and D1–D19 are closed.
+**Nothing blocks the first commit.** S1–S42 are settled and D1–D19 are closed.
 What remains:
 
-- **D14 and D15** — two sweep/plot details that touch the schema, so they want
-  settling before step 2 rather than at the UI stage.
+- **D14** — how a two-input grid sweep is expressed on the canvas. Touches the
+  schema, so it wants settling before step 2. (**D15 is resolved by S39**: the
+  threshold is one predicate layer shared with check nodes and applicability.)
 - **Content sign-off** — the known defects and the junk unit tags. Gates
   individual formulas via the S19/S20 quarantine, never a build step.
 - **D13, the licence** — open, but only bites at publication.
@@ -52,10 +53,14 @@ What remains:
 | S32 | **Export shows citation and values by default; expressions only behind a marked toggle** | S23 keeps *graph files* clean of R&M content, but an exported PDF showing `τ_t = T/W_t` would put the textbook expression straight back into a circulating file. Default export carries citation plus numbers and is safe to submit; revealing expressions stays possible for personal use and is explicitly flagged as restricted |
 | S33 | **Four first-class output node kinds**: value readout, check/constraint, plot, table | The check kind (`S ≥ 1.5 → pass`) is what turns the notebook from a list of numbers into a dimensioning report, and is the scalar counterpart of the threshold overlay on a swept curve. Table is the natural form when a range is an explicit list of standard sizes (S29) rather than a continuum |
 | S34 | **Expressions are stored as strings, parsed to an AST at load, evaluated by composed closures** (was D16) | The stored form stays readable, diffable and directly editable, matching S4 — and a parser is needed regardless, to accept what the editor's formula field receives. Compiling each AST once into nested closures keeps a 40 000-point sweep fast without walking the tree per evaluation. **Never `eval` or `new Function`**: catalogues are files students load from the LMS and from each other, so that path would make any shared catalogue arbitrary code execution in the browser |
-| S35 | **Broader function whitelist than the corpus uses**, plus `sum`/`prod` reductions; no piecewise (was D17) | Corpus usage is only `cos` 94, `sqrt` 89, `tan` 72, `cbrt` 37, `sin` 21, `abs` 15, `acos` 5, `log` 4, `atan` 4, `asin` 2, `exp` 2, with `pi` and `**`. The whitelist also carries `min`, `max`, `floor`, `ceil`, `round` and the hyperbolics for student- and non-R&M-authored formulas. Dimensional rules: trig, log and exp **require a dimensionless argument**; `min`/`max` require identical dimensions across arguments; rounding preserves dimension. **No conditionals** — the corpus contains none; its 8 `if`s are all Python list guards, 6 of them the known `C14` defects |
+| S35 | **Broader function whitelist than the corpus uses**, plus `sum`/`prod` reductions; no piecewise (was D17) | Corpus usage is only `cos` 94, `sqrt` 89, `tan` 72, `cbrt` 37, `sin` 21, `abs` 15, `acos` 5, `log` 4, `atan` 4, `asin` 2, `exp` 2, with `pi` and `**`. The whitelist also carries `min`, `max`, `floor`, `ceil`, `round` and the hyperbolics for student- and non-R&M-authored formulas. Dimensional rules: trig, log and exp **require a dimensionless argument**; `min`/`max` require identical dimensions across arguments; rounding preserves dimension. **No conditionals inside a value expression** — every one of the 550 methods returns a single arithmetic expression, and its 8 `if`s are all Python list guards, 6 of them the known `C14` defects. **Corrected by S39/S40**: this was first recorded as "the corpus has no branching", which was wrong. Branching exists — it selects *which equation applies* and never appears within one |
 | S36 | **Aggregation over a series is a first-class need**, distinct from sweeping (from D17) | The `C14` list guards concealed real reductions: `P = (Σ Pᵢᵖ·nᵢ/n_m·qᵢ/100)^(1/p)` over a load spectrum, and `Σ segments_delta` in `C8`. A sweep *produces* a series; an aggregation *consumes* one — opposite shapes. A spectrum input is therefore its own port kind taking an explicit list, and **cannot itself be swept**; that nesting is forbidden initially |
 | S37 | **Tables are banded-numeric × categorical lookups; no interpolation by default, opt-in per table; a missing entry is a hard error** (was D18) | `FitAndTolerance.py` crosses a diameter band (first band whose upper bound exceeds `d`) with a categorical class (`'H'`, `'k6'`, IT grade `'7'`), in µm — which is what the `[E-6m]` tag of D7 was. ISO fit tables are step functions by definition, so interpolating them would invent values the standard does not define; the per-table opt-in exists for genuinely continuous data from other sources. `None` means the fit is undefined and must **raise**, never propagate — exactly the silent-zero class of bug this project exists to remove |
 | S38 | **Ports are either dimensioned-numeric or categorical**; categorical ports declare an enumerated domain (was D19) | Table lookups need `'H7'`, which is not a dimensioned number, so S6 alone does not cover them. A declared domain rejects a typo like `'H07'` at entry and stops a hole class being wired into a shaft-class input. Categoricals are **sweepable by explicit list only** — there is no spacing between `H7` and `K7`, so no `linspace`/`logspace` — and render on an ordinal axis. The valuable case is mixing them: sweep diameter numerically and fit class categorically to get one curve per fit class on a shared numeric axis. Modelling the class as a node parameter would have made that impossible |
+| S39 | **A boolean predicate layer over the expression language**: comparisons plus `and`/`or` | Three things needed the same small feature and were being treated as three: the check output node (S33, `S ≥ 1.5`), the plot threshold overlay (D15), and formula applicability (S40). One predicate layer serves all three. Predicates are boolean-valued and live *outside* value expressions, so S35's "no piecewise" is unaffected |
+| S40 | **Formulas carry a machine-readable `appliesWhen` predicate; violation warns** | R&M expresses case distinctions by numbering separate equations, with the condition stated in prose — `E8_9A/B/C` select on where `D_A` falls relative to `d_w` and `d_w + l_k`; `E2_4A/B` on the nominal-size band; `E8_32B/C` on thinned vs threaded. Seven such conditions survive in docstrings, and the old library **never read any of them**: a student could use `E8_9B` while `D_A < d_w` and get a confident wrong number. That is the same silent-drift class S4 removed by construction. Pairs with S17's `variantOf`, which already groups the variants — `appliesWhen` says which member you should be on. **Capture during migration**, while the equation numbers and docstrings are still in front of us |
+| S41 | **First milestone is a vertical slice: a base node library plus `C16_Belt` only** — not all 539 formulas | A thin slice validates the schema before 539 formulas are committed to it. Getting the schema wrong after 55 formulas is a morning's rework; after 539 it is an S25 migration. Belt is the right slice on the evidence: **self-contained** (imports only `sympy` and `MySymbol` — no `Table`, no other chapter), **55 formulas** with ~78 symbols, and it already has golden-value notebooks (`Lab_belt.ipynb`, `Lab_belt_incl_Fa.ipynb`). It also exercises the hardest units case deliberately — `[kg/dm³]` is the density trap, and `C16_Belt.py:155` already fudges it as `1E-6 * 1E3 * rho` — plus `[%]`, which needs the dimensionless-with-display-scale treatment of S21. **Accepted gap**: belt uses no tables and no categoricals, so S37 and S38 stay unvalidated until a second slice (tolerance or press-fit) exercises them |
+| S42 | **A base node library — literal inputs, arithmetic and math operations, output nodes — ships unrestricted** | It contains no textbook content, so it is not under the S9 restriction and is part of the public app. Three consequences: the app is demonstrable and testable with **zero restricted content**; the kernel can be exercised end to end before any catalogue exists; and it makes S10's multi-source path real from the first milestone rather than retrofitted |
 
 ---
 
@@ -153,14 +158,12 @@ Candidates: an explicit grid node combining two ranges; a flag on the plot node;
 or a rule that two independent ranges always mean cartesian and pairing needs an
 explicit zip. Touches the schema, so settle it before the schema is written.
 
-### D15. How a threshold is bound to a plot or check — **before step 2**
+### D15. How a threshold is bound to a plot or check — **resolved by S39**
 
-`S ≥ 1.5` appears twice: as a check node on a scalar (S33) and as an overlay
-line on a swept curve. Whether those are one concept with two renderings, or two
-unrelated node types, decides whether the schema carries one acceptance-criterion
-record or two. One concept is the obvious guess — a criterion attached to a port,
-rendered as a pass/fail badge for a scalar and a line for a series — but it needs
-confirming rather than assuming.
+Answered while correcting S35: it is one concept, and a third case joined it.
+A predicate is attached to a port and rendered as a pass/fail badge on a scalar,
+a threshold line on a series, and an applicability warning on a formula (S40).
+One acceptance-criterion record, three renderings.
 
 ### Closed without action
 
@@ -181,6 +184,7 @@ MIT, so nothing in the editor is affected. Do not reopen as a blocker.
 | 2026-08-14 | D12 resolved as S22, D9 as S23–S25: pnpm workspaces with TS project references, graphs reference formulas rather than embedding them, IndexedDB autosave plus file export, integer schema version with a tested migration chain |
 | 2026-08-14 | D8 resolved as S26, D10 as S27–S28: Observable Plot with `d3-contour`, narrative as graph-level group frames reserved in the schema now |
 | 2026-08-14 | D11 declined — not requesting React Flow Pro; the core is MIT and Pro sells support, not features. **All twelve original questions closed** |
+| 2026-08-14 | **S39–S40 settled, correcting S35.** "The corpus has no branching" was wrong: branching selects *which equation applies* and never appears inside one. R&M numbers case variants and states the condition in prose, which the old library never read — 7 such conditions found. A shared boolean predicate layer now serves check nodes, plot thresholds and `appliesWhen` alike, which also **resolves D15** |
 | 2026-08-14 | **D16–D19 opened and settled as S34–S38**, from a survey of the predecessor corpus. Expressions stored as strings and parsed to closures, never `eval`. The corpus contains **zero mathematical branching** — all 8 `if`s are Python list guards, 6 of them the known `C14` defects — so no piecewise; what those guards hid is **aggregation** over a load spectrum, now first-class. Tables are banded-numeric × categorical step lookups with missing entries raising. Categorical ports added, sweepable by explicit list |
 | 2026-08-14 | **D14–D15 opened** — grid-sweep expression and threshold binding both touch the schema, so they are wanted before step 2, not at the UI stage |
 | 2026-08-14 | **S30–S33 settled**: the notebook is a live side-panel view over the graph with group frames as its sections, four output node kinds including check/constraint, and export defaulting to citation-plus-values so submitted reports carry no R&M expressions. S28 upgraded from deferrable decoration to load-bearing structure |
