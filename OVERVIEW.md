@@ -272,8 +272,13 @@ is testable without any interface, and that is where correctness is won.
 
 Adding formulas does not mean writing code: author them in the editor.
 
-**Not yet settled:** the licence for the engine and editor, and whether the
-repository is public (D13). The catalogue restriction is settled and unaffected.
+**Licence:** engine and editor are **MIT**. The R&M catalogue is restricted and
+lives in a **separate private repository** — a repository boundary rather than a
+`.gitignore`, so the restriction cannot be lost to a stray `git add -A`.
+
+**Where to start:** milestone 1 is deliberately narrow — the base node library
+plus the belt chapter's 55 formulas, end to end. Not all 539. If the schema is
+wrong, finding out after 55 formulas costs a morning.
 
 ---
 
@@ -295,14 +300,11 @@ sides are wrong in the same way. Hence sign-off, and hence quarantine.
 | Document | For |
 |---|---|
 | [PLAN.md](PLAN.md) | Build sequence, migration strategy, verification plan |
-| [DECISIONS.md](DECISIONS.md) | Every settled decision (S1–S42) and its reasoning |
+| [DECISIONS.md](DECISIONS.md) | Every settled decision (S1–S45) and its reasoning |
 | [CLAUDE.md](CLAUDE.md) | Conventions and the distribution restriction |
 
 ---
 
-*Range kinds (S29) and the output/notebook model (S30–S33) are settled. Two
-details are still described here as intent and are tracked as **D14** and
-**D15**: how a two-input grid sweep is expressed on the canvas, and whether a
-threshold is one concept rendered two ways (a badge on a scalar, a line on a
-curve) or two separate node types. Both touch the schema, so both want settling
-before it is written.*
+*Everything described here is settled — range kinds (S29), the output and
+notebook model (S30–S33), and multi-input sweeps, which use labelled axes so
+that two ranges give an `n × m` grid with no extra wiring (S43).*

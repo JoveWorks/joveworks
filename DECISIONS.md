@@ -3,15 +3,14 @@
 Companion to [PLAN.md](PLAN.md). Records what is settled and why. Last updated
 2026-08-14.
 
-**Nothing blocks the first commit.** S1–S42 are settled and D1–D19 are closed.
-What remains:
+**Every decision is closed.** S1–S45 are settled; D1–D19 are all resolved.
 
-- **D14** — how a two-input grid sweep is expressed on the canvas. Touches the
-  schema, so it wants settling before step 2. (**D15 is resolved by S39**: the
-  threshold is one predicate layer shared with check nodes and applicability.)
-- **Content sign-off** — the known defects and the junk unit tags. Gates
-  individual formulas via the S19/S20 quarantine, never a build step.
-- **D13, the licence** — open, but only bites at publication.
+The only work left that is not code is **content sign-off** — the known defects
+and the junk unit tags — which needs Roloff & Matek in hand. It gates individual
+formulas through the S19/S20 quarantine, never a build step.
+
+One thing to verify outside this repo before publishing: **whether KU Leuven
+claims rights over course-derived material** (see S44).
 
 ---
 
@@ -61,6 +60,9 @@ What remains:
 | S40 | **Formulas carry a machine-readable `appliesWhen` predicate; violation warns** | R&M expresses case distinctions by numbering separate equations, with the condition stated in prose — `E8_9A/B/C` select on where `D_A` falls relative to `d_w` and `d_w + l_k`; `E2_4A/B` on the nominal-size band; `E8_32B/C` on thinned vs threaded. Seven such conditions survive in docstrings, and the old library **never read any of them**: a student could use `E8_9B` while `D_A < d_w` and get a confident wrong number. That is the same silent-drift class S4 removed by construction. Pairs with S17's `variantOf`, which already groups the variants — `appliesWhen` says which member you should be on. **Capture during migration**, while the equation numbers and docstrings are still in front of us |
 | S41 | **First milestone is a vertical slice: a base node library plus `C16_Belt` only** — not all 539 formulas | A thin slice validates the schema before 539 formulas are committed to it. Getting the schema wrong after 55 formulas is a morning's rework; after 539 it is an S25 migration. Belt is the right slice on the evidence: **self-contained** (imports only `sympy` and `MySymbol` — no `Table`, no other chapter), **55 formulas** with ~78 symbols, and it already has golden-value notebooks (`Lab_belt.ipynb`, `Lab_belt_incl_Fa.ipynb`). It also exercises the hardest units case deliberately — `[kg/dm³]` is the density trap, and `C16_Belt.py:155` already fudges it as `1E-6 * 1E3 * rho` — plus `[%]`, which needs the dimensionless-with-display-scale treatment of S21. **Accepted gap**: belt uses no tables and no categoricals, so S37 and S38 stay unvalidated until a second slice (tolerance or press-fit) exercises them |
 | S42 | **A base node library — literal inputs, arithmetic and math operations, output nodes — ships unrestricted** | It contains no textbook content, so it is not under the S9 restriction and is part of the public app. Three consequences: the app is demonstrable and testable with **zero restricted content**; the kernel can be exercised end to end before any catalogue exists; and it makes S10's multi-source path real from the first milestone rather than retrofitted |
+| S43 | **Values carry labelled axes; a range node introduces one; operations broadcast over the union** (was D14) | Cartesian grids fall out for free — two ranges give `n × m`, three give `n × m × k`, with no grid node and no re-wiring when a sweep is added. The plot node then just picks which axis is x, which is colour, which pair forms a contour. Less kernel complexity than special-casing 1-D and 2-D. Zip semantics does not compete for this slot: S36 already routes paired lists like `(P_list, n_list, q_list)` through a spectrum port into an aggregation. **Guard**: warn when the product of axis lengths grows large, so a stray range cannot freeze the UI |
+| S44 | **MIT for engine and editor** (was D13) | Short, permissive, universally understood, and the same licence as React Flow which the editor builds on. Lowest friction for a teaching tool other courses may fork. **Unaffected**: the R&M catalogue remains restricted and not redistributable. *Check whether KU Leuven claims rights over course-derived material before publishing — that is a question for them, and could constrain this.* |
+| S45 | **The restricted catalogue lives in its own private repository** (was D13) | The distribution restriction is then enforced by a repository boundary, not by a `.gitignore` that one `git add -A` defeats, and not by build configuration that must stay correct forever. A history leak in a single-repo layout would expose the content permanently. This repo holds engine, editor and the unrestricted base nodes (S42); the catalogue is built and delivered to the LMS separately. **Shapes the workspace layout**, so it lands before the directories exist |
 
 ---
 
@@ -98,17 +100,12 @@ frontend.
 
 ---
 
-## Outstanding
+## Outstanding — content sign-off only
 
-D1–D12 are all closed. What remains, in the order it will bite:
-
-- **D14, D15** — schema-touching sweep and threshold details. Wanted before
-  step 2.
-- **Two content sign-off tasks** — neither gates a build step; both gate an
-  individual formula reaching a student through the S19/S20 quarantine, and both
-  need Roloff & Matek in hand.
-- **D13** — the licence, never captured as a `D*` until the 2026-08-14 revision
-  pass. Only bites at publication.
+**No decision is open.** D1–D19 are closed as S13–S45. What remains are two
+content tasks. Neither gates a build step; both gate an individual formula
+reaching a student through the S19/S20 quarantine, and both need Roloff & Matek
+in hand, so both are the user's.
 
 ### Defect sign-off (from D6)
 
@@ -137,33 +134,18 @@ strength of the guess alone:
 The remaining ~500 tags normalise mechanically and need no sign-off
 (`[N/mm²]`/`[N/mm**2]`/`[MPa]`; `[rpm]`/`[1/min]`/`[min-1]`; `[deg]`/`[°]`).
 
-### D13. Licence for engine and editor — **open, surfaced 2026-08-14**
+### Resolved late, recorded here for the trail
 
-README says "to be decided, intended to be open"; no `D*` ever recorded it. Not
-urgent, but it should be settled before anything is published, and it interacts
-with S9: whatever licence the engine and editor carry, the **R&M catalogue is
-restricted and not redistributable**, so the split must be explicit in the
-repository rather than implied by a single top-level `LICENSE`.
+**D13 — licence.** Surfaced only by the 2026-08-14 revision pass; README had
+carried "to be decided" with no `D*` behind it. Settled as S44 (MIT) and S45
+(catalogue in its own private repository).
 
-Worth deciding alongside it: whether the repository is public at all, and if so
-whether `packages/catalogue/` lives in it.
+**D14 — grid sweeps.** Settled as S43: labelled axes make cartesian the natural
+default, so no grid node is needed and three sweeps work like two.
 
-### D14. How a two-input grid sweep is expressed on the canvas — **before step 2**
-
-Two range nodes feeding one graph could mean a paired sweep (zip, `n` points) or
-a cartesian grid (`n × m`). The key-design notebook wants the grid — 14 key
-lengths × 8 diameters — but nothing in the graph says which is meant.
-
-Candidates: an explicit grid node combining two ranges; a flag on the plot node;
-or a rule that two independent ranges always mean cartesian and pairing needs an
-explicit zip. Touches the schema, so settle it before the schema is written.
-
-### D15. How a threshold is bound to a plot or check — **resolved by S39**
-
-Answered while correcting S35: it is one concept, and a third case joined it.
-A predicate is attached to a port and rendered as a pass/fail badge on a scalar,
-a threshold line on a series, and an applicability warning on a formula (S40).
-One acceptance-criterion record, three renderings.
+**D15 — threshold binding.** Resolved by S39 while correcting S35. It is one
+concept with three renderings: a pass/fail badge on a scalar, a threshold line
+on a series, and an applicability warning on a formula (S40).
 
 ### Closed without action
 
@@ -184,6 +166,8 @@ MIT, so nothing in the editor is affected. Do not reopen as a blocker.
 | 2026-08-14 | D12 resolved as S22, D9 as S23–S25: pnpm workspaces with TS project references, graphs reference formulas rather than embedding them, IndexedDB autosave plus file export, integer schema version with a tested migration chain |
 | 2026-08-14 | D8 resolved as S26, D10 as S27–S28: Observable Plot with `d3-contour`, narrative as graph-level group frames reserved in the schema now |
 | 2026-08-14 | D11 declined — not requesting React Flow Pro; the core is MIT and Pro sells support, not features. **All twelve original questions closed** |
+| 2026-08-14 | **D13, D14 settled as S43–S45; every decision now closed.** Multi-input sweeps use labelled axes so grids are cartesian by default with no grid node. MIT for engine and editor. The restricted catalogue moves to its own private repository — a boundary a `git add -A` cannot defeat — which reshapes the workspace before the directories exist |
+| 2026-08-14 | **S41–S42 settled**: milestone 1 narrowed to a vertical slice — base node library plus `C16_Belt`'s 55 self-contained formulas — rather than all 539. The base node library carries no textbook content and ships unrestricted |
 | 2026-08-14 | **S39–S40 settled, correcting S35.** "The corpus has no branching" was wrong: branching selects *which equation applies* and never appears inside one. R&M numbers case variants and states the condition in prose, which the old library never read — 7 such conditions found. A shared boolean predicate layer now serves check nodes, plot thresholds and `appliesWhen` alike, which also **resolves D15** |
 | 2026-08-14 | **D16–D19 opened and settled as S34–S38**, from a survey of the predecessor corpus. Expressions stored as strings and parsed to closures, never `eval`. The corpus contains **zero mathematical branching** — all 8 `if`s are Python list guards, 6 of them the known `C14` defects — so no piecewise; what those guards hid is **aggregation** over a load spectrum, now first-class. Tables are banded-numeric × categorical step lookups with missing entries raising. Categorical ports added, sweepable by explicit list |
 | 2026-08-14 | **D14–D15 opened** — grid-sweep expression and threshold binding both touch the schema, so they are wanted before step 2, not at the UI stage |

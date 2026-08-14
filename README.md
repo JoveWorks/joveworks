@@ -56,8 +56,8 @@ restriction follows the formula content into this project — see
 
 ## Licence
 
-Engine and editor: **to be decided**, intended to be open — tracked as D13 in
-[DECISIONS.md](DECISIONS.md).
+Engine and editor: **MIT.** This repository contains no textbook content.
 
-The R&M formula catalogue: **restricted, not redistributable.** This is settled
-and is not affected by whatever D13 concludes.
+The R&M formula catalogue: **restricted, not redistributable.** It lives in a
+separate private repository and is delivered to students through the course LMS
+— a repository boundary, not a build-time exclusion.

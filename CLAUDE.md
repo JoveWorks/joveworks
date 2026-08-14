@@ -10,13 +10,10 @@ outputs on a canvas; the graph is the calculation.
 
 **Greenfield.** As of 2026-08-14 the repository contains documentation only —
 no source, no build system, no dependencies. [PLAN.md](PLAN.md) holds the build
-sequence; [DECISIONS.md](DECISIONS.md) holds what is settled (`S1`–`S42`). All
+sequence; [DECISIONS.md](DECISIONS.md) holds what is settled (`S1`–`S45`). All
 nineteen open questions are closed and **nothing blocks the first code**.
-Still outstanding, none of it gating the first commit: **D14**, one
-sweep detail that touches the schema and so wants settling before step 2;
-defect and unit-tag sign-off against R&M, which quarantines individual formulas
-rather than holding up a build step; and **D13**, the engine/editor licence,
-which only bites at publication.
+Still outstanding, and none of it gating: defect and unit-tag sign-off against
+R&M, which quarantines individual formulas rather than holding up a build step.
 
 [OVERVIEW.md](OVERVIEW.md) is the one-read introduction. Read it, then PLAN and
 DECISIONS, before starting work.

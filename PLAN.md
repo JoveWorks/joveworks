@@ -1,8 +1,8 @@
 # Plan: machine-design-studio
 
 Status: **agreed, not started.** Written 2026-08-14; revised the same day once
-D1–D19 closed as S13–S42. **No decision blocks the first commit**; D14 wants
-settling before step 2 (D15 resolved by S39).
+D1–D19 closed as S13–S45. **Every decision is closed**; only content sign-off
+remains, and it gates formulas rather than build steps.
 
 Supersedes the plan in the predecessor repository (`mechanical-design`, commit
 `348e2f0`, `PLAN.md`), which framed the work as a refactor of that package. The
@@ -68,6 +68,7 @@ calculation. The editor is both the product and the authoring tool for formulas.
 | Persistence | **IndexedDB autosave + explicit file export.** Graphs reference formulas by ID, version and hash — never embed them. |
 | Versioning | **Integer schema version**, forward migration chain, with a stored fixture per version asserted to still load. |
 | Plotting | **Observable Plot** for sweeps; **`d3-contour`** over the kernel's own grid for the one contour case. |
+| Sweeps | Values carry **labelled axes**; a range introduces one, operations broadcast over the union, so grids are cartesian by default. |
 | Narrative | **Titled group frames with markdown notes**, on the graph document — never on the catalogue. |
 | Outputs | Four kinds: **value, check, plot, table.** The check (`S ≥ 1.5`) is what makes a report a dimensioning report. |
 | Notebook | A **live side-panel view over the graph**; frames are its sections. Export carries citation and values, not expressions. |
@@ -77,11 +78,11 @@ calculation. The editor is both the product and the authoring tool for formulas.
 | Sources | Roloff & Matek, other standards, and user-authored formulas, distinguished by the citation field. |
 | Units | **Canonical internal base: mm, N, s, rad, K.** Convert at the boundary. Undeclared unit is a **hard error**. |
 | Dimensions | Become **port types** — a force output will not connect to a length input. Ports are numeric-with-dimension or **categorical** (fit classes), the latter with a declared domain. |
-| Expressions | **Strings**, parsed to an AST and compiled to closures. Never `eval`. Pure — no branching in the corpus; aggregation over a series instead. |
+| Expressions | **Strings**, parsed to an AST and compiled to closures. Never `eval`. Pure — branching selects formulas via `appliesWhen`, never inside one; aggregation over a series. |
 | Tables | Banded-numeric × categorical **step lookups**. No interpolation by default; a missing entry raises. |
 | Verification | The old notebooks' worked examples, frozen as fixtures. |
 | Known defects | Reported and signed off explicitly, never migrated silently. |
-| Packaging | Editor and kernel unrestricted; the R&M formula catalogue stays under its distribution restriction. |
+| Packaging | This repo is **MIT** and holds no textbook content; the R&M catalogue lives in a **separate private repository**. |
 | Python | Retained only as one-off migration and verification tooling. Not shipped. |
 
 ### Scope warning
@@ -93,18 +94,34 @@ the core first, so that value lands before any UI risk is taken on.
 
 ## Architecture
 
+This repository — **MIT, publishable** (S44). It contains no textbook content.
+
 ```
 packages/
   schema/        formula + graph data model, versioned; the contract
-  kernel/        evaluation: topological sort, vectorised ranges
+  kernel/        evaluation: topological sort, labelled-axis broadcasting
   units/         canonical mm-N-s-rad-K, dimension algebra, port typing,
                  boundary conversion and display formatting
-  catalogue/     RESTRICTED — the R&M formulas as data
+  nodes/         base node library — inputs, math operations, outputs (S42).
+                 Unrestricted: no textbook content
   editor/        React Flow UI, plus the notebook view and output nodes
 tools/
   migrate/       Python, one-off: AST extraction from the old MechDesign package
                  + differential verification against its implementation
 ```
+
+**A separate private repository** holds the restricted catalogue (S45):
+
+```
+catalogue/       RESTRICTED — the R&M formulas as data. Built and delivered to
+                 the course LMS as a file; never published, never a dependency
+                 of anything in the public repo
+```
+
+The split is a repository boundary on purpose. A `.gitignore` is defeated by one
+`git add -A`, and a build-time exclusion has to stay correct forever; neither is
+a distribution boundary. A history leak in a single-repo layout would expose the
+content permanently.
 
 ### Expressions, tables and port kinds
 
@@ -276,9 +293,9 @@ formulas prove the schema; 539 would only prove it more expensively. If the
 contract is wrong, finding out after 55 costs a morning — after 539 it costs an
 S25 migration.
 
-0. ~~Resolve the blocking decisions.~~ **Done** — D1–D19 closed as S13–S42 on
-   2026-08-14. Nothing gates the first commit. **D14** (grid-sweep expression)
-   wants settling before step 2; D15 was resolved by S39.
+0. ~~Resolve the blocking decisions.~~ **Done** — D1–D19 closed as S13–S45 on
+   2026-08-14. **All decisions are closed**; only content sign-off remains, and
+   it gates individual formulas rather than any build step.
 
 ### Milestone 1 — vertical slice
 
