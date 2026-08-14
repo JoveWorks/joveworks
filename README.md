@@ -7,12 +7,24 @@ Built for the KU Leuven course on dimensioning of machine parts. Formulas follow
 **Roloff & Matek, 6th edition**, and each one carries a citation back to its
 textbook equation number.
 
-Status: **greenfield, nothing built yet.** See [PLAN.md](PLAN.md) for the build
-sequence and [DECISIONS.md](DECISIONS.md) for what is settled and what still
-needs a call.
+Status: **greenfield, nothing built yet.** Every decision that gates the first
+commit is closed; what remains is two schema details, content sign-off against
+the textbook, and the licence.
+
+**New here? Start with [OVERVIEW.md](OVERVIEW.md)** — the whole project in one
+read. Then [PLAN.md](PLAN.md) for the build sequence and
+[DECISIONS.md](DECISIONS.md) for the settled decisions and their reasoning.
 
 ## What it is
 
+- **Runs in the browser.** A static web app with no backend and nothing to
+  install; students open a link.
+- **Sweeps, not single answers.** Set any input to a range — linear, log, or a
+  list of standard sizes — and the whole graph becomes a study, plotted against
+  the acceptance threshold. This is the primary use, not an add-on.
+- **The notebook comes back as a view.** Titled frames on the canvas are the
+  sections of a live report: prose, values, pass/fail checks and plots in
+  reading order. That report is what gets handed in.
 - **Formulas are data**, not code. The editor is both the product and the
   authoring tool for the formula catalogue.
 - **No computer algebra.** Forward evaluation over a directed acyclic graph.
@@ -21,7 +33,7 @@ needs a call.
 - **Units are canonical internally** — mm, N, s, rad, K — converted at the
   boundary. An undeclared unit is a hard error.
 - **Dimensions are port types.** A force output will not connect to a length
-  input.
+  input, and neither will a connection that would close a cycle.
 
 ## Relationship to `mechanical-design`
 
@@ -44,5 +56,8 @@ restriction follows the formula content into this project — see
 
 ## Licence
 
-Engine and editor: to be decided, intended to be open.
-The R&M formula catalogue: **restricted, not redistributable.**
+Engine and editor: **to be decided**, intended to be open — tracked as D13 in
+[DECISIONS.md](DECISIONS.md).
+
+The R&M formula catalogue: **restricted, not redistributable.** This is settled
+and is not affected by whatever D13 concludes.

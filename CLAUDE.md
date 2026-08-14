@@ -10,9 +10,16 @@ outputs on a canvas; the graph is the calculation.
 
 **Greenfield.** As of 2026-08-14 the repository contains documentation only —
 no source, no build system, no dependencies. [PLAN.md](PLAN.md) holds the build
-sequence; [DECISIONS.md](DECISIONS.md) holds what is settled (`S*`) and what is
-still open (`D*`). Several `D*` entries are marked **blocking** and gate the
-first code. Read both before starting work.
+sequence; [DECISIONS.md](DECISIONS.md) holds what is settled (`S1`–`S28`). All
+twelve original open questions are closed and **nothing blocks the first code**.
+Still outstanding, none of it gating the first commit: **D14–D15**, two
+sweep/plot details that touch the schema and so want settling before step 2;
+defect and unit-tag sign-off against R&M, which quarantines individual formulas
+rather than holding up a build step; and **D13**, the engine/editor licence,
+which only bites at publication.
+
+[OVERVIEW.md](OVERVIEW.md) is the one-read introduction. Read it, then PLAN and
+DECISIONS, before starting work.
 
 ## The predecessor repository
 
@@ -73,6 +80,23 @@ frozen once migration is verified.
 These follow from settled decisions; do not relitigate them in code.
 
 - **TypeScript** throughout, except `tools/migrate/`. No runtime CAS.
+- **pnpm workspaces**, TypeScript project references, Vitest, Vite. No Turborepo
+  or Nx. Project references are load-bearing: they are what keeps React out of
+  the kernel and the restricted catalogue unimportable from published packages.
+- **Forward evaluation only.** No solver. Cycles are rejected at connect time,
+  the same way a dimension mismatch is. Rearranged forms are catalogue content,
+  linked by `variantOf` — not computed.
+- **Client-side web app.** No backend, no Node-only APIs in app code; file I/O
+  sits behind an adapter so a Tauri build can drop in later.
+- **Graphs reference formulas by ID, version and hash** — never embed them.
+  Embedding would leak R&M content into files students circulate. The same rule
+  governs notebook export: citation and values by default, expressions only
+  behind an explicitly marked toggle.
+- **Sweeps are the primary use of the kernel**, not a secondary mode. Ranges are
+  linear, logarithmic, explicit lists or table columns, controlled by point
+  count rather than step size. Log spacing is a teaching requirement.
+- **The notebook is a view over the graph**, not a second document. Titled group
+  frames are its sections, so they are load-bearing schema, not decoration.
 - **Canonical units: mm, N, s, rad, K.** Convert at the boundary. Undeclared
   unit is a hard error. Mass is therefore tonnes and density t/mm³ — the classic
   silent corruption, so the dimension checker must catch it.
