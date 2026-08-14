@@ -261,8 +261,31 @@ explicit, signed-off step — never carried across silently.
      `archive/session5_1_KeyDesign_contourplot.ipynb`.
    - Press fits — four distinct input sets across `notebooks/pressfit/`, covering
      hollow/massive, outer/inner-limiting, and the `Q_I = 0` degenerate branch.
-   - Belt — `notebooks/belt/Lab_belt.ipynb`, `Lab_belt_incl_Fa.ipynb`. Both use
-     `d_dg = 400 mm` while their assignment text says 420.
+   - Belt — **milestone 1's acceptance criterion**, recovered from the notebook
+     outputs 2026-08-14:
+
+     | | `Lab_belt.ipynb` | `Lab_belt_incl_Fa.ipynb` |
+     |---|---|---|
+     | `i` | 4.444 | 4.444 |
+     | `P'` | 3080 W | 3080 W |
+     | `d_dg` | 400 mm | 400 mm |
+     | `L'` | 2204 mm | 2204 mm |
+     | `L_d` | 2187 mm | 2240 mm |
+     | `e` | 691.3 mm | 718.4 mm |
+     | `β₁` | 154.2° | 155.2° |
+     | `z` | 1.132 | 1.132 |
+     | `v` | 7.069 m/s | 7.069 m/s |
+     | `f_B` | 6.464 s⁻¹ | 6.311 s⁻¹ |
+     | `T` | — | 19.61 N·m |
+     | `F_t` | — | 435.7 N |
+
+     Both use `d_dg = 400 mm` while their assignment text says 420 — a
+     `DEFECTS.md` entry, not a value to reproduce differently.
+
+     Note `Eq(e, 354.3*mm_ + 337.0*mm_**1.0)` in the stored output: an
+     intermediate the old unit-symbol layer failed to simplify, with `mm_**1.0`
+     left dangling. It is incidental evidence for why that convention is not
+     carried across.
 
    Assert with `rel=1e-3`; stored outputs are 4-significant-figure.
 
@@ -300,6 +323,23 @@ S25 migration.
 0. ~~Resolve the blocking decisions.~~ **Done** — D1–D19 closed as S13–S45 on
    2026-08-14. **All decisions are closed**; only content sign-off remains, and
    it gates individual formulas rather than any build step.
+
+### Prerequisites, verified 2026-08-14
+
+- **The old package needs a Python environment.** `sympy` is not installed
+  system-wide, so `MechDesign` cannot currently be imported and the differential
+  test (S52) cannot run. A plain `python3 -m venv` with `sympy` and `numpy`
+  works and needs no root — confirmed with sympy 1.14, numpy 2.5.2. Document it
+  in `tools/`; do not install into the system interpreter.
+- **Belt's unit tags are clean.** `[]`, `[%]`, `[kg/dm³]`, `[m]`, `[mm]`,
+  `[mm²]`, `[m/s]`, `[N]`, `[Nm]`, `[N/mm]`, `[N/mm²]`, `[Nm/mm]`, `[rpm]`,
+  `[s-1]`, `[W]`, `[W/mm]` — **no junk tags**, so D7's sign-off does not gate
+  milestone 1 at all. Only three need care: `[kg/dm³]` (the density trap),
+  `[%]` (dimensionless with display scale, as S21), and `[s-1]`.
+- **Belt's defect exposure is one line.** None of the ~12 confirmed defects are
+  in `C16`. The density fudge at `C16_Belt.py:154-155`
+  (`F_c = A_S * 1E-6 * 1E3 * rho * v**2`) is the one item, and it is precisely
+  the case the dimension checker must catch.
 
 ### Milestone 1 — vertical slice
 
