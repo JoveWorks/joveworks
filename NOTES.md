@@ -4,11 +4,11 @@ The documentation is getting a bit chaotic and probably stale in a lot of points
 
 ## Findings in UX and talking points
 
-Should the `list` range kind keep that name, or become `sweep`? A load spectrum is also a hand-typed list of values (just consumed whole, not swept — see the spectrum-editing backlog item below), so "list" alone doesn't say which behaviour a student is choosing. Discuss.
-
 Pressing enter in a field should commit the change; shift-enter for a line break, in every textbox.
 
 ## Add to backlog of ideas
+
+`list` vs `spectrum` naming: both are a hand-typed collection of values, but `list` sweeps (one point per value) and `spectrum` is consumed whole by an aggregation, never swept — the names don't say which is which. Leaning toward renaming `spectrum` instead of `list`, since `spectrum` is the outlier in the `ValueSpec` family (every other kind sweeps) — but parked for later, not urgent.
 
 What should a multi-node selection do? One concrete gap already found: "Group into new section" ignores the current selection entirely and wraps *every* ungrouped node in the document into one frame (App.tsx's `addSection`) — there's no way to select a handful of nodes and frame just those. Open beyond that: what else (if anything) should a selection enable — move together (already true, they're independent React Flow nodes), delete together (already true via Backspace/Delete), anything else?
 
