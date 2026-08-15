@@ -13,7 +13,7 @@
  * panel renders an expression, printed or not.
  */
 
-import { useEffect, useState, type ReactElement } from 'react';
+import { useEffect, useState, type KeyboardEvent, type ReactElement } from 'react';
 
 import type { OutputResult } from '@mds/kernel';
 import type { Frame, GraphDocument, OutputNode } from '@mds/schema';
@@ -29,6 +29,19 @@ import { toUnitsFormat } from '../model/numberFormat';
 import { display, displayNumber } from '../model/quantity';
 import { summarise } from '../model/values';
 import { PlotFigure } from './PlotFigure';
+
+/**
+ * Enter finishes the field (blurs it, same as `fields.tsx`'s `TextField`);
+ * Shift+Enter is what actually types a line break. Both notebook textareas
+ * already save on every keystroke, so "finishes" has nothing left to commit
+ * — it only ever means "I'm done here," the same signal Enter already gives
+ * everywhere else in the app.
+ */
+function commitOnEnter(event: KeyboardEvent<HTMLTextAreaElement>): void {
+  if (event.key !== 'Enter' || event.shiftKey) return;
+  event.preventDefault();
+  event.currentTarget.blur();
+}
 
 const COMPARISON_TEXT: Readonly<Record<string, string>> = {
   '<': '<',
@@ -140,6 +153,7 @@ function Caption({ node }: { readonly node: OutputNode }): ReactElement {
       value={node.caption ?? ''}
       placeholder="caption — what this result says"
       rows={1}
+      onKeyDown={commitOnEnter}
       onChange={(event) => {
         const caption = event.target.value;
         edit((current) =>
@@ -264,6 +278,7 @@ function Section({
               value={frame.note ?? ''}
               placeholder="what this section establishes"
               rows={3}
+              onKeyDown={commitOnEnter}
               onChange={(event) => {
                 const note = event.target.value;
                 edit((current) =>

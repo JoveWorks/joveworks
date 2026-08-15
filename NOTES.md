@@ -4,7 +4,7 @@ The documentation is getting a bit chaotic and probably stale in a lot of points
 
 ## Findings in UX and talking points
 
-Pressing enter in a field should commit the change; shift-enter for a line break, in every textbox.
+(none open right now)
 
 ## Add to backlog of ideas
 
