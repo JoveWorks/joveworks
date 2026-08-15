@@ -269,9 +269,9 @@ aside.right {
  * stylesheet can outrank — frames are excluded, so hovering one's title does
  * not lift it above the nodes it groups.
  */
-.react-flow__node-input:hover,
+.react-flow__node-mds-input:hover,
 .react-flow__node-formula:hover,
-.react-flow__node-output:hover,
+.react-flow__node-mds-output:hover,
 .react-flow__node-compare:hover {
   z-index: 1000 !important;
 }
@@ -486,18 +486,20 @@ aside.right {
 /*
  * A plain outline is a rectangle regardless of the element's own
  * border-radius — Chrome and Safari never clip it — so on a rounded card
- * it peeks out past the corners rather than tracing them. A ring drawn as
- * a box-shadow follows the radius instead, so keyboard focus is still
- * visible without that artifact. Selection already carries its own accent
- * border above; this is for focus without selection (tabbing between
- * nodes without clicking).
+ * it peeks out past the corners rather than tracing them. `:focus`, not
+ * `:focus-visible` — React Flow focuses a node on an ordinary mouse click
+ * (not just via keyboard), and `:focus-visible` skips a mouse-driven focus
+ * by browser heuristic, so it never matched the case this was actually
+ * fixing. A ring drawn as a box-shadow follows the radius instead, so
+ * focus is still visible without the artifact. Selection already carries
+ * its own accent border above; this also covers focus without selection.
  */
-.react-flow__node:focus-visible {
+.react-flow__node:focus {
   outline: none;
 }
 
-.react-flow__node:focus-visible .node,
-.react-flow__node:focus-visible .frame {
+.react-flow__node:focus .node,
+.react-flow__node:focus .frame {
   box-shadow: 0 0 0 2px var(--accent);
 }
 

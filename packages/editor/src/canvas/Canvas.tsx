@@ -157,10 +157,24 @@ function sizeOf(measured: Measurements, id: string): { measured?: { width: numbe
   return size === undefined ? {} : { measured: size };
 }
 
+/**
+ * React Flow reserves `input`/`output`/`default`/`group` as its own built-in
+ * node types, each with its own default box styling in its base stylesheet —
+ * a border, fixed width, centred text. Two of our node kinds are spelled the
+ * same, so registering them under those names didn't just choose our
+ * component, it also picked up React Flow's own CSS for a node type we never
+ * asked for, wrapped around our own `.node` styling underneath (an extra box
+ * `formula`/`compare` never had, since neither name collides). Prefixed here
+ * so the type string is ours alone; `node.kind` in the document is untouched.
+ */
+function flowType(kind: 'input' | 'formula' | 'output' | 'compare'): string {
+  return kind === 'input' || kind === 'output' ? `mds-${kind}` : kind;
+}
+
 const NODE_TYPES = {
-  input: InputNodeView,
+  'mds-input': InputNodeView,
   formula: FormulaNodeView,
-  output: OutputNodeView,
+  'mds-output': OutputNodeView,
   compare: CompareNodeView,
   frame: FrameView,
 };
@@ -205,7 +219,7 @@ export function Canvas(): ReactElement {
       })),
       ...document.nodes.map((node) => ({
         id: node.id,
-        type: node.kind,
+        type: flowType(node.kind),
         position: node.position,
         data: {},
         selected: selected.has(node.id),
