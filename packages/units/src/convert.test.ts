@@ -87,6 +87,12 @@ describe('number format settings', () => {
     expect(toSignificantFigures(0.5, 3, engineering)).toBe('500e-3');
   });
 
+  it('drops the exponent for engineering notation when it is zero — 400, not 400e+0', () => {
+    const engineering: NumberFormat = { notation: 'engineering', thousands: '', decimal: '.' };
+    expect(toSignificantFigures(400, 4, engineering)).toBe('400.0');
+    expect(toSignificantFigures(1, 3, engineering)).toBe('1.00');
+  });
+
   it('reads a formatted quantity back, grouping and decimal both undone', () => {
     expect(parseQuantity('1.234,5 N', undefined, euStyle).value).toBe(1234.5);
     expect(parseQuantity('1,234,567', undefined, grouped).value).toBe(1234567);
@@ -139,8 +145,8 @@ describe('SI-prefixed engineering notation', () => {
       decimal: '.',
       siPrefixes: true,
     };
-    // No SI prefix for a ratio — still engineering notation's own exponent form.
-    expect(formatQuantity(250, parseUnit('N/mm²'), 4, engineering)).toBe('250.0e+0 N/mm²');
+    // No SI prefix for a ratio, but exponent 0 prints with no "e+0" either.
+    expect(formatQuantity(250, parseUnit('N/mm²'), 4, engineering)).toBe('250.0 N/mm²');
   });
 
   it('is inert unless notation is engineering', () => {

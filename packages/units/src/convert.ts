@@ -81,9 +81,14 @@ function toFixedSignificant(value: number, figures: number): string {
   return rounded.toFixed(decimals);
 }
 
-/** Engineering notation: the exponent is always a multiple of 3 (kΩ, not 1.2e4 Ω). */
+/**
+ * Engineering notation: the exponent is always a multiple of 3 (kΩ, not
+ * 1.2e4 Ω) — except a value already in [1, 1000), which is exponent 0 and
+ * printed with no `e+0` at all. That case is not scaled by anything, so
+ * showing an exponent would only say "this number is itself".
+ */
 function toEngineering(value: number, figures: number): string {
-  if (value === 0) return '0e+0';
+  if (value === 0) return '0';
   const rawExponent = Math.floor(Math.log10(Math.abs(value)));
   let exponent = Math.floor(rawExponent / 3) * 3;
   let mantissa = Number((value / 10 ** exponent).toPrecision(figures));
@@ -93,8 +98,10 @@ function toEngineering(value: number, figures: number): string {
   }
   const intDigits = Math.max(1, Math.floor(Math.log10(Math.abs(mantissa))) + 1);
   const decimals = Math.max(0, figures - intDigits);
+  const printed = mantissa.toFixed(decimals);
+  if (exponent === 0) return printed;
   const sign = exponent < 0 ? '-' : '+';
-  return `${mantissa.toFixed(decimals)}e${sign}${Math.abs(exponent)}`;
+  return `${printed}e${sign}${Math.abs(exponent)}`;
 }
 
 /**
