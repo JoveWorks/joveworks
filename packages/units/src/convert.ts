@@ -36,20 +36,20 @@ export function convert(value: number, from: Unit, to: Unit): number {
  * small to read comfortably. It stays the default so nobody's display
  * changes until they open a settings dialog and choose otherwise.
  */
-export type NumberNotation = 'auto' | 'fixed' | 'scientific' | 'engineering';
+/**
+ * `'si'` is engineering's SI-prefixed sibling: `250 MPa` rather than
+ * `250e+6 Pa`, mantissa printed fixed-style rather than stepped. Only
+ * available where `formatQuantity` has a `Unit` to substitute the prefix
+ * into and `prefixableAtomOf` recognizes it — a compound unit (`N/mm²`) or a
+ * bare numeral falls back to plain fixed notation instead.
+ */
+export type NumberNotation = 'auto' | 'fixed' | 'scientific' | 'engineering' | 'si';
 
 export interface NumberFormat {
   readonly notation: NumberNotation;
   /** Grouping character for the integer part, or `''` for none. */
   readonly thousands: '' | ',' | '.' | ' ';
   readonly decimal: '.' | ',';
-  /**
-   * Only consulted when `notation === 'engineering'`: print `250 MPa`
-   * instead of `250e+6 Pa` for a unit `prefixableAtomOf` recognizes.
-   * A compound display unit (`N/mm²`) has no such reading and is
-   * unaffected either way.
-   */
-  readonly siPrefixes?: boolean;
 }
 
 /** Today's only behaviour, unchanged: plain punctuation, auto notation. */
@@ -130,7 +130,10 @@ export function toSignificantFigures(
   if (format.notation === 'engineering') {
     return punctuate(toEngineering(value, figures), format);
   }
-  if (format.notation === 'fixed') {
+  // 'si' falls back to plain fixed notation wherever there is no unit to
+  // substitute a prefix into — `formatQuantity` is the one place that
+  // actually resolves a prefix; everywhere else 'si' just means 'fixed'.
+  if (format.notation === 'fixed' || format.notation === 'si') {
     return punctuate(toFixedSignificant(value, figures), format);
   }
 
@@ -154,7 +157,7 @@ export function formatQuantity(
   figures = 4,
   format: NumberFormat = PLAIN_NUMBER_FORMAT,
 ): string {
-  if (format.notation === 'engineering' && format.siPrefixes === true) {
+  if (format.notation === 'si') {
     const atom = prefixableAtomOf(displayUnit.symbol.trim());
     if (atom !== undefined) {
       const prefixed = siPrefixedUnit(atom, canonicalValue);

@@ -22,14 +22,11 @@ export type ThousandsStyle = 'plain' | 'comma-thousands' | 'dot-thousands' | 'sp
 export interface NumberFormatSettings {
   readonly style: ThousandsStyle;
   readonly notation: NumberNotation;
-  /** Engineering notation only: `250 MPa` rather than `250e+6 Pa`. */
-  readonly siPrefixes: boolean;
 }
 
 export const DEFAULT_NUMBER_FORMAT_SETTINGS: NumberFormatSettings = {
   style: 'plain',
   notation: 'auto',
-  siPrefixes: false,
 };
 
 export const STYLE_LABELS: Readonly<Record<ThousandsStyle, string>> = {
@@ -44,6 +41,7 @@ export const NOTATION_LABELS: Readonly<Record<NumberNotation, string>> = {
   fixed: 'fixed',
   scientific: 'scientific (1.23e+4)',
   engineering: 'engineering (12.3e+3)',
+  si: 'SI prefixes (12.3 kPa)',
 };
 
 const STYLE_PUNCTUATION: Readonly<Record<ThousandsStyle, Pick<NumberFormat, 'thousands' | 'decimal'>>> =
@@ -55,11 +53,7 @@ const STYLE_PUNCTUATION: Readonly<Record<ThousandsStyle, Pick<NumberFormat, 'tho
   };
 
 export function toUnitsFormat(settings: NumberFormatSettings): NumberFormat {
-  return {
-    notation: settings.notation,
-    siPrefixes: settings.siPrefixes,
-    ...STYLE_PUNCTUATION[settings.style],
-  };
+  return { notation: settings.notation, ...STYLE_PUNCTUATION[settings.style] };
 }
 
 const KEY = 'mds:settings:numberFormat';
@@ -69,7 +63,13 @@ function isThousandsStyle(value: unknown): value is ThousandsStyle {
 }
 
 function isNotation(value: unknown): value is NumberNotation {
-  return value === 'auto' || value === 'fixed' || value === 'scientific' || value === 'engineering';
+  return (
+    value === 'auto' ||
+    value === 'fixed' ||
+    value === 'scientific' ||
+    value === 'engineering' ||
+    value === 'si'
+  );
 }
 
 /** Falls back to the default on anything unexpected — a stale or hand-edited entry is not a crash. */
@@ -79,11 +79,10 @@ export function loadNumberFormatSettings(): NumberFormatSettings {
     if (raw === null) return DEFAULT_NUMBER_FORMAT_SETTINGS;
     const parsed: unknown = JSON.parse(raw);
     if (typeof parsed !== 'object' || parsed === null) return DEFAULT_NUMBER_FORMAT_SETTINGS;
-    const { style, notation, siPrefixes } = parsed as Partial<NumberFormatSettings>;
+    const { style, notation } = parsed as Partial<NumberFormatSettings>;
     return {
       style: isThousandsStyle(style) ? style : DEFAULT_NUMBER_FORMAT_SETTINGS.style,
       notation: isNotation(notation) ? notation : DEFAULT_NUMBER_FORMAT_SETTINGS.notation,
-      siPrefixes: typeof siPrefixes === 'boolean' ? siPrefixes : DEFAULT_NUMBER_FORMAT_SETTINGS.siPrefixes,
     };
   } catch {
     return DEFAULT_NUMBER_FORMAT_SETTINGS;

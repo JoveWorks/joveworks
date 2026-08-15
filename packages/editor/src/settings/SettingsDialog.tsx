@@ -78,21 +78,10 @@ export function SettingsDialog({ settings, onChange, onClose }: Props): ReactEle
           </select>
         </label>
 
-        {settings.notation === 'engineering' ? (
-          <label className="dialog-checkbox">
-            <input
-              type="checkbox"
-              checked={settings.siPrefixes}
-              onChange={(event) => onChange({ ...settings, siPrefixes: event.target.checked })}
-            />
-            use SI prefixes (250 MPa) instead of exponents (250e+6 Pa), where the unit allows it
-          </label>
-        ) : null}
-
         <div className="dialog-preview">
           <span>{formatQuantity(SAMPLE, unit, 6, format)}</span>
           <span>{formatQuantity(SAMPLE_SMALL, unit, 4, format)}</span>
-          {settings.notation === 'engineering' ? (
+          {settings.notation === 'engineering' || settings.notation === 'si' ? (
             <span>{formatQuantity(SAMPLE_STRESS, pa, 4, format)}</span>
           ) : null}
         </div>

@@ -103,7 +103,7 @@ describe('number format settings', () => {
   });
 });
 
-describe('SI-prefixed engineering notation', () => {
+describe("'si' notation", () => {
   it('recognizes a bare or already-prefixed atomic symbol', () => {
     expect(prefixableAtomOf('Pa')).toBe('Pa');
     expect(prefixableAtomOf('kPa')).toBe('Pa');
@@ -127,36 +127,20 @@ describe('SI-prefixed engineering notation', () => {
     expect(fromCanonical(250, siPrefixedUnit('Pa', 250))).toBeCloseTo(250, 9);
   });
 
-  it('prints MPa instead of an exponent when siPrefixes is on', () => {
-    const engineering: NumberFormat = {
-      notation: 'engineering',
-      thousands: '',
-      decimal: '.',
-      siPrefixes: true,
-    };
-    expect(formatQuantity(250, parseUnit('Pa'), 4, engineering)).toBe('250.0 MPa');
-    expect(formatQuantity(0.075, parseUnit('Pa'), 3, engineering)).toBe('75.0 kPa');
+  it('prints a prefixed unit with a fixed-style mantissa, no exponent', () => {
+    const si: NumberFormat = { notation: 'si', thousands: '', decimal: '.' };
+    expect(formatQuantity(250, parseUnit('Pa'), 4, si)).toBe('250.0 MPa');
+    expect(formatQuantity(0.075, parseUnit('Pa'), 3, si)).toBe('75.0 kPa');
   });
 
-  it('leaves a compound display unit exactly as authored, even with siPrefixes on', () => {
-    const engineering: NumberFormat = {
-      notation: 'engineering',
-      thousands: '',
-      decimal: '.',
-      siPrefixes: true,
-    };
-    // No SI prefix for a ratio, but exponent 0 prints with no "e+0" either.
-    expect(formatQuantity(250, parseUnit('N/mm²'), 4, engineering)).toBe('250.0 N/mm²');
+  it('falls back to plain fixed notation for a compound display unit', () => {
+    const si: NumberFormat = { notation: 'si', thousands: '', decimal: '.' };
+    expect(formatQuantity(250, parseUnit('N/mm²'), 4, si)).toBe('250.0 N/mm²');
   });
 
-  it('is inert unless notation is engineering', () => {
-    const fixedWithPrefixes: NumberFormat = {
-      notation: 'fixed',
-      thousands: '',
-      decimal: '.',
-      siPrefixes: true,
-    };
-    expect(formatQuantity(250, parseUnit('Pa'), 4, fixedWithPrefixes)).toBe('250000000 Pa');
+  it('falls back to fixed notation for a bare number with no unit to substitute', () => {
+    const si: NumberFormat = { notation: 'si', thousands: '', decimal: '.' };
+    expect(toSignificantFigures(250, 4, si)).toBe('250.0');
   });
 });
 
