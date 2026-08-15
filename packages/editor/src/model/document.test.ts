@@ -32,7 +32,9 @@ import {
   removeEdges,
   removeNodes,
   renameColumn,
+  renameNode,
   reorderColumn,
+  syncColumnLabels,
   uniqueId,
   updateNode,
 } from './document';
@@ -329,5 +331,64 @@ describe('nodeLabel — what a node calls itself, for anything that needs a name
       formula: { id: 'invented.area', version: 1, hash: 'h' },
     };
     expect(nodeLabel(formulaNode)).toBe('invented.area');
+  });
+});
+
+describe('renaming a node keeps table columns in sync', () => {
+  it('renames a column still named after the node, once that node is renamed', () => {
+    const wired = connect(
+      { ...base, nodes: [...base.nodes, table('t', ['a'], 400, 0)] },
+      { node: 'a', port: 'value' },
+      { node: 't', port: 'a' },
+    );
+    const renamed = renameNode(wired, 'a', 'Pad width');
+    const node = renamed.nodes.find((entry) => entry.id === 't') as OutputNode;
+    expect(node.output.kind === 'table' && node.output.columns).toEqual(['Pad width']);
+    expect(renamed.edges).toEqual([
+      {
+        id: 'a.value->t.Pad width',
+        from: { node: 'a', port: 'value' },
+        to: { node: 't', port: 'Pad width' },
+      },
+    ]);
+  });
+
+  it('leaves a column alone once it has been manually renamed away from the source', () => {
+    const wired = connect(
+      { ...base, nodes: [...base.nodes, table('t', ['a'], 400, 0)] },
+      { node: 'a', port: 'value' },
+      { node: 't', port: 'a' },
+    );
+    const customised = renameColumn(wired, 't', 'a', 'width (mm)');
+    const renamed = renameNode(customised, 'a', 'Pad width');
+    const node = renamed.nodes.find((entry) => entry.id === 't') as OutputNode;
+    // The column no longer matches 'a' — the old label — so it is left alone.
+    expect(node.output.kind === 'table' && node.output.columns).toEqual(['width (mm)']);
+  });
+
+  it('leaves a column alone when it is fed by a different node than the one renamed', () => {
+    const wired = connect(
+      connect(
+        { ...base, nodes: [...base.nodes, table('t', ['a', 'b'], 400, 0)] },
+        { node: 'a', port: 'value' },
+        { node: 't', port: 'a' },
+      ),
+      { node: 'b', port: 'value' },
+      { node: 't', port: 'b' },
+    );
+    // Column 'a' is fed by node 'a', not 'b' — renaming 'b' must not touch it,
+    // even though 'b' is also, coincidentally, a column name in this table.
+    const renamed = renameNode(wired, 'b', 'Load');
+    const node = renamed.nodes.find((entry) => entry.id === 't') as OutputNode;
+    expect(node.output.kind === 'table' && node.output.columns).toEqual(['a', 'Load']);
+  });
+
+  it('does nothing via syncColumnLabels when the label did not actually change', () => {
+    const wired = connect(
+      { ...base, nodes: [...base.nodes, table('t', ['a'], 400, 0)] },
+      { node: 'a', port: 'value' },
+      { node: 't', port: 'a' },
+    );
+    expect(syncColumnLabels(wired, 'a', 'a', 'a')).toBe(wired);
   });
 });

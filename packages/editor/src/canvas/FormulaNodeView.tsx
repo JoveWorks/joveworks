@@ -20,7 +20,7 @@ import { isGenericPort, type Port } from '@mds/schema';
 import type { Unit } from '@mds/units';
 
 import { useGraph } from '../graph-context';
-import { reframe, removeNodes, updateNode } from '../model/document';
+import { reframe, removeNodes, renameNode } from '../model/document';
 import { Symbol } from '../Symbol';
 import { unitLabel } from '../model/quantity';
 import { axisLabel, reading, summarise } from '../model/values';
@@ -28,7 +28,6 @@ import { NodeShell } from './NodeShell';
 import { Sparkline } from './Sparkline';
 import { slotHandleId } from './spectrumSlots';
 import { TextField } from './fields';
-import type { FormulaNode } from '@mds/schema';
 
 export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | null {
   const { document, analysis, edit, pinned, togglePin } = useGraph();
@@ -111,11 +110,7 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
         <TextField
           className="title"
           value={title}
-          onCommit={(label) =>
-            edit((current) =>
-              updateNode<FormulaNode>(current, id, (formulaNode) => ({ ...formulaNode, label })),
-            )
-          }
+          onCommit={(label) => edit((current) => renameNode(current, id, label))}
         />
       }
       subtitle={

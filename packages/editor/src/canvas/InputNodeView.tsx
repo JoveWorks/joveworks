@@ -12,7 +12,7 @@ import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { VALUE_PORT, isRange, type InputNode } from '@mds/schema';
 
 import { useGraph } from '../graph-context';
-import { reframe, removeNodes, updateNode } from '../model/document';
+import { nodeLabel, reframe, removeNodes, syncColumnLabels, updateNode } from '../model/document';
 import { axisLabel, reading } from '../model/values';
 import { NodeShell } from './NodeShell';
 import { Sparkline } from './Sparkline';
@@ -43,8 +43,9 @@ export function InputNodeView({ id, selected }: NodeProps): ReactElement | null 
           className="title"
           value={node.label ?? id}
           onCommit={(label) =>
-            edit((current) =>
-              updateNode<InputNode>(current, id, (input) => {
+            edit((current) => {
+              const oldLabel = nodeLabel(node);
+              const renamed = updateNode<InputNode>(current, id, (input) => {
                 // A rename should be seen wherever the axis label was
                 // following it. axisLabel is only ever set by sample
                 // authoring or copied forward by duplicateNode — there is no
@@ -53,8 +54,11 @@ export function InputNodeView({ id, selected }: NodeProps): ReactElement | null 
                 // matter how many times the node was renamed afterwards.
                 const { axisLabel: _stale, ...rest } = input;
                 return { ...rest, label };
-              }),
-            )
+              });
+              // Also keeps any table column still named after this node's
+              // old label in sync (syncColumnLabels, model/document.ts).
+              return syncColumnLabels(renamed, id, oldLabel, label);
+            })
           }
         />
       }

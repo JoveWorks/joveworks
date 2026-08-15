@@ -29,7 +29,7 @@ import {
 } from '@mds/schema';
 
 import { useGraph } from '../graph-context';
-import { reframe, removeNodes, updateNode } from '../model/document';
+import { reframe, removeNodes, renameNode, updateNode } from '../model/document';
 import { formatAuthored, parseAuthored } from '../model/quantity';
 import { reading, summarise } from '../model/values';
 import { Symbol } from '../Symbol';
@@ -86,9 +86,7 @@ export function CompareNodeView({ id, selected }: NodeProps): ReactElement | nul
         <TextField
           className="title"
           value={node.label ?? id}
-          onCommit={(label) =>
-            edit((current) => updateNode<CompareNode>(current, id, (entry) => ({ ...entry, label })))
-          }
+          onCommit={(label) => edit((current) => renameNode(current, id, label))}
         />
       }
       subtitle={`${node.comparison} ${formatAuthored(node.threshold)}`}

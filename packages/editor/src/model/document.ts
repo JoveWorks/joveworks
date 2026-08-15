@@ -275,6 +275,51 @@ export function relabelColumn(
   return { document: renameColumn(document, nodeId, columnName, column), column };
 }
 
+/**
+ * Propagate a node's rename to any table column that is still named after
+ * its old label — a column named `width` because that source node was once
+ * called `width` keeps tracking it as it is renamed, the same way the
+ * column's name followed the source in the first place (`addNamedColumn`,
+ * Canvas.tsx's ghost-slot wiring). A column renamed by hand no longer
+ * equals `oldLabel`, so it is left alone — there is no separate flag for
+ * "manually renamed"; a name that has already diverged is the flag.
+ */
+export function syncColumnLabels(
+  document: GraphDocument,
+  nodeId: string,
+  oldLabel: string,
+  newLabel: string,
+): GraphDocument {
+  if (oldLabel === newLabel) return document;
+  let next = document;
+  for (const node of document.nodes) {
+    if (node.kind !== 'output' || node.output.kind !== 'table') continue;
+    for (const column of node.output.columns) {
+      if (column !== oldLabel) continue;
+      const wiredFromRenamed = next.edges.some(
+        (edge) => edge.to.node === node.id && edge.to.port === column && edge.from.node === nodeId,
+      );
+      if (wiredFromRenamed) next = relabelColumn(next, node.id, column, newLabel).document;
+    }
+  }
+  return next;
+}
+
+/**
+ * The ordinary rename: set `label`, then keep any table column that follows
+ * this node's old label in sync (`syncColumnLabels`). `InputNodeView.tsx`
+ * does its own variant — a rename also clears a stale `axisLabel` there —
+ * and calls `syncColumnLabels` itself afterward for the same reason.
+ */
+export function renameNode(document: GraphDocument, nodeId: string, label: string): GraphDocument {
+  const node = document.nodes.find((entry) => entry.id === nodeId);
+  if (node === undefined) return document;
+  const oldLabel = nodeLabel(node);
+  const renamed = updateNode(document, nodeId, (entry) => ({ ...entry, label }));
+  const updated = renamed.nodes.find((entry) => entry.id === nodeId) as GraphNode;
+  return syncColumnLabels(renamed, nodeId, oldLabel, nodeLabel(updated));
+}
+
 /** Reorder a table's columns — dropping `source` immediately before or after `target`. */
 export function reorderColumn(
   document: GraphDocument,

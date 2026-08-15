@@ -42,6 +42,7 @@ import {
   removeColumn,
   removeNodes,
   renameColumn,
+  renameNode,
   reorderColumn,
   updateNode,
 } from '../model/document';
@@ -128,11 +129,7 @@ export function OutputNodeView({ id, selected }: NodeProps): ReactElement | null
         <TextField
           className="title"
           value={node.label ?? id}
-          onCommit={(label) =>
-            edit((current) =>
-              updateNode<OutputNode>(current, id, (entry) => ({ ...entry, label })),
-            )
-          }
+          onCommit={(label) => edit((current) => renameNode(current, id, label))}
         />
       }
       subtitle={output.kind}
