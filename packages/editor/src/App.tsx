@@ -30,17 +30,29 @@ import { GraphContext } from './graph-context';
 import { cacheCatalogue, cachedCatalogueTexts } from './io/catalogueCache';
 import { openTextFile, saveTextFile } from './io/files';
 import { analyse } from './model/analysis';
-import { baseCatalogue, withCatalogue } from './model/catalogues';
+import { basicMechanicsCatalogue, baseCatalogue, withCatalogue } from './model/catalogues';
 import { frameAround, reframe, uniqueId } from './model/document';
 import { messageOf } from './model/quantity';
-import { BELT_LAB_FORMULAS, beltLab, padPressure, provides } from './model/samples';
+import {
+  BELT_LAB_FORMULAS,
+  CANTILEVER_FORMULAS,
+  beltLab,
+  cantileverHollowSections,
+  padPressure,
+  provides,
+} from './model/samples';
 import { Notebook } from './notebook/Notebook';
 import { Palette } from './palette/Palette';
 import { useResizableWidth } from './useResizableWidth';
 
-/** The base catalogue plus whatever was cached from a previous session. */
+/**
+ * The base catalogue, the bundled public catalogue, and whatever was cached
+ * from a previous session. Base nodes and the public catalogue both ship
+ * `restricted: false` — neither needs a student to import it by hand the way
+ * an R&M catalogue does (S14/S45), so both are always present.
+ */
 function initialCatalogues(): readonly Catalogue[] {
-  let catalogues: readonly Catalogue[] = [baseCatalogue()];
+  let catalogues: readonly Catalogue[] = [baseCatalogue(), basicMechanicsCatalogue()];
   for (const text of cachedCatalogueTexts()) {
     try {
       catalogues = withCatalogue(catalogues, loadCatalogue(text));
@@ -62,10 +74,11 @@ export function App(): ReactElement {
   const [showPalette, setShowPalette] = useState(true);
   const [showNotebook, setShowNotebook] = useState(true);
   const [openMenu, setOpenMenu] = useState<
-    { readonly menu: 'file' | 'edit' | 'view'; readonly x: number; readonly y: number } | undefined
+    | { readonly menu: 'file' | 'edit' | 'view' | 'help'; readonly x: number; readonly y: number }
+    | undefined
   >(undefined);
   const [paletteWidth, resizePalette] = useResizableWidth(300, 200, 480, 1);
-  const [notebookWidth, resizeNotebook] = useResizableWidth(540, 240, 640, -1);
+  const [notebookWidth, resizeNotebook] = useResizableWidth(540, 240, 800, -1);
   const [notices, setNotices] = useState<readonly { readonly id: string; readonly message: string }[]>(
     [],
   );
@@ -101,6 +114,7 @@ export function App(): ReactElement {
   );
 
   const beltAvailable = provides(catalogues, BELT_LAB_FORMULAS);
+  const cantileverAvailable = provides(catalogues, CANTILEVER_FORMULAS);
 
   const loadCatalogueFile = async (): Promise<void> => {
     const file = await openTextFile();
@@ -137,27 +151,12 @@ export function App(): ReactElement {
       return reframe({ ...current, frames: [...current.frames, frame] });
     });
 
-  // Open/save belong in a conventional File/Edit/View ribbon, top-left
+  // Open/save belong in a conventional File/Edit/View/Help ribbon, top-left
   // (UX-SPEC.md) — not wherever the individual actions used to live.
   const fileMenuItems: readonly MenuItem[] = [
     { label: 'Open…', onClick: () => void openDocumentFile() },
     { label: 'Save', onClick: () => saveTextFile(`${document.id}.mds.json`, saveDocument(document)) },
     { label: 'Load catalogue…', onClick: () => void loadCatalogueFile() },
-    {
-      label: 'Open sample: pad sweep',
-      onClick: () => {
-        const sample = padPressure(catalogues);
-        if (sample !== undefined) setDocument(sample);
-      },
-    },
-    {
-      label: 'Open sample: belt lab',
-      disabled: !beltAvailable,
-      onClick: () => {
-        const sample = beltLab(catalogues);
-        if (sample !== undefined) setDocument(sample);
-      },
-    },
   ];
 
   const editMenuItems: readonly MenuItem[] = [
@@ -169,10 +168,46 @@ export function App(): ReactElement {
     { label: showNotebook ? 'Hide notebook' : 'Show notebook', onClick: () => setShowNotebook((s) => !s) },
   ];
 
-  const menuItemsFor = (menu: 'file' | 'edit' | 'view'): readonly MenuItem[] =>
-    menu === 'file' ? fileMenuItems : menu === 'edit' ? editMenuItems : viewMenuItems;
+  // Every sample graph lives here rather than scattered under File — one
+  // place a student (or a colleague seeing a demo) looks for "show me
+  // something that already works".
+  const helpMenuItems: readonly MenuItem[] = [
+    { label: 'Examples', disabled: true, onClick: () => {} },
+    {
+      label: 'Pad pressure sweep',
+      onClick: () => {
+        const sample = padPressure(catalogues);
+        if (sample !== undefined) setDocument(sample);
+      },
+    },
+    {
+      label: 'Belt lab',
+      disabled: !beltAvailable,
+      onClick: () => {
+        const sample = beltLab(catalogues);
+        if (sample !== undefined) setDocument(sample);
+      },
+    },
+    {
+      label: 'Cantilever — hollow sections',
+      disabled: !cantileverAvailable,
+      onClick: () => {
+        const sample = cantileverHollowSections(catalogues);
+        if (sample !== undefined) setDocument(sample);
+      },
+    },
+  ];
 
-  const menuButton = (menu: 'file' | 'edit' | 'view', label: string): ReactElement => (
+  const menuItemsFor = (menu: 'file' | 'edit' | 'view' | 'help'): readonly MenuItem[] =>
+    menu === 'file'
+      ? fileMenuItems
+      : menu === 'edit'
+        ? editMenuItems
+        : menu === 'view'
+          ? viewMenuItems
+          : helpMenuItems;
+
+  const menuButton = (menu: 'file' | 'edit' | 'view' | 'help', label: string): ReactElement => (
     <button
       type="button"
       className={`menu-button${openMenu?.menu === menu ? ' open' : ''}`}
@@ -199,6 +234,7 @@ export function App(): ReactElement {
             {menuButton('file', 'File')}
             {menuButton('edit', 'Edit')}
             {menuButton('view', 'View')}
+            {menuButton('help', 'Help')}
 
             <input
               className="document-title"

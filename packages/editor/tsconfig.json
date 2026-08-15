@@ -5,11 +5,12 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "jsx": "react-jsx",
+    "resolveJsonModule": true,
     "rootDir": "src",
     "outDir": "dist",
     "tsBuildInfoFile": "dist/.tsbuildinfo"
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.json"],
   "exclude": ["src/**/*.test.ts"],
   "references": [
     { "path": "../kernel" },

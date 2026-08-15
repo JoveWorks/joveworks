@@ -89,6 +89,14 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
 
   const outputUnit = analysis.resolution?.sources.get(`${id}.${formula.output.name}`)?.unit;
 
+  // The title is the friendly name: a student's own label, else the catalogue's
+  // citation, else the bare id. The subtitle is the provenance line underneath
+  // it — always citation-or-id — shown only when it says something the title
+  // doesn't already: a renamed R&M node still needs "R&M 16.19A" visible, but
+  // an unrenamed one showing "R&M 16.19A" twice would not.
+  const title = node.label ?? formula.citation ?? formula.id;
+  const provenance = formula.citation ?? formula.id;
+
   return (
     <NodeShell
       kind="formula"
@@ -102,7 +110,7 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
       title={
         <TextField
           className="title"
-          value={node.label ?? formula.id}
+          value={title}
           onCommit={(label) =>
             edit((current) =>
               updateNode<FormulaNode>(current, id, (formulaNode) => ({ ...formulaNode, label })),
@@ -112,7 +120,7 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
       }
       subtitle={
         <>
-          <span className="citation">{formula.citation ?? formula.id}</span>
+          {provenance === title ? null : <span className="citation">{provenance}</span>}
           {formula.status === 'verified' ? <span className="status verified">verified</span> : null}
           {formula.status === 'unverified' ? (
             <span className="status unverified" title="No golden value exercises this yet (S19).">

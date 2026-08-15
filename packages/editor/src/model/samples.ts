@@ -270,3 +270,104 @@ export function beltLab(catalogues: readonly Catalogue[]): GraphDocument | undef
 
   return document('belt-lab', 'Belt lab', withFrames, edges, frames);
 }
+
+// --- cantilever deflection across hollow sections, from the public catalogue -
+
+/** The catalogue records this sample needs, by id. */
+export const CANTILEVER_FORMULAS = [
+  'multiply',
+  'subtract',
+  'basic.beam.moment-of-inertia-hollow-circle',
+  'basic.beam.cantilever-deflection',
+] as const;
+
+/**
+ * Tip deflection of a steel cantilever, swept over five standard outer
+ * diameters at a fixed 3 mm wall thickness. `d_i` is derived from `d_o` on the
+ * canvas — `d_o − 2t` via the base `multiply`/`subtract` nodes — rather than
+ * typed twice, so the section stays consistent as `d_o` sweeps.
+ *
+ * A showcase of the public catalogue rather than a golden fixture: base
+ * arithmetic feeding a catalogue formula chain, an explicit-list sweep, and
+ * all three non-trivial output kinds (table, plot, check) reading the same
+ * swept value. Only the 80 mm section clears the L/300 serviceability limit —
+ * a genuine "sweep and read off" result, not a uniformly green one.
+ */
+export function cantileverHollowSections(catalogues: readonly Catalogue[]): GraphDocument | undefined {
+  if (!provides(catalogues, CANTILEVER_FORMULAS)) return undefined;
+  const formula = (id: string): Formula => lookup(catalogues, id) as Formula;
+
+  const mm = parseUnit('mm');
+  const limit = { value: 3.333, unit: mm };
+
+  const nodes: GraphNode[] = [
+    { ...input('d_o', 'Outer diameter d_o', { kind: 'list', values: [30, 40, 50, 60, 80], unit: mm }, at(0, 0)), axisLabel: 'd_o' },
+    input('t', 'Wall thickness t', { kind: 'scalar', value: 3, unit: mm }, at(0, 180)),
+    input('two', '2 (wall thickness on both sides)', { kind: 'scalar', value: 2, unit: parseUnit('') }, at(0, 320)),
+
+    formulaNode('twice_t', formula('multiply'), at(280, 180)),
+    formulaNode('d_i', formula('subtract'), at(520, 90)),
+    formulaNode('I', formula('basic.beam.moment-of-inertia-hollow-circle'), at(760, 0)),
+
+    input('F', 'Tip load F', { kind: 'scalar', value: 500, unit: parseUnit('N') }, at(0, 460)),
+    input('L', 'Beam length L', { kind: 'scalar', value: 1000, unit: mm }, at(0, 600)),
+    input('E', "Young's modulus E (steel)", { kind: 'scalar', value: 210000, unit: parseUnit('MPa') }, at(0, 740)),
+    formulaNode('delta', formula('basic.beam.cantilever-deflection'), at(1000, 360)),
+
+    output('out_table', 'Section results', { kind: 'table', columns: ['d_o', 'd_i', 'I', 'delta'] }, at(1240, 0)),
+    output(
+      'out_plot',
+      'Deflection against outer diameter',
+      { kind: 'plot', x: 'd_o', threshold: limit, unit: mm },
+      at(1240, 210),
+    ),
+    output(
+      'out_check',
+      'Within the L/300 deflection limit',
+      { kind: 'check', comparison: '<=', threshold: limit },
+      at(1240, 410),
+    ),
+  ];
+
+  const edges = [
+    wire('t.value', 'twice_t.a'),
+    wire('two.value', 'twice_t.b'),
+
+    wire('d_o.value', 'd_i.a'),
+    wire('twice_t.product', 'd_i.b'),
+
+    wire('d_o.value', 'I.d_o'),
+    wire('d_i.difference', 'I.d_i'),
+
+    wire('F.value', 'delta.F'),
+    wire('L.value', 'delta.L'),
+    wire('E.value', 'delta.E'),
+    wire('I.I', 'delta.I'),
+
+    wire('d_o.value', 'out_table.d_o'),
+    wire('d_i.difference', 'out_table.d_i'),
+    wire('I.I', 'out_table.I'),
+    wire('delta.delta', 'out_table.delta'),
+    wire('delta.delta', 'out_plot.value'),
+    wire('delta.delta', 'out_check.value'),
+  ];
+
+  const frames = [
+    {
+      id: 'sections',
+      title: 'Cantilever beam — hollow circular sections',
+      note:
+        'Tip deflection of a steel cantilever (F = 500 N, L = 1000 mm) for five standard ' +
+        'outer diameters at a fixed 3 mm wall thickness. The L/300 = 3.33 mm serviceability ' +
+        'limit is crossed between 60 and 80 mm.',
+      position: at(1180, -80),
+      size: { width: 420, height: 700 },
+    },
+  ];
+
+  const withFrames = nodes.map((node) =>
+    node.kind === 'output' ? { ...node, frameId: 'sections' } : node,
+  );
+
+  return document('cantilever-hollow-sections', 'Cantilever — hollow sections', withFrames, edges, frames);
+}

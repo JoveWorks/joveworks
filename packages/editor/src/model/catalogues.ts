@@ -9,8 +9,10 @@
  * from.
  */
 
-import { loadCatalogue, ports, type Catalogue, type Formula } from '@mds/schema';
+import { parseCatalogue, loadCatalogue, ports, type Catalogue, type Formula, type JsonValue } from '@mds/schema';
 import { BASE_CATALOGUE_ID, baseCatalogueJson } from '@mds/nodes';
+
+import basicMechanicsData from '../catalogues/basic-mechanics.json';
 
 export interface PaletteEntry {
   readonly formula: Formula;
@@ -20,6 +22,20 @@ export interface PaletteEntry {
 /** The base library, parsed the same way a loaded file is. */
 export function baseCatalogue(): Catalogue {
   return loadCatalogue(baseCatalogueJson());
+}
+
+export const BASIC_MECHANICS_CATALOGUE_ID = 'public-basic-mechanics';
+
+/**
+ * A second catalogue that ships with the app alongside the base nodes:
+ * textbook-independent basic-mechanics formulas (stress, beams, torsion,
+ * dynamics), `restricted: false`, hand-authored per
+ * `docs/authoring-catalogues.md` rather than extracted from a source. Unlike
+ * the R&M catalogue it needs no LMS handout — nothing in it is restricted, so
+ * there is no reason to make a student import it by hand.
+ */
+export function basicMechanicsCatalogue(): Catalogue {
+  return parseCatalogue(basicMechanicsData as JsonValue);
 }
 
 /**
