@@ -124,3 +124,11 @@ before it can be scoped as a fix.
 **Plot node needs a real options pass** — multiple series per plot, marking
 specific values, and likely more. This is a big enough feature to warrant
 its own session after MVP, not a line item here.
+
+**A range's two bounds showing different units** — `10 mm ... 1 m`, each
+bound keeping its own unit rather than both sharing one. Two ways to build
+it were weighed: editor-only display state (doesn't survive save/reload) or
+a schema change to carry a unit per bound (persists properly, but widens
+`ValueSpec` and ripples into the kernel and everywhere else that assumes a
+range has one unit). Neither was picked; parked here rather than decided
+under scope pressure.

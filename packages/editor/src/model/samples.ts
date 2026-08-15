@@ -117,8 +117,8 @@ export function padPressure(catalogues: readonly Catalogue[]): GraphDocument | u
   ];
 
   const edges = [
-    wire('w.value', 'area.a'),
-    wire('L.value', 'area.b'),
+    wire('w.value', 'area.b'),
+    wire('L.value', 'area.a'),
     wire('F.value', 'pressure.a'),
     wire('area.product', 'pressure.b'),
     wire('pressure.quotient', 'p.value'),
