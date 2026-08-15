@@ -6,8 +6,6 @@ The documentation is getting a bit chaotic and probably stale in a lot of points
 
 Should the `list` range kind keep that name, or become `sweep`? A load spectrum is also a hand-typed list of values (just consumed whole, not swept — see the spectrum-editing backlog item below), so "list" alone doesn't say which behaviour a student is choosing. Discuss.
 
-make the minimap toggleable in settings, default off.
-
 I don't need the four squares in the corner of the section frames to indicate resize anchors. It's self explanatory with the lines and cursor change.
 
 This error when dragging the output of `Simple supported beam` labeled as M Nm to the quick-add and selecting e.g. multiply: "p_check.value: a check compares a value against a threshold of the same dimension (S58): 1/mm² and stress (N/mm²) are different dimensions". `Divide` gives this error: "p_check.value: a check compares a value against a threshold of the same dimension (S58): N/mm and stress (N/mm²) are different dimensions"

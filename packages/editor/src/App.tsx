@@ -33,6 +33,7 @@ import { openTextFile, saveTextFile } from './io/files';
 import { analyse } from './model/analysis';
 import { basicMechanicsCatalogue, baseCatalogue, withCatalogue } from './model/catalogues';
 import { frameAround, reframe, uniqueId } from './model/document';
+import { loadMinimapVisible, saveMinimapVisible } from './model/editorSettings';
 import {
   loadNumberFormatSettings,
   saveNumberFormatSettings,
@@ -81,6 +82,7 @@ export function App(): ReactElement {
   const [showPalette, setShowPalette] = useState(true);
   const [showNotebook, setShowNotebook] = useState(true);
   const [numberFormat, setNumberFormatState] = useState<NumberFormatSettings>(loadNumberFormatSettings);
+  const [minimapVisible, setMinimapVisibleState] = useState<boolean>(loadMinimapVisible);
   const [showSettings, setShowSettings] = useState(false);
   const [openMenu, setOpenMenu] = useState<
     | { readonly menu: 'file' | 'edit' | 'view' | 'help'; readonly x: number; readonly y: number }
@@ -107,9 +109,14 @@ export function App(): ReactElement {
     saveNumberFormatSettings(next);
   };
 
+  const setMinimapVisible = (next: boolean): void => {
+    setMinimapVisibleState(next);
+    saveMinimapVisible(next);
+  };
+
   const settingsContext = useMemo(
-    () => ({ numberFormat, setNumberFormat }),
-    [numberFormat],
+    () => ({ numberFormat, setNumberFormat, minimapVisible, setMinimapVisible }),
+    [numberFormat, minimapVisible],
   );
 
   const analysis = useMemo(() => analyse(document, catalogues), [document, catalogues]);
@@ -317,6 +324,8 @@ export function App(): ReactElement {
               <SettingsDialog
                 settings={numberFormat}
                 onChange={setNumberFormat}
+                minimapVisible={minimapVisible}
+                onMinimapVisibleChange={setMinimapVisible}
                 onClose={() => setShowSettings(false)}
               />
             ) : null}

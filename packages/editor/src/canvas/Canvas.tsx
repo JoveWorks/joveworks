@@ -44,6 +44,7 @@ import {
 } from '@mds/schema';
 
 import { useGraph } from '../graph-context';
+import { useSettings } from '../settings-context';
 import {
   addNamedColumn,
   addNode,
@@ -181,6 +182,7 @@ const NODE_TYPES = {
 
 export function Canvas(): ReactElement {
   const { document, catalogues, analysis, edit, pinned, togglePin } = useGraph();
+  const { minimapVisible } = useSettings();
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [refusal, setRefusal] = useState<string | undefined>(undefined);
   const [menu, setMenu] = useState<MenuTarget | undefined>(undefined);
@@ -806,7 +808,7 @@ export function Canvas(): ReactElement {
       >
         <Background gap={24} />
         <Controls />
-        <MiniMap pannable zoomable />
+        {minimapVisible ? <MiniMap pannable zoomable /> : null}
         {menu === undefined ? null : (
           <ContextMenu
             x={menu.x}
