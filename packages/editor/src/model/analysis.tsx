@@ -21,6 +21,8 @@
  * - `error` — the kernel refused this node, with its message kept
  */
 
+import type { ReactNode } from 'react';
+
 import {
   KernelError,
   evaluateDocument,
@@ -40,6 +42,28 @@ import {
   type Port,
 } from '@mds/schema';
 
+import { Symbol } from '../Symbol';
+
+/**
+ * The `not connected: ...` reason, with each name rendered the same way its
+ * port label is (S49 consistency) — a plain string here would fall back to
+ * the raw, trailing-underscore form the rest of the app deliberately never
+ * shows (mu instead of μ, F_N instead of F with a true subscript).
+ */
+function notConnected(names: readonly string[]): ReactNode {
+  return (
+    <>
+      not connected:{' '}
+      {names.map((name, index) => (
+        <span key={name}>
+          {index > 0 ? ', ' : ''}
+          <Symbol name={name} />
+        </span>
+      ))}
+    </>
+  );
+}
+
 export type NodeState = 'ok' | 'incomplete' | 'quarantined' | 'blocked' | 'error';
 
 export interface Analysis {
@@ -51,7 +75,7 @@ export interface Analysis {
   readonly formulas: ReadonlyMap<string, Formula>;
   readonly states: ReadonlyMap<string, NodeState>;
   /** node id → why it is not `ok`, in the kernel's own words. */
-  readonly problems: ReadonlyMap<string, string>;
+  readonly problems: ReadonlyMap<string, ReactNode>;
   readonly warnings: readonly Warning[];
   /** A failure the whole graph carries — a cycle, a bad file, no catalogue. */
   readonly message?: string;
@@ -120,7 +144,7 @@ function readiness(
   order: readonly GraphNode[],
   formulas: ReadonlyMap<string, Formula>,
   states: Map<string, NodeState>,
-  problems: Map<string, string>,
+  problems: Map<string, ReactNode>,
 ): ReadonlySet<string> {
   const ready = new Set<string>();
   // More than one source only for a spectrum port (S71) — a plain `Map` here
@@ -164,7 +188,7 @@ function readiness(
       );
       if (missing.length > 0) {
         states.set(node.id, 'incomplete');
-        problems.set(node.id, `not connected: ${missing.map((port) => port.name).join(', ')}`);
+        problems.set(node.id, notConnected(missing.map((port) => port.name)));
         continue;
       }
       const blocked = formula.inputs.some(
@@ -182,7 +206,7 @@ function readiness(
     const unwired = names.filter((name) => !isWired(node.id, name));
     if (unwired.length > 0) {
       states.set(node.id, 'incomplete');
-      problems.set(node.id, `not connected: ${unwired.join(', ')}`);
+      problems.set(node.id, notConnected(unwired));
       continue;
     }
     if (!names.every((name) => upstreamReady(node.id, name))) {
@@ -200,7 +224,7 @@ const RETRIES = 8;
 
 export function analyse(document: GraphDocument, catalogues: readonly Catalogue[]): Analysis {
   const states = new Map<string, NodeState>();
-  const problems = new Map<string, string>();
+  const problems = new Map<string, ReactNode>();
   const formulas = new Map<string, Formula>();
 
   for (const node of document.nodes) {

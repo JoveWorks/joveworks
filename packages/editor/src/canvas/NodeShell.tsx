@@ -24,7 +24,7 @@ interface Props {
   readonly title: ReactNode;
   readonly subtitle?: ReactNode;
   /** Why the node is not `ok`, in the kernel's words. */
-  readonly problem?: string;
+  readonly problem?: ReactNode;
   readonly warning?: string;
   readonly selected: boolean;
   readonly pinned: boolean;

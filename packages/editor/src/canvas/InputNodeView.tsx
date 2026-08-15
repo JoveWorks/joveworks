@@ -33,7 +33,7 @@ export function InputNodeView({ id, selected }: NodeProps): ReactElement | null 
     <NodeShell
       kind="input"
       state={analysis.states.get(id) ?? 'ok'}
-      {...(analysis.problems.has(id) ? { problem: analysis.problems.get(id) as string } : {})}
+      {...(analysis.problems.has(id) ? { problem: analysis.problems.get(id) } : {})}
       selected={selected ?? false}
       pinned={pinned.has(id)}
       onTogglePin={() => togglePin(id)}

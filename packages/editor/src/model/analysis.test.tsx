@@ -6,12 +6,19 @@
  * because none is needed: what is under test is readiness, not arithmetic.
  */
 
+import type { ReactNode } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
 import { SCHEMA_VERSION, loadCatalogue, formulaRef, type Catalogue, type GraphDocument } from '@mds/schema';
 import { parseUnit } from '@mds/units';
 
 import { analyse, lookup } from './analysis';
+
+/** A `problems` entry is a rendered reason (symbol names get a real <sub>, S49) — text out for assertions. */
+function text(node: ReactNode): string {
+  return renderToStaticMarkup(<>{node}</>);
+}
 import { baseCatalogue } from './catalogues';
 import { padPressure } from './samples';
 
@@ -88,7 +95,7 @@ describe('analysing a graph mid-build', () => {
 
     // The half-wired node does not take the finished one down with it.
     expect(analysis.states.get('half')).toBe('incomplete');
-    expect(analysis.problems.get('half')).toContain('not connected');
+    expect(text(analysis.problems.get('half'))).toContain('not connected');
   });
 
   it('refuses a quarantined formula and blocks what depends on it, not the rest (S19)', () => {
