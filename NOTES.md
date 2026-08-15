@@ -4,8 +4,6 @@ The documentation is getting a bit chaotic and probably stale in a lot of points
 
 ## Findings in UX and talking points
 
-Add sliders as an input.
-
 I want to observe the input and output of a node by hovering over a port — a popup after a short delay.
 
 I occasionally notice literal "mm^4" in the table output header instead of superscript 4. In the `Newton's second law` node, acceleration unit also has literal "m/s^2" instead of superscript 2.
@@ -29,6 +27,8 @@ I don't need the four squares in the corner of the section frames to indicate re
 This error when dragging the output of `Simple supported beam` labeled as M Nm to the quick-add and selecting e.g. multiply: "p_check.value: a check compares a value against a threshold of the same dimension (S58): 1/mm² and stress (N/mm²) are different dimensions". `Divide` gives this error: "p_check.value: a check compares a value against a threshold of the same dimension (S58): N/mm and stress (N/mm²) are different dimensions"
 
 ## Add to backlog of ideas
+
+Sliders as an input — the intent is quickly nudging a value to build intuition for its effect on the output, not precision entry. Needs a bound to travel between (the port's declared valid range, S17, when the formula has one) and a decision on whether it replaces or sits alongside the typed field.
 
 Spectrum-editing UI: a load spectrum (a hand-typed list consumed whole by an aggregation, not swept) exists in the schema but nothing in the editor can create or edit one yet. Surfaced while adding Input's palette shortcuts — left out of that pass on purpose.
 
