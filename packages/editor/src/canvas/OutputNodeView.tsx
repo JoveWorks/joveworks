@@ -26,6 +26,7 @@ import {
 
 import { useGraph } from '../graph-context';
 import { reframe, removeNodes, updateNode } from '../model/document';
+import { Symbol } from '../Symbol';
 import { formatAuthored, parseAuthored, unitLabel } from '../model/quantity';
 import { reading, summarise } from '../model/values';
 import { NodeShell } from './NodeShell';
@@ -294,7 +295,9 @@ export function OutputNodeView({ id, selected }: NodeProps): ReactElement | null
                 even a single-occupancy one, since Canvas's edge projection
                 does not know port kinds and suffixes uniformly. */}
             <Handle type="target" position={Position.Left} id={slotHandleId(name, 0)} />
-            <span className="port-name">{name}</span>
+            <span className="port-name">
+              <Symbol name={name} />
+            </span>
           </li>
         ))}
       </ul>

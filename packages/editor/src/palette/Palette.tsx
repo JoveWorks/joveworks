@@ -18,6 +18,7 @@ import { axes as documentAxes, formulaRef, type Formula, type Output, type Posit
 import { useGraph } from '../graph-context';
 import { addNode, uniqueId } from '../model/document';
 import { entries, search, type PaletteEntry } from '../model/catalogues';
+import { Symbol } from '../Symbol';
 
 /** Where a node dropped from the palette lands: the middle of what you can see. */
 function useDropPosition(): () => Position {
@@ -165,7 +166,9 @@ export function Palette(): ReactElement {
                     onClick={() => addFormula(formula)}
                   >
                     <span className="entry-id">{formula.citation ?? formula.id}</span>
-                    <span className="entry-output">{formula.output.name}</span>
+                    <span className="entry-output">
+                      <Symbol name={formula.output.name} />
+                    </span>
                     {formula.status === 'quarantined' ? (
                       <span className="entry-status">quarantined</span>
                     ) : null}

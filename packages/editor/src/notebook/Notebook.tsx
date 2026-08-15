@@ -19,6 +19,7 @@ import type { Frame, GraphDocument, OutputNode } from '@mds/schema';
 
 import { useGraph } from '../graph-context';
 import { ContextMenu, type MenuItem } from '../canvas/ContextMenu';
+import { Symbol } from '../Symbol';
 import { moveFrame, reframe, removeNodes, reorderFrame, updateFrame, updateNode } from '../model/document';
 import { display } from '../model/quantity';
 import { summarise } from '../model/values';
@@ -70,7 +71,7 @@ function Result({ result }: { readonly result: OutputResult }): ReactElement {
             <tr>
               {result.columns.map((column) => (
                 <th key={column.name}>
-                  {column.name} <span className="unit">{column.unit.symbol}</span>
+                  <Symbol name={column.name} /> <span className="unit">{column.unit.symbol}</span>
                 </th>
               ))}
             </tr>

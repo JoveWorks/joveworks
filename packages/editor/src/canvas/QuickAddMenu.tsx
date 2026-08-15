@@ -15,6 +15,7 @@ import { useMemo, useState, type ReactElement } from 'react';
 import type { Catalogue, Formula } from '@mds/schema';
 
 import { entries, search } from '../model/catalogues';
+import { Symbol } from '../Symbol';
 
 export type QuickAddChoice =
   | { readonly kind: 'formula'; readonly formula: Formula }
@@ -100,7 +101,9 @@ export function QuickAddMenu({
           {formulas.slice(0, 30).map(({ formula }) => (
             <button key={formula.id} type="button" onClick={() => pick({ kind: 'formula', formula })}>
               <span className="entry-id">{formula.citation ?? formula.id}</span>
-              <span className="entry-output">{formula.output.name}</span>
+              <span className="entry-output">
+                <Symbol name={formula.output.name} />
+              </span>
             </button>
           ))}
           {matchingSpecials.length === 0 && formulas.length === 0 ? (

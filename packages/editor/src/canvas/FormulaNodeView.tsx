@@ -21,6 +21,7 @@ import type { Unit } from '@mds/units';
 
 import { useGraph } from '../graph-context';
 import { reframe, removeNodes, updateNode } from '../model/document';
+import { Symbol } from '../Symbol';
 import { unitLabel } from '../model/quantity';
 import { axisLabel, reading, summarise } from '../model/values';
 import { NodeShell } from './NodeShell';
@@ -149,7 +150,7 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
                   className={missing(port) ? 'missing' : ''}
                 />
                 <span className="port-name" title={port.description ?? ''}>
-                  {port.name}
+                  <Symbol name={port.name} />
                 </span>
                 <span className="port-unit">{portUnit(port)}</span>
               </li>
@@ -163,7 +164,7 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
               {i === 0 ? (
                 <>
                   <span className="port-name" title={port.description ?? ''}>
-                    {port.name}
+                    <Symbol name={port.name} />
                   </span>
                   <span className="port-unit">{portUnit(port)}</span>
                 </>
@@ -186,7 +187,7 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
               />
               {count === 0 ? (
                 <span className="port-name" title={port.description ?? ''}>
-                  {port.name}
+                  <Symbol name={port.name} />
                 </span>
               ) : null}
             </li>,
@@ -199,7 +200,7 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
         {value === undefined ? null : <Sparkline reading={value} />}
         {value === undefined ? null : <span className="axis">{axisLabel(value) ?? ''}</span>}
         <span className="port-out">
-          {formula.output.name} <span className="port-unit">{unitLabel(outputUnit)}</span>
+          <Symbol name={formula.output.name} /> <span className="port-unit">{unitLabel(outputUnit)}</span>
         </span>
         <Handle type="source" position={Position.Right} id={formula.output.name} />
       </div>
