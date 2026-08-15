@@ -426,7 +426,15 @@ export function canConnect(
     return { ok: false, reason: 'this connection would close a cycle, which is not allowed (S18)' };
   }
   try {
-    resolveGraph({ ...document, edges: [...document.edges, candidate] }, catalogues);
+    // A dragged wire replaces whatever already arrives at that input (an input
+    // takes one connection) rather than being refused for arriving alongside
+    // it — `connect` in the editor's document model already does this; the
+    // check has to agree, or a re-drag onto an occupied port is rejected here
+    // before it ever reaches that replace.
+    const displaced = document.edges.filter(
+      (edge) => !(edge.to.node === candidate.to.node && edge.to.port === candidate.to.port),
+    );
+    resolveGraph({ ...document, edges: [...displaced, candidate] }, catalogues);
     return { ok: true };
   } catch (error) {
     if (error instanceof KernelError) return { ok: false, reason: error.message };

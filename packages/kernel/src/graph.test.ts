@@ -122,6 +122,18 @@ describe('connections (S6)', () => {
     expect(result.ok === false && result.reason).toMatch(/cycle/u);
   });
 
+  it('lets a wire re-dragged onto an already-wired port replace it, rather than refusing for arriving alongside it', () => {
+    const document = documentOf(
+      [
+        input('w1', scalar(2, 'mm')),
+        input('w2', scalar(3, 'mm')),
+        formulaNode('area', refTo('area')),
+      ],
+      [wire('w1.value', 'area.w')],
+    );
+    expect(canConnect(document, catalogues, wire('w2.value', 'area.w'))).toEqual({ ok: true });
+  });
+
   it('will not put a categorical value into a numeric port', () => {
     const document = documentOf(
       [
