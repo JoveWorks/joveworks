@@ -11,8 +11,12 @@ import {
   fromCanonical,
   parseQuantity,
   parseUnit,
+  prefixableAtomOf,
+  siPrefixedUnit,
+  stripNumberFormatting,
   toCanonical,
   toSignificantFigures,
+  type NumberFormat,
 } from './index.js';
 
 describe('boundary conversion', () => {
@@ -48,6 +52,95 @@ describe('display formatting', () => {
 
   it('prints a percentage in its display scale', () => {
     expect(formatQuantity(0.982, parseUnit('%'))).toBe('98.2 %');
+  });
+});
+
+describe('number format settings', () => {
+  const euStyle: NumberFormat = { notation: 'auto', thousands: '.', decimal: ',' };
+  const grouped: NumberFormat = { notation: 'auto', thousands: ',', decimal: '.' };
+
+  it('groups the integer part with the chosen separator', () => {
+    expect(toSignificantFigures(123456, 6, grouped)).toBe('123,456');
+    expect(toSignificantFigures(-123456, 6, grouped)).toBe('-123,456');
+  });
+
+  it('swaps the decimal separator, EU-style', () => {
+    expect(toSignificantFigures(1234.5, 6, euStyle)).toBe('1.234,5');
+  });
+
+  it('forces fixed notation even outside the auto-exponential range', () => {
+    const fixed: NumberFormat = { notation: 'fixed', thousands: '', decimal: '.' };
+    expect(toSignificantFigures(1234567, 4, fixed)).toBe('1235000');
+    expect(toSignificantFigures(0.0000012345, 3, fixed)).toBe('0.00000123');
+  });
+
+  it('forces scientific notation', () => {
+    const scientific: NumberFormat = { notation: 'scientific', thousands: '', decimal: '.' };
+    expect(toSignificantFigures(1234.5, 4, scientific)).toBe('1.235e+3');
+    expect(toSignificantFigures(0.012345, 3, scientific)).toBe('1.23e-2');
+  });
+
+  it('picks an exponent that is a multiple of three for engineering notation', () => {
+    const engineering: NumberFormat = { notation: 'engineering', thousands: '', decimal: '.' };
+    expect(toSignificantFigures(12345, 4, engineering)).toBe('12.35e+3');
+    expect(toSignificantFigures(0.0009999, 4, engineering)).toBe('999.9e-6');
+    expect(toSignificantFigures(0.5, 3, engineering)).toBe('500e-3');
+  });
+
+  it('drops the exponent for engineering notation when it is zero — 400, not 400e+0', () => {
+    const engineering: NumberFormat = { notation: 'engineering', thousands: '', decimal: '.' };
+    expect(toSignificantFigures(400, 4, engineering)).toBe('400.0');
+    expect(toSignificantFigures(1, 3, engineering)).toBe('1.00');
+  });
+
+  it('reads a formatted quantity back, grouping and decimal both undone', () => {
+    expect(parseQuantity('1.234,5 N', undefined, euStyle).value).toBe(1234.5);
+    expect(parseQuantity('1,234,567', undefined, grouped).value).toBe(1234567);
+  });
+
+  it('undoes EU-style punctuation: dot grouping stripped, comma decimal restored', () => {
+    expect(stripNumberFormatting('1.234,5 N', euStyle)).toBe('1234.5 N');
+  });
+});
+
+describe("'si' notation", () => {
+  it('recognizes a bare or already-prefixed atomic symbol', () => {
+    expect(prefixableAtomOf('Pa')).toBe('Pa');
+    expect(prefixableAtomOf('kPa')).toBe('Pa');
+    expect(prefixableAtomOf('MPa')).toBe('Pa');
+  });
+
+  it('refuses a compound unit — no unambiguous prefix for a ratio', () => {
+    expect(prefixableAtomOf('N/mm²')).toBeUndefined();
+    expect(prefixableAtomOf('mm/s')).toBeUndefined();
+  });
+
+  it('refuses an atom that is deliberately not prefixable', () => {
+    expect(prefixableAtomOf('%')).toBeUndefined();
+    expect(prefixableAtomOf('rpm')).toBeUndefined();
+    expect(prefixableAtomOf('Nm')).toBeUndefined();
+  });
+
+  it('picks the prefix landing the magnitude at 1 or more, stepping by 1000', () => {
+    // 250 N/mm² of canonical stress is 2.5e8 Pa = 250 MPa.
+    expect(siPrefixedUnit('Pa', 250).symbol).toBe('MPa');
+    expect(fromCanonical(250, siPrefixedUnit('Pa', 250))).toBeCloseTo(250, 9);
+  });
+
+  it('prints a prefixed unit with a fixed-style mantissa, no exponent', () => {
+    const si: NumberFormat = { notation: 'si', thousands: '', decimal: '.' };
+    expect(formatQuantity(250, parseUnit('Pa'), 4, si)).toBe('250.0 MPa');
+    expect(formatQuantity(0.075, parseUnit('Pa'), 3, si)).toBe('75.0 kPa');
+  });
+
+  it('falls back to plain fixed notation for a compound display unit', () => {
+    const si: NumberFormat = { notation: 'si', thousands: '', decimal: '.' };
+    expect(formatQuantity(250, parseUnit('N/mm²'), 4, si)).toBe('250.0 N/mm²');
+  });
+
+  it('falls back to fixed notation for a bare number with no unit to substitute', () => {
+    const si: NumberFormat = { notation: 'si', thousands: '', decimal: '.' };
+    expect(toSignificantFigures(250, 4, si)).toBe('250.0');
   });
 });
 

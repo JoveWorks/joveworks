@@ -8,7 +8,7 @@
  */
 
 import { canonicalUnit, type Series } from '@mds/kernel';
-import { DIMENSIONLESS, type Unit } from '@mds/units';
+import { DIMENSIONLESS, PLAIN_NUMBER_FORMAT, type NumberFormat, type Unit } from '@mds/units';
 import { VALUE_PORT, type GraphNode } from '@mds/schema';
 
 import type { Analysis } from './analysis';
@@ -46,16 +46,20 @@ export function extent(reading: Reading): readonly [number, number] | undefined 
 }
 
 /** One line for a node body or a notebook entry. */
-export function summarise({ series, unit }: Reading, figures = 4): string {
+export function summarise(
+  { series, unit }: Reading,
+  figures = 4,
+  format: NumberFormat = PLAIN_NUMBER_FORMAT,
+): string {
   if (series.kind === 'categorical') {
     return series.axes.length === 0 ? (series.data[0] ?? '—') : `${series.data.length} values`;
   }
   const [first] = series.data;
   if (first === undefined) return '—';
-  if (series.axes.length === 0) return display(first, unit, figures);
+  if (series.axes.length === 0) return display(first, unit, figures, format);
 
   const [low, high] = extent({ series, unit }) as readonly [number, number];
-  return `${display(low, unit, figures)} … ${display(high, unit, figures)}`;
+  return `${display(low, unit, figures, format)} … ${display(high, unit, figures, format)}`;
 }
 
 /** `26 points along pad width w` — what a sparkline is labelled with. */

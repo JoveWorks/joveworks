@@ -171,6 +171,55 @@ export function knownUnitSymbols(): readonly string[] {
 }
 
 /**
+ * The bare, prefixable atomic symbol `symbol` names — itself, or itself
+ * under a prefix already applied (`kPa` → `Pa`). Undefined for anything
+ * else: a compound expression such as `N/mm²` never matches an `ATOMS` key
+ * with or without a prefix stripped, so it is excluded with no special case
+ * needed — there is no unambiguous SI prefix for a ratio (S49: a display
+ * unit is printed exactly as authored unless this says otherwise).
+ */
+export function prefixableAtomOf(symbol: string): string | undefined {
+  if (ATOMS[symbol]?.prefixable === true) return symbol;
+  for (const prefix of Object.keys(PREFIXES)) {
+    if (!symbol.startsWith(prefix) || symbol.length === prefix.length) continue;
+    const rest = symbol.slice(prefix.length);
+    if (ATOMS[rest]?.prefixable === true) return rest;
+  }
+  return undefined;
+}
+
+/** The engineering steps only — 1000 at a time, never centi/deci/deca/hecto. */
+const ENGINEERING_PREFIXES: readonly (readonly [string, number])[] = [
+  ['G', 1e9],
+  ['M', 1e6],
+  ['k', 1e3],
+  ['', 1],
+  ['m', 1e-3],
+  ['µ', 1e-6],
+  ['n', 1e-9],
+];
+
+/**
+ * The best SI-prefixed spelling of `canonicalValue` under the bare atom
+ * `atomSymbol` (from `prefixableAtomOf`) — the largest step of 1000 that
+ * still lands the printed magnitude at 1 or more, clamped to G at the top
+ * and n at the bottom rather than reaching for further prefixes nobody
+ * reads comfortably.
+ */
+export function siPrefixedUnit(atomSymbol: string, canonicalValue: number): Unit {
+  const base = ATOMS[atomSymbol];
+  if (base === undefined) throw new UnitError(`${atomSymbol} is not a known unit`);
+  const magnitude = Math.abs(canonicalValue / base.factor);
+  const step =
+    magnitude === 0
+      ? (['', 1] as const)
+      : (ENGINEERING_PREFIXES.find(([, scale]) => magnitude >= scale) ??
+        (ENGINEERING_PREFIXES.at(-1) as (typeof ENGINEERING_PREFIXES)[number]));
+  const [prefix, scale] = step;
+  return unit(`${prefix}${atomSymbol}`, base.dimension, base.factor * scale);
+}
+
+/**
  * Reject a connection whose dimensions differ (S6). `source` and `target` are
  * named so the message reads in wiring order.
  */

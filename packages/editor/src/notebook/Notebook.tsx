@@ -17,10 +17,14 @@ import { useState, type ReactElement } from 'react';
 import type { OutputResult } from '@mds/kernel';
 import type { Frame, GraphDocument, OutputNode } from '@mds/schema';
 
+import type { NumberFormat } from '@mds/units';
+
 import { useGraph } from '../graph-context';
+import { useSettings } from '../settings-context';
 import { ContextMenu, type MenuItem } from '../canvas/ContextMenu';
 import { Symbol } from '../Symbol';
 import { moveFrame, reframe, removeNodes, reorderFrame, updateFrame, updateNode } from '../model/document';
+import { toUnitsFormat } from '../model/numberFormat';
 import { display, displayNumber } from '../model/quantity';
 import { summarise } from '../model/values';
 import { PlotFigure } from './PlotFigure';
@@ -36,25 +40,27 @@ const COMPARISON_TEXT: Readonly<Record<string, string>> = {
 
 function Result({ result }: { readonly result: OutputResult }): ReactElement {
   const { document } = useGraph();
+  const { numberFormat } = useSettings();
+  const format: NumberFormat = toUnitsFormat(numberFormat);
   const label = result.label ?? result.nodeId;
 
   if (result.kind === 'print') {
     return (
       <p className="result print">
         <span className="label">{label}</span>
-        <span className="number">{summarise(result, result.figures)}</span>
+        <span className="number">{summarise(result, result.figures, format)}</span>
       </p>
     );
   }
 
   if (result.kind === 'check') {
-    const shown = display(result.threshold, result.unit);
+    const shown = display(result.threshold, result.unit, 4, format);
     return (
       <p className={`result check ${result.passed ? 'pass' : 'fail'}`}>
         <span className="mark">{result.passed ? '✓' : '✗'}</span>
         <span className="label">{label}</span>
         <span className="number">
-          {summarise({ series: result.series, unit: result.unit })}{' '}
+          {summarise({ series: result.series, unit: result.unit }, 4, format)}{' '}
           {COMPARISON_TEXT[result.comparison] ?? result.comparison} {shown}
         </span>
       </p>
@@ -86,7 +92,7 @@ function Result({ result }: { readonly result: OutputResult }): ReactElement {
                       {cell === undefined
                         ? ''
                         : typeof cell === 'number'
-                          ? displayNumber(cell, column.unit)
+                          ? displayNumber(cell, column.unit, 4, format)
                           : cell}
                     </td>
                   );
@@ -105,8 +111,8 @@ function Result({ result }: { readonly result: OutputResult }): ReactElement {
       <PlotFigure result={result} document={document} />
       {result.threshold === undefined ? null : (
         <p className="threshold">
-          threshold at {display(result.threshold, result.unit)} — where the curve crosses it is the
-          size that works
+          threshold at {display(result.threshold, result.unit, 4, format)} — where the curve crosses
+          it is the size that works
         </p>
       )}
     </div>

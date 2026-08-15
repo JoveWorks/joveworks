@@ -31,7 +31,9 @@ import {
 } from '@mds/schema';
 
 import { useGraph } from '../graph-context';
+import { useSettings } from '../settings-context';
 import { reframe, removeNodes, renameNode, updateNode } from '../model/document';
+import { toUnitsFormat } from '../model/numberFormat';
 import { formatAuthored, parseAuthored, unitLabel } from '../model/quantity';
 import { reading, summarise } from '../model/values';
 import { Symbol } from '../Symbol';
@@ -69,6 +71,8 @@ function Verdict({ nodeId }: { readonly nodeId: string }): ReactElement | null {
 
 export function CompareNodeView({ id, selected }: NodeProps): ReactElement | null {
   const { document, analysis, edit, pinned, togglePin } = useGraph();
+  const { numberFormat } = useSettings();
+  const format = toUnitsFormat(numberFormat);
   const node = document.nodes.find((candidate) => candidate.id === id);
   if (node === undefined || node.kind !== 'compare') return null;
 
@@ -105,7 +109,7 @@ export function CompareNodeView({ id, selected }: NodeProps): ReactElement | nul
       }
       subtitle={
         impliedUnit === undefined
-          ? `${node.comparison} ${formatAuthored(node.threshold)}`
+          ? `${node.comparison} ${formatAuthored(node.threshold, format)}`
           : `${node.comparison} ${node.threshold.value} ${unitLabel(impliedUnit)}`
       }
       detail={
@@ -129,14 +133,14 @@ export function CompareNodeView({ id, selected }: NodeProps): ReactElement | nul
             <span className="quantity-split">
               <TextField
                 className="quantity"
-                value={formatAuthored(node.threshold)}
+                value={formatAuthored(node.threshold, format)}
                 placeholder="1.5"
                 title={
                   wired.has(THRESHOLD_PORT)
                     ? 'Overridden by the wire — this is what applies when it is removed.'
                     : 'A number a student types, with its unit (S58), unless something is wired in.'
                 }
-                onCommit={(text) => setNode({ threshold: parseAuthored(text) })}
+                onCommit={(text) => setNode({ threshold: parseAuthored(text, format) })}
               />
               {impliedUnit === undefined ? null : (
                 <span
@@ -172,7 +176,7 @@ export function CompareNodeView({ id, selected }: NodeProps): ReactElement | nul
       </ul>
 
       <div className="node-value">
-        <span className="reading">{verdict === undefined ? '—' : summarise(verdict)}</span>
+        <span className="reading">{verdict === undefined ? '—' : summarise(verdict, 4, format)}</span>
         {verdict === undefined ? null : <Sparkline reading={verdict} />}
         <Verdict nodeId={id} />
         <span className="port-out">

@@ -45,6 +45,8 @@ export {
   knownUnitSymbols,
   assertDimensionsCompatible,
   namedUnit,
+  prefixableAtomOf,
+  siPrefixedUnit,
 } from './unit.js';
 export type { Unit } from './unit.js';
 
@@ -67,6 +69,9 @@ export {
   convert,
   toSignificantFigures,
   formatQuantity,
+  formatPlainNumber,
   parseQuantity,
+  stripNumberFormatting,
+  PLAIN_NUMBER_FORMAT,
 } from './convert.js';
-export type { ParsedQuantity } from './convert.js';
+export type { ParsedQuantity, NumberFormat, NumberNotation } from './convert.js';

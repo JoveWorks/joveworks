@@ -35,6 +35,8 @@ import {
 } from '@mds/schema';
 
 import { useGraph } from '../graph-context';
+import { useSettings } from '../settings-context';
+import { toUnitsFormat } from '../model/numberFormat';
 import {
   changeOutputKind,
   NEW_COLUMN,
@@ -90,6 +92,8 @@ function Verdict({ nodeId }: { readonly nodeId: string }): ReactElement | null {
 
 export function OutputNodeView({ id, selected }: NodeProps): ReactElement | null {
   const { document, analysis, edit, pinned, togglePin } = useGraph();
+  const { numberFormat } = useSettings();
+  const format = toUnitsFormat(numberFormat);
   const [columnDrag, setColumnDrag] = useState<
     { readonly over: string; readonly position: 'before' | 'after' } | undefined
   >(undefined);
@@ -192,6 +196,9 @@ export function OutputNodeView({ id, selected }: NodeProps): ReactElement | null
               </label>
             </>
           ) : null}
+          {/* `figures` is a whole-number count, not a value with the document's own
+              punctuation, so it stays on the default plain formatting above — a
+              global thousands separator has nothing to group in a number under 20. */}
 
           {output.kind === 'check' ? (
             <>
@@ -215,10 +222,10 @@ export function OutputNodeView({ id, selected }: NodeProps): ReactElement | null
                 threshold
                 <TextField
                   className="quantity"
-                  value={formatAuthored(output.threshold)}
+                  value={formatAuthored(output.threshold, format)}
                   placeholder="1.5"
                   title="A number a student types, with its unit (S58)."
-                  onCommit={(text) => setOutput({ ...output, threshold: parseAuthored(text) })}
+                  onCommit={(text) => setOutput({ ...output, threshold: parseAuthored(text, format) })}
                 />
               </label>
             </>
@@ -265,12 +272,14 @@ export function OutputNodeView({ id, selected }: NodeProps): ReactElement | null
                 threshold
                 <TextField
                   className="quantity"
-                  value={output.threshold === undefined ? '' : formatAuthored(output.threshold)}
+                  value={output.threshold === undefined ? '' : formatAuthored(output.threshold, format)}
                   placeholder="none"
                   onCommit={(text) => {
                     const { threshold: _dropped, ...rest } = output;
                     setOutput(
-                      text.trim().length === 0 ? rest : { ...rest, threshold: parseAuthored(text) },
+                      text.trim().length === 0
+                        ? rest
+                        : { ...rest, threshold: parseAuthored(text, format) },
                     );
                   }}
                 />
@@ -397,7 +406,9 @@ export function OutputNodeView({ id, selected }: NodeProps): ReactElement | null
         {output.kind === 'table' ? null : (
           <>
             <span className="reading">
-              {value === undefined ? '—' : summarise(value, output.kind === 'print' ? output.figures ?? 4 : 4)}
+              {value === undefined
+                ? '—'
+                : summarise(value, output.kind === 'print' ? output.figures ?? 4 : 4, format)}
             </span>
             {value === undefined ? null : <Sparkline reading={value} />}
           </>

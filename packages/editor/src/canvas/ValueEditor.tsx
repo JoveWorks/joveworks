@@ -15,9 +15,11 @@
 
 import type { ReactElement } from 'react';
 
-import { dimensionsEqual, parseUnit, type Unit } from '@mds/units';
+import { dimensionsEqual, parseUnit, type NumberFormat, type Unit } from '@mds/units';
 import { RENARD_SERIES, type RenardSeries, type ValueSpec } from '@mds/schema';
 
+import { useSettings } from '../settings-context';
+import { toUnitsFormat } from '../model/numberFormat';
 import { NumberField, TextField } from './fields';
 
 type Kind = 'scalar' | 'linear' | 'logarithmic' | 'list' | 'renard';
@@ -162,9 +164,16 @@ export function ValuePointsField({ value, onChange }: Props): ReactElement | nul
   );
 }
 
+/** Values here are a student's magnitudes — always in the settings' punctuation. */
+function useValueFormat(): NumberFormat {
+  const { numberFormat } = useSettings();
+  return toUnitsFormat(numberFormat);
+}
+
 /** The value itself — always visible on the card, not just on hover (S47). */
 export function ValueFields({ value, onChange }: Props): ReactElement {
   const unit = unitOf(value);
+  const format = useValueFormat();
 
   const setUnit = (text: string): void => {
     const parsed = parseUnit(text); // throws, and the field shows why
@@ -193,6 +202,7 @@ export function ValueFields({ value, onChange }: Props): ReactElement {
           <NumberField
             value={value.value}
             autoSize={1}
+            format={format}
             title="The value. The unit is the field beside it, and does not need retyping."
             onCommit={(next) => onChange({ ...value, value: next })}
           />
@@ -213,6 +223,7 @@ export function ValueFields({ value, onChange }: Props): ReactElement {
             <NumberField
               value={value.start}
               autoSize={1}
+              format={format}
               title="The low end. Type a unit here too (10 mm ... 1 m) to re-express both bounds in it."
               onCommit={(start) => onChange({ ...value, start })}
             />
@@ -229,6 +240,7 @@ export function ValueFields({ value, onChange }: Props): ReactElement {
             <NumberField
               value={value.stop}
               autoSize={1}
+              format={format}
               title="The high end."
               onCommit={(stop) => onChange({ ...value, stop })}
             />
@@ -261,6 +273,7 @@ export function ValueFields({ value, onChange }: Props): ReactElement {
             <NumberField
               value={value.start}
               autoSize={1}
+              format={format}
               title="The low end. Type a unit here too (10 mm ... 1 m) to re-express both bounds in it."
               onCommit={(start) => onChange({ ...value, start })}
             />
@@ -277,6 +290,7 @@ export function ValueFields({ value, onChange }: Props): ReactElement {
             <NumberField
               value={value.stop}
               autoSize={1}
+              format={format}
               title="The high end."
               onCommit={(stop) => onChange({ ...value, stop })}
             />
