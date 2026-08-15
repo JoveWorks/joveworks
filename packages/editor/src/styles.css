@@ -620,6 +620,12 @@ aside.right {
   color: var(--muted);
 }
 
+/* A threshold's unit assumed from the wired value, not typed (CompareNodeView.tsx) — muted and italic so it reads as a hint, not an authored value. */
+.quantity-split .unit.implied {
+  font-style: italic;
+  color: var(--muted);
+}
+
 .output-editor .quantity {
   width: 100%;
 }

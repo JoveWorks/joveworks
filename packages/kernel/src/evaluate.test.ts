@@ -6,6 +6,7 @@ import { evaluateDocument, valueAt, type CheckResult, type PlotResult, type Tabl
 import { KernelError } from './errors.js';
 import {
   CATALOGUE,
+  catalogueOf,
   compareNode,
   documentOf,
   formulaNode,
@@ -350,12 +351,46 @@ describe('compare nodes', () => {
     expect(verdict.data).toEqual(['pass', 'fail']);
   });
 
-  it('reads a bare, unitless threshold default in the canonical unit value resolves to (S62)', () => {
+  it('reads a bare, unitless threshold default in the dimension value resolves to', () => {
     // A fresh threshold's unit is blank until the student sets one; that
     // must not force a 100 read as 100 dimensionless when p is N/mm².
     const document = pressureGraph(compareNode('c', '<=', { value: 100, unit: '' }));
     const verdict = valueAt(evaluateDocument(document, catalogues), 'c', 'verdict') as CategoricalSeries;
     expect(verdict.data).toEqual(['pass', 'fail']);
+  });
+
+  it("reads a bare threshold default in the value port's own display unit, not canonical (S53)", () => {
+    // The pressure formula here displays in Pa, not N/mm² — a bare threshold
+    // has to mean Pa too, or a student comparing against a Pa-displayed
+    // value has no way to know 6 secretly meant 6 N/mm² canonical, a unit
+    // nothing on screen ever shows.
+    const PRESSURE_PA: JsonObject = {
+      id: 'pressurePa',
+      version: 1,
+      output: { kind: 'numeric', name: 'p', unit: 'Pa' },
+      inputs: [
+        { kind: 'numeric', name: 'F', unit: 'N' },
+        { kind: 'numeric', name: 'A', unit: 'mm²' },
+      ],
+      expression: 'F / A',
+      description: 'Force over area, displayed in Pa. Invented for testing.',
+      status: 'unverified',
+    };
+    const paCatalogue = catalogueOf([PRESSURE_PA], 'pa-test');
+    const document = documentOf(
+      [
+        input('F', scalar(20, 'N')),
+        input('A', scalar(1000, 'mm²')),
+        formulaNode('p', refTo('pressurePa', paCatalogue)),
+        compareNode('c', '>=', { value: 6, unit: '' }),
+      ],
+      [wire('F.value', 'p.F'), wire('A.value', 'p.A'), wire('p.p', 'c.value')],
+    );
+    // 20 N / 1000 mm² = 0.02 N/mm² = 20 000 Pa. A bare threshold of 6 must
+    // mean 6 Pa (comparable to a Pa-displayed value, and trivially passed),
+    // not 6 N/mm² canonical (which would fail: 0.02 >= 6 is false).
+    const verdict = valueAt(evaluateDocument(document, [paCatalogue]), 'c', 'verdict') as CategoricalSeries;
+    expect(verdict.data).toEqual(['pass']);
   });
 
   it('uses a wired threshold instead of the typed default, once something is wired to it', () => {

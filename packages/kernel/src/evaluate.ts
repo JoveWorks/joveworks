@@ -18,7 +18,7 @@
  *   is the economy S43 was chosen for.
  */
 
-import { DIMENSIONLESS, toCanonical, type Unit } from '@mds/units';
+import { DIMENSIONLESS, isDimensionless, toCanonical, type Unit } from '@mds/units';
 import {
   VALUE_PORT,
   THRESHOLD_PORT,
@@ -475,9 +475,24 @@ function evaluateCompare(
 
   const thresholdKey = endpointKey(node.id, THRESHOLD_PORT);
   const thresholdEdge = resolution.incoming.get(thresholdKey)?.[0];
+  // A bare, unitless default is read in `value`'s own *display* unit, not its
+  // canonical one — a student comparing a Pa-displayed value never sees
+  // canonical N/mm² anywhere else on screen (S53), so a typed `6` has to mean
+  // 6 of whatever unit is shown, not 6 of a unit the app never shows at all.
+  // An explicit unit the student did type is never overridden by this.
+  // `value` is a target port here, not a source — its resolved type (with
+  // the wired source's own display unit) lives in `targets`, propagated
+  // there verbatim by resolveGraph's compare-node branch (graph.ts).
+  const valueDimension = resolution.targets.get(valueKey)?.dimension;
+  const thresholdUnit =
+    isDimensionless(node.threshold.unit.dimension) &&
+    valueDimension !== undefined &&
+    !isDimensionless(valueDimension)
+      ? displayUnit(resolution.targets.get(valueKey))
+      : node.threshold.unit;
   const threshold =
     thresholdEdge === undefined
-      ? scalarSeries(toCanonical(node.threshold.value, node.threshold.unit))
+      ? scalarSeries(toCanonical(node.threshold.value, thresholdUnit))
       : valueAtEdge(thresholdEdge, thresholdKey, values);
   if (threshold.kind !== 'numeric') {
     throw new KernelError('a comparison needs a numeric threshold, not a categorical one', thresholdKey);

@@ -19,6 +19,8 @@
 import type { ReactElement } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 
+import { canonicalUnit, type PortType } from '@mds/kernel';
+import { isDimensionless, type Unit } from '@mds/units';
 import {
   COMPARISONS,
   THRESHOLD_PORT,
@@ -30,13 +32,24 @@ import {
 
 import { useGraph } from '../graph-context';
 import { reframe, removeNodes, renameNode, updateNode } from '../model/document';
-import { formatAuthored, parseAuthored } from '../model/quantity';
+import { formatAuthored, parseAuthored, unitLabel } from '../model/quantity';
 import { reading, summarise } from '../model/values';
 import { Symbol } from '../Symbol';
 import { NodeShell } from './NodeShell';
 import { Sparkline } from './Sparkline';
 import { slotHandleId } from './spectrumSlots';
 import { TextField } from './fields';
+
+/**
+ * What a bare, unitless threshold is actually compared in — `value`'s own
+ * display unit (S53), the same reading `evaluateCompare` in the kernel
+ * gives it. An explicit unit the student typed is never overridden.
+ */
+function impliedThresholdUnit(node: CompareNode, valueType: PortType | undefined): Unit | undefined {
+  if (!isDimensionless(node.threshold.unit.dimension)) return undefined;
+  if (valueType?.dimension === undefined || isDimensionless(valueType.dimension)) return undefined;
+  return valueType.unit ?? canonicalUnit(valueType.dimension);
+}
 
 /** `fails at 1 of 2 points`, or `passes` — the same badge idiom the check output uses. */
 function Verdict({ nodeId }: { readonly nodeId: string }): ReactElement | null {
@@ -67,6 +80,7 @@ export function CompareNodeView({ id, selected }: NodeProps): ReactElement | nul
     document.edges.filter((edge) => edge.to.node === id).map((edge) => edge.to.port),
   );
   const valueMissing = !wired.has(VALUE_PORT);
+  const impliedUnit = impliedThresholdUnit(node, analysis.resolution?.targets.get(`${id}.${VALUE_PORT}`));
 
   const setNode = (change: Partial<Pick<CompareNode, 'comparison' | 'threshold'>>): void =>
     edit((current) =>
@@ -89,7 +103,11 @@ export function CompareNodeView({ id, selected }: NodeProps): ReactElement | nul
           onCommit={(label) => edit((current) => renameNode(current, id, label))}
         />
       }
-      subtitle={`${node.comparison} ${formatAuthored(node.threshold)}`}
+      subtitle={
+        impliedUnit === undefined
+          ? `${node.comparison} ${formatAuthored(node.threshold)}`
+          : `${node.comparison} ${node.threshold.value} ${unitLabel(impliedUnit)}`
+      }
       detail={
         <div className="output-editor">
           <label>
@@ -108,17 +126,27 @@ export function CompareNodeView({ id, selected }: NodeProps): ReactElement | nul
           </label>
           <label>
             threshold
-            <TextField
-              className="quantity"
-              value={formatAuthored(node.threshold)}
-              placeholder="1.5"
-              title={
-                wired.has(THRESHOLD_PORT)
-                  ? 'Overridden by the wire — this is what applies when it is removed.'
-                  : 'A number a student types, with its unit (S58), unless something is wired in.'
-              }
-              onCommit={(text) => setNode({ threshold: parseAuthored(text) })}
-            />
+            <span className="quantity-split">
+              <TextField
+                className="quantity"
+                value={formatAuthored(node.threshold)}
+                placeholder="1.5"
+                title={
+                  wired.has(THRESHOLD_PORT)
+                    ? 'Overridden by the wire — this is what applies when it is removed.'
+                    : 'A number a student types, with its unit (S58), unless something is wired in.'
+                }
+                onCommit={(text) => setNode({ threshold: parseAuthored(text) })}
+              />
+              {impliedUnit === undefined ? null : (
+                <span
+                  className="unit implied"
+                  title="No unit typed — taken from the value's own unit. Type one to fix it instead."
+                >
+                  {unitLabel(impliedUnit)}
+                </span>
+              )}
+            </span>
           </label>
         </div>
       }
