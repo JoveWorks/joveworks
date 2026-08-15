@@ -5,7 +5,7 @@
  * exported graph, an IndexedDB autosave. These four functions are the boundary,
  * and nothing downstream is expected to have validated anything.
  *
- * No `fs` and no `fetch` here (S15): reading the bytes belongs to the file
+ * No `fs` and no `fetch` here: reading the bytes belongs to the file
  * adapter, so a Tauri build can replace it without touching this package.
  */
 

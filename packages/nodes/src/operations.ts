@@ -15,7 +15,7 @@
  * - trig, log and exp **require a dimensionless argument** — so their ports are
  *   concrete, not generic;
  * - `min`/`max` require **identical** dimensions across every value compared —
- *   one variable, joined by any number of wires into one spectrum port (S71),
+ *   one variable, joined by any number of wires into one spectrum port,
  *   not two fixed ones;
  * - rounding **preserves** dimension — `floor` is `$A → $A`, not `$A → ''`.
  *
@@ -26,14 +26,14 @@
 import type { Formula, NumericPort, OutputPort, Port, SpectrumPort } from '@mds/schema';
 import { parseGenericDimension, parseUnit } from '@mds/units';
 
-/** A port that adopts the dimension of whatever is wired to it (S59). */
+/** A port that adopts the dimension of whatever is wired to it. */
 function generic(name: string, variable: string, description: string): NumericPort {
   return { kind: 'numeric', name, unit: parseGenericDimension(`$${variable}`), description };
 }
 
 /**
- * A spectrum port that adopts the dimension of whatever is wired to it (S59).
- * Unlike a plain generic port it may be joined by more than one wire (S71) —
+ * A spectrum port that adopts the dimension of whatever is wired to it.
+ * Unlike a plain generic port it may be joined by more than one wire —
  * `minimum`/`maximum` are the two base nodes that need it.
  */
 function genericSpectrum(name: string, variable: string, description: string): SpectrumPort {
@@ -170,7 +170,7 @@ const DRAFTS: readonly Draft[] = [
     inputs: [plain('a', '', 'Base'), plain('b', '', 'Exponent')],
   },
 
-  // --- rounding: dimension-preserving (S35) --------------------------------
+  // --- rounding: dimension-preserving --------------------------------
   {
     id: 'floor',
     description: 'Round down to a whole number, keeping the dimension.',
@@ -193,7 +193,7 @@ const DRAFTS: readonly Draft[] = [
     inputs: [generic('a', 'A', 'Value')],
   },
 
-  // --- trigonometry: angle in, pure number out (S54) -----------------------
+  // --- trigonometry: angle in, pure number out -----------------------
   {
     id: 'sine',
     description: 'Sine of an angle.',
@@ -283,7 +283,7 @@ const DRAFTS: readonly Draft[] = [
     inputs: [],
   },
 
-  // --- reductions over a spectrum (S36) ------------------------------------
+  // --- reductions over a spectrum ------------------------------------
   {
     id: 'sum',
     description:

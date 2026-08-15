@@ -1,5 +1,5 @@
 /**
- * The base node library as a catalogue (S42) — unrestricted, citation-free, and
+ * The base node library as a catalogue — unrestricted, citation-free, and
  * loaded the same way an R&M catalogue is.
  *
  * It is a **build artefact of this package**, not hand-written JSON: the records

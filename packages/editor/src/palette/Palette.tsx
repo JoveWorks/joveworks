@@ -1,6 +1,6 @@
 /**
  * The palette: every formula the loaded catalogues carry, and the two node kinds
- * that are not formulas at all (S60).
+ * that are not formulas at all.
  *
  * A student finds a formula by equation number or by what it computes, so the
  * search reads ids, citations, descriptions and port names alike. Quarantined
@@ -38,6 +38,9 @@ function useDropPosition(): () => Position {
 export function Palette(): ReactElement {
   const { document, catalogues, edit } = useGraph();
   const [query, setQuery] = useState('');
+  // Session UI state, not a document field — reopens on reload, same
+  // precedent as a node's pin state. Which sections are open changes nothing
+  // about what the graph is. Search ignores this and always shows a match.
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
   const position = useDropPosition();
 

@@ -1,5 +1,5 @@
 /**
- * The one plot (S26): a swept value against the range that produced it.
+ * The one plot: a swept value against the range that produced it.
  *
  * Observable Plot, and the kernel has already done every part that is not
  * drawing. `PlotResult` arrives with the series, the axis it varies along, the
@@ -8,7 +8,7 @@
  *
  * Two behaviours are worth naming:
  *
- * - **A log range gets a log axis** (S29). That is not decoration: the straight
+ * - **A log range gets a log axis**. That is not decoration: the straight
  *   line a student is meant to recognise on a Wöhler or bearing-life plot is only
  *   straight on log-log.
  * - **The threshold is the point.** A curve crossing `S = 1.5` is what turns a
@@ -38,7 +38,7 @@ function coordinates(axis: PlotResult['x']): readonly (number | string)[] {
     : axis.coordinates.data;
 }
 
-/** Whether the range node behind an axis was logarithmic (S29). */
+/** Whether the range node behind an axis was logarithmic. */
 function isLogAxis(document: GraphDocument, axisId: string): boolean {
   const node = document.nodes.find((candidate) => candidate.id === axisId);
   return node?.kind === 'input' && node.value.kind === 'logarithmic';

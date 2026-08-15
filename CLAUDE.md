@@ -26,18 +26,20 @@ The hand pass over the editor in a browser — the one thing no automated test
 could do — is done; its findings are recorded and fixed in `UX-SPEC.md`.
 
 Read [OVERVIEW.md](OVERVIEW.md) first — it is the whole project in one pass.
-Then [PLAN.md](PLAN.md) for the build sequence and
-[DECISIONS.md](DECISIONS.md) for what is settled (`S1`–`S74`) and why.
+Then [PLAN.md](PLAN.md) for the build sequence. Design rationale that isn't
+obvious from the code lives as comments at the site it explains, not in a
+separate decisions doc — this is still a solo project days old, not one with
+a meeting trail to keep.
 
-**The next concrete step** is in [NEXT.md](NEXT.md), which carries a
-ready-to-paste prompt for the current chunk of work and the ordered list after
-it. That is now the start of milestone 2. **Keep NEXT.md current**: when a
-session finishes the chunk it describes, update it to name the next one.
+**Milestone 2 is breadth** — DEFECTS.md across the corpus, the remaining
+chapters, and the full notebook view (PLAN.md's steps 9–11). Ask Thomas which
+chunk to start before picking one; nothing here decides it for you.
 
-**No decision is open.** `D20` — how an angle becomes a pure number — closed as
-S66 taking its option A: the two wrap-angle formulas stay quarantined, and the
-`β₁` golden stays out of reach. Reopening it is a content question now, not a
-design one; see the unit-tag sign-off in DECISIONS.md.
+**No design decision is open.** How an angle becomes a pure number is settled:
+the two wrap-angle formulas (`rm.16.24A`/`rm.16.24B`) stay quarantined, and the
+`β₁` golden stays out of reach, until the wrap angle's `[]` tag is confirmed
+against R&M as `[°]` — a content question now, not a design one; see PLAN.md's
+unit-tag sign-off section.
 
 Still outstanding, none of it gating code: defect and unit-tag sign-off against
 R&M, which quarantines individual formulas rather than holding up a build step.
@@ -84,7 +86,8 @@ the project has no Python dependencies at all. It is consulted for three things:
 Do **not** port its architecture, its `MySymbol`/SymPy layer, its unit-symbol
 convention (trailing-underscore SymPy symbols), or its helpers. Those are what
 this project exists to replace. If something in the old code looks worth keeping,
-check DECISIONS.md — most such calls are already settled against it.
+that call has most likely already been made and rejected — check the comments
+in the relevant package before reintroducing it.
 
 ## Distribution restriction — carries over
 

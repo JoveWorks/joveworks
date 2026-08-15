@@ -1,7 +1,7 @@
 /**
  * The two graphs the editor can open with, and the difference between them.
  *
- * **The pad-pressure study is built from base nodes only** (S42), so it opens
+ * **The pad-pressure study is built from base nodes only**, so it opens
  * with nothing loaded and carries no textbook content whatsoever. It exists to
  * exercise the thing milestone 1 is actually about: an input set to a range, a
  * whole downstream graph becoming a series, and a plot with a threshold on it.
@@ -10,8 +10,10 @@
  * fixture of `test/belt-goldens.test.ts`, wired on a canvas instead of in a
  * test. It names formulas by id and supplies numbers, and it holds no expression
  * of any kind: the references are built from the catalogue *in memory*, so
- * without that catalogue loaded the sample is unavailable rather than embedded
- * (S23/S45). That is the honest degradation NEXT.md asks for.
+ * without that catalogue loaded the sample is unavailable rather than embedded.
+ * That is what makes "the editor degrades honestly" a mechanism
+ * rather than an intention: there is nothing to degrade from, so no fixture
+ * ever goes stale against the catalogue it was built from.
  */
 
 import { parseUnit } from '@mds/units';
@@ -184,7 +186,7 @@ export const BELT_LAB_FORMULAS = [
  * golden values are the milestone 1 acceptance criterion.
  *
  * β₁ is absent for the reason it is absent from the test — `rm.16.24A` is
- * quarantined and D20 was settled as option A (S66). Drag it in from the palette
+ * quarantined and D20 was settled as option A. Drag it in from the palette
  * and the node says so; that is the quarantine gate, visible.
  */
 export function beltLab(catalogues: readonly Catalogue[]): GraphDocument | undefined {

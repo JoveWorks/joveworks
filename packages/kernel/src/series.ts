@@ -1,5 +1,5 @@
 /**
- * Labelled axes, and the broadcasting that makes a two-input sweep a grid (S43).
+ * Labelled axes, and the broadcasting that makes a two-input sweep a grid.
  *
  * Every value the kernel carries is a **series over zero or more axes**. A
  * scalar is the zero-axis case rather than a separate kind, which is the whole
@@ -20,7 +20,7 @@
 import { KernelError } from './errors.js';
 
 export interface Axis {
-  /** The range input node that introduced it (S43) — a plot names an axis by it. */
+  /** The range input node that introduced it — a plot names an axis by it. */
   readonly id: string;
   /** What to write on the axis: the node's `axisLabel`, its label, or its id. */
   readonly label: string;
@@ -32,7 +32,7 @@ export interface Axis {
 export interface NumericSeries {
   readonly kind: 'numeric';
   readonly axes: readonly Axis[];
-  /** Canonical values (S5), row-major over `axes`. */
+  /** Canonical values, row-major over `axes`. */
   readonly data: readonly number[];
 }
 
@@ -42,7 +42,7 @@ export interface CategoricalSeries {
   readonly data: readonly string[];
 }
 
-/** A load spectrum: consumed whole, introduces no axis, cannot be swept (S36). */
+/** A load spectrum: consumed whole, introduces no axis, cannot be swept. */
 export interface Spectrum {
   readonly kind: 'spectrum';
   /** Canonical values. */
@@ -156,7 +156,7 @@ export function reader(series: NumericSeries, target: readonly Axis[]): (cell: n
  * S43's guard: warn when a grid grows large enough to be felt.
  *
  * A warning and not a refusal — a 40 000-point study is a legitimate thing to
- * ask for, and the study is the primary use of this tool (S29). What is not
+ * ask for, and the study is the primary use of this tool. What is not
  * legitimate is discovering the cost after the browser stops responding.
  */
 export const LARGE_GRID = 10_000;

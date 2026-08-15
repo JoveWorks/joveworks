@@ -228,8 +228,31 @@ Three traps, all confirmed present in the source material:
 ~500 tags need normalising (`[N/mm²]`, `[N/mm**2]`, `[MPa]`; `[rpm]`, `[1/min]`,
 `[min-1]`; `[deg]`, `[°]`, `[rad]`). 315 are already `[]`. ~30 are junk
 (`[__O]`, `[1E6rotatons]`, `[E-6m]`). These quarantine their formula until
-signed off (S20); DECISIONS.md carries proposed readings for most of them, and
-S21 settles how revolutions are modelled.
+signed off (S20). Revolutions are a dimensionless count with a 10⁶ display
+scale (S21) — bearing life L₁₀ is not stored as an angle, matching ISO 281 and
+keeping the displayed value the one students expect.
+
+Proposed readings, each needing sign-off against the book — these are *not* to
+be written into the catalogue on the strength of the guess alone:
+
+| Tag | Proposed reading |
+|---|---|
+| `[1E6rotatons]`, `[1e6revolutions]` | Millions of revolutions — bearing life L₁₀, ISO 281. The typo'd spelling and the case-variant duplicate are consistent with one quantity typed twice |
+| `[E-6m]` | Micrometres — surface roughness, or a fit/tolerance deviation |
+| `[__O]`, `[__o]` | Degrees; `°` mangled by an encoding round-trip |
+
+The remaining ~500 tags normalise mechanically and need no sign-off.
+
+**Belt's wrap angle** `β₁`/`β_k` is tagged `[]`. The tag parses, so it is not
+junk in the sense above — it reads as *a pure number* where the quantity is
+plainly an angle, which is what quarantines `rm.16.24A`/`rm.16.24B` and costs
+the `β₁` golden (test/belt-goldens.test.ts asserts the other eleven match and
+that a graph computing β₁ is refused, on the record). The reading to confirm
+is `[°]`; confirming it does not by itself release the two records, since
+`sin`/`cos`/`tan` accepting a dimensionless argument (`packages/kernel/src/dimensions.ts`)
+would also need loosening for `acos`'s *return* — two other belt formulas
+consume the same angle as a pure number. Worth taking both together, and worth
+a golden.
 
 ## Migration and verification
 
@@ -356,8 +379,17 @@ S25 migration.
   `[%]` (dimensionless with display scale, as S21), and `[s-1]`.
 - **Belt's defect exposure is one line.** ~~None of the ~12 confirmed defects are
   in `C16`.~~ **Wrong, corrected 2026-08-15**: running the dimension check over
-  the extracted chapter found three, at `C16_Belt.py:388`, `:410` and `:426`.
-  See DECISIONS.md under defect sign-off. The survey that produced this line
+  the extracted chapter found three, quarantined in the catalogue with their
+  evidence and a proposed correction — the first two need R&M to confirm, the
+  third only needs confirmation since it has two independent witnesses:
+
+  | Formula | What the check refuses | Proposed reading |
+  |---|---|---|
+  | 16.31 | Produces a velocity where a width is declared | The specific *power* symbol — declared in the source's symbol dict and used by no method — in place of the specific torque. 16.32 is the torque twin and is sound |
+  | 16.34 | Produces a length where a force is declared | The unit tag, not the expression: the belt-type factor is tagged `[]` and must carry force per unit width. The docstring also writes it as an exponent where the code multiplies, and an exponent is dimensionless under any reading |
+  | 16.36B | Produces an area where a length is declared | A sum, not a product. Its own docstring writes a sum, and its sibling 16.36C sums the same two quantities |
+
+  The survey that produced this line
   read the corpus for *structure*, not for dimensions — which is precisely the
   argument for building the checker before the extraction. The density fudge at
   `C16_Belt.py:154-155`

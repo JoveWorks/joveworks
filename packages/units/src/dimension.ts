@@ -20,7 +20,7 @@ export type BaseDimension = (typeof BASE_DIMENSIONS)[number];
 
 export type Dimension = Readonly<Record<BaseDimension, number>>;
 
-/** The canonical unit symbol of each base dimension (S5). */
+/** The canonical unit symbol of each base dimension. */
 export const BASE_UNIT_SYMBOL: Readonly<Record<BaseDimension, string>> = {
   length: 'mm',
   force: 'N',

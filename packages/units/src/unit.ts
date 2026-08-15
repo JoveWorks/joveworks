@@ -41,7 +41,7 @@ export function unit(symbol: string, dim: Dimension, factor = 1): Unit {
 export const DIMENSIONLESS_UNIT: Unit = unit('', DIMENSIONLESS, 1);
 
 /**
- * Atomic unit symbols. Anything not here is a hard error (S5) — there is no
+ * Atomic unit symbols. Anything not here is a hard error — there is no
  * fallback and no guess.
  *
  * `prefixable` marks the symbols an SI prefix may be attached to. `min`, `h`,
@@ -69,7 +69,7 @@ const ATOMS: Readonly<Record<string, AtomicUnit>> = {
   s: atom(TIME, 1, true),
   min: atom(TIME, 60),
   h: atom(TIME, 3600),
-  // angle. Degrees are a display unit; radians are canonical (S5).
+  // angle. Degrees are a display unit; radians are canonical.
   rad: atom(ANGLE, 1, true),
   deg: atom(ANGLE, Math.PI / 180),
   '°': atom(ANGLE, Math.PI / 180),
@@ -87,7 +87,7 @@ const ATOMS: Readonly<Record<string, AtomicUnit>> = {
   // frequency
   Hz: atom(FREQUENCY, 1, true),
   rpm: atom(FREQUENCY, 1 / 60),
-  // dimensionless quantities that carry a display scale (S21).
+  // dimensionless quantities that carry a display scale.
   '%': atom(DIMENSIONLESS, 0.01, false),
   rev: atom(DIMENSIONLESS, 1, false),
 
@@ -220,7 +220,7 @@ export function siPrefixedUnit(atomSymbol: string, canonicalValue: number): Unit
 }
 
 /**
- * Reject a connection whose dimensions differ (S6). `source` and `target` are
+ * Reject a connection whose dimensions differ. `source` and `target` are
  * named so the message reads in wiring order.
  */
 export function assertDimensionsCompatible(

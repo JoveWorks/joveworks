@@ -1,7 +1,7 @@
 /**
  * How a value looks on screen and how it is typed back in — a global
  * preference, not a per-node one. `figures` (significant figures) already had
- * a home per print node (S60's `output.figures`); this only gives the
+ * a home per print node (`output.figures`); this only gives the
  * grouping/decimal punctuation and the notation a home, since nothing in the
  * document owns those today.
  *

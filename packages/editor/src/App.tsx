@@ -1,5 +1,5 @@
 /**
- * Three columns, and the canvas is always the middle one (S46).
+ * Three columns, and the canvas is always the middle one.
  *
  * Both side panels collapse, because a node editor wants horizontal room, and
  * there is **no properties panel** — values, units and ranges are edited on the
@@ -9,7 +9,7 @@
  * This component owns the two pieces of state everything else reads: the
  * document, and the catalogues loaded against it. The kernel is re-run on every
  * change, which is affordable because a graph is tens of nodes and because it is
- * the only way connect time and evaluation time cannot drift apart (S64).
+ * the only way connect time and evaluation time cannot drift apart.
  */
 
 import { useMemo, useState, type ReactElement } from 'react';
@@ -56,7 +56,7 @@ import { useResizableWidth } from './useResizableWidth';
  * The base catalogue, the bundled public catalogue, and whatever was cached
  * from a previous session. Base nodes and the public catalogue both ship
  * `restricted: false` — neither needs a student to import it by hand the way
- * an R&M catalogue does (S14/S45), so both are always present.
+ * an R&M catalogue does, so both are always present.
  */
 function initialCatalogues(): readonly Catalogue[] {
   let catalogues: readonly Catalogue[] = [baseCatalogue(), basicMechanicsCatalogue()];

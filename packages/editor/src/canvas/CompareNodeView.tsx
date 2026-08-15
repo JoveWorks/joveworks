@@ -3,9 +3,9 @@
  * `pass`/`fail` verdict as an ordinary wireable value.
  *
  * Unlike the output node's `check` kind — a badge over a value that already
- * exists and goes nowhere else (S60) — this is a first-class node so its
+ * exists and goes nowhere else — this is a first-class node so its
  * verdict can flow onward, most usefully into a table column that shows
- * which of a swept design's points fail (S33's table). `threshold` is the
+ * which of a swept design's points fail. `threshold` is the
  * first port in the app with both a typed default *and* a wire that can
  * override it: unwired, the typed quantity below is what is compared
  * against; wired, the edge wins outright (model/document.ts's
@@ -13,7 +13,7 @@
  *
  * `value` has no default — there is nothing sensible to compare against
  * when nothing is wired — so it is "missing" exactly the way a formula's
- * own required port is (S50).
+ * own required port is.
  */
 
 import type { ReactElement } from 'react';
@@ -44,7 +44,7 @@ import { TextField } from './fields';
 
 /**
  * What a bare, unitless threshold is actually compared in — `value`'s own
- * display unit (S53), the same reading `evaluateCompare` in the kernel
+ * display unit, the same reading `evaluateCompare` in the kernel
  * gives it. An explicit unit the student typed is never overridden.
  */
 function impliedThresholdUnit(node: CompareNode, valueType: PortType | undefined): Unit | undefined {

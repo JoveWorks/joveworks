@@ -1,7 +1,7 @@
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
-// A static client-side app (S14/S15): no backend, no server-side rendering, and
+// A static client-side app: no backend, no server-side rendering, and
 // nothing here that a `file://` or a plain static host could not serve.
 export default defineConfig({
   plugins: [react()],

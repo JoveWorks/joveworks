@@ -1,5 +1,5 @@
 /**
- * The base node library (S42): the nodes a graph is built from before any
+ * The base node library: the nodes a graph is built from before any
  * textbook content is loaded. Unrestricted, and it cites nothing.
  *
  * **Only one of the three kinds of base node is catalogue content**, and that
@@ -7,7 +7,7 @@
  *
  * - **Operations** — arithmetic, the S35 function whitelist, `sum`/`prod` — are
  *   `Formula` records, and live here. They are the palette's third source
- *   alongside the R&M catalogues (S10).
+ *   alongside the R&M catalogues.
  * - **Literal inputs** are *not* records. An input node carries a `ValueSpec`
  *   directly (`schema/value.ts`): a scalar, a categorical choice, a spectrum, or
  *   a range. There is no formula behind `250 kW`, so a `literal` catalogue entry

@@ -107,7 +107,7 @@ function toEngineering(value: number, figures: number): string {
 /**
  * A value exactly as JS would print it, only with the chosen grouping and
  * decimal punctuation applied — no rounding. This is the "read it back
- * exactly as typed" side of the boundary (S5): an authored magnitude like
+ * exactly as typed" side of the boundary: an authored magnitude like
  * `250` must come back as `250`, not padded to some figure count.
  */
 export function formatPlainNumber(value: number, format: NumberFormat = PLAIN_NUMBER_FORMAT): string {
@@ -201,7 +201,7 @@ export function stripNumberFormatting(text: string, format: NumberFormat): strin
  * Read what a student types into a value field — `250 kW`, `1450 rpm`, `1.5`.
  *
  * A bare number is accepted only where the port is dimensionless; anywhere else
- * an undeclared unit is a hard error (S5), never a guess at the port's unit.
+ * an undeclared unit is a hard error, never a guess at the port's unit.
  * `expected` is the port's dimension, when there is one to check against.
  */
 export function parseQuantity(

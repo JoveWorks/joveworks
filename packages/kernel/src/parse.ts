@@ -1,5 +1,5 @@
 /**
- * Strings to trees (S34/S39).
+ * Strings to trees.
  *
  * The one rule that shapes this file is what it must **never** do: no `eval`, no
  * `new Function`. A catalogue is a file a student loads from the LMS and passes
@@ -312,7 +312,7 @@ export function parseExpression(source: string): Expr {
   return expr;
 }
 
-/** Parse a boolean predicate — a check's comparison, or an `appliesWhen` (S39). */
+/** Parse a boolean predicate — a check's comparison, or an `appliesWhen`. */
 export function parsePredicate(source: string): Predicate {
   const parser = new Parser(tokenize(source), source);
   const predicate = parser.predicate();

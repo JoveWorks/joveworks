@@ -1,5 +1,5 @@
 /**
- * The version stamp (S25).
+ * The version stamp.
  *
  * One integer, on every document this package writes. There is deliberately **no
  * migration chain**: a chain protects existing user graphs, and there are none

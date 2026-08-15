@@ -1,11 +1,11 @@
 /**
  * The loaded catalogues, and the palette that lists them.
  *
- * The base node library is always present (S42) and the R&M catalogue arrives as
- * a file through the LMS (S14), so the palette has two or more sources and one
+ * The base node library is always present and the R&M catalogue arrives as
+ * a file through the LMS, so the palette has two or more sources and one
  * kind of entry. Nothing here treats a restricted catalogue differently from an
  * unrestricted one *for computing*; the `restricted` flag is what an export must
- * honour (S32), and it is carried through so the UI can say where a formula came
+ * honour, and it is carried through so the UI can say where a formula came
  * from.
  */
 
@@ -41,7 +41,7 @@ export function basicMechanicsCatalogue(): Catalogue {
 /**
  * Add or replace a catalogue by id. Loading the same file twice is a normal
  * thing to do — a corrected catalogue lands the same way the first one did
- * (S51) — and it must not leave two copies for S65 to trip over.
+ * — and it must not leave two copies for S65 to trip over.
  */
 export function withCatalogue(
   catalogues: readonly Catalogue[],

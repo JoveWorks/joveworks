@@ -1,9 +1,9 @@
 /**
- * An output node: a rendering choice over a value that already exists (S60).
+ * An output node: a rendering choice over a value that already exists.
  *
  * All four of S33's kinds are offered here. A **table**'s columns are extra
  * target ports of its own, and exist only while something is wired to them —
- * the same rule a spectrum port's slots follow (S71). Wiring onto the
+ * the same rule a spectrum port's slots follow. Wiring onto the
  * trailing ghost slot creates a column named after the *node* on the wire's
  * other end (its own title, `nodeLabel` in Canvas.tsx — never the port
  * symbol, which is not what a student typed), and deleting that wire closes
@@ -18,7 +18,7 @@
  *
  * The check node is the one that earns its place immediately — `S ≥ 1.5` as a
  * badge is what makes the notebook a dimensioning report rather than a list of
- * numbers, and it is the scalar counterpart of the plot's threshold line (S33).
+ * numbers, and it is the scalar counterpart of the plot's threshold line.
  */
 
 import { useState, type ReactElement } from 'react';
@@ -102,7 +102,7 @@ export function OutputNodeView({ id, selected }: NodeProps): ReactElement | null
 
   const output = node.output;
   // An output node produces nothing of its own — it renders what is wired to it
-  // (S60) — so the value it shows is the source port's, in the unit this node
+  // — so the value it shows is the source port's, in the unit this node
   // chose. Where the kernel has already produced the output result, that is the
   // authority, because it applied the same choice.
   const source = document.edges.find((edge) => edge.to.node === id && edge.to.port === VALUE_PORT);

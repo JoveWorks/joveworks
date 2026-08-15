@@ -1,5 +1,5 @@
 /**
- * What is wired to what, and whether it may be (S6, S18, S59).
+ * What is wired to what, and whether it may be.
  *
  * This is the half of the contract `schema` deliberately left undone. A document
  * parses without a catalogue present, so it cannot know a formula's ports, let
@@ -15,7 +15,7 @@
  * `canConnect` is what lets the editor refuse the edge before it attaches rather
  * than after.
  *
- * Generic binding (S59) happens per **node instance**, not per formula: two
+ * Generic binding happens per **node instance**, not per formula: two
  * `multiply` nodes in one graph bind `$A` to whatever each of them is wired to.
  * The binding is an assignment because an input's signature is a bare variable,
  * which is the restriction `schema` enforces at parse time so that this file
@@ -63,7 +63,7 @@ import type { Warning } from './warnings.js';
 /** The type of one port of one node: enough to decide whether an edge may attach. */
 export interface PortType {
   readonly kind: PortKind;
-  /** `undefined` only while a generic port's variable is still unbound (S59). */
+  /** `undefined` only while a generic port's variable is still unbound. */
   readonly dimension?: Dimension;
   /** The unit to display in, when the port declares one. */
   readonly unit?: Unit;
@@ -75,7 +75,7 @@ export function endpointKey(node: string, port: string): string {
 }
 
 /**
- * The unit a generic port displays in (S5) — a named unit when the dimension
+ * The unit a generic port displays in — a named unit when the dimension
  * has exactly one (`W` for power, not `N·mm/s`), the raw base-unit product
  * otherwise. `namedUnit` is the one place that decides "exactly one"; this
  * function only supplies the dimensionless case and the fallback.
@@ -95,11 +95,11 @@ export interface Resolution {
   readonly sources: ReadonlyMap<string, PortType>;
   /** `node.port` → the type of a port an edge may arrive at. */
   readonly targets: ReadonlyMap<string, PortType>;
-  /** `node.port` → the edges arriving there — more than one only for a spectrum port (S71). */
+  /** `node.port` → the edges arriving there — more than one only for a spectrum port. */
   readonly incoming: ReadonlyMap<string, readonly Edge[]>;
-  /** node id → its generic variable bindings (S59). */
+  /** node id → its generic variable bindings. */
   readonly bindings: ReadonlyMap<string, ReadonlyMap<string, Dimension>>;
-  /** One per range input node, in document order (S43). */
+  /** One per range input node, in document order. */
   readonly axes: readonly Axis[];
   readonly warnings: readonly Warning[];
 }
@@ -107,7 +107,7 @@ export interface Resolution {
 // --- catalogue lookup -------------------------------------------------------
 
 /**
- * A graph names a formula by id, version and hash and never embeds it (S23), so
+ * A graph names a formula by id, version and hash and never embeds it, so
  * opening one is a lookup that can fail in two distinct ways. Missing is fatal —
  * a graph needs its catalogue. Changed is a warning: the numbers may differ from
  * the ones the student last saw, and saying so is the whole reason the hash is
@@ -294,7 +294,7 @@ export function resolveGraph(
   const bindings = new Map<string, ReadonlyMap<string, Dimension>>();
 
   // Collected here, not refused here: whether a second edge at one port is
-  // allowed depends on that port's kind (S71), which is not known until the
+  // allowed depends on that port's kind, which is not known until the
   // node's formula is looked up below.
   for (const edge of document.edges) {
     const key = endpointKey(edge.to.node, edge.to.port);
@@ -351,12 +351,12 @@ export function resolveGraph(
       formulas.set(node.id, formula);
 
       // Bind the generic variables from what is wired in, then read every port
-      // through those bindings. An input's signature is a bare variable (S59),
+      // through those bindings. An input's signature is a bare variable,
       // so this is an assignment and never an equation.
       const bound = new Map<string, Dimension>();
       for (const port of formula.inputs) {
         const key = endpointKey(node.id, port.name);
-        // A spectrum port takes one edge per collected value (S71); every
+        // A spectrum port takes one edge per collected value; every
         // other kind takes exactly one, which `oneEdge` throws on if not true.
         const edges = port.kind === 'spectrum' ? (incoming.get(key) ?? []) : oneEdgeArray(key);
         if (edges.length === 0) continue;
@@ -407,7 +407,7 @@ export function resolveGraph(
       // `value` has no default — there is nothing sensible to compare
       // against when nothing is wired — so its dimension is unbound until
       // an edge supplies one, the same state a formula's own generic port
-      // sits in before anything is wired to it (S59).
+      // sits in before anything is wired to it.
       const valueKey = endpointKey(node.id, VALUE_PORT);
       const valueEdge = oneEdge(valueKey);
       const valueType: PortType = valueEdge === undefined ? { kind: 'numeric' } : sourceType(valueEdge);
@@ -428,12 +428,12 @@ export function resolveGraph(
       );
 
       // An unwired threshold with no unit of its own is a bare literal, and
-      // takes whatever dimension `value` resolves to (S62) — the same
+      // takes whatever dimension `value` resolves to — the same
       // reading `d < 50` gets in a length-typed expression. Asserting here
       // would refuse the ordinary case of a freshly dropped node, whose
       // threshold has not been given a unit yet, the moment `value` is
       // wired to anything but a dimensionless port. A wired edge is a real
-      // port and still has to match exactly (S62), and so does a threshold
+      // port and still has to match exactly, and so does a threshold
       // whose unit the student *did* set, even unwired.
       const bareDefault = thresholdEdge === undefined && isDimensionless(node.threshold.unit.dimension);
       if (dimension !== undefined && !bareDefault) {
@@ -454,8 +454,8 @@ export function resolveGraph(
     }
 
     // An output node accepts whatever is wired to it — it renders a value, it
-    // does not declare one (S60). The one thing it can be wrong about is a
-    // check's threshold, which is a quantity a student typed (S58).
+    // does not declare one. The one thing it can be wrong about is a
+    // check's threshold, which is a quantity a student typed.
     for (const name of outputPortNames(node)) {
       const key = endpointKey(node.id, name);
       const edge = oneEdge(key);
@@ -490,7 +490,7 @@ export function resolveGraph(
 /**
  * Whether an edge's target is a spectrum port, straight from the catalogue —
  * cheaper than a full resolve, and all `canConnect` needs to decide whether a
- * candidate should join what's already there or displace it (S71).
+ * candidate should join what's already there or displace it.
  * Anything it cannot place (no such node, no such formula, no such port)
  * answers `false`, which is the ordinary one-edge-per-port default.
  */
@@ -512,7 +512,7 @@ function isSpectrumTarget(
 export type ConnectionCheck = { readonly ok: true } | { readonly ok: false; readonly reason: string };
 
 /**
- * May this edge attach (S6, S18)?
+ * May this edge attach?
  *
  * The check is the full resolution with the candidate edge added, which is what
  * makes connect time and evaluation time agree by construction: there is one set
@@ -533,7 +533,7 @@ export function canConnect(
     // it — `connect` in the editor's document model already does this; the
     // check has to agree, or a re-drag onto an occupied port is rejected here
     // before it ever reaches that replace. A spectrum port is the one
-    // exception (S71): a second wire joins it, so nothing already there is
+    // exception: a second wire joins it, so nothing already there is
     // displaced.
     const displaced = isSpectrumTarget(document, catalogues, candidate.to)
       ? document.edges
@@ -557,7 +557,7 @@ export function canConnect(
  */
 export function typesConnect(source: PortType, target: PortType): boolean {
   // A spectrum target takes a matching spectrum source (one authored list, as
-  // before) or a numeric one (S71) — one of what may be several discrete
+  // before) or a numeric one — one of what may be several discrete
   // wires collected into a series before the formula's own expression runs.
   const kindsMatch =
     source.kind === target.kind || (source.kind === 'numeric' && target.kind === 'spectrum');

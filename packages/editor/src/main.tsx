@@ -1,6 +1,6 @@
 /**
  * The entry point. Nothing but mounting: the app is a static page with no
- * backend (S14), so there is no session to establish and nothing to fetch.
+ * backend, so there is no session to establish and nothing to fetch.
  */
 
 import { StrictMode } from 'react';

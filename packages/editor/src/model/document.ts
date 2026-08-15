@@ -8,7 +8,7 @@
  * the same one the canvas draws.
  *
  * Nothing here decides whether an edit is *allowed*. A connection is refused by
- * `canConnect` in the kernel (S64) before it ever reaches `connect` below, and
+ * `canConnect` in the kernel before it ever reaches `connect` below, and
  * that asymmetry is deliberate: the rules live in one place, and this file is
  * only how a permitted change is applied.
  */
@@ -128,7 +128,7 @@ export function removeEdges(document: GraphDocument, ids: ReadonlySet<string>): 
  * Attach an edge. Any edge already arriving at the target port is replaced —
  * an input takes one connection, and rewiring is the ordinary way to change
  * one's mind, not an error to report — unless `join` says the target is a
- * spectrum port (S71), where a new wire adds to what is already there.
+ * spectrum port, where a new wire adds to what is already there.
  */
 export function connect(
   document: GraphDocument,
@@ -143,11 +143,11 @@ export function connect(
   return { ...document, edges: [...kept, edge] };
 }
 
-// --- table columns: a table output's ports (S60) ----------------------------
+// --- table columns: a table output's ports ----------------------------
 
 /**
  * A table column exists only while something is wired to it — the same rule
- * a spectrum port's slots follow (S71), just with a name and a position kept
+ * a spectrum port's slots follow, just with a name and a position kept
  * across edits instead of an anonymous count. Called after every edit that
  * can drop an edge into a table, so a deleted wire closes its column with it
  * rather than leaving an empty one behind.
@@ -232,7 +232,7 @@ export const NEW_COLUMN = '__new-column__';
 
 /**
  * Wiring onto the ghost slot names the column after what was wired, the way a
- * spectrum port's ghost slot (S71) accepts a wire with no separate "add a
+ * spectrum port's ghost slot accepts a wire with no separate "add a
  * slot" step first — a table's columns are named and ordered where a
  * spectrum's are not, so this is the one piece a spectrum's ghost slot never
  * needed: the new port's name has to come from somewhere.
@@ -365,7 +365,7 @@ export function pruneEdgesTo(
  * wired rather than stranding it — an edge pointing at a port the new kind
  * does not declare is exactly the dangling-edge bug this exists to prevent.
  *
- * `table` is the one kind whose ports are not always `value` (S60), so the
+ * `table` is the one kind whose ports are not always `value`, so the
  * two directions across that boundary are asymmetric: leaving table adopts
  * its first column as `value` and drops the rest (a single-port kind has
  * nowhere else for them to go); entering table adopts whatever was on
@@ -402,7 +402,7 @@ export function changeOutputKind(document: GraphDocument, nodeId: string, next: 
   return updateNode<OutputNode>(document, nodeId, (entry) => ({ ...entry, output: next }));
 }
 
-// --- frames: the notebook's sections (S28/S30) ------------------------------
+// --- frames: the notebook's sections ------------------------------
 
 export function addFrame(document: GraphDocument, frame: Frame): GraphDocument {
   return { ...document, frames: [...document.frames, frame] };
@@ -421,7 +421,7 @@ export function updateFrame(
 
 /**
  * Move a section earlier or later in `document.frames` — the notebook's
- * section order (S30). A precise one-step nudge, alongside the coarser drag
+ * section order. A precise one-step nudge, alongside the coarser drag
  * reorder (`reorderFrame`) — useful without a pointer, and when a section is
  * already exactly where dragging would land it.
  */

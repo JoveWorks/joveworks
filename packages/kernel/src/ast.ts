@@ -1,10 +1,10 @@
 /**
  * The shapes a parsed expression and a parsed predicate take.
  *
- * Two trees, kept apart on purpose (S39): a value expression is arithmetic and
+ * Two trees, kept apart on purpose: a value expression is arithmetic and
  * evaluates to a number, a predicate is a comparison and evaluates to a boolean.
  * A predicate *contains* expressions and never the other way round, which is
- * exactly what "no conditionals inside an expression" means as a type (S35).
+ * exactly what "no conditionals inside an expression" means as a type.
  *
  * Both are plain data. Nothing here knows how to evaluate itself — that is
  * `compile.ts`, which turns a tree into closures once so a 40 000-point sweep
@@ -40,7 +40,7 @@ export interface BinaryExpr {
   readonly right: Expr;
 }
 
-/** A call to a whitelisted function (S35). The whitelist lives in `functions.ts`. */
+/** A call to a whitelisted function. The whitelist lives in `functions.ts`. */
 export interface CallExpr {
   readonly kind: 'call';
   readonly callee: string;

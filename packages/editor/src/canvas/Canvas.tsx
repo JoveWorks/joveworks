@@ -331,14 +331,14 @@ export function Canvas(): ReactElement {
     return { id: edgeId(endpoints.from, endpoints.to), ...endpoints };
   };
 
-  /** The cheap answer, while a wire is in the air (S64). */
+  /** The cheap answer, while a wire is in the air. */
   const isValidConnection = useCallback(
     (connection: Connection | FlowEdge): boolean => {
       const candidate = candidateOf(connection);
       if (candidate === undefined || candidate.from.node === candidate.to.node) return false;
       // A port that already carries a wire is about to have it replaced, not
       // joined — but `resolution.targets` here still reflects the *old* edge,
-      // which is wrong to check against for a generic port (S59): its bound
+      // which is wrong to check against for a generic port: its bound
       // dimension came from that very edge, so a legitimate rewire to a
       // different dimension would be greyed out before the drop ever reaches
       // `canConnect`, which already accounts for the replacement.
@@ -356,11 +356,11 @@ export function Canvas(): ReactElement {
     [analysis.resolution, document.edges],
   );
 
-  /** A spectrum port's new wire joins what is already there (S71), not replaces it. */
+  /** A spectrum port's new wire joins what is already there, not replaces it. */
   const isSpectrumTarget = (to: Edge['to']): boolean =>
     analysis.resolution?.targets.get(`${to.node}.${to.port}`)?.kind === 'spectrum';
 
-  /** The authority, when it lands (S64): the whole graph, resolved with it added. */
+  /** The authority, when it lands: the whole graph, resolved with it added. */
   const onConnect = useCallback(
     (connection: Connection) => {
       const candidate = candidateOf(connection);
@@ -576,7 +576,7 @@ export function Canvas(): ReactElement {
    * Finish a wire dropped on empty canvas: place the chosen node, then wire
    * the dragged endpoint to whichever of its ports fits the drag's direction.
    * A refusal here is the same refusal a manual drag-and-drop would get,
-   * surfaced the same way (S64) — the node still lands, just unconnected.
+   * surfaced the same way — the node still lands, just unconnected.
    */
   const pickQuickAdd = (target: QuickAddTarget, choice: QuickAddChoice): void => {
     if (choice.kind === 'existing') {
@@ -720,7 +720,7 @@ export function Canvas(): ReactElement {
 
           if (state.toHandle !== null) {
             // Dropped on a real port. `isValidConnection` may have blocked
-            // `onConnect` from firing — the cheap check while dragging (S64),
+            // `onConnect` from firing — the cheap check while dragging,
             // or a genuine mismatch — so resolve it for real here rather than
             // let the wire snap back with no explanation.
             if (state.isValid !== true) {

@@ -1,17 +1,17 @@
 /**
  * A loaded catalogue, persisted across a reload — behind `localStorage`, the
- * same adapter boundary as `files.ts` (S15), so a Tauri build can swap it
+ * same adapter boundary as `files.ts`, so a Tauri build can swap it
  * for a real cache without touching a call site.
  *
  * Without this, the one catalogue that actually matters — the restricted
- * one, handed to a student through the LMS (S14) — had to be re-picked from
+ * one, handed to a student through the LMS — had to be re-picked from
  * disk on every page load, which is the "fresh manual load every time"
  * UX-SPEC.md asks to remove. Loading a corrected file back in just
  * overwrites its entry: the catalogue's own id is the cache key, and
  * `withCatalogue` already replaces by id, so there is nothing further to
  * "check the version" of.
  *
- * Never the restricted content leaving the browser (S45) — this is storage
+ * Never the restricted content leaving the browser — this is storage
  * local to the student's own machine, not a network call.
  */
 

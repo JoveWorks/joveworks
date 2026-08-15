@@ -18,7 +18,7 @@
  * - rounding **preserves** dimension.
  *
  * `sum` and `prod` are apart from the rest: they consume a whole series at once
- * (S36) rather than a value, so they are listed separately and their argument
+ * rather than a value, so they are listed separately and their argument
  * must be a spectrum port by name.
  */
 
@@ -48,7 +48,7 @@ export interface FunctionSpec {
 
 const preserves = (args: readonly Dimension[]): Dimension => args[0] as Dimension;
 
-/** trig: an angle, or a pure number where R&M wrote one (S54). Result is pure. */
+/** trig: an angle, or a pure number where R&M wrote one. Result is pure. */
 function angleArgument(args: readonly Dimension[], where: string | undefined, name: string): Dimension {
   const argument = args[0] as Dimension;
   if (dimensionsClose(argument, ANGLE) || isDimensionless(argument)) return DIMENSIONLESS;

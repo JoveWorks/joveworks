@@ -206,7 +206,7 @@ export const SINE: JsonObject = {
   status: 'unverified',
 };
 
-/** A reduction over a load spectrum (S36), with an invented weighting. */
+/** A reduction over a load spectrum, with an invented weighting. */
 export const TOTAL: JsonObject = {
   id: 'total',
   version: 1,
@@ -243,7 +243,7 @@ export const FORMULAS: readonly JsonObject[] = [
 
 export const CATALOGUE: Catalogue = catalogueOf(FORMULAS);
 
-/** The reference a graph node holds: id, version and hash, never the record (S23). */
+/** The reference a graph node holds: id, version and hash, never the record. */
 export function refTo(id: string, catalogue: Catalogue = CATALOGUE): FormulaRef {
   const formula = catalogue.formulas.find((entry) => entry.id === id);
   if (formula === undefined) throw new Error(`no fixture formula '${id}'`);

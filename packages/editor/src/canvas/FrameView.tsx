@@ -1,5 +1,5 @@
 /**
- * A titled group frame — a notebook section, drawn on the canvas (S28/S30).
+ * A titled group frame — a notebook section, drawn on the canvas.
  *
  * It is deliberately passive: it does not carry its nodes around with it, and
  * membership is decided by where a node sits (`reframe`). Arranging the canvas
@@ -35,7 +35,7 @@ export function FrameView({ id, selected }: NodeProps): ReactElement | null {
         // Position and size are already kept live in the document by Canvas's
         // onNodesChange (NodeResizer reports them the same way a drag reports
         // position). All that is left once the gesture ends is membership: a
-        // frame's bounds decide it (S69), same as `onNodeDragStop` does for
+        // frame's bounds decide it, same as `onNodeDragStop` does for
         // an ordinary drag.
         onResizeEnd={() => edit(reframe)}
       />

@@ -1,9 +1,9 @@
 /**
- * The notebook: a view over the graph, not a second document (S30).
+ * The notebook: a view over the graph, not a second document.
  *
  * Group frames are its sections, in the order the document carries them, and the
  * output nodes inside a frame are that section's results — so arranging the
- * canvas arranges the report. Prose lives at two levels (S48): a section note
+ * canvas arranges the report. Prose lives at two levels: a section note
  * here, and a caption on each output, both edited where they are read.
  *
  * What is *not* here is export. S32's rule — citation and values by default,
@@ -295,6 +295,8 @@ function outputsOf(document: GraphDocument, frameId: string | undefined): readon
 
 export function Notebook(): ReactElement {
   const { document, analysis } = useGraph();
+  // Session UI state, not a document field (S74, same call as Palette.tsx) —
+  // a section's collapse reopens on reload, same as a pinned node.
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
   const toggle = (key: string): void =>
     setCollapsed((current) => {
