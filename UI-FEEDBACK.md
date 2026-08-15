@@ -121,11 +121,24 @@ it were weighed: editor-only display state (doesn't survive save/reload) or
 a schema change to carry a unit per bound (persists properly, but widens
 `ValueSpec` and ripples into the kernel and everywhere else that assumes a
 range has one unit). Neither was picked; parked here rather than decided
-
-**A range's two bounds showing different units** — `10 mm ... 1 m`, each
-bound keeping its own unit rather than both sharing one. Two ways to build
-it were weighed: editor-only display state (doesn't survive save/reload) or
-a schema change to carry a unit per bound (persists properly, but widens
-`ValueSpec` and ripples into the kernel and everywhere else that assumes a
-range has one unit). Neither was picked; parked here rather than decided
 under scope pressure.
+
+**Notebook section drag grip (`⠿`) reads as part of the title** — it should
+sit in the margin, lighter, clearly separate from the section name rather
+than looking like a character of it.
+
+**A waypoint node, to bundle and redirect edges** — a passive routing point
+on the canvas: straight connections in and out, and an always-available open
+slot to join another wire, the same ghost-port interaction `minimum` already
+has (S71). Deleting one does not break what passed through it — the nodes on
+either side end up connected by a single direct edge, as if the waypoint had
+never been there. Needs a discussion before building: is it one channel
+per waypoint (several waypoints bundled visually) or genuinely multiple
+independent pass-through channels sharing one waypoint, each its own
+source/destination pair? The "bundle" and "ghost ports" language points at
+the second — several *unrelated* wires routed through one point, not values
+merged into one — but that is a different kind of node than anything in the
+schema today (no formula, no input, no output; edges in are not reduced,
+they are relayed), and the delete-time splice (find each channel's own
+source and destination, reconnect them directly) has no precedent to build
+from either.
