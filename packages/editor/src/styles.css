@@ -483,6 +483,24 @@ aside.right {
   border-color: var(--accent);
 }
 
+/*
+ * A plain outline is a rectangle regardless of the element's own
+ * border-radius — Chrome and Safari never clip it — so on a rounded card
+ * it peeks out past the corners rather than tracing them. A ring drawn as
+ * a box-shadow follows the radius instead, so keyboard focus is still
+ * visible without that artifact. Selection already carries its own accent
+ * border above; this is for focus without selection (tabbing between
+ * nodes without clicking).
+ */
+.react-flow__node:focus-visible {
+  outline: none;
+}
+
+.react-flow__node:focus-visible .node,
+.react-flow__node:focus-visible .frame {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
 /* --- handles ------------------------------------------------------------ */
 
 .react-flow__handle {

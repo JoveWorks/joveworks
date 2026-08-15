@@ -4,8 +4,6 @@ The documentation is getting a bit chaotic and probably stale in a lot of points
 
 ## Findings in UX and talking points
 
-There is an additional box behind input and output nodes. Why? I prefer a different style for node types, not this box.
-
 The check node should print how many points fail the check in the notebook. Now it fails the whole range when one value fails.
 
 The `examples` label in the ribbon>help looks like a button.
