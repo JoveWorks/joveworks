@@ -6,11 +6,13 @@
  * the canvas that has a port fitting the drag, found by typing its name.
  *
  * A dragged **output** needs a node with an input to receive it — a formula,
- * an existing node with a free-enough input, or a `print`/`check`/`plot`
- * output (S60's non-formula sinks). A dragged **input** needs a node with an
- * output to fill it — a formula, an existing node's own output, or a plain
- * `input`. Only one direction ever offers the non-formula kinds because each
- * one has exactly one port a dragged wire could be finishing.
+ * an existing node with a free-enough input, a `compare` (its `value` port),
+ * or a `print`/`check`/`plot` output (S60's non-formula sinks). A dragged
+ * **input** needs a node with an output to fill it — a formula, an existing
+ * node's own output, a `compare` (its `verdict` port), or a plain `input`.
+ * `compare` offers in both directions, like a formula; `input` and the
+ * output kinds each have only the one port a dragged wire could be
+ * finishing, so they offer in one direction only.
  *
  * All three lists are ranked by `fuzzySearch` (model/fuzzy.ts) — a
  * subsequence match, so "pdwd" finds "Pad width d" without needing the exact
@@ -28,7 +30,8 @@ import { Symbol } from '../Symbol';
 export type QuickAddChoice =
   | { readonly kind: 'formula'; readonly formula: Formula }
   | { readonly kind: 'input' }
-  | { readonly kind: 'output'; readonly outputKind: 'print' | 'check' | 'plot' }
+  | { readonly kind: 'output'; readonly outputKind: 'print' | 'check' | 'plot' | 'table' }
+  | { readonly kind: 'compare' }
   | { readonly kind: 'existing'; readonly nodeId: string; readonly port: string };
 
 /** An already-placed node the menu can offer, worked out by Canvas.tsx from the drag's direction. */
@@ -75,9 +78,13 @@ export function QuickAddMenu({
     [existing, query],
   );
 
+  // `compare` fits either direction — like a formula, it has both a target
+  // port (`value`) and a source port (`verdict`) — unlike `input` and the
+  // output kinds below, which each have only the one port a dragged wire
+  // could be finishing (S60).
   const specials: readonly { readonly label: string; readonly choice: QuickAddChoice; readonly disabled?: boolean }[] =
     direction === 'target'
-      ? [{ label: 'input', choice: { kind: 'input' } }]
+      ? [{ label: 'input', choice: { kind: 'input' } }, { label: 'compare', choice: { kind: 'compare' } }]
       : [
           { label: 'print output', choice: { kind: 'output', outputKind: 'print' } },
           { label: 'check output', choice: { kind: 'output', outputKind: 'check' } },
@@ -86,6 +93,8 @@ export function QuickAddMenu({
             choice: { kind: 'output', outputKind: 'plot' },
             disabled: !canPlot,
           },
+          { label: 'table output', choice: { kind: 'output', outputKind: 'table' } },
+          { label: 'compare', choice: { kind: 'compare' } },
         ];
   const matchingSpecials = fuzzySearch(query, specials, (entry) => entry.label);
 

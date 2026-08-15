@@ -592,9 +592,11 @@ export function Canvas(): ReactElement {
           ? choice.formula.id.replace(/[^\w.]/gu, '_')
           : choice.kind === 'input'
             ? 'input'
-            : choice.outputKind === 'print'
-              ? 'result'
-              : choice.outputKind,
+            : choice.kind === 'compare'
+              ? 'compare'
+              : choice.outputKind === 'print'
+                ? 'result'
+                : choice.outputKind,
       );
       const node: GraphNode =
         choice.kind === 'formula'
@@ -607,25 +609,42 @@ export function Canvas(): ReactElement {
                 value: { kind: 'scalar', value: 1, unit: parseUnit('') },
                 position,
               }
-            : {
-                kind: 'output',
-                id,
-                label: id,
-                output:
-                  choice.outputKind === 'check'
-                    ? { kind: 'check', comparison: '>=', threshold: { value: 1, unit: parseUnit('') } }
-                    : choice.outputKind === 'plot'
-                      ? { kind: 'plot', x: documentAxes(current).at(0)?.id ?? '' }
-                      : { kind: 'print' },
-                position,
-              };
+            : choice.kind === 'compare'
+              ? {
+                  kind: 'compare',
+                  id,
+                  label: id,
+                  comparison: '>=',
+                  threshold: { value: 1, unit: parseUnit('') },
+                  position,
+                }
+              : {
+                  kind: 'output',
+                  id,
+                  label: id,
+                  output:
+                    choice.outputKind === 'check'
+                      ? { kind: 'check', comparison: '>=', threshold: { value: 1, unit: parseUnit('') } }
+                      : choice.outputKind === 'plot'
+                        ? { kind: 'plot', x: documentAxes(current).at(0)?.id ?? '' }
+                        : choice.outputKind === 'table'
+                          ? { kind: 'table', columns: [] }
+                          : { kind: 'print' },
+                  position,
+                };
 
       const port =
         choice.kind === 'formula'
           ? target.from.type === 'source'
             ? choice.formula.inputs[0]?.name
             : choice.formula.output.name
-          : VALUE_PORT;
+          : choice.kind === 'compare'
+            ? target.from.type === 'source'
+              ? VALUE_PORT
+              : VERDICT_PORT
+            : choice.kind === 'output' && choice.outputKind === 'table'
+              ? NEW_COLUMN
+              : VALUE_PORT;
 
       let next = addNode(current, node);
       if (port === undefined) return next;
@@ -634,6 +653,26 @@ export function Canvas(): ReactElement {
       const dragEndpoint = { node: target.from.nodeId, port: target.from.port };
       const [from, to] =
         target.from.type === 'source' ? [dragEndpoint, newEndpoint] : [newEndpoint, dragEndpoint];
+
+      // A fresh table starts with zero columns — its ghost slot needs the
+      // same column-creation a direct drag onto it gets (addNamedColumn,
+      // named after the drag's source), not a plain connect onto a port
+      // that does not exist yet.
+      if (to.port === NEW_COLUMN) {
+        const source = next.nodes.find((entry) => entry.id === from.node);
+        const base = source === undefined ? from.port : nodeLabel(source);
+        const named = addNamedColumn(next, to.node, base);
+        const resolvedTo = { node: to.node, port: named.column };
+        const candidate: Edge = { id: edgeId(from, resolvedTo), from, to: resolvedTo };
+        const verdict = canConnect(named.document, catalogues, candidate);
+        if (!verdict.ok) {
+          setRefusal(verdict.reason);
+          return named.document;
+        }
+        setRefusal(undefined);
+        return connect(named.document, from, resolvedTo);
+      }
+
       const candidate: Edge = { id: edgeId(from, to), from, to };
       const verdict = canConnect(next, catalogues, candidate);
       if (verdict.ok) {
