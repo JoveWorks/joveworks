@@ -201,6 +201,8 @@ aside.right {
 }
 
 .palette h3 {
+  display: flex;
+  align-items: center;
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -846,10 +848,55 @@ aside.right {
 }
 
 .notebook h2 {
+  display: flex;
+  align-items: center;
   font-size: 13px;
   margin: 18px 0 6px;
   padding-bottom: 3px;
   border-bottom: 1px solid var(--line);
+}
+
+.section-toggle {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 5px;
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  /* A <button> resets these in the browser's own stylesheet regardless of
+     what its ancestor specifies, so h3's uppercase + letter-spacing has to
+     be pulled back in explicitly, not left to ordinary inheritance. */
+  text-transform: inherit;
+  letter-spacing: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.section-toggle-title {
+  /* Wraps like ordinary text — a long catalogue or section name should grow
+     the header, not get truncated with no way to read the rest of it. */
+  min-width: 0;
+}
+
+/* How many entries are hidden — the only cue a collapsed section gives that
+   there is anything under it worth opening back up. */
+.section-toggle-count {
+  color: var(--muted);
+  font-weight: normal;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.chevron {
+  display: inline-block;
+  width: 9px;
+  color: var(--muted);
+  font-size: 10px;
 }
 
 .notebook-section[draggable='true'] {

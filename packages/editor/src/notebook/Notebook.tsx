@@ -134,12 +134,19 @@ function Caption({ node }: { readonly node: OutputNode }): ReactElement {
   );
 }
 
+/** The key `frame === undefined`'s pseudo-section collapses under — no frame id to key it by. */
+const UNGROUPED = '__ungrouped__';
+
 function Section({
   frame,
   outputs,
+  collapsed,
+  onToggle,
 }: {
   readonly frame?: Frame;
   readonly outputs: readonly OutputNode[];
+  readonly collapsed: boolean;
+  readonly onToggle: () => void;
 }): ReactElement | null {
   const { document, analysis, edit } = useGraph();
   const [menu, setMenu] = useState<{ x: number; y: number } | undefined>(undefined);
@@ -207,54 +214,69 @@ function Section({
       }}
     >
       <h2>
-        {frame === undefined ? (
-          'Not in a section'
-        ) : (
-          <>
-            <span className="grip" aria-hidden="true">
-              ⠿
-            </span>
-            {frame.title}
-          </>
+        {frame === undefined ? null : (
+          <span className="grip" aria-hidden="true">
+            ⠿
+          </span>
         )}
+        <button type="button" className="section-toggle" onClick={onToggle}>
+          <span className="section-toggle-title">
+            {frame === undefined ? 'Not in a section' : frame.title}
+            {collapsed ? (
+              <span className="section-toggle-count">
+                {' '}
+                ({outputs.length} result{outputs.length === 1 ? '' : 's'})
+              </span>
+            ) : null}
+          </span>
+          <span className="chevron" aria-hidden="true">
+            {collapsed ? '▸' : '▾'}
+          </span>
+        </button>
       </h2>
       {menu === undefined ? null : (
         <ContextMenu x={menu.x} y={menu.y} items={menuItems} onClose={() => setMenu(undefined)} />
       )}
-      {frame === undefined ? null : (
-        <textarea
-          className="note"
-          value={frame.note ?? ''}
-          placeholder="what this section establishes"
-          rows={3}
-          onChange={(event) => {
-            const note = event.target.value;
-            edit((current) =>
-              updateFrame(current, frame.id, (entry) => {
-                const { note: _cleared, ...rest } = entry;
-                return note.length === 0 ? rest : { ...rest, note };
-              }),
-            );
-          }}
-        />
-      )}
+      {collapsed ? null : (
+        <>
+          {frame === undefined ? null : (
+            <textarea
+              className="note"
+              value={frame.note ?? ''}
+              placeholder="what this section establishes"
+              rows={3}
+              onChange={(event) => {
+                const note = event.target.value;
+                edit((current) =>
+                  updateFrame(current, frame.id, (entry) => {
+                    const { note: _cleared, ...rest } = entry;
+                    return note.length === 0 ? rest : { ...rest, note };
+                  }),
+                );
+              }}
+            />
+          )}
 
-      {outputs.map((node) => {
-        const result = results.get(node.id);
-        return (
-          <div key={node.id} className="entry">
-            {result === undefined ? (
-              <p className="result pending">
-                <span className="label">{node.label ?? node.id}</span>
-                <span className="number">{analysis.problems.get(node.id) ?? 'not yet computed'}</span>
-              </p>
-            ) : (
-              <Result result={result} />
-            )}
-            <Caption node={node} />
-          </div>
-        );
-      })}
+          {outputs.map((node) => {
+            const result = results.get(node.id);
+            return (
+              <div key={node.id} className="entry">
+                {result === undefined ? (
+                  <p className="result pending">
+                    <span className="label">{node.label ?? node.id}</span>
+                    <span className="number">
+                      {analysis.problems.get(node.id) ?? 'not yet computed'}
+                    </span>
+                  </p>
+                ) : (
+                  <Result result={result} />
+                )}
+                <Caption node={node} />
+              </div>
+            );
+          })}
+        </>
+      )}
     </section>
   );
 }
@@ -267,15 +289,33 @@ function outputsOf(document: GraphDocument, frameId: string | undefined): readon
 
 export function Notebook(): ReactElement {
   const { document, analysis } = useGraph();
+  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
+  const toggle = (key: string): void =>
+    setCollapsed((current) => {
+      const next = new Set(current);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
 
   return (
     <div className="notebook">
       <h1>{document.title}</h1>
 
       {document.frames.map((frame) => (
-        <Section key={frame.id} frame={frame} outputs={outputsOf(document, frame.id)} />
+        <Section
+          key={frame.id}
+          frame={frame}
+          outputs={outputsOf(document, frame.id)}
+          collapsed={collapsed.has(frame.id)}
+          onToggle={() => toggle(frame.id)}
+        />
       ))}
-      <Section outputs={outputsOf(document, undefined)} />
+      <Section
+        outputs={outputsOf(document, undefined)}
+        collapsed={collapsed.has(UNGROUPED)}
+        onToggle={() => toggle(UNGROUPED)}
+      />
 
       {analysis.message === undefined ? null : (
         <p className="notebook-problem">{analysis.message}</p>

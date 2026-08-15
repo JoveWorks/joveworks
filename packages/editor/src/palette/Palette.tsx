@@ -35,7 +35,16 @@ function useDropPosition(): () => Position {
 export function Palette(): ReactElement {
   const { document, catalogues, edit } = useGraph();
   const [query, setQuery] = useState('');
+  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
   const position = useDropPosition();
+
+  const toggleCollapsed = (catalogueId: string): void =>
+    setCollapsed((current) => {
+      const next = new Set(current);
+      if (next.has(catalogueId)) next.delete(catalogueId);
+      else next.add(catalogueId);
+      return next;
+    });
 
   const all = useMemo(() => entries(catalogues), [catalogues]);
   const found = useMemo(() => search(all, query), [all, query]);
@@ -142,42 +151,61 @@ export function Palette(): ReactElement {
           </section>
         ) : null}
 
-        {grouped.map(([catalogueId, list]) => (
-          <section key={catalogueId}>
-            <h3>
-              {list[0]?.catalogue.name ?? catalogueId}
-              {list[0]?.catalogue.restricted === true ? (
-                <span className="restricted" title="Restricted content — never exported (S32).">
-                  restricted
-                </span>
-              ) : null}
-            </h3>
-            <ul>
-              {list.map(({ formula }) => (
-                <li key={formula.id}>
-                  <button
-                    type="button"
-                    className={`entry ${formula.status}`}
-                    title={
-                      formula.status === 'quarantined'
-                        ? `Quarantined: ${formula.quarantineReason ?? ''}`
-                        : formula.description
-                    }
-                    onClick={() => addFormula(formula)}
-                  >
-                    <span className="entry-id">{formula.citation ?? formula.id}</span>
-                    <span className="entry-output">
-                      <Symbol name={formula.output.name} />
-                    </span>
-                    {formula.status === 'quarantined' ? (
-                      <span className="entry-status">quarantined</span>
+        {grouped.map(([catalogueId, list]) => {
+          const isCollapsed = query.trim().length === 0 && collapsed.has(catalogueId);
+          return (
+            <section key={catalogueId}>
+              <h3>
+                <button
+                  type="button"
+                  className="section-toggle"
+                  onClick={() => toggleCollapsed(catalogueId)}
+                >
+                  <span className="section-toggle-title">
+                    {list[0]?.catalogue.name ?? catalogueId}
+                    {list[0]?.catalogue.restricted === true ? (
+                      <span className="restricted" title="Restricted content — never exported (S32).">
+                        restricted
+                      </span>
                     ) : null}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </section>
-        ))}
+                    {isCollapsed ? (
+                      <span className="section-toggle-count"> ({list.length})</span>
+                    ) : null}
+                  </span>
+                  <span className="chevron" aria-hidden="true">
+                    {isCollapsed ? '▸' : '▾'}
+                  </span>
+                </button>
+              </h3>
+              {isCollapsed ? null : (
+                <ul>
+                  {list.map(({ formula }) => (
+                    <li key={formula.id}>
+                      <button
+                        type="button"
+                        className={`entry ${formula.status}`}
+                        title={
+                          formula.status === 'quarantined'
+                            ? `Quarantined: ${formula.quarantineReason ?? ''}`
+                            : formula.description
+                        }
+                        onClick={() => addFormula(formula)}
+                      >
+                        <span className="entry-id">{formula.citation ?? formula.id}</span>
+                        <span className="entry-output">
+                          <Symbol name={formula.output.name} />
+                        </span>
+                        {formula.status === 'quarantined' ? (
+                          <span className="entry-status">quarantined</span>
+                        ) : null}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          );
+        })}
         {found.length === 0 ? <p className="empty">Nothing matches “{query}”.</p> : null}
       </div>
 
