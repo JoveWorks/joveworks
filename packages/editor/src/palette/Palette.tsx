@@ -109,7 +109,7 @@ export function Palette(): ReactElement {
       />
 
       <div className="palette-list">
-        {/* Ahead of the catalogues, not one-off toolbar buttons (UI-FEEDBACK.md):
+        {/* Ahead of the catalogues, not one-off toolbar buttons (UX-SPEC.md):
             an input, print and plot are what every graph is built from and
             eventually ends in, so they read the same way a catalogue entry
             does rather than living apart from the rest of the palette. */}

@@ -1,5 +1,5 @@
 /**
- * The known bug from UI-FEEDBACK.md: "a series carries an axis the target
+ * The known bug from UX-SPEC.md: "a series carries an axis the target
  * grid does not". Root cause was `rows()` treating the plotted value's own
  * axes as the whole grid, when a value that does not vary along the chosen
  * x axis — a legitimate flat curve, which evaluate.ts warns about rather

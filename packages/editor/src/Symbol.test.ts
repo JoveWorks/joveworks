@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { symbolParts } from './Symbol';
 
-describe('rendering a catalogue-declared symbol (UI-FEEDBACK.md)', () => {
+describe('rendering a catalogue-declared symbol (UX-SPEC.md)', () => {
   it('splits a subscript off after the first underscore', () => {
     expect(symbolParts('F_a')).toEqual({ base: 'F', sub: 'a' });
     // Compound subscripts stay one block — d_dg is "d" sub "dg", not two cuts.

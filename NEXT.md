@@ -39,7 +39,7 @@ through, landed `S74` (collapsible palette/notebook sections) plus a run of
 smaller fixes: a still-blank range bound no longer refuses a unit, and a
 range's unit field never refuses a retype at all; the "not connected" reason
 renders port names the way their own labels do (a true subscript, not the
-raw id); the notebook's drag grip and default width. `UI-FEEDBACK.md` reflects
+raw id); the notebook's drag grip and default width. `UX-SPEC.md` reflects
 what is now fixed — read it fresh rather than trusting memory of the first
 pass.
 

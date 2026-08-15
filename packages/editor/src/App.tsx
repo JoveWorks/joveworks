@@ -138,7 +138,7 @@ export function App(): ReactElement {
     });
 
   // Open/save belong in a conventional File/Edit/View ribbon, top-left
-  // (UI-FEEDBACK.md) — not wherever the individual actions used to live.
+  // (UX-SPEC.md) — not wherever the individual actions used to live.
   const fileMenuItems: readonly MenuItem[] = [
     { label: 'Open…', onClick: () => void openDocumentFile() },
     { label: 'Save', onClick: () => saveTextFile(`${document.id}.mds.json`, saveDocument(document)) },
@@ -219,7 +219,7 @@ export function App(): ReactElement {
 
           <main>
             {/* Overlays the workspace instead of sitting in normal flow, so
-                showing or dismissing one does not shift the canvas (UI-FEEDBACK.md:
+                showing or dismissing one does not shift the canvas (UX-SPEC.md:
                 messages must overlay, not push other UI down). Stacks rather than
                 replacing, and each clears itself after a delay. */}
             {notices.length === 0 ? null : (

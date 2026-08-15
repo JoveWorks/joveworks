@@ -6,7 +6,7 @@
  * Without this, the one catalogue that actually matters — the restricted
  * one, handed to a student through the LMS (S14) — had to be re-picked from
  * disk on every page load, which is the "fresh manual load every time"
- * UI-FEEDBACK.md asks to remove. Loading a corrected file back in just
+ * UX-SPEC.md asks to remove. Loading a corrected file back in just
  * overwrites its entry: the catalogue's own id is the cache key, and
  * `withCatalogue` already replaces by id, so there is nothing further to
  * "check the version" of.
