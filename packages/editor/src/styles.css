@@ -79,28 +79,33 @@ input[aria-invalid='true'] {
   height: 100vh;
 }
 
-.toolbar {
+/* A conventional File/Edit/View ribbon, top-left (UI-FEEDBACK.md) — the
+   menus themselves are ContextMenu dropdowns anchored under each button. */
+.menubar {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 6px 10px;
+  gap: 2px;
+  padding: 4px 8px;
   border-bottom: 1px solid var(--line);
   background: var(--panel);
 }
 
-.toolbar .document-title {
+.menu-button {
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  padding: 3px 8px;
+}
+
+.menu-button:hover,
+.menu-button.open {
+  background: var(--line);
+}
+
+.menubar .document-title {
   flex: 0 1 260px;
+  margin-left: 12px;
   font-weight: 600;
-}
-
-.toolbar .actions {
-  display: flex;
-  gap: 6px;
-  margin-left: auto;
-}
-
-.toolbar .toggle {
-  border-style: dashed;
 }
 
 .notices {

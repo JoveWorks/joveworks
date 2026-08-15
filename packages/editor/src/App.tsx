@@ -25,7 +25,9 @@ import {
 } from '@mds/schema';
 
 import { Canvas } from './canvas/Canvas';
+import { ContextMenu, type MenuItem } from './canvas/ContextMenu';
 import { GraphContext } from './graph-context';
+import { cacheCatalogue, cachedCatalogueTexts } from './io/catalogueCache';
 import { openTextFile, saveTextFile } from './io/files';
 import { analyse } from './model/analysis';
 import { baseCatalogue, withCatalogue } from './model/catalogues';
@@ -36,14 +38,32 @@ import { Notebook } from './notebook/Notebook';
 import { Palette } from './palette/Palette';
 import { useResizableWidth } from './useResizableWidth';
 
+/** The base catalogue plus whatever was cached from a previous session. */
+function initialCatalogues(): readonly Catalogue[] {
+  let catalogues: readonly Catalogue[] = [baseCatalogue()];
+  for (const text of cachedCatalogueTexts()) {
+    try {
+      catalogues = withCatalogue(catalogues, loadCatalogue(text));
+    } catch {
+      // A corrupted or stale cache entry is skipped rather than blocking
+      // startup — caching is a convenience, and the student can always
+      // reload the catalogue file if it is actually missing.
+    }
+  }
+  return catalogues;
+}
+
 export function App(): ReactElement {
-  const [catalogues, setCatalogues] = useState<readonly Catalogue[]>(() => [baseCatalogue()]);
+  const [catalogues, setCatalogues] = useState<readonly Catalogue[]>(initialCatalogues);
   const [document, setDocument] = useState<GraphDocument>(
     () => padPressure([baseCatalogue()]) ?? emptyDocument('untitled', 'Untitled'),
   );
   const [pinned, setPinned] = useState<ReadonlySet<string>>(new Set());
   const [showPalette, setShowPalette] = useState(true);
   const [showNotebook, setShowNotebook] = useState(true);
+  const [openMenu, setOpenMenu] = useState<
+    { readonly menu: 'file' | 'edit' | 'view'; readonly x: number; readonly y: number } | undefined
+  >(undefined);
   const [paletteWidth, resizePalette] = useResizableWidth(300, 200, 480, 1);
   const [notebookWidth, resizeNotebook] = useResizableWidth(340, 240, 640, -1);
   const [notices, setNotices] = useState<readonly { readonly id: string; readonly message: string }[]>(
@@ -88,6 +108,7 @@ export function App(): ReactElement {
     try {
       const loaded = loadCatalogue(file.text);
       setCatalogues((current) => withCatalogue(current, loaded));
+      cacheCatalogue(loaded.id, file.text);
       pushNotice(`Loaded ${loaded.name} — ${loaded.formulas.length} formulas.`);
     } catch (error) {
       pushNotice(`That file is not a catalogue: ${messageOf(error)}`);
@@ -116,6 +137,56 @@ export function App(): ReactElement {
       return reframe({ ...current, frames: [...current.frames, frame] });
     });
 
+  // Open/save belong in a conventional File/Edit/View ribbon, top-left
+  // (UI-FEEDBACK.md) — not wherever the individual actions used to live.
+  const fileMenuItems: readonly MenuItem[] = [
+    { label: 'Open…', onClick: () => void openDocumentFile() },
+    { label: 'Save', onClick: () => saveTextFile(`${document.id}.mds.json`, saveDocument(document)) },
+    { label: 'Load catalogue…', onClick: () => void loadCatalogueFile() },
+    {
+      label: 'Open sample: pad sweep',
+      onClick: () => {
+        const sample = padPressure(catalogues);
+        if (sample !== undefined) setDocument(sample);
+      },
+    },
+    {
+      label: 'Open sample: belt lab',
+      disabled: !beltAvailable,
+      onClick: () => {
+        const sample = beltLab(catalogues);
+        if (sample !== undefined) setDocument(sample);
+      },
+    },
+  ];
+
+  const editMenuItems: readonly MenuItem[] = [
+    { label: 'Group into new section', onClick: addSection },
+  ];
+
+  const viewMenuItems: readonly MenuItem[] = [
+    { label: showPalette ? 'Hide palette' : 'Show palette', onClick: () => setShowPalette((s) => !s) },
+    { label: showNotebook ? 'Hide notebook' : 'Show notebook', onClick: () => setShowNotebook((s) => !s) },
+  ];
+
+  const menuItemsFor = (menu: 'file' | 'edit' | 'view'): readonly MenuItem[] =>
+    menu === 'file' ? fileMenuItems : menu === 'edit' ? editMenuItems : viewMenuItems;
+
+  const menuButton = (menu: 'file' | 'edit' | 'view', label: string): ReactElement => (
+    <button
+      type="button"
+      className={`menu-button${openMenu?.menu === menu ? ' open' : ''}`}
+      onClick={(event) => {
+        const rect = event.currentTarget.getBoundingClientRect();
+        setOpenMenu((current) =>
+          current?.menu === menu ? undefined : { menu, x: rect.left, y: rect.bottom },
+        );
+      }}
+    >
+      {label}
+    </button>
+  );
+
   return (
     <GraphContext.Provider value={context}>
       <ReactFlowProvider>
@@ -124,15 +195,10 @@ export function App(): ReactElement {
             through to the browser's own menu, which offers nothing useful over
             a canvas. */}
         <div className="app" onContextMenu={(event) => event.preventDefault()}>
-          <header className="toolbar">
-            <button
-              type="button"
-              className="toggle"
-              onClick={() => setShowPalette((shown) => !shown)}
-              title="Show or hide the palette"
-            >
-              {showPalette ? '◂' : '▸'} palette
-            </button>
+          <header className="menubar">
+            {menuButton('file', 'File')}
+            {menuButton('edit', 'Edit')}
+            {menuButton('view', 'View')}
 
             <input
               className="document-title"
@@ -141,58 +207,15 @@ export function App(): ReactElement {
                 setDocument((current) => ({ ...current, title: event.target.value }))
               }
             />
-
-            <div className="actions">
-              <button type="button" onClick={() => void openDocumentFile()}>
-                open
-              </button>
-              <button
-                type="button"
-                onClick={() => saveTextFile(`${document.id}.mds.json`, saveDocument(document))}
-              >
-                save
-              </button>
-              <button type="button" onClick={() => void loadCatalogueFile()}>
-                load catalogue
-              </button>
-              <button type="button" onClick={addSection}>
-                + section
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  const sample = padPressure(catalogues);
-                  if (sample !== undefined) setDocument(sample);
-                }}
-              >
-                pad sweep
-              </button>
-              <button
-                type="button"
-                disabled={!beltAvailable}
-                title={
-                  beltAvailable
-                    ? 'The belt lab, whose golden values are the milestone 1 acceptance criterion'
-                    : 'The belt lab needs its catalogue — load it first (S23/S45)'
-                }
-                onClick={() => {
-                  const sample = beltLab(catalogues);
-                  if (sample !== undefined) setDocument(sample);
-                }}
-              >
-                belt lab
-              </button>
-            </div>
-
-            <button
-              type="button"
-              className="toggle"
-              onClick={() => setShowNotebook((shown) => !shown)}
-              title="Show or hide the notebook"
-            >
-              notebook {showNotebook ? '▸' : '◂'}
-            </button>
           </header>
+          {openMenu === undefined ? null : (
+            <ContextMenu
+              x={openMenu.x}
+              y={openMenu.y}
+              items={menuItemsFor(openMenu.menu)}
+              onClose={() => setOpenMenu(undefined)}
+            />
+          )}
 
           <main>
             {/* Overlays the workspace instead of sitting in normal flow, so
