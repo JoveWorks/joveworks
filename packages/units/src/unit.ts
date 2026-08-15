@@ -9,6 +9,7 @@
 
 import {
   ANGLE,
+  BASE_DIMENSIONS,
   DIMENSIONLESS,
   FORCE,
   LENGTH,
@@ -135,6 +136,33 @@ export function lookupAtomicUnit(
     return { dimension: rest.dimension, factor: rest.factor * scale };
   }
   return undefined;
+}
+
+/** A dimension that is already one bare base symbol — `mm`, not `mm²` or `N/mm`. */
+function isSimpleBaseDimension(dim: Dimension): boolean {
+  const nonzero = BASE_DIMENSIONS.filter((base) => dim[base] !== 0);
+  return nonzero.length === 1 && dim[nonzero[0] as (typeof BASE_DIMENSIONS)[number]] === 1;
+}
+
+/**
+ * The one named atomic unit for a dimension, if exactly one exists and the
+ * dimension is not already a bare base symbol — `W` for power, not
+ * `N·mm/s`, but plain length stays `mm` rather than becoming `m`.
+ *
+ * Ambiguous dimensions come back empty rather than guessing: torque and
+ * energy both resolve to `TORQUE` here, so a generic port whose value is
+ * physically a torque would be mislabelled `J` exactly as often as an energy
+ * value would be mislabelled `Nm`. Frequency has the same problem (`Hz` vs
+ * `rpm`). The dimension alone cannot settle which name is meant — only the
+ * formula the value came from could, and formulas already declare their own
+ * display unit rather than asking this function.
+ */
+export function namedUnit(dim: Dimension): Unit | undefined {
+  if (isSimpleBaseDimension(dim)) return undefined;
+  const matches = Object.entries(ATOMS).filter(([, atom]) => dimensionsEqual(atom.dimension, dim));
+  if (matches.length !== 1) return undefined;
+  const [symbol, atom] = matches[0] as [string, AtomicUnit];
+  return { symbol, dimension: atom.dimension, factor: atom.factor };
 }
 
 /** Every symbol the parser accepts without a prefix. Used by tests and errors. */

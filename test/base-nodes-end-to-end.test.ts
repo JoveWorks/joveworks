@@ -111,7 +111,7 @@ function driveGraph(diameters: readonly number[]): GraphDocument {
       node('piD', 'multiply'),
       node('v', 'multiply'),
       node('F', 'divide'),
-      output('speed', { kind: 'value', unit: 'm/s' }),
+      output('speed', { kind: 'print', unit: 'm/s' }),
       output('force', {
         kind: 'check',
         comparison: '<=',
@@ -167,8 +167,8 @@ describe('the base node library through the kernel', () => {
 
   it('displays the speed in the unit the output asked for', () => {
     const [speed] = evaluateDocument(driveGraph([100]), catalogues).outputs;
-    expect(speed?.kind).toBe('value');
-    expect(speed?.kind === 'value' && speed.unit.symbol).toBe('m/s');
+    expect(speed?.kind).toBe('print');
+    expect(speed?.kind === 'print' && speed.unit.symbol).toBe('m/s');
   });
 
   it('turns one range into a study of the whole graph (S29, S43)', () => {

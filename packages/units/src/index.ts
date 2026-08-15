@@ -44,6 +44,7 @@ export {
   lookupAtomicUnit,
   knownUnitSymbols,
   assertDimensionsCompatible,
+  namedUnit,
 } from './unit.js';
 export type { Unit } from './unit.js';
 

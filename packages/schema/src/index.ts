@@ -104,7 +104,7 @@ export type {
   Size,
   Output,
   OutputKind,
-  ValueOutput,
+  PrintOutput,
   CheckOutput,
   PlotOutput,
   TableOutput,

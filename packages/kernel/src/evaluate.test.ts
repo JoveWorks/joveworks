@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { formatQuantity } from '@mds/units';
 
-import { evaluateDocument, valueAt, type CheckResult, type PlotResult, type TableResult, type ValueResult } from './evaluate.js';
+import { evaluateDocument, valueAt, type CheckResult, type PlotResult, type TableResult, type PrintResult } from './evaluate.js';
 import { KernelError } from './errors.js';
 import {
   CATALOGUE,
@@ -30,7 +30,7 @@ describe('a scalar graph', () => {
       input('w', scalar(20, 'mm')),
       input('h', scalar(5, 'mm')),
       formulaNode('area', refTo('area')),
-      outputNode('readout', { kind: 'value' }),
+      outputNode('readout', { kind: 'print' }),
     ],
     [wire('w.value', 'area.w'), wire('h.value', 'area.h'), wire('area.A', 'readout.value')],
   );
@@ -41,7 +41,7 @@ describe('a scalar graph', () => {
   });
 
   it('renders the output in the port’s declared unit', () => {
-    const output = evaluateDocument(document, catalogues).outputs[0] as ValueResult;
+    const output = evaluateDocument(document, catalogues).outputs[0] as PrintResult;
     expect(output.unit.symbol).toBe('mm²');
     expect(formatQuantity(output.series.data[0] as number, output.unit)).toBe('100 mm²');
   });
@@ -302,7 +302,7 @@ describe('output nodes (S33)', () => {
         input('F', scalar(1000, 'N')),
         input('A', scalar(20, 'mm²')),
         formulaNode('p', refTo('pressure')),
-        outputNode('out', { kind: 'value' }, { frameId: 'section', caption: 'A caption.' }),
+        outputNode('out', { kind: 'print' }, { frameId: 'section', caption: 'A caption.' }),
       ],
       [wire('F.value', 'p.F'), wire('A.value', 'p.A'), wire('p.p', 'out.value')],
       [

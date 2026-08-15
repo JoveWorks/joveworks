@@ -59,7 +59,7 @@ const study: JsonObject = {
       position: { x: 520, y: 0 },
       frameId: 'sizing',
       caption: 'the working value',
-      output: { kind: 'value', unit: 'N/mm²', figures: 4 },
+      output: { kind: 'print', unit: 'N/mm²', figures: 4 },
     },
     {
       kind: 'output',

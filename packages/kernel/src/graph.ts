@@ -29,6 +29,7 @@ import {
   genericVariables,
   isDimensionless,
   isGenericDimension,
+  namedUnit,
   resolveGeneric,
   unit as makeUnit,
   type Dimension,
@@ -70,11 +71,15 @@ export function endpointKey(node: string, port: string): string {
   return `${node}.${port}`;
 }
 
-/** The canonical unit of a dimension — what a generic port displays in (S5). */
+/**
+ * The unit a generic port displays in (S5) — a named unit when the dimension
+ * has exactly one (`W` for power, not `N·mm/s`), the raw base-unit product
+ * otherwise. `namedUnit` is the one place that decides "exactly one"; this
+ * function only supplies the dimensionless case and the fallback.
+ */
 export function canonicalUnit(dimension: Dimension): Unit {
-  return isDimensionless(dimension)
-    ? DIMENSIONLESS_UNIT
-    : makeUnit(formatDimension(dimension), dimension, 1);
+  if (isDimensionless(dimension)) return DIMENSIONLESS_UNIT;
+  return namedUnit(dimension) ?? makeUnit(formatDimension(dimension), dimension, 1);
 }
 
 export interface Resolution {

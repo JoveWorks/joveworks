@@ -5,11 +5,13 @@ import {
   DENSITY,
   DIMENSIONLESS,
   FORCE,
+  FREQUENCY,
   LENGTH,
   MASS,
   POWER,
   STRESS,
   TIME,
+  TORQUE,
   VELOCITY,
   describeDimension,
   dimension,
@@ -17,6 +19,7 @@ import {
   divideDimensions,
   formatDimension,
   multiplyDimensions,
+  namedUnit,
   powerDimension,
 } from './index.js';
 
@@ -50,6 +53,26 @@ describe('dimension algebra', () => {
     expect(formatDimension(STRESS)).toBe('N/mm²');
     expect(formatDimension(POWER)).toBe('N·mm/s');
     expect(formatDimension(dimension({ time: -1 }))).toBe('1/s');
+  });
+
+  it('prefers a named unit for a dimension that has exactly one', () => {
+    expect(namedUnit(POWER)?.symbol).toBe('W');
+    expect(namedUnit(STRESS)?.symbol).toBe('Pa');
+  });
+
+  it('stays a bare base symbol rather than a named unit that is not canonical', () => {
+    // LENGTH has a named atom too (`m`), but the base symbol is already `mm`
+    // (S5) — naming it here would silently swap the display unit.
+    expect(namedUnit(LENGTH)).toBeUndefined();
+    expect(namedUnit(FORCE)).toBeUndefined();
+  });
+
+  it('does not guess between two names for one dimension', () => {
+    // Torque and energy are both TORQUE here (`Nm`/`Nmm` vs `J`); frequency
+    // has the same problem (`Hz` vs `rpm`). Dimension alone cannot tell which
+    // physical quantity is meant, so this stays unnamed rather than wrong.
+    expect(namedUnit(TORQUE)).toBeUndefined();
+    expect(namedUnit(FREQUENCY)).toBeUndefined();
   });
 
   it('names the dimensions that have familiar names', () => {

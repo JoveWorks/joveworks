@@ -61,8 +61,8 @@ interface OutputBase {
   readonly frameId?: string;
 }
 
-export interface ValueResult extends OutputBase {
-  readonly kind: 'value';
+export interface PrintResult extends OutputBase {
+  readonly kind: 'print';
   readonly series: Series;
   /** What to display in. Canonical when the source port has no unit of its own. */
   readonly unit: Unit;
@@ -112,7 +112,7 @@ export interface TableResult extends OutputBase {
   readonly axes: readonly Axis[];
 }
 
-export type OutputResult = ValueResult | CheckResult | PlotResult | TableResult;
+export type OutputResult = PrintResult | CheckResult | PlotResult | TableResult;
 
 export interface Evaluation {
   readonly document: GraphDocument;
@@ -413,10 +413,10 @@ function outputResult(
 
   const { value, unit: portUnit } = sourceOf(node, VALUE_PORT, resolution, values);
 
-  if (output.kind === 'value') {
+  if (output.kind === 'print') {
     return {
       ...base,
-      kind: 'value',
+      kind: 'print',
       series: value,
       unit: output.unit ?? portUnit,
       figures: output.figures ?? 4,

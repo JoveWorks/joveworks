@@ -65,8 +65,8 @@ export const COMPARISONS = ['<', '<=', '>', '>=', '==', '!='] as const;
 export type Comparison = (typeof COMPARISONS)[number];
 
 /** A scalar with a unit and a significant-figure count. */
-export interface ValueOutput {
-  readonly kind: 'value';
+export interface PrintOutput {
+  readonly kind: 'print';
   /** The unit to display in. Absent means the port's own display unit. */
   readonly unit?: Unit;
   readonly figures?: number;
@@ -108,9 +108,9 @@ export interface TableOutput {
   readonly columns: readonly string[];
 }
 
-export type Output = ValueOutput | CheckOutput | PlotOutput | TableOutput;
+export type Output = PrintOutput | CheckOutput | PlotOutput | TableOutput;
 
-export const OUTPUT_KINDS = ['value', 'check', 'plot', 'table'] as const;
+export const OUTPUT_KINDS = ['print', 'check', 'plot', 'table'] as const;
 export type OutputKind = (typeof OUTPUT_KINDS)[number];
 
 interface NodeBase {
@@ -207,7 +207,7 @@ function parseOutput(value: JsonValue, path: string): Output {
   const kind = readEnum(required(object, 'kind', path), join(path, 'kind'), OUTPUT_KINDS);
 
   switch (kind) {
-    case 'value':
+    case 'print':
       return {
         kind,
         ...put('unit', optional(object, 'unit', path, parseUnitField)),
@@ -248,7 +248,7 @@ function parseOutput(value: JsonValue, path: string): Output {
 
 function serializeOutput(output: Output): JsonObject {
   switch (output.kind) {
-    case 'value':
+    case 'print':
       return {
         kind: output.kind,
         ...put('unit', output.unit?.symbol),

@@ -102,7 +102,7 @@ export type {
   PlotResult,
   TableColumnResult,
   TableResult,
-  ValueResult,
+  PrintResult,
 } from './evaluate.js';
 
 export { WARNING_KINDS } from './warnings.js';
