@@ -814,9 +814,16 @@ aside.right {
   height: 10px;
 }
 
+/*
+ * The corner squares are redundant once the edges are grabbable and change
+ * cursor on their own (the widened hit area above) — opacity, not display:
+ * none, so the corner drag target (needed for diagonal resize, which no
+ * single edge line offers alone) stays interactive, just invisible.
+ */
 .react-flow__resize-control.handle {
   width: 10px;
   height: 10px;
+  opacity: 0;
 }
 
 /* --- canvas overlays ---------------------------------------------------- */
