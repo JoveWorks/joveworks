@@ -101,7 +101,7 @@ export function padPressure(catalogues: readonly Catalogue[]): GraphDocument | u
     formulaNode('area', multiply, at(340, 220)),
     formulaNode('pressure', divide, at(680, 90)),
 
-    output('p', 'Contact pressure p', { kind: 'value', unit: stress }, at(1020, 0)),
+    output('p', 'Contact pressure p', { kind: 'print', unit: stress }, at(1020, 0)),
     output(
       'p_check',
       'Pressure within the bearing limit',
@@ -204,13 +204,13 @@ export function beltLab(catalogues: readonly Catalogue[]): GraphDocument | undef
     formulaNode('speed', formula('rm.16.36'), at(380, 1100)),
     formulaNode('bending', formula('rm.16.37'), at(760, 1100)),
 
-    output('out_i', 'Transmission ratio i', { kind: 'value' }, at(1120, 0)),
-    output('out_Pprime', "Design power P'", { kind: 'value', unit: parseUnit('W') }, at(1120, 150)),
-    output('out_Lprime', "Theoretical belt length L'", { kind: 'value', unit: parseUnit('mm') }, at(1120, 300)),
-    output('out_e', 'Shaft distance e', { kind: 'value', unit: parseUnit('mm') }, at(1120, 450)),
-    output('out_z', 'Belts required z', { kind: 'value' }, at(1120, 600)),
-    output('out_v', 'Belt speed v', { kind: 'value', unit: parseUnit('m/s') }, at(1120, 750)),
-    output('out_f_B', 'Bending frequency f_B', { kind: 'value', unit: parseUnit('s-1') }, at(1120, 900)),
+    output('out_i', 'Transmission ratio i', { kind: 'print' }, at(1120, 0)),
+    output('out_Pprime', "Design power P'", { kind: 'print', unit: parseUnit('W') }, at(1120, 150)),
+    output('out_Lprime', "Theoretical belt length L'", { kind: 'print', unit: parseUnit('mm') }, at(1120, 300)),
+    output('out_e', 'Shaft distance e', { kind: 'print', unit: parseUnit('mm') }, at(1120, 450)),
+    output('out_z', 'Belts required z', { kind: 'print' }, at(1120, 600)),
+    output('out_v', 'Belt speed v', { kind: 'print', unit: parseUnit('m/s') }, at(1120, 750)),
+    output('out_f_B', 'Bending frequency f_B', { kind: 'print', unit: parseUnit('s-1') }, at(1120, 900)),
   ];
 
   const edges = [

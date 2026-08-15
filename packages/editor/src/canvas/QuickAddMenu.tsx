@@ -19,7 +19,7 @@ import { entries, search } from '../model/catalogues';
 export type QuickAddChoice =
   | { readonly kind: 'formula'; readonly formula: Formula }
   | { readonly kind: 'input' }
-  | { readonly kind: 'output'; readonly outputKind: 'value' | 'check' };
+  | { readonly kind: 'output'; readonly outputKind: 'print' | 'check' };
 
 interface Props {
   readonly x: number;
@@ -39,7 +39,7 @@ export function QuickAddMenu({ x, y, direction, catalogues, onPick, onClose }: P
     direction === 'target'
       ? [{ label: 'input', choice: { kind: 'input' } }]
       : [
-          { label: 'value output', choice: { kind: 'output', outputKind: 'value' } },
+          { label: 'print output', choice: { kind: 'output', outputKind: 'print' } },
           { label: 'check output', choice: { kind: 'output', outputKind: 'check' } },
         ];
   const matchingSpecials = specials.filter(({ label }) =>

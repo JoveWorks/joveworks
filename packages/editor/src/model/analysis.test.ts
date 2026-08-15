@@ -98,7 +98,7 @@ describe('analysing a graph mid-build', () => {
         scalar('b', 3),
         formulaNode('sum', 'inv.sum'),
         formulaNode('bad', 'inv.quarantined'),
-        { kind: 'output', id: 'out', position: { x: 0, y: 0 }, output: { kind: 'value' } },
+        { kind: 'output', id: 'out', position: { x: 0, y: 0 }, output: { kind: 'print' } },
       ],
       [
         wire('e1', ['a', 'value'], ['sum', 'a']),

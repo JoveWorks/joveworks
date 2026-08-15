@@ -32,7 +32,7 @@ import {
 
 import { canConnect, typesConnect } from '@mds/kernel';
 import { parseUnit } from '@mds/units';
-import { formulaRef, VALUE_PORT, type Edge, type GraphNode } from '@mds/schema';
+import { axes as documentAxes, formulaRef, VALUE_PORT, type Edge, type GraphNode } from '@mds/schema';
 
 import { useGraph } from '../graph-context';
 import {
@@ -188,13 +188,24 @@ export function Canvas(): ReactElement {
       edit((current) => {
         let next = current;
         for (const change of changes) {
-          if (change.type !== 'position' || change.position === undefined) continue;
-          next = frames.has(change.id)
-            ? updateFrame(next, change.id, (frame) => ({
-                ...frame,
-                position: change.position as { x: number; y: number },
-              }))
-            : moveNode(next, change.id, change.position);
+          if (change.type === 'position' && change.position !== undefined) {
+            next = frames.has(change.id)
+              ? updateFrame(next, change.id, (frame) => ({
+                  ...frame,
+                  position: change.position as { x: number; y: number },
+                }))
+              : moveNode(next, change.id, change.position);
+          }
+          // A frame's size lives in the document (unlike an ordinary node's,
+          // which is measured, never authored) — NodeResizer reports it the
+          // same way a drag reports position, live change by live change, so
+          // this is the only way the resize preview is not frozen until drop.
+          if (change.type === 'dimensions' && change.dimensions !== undefined && frames.has(change.id)) {
+            next = updateFrame(next, change.id, (frame) => ({
+              ...frame,
+              size: change.dimensions as { width: number; height: number },
+            }));
+          }
         }
         return removed.size === 0 ? next : reframe(removeNodes(next, removed));
       });
@@ -333,7 +344,7 @@ export function Canvas(): ReactElement {
           }),
       },
       {
-        label: 'Add value output',
+        label: 'Add print output',
         onClick: () =>
           edit((current) => {
             const id = uniqueId(current, 'result');
@@ -341,7 +352,7 @@ export function Canvas(): ReactElement {
               kind: 'output',
               id,
               label: id,
-              output: { kind: 'value' },
+              output: { kind: 'print' },
               position: at,
             });
           }),
@@ -356,6 +367,23 @@ export function Canvas(): ReactElement {
               id,
               label: id,
               output: { kind: 'check', comparison: '>=', threshold: { value: 1, unit: parseUnit('') } },
+              position: at,
+            });
+          }),
+      },
+      {
+        label: 'Add plot output',
+        disabled: documentAxes(document).length === 0,
+        onClick: () =>
+          edit((current) => {
+            const id = uniqueId(current, 'plot');
+            const first = documentAxes(current).at(0);
+            if (first === undefined) return current;
+            return addNode(current, {
+              kind: 'output',
+              id,
+              label: id,
+              output: { kind: 'plot', x: first.id },
               position: at,
             });
           }),
@@ -390,7 +418,7 @@ export function Canvas(): ReactElement {
           ? choice.formula.id.replace(/[^\w.]/gu, '_')
           : choice.kind === 'input'
             ? 'input'
-            : choice.outputKind === 'value'
+            : choice.outputKind === 'print'
               ? 'result'
               : 'check',
       );
@@ -412,7 +440,7 @@ export function Canvas(): ReactElement {
                 output:
                   choice.outputKind === 'check'
                     ? { kind: 'check', comparison: '>=', threshold: { value: 1, unit: parseUnit('') } }
-                    : { kind: 'value' },
+                    : { kind: 'print' },
                 position,
               };
 

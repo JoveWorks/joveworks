@@ -17,7 +17,7 @@ import { axisLabel, reading, summarise } from '../model/values';
 import { NodeShell } from './NodeShell';
 import { Sparkline } from './Sparkline';
 import { TextField } from './fields';
-import { ValueEditor } from './ValueEditor';
+import { ValueFields, ValueKindSelect } from './ValueEditor';
 
 export function InputNodeView({ id, selected }: NodeProps): ReactElement | null {
   const { document, analysis, edit, pinned, togglePin } = useGraph();
@@ -49,7 +49,7 @@ export function InputNodeView({ id, selected }: NodeProps): ReactElement | null 
       }
       subtitle={swept ? 'range' : 'input'}
       detail={
-        <ValueEditor
+        <ValueKindSelect
           value={node.value}
           onChange={(next) =>
             edit((current) =>
@@ -59,14 +59,29 @@ export function InputNodeView({ id, selected }: NodeProps): ReactElement | null 
         />
       }
     >
-      <div className="node-value">
-        <span className="reading">{value === undefined ? '—' : summarise(value)}</span>
-        {value === undefined ? null : <Sparkline reading={value} />}
-        {value === undefined ? null : (
-          <span className="axis">{axisLabel(value) ?? ''}</span>
-        )}
-        <Handle type="source" position={Position.Right} id={VALUE_PORT} />
+      {/* The port always docks on whichever row is actually showing the value:
+          the field itself when it's a scalar (S47's "presented once"), the
+          swept-range summary below when it's a range — never both, and never
+          neither. */}
+      <div className="node-value-editor">
+        <ValueFields
+          value={node.value}
+          onChange={(next) =>
+            edit((current) =>
+              updateNode<InputNode>(current, id, (input) => ({ ...input, value: next })),
+            )
+          }
+        />
+        {swept ? null : <Handle type="source" position={Position.Right} id={VALUE_PORT} />}
       </div>
+      {swept ? (
+        <div className="node-value">
+          <span className="reading">{value === undefined ? '—' : summarise(value)}</span>
+          {value === undefined ? null : <Sparkline reading={value} />}
+          {value === undefined ? null : <span className="axis">{axisLabel(value) ?? ''}</span>}
+          <Handle type="source" position={Position.Right} id={VALUE_PORT} />
+        </div>
+      ) : null}
     </NodeShell>
   );
 }

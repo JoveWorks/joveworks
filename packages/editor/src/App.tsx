@@ -34,6 +34,7 @@ import { messageOf } from './model/quantity';
 import { BELT_LAB_FORMULAS, beltLab, padPressure, provides } from './model/samples';
 import { Notebook } from './notebook/Notebook';
 import { Palette } from './palette/Palette';
+import { useResizableWidth } from './useResizableWidth';
 
 export function App(): ReactElement {
   const [catalogues, setCatalogues] = useState<readonly Catalogue[]>(() => [baseCatalogue()]);
@@ -43,7 +44,21 @@ export function App(): ReactElement {
   const [pinned, setPinned] = useState<ReadonlySet<string>>(new Set());
   const [showPalette, setShowPalette] = useState(true);
   const [showNotebook, setShowNotebook] = useState(true);
-  const [notice, setNotice] = useState<string | undefined>(undefined);
+  const [paletteWidth, resizePalette] = useResizableWidth(300, 200, 480, 1);
+  const [notebookWidth, resizeNotebook] = useResizableWidth(340, 240, 640, -1);
+  const [notices, setNotices] = useState<readonly { readonly id: string; readonly message: string }[]>(
+    [],
+  );
+
+  const dismissNotice = (id: string): void =>
+    setNotices((current) => current.filter((notice) => notice.id !== id));
+
+  /** A notice joins the stack rather than replacing it, and clears itself. */
+  const pushNotice = (message: string): void => {
+    const id = crypto.randomUUID();
+    setNotices((current) => [...current, { id, message }]);
+    window.setTimeout(() => dismissNotice(id), 6000);
+  };
 
   const analysis = useMemo(() => analyse(document, catalogues), [document, catalogues]);
 
@@ -73,9 +88,9 @@ export function App(): ReactElement {
     try {
       const loaded = loadCatalogue(file.text);
       setCatalogues((current) => withCatalogue(current, loaded));
-      setNotice(`Loaded ${loaded.name} — ${loaded.formulas.length} formulas.`);
+      pushNotice(`Loaded ${loaded.name} — ${loaded.formulas.length} formulas.`);
     } catch (error) {
-      setNotice(`That file is not a catalogue: ${messageOf(error)}`);
+      pushNotice(`That file is not a catalogue: ${messageOf(error)}`);
     }
   };
 
@@ -84,9 +99,8 @@ export function App(): ReactElement {
     if (file === undefined) return;
     try {
       setDocument(loadDocument(file.text));
-      setNotice(undefined);
     } catch (error) {
-      setNotice(`That file is not a graph: ${messageOf(error)}`);
+      pushNotice(`That file is not a graph: ${messageOf(error)}`);
     }
   };
 
@@ -94,7 +108,7 @@ export function App(): ReactElement {
     setDocument((current) => {
       const inside = current.nodes.filter((node) => node.frameId === undefined);
       if (inside.length === 0) {
-        setNotice('Every node is already in a section.');
+        pushNotice('Every node is already in a section.');
         return current;
       }
       const id = uniqueId(current, 'section');
@@ -180,28 +194,42 @@ export function App(): ReactElement {
             </button>
           </header>
 
-          {notice === undefined ? null : (
-            <div className="notice" role="status">
-              {notice}
-              <button type="button" onClick={() => setNotice(undefined)}>
-                ✕
-              </button>
-            </div>
-          )}
-
           <main>
+            {/* Overlays the workspace instead of sitting in normal flow, so
+                showing or dismissing one does not shift the canvas (UI-FEEDBACK.md:
+                messages must overlay, not push other UI down). Stacks rather than
+                replacing, and each clears itself after a delay. */}
+            {notices.length === 0 ? null : (
+              <div className="notices">
+                {notices.map((notice) => (
+                  <div key={notice.id} className="notice" role="status">
+                    {notice.message}
+                    <button type="button" onClick={() => dismissNotice(notice.id)}>
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {showPalette ? (
-              <aside className="left">
-                <Palette />
-              </aside>
+              <>
+                <aside className="left" style={{ width: paletteWidth, flexBasis: paletteWidth }}>
+                  <Palette />
+                </aside>
+                <div className="resize-handle" onMouseDown={resizePalette} />
+              </>
             ) : null}
 
             <Canvas />
 
             {showNotebook ? (
-              <aside className="right">
-                <Notebook />
-              </aside>
+              <>
+                <div className="resize-handle" onMouseDown={resizeNotebook} />
+                <aside className="right" style={{ width: notebookWidth, flexBasis: notebookWidth }}>
+                  <Notebook />
+                </aside>
+              </>
             ) : null}
           </main>
         </div>

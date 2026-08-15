@@ -13,7 +13,7 @@ import { useMemo, useState, type ReactElement } from 'react';
 import { useReactFlow } from '@xyflow/react';
 
 import { parseUnit } from '@mds/units';
-import { formulaRef, type Formula, type Output, type Position } from '@mds/schema';
+import { axes as documentAxes, formulaRef, type Formula, type Output, type Position } from '@mds/schema';
 
 import { useGraph } from '../graph-context';
 import { addNode, uniqueId } from '../model/document';
@@ -71,13 +71,17 @@ export function Palette(): ReactElement {
       });
     });
 
+  const ranges = documentAxes(document);
+
   const addOutput = (kind: Output['kind']): void =>
     edit((current) => {
-      const id = uniqueId(current, kind === 'value' ? 'result' : kind);
+      const id = uniqueId(current, kind === 'print' ? 'result' : kind);
       const output: Output =
         kind === 'check'
           ? { kind, comparison: '>=', threshold: { value: 1, unit: parseUnit('') } }
-          : { kind: 'value' };
+          : kind === 'plot'
+            ? { kind, x: documentAxes(current).at(0)?.id ?? '' }
+            : { kind: 'print' };
       return addNode(current, { kind: 'output', id, label: id, output, position: position() });
     });
 
@@ -86,9 +90,6 @@ export function Palette(): ReactElement {
       <div className="palette-add">
         <button type="button" onClick={addInput}>
           + input
-        </button>
-        <button type="button" onClick={() => addOutput('value')}>
-          + value
         </button>
         <button type="button" onClick={() => addOutput('check')}>
           + check
@@ -103,6 +104,39 @@ export function Palette(): ReactElement {
       />
 
       <div className="palette-list">
+        {/* Ahead of the catalogues, not a one-off toolbar button (UI-FEEDBACK.md):
+            print and plot are what every output eventually is, so they read the
+            same way a catalogue entry does. */}
+        {query.trim().length === 0 ? (
+          <section>
+            <h3>Outputs</h3>
+            <ul>
+              <li>
+                <button type="button" className="entry" onClick={() => addOutput('print')}>
+                  <span className="entry-id">print</span>
+                  <span className="entry-output">a value, as text</span>
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  className="entry"
+                  disabled={ranges.length === 0}
+                  title={
+                    ranges.length === 0
+                      ? 'Needs a range input somewhere in the graph to plot against'
+                      : undefined
+                  }
+                  onClick={() => addOutput('plot')}
+                >
+                  <span className="entry-id">plot</span>
+                  <span className="entry-output">a value over a swept range</span>
+                </button>
+              </li>
+            </ul>
+          </section>
+        ) : null}
+
         {grouped.map(([catalogueId, list]) => (
           <section key={catalogueId}>
             <h3>

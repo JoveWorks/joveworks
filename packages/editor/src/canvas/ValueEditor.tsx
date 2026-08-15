@@ -56,10 +56,34 @@ interface Props {
   readonly onChange: (value: ValueSpec) => void;
 }
 
-export function ValueEditor({ value, onChange }: Props): ReactElement {
+/**
+ * The kind switch alone — scalar, linear range, log range, list. Split out
+ * from `ValueFields` because it changes rarely enough to stay behind the
+ * hover/pin detail, while the fields below it are what a student is quickly
+ * re-typing during iteration and belong on the card at all times.
+ */
+export function ValueKindSelect({ value, onChange }: Props): ReactElement {
   const kind = (['scalar', 'linear', 'logarithmic', 'list'] as const).includes(value.kind as Kind)
     ? (value.kind as Kind)
     : 'scalar';
+
+  return (
+    <select
+      className="kind"
+      value={kind}
+      onChange={(event) => onChange(converted(value, event.target.value as Kind))}
+    >
+      {Object.entries(KIND_LABELS).map(([option, label]) => (
+        <option key={option} value={option}>
+          {label}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+/** The value itself — always visible on the card, not just on hover (S47). */
+export function ValueFields({ value, onChange }: Props): ReactElement {
   const unit = unitOf(value);
 
   const setUnit = (text: string): void => {
@@ -80,18 +104,6 @@ export function ValueEditor({ value, onChange }: Props): ReactElement {
 
   return (
     <div className="value-editor">
-      <select
-        className="kind"
-        value={kind}
-        onChange={(event) => onChange(converted(value, event.target.value as Kind))}
-      >
-        {Object.entries(KIND_LABELS).map(([option, label]) => (
-          <option key={option} value={option}>
-            {label}
-          </option>
-        ))}
-      </select>
-
       {value.kind === 'scalar' ? (
         <TextField
           className="quantity"

@@ -126,7 +126,9 @@ export function updateFrame(
 
 /**
  * Move a section earlier or later in `document.frames` — the notebook's
- * section order (S30), which the canvas has no drag gesture for yet.
+ * section order (S30). A precise one-step nudge, alongside the coarser drag
+ * reorder (`reorderFrame`) — useful without a pointer, and when a section is
+ * already exactly where dragging would land it.
  */
 export function moveFrame(
   document: GraphDocument,
@@ -138,6 +140,29 @@ export function moveFrame(
   if (index === -1 || swapWith < 0 || swapWith >= document.frames.length) return document;
   const frames = [...document.frames];
   [frames[index], frames[swapWith]] = [frames[swapWith] as Frame, frames[index] as Frame];
+  return { ...document, frames };
+}
+
+/**
+ * Move a section to just before or after another, for dragging one to a
+ * specific spot in the notebook — including the very beginning (`before` the
+ * first section) or the very end (`after` the last).
+ */
+export function reorderFrame(
+  document: GraphDocument,
+  sourceId: string,
+  targetId: string,
+  position: 'before' | 'after',
+): GraphDocument {
+  if (sourceId === targetId) return document;
+  const frames = [...document.frames];
+  const sourceIndex = frames.findIndex((frame) => frame.id === sourceId);
+  if (sourceIndex === -1 || !frames.some((frame) => frame.id === targetId)) return document;
+  const [moved] = frames.splice(sourceIndex, 1);
+  // Re-found after the source is removed, so a source that sat earlier in the
+  // list does not throw the target's index off by one.
+  const targetIndex = frames.findIndex((frame) => frame.id === targetId);
+  frames.splice(position === 'after' ? targetIndex + 1 : targetIndex, 0, moved as Frame);
   return { ...document, frames };
 }
 

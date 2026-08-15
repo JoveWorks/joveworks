@@ -77,7 +77,7 @@ export function OutputNodeView({ id, selected }: NodeProps): ReactElement | null
     source === undefined ? undefined : reading(analysis, source.from.node, source.from.port);
   const result = analysis.evaluation?.outputs.find((entry) => entry.nodeId === id);
   const value =
-    result?.kind === 'value' || result?.kind === 'check' || result?.kind === 'plot'
+    result?.kind === 'print' || result?.kind === 'check' || result?.kind === 'plot'
       ? { series: result.series, unit: result.unit }
       : shown;
 
@@ -118,7 +118,7 @@ export function OutputNodeView({ id, selected }: NodeProps): ReactElement | null
               disabled={output.kind === 'table'}
               onChange={(event) => {
                 const kind = event.target.value as Output['kind'];
-                if (kind === 'value') setOutput({ kind });
+                if (kind === 'print') setOutput({ kind });
                 if (kind === 'check') {
                   setOutput({
                     kind,
@@ -132,7 +132,7 @@ export function OutputNodeView({ id, selected }: NodeProps): ReactElement | null
                 }
               }}
             >
-              <option value="value">value</option>
+              <option value="print">print</option>
               <option value="check">check</option>
               <option value="plot" disabled={ranges.length === 0}>
                 plot
@@ -141,7 +141,7 @@ export function OutputNodeView({ id, selected }: NodeProps): ReactElement | null
             </select>
           </label>
 
-          {output.kind === 'value' ? (
+          {output.kind === 'print' ? (
             <>
               <label>
                 unit
@@ -153,7 +153,7 @@ export function OutputNodeView({ id, selected }: NodeProps): ReactElement | null
                   onCommit={(text) =>
                     setOutput(
                       text.trim().length === 0
-                        ? { kind: 'value', ...(output.figures === undefined ? {} : { figures: output.figures }) }
+                        ? { kind: 'print', ...(output.figures === undefined ? {} : { figures: output.figures }) }
                         : { ...output, unit: parseUnit(text) },
                     )
                   }
@@ -297,7 +297,7 @@ export function OutputNodeView({ id, selected }: NodeProps): ReactElement | null
 
       <div className="node-value">
         <span className="reading">
-          {value === undefined ? '—' : summarise(value, output.kind === 'value' ? output.figures ?? 4 : 4)}
+          {value === undefined ? '—' : summarise(value, output.kind === 'print' ? output.figures ?? 4 : 4)}
         </span>
         {value === undefined ? null : <Sparkline reading={value} />}
         <Verdict nodeId={id} />

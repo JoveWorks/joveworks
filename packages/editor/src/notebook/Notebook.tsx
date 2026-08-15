@@ -19,7 +19,7 @@ import type { Frame, GraphDocument, OutputNode } from '@mds/schema';
 
 import { useGraph } from '../graph-context';
 import { ContextMenu, type MenuItem } from '../canvas/ContextMenu';
-import { moveFrame, reframe, removeNodes, updateFrame, updateNode } from '../model/document';
+import { moveFrame, reframe, removeNodes, reorderFrame, updateFrame, updateNode } from '../model/document';
 import { display } from '../model/quantity';
 import { summarise } from '../model/values';
 import { PlotFigure } from './PlotFigure';
@@ -37,9 +37,9 @@ function Result({ result }: { readonly result: OutputResult }): ReactElement {
   const { document } = useGraph();
   const label = result.label ?? result.nodeId;
 
-  if (result.kind === 'value') {
+  if (result.kind === 'print') {
     return (
-      <p className="result value">
+      <p className="result print">
         <span className="label">{label}</span>
         <span className="number">{summarise(result, result.figures)}</span>
       </p>
@@ -142,6 +142,7 @@ function Section({
 }): ReactElement | null {
   const { document, analysis, edit } = useGraph();
   const [menu, setMenu] = useState<{ x: number; y: number } | undefined>(undefined);
+  const [dragOver, setDragOver] = useState<'before' | 'after' | undefined>(undefined);
   if (outputs.length === 0) return null;
 
   const results = new Map(
@@ -171,14 +172,40 @@ function Section({
 
   return (
     <section
-      className="notebook-section"
+      className={`notebook-section${dragOver === undefined ? '' : ` drag-over-${dragOver}`}`}
+      draggable={frame !== undefined}
+      onDragStart={(event) => {
+        if (frame === undefined) return;
+        event.dataTransfer.setData('text/plain', frame.id);
+        event.dataTransfer.effectAllowed = 'move';
+      }}
+      onDragOver={(event) => {
+        if (frame === undefined) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'move';
+        // Which half of the section the pointer is over decides whether the
+        // drop lands before or after it — not always "before", which read as
+        // arbitrary when the drop target's own bottom half was still "above".
+        const bounds = event.currentTarget.getBoundingClientRect();
+        setDragOver(event.clientY - bounds.top < bounds.height / 2 ? 'before' : 'after');
+      }}
+      onDragLeave={() => setDragOver(undefined)}
+      onDrop={(event) => {
+        if (frame === undefined || dragOver === undefined) return;
+        event.preventDefault();
+        const position = dragOver;
+        setDragOver(undefined);
+        const sourceId = event.dataTransfer.getData('text/plain');
+        if (sourceId.length === 0) return;
+        edit((current) => reorderFrame(current, sourceId, frame.id, position));
+      }}
       onContextMenu={(event) => {
         if (frame === undefined) return;
         event.preventDefault();
         setMenu({ x: event.clientX, y: event.clientY });
       }}
     >
-      <h2>{frame?.title ?? 'Not in a section'}</h2>
+      <h2>{frame === undefined ? 'Not in a section' : <span className="grip">⠿ {frame.title}</span>}</h2>
       {menu === undefined ? null : (
         <ContextMenu x={menu.x} y={menu.y} items={menuItems} onClose={() => setMenu(undefined)} />
       )}

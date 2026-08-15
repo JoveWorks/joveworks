@@ -103,16 +103,33 @@ input[aria-invalid='true'] {
   border-style: dashed;
 }
 
+.notices {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
 .notice {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 12px;
-  padding: 4px 10px;
+  max-width: 620px;
+  padding: 5px 10px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
   background: #fff7ed;
-  border-bottom: 1px solid var(--line);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 15%);
 }
 
 main {
+  position: relative;
   display: flex;
   flex: 1;
   min-height: 0;
@@ -120,8 +137,7 @@ main {
 
 aside.left,
 aside.right {
-  width: 300px;
-  flex: 0 0 300px;
+  flex-shrink: 0;
   overflow-y: auto;
   background: var(--panel);
 }
@@ -132,8 +148,18 @@ aside.left {
 
 aside.right {
   border-left: 1px solid var(--line);
-  width: 340px;
-  flex-basis: 340px;
+}
+
+.resize-handle {
+  flex: 0 0 5px;
+  width: 5px;
+  cursor: col-resize;
+  background: transparent;
+}
+
+.resize-handle:hover,
+.resize-handle:active {
+  background: var(--accent);
 }
 
 .canvas {
@@ -234,6 +260,18 @@ aside.right {
 }
 
 /* --- nodes -------------------------------------------------------------- */
+
+/*
+ * Hovering a node brings it above overlapping neighbours. React Flow sets
+ * z-index inline per node (selection, drag), which only `!important` in a
+ * stylesheet can outrank — frames are excluded, so hovering one's title does
+ * not lift it above the nodes it groups.
+ */
+.react-flow__node-input:hover,
+.react-flow__node-formula:hover,
+.react-flow__node-output:hover {
+  z-index: 1000 !important;
+}
 
 .node {
   width: 220px;
@@ -462,7 +500,8 @@ aside.right {
   transform: translateY(-50%);
 }
 
-.node .node-value .react-flow__handle {
+.node .node-value .react-flow__handle,
+.node .node-value-editor .react-flow__handle {
   right: 2px;
   top: 50%;
   transform: translateY(-50%);
@@ -480,10 +519,48 @@ aside.right {
   font-size: 11px;
 }
 
+/* Gives the output handle a row to dock against when the value editor is a
+   scalar's single field, same as .node-value does for everything else. */
+.node-value-editor {
+  position: relative;
+}
+
+.node-value-editor:has(.react-flow__handle) {
+  padding-right: 14px;
+}
+
 .value-editor {
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+/*
+ * Looks like plain text until you mean to change it — a boxed field only on
+ * hover or focus, so an always-editable value does not read as a form. Covers
+ * every field in the value editor: the scalar quantity, and the range/list
+ * fields nested under it.
+ */
+.value-editor input {
+  border-color: transparent;
+  background: transparent;
+  padding: 1px 2px;
+}
+
+.value-editor input:hover,
+.value-editor input:focus {
+  border-color: var(--line);
+  background: var(--paper);
+}
+
+.value-editor input[aria-invalid='true'] {
+  border-color: var(--state-error);
+  background: var(--paper);
+}
+
+.value-editor .quantity {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 .value-editor .quantity,
@@ -539,6 +616,27 @@ aside.right {
   font-weight: 600;
   color: var(--muted);
   width: 90%;
+}
+
+/*
+ * NodeResizer's default hit area is the visible 1px border itself — precise
+ * to the point of being hard to grab. Widen the interactive strip well past
+ * what is drawn; the translate that centres it on the frame edge (from
+ * React Flow's own stylesheet) keeps it centred as it grows.
+ */
+.react-flow__resize-control.line.left,
+.react-flow__resize-control.line.right {
+  width: 10px;
+}
+
+.react-flow__resize-control.line.top,
+.react-flow__resize-control.line.bottom {
+  height: 10px;
+}
+
+.react-flow__resize-control.handle {
+  width: 10px;
+  height: 10px;
 }
 
 /* --- canvas overlays ---------------------------------------------------- */
@@ -668,6 +766,44 @@ aside.right {
   margin: 18px 0 6px;
   padding-bottom: 3px;
   border-bottom: 1px solid var(--line);
+}
+
+.notebook-section[draggable='true'] {
+  cursor: grab;
+}
+
+.notebook-section[draggable='true']:active {
+  cursor: grabbing;
+}
+
+.notebook-section .grip {
+  color: var(--muted);
+}
+
+/* A line at the exact edge the section would land on, not a box around the
+   whole target — the drop point is where the line is, not "before this". */
+.notebook-section.drag-over-before,
+.notebook-section.drag-over-after {
+  position: relative;
+}
+
+.notebook-section.drag-over-before::before,
+.notebook-section.drag-over-after::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+.notebook-section.drag-over-before::before {
+  top: -3px;
+}
+
+.notebook-section.drag-over-after::after {
+  bottom: -3px;
 }
 
 .notebook textarea {
