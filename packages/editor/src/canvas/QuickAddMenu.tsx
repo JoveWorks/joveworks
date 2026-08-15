@@ -43,6 +43,14 @@ export interface ExistingCandidate {
   readonly subtitle: string;
   /** The port this pick would wire the dragged endpoint onto. */
   readonly port: string;
+  /**
+   * What is already wired to `port`, if anything — picking this candidate
+   * silently replaces it (Canvas.tsx's `occupantOf`). Shown so a click meant
+   * as "give me a fresh node" doesn't land here without warning: an uncited
+   * base formula's subtitle is its bare id, which reads identically to what
+   * a *new* instance of that same formula would show below.
+   */
+  readonly replaces?: string;
 }
 
 interface Props {
@@ -126,35 +134,57 @@ export function QuickAddMenu({
           }}
         />
         <div className="quick-add-list">
-          {matchingSpecials.map(({ label, choice, disabled }) => (
-            <button
-              key={label}
-              type="button"
-              disabled={disabled ?? false}
-              title={disabled === true ? 'Needs a range input somewhere in the graph to plot against' : undefined}
-              onClick={() => pick(choice)}
-            >
-              {label}
-            </button>
-          ))}
-          {matchingExisting.slice(0, 20).map((candidate) => (
-            <button
-              key={candidate.nodeId}
-              type="button"
-              onClick={() => pick({ kind: 'existing', nodeId: candidate.nodeId, port: candidate.port })}
-            >
-              <span className="entry-id">{candidate.label}</span>
-              <span className="entry-output">{candidate.subtitle}</span>
-            </button>
-          ))}
-          {formulas.slice(0, 30).map(({ formula }) => (
-            <button key={formula.id} type="button" onClick={() => pick({ kind: 'formula', formula })}>
-              <span className="entry-id">{formula.citation ?? formula.id}</span>
-              <span className="entry-output">
-                <Symbol name={formula.output.name} />
-              </span>
-            </button>
-          ))}
+          {matchingExisting.length === 0 ? null : (
+            <>
+              <div className="quick-add-heading">On this canvas</div>
+              {matchingExisting.slice(0, 20).map((candidate) => (
+                <button
+                  key={candidate.nodeId}
+                  type="button"
+                  title={
+                    candidate.replaces === undefined
+                      ? undefined
+                      : `Replaces the wire from ${candidate.replaces} — that input takes one connection.`
+                  }
+                  onClick={() => pick({ kind: 'existing', nodeId: candidate.nodeId, port: candidate.port })}
+                >
+                  <span className="entry-id">{candidate.label}</span>
+                  <span className="entry-output">
+                    {candidate.subtitle}
+                    {candidate.replaces === undefined ? null : (
+                      <span className="replaces"> replaces {candidate.replaces}</span>
+                    )}
+                  </span>
+                </button>
+              ))}
+            </>
+          )}
+          {matchingSpecials.length === 0 && formulas.length === 0 ? null : (
+            <>
+              <div className="quick-add-heading">Add new</div>
+              {matchingSpecials.map(({ label, choice, disabled }) => (
+                <button
+                  key={label}
+                  type="button"
+                  disabled={disabled ?? false}
+                  title={
+                    disabled === true ? 'Needs a range input somewhere in the graph to plot against' : undefined
+                  }
+                  onClick={() => pick(choice)}
+                >
+                  {label}
+                </button>
+              ))}
+              {formulas.slice(0, 30).map(({ formula }) => (
+                <button key={formula.id} type="button" onClick={() => pick({ kind: 'formula', formula })}>
+                  <span className="entry-id">{formula.citation ?? formula.id}</span>
+                  <span className="entry-output">
+                    <Symbol name={formula.output.name} />
+                  </span>
+                </button>
+              ))}
+            </>
+          )}
           {matchingSpecials.length === 0 && matchingExisting.length === 0 && formulas.length === 0 ? (
             <p className="empty">Nothing matches "{query}".</p>
           ) : null}

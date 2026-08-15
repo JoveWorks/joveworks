@@ -1033,6 +1033,18 @@ aside.right {
   margin-left: auto;
 }
 
+.quick-add-list .replaces {
+  color: var(--state-quarantined);
+}
+
+.quick-add-heading {
+  padding: 5px 8px 2px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
 .quick-add-list .empty {
   margin: 4px 8px;
   color: var(--muted);

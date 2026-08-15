@@ -72,6 +72,39 @@ import { QuickAddMenu, type ExistingCandidate, type QuickAddChoice } from './Qui
 import { basePortName, slotHandleId } from './spectrumSlots';
 
 /**
+ * Whatever is already wired into `node.port`, by label — undefined if it is
+ * free. A target port normally takes one edge (a spectrum's many-slot
+ * exception does not apply to any port `existingCandidates` below offers,
+ * which are always a formula's or output's *first* ordinary input), so
+ * picking a candidate with something already here silently replaces it —
+ * exactly the trap NOTES.md's quick-add report was: an uncited base
+ * formula's subtitle (its bare id, "multiply") reads identically to what a
+ * *fresh* instance of that formula would show, so a click meant as "give me
+ * a new node" can land on "rewire this existing one instead" with nothing
+ * on screen to say a wire just got displaced three nodes downstream.
+ */
+function occupantOf(
+  document: GraphDocument,
+  formulas: ReadonlyMap<string, Formula>,
+  node: { readonly node: string; readonly port: string },
+): string | undefined {
+  const edge = document.edges.find((entry) => entry.to.node === node.node && entry.to.port === node.port);
+  if (edge === undefined) return undefined;
+  const source = document.nodes.find((entry) => entry.id === edge.from.node);
+  if (source === undefined) return undefined;
+  if (source.kind === 'formula') {
+    const formula = formulas.get(source.id);
+    return formula === undefined ? nodeLabel(source) : `${nodeLabel(source)} (${formula.output.name})`;
+  }
+  return nodeLabel(source);
+}
+
+/** `exactOptionalPropertyTypes` wants the key absent, not present as `undefined`. */
+function replacesField(occupant: string | undefined): { readonly replaces?: string } {
+  return occupant === undefined ? {} : { replaces: occupant };
+}
+
+/**
  * Every already-placed node with a port fitting the drag's direction —
  * QuickAddMenu.tsx's "find one already on the canvas" list. `from.type`
  * names the *dragged* endpoint's own kind, so a dragged source needs a
@@ -97,20 +130,30 @@ function existingCandidates(
           label: nodeLabel(node),
           subtitle: formula.citation ?? formula.id,
           port,
+          ...replacesField(occupantOf(document, formulas, { node: node.id, port })),
         });
       } else if (node.kind === 'output') {
         // A table's several named ports have no single obvious one to
         // land on — offer its ghost slot instead (NEW_COLUMN), the same
         // "wire it and the column names itself" a direct drag onto the
-        // node gets (OutputNodeView.tsx).
+        // node gets (OutputNodeView.tsx). A ghost slot is never occupied —
+        // that is what makes it a ghost slot — so `replaces` stays unset.
+        const port = node.output.kind === 'table' ? NEW_COLUMN : VALUE_PORT;
         candidates.push({
           nodeId: node.id,
           label: nodeLabel(node),
           subtitle: node.output.kind,
-          port: node.output.kind === 'table' ? NEW_COLUMN : VALUE_PORT,
+          port,
+          ...(port === NEW_COLUMN ? {} : replacesField(occupantOf(document, formulas, { node: node.id, port }))),
         });
       } else if (node.kind === 'compare') {
-        candidates.push({ nodeId: node.id, label: nodeLabel(node), subtitle: 'compare', port: VALUE_PORT });
+        candidates.push({
+          nodeId: node.id,
+          label: nodeLabel(node),
+          subtitle: 'compare',
+          port: VALUE_PORT,
+          ...replacesField(occupantOf(document, formulas, { node: node.id, port: VALUE_PORT })),
+        });
       }
       continue;
     }
