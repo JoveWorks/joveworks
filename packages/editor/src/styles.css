@@ -593,7 +593,12 @@ aside.right {
 
 .quantity-split .unit {
   flex: 0 1 auto;
+  /* Shrinks to the typed unit itself (`m`, not `mm` worth of blank space) in
+     browsers that support it; the fixed width is only the fallback. */
+  field-sizing: content;
   width: 3.2em;
+  min-width: 2ch;
+  max-width: 6em;
   padding-left: 0;
   color: var(--muted);
 }
