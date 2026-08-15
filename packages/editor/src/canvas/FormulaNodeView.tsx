@@ -20,6 +20,8 @@ import { isGenericPort, type Port } from '@mds/schema';
 import type { Unit } from '@mds/units';
 
 import { useGraph } from '../graph-context';
+import { useSettings } from '../settings-context';
+import { toUnitsFormat } from '../model/numberFormat';
 import { reframe, removeNodes, updateNode } from '../model/document';
 import { Symbol } from '../Symbol';
 import { unitLabel } from '../model/quantity';
@@ -32,6 +34,8 @@ import type { FormulaNode } from '@mds/schema';
 
 export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | null {
   const { document, analysis, edit, pinned, togglePin } = useGraph();
+  const { numberFormat } = useSettings();
+  const format = toUnitsFormat(numberFormat);
   const node = document.nodes.find((candidate) => candidate.id === id);
   if (node === undefined || node.kind !== 'formula') return null;
 
@@ -204,7 +208,7 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
       </ul>
 
       <div className="node-value">
-        <span className="reading">{value === undefined ? '—' : summarise(value)}</span>
+        <span className="reading">{value === undefined ? '—' : summarise(value, 4, format)}</span>
         {value === undefined ? null : <Sparkline reading={value} />}
         {value === undefined ? null : <span className="axis">{axisLabel(value) ?? ''}</span>}
         <span className="port-out">

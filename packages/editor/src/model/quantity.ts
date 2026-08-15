@@ -15,11 +15,15 @@
  */
 
 import {
+  PLAIN_NUMBER_FORMAT,
   UnitError,
+  formatPlainNumber,
   formatQuantity,
   fromCanonical,
   parseUnit,
+  stripNumberFormatting,
   toSignificantFigures,
+  type NumberFormat,
   type Unit,
 } from '@mds/units';
 import type { Quantity } from '@mds/schema';
@@ -30,31 +34,49 @@ const AUTHORED = /^\s*([+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?)\s*(.*?)\s*$/su
 /**
  * Read a value field as the document stores it: the number as written, and the
  * unit it was written in. Throws `UnitError`, which the field renders in place.
+ *
+ * `format` undoes whatever grouping/decimal punctuation the settings dialog
+ * chose (S5's "read what was typed" boundary, extended to cover punctuation
+ * as well as units) before the numeral pattern runs.
  */
-export function parseAuthored(text: string): Quantity {
-  const match = AUTHORED.exec(text);
+export function parseAuthored(text: string, format: NumberFormat = PLAIN_NUMBER_FORMAT): Quantity {
+  const match = AUTHORED.exec(stripNumberFormatting(text, format));
   if (match === null) throw new UnitError(`cannot read a value from ${JSON.stringify(text)}`);
   const [, numeral = '', symbol = ''] = match;
   return { value: Number(numeral), unit: parseUnit(symbol) };
 }
 
 /** The same text back — what a value field is populated with. */
-export function formatAuthored(quantity: Quantity): string {
+export function formatAuthored(
+  quantity: Quantity,
+  format: NumberFormat = PLAIN_NUMBER_FORMAT,
+): string {
   const symbol = quantity.unit.symbol.trim();
-  return symbol.length === 0 ? String(quantity.value) : `${quantity.value} ${symbol}`;
+  const text = formatPlainNumber(quantity.value, format);
+  return symbol.length === 0 ? text : `${text} ${symbol}`;
 }
 
 /** A canonical number in a display unit, for a node body or a notebook line. */
-export function display(canonical: number, unit: Unit, figures = 4): string {
-  return formatQuantity(canonical, unit, figures);
+export function display(
+  canonical: number,
+  unit: Unit,
+  figures = 4,
+  format: NumberFormat = PLAIN_NUMBER_FORMAT,
+): string {
+  return formatQuantity(canonical, unit, figures, format);
 }
 
 /**
  * The number alone, no unit — for a table cell whose column header already
  * carries it (S49's unit-once-per-column, not repeated down every row).
  */
-export function displayNumber(canonical: number, unit: Unit, figures = 4): string {
-  return toSignificantFigures(fromCanonical(canonical, unit), figures);
+export function displayNumber(
+  canonical: number,
+  unit: Unit,
+  figures = 4,
+  format: NumberFormat = PLAIN_NUMBER_FORMAT,
+): string {
+  return toSignificantFigures(fromCanonical(canonical, unit), figures, format);
 }
 
 /** A unit's symbol as its author spelled it (S49 puts this on the port). */

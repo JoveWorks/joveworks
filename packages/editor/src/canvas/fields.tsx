@@ -13,6 +13,13 @@
 
 import { useEffect, useState, type ReactElement } from 'react';
 
+import {
+  PLAIN_NUMBER_FORMAT,
+  formatPlainNumber,
+  stripNumberFormatting,
+  type NumberFormat,
+} from '@mds/units';
+
 import { messageOf } from '../model/quantity';
 
 interface TextFieldProps {
@@ -98,6 +105,8 @@ interface NumberFieldProps {
   readonly integer?: boolean;
   readonly minimum?: number;
   readonly autoSize?: number;
+  /** The global number-format preference (`useSettings().numberFormat`); plain punctuation if omitted. */
+  readonly format?: NumberFormat;
 }
 
 export function NumberField({
@@ -107,15 +116,16 @@ export function NumberField({
   integer = false,
   minimum,
   autoSize,
+  format = PLAIN_NUMBER_FORMAT,
 }: NumberFieldProps): ReactElement {
   return (
     <TextField
       className="number"
-      value={String(value)}
+      value={formatPlainNumber(value, format)}
       {...(title === undefined ? {} : { title })}
       {...(autoSize === undefined ? {} : { autoSize })}
       onCommit={(text) => {
-        const parsed = Number(text);
+        const parsed = Number(stripNumberFormatting(text, format));
         if (!Number.isFinite(parsed)) throw new Error(`${text} is not a number`);
         if (integer && !Number.isInteger(parsed)) throw new Error('a whole number is needed here');
         if (minimum !== undefined && parsed < minimum) {

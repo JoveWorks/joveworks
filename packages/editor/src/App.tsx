@@ -27,11 +27,17 @@ import {
 import { Canvas } from './canvas/Canvas';
 import { ContextMenu, type MenuItem } from './canvas/ContextMenu';
 import { GraphContext } from './graph-context';
+import { SettingsContext } from './settings-context';
 import { cacheCatalogue, cachedCatalogueTexts } from './io/catalogueCache';
 import { openTextFile, saveTextFile } from './io/files';
 import { analyse } from './model/analysis';
 import { basicMechanicsCatalogue, baseCatalogue, withCatalogue } from './model/catalogues';
 import { frameAround, reframe, uniqueId } from './model/document';
+import {
+  loadNumberFormatSettings,
+  saveNumberFormatSettings,
+  type NumberFormatSettings,
+} from './model/numberFormat';
 import { messageOf } from './model/quantity';
 import {
   BELT_LAB_FORMULAS,
@@ -43,6 +49,7 @@ import {
 } from './model/samples';
 import { Notebook } from './notebook/Notebook';
 import { Palette } from './palette/Palette';
+import { SettingsDialog } from './settings/SettingsDialog';
 import { useResizableWidth } from './useResizableWidth';
 
 /**
@@ -73,6 +80,8 @@ export function App(): ReactElement {
   const [pinned, setPinned] = useState<ReadonlySet<string>>(new Set());
   const [showPalette, setShowPalette] = useState(true);
   const [showNotebook, setShowNotebook] = useState(true);
+  const [numberFormat, setNumberFormatState] = useState<NumberFormatSettings>(loadNumberFormatSettings);
+  const [showSettings, setShowSettings] = useState(false);
   const [openMenu, setOpenMenu] = useState<
     | { readonly menu: 'file' | 'edit' | 'view' | 'help'; readonly x: number; readonly y: number }
     | undefined
@@ -92,6 +101,16 @@ export function App(): ReactElement {
     setNotices((current) => [...current, { id, message }]);
     window.setTimeout(() => dismissNotice(id), 6000);
   };
+
+  const setNumberFormat = (next: NumberFormatSettings): void => {
+    setNumberFormatState(next);
+    saveNumberFormatSettings(next);
+  };
+
+  const settingsContext = useMemo(
+    () => ({ numberFormat, setNumberFormat }),
+    [numberFormat],
+  );
 
   const analysis = useMemo(() => analyse(document, catalogues), [document, catalogues]);
 
@@ -161,6 +180,7 @@ export function App(): ReactElement {
 
   const editMenuItems: readonly MenuItem[] = [
     { label: 'Group into new section', onClick: addSection },
+    { label: 'Settings…', onClick: () => setShowSettings(true) },
   ];
 
   const viewMenuItems: readonly MenuItem[] = [
@@ -223,76 +243,86 @@ export function App(): ReactElement {
   );
 
   return (
-    <GraphContext.Provider value={context}>
-      <ReactFlowProvider>
-        {/* Right-click opens an app menu wherever one is wired up (Canvas,
-            Notebook); everywhere else it should do nothing rather than fall
-            through to the browser's own menu, which offers nothing useful over
-            a canvas. */}
-        <div className="app" onContextMenu={(event) => event.preventDefault()}>
-          <header className="menubar">
-            {menuButton('file', 'File')}
-            {menuButton('edit', 'Edit')}
-            {menuButton('view', 'View')}
-            {menuButton('help', 'Help')}
+    <SettingsContext.Provider value={settingsContext}>
+      <GraphContext.Provider value={context}>
+        <ReactFlowProvider>
+          {/* Right-click opens an app menu wherever one is wired up (Canvas,
+              Notebook); everywhere else it should do nothing rather than fall
+              through to the browser's own menu, which offers nothing useful over
+              a canvas. */}
+          <div className="app" onContextMenu={(event) => event.preventDefault()}>
+            <header className="menubar">
+              {menuButton('file', 'File')}
+              {menuButton('edit', 'Edit')}
+              {menuButton('view', 'View')}
+              {menuButton('help', 'Help')}
 
-            <input
-              className="document-title"
-              value={document.title}
-              onChange={(event) =>
-                setDocument((current) => ({ ...current, title: event.target.value }))
-              }
-            />
-          </header>
-          {openMenu === undefined ? null : (
-            <ContextMenu
-              x={openMenu.x}
-              y={openMenu.y}
-              items={menuItemsFor(openMenu.menu)}
-              onClose={() => setOpenMenu(undefined)}
-            />
-          )}
-
-          <main>
-            {/* Overlays the workspace instead of sitting in normal flow, so
-                showing or dismissing one does not shift the canvas (UX-SPEC.md:
-                messages must overlay, not push other UI down). Stacks rather than
-                replacing, and each clears itself after a delay. */}
-            {notices.length === 0 ? null : (
-              <div className="notices">
-                {notices.map((notice) => (
-                  <div key={notice.id} className="notice" role="status">
-                    {notice.message}
-                    <button type="button" onClick={() => dismissNotice(notice.id)}>
-                      ✕
-                    </button>
-                  </div>
-                ))}
-              </div>
+              <input
+                className="document-title"
+                value={document.title}
+                onChange={(event) =>
+                  setDocument((current) => ({ ...current, title: event.target.value }))
+                }
+              />
+            </header>
+            {openMenu === undefined ? null : (
+              <ContextMenu
+                x={openMenu.x}
+                y={openMenu.y}
+                items={menuItemsFor(openMenu.menu)}
+                onClose={() => setOpenMenu(undefined)}
+              />
             )}
 
-            {showPalette ? (
-              <>
-                <aside className="left" style={{ width: paletteWidth, flexBasis: paletteWidth }}>
-                  <Palette />
-                </aside>
-                <div className="resize-handle" onMouseDown={resizePalette} />
-              </>
-            ) : null}
+            <main>
+              {/* Overlays the workspace instead of sitting in normal flow, so
+                  showing or dismissing one does not shift the canvas (UX-SPEC.md:
+                  messages must overlay, not push other UI down). Stacks rather than
+                  replacing, and each clears itself after a delay. */}
+              {notices.length === 0 ? null : (
+                <div className="notices">
+                  {notices.map((notice) => (
+                    <div key={notice.id} className="notice" role="status">
+                      {notice.message}
+                      <button type="button" onClick={() => dismissNotice(notice.id)}>
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
 
-            <Canvas />
+              {showPalette ? (
+                <>
+                  <aside className="left" style={{ width: paletteWidth, flexBasis: paletteWidth }}>
+                    <Palette />
+                  </aside>
+                  <div className="resize-handle" onMouseDown={resizePalette} />
+                </>
+              ) : null}
 
-            {showNotebook ? (
-              <>
-                <div className="resize-handle" onMouseDown={resizeNotebook} />
-                <aside className="right" style={{ width: notebookWidth, flexBasis: notebookWidth }}>
-                  <Notebook />
-                </aside>
-              </>
+              <Canvas />
+
+              {showNotebook ? (
+                <>
+                  <div className="resize-handle" onMouseDown={resizeNotebook} />
+                  <aside className="right" style={{ width: notebookWidth, flexBasis: notebookWidth }}>
+                    <Notebook />
+                  </aside>
+                </>
+              ) : null}
+            </main>
+
+            {showSettings ? (
+              <SettingsDialog
+                settings={numberFormat}
+                onChange={setNumberFormat}
+                onClose={() => setShowSettings(false)}
+              />
             ) : null}
-          </main>
-        </div>
-      </ReactFlowProvider>
-    </GraphContext.Provider>
+          </div>
+        </ReactFlowProvider>
+      </GraphContext.Provider>
+    </SettingsContext.Provider>
   );
 }
