@@ -58,8 +58,49 @@ describe('typing a unit on one bound of a range', () => {
     });
   });
 
-  it('refuses a unit of a different dimension — a range does not change what it measures', () => {
+  it('adopts a unit of a different dimension outright instead of refusing it — a mistyped unit needs a way back', () => {
     const range = { kind: 'linear' as const, start: 10, stop: 20, points: 21, unit: mm };
-    expect(() => rescaleRange(range, 'N')).toThrow(/not the same kind of unit/u);
+    expect(rescaleRange(range, 'N')).toEqual({
+      kind: 'linear',
+      start: 10,
+      stop: 20,
+      points: 21,
+      unit: parseUnit('N'),
+    });
+  });
+
+  it('adopts the first unit typed on a still-blank range outright, no rescale', () => {
+    const blank = parseUnit('');
+    const range = { kind: 'linear' as const, start: 10, stop: 20, points: 21, unit: blank };
+    expect(rescaleRange(range, 'm')).toEqual({
+      kind: 'linear',
+      start: 10,
+      stop: 20,
+      points: 21,
+      unit: parseUnit('m'),
+    });
+  });
+
+  it('goes back to blank from a real unit just as freely, no rescale', () => {
+    const range = { kind: 'linear' as const, start: 10, stop: 20, points: 21, unit: mm };
+    expect(rescaleRange(range, '')).toEqual({
+      kind: 'linear',
+      start: 10,
+      stop: 20,
+      points: 21,
+      unit: parseUnit(''),
+    });
+  });
+
+  it('still rescales between two already-chosen dimensionless units', () => {
+    const range = { kind: 'linear' as const, start: 10, stop: 50, points: 21, unit: parseUnit('%') };
+    // 10% and 50%, retyped in rev: 0.1 rev and 0.5 rev.
+    expect(rescaleRange(range, 'rev')).toEqual({
+      kind: 'linear',
+      start: 0.1,
+      stop: 0.5,
+      points: 21,
+      unit: parseUnit('rev'),
+    });
   });
 });

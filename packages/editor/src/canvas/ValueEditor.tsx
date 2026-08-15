@@ -82,13 +82,21 @@ type Range = ValueSpec & { readonly kind: 'linear' | 'logarithmic' };
  * A bound's own unit box, typed as a convenience — "10 mm ... 1 m" reads
  * naturally, but the range still stores one unit, not two. Typing a new one
  * here re-expresses *both* bounds under it, canonical value unchanged,
- * rather than actually splitting the range across units.
+ * rather than actually splitting the range across units, whenever the new
+ * unit measures the same thing as the old one.
+ *
+ * Nothing here refuses a *different* dimension, though — same as a scalar's
+ * `setUnit`, which never has (connection-time is where a wrong dimension
+ * gets caught, S64, and a range must stay correctable there too: a student
+ * who mistypes a force input's unit as `m` needs a way back to `N` that
+ * doesn't route through deleting the field). Retyping across dimensions has
+ * no meaningful factor to convert by, so it is adopted outright rather than
+ * rescaled — the same "just relabel it" behaviour a blank field already got,
+ * of which this is the general case.
  */
 export function rescaleRange(range: Range, text: string): Range {
   const parsed = parseUnit(text);
-  if (!dimensionsEqual(parsed.dimension, range.unit.dimension)) {
-    throw new Error(`'${text}' is not the same kind of unit as '${range.unit.symbol}'`);
-  }
+  if (!dimensionsEqual(parsed.dimension, range.unit.dimension)) return { ...range, unit: parsed };
   const rescale = (n: number): number => (n * range.unit.factor) / parsed.factor;
   return { ...range, start: rescale(range.start), stop: rescale(range.stop), unit: parsed };
 }
