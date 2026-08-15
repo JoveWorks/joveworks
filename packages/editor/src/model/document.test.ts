@@ -20,6 +20,7 @@ import { parseUnit } from '@mds/units';
 import {
   addNamedColumn,
   addNode,
+  changeOutputKind,
   connect,
   duplicateNode,
   frameAround,
@@ -41,6 +42,13 @@ const input = (id: string, x: number, y: number): InputNode => ({
   id,
   position: { x, y },
   value: { kind: 'scalar', value: 1, unit: parseUnit('mm') },
+});
+
+const printOutput = (id: string, x: number, y: number): OutputNode => ({
+  kind: 'output',
+  id,
+  position: { x, y },
+  output: { kind: 'print' },
 });
 
 const table = (id: string, columns: readonly string[], x: number, y: number): OutputNode => ({
@@ -229,6 +237,77 @@ describe('table output columns (S60, S71-style)', () => {
     const before = reorderColumn(three, 't', 'b', 'value', 'before');
     const beforeNode = before.nodes.find((entry) => entry.id === 't') as OutputNode;
     expect(beforeNode.output.kind === 'table' && beforeNode.output.columns).toEqual(['b', 'value', 'a']);
+  });
+});
+
+describe('changeOutputKind — adapting existing wiring across a kind switch', () => {
+  const areaFormula: FormulaNode = {
+    kind: 'formula',
+    id: 'area',
+    position: { x: 0, y: 0 },
+    formula: { id: 'invented.area', version: 1, hash: 'h' },
+  };
+
+  it('adopts the value edge as a table column, named after its source, entering table', () => {
+    const doc: GraphDocument = { ...base, nodes: [...base.nodes, areaFormula, printOutput('result', 400, 0)] };
+    const wired = connect(doc, { node: 'area', port: 'product' }, { node: 'result', port: 'value' });
+    const switched = changeOutputKind(wired, 'result', { kind: 'table', columns: [] });
+    const node = switched.nodes.find((entry) => entry.id === 'result') as OutputNode;
+    expect(node.output.kind === 'table' && node.output.columns).toEqual(['invented.area']);
+    expect(switched.edges).toEqual([
+      {
+        id: 'area.product->result.invented.area',
+        from: { node: 'area', port: 'product' },
+        to: { node: 'result', port: 'invented.area' },
+      },
+    ]);
+  });
+
+  it('adopts the first column back onto `value`, leaving table', () => {
+    const doc: GraphDocument = { ...base, nodes: [...base.nodes, areaFormula, table('result', ['width'], 400, 0)] };
+    const wired = connect(doc, { node: 'area', port: 'product' }, { node: 'result', port: 'width' });
+    const switched = changeOutputKind(wired, 'result', { kind: 'print' });
+    const node = switched.nodes.find((entry) => entry.id === 'result') as OutputNode;
+    expect(node.output).toEqual({ kind: 'print' });
+    expect(switched.edges).toEqual([
+      {
+        id: 'area.product->result.value',
+        from: { node: 'area', port: 'product' },
+        to: { node: 'result', port: 'value' },
+      },
+    ]);
+  });
+
+  it('drops the rest of a multi-column table, keeping only the first column’s wire', () => {
+    const doc: GraphDocument = {
+      ...base,
+      nodes: [...base.nodes, areaFormula, table('result', ['width', 'height'], 400, 0)],
+    };
+    const wired = connect(
+      connect(doc, { node: 'area', port: 'product' }, { node: 'result', port: 'width' }),
+      { node: 'b', port: 'value' },
+      { node: 'result', port: 'height' },
+    );
+    const switched = changeOutputKind(wired, 'result', { kind: 'print' });
+    expect(switched.edges).toEqual([
+      {
+        id: 'area.product->result.value',
+        from: { node: 'area', port: 'product' },
+        to: { node: 'result', port: 'value' },
+      },
+    ]);
+  });
+
+  it('does nothing when the kind is unchanged', () => {
+    const doc: GraphDocument = { ...base, nodes: [...base.nodes, printOutput('result', 400, 0)] };
+    expect(changeOutputKind(doc, 'result', { kind: 'print' })).toBe(doc);
+  });
+
+  it('has nothing to adapt when the output was not wired at all', () => {
+    const doc: GraphDocument = { ...base, nodes: [...base.nodes, printOutput('result', 400, 0)] };
+    const switched = changeOutputKind(doc, 'result', { kind: 'table', columns: [] });
+    const node = switched.nodes.find((entry) => entry.id === 'result') as OutputNode;
+    expect(node.output).toEqual({ kind: 'table', columns: [] });
   });
 });
 

@@ -11,7 +11,10 @@
  * spectrum's anonymous slots, a table's columns are named and have an order
  * a student cares about, so they also get a manual rename while still wired,
  * and drag to reorder — the same before/after-half drag Notebook.tsx's
- * sections use.
+ * sections use. Switching an output node's kind goes through
+ * `changeOutputKind` (model/document.ts) rather than replacing `output`
+ * outright, so a wire the student already made adapts to the new kind's
+ * ports instead of being left pointing at one that no longer exists.
  *
  * The check node is the one that earns its place immediately — `S ≥ 1.5` as a
  * badge is what makes the notebook a dimensioning report rather than a list of
@@ -33,8 +36,8 @@ import {
 
 import { useGraph } from '../graph-context';
 import {
+  changeOutputKind,
   NEW_COLUMN,
-  pruneEdgesTo,
   reframe,
   removeColumn,
   removeNodes,
@@ -142,31 +145,16 @@ export function OutputNodeView({ id, selected }: NodeProps): ReactElement | null
               value={output.kind}
               onChange={(event) => {
                 const kind = event.target.value as Output['kind'];
-                // Leaving `table` behind: only its `value` column, if any,
-                // means the same thing under the new kind — the rest of its
-                // columns are ports the new kind does not have.
-                const keep = new Set([VALUE_PORT]);
-                edit((current) => {
-                  const withPrunedEdges =
-                    output.kind === 'table' ? pruneEdgesTo(current, id, keep) : current;
-                  const next: Output =
-                    kind === 'print'
-                      ? { kind }
-                      : kind === 'check'
-                        ? {
-                            kind,
-                            comparison: '>=',
-                            threshold: { value: 1, unit: shown?.unit ?? parseUnit('') },
-                          }
-                        : kind === 'plot'
-                          ? { kind, x: ranges[0]?.id ?? '' }
-                          : { kind, columns: [] };
-                  if (kind === 'plot' && ranges[0] === undefined) return withPrunedEdges;
-                  return updateNode<OutputNode>(withPrunedEdges, id, (entry) => ({
-                    ...entry,
-                    output: next,
-                  }));
-                });
+                if (kind === 'plot' && ranges[0] === undefined) return;
+                const next: Output =
+                  kind === 'print'
+                    ? { kind }
+                    : kind === 'check'
+                      ? { kind, comparison: '>=', threshold: { value: 1, unit: shown?.unit ?? parseUnit('') } }
+                      : kind === 'plot'
+                        ? { kind, x: ranges[0]?.id ?? '' }
+                        : { kind, columns: [] };
+                edit((current) => changeOutputKind(current, id, next));
               }}
             >
               <option value="print">print</option>

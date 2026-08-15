@@ -13,14 +13,16 @@
  * only how a permitted change is applied.
  */
 
-import type {
-  Edge,
-  Endpoint,
-  Frame,
-  GraphDocument,
-  GraphNode,
-  OutputNode,
-  Position,
+import {
+  VALUE_PORT,
+  type Edge,
+  type Endpoint,
+  type Frame,
+  type GraphDocument,
+  type GraphNode,
+  type Output,
+  type OutputNode,
+  type Position,
 } from '@mds/schema';
 
 /** `node.port -> node.port`, which is unique because an input takes one edge. */
@@ -311,6 +313,48 @@ export function pruneEdgesTo(
     ...document,
     edges: document.edges.filter((edge) => edge.to.node !== nodeId || keep.has(edge.to.port)),
   };
+}
+
+/**
+ * Switch an output node to a different kind, adapting whatever is already
+ * wired rather than stranding it — an edge pointing at a port the new kind
+ * does not declare is exactly the dangling-edge bug this exists to prevent.
+ *
+ * `table` is the one kind whose ports are not always `value` (S60), so the
+ * two directions across that boundary are asymmetric: leaving table adopts
+ * its first column as `value` and drops the rest (a single-port kind has
+ * nowhere else for them to go); entering table adopts whatever was on
+ * `value` as a first column, named after its source the same way a fresh
+ * column from the ghost slot is (Canvas.tsx, S71-style). Between print,
+ * check and plot — all single-`value`-port kinds — nothing needs adapting.
+ */
+export function changeOutputKind(document: GraphDocument, nodeId: string, next: Output): GraphDocument {
+  const node = document.nodes.find((entry) => entry.id === nodeId);
+  if (node?.kind !== 'output') return document;
+  const current = node.output;
+  if (current.kind === next.kind) return document;
+
+  if (current.kind === 'table' && next.kind !== 'table') {
+    const [firstColumn] = current.columns;
+    const adopted =
+      firstColumn === undefined ? document : renameColumn(document, nodeId, firstColumn, VALUE_PORT);
+    const pruned = pruneEdgesTo(adopted, nodeId, new Set([VALUE_PORT]));
+    return updateNode<OutputNode>(pruned, nodeId, (entry) => ({ ...entry, output: next }));
+  }
+
+  if (current.kind !== 'table' && next.kind === 'table') {
+    const withKind = updateNode<OutputNode>(document, nodeId, (entry) => ({ ...entry, output: next }));
+    const existing = withKind.edges.find(
+      (edge) => edge.to.node === nodeId && edge.to.port === VALUE_PORT,
+    );
+    if (existing === undefined) return withKind;
+    const source = withKind.nodes.find((entry) => entry.id === existing.from.node);
+    const base = source === undefined ? existing.from.port : nodeLabel(source);
+    const named = addNamedColumn(withKind, nodeId, base);
+    return renameColumn(named.document, nodeId, VALUE_PORT, named.column);
+  }
+
+  return updateNode<OutputNode>(document, nodeId, (entry) => ({ ...entry, output: next }));
 }
 
 // --- frames: the notebook's sections (S28/S30) ------------------------------
