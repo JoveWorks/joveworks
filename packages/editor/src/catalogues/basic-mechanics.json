@@ -24,7 +24,7 @@
         {
           "kind": "numeric",
           "name": "A",
-          "unit": "mm^2",
+          "unit": "mm²",
           "validRange": {
             "min": 0
           }
@@ -55,7 +55,7 @@
         {
           "kind": "numeric",
           "name": "A",
-          "unit": "mm^2",
+          "unit": "mm²",
           "validRange": {
             "min": 0
           }
@@ -206,7 +206,7 @@
         {
           "kind": "numeric",
           "name": "A",
-          "unit": "mm^2",
+          "unit": "mm²",
           "validRange": {
             "min": 0
           }
@@ -231,7 +231,7 @@
       "output": {
         "kind": "numeric",
         "name": "I",
-        "unit": "mm^4"
+        "unit": "mm⁴"
       },
       "inputs": [
         {
@@ -262,7 +262,7 @@
       "output": {
         "kind": "numeric",
         "name": "I",
-        "unit": "mm^4"
+        "unit": "mm⁴"
       },
       "inputs": [
         {
@@ -285,7 +285,7 @@
       "output": {
         "kind": "numeric",
         "name": "I",
-        "unit": "mm^4"
+        "unit": "mm⁴"
       },
       "inputs": [
         {
@@ -335,7 +335,7 @@
         {
           "kind": "numeric",
           "name": "I",
-          "unit": "mm^4",
+          "unit": "mm⁴",
           "validRange": {
             "min": 0
           }
@@ -352,13 +352,13 @@
       "output": {
         "kind": "numeric",
         "name": "W",
-        "unit": "mm^3"
+        "unit": "mm³"
       },
       "inputs": [
         {
           "kind": "numeric",
           "name": "I",
-          "unit": "mm^4",
+          "unit": "mm⁴",
           "validRange": {
             "min": 0
           }
@@ -413,7 +413,7 @@
         {
           "kind": "numeric",
           "name": "I",
-          "unit": "mm^4",
+          "unit": "mm⁴",
           "validRange": {
             "min": 0
           }
@@ -460,7 +460,7 @@
         {
           "kind": "numeric",
           "name": "I",
-          "unit": "mm^4",
+          "unit": "mm⁴",
           "validRange": {
             "min": 0
           }
@@ -508,7 +508,7 @@
       "output": {
         "kind": "numeric",
         "name": "J",
-        "unit": "mm^4"
+        "unit": "mm⁴"
       },
       "inputs": [
         {
@@ -531,7 +531,7 @@
       "output": {
         "kind": "numeric",
         "name": "J",
-        "unit": "mm^4"
+        "unit": "mm⁴"
       },
       "inputs": [
         {
@@ -581,7 +581,7 @@
         {
           "kind": "numeric",
           "name": "J",
-          "unit": "mm^4",
+          "unit": "mm⁴",
           "validRange": {
             "min": 0
           }
@@ -704,7 +704,7 @@
         {
           "kind": "numeric",
           "name": "I",
-          "unit": "mm^4",
+          "unit": "mm⁴",
           "validRange": {
             "min": 0
           }
@@ -735,7 +735,7 @@
         {
           "kind": "numeric",
           "name": "I",
-          "unit": "mm^4",
+          "unit": "mm⁴",
           "validRange": {
             "min": 0
           }
@@ -743,7 +743,7 @@
         {
           "kind": "numeric",
           "name": "A",
-          "unit": "mm^2",
+          "unit": "mm²",
           "validRange": {
             "min": 0
           }
@@ -914,7 +914,7 @@
         {
           "kind": "numeric",
           "name": "a",
-          "unit": "m/s^2"
+          "unit": "m/s²"
         }
       ],
       "expression": "m * a",
@@ -987,7 +987,7 @@
       "output": {
         "kind": "numeric",
         "name": "a",
-        "unit": "m/s^2"
+        "unit": "m/s²"
       },
       "inputs": [
         {
