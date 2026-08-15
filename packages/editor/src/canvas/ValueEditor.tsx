@@ -34,13 +34,29 @@ function unitOf(value: ValueSpec): Unit {
   return 'unit' in value ? value.unit : parseUnit('');
 }
 
-/** A first guess when the kind changes, so a switch never lands on nothing. */
-function converted(value: ValueSpec, kind: Kind): ValueSpec {
+/** The smallest bound already on the value, so a switch never throws away the one number worth keeping. */
+function smallest(value: ValueSpec): number {
+  if (value.kind === 'scalar') return value.value;
+  if (value.kind === 'list') return Math.min(...value.values);
+  if (value.kind === 'linear' || value.kind === 'logarithmic') return Math.min(value.start, value.stop);
+  return 1;
+}
+
+/**
+ * A first guess when the kind changes, so a switch never lands on nothing.
+ *
+ * Range → value takes the smallest limit, since a single number has to come
+ * from somewhere and the low end is the one a range always has. Value →
+ * range goes the other way: the value becomes the low end, and the high end
+ * is double it — a starting range to narrow from, not a guess at where the
+ * student's real bound is.
+ */
+export function converted(value: ValueSpec, kind: Kind): ValueSpec {
   const unit = unitOf(value);
-  const sample = value.kind === 'scalar' ? value.value : 1;
+  const sample = smallest(value);
   switch (kind) {
     case 'scalar':
-      return { kind, value: value.kind === 'list' ? (value.values[0] ?? sample) : sample, unit };
+      return { kind, value: sample, unit };
     case 'linear':
     case 'logarithmic': {
       const start = kind === 'logarithmic' && sample <= 0 ? 1 : sample;
