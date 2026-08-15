@@ -275,12 +275,30 @@ export function Canvas(): ReactElement {
         let next = current;
         for (const change of changes) {
           if (change.type === 'position' && change.position !== undefined) {
-            next = frames.has(change.id)
-              ? updateFrame(next, change.id, (frame) => ({
-                  ...frame,
-                  position: change.position as { x: number; y: number },
-                }))
-              : moveNode(next, change.id, change.position);
+            const position = change.position;
+            if (frames.has(change.id)) {
+              // A frame is passive (S69) — nothing about membership changes
+              // here, only every member's own position, by the same delta the
+              // frame itself just moved by. Fires every drag tick, not only
+              // at drop, so contents visibly travel with the frame rather
+              // than the frame abandoning them mid-drag.
+              const before = next.frames.find((frame) => frame.id === change.id);
+              next = updateFrame(next, change.id, (frame) => ({ ...frame, position }));
+              if (before !== undefined) {
+                const dx = position.x - before.position.x;
+                const dy = position.y - before.position.y;
+                if (dx !== 0 || dy !== 0) {
+                  for (const member of next.nodes.filter((node) => node.frameId === change.id)) {
+                    next = moveNode(next, member.id, {
+                      x: member.position.x + dx,
+                      y: member.position.y + dy,
+                    });
+                  }
+                }
+              }
+            } else {
+              next = moveNode(next, change.id, position);
+            }
           }
           // A frame's size lives in the document (unlike an ordinary node's,
           // which is measured, never authored) — NodeResizer reports it the
@@ -696,6 +714,12 @@ export function Canvas(): ReactElement {
         onConnect={onConnect}
         isValidConnection={isValidConnection}
         deleteKeyCode={['Backspace', 'Delete']}
+        // React Flow's default lifts a selected node's z-index above every
+        // other node's, frame's declared zIndex: -1 included — selecting a
+        // frame then buried its own contents underneath it, so a student had
+        // to click empty canvas first before a node inside could be reached.
+        // With this off, declared zIndex is what stacking follows, always.
+        elevateNodesOnSelect={false}
         onNodeDragStop={() => edit(reframe)}
         onPaneClick={() => {
           setRefusal(undefined);
