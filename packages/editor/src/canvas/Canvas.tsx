@@ -54,6 +54,7 @@ import { FrameView } from './FrameView';
 import { InputNodeView } from './InputNodeView';
 import { OutputNodeView } from './OutputNodeView';
 import { QuickAddMenu, type QuickAddChoice } from './QuickAddMenu';
+import { basePortName, slotHandleId } from './spectrumSlots';
 
 type MenuTarget =
   | { readonly kind: 'node'; readonly id: string; readonly x: number; readonly y: number }
@@ -137,18 +138,26 @@ export function Canvas(): ReactElement {
     [document, measured, selected],
   );
 
-  const edges = useMemo<FlowEdge[]>(
-    () =>
-      document.edges.map((edge) => ({
+  const edges = useMemo<FlowEdge[]>(() => {
+    // Every port is rendered with a slot-suffixed handle id (spectrumSlots.ts),
+    // even a single-occupancy one — so an edge's target handle has to name the
+    // same slot FormulaNodeView assigned it: position among edges sharing this
+    // (node, port), in document order, which is exactly how that view counts.
+    const slotOf = new Map<string, number>();
+    return document.edges.map((edge) => {
+      const key = `${edge.to.node}.${edge.to.port}`;
+      const slot = slotOf.get(key) ?? 0;
+      slotOf.set(key, slot + 1);
+      return {
         id: edge.id,
         source: edge.from.node,
         sourceHandle: edge.from.port,
         target: edge.to.node,
-        targetHandle: edge.to.port,
+        targetHandle: slotHandleId(edge.to.port, slot),
         selected: selected.has(edge.id),
-      })),
-    [document, selected],
-  );
+      };
+    });
+  }, [document, selected]);
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
@@ -239,8 +248,8 @@ export function Canvas(): ReactElement {
     if (sourceHandle === null || sourceHandle === undefined) return undefined;
     if (targetHandle === null || targetHandle === undefined) return undefined;
     const endpoints = {
-      from: { node: source, port: sourceHandle },
-      to: { node: target, port: targetHandle },
+      from: { node: source, port: basePortName(sourceHandle) },
+      to: { node: target, port: basePortName(targetHandle) },
     };
     return { id: edgeId(endpoints.from, endpoints.to), ...endpoints };
   };
@@ -270,6 +279,10 @@ export function Canvas(): ReactElement {
     [analysis.resolution, document.edges],
   );
 
+  /** A spectrum port's new wire joins what is already there (S71), not replaces it. */
+  const isSpectrumTarget = (to: Edge['to']): boolean =>
+    analysis.resolution?.targets.get(`${to.node}.${to.port}`)?.kind === 'spectrum';
+
   /** The authority, when it lands (S64): the whole graph, resolved with it added. */
   const onConnect = useCallback(
     (connection: Connection) => {
@@ -281,9 +294,9 @@ export function Canvas(): ReactElement {
         return;
       }
       setRefusal(undefined);
-      edit((current) => connect(current, candidate.from, candidate.to));
+      edit((current) => connect(current, candidate.from, candidate.to, isSpectrumTarget(candidate.to)));
     },
-    [catalogues, document, edit],
+    [analysis.resolution, catalogues, document, edit],
   );
 
   /** What a right click offers, worked out from what was clicked. */
@@ -464,7 +477,7 @@ export function Canvas(): ReactElement {
       const verdict = canConnect(next, catalogues, candidate);
       if (verdict.ok) {
         setRefusal(undefined);
-        next = connect(next, candidate.from, candidate.to);
+        next = connect(next, candidate.from, candidate.to, isSpectrumTarget(candidate.to));
       } else {
         setRefusal(verdict.reason);
       }
@@ -513,7 +526,7 @@ export function Canvas(): ReactElement {
             if (state.isValid !== true) {
               const endpointOf = (handle: typeof state.fromHandle) => ({
                 node: handle.nodeId,
-                port: handle.id ?? '',
+                port: basePortName(handle.id ?? ''),
               });
               const [from, to] =
                 state.fromHandle.type === 'source'
@@ -523,7 +536,9 @@ export function Canvas(): ReactElement {
               const verdict = canConnect(document, catalogues, candidate);
               if (verdict.ok) {
                 setRefusal(undefined);
-                edit((current) => connect(current, candidate.from, candidate.to));
+                edit((current) =>
+                  connect(current, candidate.from, candidate.to, isSpectrumTarget(candidate.to)),
+                );
               } else {
                 setRefusal(verdict.reason);
               }
@@ -539,7 +554,7 @@ export function Canvas(): ReactElement {
             y: event.clientY,
             from: {
               nodeId: state.fromHandle.nodeId,
-              port: state.fromHandle.id ?? '',
+              port: basePortName(state.fromHandle.id ?? ''),
               type: state.fromHandle.type,
             },
           });

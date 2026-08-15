@@ -97,13 +97,19 @@ export function removeEdges(document: GraphDocument, ids: ReadonlySet<string>): 
 /**
  * Attach an edge. Any edge already arriving at the target port is replaced —
  * an input takes one connection, and rewiring is the ordinary way to change
- * one's mind, not an error to report.
+ * one's mind, not an error to report — unless `join` says the target is a
+ * spectrum port (S71), where a new wire adds to what is already there.
  */
-export function connect(document: GraphDocument, from: Endpoint, to: Endpoint): GraphDocument {
+export function connect(
+  document: GraphDocument,
+  from: Endpoint,
+  to: Endpoint,
+  join = false,
+): GraphDocument {
   const edge: Edge = { id: edgeId(from, to), from, to };
-  const kept = document.edges.filter(
-    (existing) => !(existing.to.node === to.node && existing.to.port === to.port),
-  );
+  const kept = join
+    ? document.edges
+    : document.edges.filter((existing) => !(existing.to.node === to.node && existing.to.port === to.port));
   return { ...document, edges: [...kept, edge] };
 }
 

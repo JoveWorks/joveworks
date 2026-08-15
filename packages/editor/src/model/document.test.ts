@@ -46,6 +46,18 @@ describe('document edits', () => {
     expect(rewired.edges[0]?.from.node).toBe('c');
   });
 
+  it('joins a spectrum port instead of replacing it, when told to (S71)', () => {
+    const wired = connect(base, { node: 'a', port: 'value' }, { node: 'b', port: 'x' }, true);
+    const joined = connect(
+      addNode(wired, input('c', 0, 200)),
+      { node: 'c', port: 'value' },
+      { node: 'b', port: 'x' },
+      true,
+    );
+    expect(joined.edges).toHaveLength(2);
+    expect(joined.edges.map((edge) => edge.from.node).sort()).toEqual(['a', 'c']);
+  });
+
   it('drops the edges of a node it removes', () => {
     const wired = connect(base, { node: 'a', port: 'value' }, { node: 'b', port: 'x' });
     expect(removeNodes(wired, new Set(['a'])).edges).toEqual([]);

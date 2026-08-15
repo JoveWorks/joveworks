@@ -25,6 +25,7 @@ import { unitLabel } from '../model/quantity';
 import { axisLabel, reading, summarise } from '../model/values';
 import { NodeShell } from './NodeShell';
 import { Sparkline } from './Sparkline';
+import { slotHandleId } from './spectrumSlots';
 import { TextField } from './fields';
 import type { FormulaNode } from '@mds/schema';
 
@@ -144,7 +145,7 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
                 <Handle
                   type="target"
                   position={Position.Left}
-                  id={port.name}
+                  id={slotHandleId(port.name, 0)}
                   className={missing(port) ? 'missing' : ''}
                 />
                 <span className="port-name" title={port.description ?? ''}>
@@ -158,7 +159,7 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
           const count = edgesAt(port.name);
           const filled = Array.from({ length: count }, (_unused, i) => (
             <li key={`${port.name}-${i}`} className="port">
-              <Handle type="target" position={Position.Left} id={port.name} />
+              <Handle type="target" position={Position.Left} id={slotHandleId(port.name, i)} />
               {i === 0 ? (
                 <>
                   <span className="port-name" title={port.description ?? ''}>
@@ -180,7 +181,7 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
               <Handle
                 type="target"
                 position={Position.Left}
-                id={port.name}
+                id={slotHandleId(port.name, 'open')}
                 className={count === 0 ? 'missing' : ''}
               />
               {count === 0 ? (
