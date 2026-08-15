@@ -569,12 +569,25 @@ aside.right {
   background: var(--paper);
 }
 
-.value-editor .quantity {
+.quantity-split {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.quantity-split .number {
+  flex: 1;
+  min-width: 0;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
-.value-editor .quantity,
+.quantity-split .unit {
+  flex: 0 0 44px;
+  width: 44px;
+  color: var(--muted);
+}
+
 .output-editor .quantity {
   width: 100%;
 }

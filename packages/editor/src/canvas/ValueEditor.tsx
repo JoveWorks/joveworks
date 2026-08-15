@@ -18,7 +18,6 @@ import type { ReactElement } from 'react';
 import { parseUnit, type Unit } from '@mds/units';
 import type { ValueSpec } from '@mds/schema';
 
-import { formatAuthored, parseAuthored } from '../model/quantity';
 import { NumberField, TextField } from './fields';
 
 type Kind = 'scalar' | 'linear' | 'logarithmic' | 'list';
@@ -121,13 +120,23 @@ export function ValueFields({ value, onChange }: Props): ReactElement {
   return (
     <div className="value-editor">
       {value.kind === 'scalar' ? (
-        <TextField
-          className="quantity"
-          value={formatAuthored(value)}
-          placeholder="250 kW"
-          title="A number and its unit. An undeclared unit is an error, never a guess (S5)."
-          onCommit={(text) => onChange({ kind: 'scalar', ...parseAuthored(text) })}
-        />
+        // Split so the number — what changes on every iteration — is never
+        // retyped alongside a unit that almost never does; getting the unit
+        // wrong used to fail the whole edit (S5), not just the value.
+        <div className="quantity-split">
+          <NumberField
+            value={value.value}
+            title="The value. The unit is the field beside it, and does not need retyping."
+            onCommit={(next) => onChange({ ...value, value: next })}
+          />
+          <TextField
+            className="unit"
+            value={unit.symbol}
+            placeholder="mm"
+            title="An undeclared unit is an error, never a guess (S5)."
+            onCommit={setUnit}
+          />
+        </div>
       ) : null}
 
       {value.kind === 'linear' || value.kind === 'logarithmic' ? (
