@@ -2,8 +2,8 @@
  * An input node: a literal, or the range that turns the graph into a study.
  *
  * It carries a `ValueSpec` directly rather than referencing a formula — there is
- * no equation behind `250 kW` (S60) — so the editing surface here is the value
- * itself, on the node (S47).
+ * no equation behind `250 kW` — so the editing surface here is the value
+ * itself, on the node.
  */
 
 import type { ReactElement } from 'react';
@@ -71,16 +71,15 @@ export function InputNodeView({ id, selected }: NodeProps): ReactElement | null 
       }
     >
       {/* The port always docks on whichever row is actually showing the value:
-          the field itself when it's a scalar (S47's "presented once"), the
-          swept-range summary below when it's a range — never both, and never
-          neither. */}
+          the field itself when it's a scalar, the swept-range summary below
+          when it's a range — never both, and never neither. */}
       <div className="node-value-editor">
         <ValueFields value={node.value} onChange={setValue} />
         {swept ? null : <Handle type="source" position={Position.Right} id={VALUE_PORT} />}
       </div>
       {swept ? (
-        // The extent is already the two bounds above (S47's "presented once")
-        // — this row only earns its place for what isn't shown there: the
+        // The extent is already the two bounds above, presented once — this
+        // row only earns its place for what isn't shown there: the
         // sparkline's shape and the axis label.
         <div className="node-value">
           {value === undefined ? null : <Sparkline reading={value} />}

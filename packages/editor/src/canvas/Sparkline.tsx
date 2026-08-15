@@ -1,5 +1,5 @@
 /**
- * A swept value, where a scalar shows a number (S50).
+ * A swept value, where a scalar shows a number.
  *
  * The point of drawing it on the *node* rather than only in a plot is to make a
  * sweep visible propagating: you set one input to a range and every node

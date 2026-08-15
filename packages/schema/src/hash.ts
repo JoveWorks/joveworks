@@ -1,5 +1,5 @@
 /**
- * The content hash a graph carries alongside a formula's id and version (S23).
+ * The content hash a graph carries alongside a formula's id and version.
  *
  * Its job is to notice that a formula changed under a graph that was saved
  * against it, so opening the graph warns instead of quietly recomputing
@@ -9,7 +9,7 @@
  *
  * So FNV-1a over the canonical JSON, and not SHA-256 — `crypto.subtle` is async
  * and would make every parse of a document async with it, and Node's `crypto` is
- * not available in the browser (S15). 64 bits is ample for telling apart the
+ * not available in the browser. 64 bits is ample for telling apart the
  * revisions of one formula.
  */
 

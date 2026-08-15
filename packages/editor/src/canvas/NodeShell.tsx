@@ -2,7 +2,7 @@
  * The chrome every node shares: a title, a state, and a body that opens.
  *
  * Nodes are compact by default and open on selection or hover, and can be pinned
- * open while working elsewhere (S50). Colour means state and nothing else (S49):
+ * open while working elsewhere. Colour means state and nothing else:
  * quarantined, blocked, incomplete, error, failing check. Units are text.
  */
 

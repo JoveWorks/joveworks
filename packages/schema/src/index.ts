@@ -5,8 +5,8 @@
  * It sits on top of `@mds/units` and restates none of it — a port declares a
  * display unit and its dimension comes from `units`, so there is one place to be
  * wrong about what `N/mm²` means. It knows nothing about evaluation: expressions
- * and predicates are stored as strings for the kernel to parse (S34/S39), and
- * cycles are rejected where connections are made (S18).
+ * and predicates are stored as strings for the kernel to parse, and
+ * cycles are rejected where connections are made.
  */
 
 export { SchemaError } from './errors.js';

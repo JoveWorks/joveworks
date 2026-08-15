@@ -13,10 +13,11 @@
  * ready*, and that decision is made from the same facts the kernel would use —
  * an incoming edge, a declared default, a `quarantined` status.
  *
- * The states it produces are what S49 spends colour on:
+ * The states it produces are what colour is spent on elsewhere — colour
+ * means state and nothing else:
  *
- * - `incomplete` — a required input is not wired (S50 marks it even when compact)
- * - `quarantined` — the formula cannot be evaluated by anyone, ever (S19/S20)
+ * - `incomplete` — a required input is not wired, marked even when the node is compact
+ * - `quarantined` — the formula cannot be evaluated by anyone, ever
  * - `blocked` — nothing wrong here; something upstream is
  * - `error` — the kernel refused this node, with its message kept
  */
@@ -48,7 +49,7 @@ import { Symbol } from '../Symbol';
 
 /**
  * The `not connected: ...` reason, with each name rendered the same way its
- * port label is (S49 consistency) — a plain string here would fall back to
+ * port label is — a plain string here would fall back to
  * the raw, trailing-underscore form the rest of the app deliberately never
  * shows (mu instead of μ, F_N instead of F with a true subscript).
  */
@@ -83,7 +84,7 @@ export interface Analysis {
   readonly message?: string;
 }
 
-/** The formula a node names, in whichever catalogue carries it (S65: ids are global). */
+/** The formula a node names, in whichever catalogue carries it — formula ids are global. */
 export function lookup(catalogues: readonly Catalogue[], id: string): Formula | undefined {
   for (const catalogue of catalogues) {
     const found = findFormula(catalogue, id);
@@ -149,7 +150,7 @@ function readiness(
   problems: Map<string, ReactNode>,
 ): ReadonlySet<string> {
   const ready = new Set<string>();
-  // More than one source only for a spectrum port (S71) — a plain `Map` here
+  // More than one source only for a spectrum port — a plain `Map` here
   // would let a second edge silently overwrite the first, and readiness would
   // only ever check whichever source happened to be recorded last.
   const wired = new Map<string, Array<{ readonly node: string; readonly port: string }>>();
@@ -206,7 +207,7 @@ function readiness(
 
     if (node.kind === 'compare') {
       // `value` has no default (nothing sensible to compare against when
-      // unwired); `threshold` does, the node's own typed quantity (S58).
+      // unwired); `threshold` does, the node's own typed quantity.
       if (!isWired(node.id, VALUE_PORT)) {
         states.set(node.id, 'incomplete');
         problems.set(node.id, notConnected([VALUE_PORT]));

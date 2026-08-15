@@ -55,7 +55,7 @@ export function assertEvaluable(formula: Formula, where?: string): void {
 export interface CompiledFormula {
   readonly formula: Formula;
   readonly evaluate: CompiledExpression;
-  /** The condition R&M states in prose, when the record carries one (S40). */
+  /** The condition R&M states in prose, when the record carries one. */
   readonly appliesWhen?: CompiledPredicate;
   /** Every input port's dimension under this node's bindings. */
   readonly scope: DimensionScope;
@@ -66,7 +66,7 @@ type Bindings = Readonly<Record<string, Dimension>>;
 /**
  * Compile a formula for one node's bindings.
  *
- * Bindings matter because a generic port has no dimension of its own (S59): the
+ * Bindings matter because a generic port has no dimension of its own: the
  * same `add` record compiles against forces on one node and against lengths on
  * another, and the check has to be made against what this node is wired to.
  */

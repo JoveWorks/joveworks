@@ -10,7 +10,7 @@
  *   what someone typed: `value * factor / factor` is not the identity in binary
  *   floating point, so `250 kW` would not survive a save and reload unchanged.
  *   Hence the split below — the same shape of read, keeping the magnitude.
- * - **An undeclared unit is a hard error** (S5), never a guess at the port's
+ * - **An undeclared unit is a hard error**, never a guess at the port's
  *   unit. A bare number is a dimensionless value and nothing else.
  */
 
@@ -79,7 +79,7 @@ export function displayNumber(
   return toSignificantFigures(fromCanonical(canonical, unit), figures, format);
 }
 
-/** A unit's symbol as its author spelled it (S49 puts this on the port). */
+/** A unit's symbol as its author spelled it — port labels are text, not colour. */
 export function unitLabel(unit: Unit | undefined): string {
   const symbol = unit?.symbol.trim() ?? '';
   return symbol.length === 0 ? '—' : symbol;

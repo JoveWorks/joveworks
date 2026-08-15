@@ -5,7 +5,7 @@
  *
  * - `compileExpression` builds a closure per node **once**, so evaluating a
  *   40 000-point sweep is 40 000 calls into an already-built structure rather
- *   than 40 000 walks of a tree (S34).
+ *   than 40 000 walks of a tree.
  * - `expressionDimension` derives what the expression *is*, which is how a
  *   formula's declared output unit gets checked against the arithmetic that
  *   produces it.
@@ -38,7 +38,7 @@ import { parseExpression, parsePredicate } from './parse.js';
 /**
  * What a compiled closure reads. A port name resolves either to a number — the
  * value in this cell of the sweep — or, for a spectrum port, to the whole series
- * at once (S36).
+ * at once.
  */
 export type Env = Readonly<Record<string, number | readonly number[]>>;
 
@@ -171,7 +171,7 @@ const COMPARE: Readonly<Record<string, (a: number, b: number) => boolean>> = {
 
 /**
  * The comparison itself, shared by the three things S39 says are one thing: a
- * predicate's `<`, a check node's stored comparison (S58), and a plot's
+ * predicate's `<`, a check node's stored comparison, and a plot's
  * threshold overlay.
  */
 export function comparator(comparison: Comparison): (a: number, b: number) => boolean {
@@ -203,7 +203,7 @@ function compilePredicateNode(predicate: Predicate, where: string | undefined): 
   }
 }
 
-/** Parse and compile a predicate — a check, a threshold or an `appliesWhen` (S39). */
+/** Parse and compile a predicate — a check, a threshold or an `appliesWhen`. */
 export function compilePredicate(source: string, where?: string): CompiledPredicate {
   return compilePredicateNode(parsePredicate(source), where);
 }
@@ -214,7 +214,7 @@ export function compilePredicate(source: string, where?: string): CompiledPredic
 export interface DimensionScope {
   /** Port name → dimension. A generic port must already be resolved. */
   readonly dimensions: Readonly<Record<string, Dimension>>;
-  /** Which of those are spectrum ports, and so may only be reduced (S36). */
+  /** Which of those are spectrum ports, and so may only be reduced. */
   readonly spectra?: ReadonlySet<string>;
 }
 
@@ -262,7 +262,7 @@ export function constantValue(expr: Expr): number | undefined {
  * This is narrow on purpose. A *port* declares a unit and must match, because
  * two declared units that disagree is exactly the mistake the checker exists to
  * catch. A *literal* has no unit to declare: everything inside an expression is
- * canonical by the time the kernel sees it (S5, and the reasoning of S58), so
+ * canonical by the time the kernel sees it, so
  * the only reading a bare number can have is the canonical one.
  *
  * R&M forces the case rather than convenience suggesting it: `E2_4A/B` select on

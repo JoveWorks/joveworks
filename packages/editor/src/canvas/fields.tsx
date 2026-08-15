@@ -1,9 +1,9 @@
 /**
- * The small editable fields nodes are made of (S47).
+ * The small editable fields nodes are made of.
  *
  * There is no inspector panel to put these in — values, units and ranges are
  * edited where they are read, because a canvas that showed a diagram while the
- * real work happened beside it would stop being the calculation (S46).
+ * real work happened beside it would stop being the calculation.
  *
  * Both fields below commit on blur and on Enter, and hold their text while it is
  * being typed. That matters more than it looks: the document stores a parsed

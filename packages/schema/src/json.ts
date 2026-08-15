@@ -132,7 +132,7 @@ export function put<T>(key: string, value: T | undefined): Record<string, T> {
 /**
  * JSON with object keys in sorted order.
  *
- * This is what a content hash (S23) is taken over: two records that differ only
+ * This is what a content hash is taken over: two records that differ only
  * in the order their fields were written must hash the same, or a graph would
  * warn about a catalogue that had not changed.
  */

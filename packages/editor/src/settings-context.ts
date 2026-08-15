@@ -1,7 +1,9 @@
 /**
- * The one app-wide preference so far: how a number is written and read back
- * (`model/numberFormat.ts`). Mirrors `graph-context.ts` — a small context
- * rather than prop-drilling into every node view that formats a value.
+ * App-wide preferences: how a number is written and read back
+ * (`model/numberFormat.ts`) and whether the canvas minimap is drawn
+ * (`model/editorSettings.ts`). Mirrors `graph-context.ts` — a small context
+ * rather than prop-drilling into every node view that formats a value, or
+ * into `Canvas.tsx` alone for the minimap.
  */
 
 import { createContext, useContext } from 'react';
@@ -11,6 +13,8 @@ import type { NumberFormatSettings } from './model/numberFormat';
 export interface SettingsContextValue {
   readonly numberFormat: NumberFormatSettings;
   readonly setNumberFormat: (settings: NumberFormatSettings) => void;
+  readonly minimapVisible: boolean;
+  readonly setMinimapVisible: (visible: boolean) => void;
 }
 
 export const SettingsContext = createContext<SettingsContextValue | undefined>(undefined);

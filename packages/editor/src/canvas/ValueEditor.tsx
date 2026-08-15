@@ -1,16 +1,17 @@
 /**
- * Turning an input into a range, on the node (S29, S47).
+ * Turning an input into a range, on the node.
  *
  * This is the control the whole tool is about: the same node holds `250 kW` and
  * `linspace(20, 60, 10)`, and switching between them is what turns a calculation
  * into a design study. Nothing downstream is rewired, because a scalar is a
- * series with no axes (S43).
+ * series with no axes.
  *
  * Five kinds are offered. `tableColumn` is absent because tables arrive with the
- * second slice (S37) and the kernel says so rather than half-working, and the
+ * second slice and the kernel says so rather than half-working, and the
  * categorical kinds are absent because nothing in milestone 1 has a categorical
- * port to receive one (S38, S41's accepted gap) — offering them would be a field
- * whose every value is refused at the next connection.
+ * port to receive one — an accepted gap, since belt uses neither tables nor
+ * categoricals — offering them would be a field whose every value is refused
+ * at the next connection.
  */
 
 import type { ReactElement } from 'react';
@@ -170,7 +171,7 @@ function useValueFormat(): NumberFormat {
   return toUnitsFormat(numberFormat);
 }
 
-/** The value itself — always visible on the card, not just on hover (S47). */
+/** The value itself — always visible on the card, not just on hover. */
 export function ValueFields({ value, onChange }: Props): ReactElement {
   const unit = unitOf(value);
   const format = useValueFormat();
@@ -197,7 +198,7 @@ export function ValueFields({ value, onChange }: Props): ReactElement {
       {value.kind === 'scalar' ? (
         // Split so the number — what changes on every iteration — is never
         // retyped alongside a unit that almost never does; getting the unit
-        // wrong used to fail the whole edit (S5), not just the value.
+        // wrong used to fail the whole edit, not just the value.
         <div className="quantity-split">
           <NumberField
             value={value.value}

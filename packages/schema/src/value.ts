@@ -1,15 +1,15 @@
 /**
  * What an input node holds: one value, or a range that turns the whole
- * downstream graph into a study (S29, S43).
+ * downstream graph into a study.
  *
  * The range kinds are a closed set, and the closure is the point. `linspace` and
  * `logspace` are meaningless over `{H7, K7}` — there is no spacing between fit
- * classes — so a categorical sweep is an explicit list and nothing else (S38).
+ * classes — so a categorical sweep is an explicit list and nothing else.
  * A spectrum is an explicit list too, but for the opposite reason: it is
  * *consumed* whole by an aggregation, so it introduces no axis and cannot be
- * swept (S36).
+ * swept.
  *
- * Point count is the primary control rather than step size (S29): `linspace(20,
+ * Point count is the primary control rather than step size: `linspace(20,
  * 60, 21)` says exactly what it means, a two-input study is exactly `n × m`, and
  * nobody has to reason about whether the endpoint survived the last addition.
  */
@@ -54,13 +54,13 @@ export interface ScalarValue {
   readonly unit: Unit;
 }
 
-/** A single member of a categorical port's domain (S38). */
+/** A single member of a categorical port's domain. */
 export interface CategoricalValue {
   readonly kind: 'categorical';
   readonly value: string;
 }
 
-/** A load spectrum: an explicit list consumed by an aggregation (S36). */
+/** A load spectrum: an explicit list consumed by an aggregation. */
 export interface SpectrumValue {
   readonly kind: 'spectrum';
   readonly values: readonly number[];
@@ -77,7 +77,7 @@ export interface LinearRange {
 }
 
 /**
- * Log spacing is a teaching requirement, not a convenience (S29): Wöhler curves
+ * Log spacing is a teaching requirement, not a convenience: Wöhler curves
  * are log–log by construction and bearing life is a power law, so a linear
  * sample across decades leaves the knee unresolved and the straight line a
  * student is meant to recognise looks bent.
@@ -185,7 +185,7 @@ const RANGE_KINDS: readonly ValueKind[] = [
   'categoricalList',
 ];
 
-/** A range introduces a labelled axis (S43); a plain value does not. */
+/** A range introduces a labelled axis; a plain value does not. */
 export function isRange(value: ValueSpec): value is RangeSpec {
   return RANGE_KINDS.includes(value.kind);
 }

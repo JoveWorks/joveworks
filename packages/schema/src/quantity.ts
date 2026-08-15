@@ -2,7 +2,7 @@
  * Numbers as they are *written*: a magnitude and the unit it was written in.
  *
  * This package deliberately does not store canonical values. `units` already
- * owns the conversion (S5), and a document that stored `0.25` where the author
+ * owns the conversion, and a document that stored `0.25` where the author
  * typed `250 kW` would be unreadable, undiffable, and would not survive a
  * round-trip bit-for-bit — `value * factor / factor` is not the identity in
  * binary floating point.
@@ -42,7 +42,7 @@ export function parseUnitField(value: JsonValue | undefined, path: string): Unit
 }
 
 /**
- * A port's unit field, which may also carry a generic signature (S59). Only
+ * A port's unit field, which may also carry a generic signature. Only
  * ports accept one: a `Quantity` is a number someone typed, and `5 $A` is not a
  * number anyone can type.
  */

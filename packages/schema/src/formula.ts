@@ -1,10 +1,10 @@
 /**
  * The formula record — the thing this whole project is a contract around.
  *
- * A formula is **data, not code** (S4): one output port, its input ports, an
+ * A formula is **data, not code**: one output port, its input ports, an
  * expression as a string, and the metadata that makes it citable, checkable and
  * quarantinable. The expression stays a string here and is parsed by the kernel
- * (S34) — this package never evaluates and never compiles, and above all never
+ * — this package never evaluates and never compiles, and above all never
  * reaches for `eval`, because catalogues are files students pass to each other.
  *
  * Nothing in this file is R&M content. The examples in the tests are invented
@@ -39,7 +39,7 @@ import {
 import { readSchemaVersion } from './version.js';
 import { genericVariables, isGenericDimension } from '@mds/units';
 
-/** The dimension variables a port mentions — none, unless it is generic (S59). */
+/** The dimension variables a port mentions — none, unless it is generic. */
 function portVariables(port: Port): readonly string[] {
   if (port.kind === 'categorical' || !isGenericDimension(port.unit)) return [];
   return genericVariables(port.unit);
@@ -58,20 +58,20 @@ export type FormulaStatus = (typeof FORMULA_STATUSES)[number];
 export interface Formula {
   /** Stable within its catalogue — the migration writes it from the method name. */
   readonly id: string;
-  /** Bumped whenever the record changes meaning. Part of a graph's reference (S23). */
+  /** Bumped whenever the record changes meaning. Part of a graph's reference. */
   readonly version: number;
   readonly output: OutputPort;
   readonly inputs: readonly Port[];
-  /** Parsed and compiled by the kernel, never here (S34). */
+  /** Parsed and compiled by the kernel, never here. */
   readonly expression: string;
   readonly description: string;
-  /** `R&M 17.1B`. Absent on the base node library, which cites nothing (S42). */
+  /** `R&M 17.1B`. Absent on the base node library, which cites nothing. */
   readonly citation?: string;
-  /** Groups the rearranged forms of one relation (S17). */
+  /** Groups the rearranged forms of one relation. */
   readonly variantOf?: string;
   /**
    * The condition under which this form applies, as a predicate over its own
-   * input ports (S39/S40) — `D_A < d_w`. R&M states these in prose and the
+   * input ports — `D_A < d_w`. R&M states these in prose and the
    * predecessor library never read them, so a student could use a variant
    * outside its range and get a confident wrong number. Using a formula outside
    * it warns; it does not block.
@@ -109,7 +109,7 @@ export function parseFormula(value: JsonValue, path: string): Formula {
     asInputPort(parsePort(entry, `${join(path, 'inputs')}[${i}]`), `${join(path, 'inputs')}[${i}]`),
   );
 
-  // A generic output can only be built from variables the inputs bind (S59).
+  // A generic output can only be built from variables the inputs bind.
   if (output.kind === 'numeric' && isGenericDimension(output.unit)) {
     const bound = new Set(inputs.flatMap(portVariables));
     for (const name of genericVariables(output.unit)) {
@@ -174,7 +174,7 @@ export function formulaHash(formula: Formula): string {
 
 /**
  * How a graph names a formula: id, version and hash, **never the formula
- * itself** (S23). Graph files circulate — email, git, hand-ins — so an embedded
+ * itself**. Graph files circulate — email, git, hand-ins — so an embedded
  * expression would carry restricted content straight past the repository
  * boundary of S45. The cost is that a graph needs its catalogue to open, which
  * is the deliberate trade.
@@ -216,9 +216,9 @@ export function matchRef(ref: FormulaRef, formula: Formula | undefined): RefMatc
 }
 
 /**
- * A catalogue is just a file of formulas (S10). `restricted` is the honest label
+ * A catalogue is just a file of formulas. `restricted` is the honest label
  * on one: the R&M catalogue is marked so the app can refuse to put its
- * expressions into an export (S32). It is a statement of intent inside the app,
+ * expressions into an export. It is a statement of intent inside the app,
  * not the enforcement — the enforcement is the repository boundary of S45.
  */
 export interface Catalogue {

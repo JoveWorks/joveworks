@@ -1,5 +1,5 @@
 /**
- * Three columns, and the canvas is always the middle one (S46).
+ * Three columns, and the canvas is always the middle one.
  *
  * Both side panels collapse, because a node editor wants horizontal room, and
  * there is **no properties panel** — values, units and ranges are edited on the
@@ -9,7 +9,7 @@
  * This component owns the two pieces of state everything else reads: the
  * document, and the catalogues loaded against it. The kernel is re-run on every
  * change, which is affordable because a graph is tens of nodes and because it is
- * the only way connect time and evaluation time cannot drift apart (S64).
+ * the only way connect time and evaluation time cannot drift apart.
  */
 
 import { useMemo, useState, type ReactElement } from 'react';
@@ -33,6 +33,7 @@ import { openTextFile, saveTextFile } from './io/files';
 import { analyse } from './model/analysis';
 import { basicMechanicsCatalogue, baseCatalogue, withCatalogue } from './model/catalogues';
 import { frameAround, reframe, uniqueId } from './model/document';
+import { loadMinimapVisible, saveMinimapVisible } from './model/editorSettings';
 import {
   loadNumberFormatSettings,
   saveNumberFormatSettings,
@@ -56,7 +57,7 @@ import { useResizableWidth } from './useResizableWidth';
  * The base catalogue, the bundled public catalogue, and whatever was cached
  * from a previous session. Base nodes and the public catalogue both ship
  * `restricted: false` — neither needs a student to import it by hand the way
- * an R&M catalogue does (S14/S45), so both are always present.
+ * an R&M catalogue does, so both are always present.
  */
 function initialCatalogues(): readonly Catalogue[] {
   let catalogues: readonly Catalogue[] = [baseCatalogue(), basicMechanicsCatalogue()];
@@ -81,6 +82,7 @@ export function App(): ReactElement {
   const [showPalette, setShowPalette] = useState(true);
   const [showNotebook, setShowNotebook] = useState(true);
   const [numberFormat, setNumberFormatState] = useState<NumberFormatSettings>(loadNumberFormatSettings);
+  const [minimapVisible, setMinimapVisibleState] = useState<boolean>(loadMinimapVisible);
   const [showSettings, setShowSettings] = useState(false);
   const [openMenu, setOpenMenu] = useState<
     | { readonly menu: 'file' | 'edit' | 'view' | 'help'; readonly x: number; readonly y: number }
@@ -107,9 +109,14 @@ export function App(): ReactElement {
     saveNumberFormatSettings(next);
   };
 
+  const setMinimapVisible = (next: boolean): void => {
+    setMinimapVisibleState(next);
+    saveMinimapVisible(next);
+  };
+
   const settingsContext = useMemo(
-    () => ({ numberFormat, setNumberFormat }),
-    [numberFormat],
+    () => ({ numberFormat, setNumberFormat, minimapVisible, setMinimapVisible }),
+    [numberFormat, minimapVisible],
   );
 
   const analysis = useMemo(() => analyse(document, catalogues), [document, catalogues]);
@@ -176,11 +183,11 @@ export function App(): ReactElement {
     { label: 'Open…', onClick: () => void openDocumentFile() },
     { label: 'Save', onClick: () => saveTextFile(`${document.id}.mds.json`, saveDocument(document)) },
     { label: 'Load catalogue…', onClick: () => void loadCatalogueFile() },
+    { label: 'Settings…', onClick: () => setShowSettings(true) },
   ];
 
   const editMenuItems: readonly MenuItem[] = [
     { label: 'Group into new section', onClick: addSection },
-    { label: 'Settings…', onClick: () => setShowSettings(true) },
   ];
 
   const viewMenuItems: readonly MenuItem[] = [
@@ -192,7 +199,7 @@ export function App(): ReactElement {
   // place a student (or a colleague seeing a demo) looks for "show me
   // something that already works".
   const helpMenuItems: readonly MenuItem[] = [
-    { label: 'Examples', disabled: true, onClick: () => {} },
+    { heading: 'Examples' },
     {
       label: 'Pad pressure sweep',
       onClick: () => {
@@ -317,6 +324,8 @@ export function App(): ReactElement {
               <SettingsDialog
                 settings={numberFormat}
                 onChange={setNumberFormat}
+                minimapVisible={minimapVisible}
+                onMinimapVisibleChange={setMinimapVisible}
                 onClose={() => setShowSettings(false)}
               />
             ) : null}

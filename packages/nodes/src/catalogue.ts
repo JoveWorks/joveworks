@@ -1,5 +1,5 @@
 /**
- * The base node library as a catalogue (S42) — unrestricted, citation-free, and
+ * The base node library as a catalogue — unrestricted, citation-free, and
  * loaded the same way an R&M catalogue is.
  *
  * It is a **build artefact of this package**, not hand-written JSON: the records
@@ -30,7 +30,7 @@ export const BASE_CATALOGUE_ID = 'base';
 export const BASE_CATALOGUE: Catalogue = {
   schemaVersion: SCHEMA_VERSION,
   id: BASE_CATALOGUE_ID,
-  name: 'Base nodes',
+  name: 'Math',
   restricted: false,
   formulas: OPERATIONS,
 };

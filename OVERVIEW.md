@@ -17,9 +17,9 @@ constraint at once, and look at the result as a graph.
 > into a separate private repository — this one still holds no textbook
 > content — and **the belt lab's golden values reproduce**, eleven of twelve,
 > the twelfth quarantined and refused on purpose, both through the kernel and
-> through the editor. What is left of milestone 1 is a hand pass over the
-> interface ([NEXT.md](NEXT.md)). Every decision is settled (see
-> [DECISIONS.md](DECISIONS.md)); the build sequence is in [PLAN.md](PLAN.md).
+> through the editor. **Milestone 1 is done**, including the hand pass over
+> the interface (`UX-SPEC.md`). Every design decision is settled; the build
+> sequence is in [PLAN.md](PLAN.md).
 > Parts of this document still describe intent rather than what is built —
 > export, authoring and autosave are the notable ones.
 
@@ -299,8 +299,8 @@ hand:
   `BallBearing` `is list` bugs are Python type errors with no textbook question
   attached. Only the remainder needs the book.
 - **Unit-tag sign-off.** About 30 tags could not be machine-parsed. Most have a
-  plausible reading already proposed in DECISIONS.md and need confirming, not
-  reconstructing.
+  plausible reading already proposed in PLAN.md's unit-tag sign-off section and
+  need confirming, not reconstructing.
 
 **The code that exists** follows PLAN.md's deliberate order: units and schema,
 the base node library, then the kernel — and the UI last. The core is testable
@@ -348,11 +348,14 @@ golden exercises stay marked unverified rather than assumed sound.
 | Document | For |
 |---|---|
 | [PLAN.md](PLAN.md) | Build sequence, migration strategy, verification plan |
-| [DECISIONS.md](DECISIONS.md) | Every settled decision (S1–S66) and its reasoning |
 | [CLAUDE.md](CLAUDE.md) | Conventions and the distribution restriction |
+| [UX-SPEC.md](UX-SPEC.md) | Editor UX requirements from the hand-testing passes |
+
+Design rationale beyond what's in these documents lives as comments at the
+code site it explains, not in a separate decisions log.
 
 ---
 
-*Everything described here is settled — range kinds (S29), the output and
-notebook model (S30–S33), and multi-input sweeps, which use labelled axes so
-that two ranges give an `n × m` grid with no extra wiring (S43).*
+*Everything described here is settled — range kinds, the output and notebook
+model, and multi-input sweeps, which use labelled axes so that two ranges give
+an `n × m` grid with no extra wiring.*

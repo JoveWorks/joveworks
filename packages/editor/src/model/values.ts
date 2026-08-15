@@ -2,8 +2,8 @@
  * What a node shows in its body: the value on its output port, in the unit that
  * port declares.
  *
- * A scalar shows a number and a series shows a sparkline (S50) — but they are
- * the same object with a different number of axes (S43), so this file reads both
+ * A scalar shows a number and a series shows a sparkline — but they are
+ * the same object with a different number of axes, so this file reads both
  * the same way and only the rendering differs.
  */
 

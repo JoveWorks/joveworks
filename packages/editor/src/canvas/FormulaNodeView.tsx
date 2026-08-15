@@ -5,11 +5,11 @@
  * than features:
  *
  * - **The expression is not shown.** The node carries a citation, a description
- *   and numbers, which is what an export defaults to (S32) and what a graph file
- *   carries (S23). Milestone 1 has no need to display R&M expressions in the app,
+ *   and numbers, which is what an export defaults to and what a graph file
+ *   carries. Milestone 1 has no need to display R&M expressions in the app,
  *   so it does not.
- * - **Units are text on the port** (S49). Colour is spent on state.
- * - **A missing required input is visible while compact** (S50), because an
+ * - **Units are text on the port**. Colour is spent on state.
+ * - **A missing required input is visible while compact**, because an
  *   incomplete graph should be obvious before it is evaluated.
  */
 
@@ -48,7 +48,7 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
 
   // Without the catalogue there is no port list to draw — which is exactly what
   // a graph opened without its catalogue looks like, and saying so is better
-  // than drawing an empty box (S23).
+  // than drawing an empty box.
   if (formula === undefined) {
     return (
       <NodeShell
@@ -73,14 +73,14 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
   const wired = new Set(
     document.edges.filter((edge) => edge.to.node === id).map((edge) => edge.to.port),
   );
-  /** Every edge already arriving at one port — more than one only for a spectrum port (S71). */
+  /** Every edge already arriving at one port — more than one only for a spectrum port. */
   const edgesAt = (portName: string): number =>
     document.edges.filter((edge) => edge.to.node === id && edge.to.port === portName).length;
 
   const portUnit = (port: Port): string => {
     if (port.kind === 'categorical') return port.domain.join(' | ');
     // A generic port has no unit of its own until something is wired to it
-    // (S59), so what it shows is the unit the binding gave it.
+    //, so what it shows is the unit the binding gave it.
     const bound = analysis.resolution?.targets.get(`${id}.${port.name}`)?.unit;
     return unitLabel(isGenericPort(port) ? bound : (port.unit as Unit));
   };
@@ -142,7 +142,7 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
     >
       <ul className="ports">
         {formula.inputs.flatMap((port) => {
-          // An ordinary port is exactly one slot. A spectrum port (S71) is one
+          // An ordinary port is exactly one slot. A spectrum port is one
           // slot per edge already joined to it, plus a trailing open one —
           // there is no numbered "a1, a2" identity to keep in step, since
           // every slot targets the same port name; removing a wire and

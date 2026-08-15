@@ -269,9 +269,9 @@ aside.right {
  * stylesheet can outrank — frames are excluded, so hovering one's title does
  * not lift it above the nodes it groups.
  */
-.react-flow__node-input:hover,
+.react-flow__node-mds-input:hover,
 .react-flow__node-formula:hover,
-.react-flow__node-output:hover,
+.react-flow__node-mds-output:hover,
 .react-flow__node-compare:hover {
   z-index: 1000 !important;
 }
@@ -399,6 +399,10 @@ aside.right {
   margin-left: auto;
 }
 
+.node .port-quantity {
+  margin-left: auto;
+}
+
 .node .node-detail {
   margin-top: 6px;
   padding-top: 6px;
@@ -481,6 +485,26 @@ aside.right {
 
 .react-flow__node.selected .node {
   border-color: var(--accent);
+}
+
+/*
+ * A plain outline is a rectangle regardless of the element's own
+ * border-radius — Chrome and Safari never clip it — so on a rounded card
+ * it peeks out past the corners rather than tracing them. `:focus`, not
+ * `:focus-visible` — React Flow focuses a node on an ordinary mouse click
+ * (not just via keyboard), and `:focus-visible` skips a mouse-driven focus
+ * by browser heuristic, so it never matched the case this was actually
+ * fixing. A ring drawn as a box-shadow follows the radius instead, so
+ * focus is still visible without the artifact. Selection already carries
+ * its own accent border above; this also covers focus without selection.
+ */
+.react-flow__node:focus {
+  outline: none;
+}
+
+.react-flow__node:focus .node,
+.react-flow__node:focus .frame {
+  box-shadow: 0 0 0 2px var(--accent);
 }
 
 /* --- handles ------------------------------------------------------------ */
@@ -778,21 +802,41 @@ aside.right {
  * NodeResizer's default hit area is the visible 1px border itself — precise
  * to the point of being hard to grab. Widen the interactive strip well past
  * what is drawn; the translate that centres it on the frame edge (from
- * React Flow's own stylesheet) keeps it centred as it grows.
+ * React Flow's own stylesheet) keeps it centred as it grows. Inset each
+ * line strip by the frame's own 8px border-radius (.frame) too, so a strip
+ * spanning its full default 100% doesn't run straight through the rounded
+ * corner.
  */
 .react-flow__resize-control.line.left,
 .react-flow__resize-control.line.right {
+  top: 8px;
   width: 10px;
+  height: calc(100% - 16px);
 }
 
 .react-flow__resize-control.line.top,
 .react-flow__resize-control.line.bottom {
+  left: 8px;
   height: 10px;
+  width: calc(100% - 16px);
 }
 
 .react-flow__resize-control.handle {
   width: 10px;
   height: 10px;
+}
+
+/*
+ * Neither the edges nor the corners show a drawn shape — a resizable frame
+ * with a border and a cursor change on hover is intuitive without one, and
+ * a visible square or dot only ever fought the frame's own rounded corner
+ * (two earlier attempts here, both reverted). Opacity, not display: none,
+ * so every hit zone above stays exactly as sized and interactive as it
+ * reads — corners included, for diagonal resize — just undrawn.
+ */
+.react-flow__resize-control.line,
+.react-flow__resize-control.handle {
+  opacity: 0;
 }
 
 /* --- canvas overlays ---------------------------------------------------- */
@@ -859,6 +903,12 @@ aside.right {
   color: inherit;
 }
 
+.dialog-checkbox {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+}
+
 .dialog-preview {
   display: flex;
   flex-direction: column;
@@ -919,6 +969,14 @@ aside.right {
 
 .context-menu button.danger {
   color: var(--state-error);
+}
+
+.context-menu .menu-heading {
+  padding: 5px 8px 2px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
 }
 
 .quick-add {
@@ -986,9 +1044,29 @@ aside.right {
   padding: 12px 14px 40px 22px;
 }
 
+.notebook-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
 .notebook h1 {
   font-size: 16px;
   margin: 0 0 10px;
+}
+
+.notebook-export-button {
+  flex-shrink: 0;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--panel);
+  padding: 3px 8px;
+  font-size: 12px;
+}
+
+.notebook-export-button:hover {
+  background: var(--line);
 }
 
 .notebook h2 {
@@ -1127,6 +1205,11 @@ aside.right {
   font-weight: 600;
 }
 
+.notebook .result .count {
+  color: var(--muted);
+  font-size: 11px;
+}
+
 .notebook .result.check.pass .mark,
 .notebook .result.check.pass .number {
   color: var(--state-pass);
@@ -1191,4 +1274,54 @@ aside.right {
 .notebook-warnings ul {
   margin: 0;
   padding-left: 18px;
+}
+
+/* Print-to-PDF renders the notebook alone — everything else on screen is
+   editing chrome with no place in a submittable document. */
+@page {
+  margin: 2.5cm;
+}
+
+@media print {
+  .menubar,
+  .notices,
+  aside.left,
+  .resize-handle,
+  .canvas,
+  .notebook-export-button,
+  .notebook-section .grip,
+  .notebook-section .chevron {
+    display: none !important;
+  }
+
+  .app {
+    height: auto;
+  }
+
+  main {
+    display: block;
+  }
+
+  aside.right {
+    width: auto !important;
+    flex-basis: auto !important;
+    overflow: visible;
+    border-left: none;
+  }
+
+  .notebook {
+    padding: 0;
+  }
+
+  .notebook textarea {
+    border: none;
+    resize: none;
+    overflow: visible;
+    background: transparent;
+    padding: 0;
+  }
+
+  .notebook-section {
+    break-inside: avoid;
+  }
 }

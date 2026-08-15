@@ -2,9 +2,9 @@
  * Running a graph.
  *
  * Everything the other files established meets here: the graph is resolved and
- * ordered (S18), each formula is compiled once (S34), values carry labelled axes
- * so a second range turns a curve into a grid without rewiring (S43), and the
- * quarantine gate refuses anything not signed off (S19).
+ * ordered, each formula is compiled once, values carry labelled axes
+ * so a second range turns a curve into a grid without rewiring, and the
+ * quarantine gate refuses anything not signed off.
  *
  * Two boundaries are crossed in this file and nowhere else:
  *
@@ -77,12 +77,12 @@ export interface PrintResult extends OutputBase {
   readonly figures: number;
 }
 
-/** The assertion that makes a notebook a dimensioning report (S33). */
+/** The assertion that makes a notebook a dimensioning report. */
 export interface CheckResult extends OutputBase {
   readonly kind: 'check';
   readonly series: NumericSeries;
   readonly comparison: Comparison;
-  /** In canonical units, converted from the quantity the student typed (S58). */
+  /** In canonical units, converted from the quantity the student typed. */
   readonly threshold: number;
   readonly unit: Unit;
   /** One verdict per cell of the swept grid. */
@@ -182,7 +182,7 @@ export function evaluateDocument(
 // --- input nodes ------------------------------------------------------------
 
 /**
- * A literal, a categorical choice, a spectrum or a range (S29), converted into
+ * A literal, a categorical choice, a spectrum or a range, converted into
  * canonical units on the way in. This is the boundary S5 means.
  */
 function inputValue(node: InputNode, axes: ReadonlyMap<string, Axis>): PortValue {
@@ -223,7 +223,7 @@ function inputValue(node: InputNode, axes: ReadonlyMap<string, Axis>): PortValue
         kind: 'numeric',
         axes: [axis as Axis],
         // Both endpoints included, and the last point is `stop` exactly rather
-        // than the accumulation of `points - 1` additions (S29).
+        // than the accumulation of `points - 1` additions.
         data: Array.from({ length: spec.points }, (_, i) => start + ((stop - start) * i) / last),
       };
     }
@@ -294,7 +294,7 @@ function inputPortValue(
 }
 
 /**
- * Every edge wired to a spectrum port (S71), each keeping its own value —
+ * Every edge wired to a spectrum port, each keeping its own value —
  * and so its own axes — rather than flattened into one collection up front.
  *
  * S72 first amended S71 to accept a swept edge at all; S73 amends it again,
@@ -304,7 +304,7 @@ function inputPortValue(
  * flattening across edges silently lost that — collapsing the whole grid to
  * one scalar instead of a grid of pointwise reductions. `evaluateFormula`
  * broadcasts each edge against the node's own axes and collects one value
- * per edge per cell; only an authored spectrum list (S36) — invariant by
+ * per edge per cell; only an authored spectrum list — invariant by
  * definition — still contributes every one of its values at every cell.
  */
 function spectrumEdgeValues(
@@ -350,7 +350,7 @@ function evaluateFormula(
   const regularInputs = regularPorts.map((port) => {
     const value = inputPortValue(nodeId, port, resolution, values);
     // An ordinary port's own source is never spectrum-kind — a formula
-    // cannot produce one (S36) — so this is a defensive check, not a real
+    // cannot produce one — so this is a defensive check, not a real
     // case, but it is what lets everything below see NumericSeries |
     // CategoricalSeries instead of the full PortValue union.
     if (value.kind === 'spectrum') {
@@ -451,11 +451,11 @@ function evaluateFormula(
 
 /**
  * `value` compared against `threshold`, cell for cell. `threshold` falls
- * back to the node's own typed quantity (S58, now a port default) when
- * nothing is wired to it, and broadcasts as a scalar the same way a bare
+ * back to the node's own typed quantity — a port default — when nothing is
+ * wired to it, and broadcasts as a scalar the same way a bare
  * number would; wired to a swept series of its own, it lines up
  * positionally against `value`'s cells rather than gridding with it the way
- * two different formula inputs would (S43) — a per-point bound naming its
+ * two different formula inputs would — a per-point bound naming its
  * own axis (a second sweep unrelated to `value`'s) is not what a threshold
  * means, so this is deliberately a length match, not an axis-identity one.
  */
@@ -478,7 +478,7 @@ function evaluateCompare(
   const thresholdEdge = resolution.incoming.get(thresholdKey)?.[0];
   // A bare, unitless default is read in `value`'s own *display* unit, not its
   // canonical one — a student comparing a Pa-displayed value never sees
-  // canonical N/mm² anywhere else on screen (S53), so a typed `6` has to mean
+  // canonical N/mm² anywhere else on screen, so a typed `6` has to mean
   // 6 of whatever unit is shown, not 6 of a unit the app never shows at all.
   // An explicit unit the student did type is never overridden by this.
   // `value` is a target port here, not a source — its resolved type (with
@@ -543,7 +543,7 @@ function sourceOf(
 /**
  * What an output displays in: the unit the student chose, else the unit the
  * source port declares, else the canonical unit of its dimension — which is
- * where a generic node lands, since it has no display unit of its own (S59).
+ * where a generic node lands, since it has no display unit of its own.
  */
 function displayUnit(type: PortType | undefined): Unit {
   if (type?.unit !== undefined) return type.unit;

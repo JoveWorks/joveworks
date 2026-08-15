@@ -19,7 +19,7 @@ export interface GraphContextValue {
   readonly catalogues: readonly Catalogue[];
   readonly analysis: Analysis;
   readonly edit: (change: (document: GraphDocument) => GraphDocument) => void;
-  /** Nodes held open while working elsewhere (S50). */
+  /** Nodes held open while working elsewhere. */
   readonly pinned: ReadonlySet<string>;
   readonly togglePin: (id: string) => void;
 }

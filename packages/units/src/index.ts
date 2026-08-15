@@ -1,5 +1,5 @@
 /**
- * Canonical units for machine-design-studio: mm, N, s, rad, K (S5).
+ * Canonical units for machine-design-studio: mm, N, s, rad, K.
  *
  * Everything the kernel computes with is in those five. Display units exist at
  * the boundary only, and an undeclared unit is an error rather than a default.

@@ -1,10 +1,13 @@
 /**
- * A titled group frame — a notebook section, drawn on the canvas (S28/S30).
+ * A titled group frame — a notebook section, drawn on the canvas.
  *
- * It is deliberately passive: it does not carry its nodes around with it, and
- * membership is decided by where a node sits (`reframe`). Arranging the canvas
- * arranges the report, so the frame is a region of the canvas rather than a
- * container in the document.
+ * Membership is decided by where a node sits (`reframe`), not by any
+ * parent/child link in the document — arranging the canvas arranges the
+ * report, so the frame is a region rather than a container. Dragging a frame
+ * (`Canvas.tsx`'s `onNodesChange`) still moves every member's position along
+ * with it, but that's a courtesy carried out in position deltas, not a
+ * change to what decides membership: drop the frame somewhere its members no
+ * longer fit and `reframe` reassigns them at drag-stop like it always did.
  */
 
 import { useState, type ReactElement } from 'react';
@@ -35,7 +38,7 @@ export function FrameView({ id, selected }: NodeProps): ReactElement | null {
         // Position and size are already kept live in the document by Canvas's
         // onNodesChange (NodeResizer reports them the same way a drag reports
         // position). All that is left once the gesture ends is membership: a
-        // frame's bounds decide it (S69), same as `onNodeDragStop` does for
+        // frame's bounds decide it, same as `onNodeDragStop` does for
         // an ordinary drag.
         onResizeEnd={() => edit(reframe)}
       />

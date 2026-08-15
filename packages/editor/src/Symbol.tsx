@@ -5,7 +5,7 @@
  *
  * Only for names a *catalogue* declares — a port, a formula's output. A
  * node's own label is free text a student typed and keeps their spelling
- * exactly (S49); running it through this would rewrite words that only
+ * exactly; running it through this would rewrite words that only
  * happen to look like a symbol.
  */
 

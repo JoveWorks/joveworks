@@ -3,18 +3,18 @@
  *
  * Three ideas carry more weight than they look:
  *
- * - **Formulas are referenced, never embedded** (S23). A node holds an id, a
+ * - **Formulas are referenced, never embedded**. A node holds an id, a
  *   version and a hash; the expression stays in the catalogue.
- * - **Group frames are the notebook's sections** (S28/S30), which makes them
+ * - **Group frames are the notebook's sections**, which makes them
  *   load-bearing schema rather than decoration. A frame's title and note are the
  *   prose of a section, and the output nodes inside it are its results — so
  *   arranging the canvas arranges the report.
- * - **A range node introduces a labelled axis** (S43). The axis is the input
+ * - **A range node introduces a labelled axis**. The axis is the input
  *   node itself: everything downstream of two ranges is an `n × m` grid with no
  *   grid node and no rewiring, and a plot names an axis by naming the node.
  *
- * What is *not* here: cycle detection and topological order (S18, kernel), the
- * expression and predicate parsers (S34/S39, kernel), and any check that an
+ * What is *not* here: cycle detection and topological order (kernel), the
+ * expression and predicate parsers (kernel), and any check that an
  * edge's ports exist — port names belong to the catalogue, and a document is
  * routinely parsed before one is loaded.
  */
@@ -78,7 +78,7 @@ export interface PrintOutput {
 
 /**
  * The assertion that makes the notebook a dimensioning report rather than a
- * list of numbers (S33): `S ≥ 1.5` renders as pass or fail.
+ * list of numbers: `S ≥ 1.5` renders as pass or fail.
  *
  * The threshold is a `Quantity` rather than a predicate string because it is a
  * number a student types with a unit — `200 N/mm²` — and unit-carrying literals
@@ -97,7 +97,7 @@ export interface CheckOutput {
  * Line or contour over swept inputs, with an optional threshold overlay.
  *
  * Up to three axes get a slot — `x`, `series` (color) and `facet` (small
- * multiples) — each naming the range input node that introduced it (S43).
+ * multiples) — each naming the range input node that introduced it.
  * Any slot left unset is filled automatically at evaluate time from axes the
  * plotted value actually varies along (kernel `evaluate.ts`); a slot the
  * student *has* set is never touched. Leaving all three unset is the default
@@ -105,7 +105,7 @@ export interface CheckOutput {
  */
 export interface PlotOutput {
   readonly kind: 'plot';
-  /** Axis for x. Auto-assigned when absent. */
+  /** Axis for x — the id of the range input node that introduced it. Auto-assigned when absent. */
   readonly x?: string;
   /** A second axis, drawn as a colored series (or, with `contour`, the second grid axis). */
   readonly series?: string;
@@ -116,7 +116,7 @@ export interface PlotOutput {
   readonly unit?: Unit;
 }
 
-/** A swept series as rows — standard sizes against results (S29's explicit list). */
+/** A swept series as rows — standard sizes against results, an explicit-list range at its natural home. */
 export interface TableOutput {
   readonly kind: 'table';
   /** Input port names on this node, in column order. */
@@ -136,7 +136,7 @@ interface NodeBase {
   readonly label?: string;
 }
 
-/** A literal, a categorical choice, a spectrum, or a range (S29). */
+/** A literal, a categorical choice, a spectrum, or a range. */
 export interface InputNode extends NodeBase {
   readonly kind: 'input';
   readonly value: ValueSpec;
@@ -152,16 +152,16 @@ export interface FormulaNode extends NodeBase {
 export interface OutputNode extends NodeBase {
   readonly kind: 'output';
   readonly output: Output;
-  /** Per-output prose (S48) — "the 1.5 threshold is crossed at 38 mm". */
+  /** Per-output prose — "the 1.5 threshold is crossed at 38 mm". */
   readonly caption?: string;
 }
 
 /**
  * Compares a wired value against a threshold and emits the verdict —
  * `'pass'` or `'fail'` — as a wireable value, most usefully into a table
- * column that shows which of a swept design's points fail (S33's table).
+ * column that shows which of a swept design's points fail.
  *
- * A first-class node rather than another `Output` variant (S60): a check
+ * A first-class node rather than another `Output` variant: a check
  * output's badge is a rendering choice over a value that already exists and
  * goes nowhere else, but a comparison's *result* is exactly the kind of
  * thing a student wants to wire onward, which an output node cannot do.
@@ -189,7 +189,7 @@ export interface Edge {
   readonly to: Endpoint;
 }
 
-/** A titled group frame: a notebook section (S28/S30), with markdown prose. */
+/** A titled group frame: a notebook section, with markdown prose. */
 export interface Frame {
   readonly id: string;
   readonly title: string;
@@ -207,7 +207,7 @@ export interface GraphDocument {
   readonly frames: readonly Frame[];
 }
 
-/** Every axis in the document, in node order: one per range input node (S43). */
+/** Every axis in the document, in node order: one per range input node. */
 export function axes(document: GraphDocument): readonly InputNode[] {
   return document.nodes.filter(
     (node): node is InputNode => node.kind === 'input' && isRange(node.value),
@@ -470,8 +470,8 @@ function checkReferences(document: GraphDocument, path: string): void {
     if (!nodeIds.has(edge.to.node)) fail(`${at}.to.node`, `no node '${edge.to.node}' exists`);
   }
 
-  // A plot names its axes by node id, and an axis exists only where a range does
-  // (S43). Pointing at a scalar input is the mistake this catches.
+  // A plot names its axes by node id, and an axis exists only where a range
+  // does. Pointing at a scalar input is the mistake this catches.
   const axisIds = new Set(axes(document).map((node) => node.id));
   for (const [i, node] of document.nodes.entries()) {
     if (node.kind !== 'output' || node.output.kind !== 'plot') continue;
@@ -482,7 +482,7 @@ function checkReferences(document: GraphDocument, path: string): void {
       ['facet', node.output.facet],
     ] as const) {
       if (axis !== undefined && !axisIds.has(axis)) {
-        fail(`${at}.${key}`, `'${axis}' is not a range input node, so it introduces no axis (S43)`);
+        fail(`${at}.${key}`, `'${axis}' is not a range input node, so it introduces no axis`);
       }
     }
   }

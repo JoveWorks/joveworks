@@ -44,6 +44,7 @@ import {
 } from '@mds/schema';
 
 import { useGraph } from '../graph-context';
+import { useSettings } from '../settings-context';
 import {
   addNamedColumn,
   addNode,
@@ -157,16 +158,31 @@ function sizeOf(measured: Measurements, id: string): { measured?: { width: numbe
   return size === undefined ? {} : { measured: size };
 }
 
+/**
+ * React Flow reserves `input`/`output`/`default`/`group` as its own built-in
+ * node types, each with its own default box styling in its base stylesheet —
+ * a border, fixed width, centred text. Two of our node kinds are spelled the
+ * same, so registering them under those names didn't just choose our
+ * component, it also picked up React Flow's own CSS for a node type we never
+ * asked for, wrapped around our own `.node` styling underneath (an extra box
+ * `formula`/`compare` never had, since neither name collides). Prefixed here
+ * so the type string is ours alone; `node.kind` in the document is untouched.
+ */
+function flowType(kind: 'input' | 'formula' | 'output' | 'compare'): string {
+  return kind === 'input' || kind === 'output' ? `mds-${kind}` : kind;
+}
+
 const NODE_TYPES = {
-  input: InputNodeView,
+  'mds-input': InputNodeView,
   formula: FormulaNodeView,
-  output: OutputNodeView,
+  'mds-output': OutputNodeView,
   compare: CompareNodeView,
   frame: FrameView,
 };
 
 export function Canvas(): ReactElement {
   const { document, catalogues, analysis, edit, pinned, togglePin } = useGraph();
+  const { minimapVisible } = useSettings();
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [refusal, setRefusal] = useState<string | undefined>(undefined);
   const [menu, setMenu] = useState<MenuTarget | undefined>(undefined);
@@ -205,7 +221,7 @@ export function Canvas(): ReactElement {
       })),
       ...document.nodes.map((node) => ({
         id: node.id,
-        type: node.kind,
+        type: flowType(node.kind),
         position: node.position,
         data: {},
         selected: selected.has(node.id),
@@ -275,12 +291,30 @@ export function Canvas(): ReactElement {
         let next = current;
         for (const change of changes) {
           if (change.type === 'position' && change.position !== undefined) {
-            next = frames.has(change.id)
-              ? updateFrame(next, change.id, (frame) => ({
-                  ...frame,
-                  position: change.position as { x: number; y: number },
-                }))
-              : moveNode(next, change.id, change.position);
+            const position = change.position;
+            if (frames.has(change.id)) {
+              // A frame is passive (S69) — nothing about membership changes
+              // here, only every member's own position, by the same delta the
+              // frame itself just moved by. Fires every drag tick, not only
+              // at drop, so contents visibly travel with the frame rather
+              // than the frame abandoning them mid-drag.
+              const before = next.frames.find((frame) => frame.id === change.id);
+              next = updateFrame(next, change.id, (frame) => ({ ...frame, position }));
+              if (before !== undefined) {
+                const dx = position.x - before.position.x;
+                const dy = position.y - before.position.y;
+                if (dx !== 0 || dy !== 0) {
+                  for (const member of next.nodes.filter((node) => node.frameId === change.id)) {
+                    next = moveNode(next, member.id, {
+                      x: member.position.x + dx,
+                      y: member.position.y + dy,
+                    });
+                  }
+                }
+              }
+            } else {
+              next = moveNode(next, change.id, position);
+            }
           }
           // A frame's size lives in the document (unlike an ordinary node's,
           // which is measured, never authored) — NodeResizer reports it the
@@ -331,14 +365,14 @@ export function Canvas(): ReactElement {
     return { id: edgeId(endpoints.from, endpoints.to), ...endpoints };
   };
 
-  /** The cheap answer, while a wire is in the air (S64). */
+  /** The cheap answer, while a wire is in the air. */
   const isValidConnection = useCallback(
     (connection: Connection | FlowEdge): boolean => {
       const candidate = candidateOf(connection);
       if (candidate === undefined || candidate.from.node === candidate.to.node) return false;
       // A port that already carries a wire is about to have it replaced, not
       // joined — but `resolution.targets` here still reflects the *old* edge,
-      // which is wrong to check against for a generic port (S59): its bound
+      // which is wrong to check against for a generic port: its bound
       // dimension came from that very edge, so a legitimate rewire to a
       // different dimension would be greyed out before the drop ever reaches
       // `canConnect`, which already accounts for the replacement.
@@ -356,11 +390,11 @@ export function Canvas(): ReactElement {
     [analysis.resolution, document.edges],
   );
 
-  /** A spectrum port's new wire joins what is already there (S71), not replaces it. */
+  /** A spectrum port's new wire joins what is already there, not replaces it. */
   const isSpectrumTarget = (to: Edge['to']): boolean =>
     analysis.resolution?.targets.get(`${to.node}.${to.port}`)?.kind === 'spectrum';
 
-  /** The authority, when it lands (S64): the whole graph, resolved with it added. */
+  /** The authority, when it lands: the whole graph, resolved with it added. */
   const onConnect = useCallback(
     (connection: Connection) => {
       const candidate = candidateOf(connection);
@@ -576,7 +610,7 @@ export function Canvas(): ReactElement {
    * Finish a wire dropped on empty canvas: place the chosen node, then wire
    * the dragged endpoint to whichever of its ports fits the drag's direction.
    * A refusal here is the same refusal a manual drag-and-drop would get,
-   * surfaced the same way (S64) — the node still lands, just unconnected.
+   * surfaced the same way — the node still lands, just unconnected.
    */
   const pickQuickAdd = (target: QuickAddTarget, choice: QuickAddChoice): void => {
     if (choice.kind === 'existing') {
@@ -696,6 +730,12 @@ export function Canvas(): ReactElement {
         onConnect={onConnect}
         isValidConnection={isValidConnection}
         deleteKeyCode={['Backspace', 'Delete']}
+        // React Flow's default lifts a selected node's z-index above every
+        // other node's, frame's declared zIndex: -1 included — selecting a
+        // frame then buried its own contents underneath it, so a student had
+        // to click empty canvas first before a node inside could be reached.
+        // With this off, declared zIndex is what stacking follows, always.
+        elevateNodesOnSelect={false}
         onNodeDragStop={() => edit(reframe)}
         onPaneClick={() => {
           setRefusal(undefined);
@@ -720,7 +760,7 @@ export function Canvas(): ReactElement {
 
           if (state.toHandle !== null) {
             // Dropped on a real port. `isValidConnection` may have blocked
-            // `onConnect` from firing — the cheap check while dragging (S64),
+            // `onConnect` from firing — the cheap check while dragging,
             // or a genuine mismatch — so resolve it for real here rather than
             // let the wire snap back with no explanation.
             if (state.isValid !== true) {
@@ -768,7 +808,7 @@ export function Canvas(): ReactElement {
       >
         <Background gap={24} />
         <Controls />
-        <MiniMap pannable zoomable />
+        {minimapVisible ? <MiniMap pannable zoomable /> : null}
         {menu === undefined ? null : (
           <ContextMenu
             x={menu.x}

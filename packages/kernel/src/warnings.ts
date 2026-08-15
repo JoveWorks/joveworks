@@ -9,11 +9,11 @@
  */
 
 export const WARNING_KINDS = [
-  /** The catalogue's formula no longer matches the reference the graph saved (S23). */
+  /** The catalogue's formula no longer matches the reference the graph saved. */
   'formulaChanged',
-  /** The product of the axis lengths has grown large (S43's guard). */
+  /** The product of the axis lengths has grown large enough to warn about. */
   'largeGrid',
-  /** A formula was used outside its `appliesWhen` condition (S40). */
+  /** A formula was used outside its `appliesWhen` condition. */
   'appliesWhen',
   /** A plot names an axis its data does not vary along. */
   'plotAxis',

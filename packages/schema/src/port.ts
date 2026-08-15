@@ -1,5 +1,5 @@
 /**
- * Ports: what may be wired to what (S6, S38).
+ * Ports: what may be wired to what.
  *
  * A port declares a **display unit**, not a dimension, because the unit already
  * carries one — `units` resolves `N/mm²` to its dimension and its factor in one
@@ -10,15 +10,15 @@
  *
  * A numeric or spectrum port may declare a **generic signature** instead of a
  * unit — `$A`, `$A*$B` — which is how the base node library says "whatever is
- * wired here" (S59). No catalogue formula uses one: R&M names every unit. An
+ * wired here". No catalogue formula uses one: R&M names every unit. An
  * input's signature must be a bare variable, so that binding it is an assignment
  * rather than an equation; the output may be any monomial in those variables.
  *
  * Three kinds, and the third is the one that is easy to miss:
  *
- * - **numeric** — a dimensioned scalar. Sweepable by any range kind (S29).
- * - **categorical** — a value from an enumerated domain, `H7` and friends
- *   (S38). Sweepable by explicit list only; there is no spacing between `H7`
+ * - **numeric** — a dimensioned scalar. Sweepable by any range kind.
+ * - **categorical** — a value from an enumerated domain, `H7` and friends.
+ *   Sweepable by explicit list only; there is no spacing between `H7`
  *   and `K7`.
  * - **spectrum** — a whole series consumed at once, the load spectrum of S36.
  *   A sweep *produces* a series and a spectrum *consumes* one, so a spectrum
@@ -54,7 +54,7 @@ import type { Unit } from '@mds/units';
 
 /**
  * What a numeric or spectrum port declares: a concrete display unit, or a
- * generic signature standing for whatever is wired to it (S59).
+ * generic signature standing for whatever is wired to it.
  */
 export type PortUnit = Unit | GenericDimension;
 
@@ -91,7 +91,7 @@ export interface NumericPort extends PortBase {
   /**
    * Display unit; its dimension is the port's type. `''` is dimensionless. A
    * `GenericDimension` here means the port has no display unit of its own and
-   * takes both unit and dimension from what is wired to it (S59).
+   * takes both unit and dimension from what is wired to it.
    */
   readonly unit: PortUnit;
   /** A starting value, in `unit`. Never set on a generic port — no unit to be in. */
@@ -108,7 +108,7 @@ export interface NumericPort extends PortBase {
 
 export interface CategoricalPort extends PortBase {
   readonly kind: 'categorical';
-  /** The enumerated domain. A value outside it is rejected at entry (S38). */
+  /** The enumerated domain. A value outside it is rejected at entry. */
   readonly domain: readonly string[];
   readonly default?: string;
 }
@@ -120,12 +120,12 @@ export interface SpectrumPort extends PortBase {
 
 export type Port = NumericPort | CategoricalPort | SpectrumPort;
 
-/** What a formula may produce. A spectrum is consumed, never produced (S36). */
+/** What a formula may produce. A spectrum is consumed, never produced. */
 export type OutputPort = NumericPort | CategoricalPort;
 
 /**
- * The dimension a connection is checked against (S6), or `undefined` for a
- * generic port — which has no dimension until the wiring binds one (S59).
+ * The dimension a connection is checked against, or `undefined` for a
+ * generic port — which has no dimension until the wiring binds one.
  */
 export function portDimension(port: Port): Dimension | undefined {
   if (port.kind === 'categorical') return DIMENSIONLESS;
@@ -221,7 +221,7 @@ export function serializePort(port: Port): JsonObject {
 }
 
 /**
- * Reject a generic *input* whose signature is not a bare variable (S59).
+ * Reject a generic *input* whose signature is not a bare variable.
  *
  * `$A` wired to `N` binds `A` to force — an assignment. `$A*$B` wired to `N`
  * would be an equation with infinitely many solutions, and `$A**2` wired to `N`

@@ -4,13 +4,20 @@
  * It is the half of this project that has to be right. The editor can be
  * rebuilt; a kernel that quietly computes a wrong number is the failure the
  * predecessor library made, and the whole shape of this package is a reply to
- * it — expressions parsed rather than `eval`ed (S34), dimensions checked at
- * connection time rather than trusted (S6), cycles refused rather than iterated
- * (S18), quarantined formulas refused outright (S19), and sweeps first-class
- * rather than bolted on (S43).
+ * it — expressions parsed rather than `eval`ed, dimensions checked at
+ * connection time rather than trusted, cycles refused rather than iterated,
+ * quarantined formulas refused outright, and sweeps first-class rather than
+ * bolted on.
+ *
+ * **Forward evaluation only — there is no solver here, and none is planned.**
+ * R&M numbers its own rearranged forms as separate equations (`E17_1A/B/C`);
+ * a rearrangement is migrated catalogue content, not something this kernel
+ * derives. The rearranged formula is the thing being taught, and a root-finder
+ * would hide it. A gap where no rearranged form exists is closed by authoring
+ * the inverse formula directly, or by a range sweep — not by solving.
  *
  * It knows nothing about React, nothing about files, and nothing about Roloff &
- * Matek. Its test corpus is the base node library (S42), which is arithmetic and
+ * Matek. Its test corpus is the base node library, which is arithmetic and
  * carries no textbook content at all.
  */
 

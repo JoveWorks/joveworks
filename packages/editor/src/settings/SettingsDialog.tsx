@@ -1,9 +1,10 @@
 /**
- * How every number in the app is written and typed back — global (S46 has no
- * per-node inspector to put this on, and there is no per-port case for it the
- * way there is for a display unit). A live preview is the point: a student
- * picking between "1.234,5" and "1,234.5" wants to see the result, not guess
- * from the label.
+ * App-wide preferences with no per-node home: how every number is written
+ * and typed back (there is no per-node inspector to put it on, and no
+ * per-port case for it the way there is for a display unit), and whether the
+ * canvas minimap is drawn. A live preview is the point for the number
+ * format: a student picking between "1.234,5" and "1,234.5" wants to see the
+ * result, not guess from the label.
  */
 
 import type { ReactElement } from 'react';
@@ -22,6 +23,8 @@ import type { NumberNotation } from '@mds/units';
 interface Props {
   readonly settings: NumberFormatSettings;
   readonly onChange: (settings: NumberFormatSettings) => void;
+  readonly minimapVisible: boolean;
+  readonly onMinimapVisibleChange: (visible: boolean) => void;
   readonly onClose: () => void;
 }
 
@@ -31,7 +34,13 @@ const SAMPLE_SMALL = 0.0004821;
 /** Canonical stress: 250 in mm-N-s means 250 N/mm² = 2.5e8 Pa = 250 MPa. */
 const SAMPLE_STRESS = 250;
 
-export function SettingsDialog({ settings, onChange, onClose }: Props): ReactElement {
+export function SettingsDialog({
+  settings,
+  onChange,
+  minimapVisible,
+  onMinimapVisibleChange,
+  onClose,
+}: Props): ReactElement {
   const format = toUnitsFormat(settings);
   const unit = parseUnit('mm');
   const pa = parseUnit('Pa');
@@ -91,6 +100,15 @@ export function SettingsDialog({ settings, onChange, onClose }: Props): ReactEle
           "figures" count still overrides how many significant figures a
           result shows.
         </p>
+
+        <label className="dialog-field dialog-checkbox">
+          <input
+            type="checkbox"
+            checked={minimapVisible}
+            onChange={(event) => onMinimapVisibleChange(event.target.checked)}
+          />
+          show the canvas minimap
+        </label>
 
         <div className="dialog-actions">
           <button type="button" onClick={onClose}>

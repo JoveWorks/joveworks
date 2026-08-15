@@ -1,13 +1,13 @@
 /**
- * Reading and writing files, behind an adapter (S15).
+ * Reading and writing files, behind an adapter.
  *
- * The app is a static page with no backend (S14), so a "file" is whatever the
+ * The app is a static page with no backend, so a "file" is whatever the
  * browser will give us: a picked file in, a download out. Both sit behind these
  * two functions so a Tauri build can replace them with real filesystem calls
  * without touching a single call site — which is the whole reason S15 asks for
  * an adapter rather than for `input[type=file]` scattered through the UI.
  *
- * The File System Access API is a progressive enhancement (S24) and is not used
+ * The File System Access API is a progressive enhancement and is not used
  * here: it would add a second code path for save-in-place before there is
  * anything to save in place.
  */

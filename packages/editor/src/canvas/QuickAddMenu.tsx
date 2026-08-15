@@ -7,7 +7,7 @@
  *
  * A dragged **output** needs a node with an input to receive it — a formula,
  * an existing node with a free-enough input, a `compare` (its `value` port),
- * or a `print`/`check`/`plot` output (S60's non-formula sinks). A dragged
+ * or a `print`/`check`/`plot` output — a non-formula sink for a value. A dragged
  * **input** needs a node with an output to fill it — a formula, an existing
  * node's own output, a `compare` (its `verdict` port), or a plain `input`.
  * `compare` offers in both directions, like a formula; `input` and the
@@ -81,7 +81,7 @@ export function QuickAddMenu({
   // `compare` fits either direction — like a formula, it has both a target
   // port (`value`) and a source port (`verdict`) — unlike `input` and the
   // output kinds below, which each have only the one port a dragged wire
-  // could be finishing (S60).
+  // could be finishing.
   const specials: readonly { readonly label: string; readonly choice: QuickAddChoice; readonly disabled?: boolean }[] =
     direction === 'target'
       ? [{ label: 'input', choice: { kind: 'input' } }, { label: 'compare', choice: { kind: 'compare' } }]

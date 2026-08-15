@@ -209,9 +209,9 @@ export interface UnitTag {
 /**
  * Read a predecessor symbol-dict entry: `'[N] normal force needed'`.
  *
- * A missing `[...]` is an undeclared unit and therefore a hard error (S5) —
+ * A missing `[...]` is an undeclared unit and therefore a hard error —
  * never a dimensionless default. A tag that parses to nothing recognisable is
- * also an error here; quarantining the formula that owns it (S20) is the
+ * also an error here; quarantining the formula that owns it is the
  * caller's decision, not this parser's.
  */
 export function parseUnitTag(text: string): UnitTag {

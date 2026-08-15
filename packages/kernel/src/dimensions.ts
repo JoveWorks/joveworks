@@ -62,7 +62,7 @@ export function assertSameDimension(
 }
 
 /**
- * May a value of `source` dimension drive a port of `target` dimension (S6)?
+ * May a value of `source` dimension drive a port of `target` dimension?
  *
  * Equal dimensions connect. A dimensionless source into an angle port connects,
  * per S54. Nothing else does.

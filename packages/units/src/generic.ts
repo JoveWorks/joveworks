@@ -3,7 +3,7 @@
  * concrete unit.
  *
  * Every R&M formula names its units, so nothing in the catalogue needs this. The
- * base node library (S42) does, and unavoidably: `add` is `(A, A) → A` for any
+ * base node library does, and unavoidably: `add` is `(A, A) → A` for any
  * `A`, and `multiply` is `(A, B) → A·B`. A port that declares `N` cannot say
  * that, and there is no finite set of concrete `add` nodes that covers a
  * dimension algebra with five free exponents.
@@ -31,7 +31,7 @@ import { UnitError } from './unit.js';
 
 /**
  * A monomial in dimension variables. `symbol` is the authored text, kept so a
- * record round-trips and hashes to what its author wrote (S23).
+ * record round-trips and hashes to what its author wrote.
  */
 export interface GenericDimension {
   readonly symbol: string;

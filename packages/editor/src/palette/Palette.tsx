@@ -1,10 +1,15 @@
 /**
- * The palette: every formula the loaded catalogues carry, and the two node kinds
- * that are not formulas at all (S60).
+ * The palette: every formula the loaded catalogues carry, plus the document-
+ * schema node kinds that aren't formulas at all — Input and Output, each its
+ * own header with a shortcut per starting kind (the kind stays switchable on
+ * the node afterward; the shortcut only saves the first click). `compare`
+ * isn't a formula either, but by shape — two ports in, one value out — it
+ * reads as an operation, so it rides along in the Math section instead of
+ * getting a third header for itself.
  *
  * A student finds a formula by equation number or by what it computes, so the
  * search reads ids, citations, descriptions and port names alike. Quarantined
- * records are listed, marked, and can still be dragged in: S19 says quarantine is
+ * records are listed, marked, and can still be dragged in: quarantine is
  * **visible and not silently usable**, which is a different thing from hidden —
  * the node lands on the canvas and says why it cannot be evaluated.
  */
@@ -12,16 +17,31 @@
 import { useMemo, useState, type ReactElement } from 'react';
 import { useReactFlow } from '@xyflow/react';
 
-import { parseUnit } from '@mds/units';
-import { axes as documentAxes, formulaRef, type Formula, type Output, type Position } from '@mds/schema';
+import { BASE_CATALOGUE_ID } from '@mds/nodes';
+import { parseUnit, type Unit } from '@mds/units';
+import {
+  axes as documentAxes,
+  formulaRef,
+  type Formula,
+  type Output,
+  type Position,
+  type ValueSpec,
+} from '@mds/schema';
 
 import { useGraph } from '../graph-context';
 import { addNode, uniqueId } from '../model/document';
 import { entries, search, type PaletteEntry } from '../model/catalogues';
+import { converted } from '../canvas/ValueEditor';
 import { Symbol } from '../Symbol';
 
-/** The key the base-node section — input, print, plot, check — collapses under; no catalogue id of its own. */
-const GENERAL = '__general__';
+/** The keys the two document-schema headers — Input, Output — collapse under; neither is a catalogue id. */
+const INPUT = '__input__';
+const OUTPUT = '__output__';
+
+/** An input's starting kind, built off a plain `1`, matching `ValueKindSelect`'s own conversion. */
+function seedValue(kind: 'scalar' | 'linear' | 'list', unit: Unit): ValueSpec {
+  return converted({ kind: 'scalar', value: 1, unit }, kind);
+}
 
 /** Where a node dropped from the palette lands: the middle of what you can see. */
 function useDropPosition(): () => Position {
@@ -38,6 +58,9 @@ function useDropPosition(): () => Position {
 export function Palette(): ReactElement {
   const { document, catalogues, edit } = useGraph();
   const [query, setQuery] = useState('');
+  // Session UI state, not a document field — reopens on reload, same
+  // precedent as a node's pin state. Which sections are open changes nothing
+  // about what the graph is. Search ignores this and always shows a match.
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
   const position = useDropPosition();
 
@@ -48,7 +71,8 @@ export function Palette(): ReactElement {
       else next.add(catalogueId);
       return next;
     });
-  const generalCollapsed = collapsed.has(GENERAL);
+  const inputCollapsed = collapsed.has(INPUT);
+  const outputCollapsed = collapsed.has(OUTPUT);
 
   const all = useMemo(() => entries(catalogues), [catalogues]);
   const found = useMemo(() => search(all, query), [all, query]);
@@ -73,14 +97,14 @@ export function Palette(): ReactElement {
       }),
     );
 
-  const addInput = (): void =>
+  const addInput = (kind: 'scalar' | 'linear' | 'list'): void =>
     edit((current) => {
       const id = uniqueId(current, 'input');
       return addNode(current, {
         kind: 'input',
         id,
         label: id,
-        value: { kind: 'scalar', value: 1, unit: parseUnit('') },
+        value: seedValue(kind, parseUnit('')),
         position: position(),
       });
     });
@@ -125,36 +149,64 @@ export function Palette(): ReactElement {
 
       <div className="palette-list">
         {/* Ahead of the catalogues, not one-off toolbar buttons (UX-SPEC.md):
-            an input, print and plot are what every graph is built from and
+            an input and an output are what every graph is built from and
             eventually ends in, so they read the same way a catalogue entry
-            does rather than living apart from the rest of the palette. */}
+            does rather than living apart from the rest of the palette. Each
+            kind shortcut only sets the *starting* kind — every one of these
+            is still switchable on the node afterward. */}
         {query.trim().length === 0 ? (
           <section>
             <h3>
-              <button
-                type="button"
-                className="section-toggle"
-                onClick={() => toggleCollapsed(GENERAL)}
-              >
+              <button type="button" className="section-toggle" onClick={() => toggleCollapsed(INPUT)}>
                 <span className="section-toggle-title">
-                  General
-                  {generalCollapsed ? (
-                    <span className="section-toggle-count"> (6)</span>
-                  ) : null}
+                  Input
+                  {inputCollapsed ? <span className="section-toggle-count"> (3)</span> : null}
                 </span>
                 <span className="chevron" aria-hidden="true">
-                  {generalCollapsed ? '▸' : '▾'}
+                  {inputCollapsed ? '▸' : '▾'}
                 </span>
               </button>
             </h3>
-            {generalCollapsed ? null : (
+            {inputCollapsed ? null : (
               <ul>
                 <li>
-                  <button type="button" className="entry" onClick={addInput}>
-                    <span className="entry-id">input</span>
-                    <span className="entry-output">a value, a range, or a list</span>
+                  <button type="button" className="entry" onClick={() => addInput('scalar')}>
+                    <span className="entry-id">value</span>
+                    <span className="entry-output">a single number</span>
                   </button>
                 </li>
+                <li>
+                  <button type="button" className="entry" onClick={() => addInput('linear')}>
+                    <span className="entry-id">range</span>
+                    <span className="entry-output">swept from a start to a stop</span>
+                  </button>
+                </li>
+                <li>
+                  <button type="button" className="entry" onClick={() => addInput('list')}>
+                    <span className="entry-id">list</span>
+                    <span className="entry-output">swept over hand-typed values</span>
+                  </button>
+                </li>
+              </ul>
+            )}
+          </section>
+        ) : null}
+
+        {query.trim().length === 0 ? (
+          <section>
+            <h3>
+              <button type="button" className="section-toggle" onClick={() => toggleCollapsed(OUTPUT)}>
+                <span className="section-toggle-title">
+                  Output
+                  {outputCollapsed ? <span className="section-toggle-count"> (4)</span> : null}
+                </span>
+                <span className="chevron" aria-hidden="true">
+                  {outputCollapsed ? '▸' : '▾'}
+                </span>
+              </button>
+            </h3>
+            {outputCollapsed ? null : (
+              <ul>
                 <li>
                   <button type="button" className="entry" onClick={() => addOutput('print')}>
                     <span className="entry-id">print</span>
@@ -178,21 +230,15 @@ export function Palette(): ReactElement {
                   </button>
                 </li>
                 <li>
-                  <button type="button" className="entry" onClick={() => addOutput('check')}>
-                    <span className="entry-id">check</span>
-                    <span className="entry-output">pass or fail against a threshold</span>
-                  </button>
-                </li>
-                <li>
-                  <button type="button" className="entry" onClick={addCompare}>
-                    <span className="entry-id">compare</span>
-                    <span className="entry-output">a wireable pass/fail verdict, for a table column</span>
-                  </button>
-                </li>
-                <li>
                   <button type="button" className="entry" onClick={() => addOutput('table')}>
                     <span className="entry-id">table</span>
                     <span className="entry-output">several series as rows, one per column</span>
+                  </button>
+                </li>
+                <li>
+                  <button type="button" className="entry" onClick={() => addOutput('check')}>
+                    <span className="entry-id">check</span>
+                    <span className="entry-output">pass or fail against a threshold</span>
                   </button>
                 </li>
               </ul>
@@ -202,6 +248,11 @@ export function Palette(): ReactElement {
 
         {grouped.map(([catalogueId, list]) => {
           const isCollapsed = query.trim().length === 0 && collapsed.has(catalogueId);
+          // `compare` isn't a formula (S60) but reads as one operation among
+          // others by shape — two ports in, one computed value out — so it
+          // rides along in the Math section rather than earning its own.
+          const isMath = catalogueId === BASE_CATALOGUE_ID;
+          const count = list.length + (isMath ? 1 : 0);
           return (
             <section key={catalogueId}>
               <h3>
@@ -217,9 +268,7 @@ export function Palette(): ReactElement {
                         restricted
                       </span>
                     ) : null}
-                    {isCollapsed ? (
-                      <span className="section-toggle-count"> ({list.length})</span>
-                    ) : null}
+                    {isCollapsed ? <span className="section-toggle-count"> ({count})</span> : null}
                   </span>
                   <span className="chevron" aria-hidden="true">
                     {isCollapsed ? '▸' : '▾'}
@@ -228,6 +277,14 @@ export function Palette(): ReactElement {
               </h3>
               {isCollapsed ? null : (
                 <ul>
+                  {isMath ? (
+                    <li>
+                      <button type="button" className="entry" onClick={addCompare}>
+                        <span className="entry-id">compare</span>
+                        <span className="entry-output">a wireable pass/fail verdict</span>
+                      </button>
+                    </li>
+                  ) : null}
                   {list.map(({ formula }) => (
                     <li key={formula.id}>
                       <button
