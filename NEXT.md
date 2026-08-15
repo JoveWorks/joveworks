@@ -106,9 +106,9 @@ From PLAN.md's milestone 1:
   what will exercise them.
 - **What enforces the dependency direction: S55**, measured rather than assumed.
   `test/project-references.test.ts` pins both the enforcement and its limit.
-- **Confirm `machine-design-catalogue` is private on GitHub** before any
-  extracted formula is pushed to it. Both repositories now have an `origin`
-  (`ThomasVanRiel/…`), and this one is MIT and meant to be public — the other
-  must not be, and a repository that is public even briefly is indexable.
+- **`machine-design-catalogue` is private** — confirmed by Thomas 2026-08-15, so
+  extracted formulas may be pushed to it. Both repositories have an `origin`
+  under `ThomasVanRiel/`; this one is MIT and public, that one is not, and the
+  boundary between them is S45's whole mechanism.
 - **KU Leuven IP question** (S44): confirm the university claims no rights over
   course-derived material before publishing anything.
