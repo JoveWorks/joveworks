@@ -616,6 +616,37 @@ aside.right {
   width: 100%;
 }
 
+/* A range's two bounds, each a value/unit pair like .quantity-split — typing
+   a different unit on one re-expresses both under it (S47), so the two
+   fields only ever show the same symbol in practice. */
+.range-split {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.range-split .quantity-split {
+  flex: 0 1 auto;
+}
+
+.range-sep {
+  color: var(--muted);
+}
+
+.points-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.points-field .number {
+  width: 3.5em;
+}
+
 .range-fields,
 .output-editor {
   display: grid;

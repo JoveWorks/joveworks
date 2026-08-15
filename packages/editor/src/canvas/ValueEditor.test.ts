@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { parseUnit } from '@mds/units';
 
-import { converted } from './ValueEditor';
+import { converted, rescaleRange } from './ValueEditor';
 
 const mm = parseUnit('mm');
 
@@ -42,5 +42,24 @@ describe('switching an input value between kinds', () => {
       points: 21,
       unit: mm,
     });
+  });
+});
+
+describe('typing a unit on one bound of a range', () => {
+  it('re-expresses both bounds under the new unit, canonical value unchanged', () => {
+    const range = { kind: 'linear' as const, start: 10, stop: 1000, points: 21, unit: mm };
+    // 10 mm and 1000 mm, retyped in metres: 0.01 m and 1 m.
+    expect(rescaleRange(range, 'm')).toEqual({
+      kind: 'linear',
+      start: 0.01,
+      stop: 1,
+      points: 21,
+      unit: parseUnit('m'),
+    });
+  });
+
+  it('refuses a unit of a different dimension — a range does not change what it measures', () => {
+    const range = { kind: 'linear' as const, start: 10, stop: 20, points: 21, unit: mm };
+    expect(() => rescaleRange(range, 'N')).toThrow(/not the same kind of unit/u);
   });
 });

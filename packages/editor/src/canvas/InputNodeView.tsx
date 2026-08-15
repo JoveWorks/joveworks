@@ -13,11 +13,11 @@ import { VALUE_PORT, isRange, type InputNode } from '@mds/schema';
 
 import { useGraph } from '../graph-context';
 import { reframe, removeNodes, updateNode } from '../model/document';
-import { axisLabel, reading, summarise } from '../model/values';
+import { axisLabel, reading } from '../model/values';
 import { NodeShell } from './NodeShell';
 import { Sparkline } from './Sparkline';
 import { TextField } from './fields';
-import { ValueFields, ValueKindSelect } from './ValueEditor';
+import { ValueFields, ValueKindSelect, ValuePointsField } from './ValueEditor';
 
 export function InputNodeView({ id, selected }: NodeProps): ReactElement | null {
   const { document, analysis, edit, pinned, togglePin } = useGraph();
@@ -26,6 +26,8 @@ export function InputNodeView({ id, selected }: NodeProps): ReactElement | null 
 
   const value = reading(analysis, id, VALUE_PORT);
   const swept = isRange(node.value);
+  const setValue = (next: InputNode['value']): void =>
+    edit((current) => updateNode<InputNode>(current, id, (input) => ({ ...input, value: next })));
 
   return (
     <NodeShell
@@ -49,14 +51,10 @@ export function InputNodeView({ id, selected }: NodeProps): ReactElement | null 
       }
       subtitle={swept ? 'range' : 'input'}
       detail={
-        <ValueKindSelect
-          value={node.value}
-          onChange={(next) =>
-            edit((current) =>
-              updateNode<InputNode>(current, id, (input) => ({ ...input, value: next })),
-            )
-          }
-        />
+        <>
+          <ValueKindSelect value={node.value} onChange={setValue} />
+          <ValuePointsField value={node.value} onChange={setValue} />
+        </>
       }
     >
       {/* The port always docks on whichever row is actually showing the value:
@@ -64,19 +62,14 @@ export function InputNodeView({ id, selected }: NodeProps): ReactElement | null 
           swept-range summary below when it's a range — never both, and never
           neither. */}
       <div className="node-value-editor">
-        <ValueFields
-          value={node.value}
-          onChange={(next) =>
-            edit((current) =>
-              updateNode<InputNode>(current, id, (input) => ({ ...input, value: next })),
-            )
-          }
-        />
+        <ValueFields value={node.value} onChange={setValue} />
         {swept ? null : <Handle type="source" position={Position.Right} id={VALUE_PORT} />}
       </div>
       {swept ? (
+        // The extent is already the two bounds above (S47's "presented once")
+        // — this row only earns its place for what isn't shown there: the
+        // sparkline's shape and the axis label.
         <div className="node-value">
-          <span className="reading">{value === undefined ? '—' : summarise(value)}</span>
           {value === undefined ? null : <Sparkline reading={value} />}
           {value === undefined ? null : <span className="axis">{axisLabel(value) ?? ''}</span>}
           <Handle type="source" position={Position.Right} id={VALUE_PORT} />

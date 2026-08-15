@@ -15,7 +15,7 @@
 
 import type { ReactElement } from 'react';
 
-import { parseUnit, type Unit } from '@mds/units';
+import { dimensionsEqual, parseUnit, type Unit } from '@mds/units';
 import type { ValueSpec } from '@mds/schema';
 
 import { NumberField, TextField } from './fields';
@@ -66,6 +66,23 @@ export function converted(value: ValueSpec, kind: Kind): ValueSpec {
   }
 }
 
+type Range = ValueSpec & { readonly kind: 'linear' | 'logarithmic' };
+
+/**
+ * A bound's own unit box, typed as a convenience — "10 mm ... 1 m" reads
+ * naturally, but the range still stores one unit, not two. Typing a new one
+ * here re-expresses *both* bounds under it, canonical value unchanged,
+ * rather than actually splitting the range across units.
+ */
+export function rescaleRange(range: Range, text: string): Range {
+  const parsed = parseUnit(text);
+  if (!dimensionsEqual(parsed.dimension, range.unit.dimension)) {
+    throw new Error(`'${text}' is not the same kind of unit as '${range.unit.symbol}'`);
+  }
+  const rescale = (n: number): number => (n * range.unit.factor) / parsed.factor;
+  return { ...range, start: rescale(range.start), stop: rescale(range.stop), unit: parsed };
+}
+
 interface Props {
   readonly value: ValueSpec;
   readonly onChange: (value: ValueSpec) => void;
@@ -97,6 +114,27 @@ export function ValueKindSelect({ value, onChange }: Props): ReactElement {
   );
 }
 
+/**
+ * Point count, alone — the one range control that changes rarely enough to
+ * live behind the hover/pin detail rather than on the card at all times,
+ * unlike the bounds above it.
+ */
+export function ValuePointsField({ value, onChange }: Props): ReactElement | null {
+  if (value.kind !== 'linear' && value.kind !== 'logarithmic') return null;
+  return (
+    <label className="points-field">
+      points
+      <NumberField
+        value={value.points}
+        integer
+        minimum={2}
+        title="Point count is the control, not step size (S29)."
+        onCommit={(points) => onChange({ ...value, points })}
+      />
+    </label>
+  );
+}
+
 /** The value itself — always visible on the card, not just on hover (S47). */
 export function ValueFields({ value, onChange }: Props): ReactElement {
   const unit = unitOf(value);
@@ -116,6 +154,7 @@ export function ValueFields({ value, onChange }: Props): ReactElement {
         break;
     }
   };
+
 
   return (
     <div className="value-editor">
@@ -142,29 +181,36 @@ export function ValueFields({ value, onChange }: Props): ReactElement {
       ) : null}
 
       {value.kind === 'linear' || value.kind === 'logarithmic' ? (
-        <div className="range-fields">
-          <label>
-            from
-            <NumberField value={value.start} onCommit={(start) => onChange({ ...value, start })} />
-          </label>
-          <label>
-            to
-            <NumberField value={value.stop} onCommit={(stop) => onChange({ ...value, stop })} />
-          </label>
-          <label>
-            points
+        <div className="range-split">
+          <div className="quantity-split">
             <NumberField
-              value={value.points}
-              integer
-              minimum={2}
-              title="Point count is the control, not step size (S29)."
-              onCommit={(points) => onChange({ ...value, points })}
+              value={value.start}
+              autoSize={1}
+              title="The low end. Type a unit here too (10 mm ... 1 m) to re-express both bounds in it."
+              onCommit={(start) => onChange({ ...value, start })}
             />
-          </label>
-          <label>
-            unit
-            <TextField className="unit" value={unit.symbol} onCommit={setUnit} />
-          </label>
+            <TextField
+              className="unit"
+              value={unit.symbol}
+              autoSize={1}
+              onCommit={(text) => onChange(rescaleRange(value, text))}
+            />
+          </div>
+          <span className="range-sep">…</span>
+          <div className="quantity-split">
+            <NumberField
+              value={value.stop}
+              autoSize={1}
+              title="The high end."
+              onCommit={(stop) => onChange({ ...value, stop })}
+            />
+            <TextField
+              className="unit"
+              value={unit.symbol}
+              autoSize={1}
+              onCommit={(text) => onChange(rescaleRange(value, text))}
+            />
+          </div>
         </div>
       ) : null}
 
