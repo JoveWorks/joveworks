@@ -986,9 +986,29 @@ aside.right {
   padding: 12px 14px 40px 22px;
 }
 
+.notebook-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
 .notebook h1 {
   font-size: 16px;
   margin: 0 0 10px;
+}
+
+.notebook-export-button {
+  flex-shrink: 0;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--panel);
+  padding: 3px 8px;
+  font-size: 12px;
+}
+
+.notebook-export-button:hover {
+  background: var(--line);
 }
 
 .notebook h2 {
@@ -1191,4 +1211,54 @@ aside.right {
 .notebook-warnings ul {
   margin: 0;
   padding-left: 18px;
+}
+
+/* Print-to-PDF renders the notebook alone — everything else on screen is
+   editing chrome with no place in a submittable document. */
+@page {
+  margin: 2.5cm;
+}
+
+@media print {
+  .menubar,
+  .notices,
+  aside.left,
+  .resize-handle,
+  .canvas,
+  .notebook-export-button,
+  .notebook-section .grip,
+  .notebook-section .chevron {
+    display: none !important;
+  }
+
+  .app {
+    height: auto;
+  }
+
+  main {
+    display: block;
+  }
+
+  aside.right {
+    width: auto !important;
+    flex-basis: auto !important;
+    overflow: visible;
+    border-left: none;
+  }
+
+  .notebook {
+    padding: 0;
+  }
+
+  .notebook textarea {
+    border: none;
+    resize: none;
+    overflow: visible;
+    background: transparent;
+    padding: 0;
+  }
+
+  .notebook-section {
+    break-inside: avoid;
+  }
 }
