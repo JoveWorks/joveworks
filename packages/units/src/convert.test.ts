@@ -11,6 +11,8 @@ import {
   fromCanonical,
   parseQuantity,
   parseUnit,
+  prefixableAtomOf,
+  siPrefixedUnit,
   stripNumberFormatting,
   toCanonical,
   toSignificantFigures,
@@ -92,6 +94,63 @@ describe('number format settings', () => {
 
   it('undoes EU-style punctuation: dot grouping stripped, comma decimal restored', () => {
     expect(stripNumberFormatting('1.234,5 N', euStyle)).toBe('1234.5 N');
+  });
+});
+
+describe('SI-prefixed engineering notation', () => {
+  it('recognizes a bare or already-prefixed atomic symbol', () => {
+    expect(prefixableAtomOf('Pa')).toBe('Pa');
+    expect(prefixableAtomOf('kPa')).toBe('Pa');
+    expect(prefixableAtomOf('MPa')).toBe('Pa');
+  });
+
+  it('refuses a compound unit — no unambiguous prefix for a ratio', () => {
+    expect(prefixableAtomOf('N/mm²')).toBeUndefined();
+    expect(prefixableAtomOf('mm/s')).toBeUndefined();
+  });
+
+  it('refuses an atom that is deliberately not prefixable', () => {
+    expect(prefixableAtomOf('%')).toBeUndefined();
+    expect(prefixableAtomOf('rpm')).toBeUndefined();
+    expect(prefixableAtomOf('Nm')).toBeUndefined();
+  });
+
+  it('picks the prefix landing the magnitude at 1 or more, stepping by 1000', () => {
+    // 250 N/mm² of canonical stress is 2.5e8 Pa = 250 MPa.
+    expect(siPrefixedUnit('Pa', 250).symbol).toBe('MPa');
+    expect(fromCanonical(250, siPrefixedUnit('Pa', 250))).toBeCloseTo(250, 9);
+  });
+
+  it('prints MPa instead of an exponent when siPrefixes is on', () => {
+    const engineering: NumberFormat = {
+      notation: 'engineering',
+      thousands: '',
+      decimal: '.',
+      siPrefixes: true,
+    };
+    expect(formatQuantity(250, parseUnit('Pa'), 4, engineering)).toBe('250.0 MPa');
+    expect(formatQuantity(0.075, parseUnit('Pa'), 3, engineering)).toBe('75.0 kPa');
+  });
+
+  it('leaves a compound display unit exactly as authored, even with siPrefixes on', () => {
+    const engineering: NumberFormat = {
+      notation: 'engineering',
+      thousands: '',
+      decimal: '.',
+      siPrefixes: true,
+    };
+    // No SI prefix for a ratio — still engineering notation's own exponent form.
+    expect(formatQuantity(250, parseUnit('N/mm²'), 4, engineering)).toBe('250.0e+0 N/mm²');
+  });
+
+  it('is inert unless notation is engineering', () => {
+    const fixedWithPrefixes: NumberFormat = {
+      notation: 'fixed',
+      thousands: '',
+      decimal: '.',
+      siPrefixes: true,
+    };
+    expect(formatQuantity(250, parseUnit('Pa'), 4, fixedWithPrefixes)).toBe('250000000 Pa');
   });
 });
 

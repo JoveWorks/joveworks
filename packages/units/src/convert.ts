@@ -5,7 +5,7 @@
 
 import { describeDimension, dimensionsEqual, isDimensionless } from './dimension.js';
 import { parseUnit } from './parse.js';
-import { UnitError, type Unit } from './unit.js';
+import { UnitError, prefixableAtomOf, siPrefixedUnit, type Unit } from './unit.js';
 
 /** Displayed value → canonical value (mm, N, s, rad, K). */
 export function toCanonical(value: number, from: Unit): number {
@@ -43,6 +43,13 @@ export interface NumberFormat {
   /** Grouping character for the integer part, or `''` for none. */
   readonly thousands: '' | ',' | '.' | ' ';
   readonly decimal: '.' | ',';
+  /**
+   * Only consulted when `notation === 'engineering'`: print `250 MPa`
+   * instead of `250e+6 Pa` for a unit `prefixableAtomOf` recognizes.
+   * A compound display unit (`N/mm²`) has no such reading and is
+   * unaffected either way.
+   */
+  readonly siPrefixes?: boolean;
 }
 
 /** Today's only behaviour, unchanged: plain punctuation, auto notation. */
@@ -140,6 +147,18 @@ export function formatQuantity(
   figures = 4,
   format: NumberFormat = PLAIN_NUMBER_FORMAT,
 ): string {
+  if (format.notation === 'engineering' && format.siPrefixes === true) {
+    const atom = prefixableAtomOf(displayUnit.symbol.trim());
+    if (atom !== undefined) {
+      const prefixed = siPrefixedUnit(atom, canonicalValue);
+      const text = toSignificantFigures(fromCanonical(canonicalValue, prefixed), figures, {
+        ...format,
+        notation: 'fixed',
+      });
+      return `${text} ${prefixed.symbol}`;
+    }
+  }
+
   const text = toSignificantFigures(fromCanonical(canonicalValue, displayUnit), figures, format);
   const symbol = displayUnit.symbol.trim();
   return symbol.length === 0 ? text : `${text} ${symbol}`;

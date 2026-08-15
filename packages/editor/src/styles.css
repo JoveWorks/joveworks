@@ -852,6 +852,13 @@ aside.right {
   color: inherit;
 }
 
+.dialog-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 12px;
+}
+
 .dialog-preview {
   display: flex;
   flex-direction: column;

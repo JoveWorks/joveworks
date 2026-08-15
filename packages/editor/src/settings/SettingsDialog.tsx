@@ -25,13 +25,16 @@ interface Props {
   readonly onClose: () => void;
 }
 
-/** A value chosen to make every setting's effect visible at once. */
+/** Values chosen to make every setting's effect visible at once. */
 const SAMPLE = 1234567.891;
 const SAMPLE_SMALL = 0.0004821;
+/** Canonical stress: 250 in mm-N-s means 250 N/mm² = 2.5e8 Pa = 250 MPa. */
+const SAMPLE_STRESS = 250;
 
 export function SettingsDialog({ settings, onChange, onClose }: Props): ReactElement {
   const format = toUnitsFormat(settings);
   const unit = parseUnit('mm');
+  const pa = parseUnit('Pa');
 
   return (
     <>
@@ -75,9 +78,23 @@ export function SettingsDialog({ settings, onChange, onClose }: Props): ReactEle
           </select>
         </label>
 
+        {settings.notation === 'engineering' ? (
+          <label className="dialog-checkbox">
+            <input
+              type="checkbox"
+              checked={settings.siPrefixes}
+              onChange={(event) => onChange({ ...settings, siPrefixes: event.target.checked })}
+            />
+            use SI prefixes (250 MPa) instead of exponents (250e+6 Pa), where the unit allows it
+          </label>
+        ) : null}
+
         <div className="dialog-preview">
           <span>{formatQuantity(SAMPLE, unit, 6, format)}</span>
           <span>{formatQuantity(SAMPLE_SMALL, unit, 4, format)}</span>
+          {settings.notation === 'engineering' ? (
+            <span>{formatQuantity(SAMPLE_STRESS, pa, 4, format)}</span>
+          ) : null}
         </div>
 
         <p className="dialog-note">

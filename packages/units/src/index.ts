@@ -45,6 +45,8 @@ export {
   knownUnitSymbols,
   assertDimensionsCompatible,
   namedUnit,
+  prefixableAtomOf,
+  siPrefixedUnit,
 } from './unit.js';
 export type { Unit } from './unit.js';
 
