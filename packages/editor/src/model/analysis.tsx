@@ -35,6 +35,8 @@ import {
   findFormula,
   isEvaluable,
   isGenericPort,
+  THRESHOLD_PORT,
+  VALUE_PORT,
   type Catalogue,
   type Formula,
   type GraphDocument,
@@ -195,6 +197,26 @@ function readiness(
         (port) => isWired(node.id, port.name) && !upstreamReady(node.id, port.name),
       );
       if (blocked) {
+        states.set(node.id, 'blocked');
+        continue;
+      }
+      ready.add(node.id);
+      continue;
+    }
+
+    if (node.kind === 'compare') {
+      // `value` has no default (nothing sensible to compare against when
+      // unwired); `threshold` does, the node's own typed quantity (S58).
+      if (!isWired(node.id, VALUE_PORT)) {
+        states.set(node.id, 'incomplete');
+        problems.set(node.id, notConnected([VALUE_PORT]));
+        continue;
+      }
+      if (!upstreamReady(node.id, VALUE_PORT)) {
+        states.set(node.id, 'blocked');
+        continue;
+      }
+      if (isWired(node.id, THRESHOLD_PORT) && !upstreamReady(node.id, THRESHOLD_PORT)) {
         states.set(node.id, 'blocked');
         continue;
       }

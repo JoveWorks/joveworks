@@ -59,6 +59,7 @@ import {
   uniqueId,
   updateFrame,
 } from '../model/document';
+import { CompareNodeView } from './CompareNodeView';
 import { ContextMenu, type MenuItem } from './ContextMenu';
 import { FormulaNodeView } from './FormulaNodeView';
 import { FrameView } from './FrameView';
@@ -96,6 +97,7 @@ const NODE_TYPES = {
   input: InputNodeView,
   formula: FormulaNodeView,
   output: OutputNodeView,
+  compare: CompareNodeView,
   frame: FrameView,
 };
 

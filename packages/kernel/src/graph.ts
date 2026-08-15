@@ -37,11 +37,14 @@ import {
 } from '@mds/units';
 import {
   VALUE_PORT,
+  THRESHOLD_PORT,
+  VERDICT_PORT,
   axes as documentAxes,
   isRange,
   matchRef,
   axisLength,
   type Catalogue,
+  type CompareNode,
   type Edge,
   type Formula,
   type FormulaRef,
@@ -397,6 +400,47 @@ export function resolveGraph(
         targets.set(endpointKey(node.id, port.name), portType(port, bound));
       }
       sources.set(endpointKey(node.id, formula.output.name), portType(formula.output, bound));
+      continue;
+    }
+
+    if (node.kind === 'compare') {
+      // `value` has no default — there is nothing sensible to compare
+      // against when nothing is wired — so its dimension is unbound until
+      // an edge supplies one, the same state a formula's own generic port
+      // sits in before anything is wired to it (S59).
+      const valueKey = endpointKey(node.id, VALUE_PORT);
+      const valueEdge = oneEdge(valueKey);
+      const valueType: PortType = valueEdge === undefined ? { kind: 'numeric' } : sourceType(valueEdge);
+      targets.set(valueKey, valueType);
+
+      // `threshold` does have a default (S58's typed quantity, now a port
+      // fallback rather than the only way to set the bound), so once
+      // `value`'s dimension is known, `threshold`'s target follows it either
+      // way — narrowing what may be wired there to match.
+      const dimension = valueType.dimension;
+      const thresholdKey = endpointKey(node.id, THRESHOLD_PORT);
+      const thresholdEdge = oneEdge(thresholdKey);
+      targets.set(
+        thresholdKey,
+        dimension === undefined
+          ? { kind: 'numeric' }
+          : { kind: 'numeric', dimension, unit: canonicalUnit(dimension) },
+      );
+
+      if (dimension !== undefined) {
+        const boundDimension =
+          thresholdEdge === undefined ? node.threshold.unit.dimension : sourceType(thresholdEdge).dimension;
+        if (boundDimension !== undefined) {
+          assertSameDimension(
+            dimension,
+            boundDimension,
+            'a comparison needs the value and the threshold in the same dimension',
+            thresholdKey,
+          );
+        }
+      }
+
+      sources.set(endpointKey(node.id, VERDICT_PORT), { kind: 'categorical' });
       continue;
     }
 

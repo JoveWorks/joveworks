@@ -12,6 +12,7 @@ import {
 } from './graph.js';
 import {
   CATALOGUE,
+  compareNode,
   documentOf,
   formulaNode,
   input,
@@ -175,6 +176,59 @@ describe('connections (S6)', () => {
       typesConnect({ kind: 'numeric', dimension: ANGLE }, { kind: 'numeric', dimension: DIMENSIONLESS }),
     ).toBe(false);
     expect(typesConnect({ kind: 'numeric' }, { kind: 'categorical' })).toBe(false);
+  });
+});
+
+describe('compare nodes', () => {
+  function compareGraph(edges: readonly ReturnType<typeof wire>[]) {
+    return documentOf(
+      [input('w', scalar(20, 'mm')), compareNode('c', '>=', { value: 1.5, unit: 'mm' })],
+      edges,
+    );
+  }
+
+  it('types the verdict port as categorical', () => {
+    const resolution = resolveGraph(compareGraph([wire('w.value', 'c.value')]), catalogues);
+    expect(resolution.sources.get(endpointKey('c', 'verdict'))?.kind).toBe('categorical');
+  });
+
+  it("binds the threshold target to the value port's dimension once value is wired", () => {
+    const resolution = resolveGraph(compareGraph([wire('w.value', 'c.value')]), catalogues);
+    expect(resolution.targets.get(endpointKey('c', 'threshold'))?.dimension).toEqual(LENGTH);
+  });
+
+  it('leaves value and threshold unbound while nothing is wired to value', () => {
+    const resolution = resolveGraph(compareGraph([]), catalogues);
+    expect(resolution.targets.get(endpointKey('c', 'value'))?.dimension).toBeUndefined();
+    expect(resolution.targets.get(endpointKey('c', 'threshold'))?.dimension).toBeUndefined();
+  });
+
+  it('refuses a typed threshold default of a different dimension than value', () => {
+    const document = documentOf(
+      [input('w', scalar(20, 'mm')), compareNode('c', '>=', { value: 1.5, unit: 'N' })],
+      [wire('w.value', 'c.value')],
+    );
+    expect(() => resolveGraph(document, catalogues)).toThrow(/same dimension/u);
+  });
+
+  it('refuses a wired threshold of a different dimension than value', () => {
+    const document = documentOf(
+      [
+        input('w', scalar(20, 'mm')),
+        input('f', scalar(10, 'N')),
+        compareNode('c', '>=', { value: 1.5, unit: 'mm' }),
+      ],
+      [wire('w.value', 'c.value'), wire('f.value', 'c.threshold')],
+    );
+    expect(() => resolveGraph(document, catalogues)).toThrow(/same dimension/u);
+  });
+
+  it('sees a cycle through a compare node before it is made', () => {
+    const document = documentOf(
+      [formulaNode('area', refTo('area')), compareNode('c', '>=', { value: 1, unit: '' })],
+      [wire('area.A', 'c.value')],
+    );
+    expect(wouldCycle(document, wire('c.verdict', 'area.w'))).toBe(true);
   });
 });
 

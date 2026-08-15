@@ -67,6 +67,15 @@ export function outputNode(id: string, output: JsonObject, extra: JsonObject = {
   return { kind: 'output', id, position: { x: 0, y: 0 }, output, ...extra };
 }
 
+export function compareNode(
+  id: string,
+  comparison: string,
+  threshold: JsonObject,
+  extra: JsonObject = {},
+): JsonObject {
+  return { kind: 'compare', id, position: { x: 0, y: 0 }, comparison, threshold, ...extra };
+}
+
 /** `wire('w.value', 'area.w')` — endpoints written the way errors report them. */
 export function wire(from: string, to: string): JsonObject {
   const [fromNode = '', fromPort = ''] = from.split('.');

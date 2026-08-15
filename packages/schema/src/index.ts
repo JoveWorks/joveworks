@@ -93,6 +93,8 @@ export { fnv1a64, hashRecord } from './hash.js';
 
 export {
   VALUE_PORT,
+  THRESHOLD_PORT,
+  VERDICT_PORT,
   COMPARISONS,
   OUTPUT_KINDS,
   axes,
@@ -107,6 +109,7 @@ export type {
   InputNode,
   FormulaNode,
   OutputNode,
+  CompareNode,
   Edge,
   Endpoint,
   Frame,

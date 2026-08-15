@@ -21,9 +21,12 @@
 import { DIMENSIONLESS, toCanonical, type Unit } from '@mds/units';
 import {
   VALUE_PORT,
+  THRESHOLD_PORT,
+  VERDICT_PORT,
   isRange,
   renardValues,
   type Catalogue,
+  type CompareNode,
   type Edge,
   type GraphDocument,
   type InputNode,
@@ -46,6 +49,7 @@ import {
   categoricalScalar,
   unionAxes,
   type Axis,
+  type CategoricalSeries,
   type NumericSeries,
   type PortValue,
   type Series,
@@ -160,6 +164,10 @@ export function evaluateDocument(
         values.set(endpointKey(node.id, formula.output.name), output);
         break;
       }
+
+      case 'compare':
+        values.set(endpointKey(node.id, VERDICT_PORT), evaluateCompare(node, resolution, values));
+        break;
 
       case 'output':
         outputs.push(outputResult(node, resolution, values, axisById, warnings));
@@ -436,6 +444,57 @@ function evaluateFormula(
   }
 
   return { kind: 'numeric', axes, data };
+}
+
+// --- compare nodes -----------------------------------------------------------
+
+/**
+ * `value` compared against `threshold`, cell for cell. `threshold` falls
+ * back to the node's own typed quantity (S58, now a port default) when
+ * nothing is wired to it, and broadcasts as a scalar the same way a bare
+ * number would; wired to a swept series of its own, it lines up
+ * positionally against `value`'s cells rather than gridding with it the way
+ * two different formula inputs would (S43) — a per-point bound naming its
+ * own axis (a second sweep unrelated to `value`'s) is not what a threshold
+ * means, so this is deliberately a length match, not an axis-identity one.
+ */
+function evaluateCompare(
+  node: CompareNode,
+  resolution: Resolution,
+  values: ReadonlyMap<string, PortValue>,
+): CategoricalSeries {
+  const valueKey = endpointKey(node.id, VALUE_PORT);
+  const valueEdge = resolution.incoming.get(valueKey)?.[0];
+  if (valueEdge === undefined) {
+    throw new KernelError("'value' is not connected and has no default", valueKey);
+  }
+  const value = valueAtEdge(valueEdge, valueKey, values);
+  if (value.kind !== 'numeric') {
+    throw new KernelError('a comparison needs a numeric value, not a categorical one', valueKey);
+  }
+
+  const thresholdKey = endpointKey(node.id, THRESHOLD_PORT);
+  const thresholdEdge = resolution.incoming.get(thresholdKey)?.[0];
+  const threshold =
+    thresholdEdge === undefined
+      ? scalarSeries(toCanonical(node.threshold.value, node.threshold.unit))
+      : valueAtEdge(thresholdEdge, thresholdKey, values);
+  if (threshold.kind !== 'numeric') {
+    throw new KernelError('a comparison needs a numeric threshold, not a categorical one', thresholdKey);
+  }
+  if (threshold.data.length !== 1 && threshold.data.length !== value.data.length) {
+    throw new KernelError(
+      `the threshold has ${threshold.data.length} values, but the value it compares against has ` +
+        `${value.data.length} — a swept threshold needs one bound per point`,
+      thresholdKey,
+    );
+  }
+
+  const compare = comparator(node.comparison);
+  const data = value.data.map((cell, i) =>
+    compare(cell, threshold.data[threshold.data.length === 1 ? 0 : i] as number) ? 'pass' : 'fail',
+  );
+  return { kind: 'categorical', axes: value.axes, data };
 }
 
 // --- output nodes -----------------------------------------------------------

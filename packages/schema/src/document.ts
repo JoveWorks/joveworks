@@ -51,6 +51,10 @@ import type { Unit } from '@mds/units';
 /** The single port every input node produces on and every output node consumes on. */
 export const VALUE_PORT = 'value';
 
+/** A compare node's two input ports and its one output port. */
+export const THRESHOLD_PORT = 'threshold';
+export const VERDICT_PORT = 'verdict';
+
 export interface Position {
   readonly x: number;
   readonly y: number;
@@ -141,7 +145,27 @@ export interface OutputNode extends NodeBase {
   readonly caption?: string;
 }
 
-export type GraphNode = InputNode | FormulaNode | OutputNode;
+/**
+ * Compares a wired value against a threshold and emits the verdict —
+ * `'pass'` or `'fail'` — as a wireable value, most usefully into a table
+ * column that shows which of a swept design's points fail (S33's table).
+ *
+ * A first-class node rather than another `Output` variant (S60): a check
+ * output's badge is a rendering choice over a value that already exists and
+ * goes nowhere else, but a comparison's *result* is exactly the kind of
+ * thing a student wants to wire onward, which an output node cannot do.
+ *
+ * `threshold` is the `threshold` port's default when nothing is wired to it
+ * — the same typed `Quantity` S58 gave the check output kind, now a
+ * fallback rather than the only way to set the bound.
+ */
+export interface CompareNode extends NodeBase {
+  readonly kind: 'compare';
+  readonly comparison: Comparison;
+  readonly threshold: Quantity;
+}
+
+export type GraphNode = InputNode | FormulaNode | OutputNode | CompareNode;
 
 export interface Endpoint {
   readonly node: string;
@@ -277,7 +301,7 @@ function serializeOutput(output: Output): JsonObject {
   }
 }
 
-const NODE_KINDS = ['input', 'formula', 'output'] as const;
+const NODE_KINDS = ['input', 'formula', 'output', 'compare'] as const;
 
 function parseNode(value: JsonValue, path: string): GraphNode {
   const object = readObject(value, path);
@@ -310,6 +334,17 @@ function parseNode(value: JsonValue, path: string): GraphNode {
         output: parseOutput(required(object, 'output', path), join(path, 'output')),
         ...put('caption', optional(object, 'caption', path, readString)),
       };
+    case 'compare':
+      return {
+        ...base,
+        kind,
+        comparison: readEnum(
+          required(object, 'comparison', path),
+          join(path, 'comparison'),
+          COMPARISONS,
+        ),
+        threshold: parseQuantity(required(object, 'threshold', path), join(path, 'threshold')),
+      };
   }
 }
 
@@ -332,6 +367,12 @@ function serializeNode(node: GraphNode): JsonObject {
       return { ...base, formula: serializeFormulaRef(node.formula) };
     case 'output':
       return { ...base, output: serializeOutput(node.output), ...put('caption', node.caption) };
+    case 'compare':
+      return {
+        ...base,
+        comparison: node.comparison,
+        threshold: serializeQuantity(node.threshold),
+      };
   }
 }
 

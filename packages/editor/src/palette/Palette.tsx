@@ -101,6 +101,19 @@ export function Palette(): ReactElement {
       return addNode(current, { kind: 'output', id, label: id, output, position: position() });
     });
 
+  const addCompare = (): void =>
+    edit((current) => {
+      const id = uniqueId(current, 'compare');
+      return addNode(current, {
+        kind: 'compare',
+        id,
+        label: id,
+        comparison: '>=',
+        threshold: { value: 1, unit: parseUnit('') },
+        position: position(),
+      });
+    });
+
   return (
     <div className="palette">
       <input
@@ -126,7 +139,7 @@ export function Palette(): ReactElement {
                 <span className="section-toggle-title">
                   General
                   {generalCollapsed ? (
-                    <span className="section-toggle-count"> (5)</span>
+                    <span className="section-toggle-count"> (6)</span>
                   ) : null}
                 </span>
                 <span className="chevron" aria-hidden="true">
@@ -168,6 +181,12 @@ export function Palette(): ReactElement {
                   <button type="button" className="entry" onClick={() => addOutput('check')}>
                     <span className="entry-id">check</span>
                     <span className="entry-output">pass or fail against a threshold</span>
+                  </button>
+                </li>
+                <li>
+                  <button type="button" className="entry" onClick={addCompare}>
+                    <span className="entry-id">compare</span>
+                    <span className="entry-output">a wireable pass/fail verdict, for a table column</span>
                   </button>
                 </li>
                 <li>

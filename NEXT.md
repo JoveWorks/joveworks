@@ -35,7 +35,7 @@ only part still open. `packages/editor/TESTING.md`, the checklist that drove
 those passes, has been removed — it was a one-time hand-testing aid, not a
 living document, and its job is finished.
 
-## Since milestone 1: two small additions, ahead of picking the milestone-2 chunk
+## Since milestone 1: three small additions, ahead of picking the milestone-2 chunk
 
 - **A Renard-series range** (`renard` in `ValueSpec`/`RangeSpec`, S29's family):
   standard sizes by formula rather than by hand-typed list — R5/R10/R20/R40,
@@ -56,6 +56,21 @@ living document, and its job is finished.
   gesture `Notebook.tsx`'s section reordering already has. This is a slice
   of step 11, not all of it — frame section notes, per-output caption
   editing and export are what step 11 still means.
+- **A `compare` node** — `value` against `threshold`, emitting a `pass`/
+  `fail` verdict as an ordinary wireable value, most useful feeding a table
+  column so a swept design's failing points are visible at a glance. A
+  first-class graph node (`CompareNode` in schema/document.ts), not another
+  `Output` variant on the output node the way the existing `check` kind is
+  (S60 held here: a check's badge renders a value that already exists and
+  goes nowhere else, but a comparison's *result* is exactly the kind of
+  thing meant to flow onward, which an output node cannot do). `threshold`
+  is the first port in the app with both a typed default (S58's quantity,
+  now a fallback) and a wire that overrides it — wired to a swept series of
+  its own, it lines up positionally against `value`'s cells by length
+  rather than S43's usual axis-identity broadcast, deliberately, since a
+  per-point bound naming its own unrelated axis is not what a threshold
+  means. Existing `check` output kind is untouched — this is additive, not
+  a replacement.
 
 ## Current: milestone 1 → milestone 2, pick the first chunk
 

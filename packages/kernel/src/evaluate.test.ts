@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { formatQuantity } from '@mds/units';
 
+import type { JsonObject } from '@mds/schema';
 import { evaluateDocument, valueAt, type CheckResult, type PlotResult, type TableResult, type PrintResult } from './evaluate.js';
 import { KernelError } from './errors.js';
 import {
   CATALOGUE,
+  compareNode,
   documentOf,
   formulaNode,
   input,
@@ -16,7 +18,7 @@ import {
   scalar,
   wire,
 } from './invented.fixtures.js';
-import type { NumericSeries } from './series.js';
+import type { CategoricalSeries, NumericSeries } from './series.js';
 
 const catalogues = [CATALOGUE];
 
@@ -325,6 +327,118 @@ describe('output nodes (S33)', () => {
     const [output] = evaluateDocument(framed, catalogues).outputs;
     expect(output?.frameId).toBe('section');
     expect(output?.caption).toBe('A caption.');
+  });
+});
+
+describe('compare nodes', () => {
+  const pressureGraph = (compare: JsonObject) =>
+    documentOf(
+      [
+        input('F', list([1000, 4000], 'N')),
+        input('A', scalar(20, 'mm²')),
+        formulaNode('p', refTo('pressure')),
+        compare,
+      ],
+      [wire('F.value', 'p.F'), wire('A.value', 'p.A'), wire('p.p', 'c.value')],
+    );
+
+  it('emits a pass/fail verdict per swept point, using the typed default threshold', () => {
+    const document = pressureGraph(compareNode('c', '<=', { value: 100, unit: 'N/mm²' }));
+    const verdict = valueAt(evaluateDocument(document, catalogues), 'c', 'verdict') as CategoricalSeries;
+    expect(verdict.kind).toBe('categorical');
+    // 50 N/mm² passes <= 100, 200 N/mm² does not.
+    expect(verdict.data).toEqual(['pass', 'fail']);
+  });
+
+  it('uses a wired threshold instead of the typed default, once something is wired to it', () => {
+    const document = documentOf(
+      [
+        input('F', list([1000, 4000], 'N')),
+        input('A', scalar(20, 'mm²')),
+        input('limit', scalar(60, 'N/mm²')),
+        formulaNode('p', refTo('pressure')),
+        compareNode('c', '<=', { value: 100, unit: 'N/mm²' }),
+      ],
+      [
+        wire('F.value', 'p.F'),
+        wire('A.value', 'p.A'),
+        wire('p.p', 'c.value'),
+        wire('limit.value', 'c.threshold'),
+      ],
+    );
+    const verdict = valueAt(evaluateDocument(document, catalogues), 'c', 'verdict') as CategoricalSeries;
+    // Against a 60 N/mm² limit instead of the typed 100: 50 still passes, 200 now fails too.
+    expect(verdict.data).toEqual(['pass', 'fail']);
+  });
+
+  it('lines a swept threshold up elementwise with the value, sharing the same axis (S43)', () => {
+    const document = documentOf(
+      [
+        input('F', list([1000, 4000], 'N'), { axisLabel: 'load' }),
+        input('A', scalar(20, 'mm²')),
+        input('limit', list([60, 300], 'N/mm²'), { axisLabel: 'load' }),
+        formulaNode('p', refTo('pressure')),
+        compareNode('c', '<=', { value: 1, unit: 'N/mm²' }),
+      ],
+      [
+        wire('F.value', 'p.F'),
+        wire('A.value', 'p.A'),
+        wire('p.p', 'c.value'),
+        wire('limit.value', 'c.threshold'),
+      ],
+    );
+    // 50 <= 60 (pass), 200 <= 300 (pass) — a per-point limit, not a grid.
+    const verdict = valueAt(evaluateDocument(document, catalogues), 'c', 'verdict') as CategoricalSeries;
+    expect(verdict.data).toEqual(['pass', 'pass']);
+  });
+
+  it('feeds a verdict into a table column, showing which swept points fail', () => {
+    const document = documentOf(
+      [
+        input('F', list([1000, 4000], 'N')),
+        input('A', scalar(20, 'mm²')),
+        formulaNode('p', refTo('pressure')),
+        compareNode('c', '<=', { value: 100, unit: 'N/mm²' }),
+        outputNode('table', { kind: 'table', columns: ['pressure', 'verdict'] }),
+      ],
+      [
+        wire('F.value', 'p.F'),
+        wire('A.value', 'p.A'),
+        wire('p.p', 'c.value'),
+        wire('p.p', 'table.pressure'),
+        wire('c.verdict', 'table.verdict'),
+      ],
+    );
+    const table = evaluateDocument(document, catalogues).outputs[0] as TableResult;
+    expect(table.columns[0]?.series.data).toEqual([50, 200]);
+    expect(table.columns[1]?.series.data).toEqual(['pass', 'fail']);
+  });
+
+  it('refuses to evaluate an unwired value — there is nothing to compare', () => {
+    const document = documentOf(
+      [compareNode('c', '>=', { value: 1, unit: '' })],
+      [],
+    );
+    expect(() => evaluateDocument(document, catalogues)).toThrow(/not connected and has no default/u);
+  });
+
+  it('refuses a swept threshold whose length does not match the value it compares against', () => {
+    const document = documentOf(
+      [
+        input('F', list([1000, 4000], 'N')),
+        input('A', scalar(20, 'mm²')),
+        input('limit', list([60, 70, 80], 'N/mm²')),
+        formulaNode('p', refTo('pressure')),
+        compareNode('c', '<=', { value: 1, unit: 'N/mm²' }),
+      ],
+      [
+        wire('F.value', 'p.F'),
+        wire('A.value', 'p.A'),
+        wire('p.p', 'c.value'),
+        wire('limit.value', 'c.threshold'),
+      ],
+    );
+    expect(() => evaluateDocument(document, catalogues)).toThrow(/one bound per point/u);
   });
 });
 

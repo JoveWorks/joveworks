@@ -72,6 +72,14 @@ const formulaNode = (id: string, formulaId: string) => ({
   formula: formulaRef(lookup(CATALOGUES, formulaId) as never),
 });
 
+const compareNode = (id: string, comparison: string, threshold: number, unit: string) => ({
+  kind: 'compare' as const,
+  id,
+  position: { x: 0, y: 0 },
+  comparison: comparison as never,
+  threshold: { value: threshold, unit: parseUnit(unit) },
+});
+
 const wire = (id: string, from: [string, string], to: [string, string]) => ({
   id,
   from: { node: from[0], port: from[1] },
@@ -151,6 +159,41 @@ describe('analysing a graph mid-build', () => {
 
     expect(analysis.states.get('sum')).toBe('error');
     expect(analysis.problems.get('sum')).toContain('inv.sum');
+  });
+});
+
+describe('compare nodes', () => {
+  it('is incomplete while its required value is unwired, and needs no threshold wire', () => {
+    const document = graph([compareNode('c', '>=', 1, 'mm')], []);
+    const analysis = analyse(document, CATALOGUES);
+
+    expect(analysis.states.get('c')).toBe('incomplete');
+    expect(text(analysis.problems.get('c'))).toContain('not connected');
+  });
+
+  it('is ready once its value is wired, and produces a verdict from the typed threshold', () => {
+    const document = graph(
+      [scalar('a', 2), compareNode('c', '>=', 1, 'mm')],
+      [wire('e1', ['a', 'value'], ['c', 'value'])],
+    );
+    const analysis = analyse(document, CATALOGUES);
+
+    expect(analysis.states.get('c')).toBe('ok');
+    expect(analysis.evaluation?.values.get('c.verdict')).toMatchObject({
+      kind: 'categorical',
+      data: ['pass'],
+    });
+  });
+
+  it('is blocked, not ready, when its value comes from a node that is not ready yet (S19)', () => {
+    const document = graph(
+      [scalar('a', 2), formulaNode('bad', 'inv.quarantined'), compareNode('c', '>=', 1, 'mm')],
+      [wire('e1', ['a', 'value'], ['bad', 'a']), wire('e2', ['bad', 'y'], ['c', 'value'])],
+    );
+    const analysis = analyse(document, CATALOGUES);
+
+    expect(analysis.states.get('bad')).toBe('quarantined');
+    expect(analysis.states.get('c')).toBe('blocked');
   });
 });
 

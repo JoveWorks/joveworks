@@ -86,6 +86,14 @@ const study: JsonObject = {
       position: { x: 520, y: 360 },
       output: { kind: 'table', columns: ['d', 'S'] },
     },
+    {
+      kind: 'compare',
+      id: 'c1',
+      label: 'S adequate?',
+      position: { x: 260, y: 240 },
+      comparison: '>=',
+      threshold: { value: 1.5, unit: '' },
+    },
   ],
   edges: [
     { id: 'e1', from: { node: 'd', port: 'value' }, to: { node: 'n1', port: 'a' } },
@@ -177,7 +185,7 @@ describe('structural integrity', () => {
   it('rejects a duplicated node id', () => {
     const nodes = study['nodes'] as JsonObject[];
     const broken = { ...study, nodes: [...nodes, nodes[0] as JsonObject] };
-    expect(() => parseDocument(broken)).toThrow(/nodes\[8\]\.id: 'd' appears twice/);
+    expect(() => parseDocument(broken)).toThrow(/nodes\[9\]\.id: 'd' appears twice/);
   });
 
   it('refuses a document written by a schema version it does not read (S25)', () => {

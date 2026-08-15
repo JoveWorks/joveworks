@@ -19,7 +19,7 @@ const STATE_LABELS: Readonly<Record<NodeState, string>> = {
 };
 
 interface Props {
-  readonly kind: 'input' | 'formula' | 'output';
+  readonly kind: 'input' | 'formula' | 'output' | 'compare';
   readonly state: NodeState;
   readonly title: ReactNode;
   readonly subtitle?: ReactNode;
