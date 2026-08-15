@@ -284,6 +284,102 @@ describe('output nodes (S33)', () => {
     expect(evaluateDocument(flat, catalogues).warnings.map((w) => w.kind)).toContain('plotAxis');
   });
 
+  it('auto-assigns x, series and facet from the axes a value varies along, in document order', () => {
+    const swept = documentOf(
+      [
+        input('a', list([1, 2], ''), { axisLabel: 'a' }),
+        input('b', list([10, 20], ''), { axisLabel: 'b' }),
+        input('c', list([100, 200], ''), { axisLabel: 'c' }),
+        formulaNode('y', refTo('combine')),
+        outputNode('plot', { kind: 'plot' }),
+      ],
+      [
+        wire('a.value', 'y.a'),
+        wire('b.value', 'y.b'),
+        wire('c.value', 'y.c'),
+        wire('y.y', 'plot.value'),
+      ],
+    );
+    const plot = evaluateDocument(swept, catalogues).outputs[0] as PlotResult;
+    expect(plot.x.axis.id).toBe('a');
+    expect(plot.series2?.axis.id).toBe('b');
+    expect(plot.facet?.axis.id).toBe('c');
+  });
+
+  it('leaves a pinned slot alone and fills only the empty ones', () => {
+    const swept = documentOf(
+      [
+        input('a', list([1, 2], ''), { axisLabel: 'a' }),
+        input('b', list([10, 20], ''), { axisLabel: 'b' }),
+        input('c', list([100, 200], ''), { axisLabel: 'c' }),
+        formulaNode('y', refTo('combine')),
+        outputNode('plot', { kind: 'plot', x: 'c' }),
+      ],
+      [
+        wire('a.value', 'y.a'),
+        wire('b.value', 'y.b'),
+        wire('c.value', 'y.c'),
+        wire('y.y', 'plot.value'),
+      ],
+    );
+    const plot = evaluateDocument(swept, catalogues).outputs[0] as PlotResult;
+    expect(plot.x.axis.id).toBe('c');
+    expect(plot.series2?.axis.id).toBe('a');
+    expect(plot.facet?.axis.id).toBe('b');
+  });
+
+  it('warns and drops an axis once x, series and facet are all full', () => {
+    const swept = documentOf(
+      [
+        input('a', list([1, 2], ''), { axisLabel: 'a' }),
+        input('b', list([10, 20], ''), { axisLabel: 'b' }),
+        input('c', list([100, 200], ''), { axisLabel: 'c' }),
+        input('e', list([1, 2], ''), { axisLabel: 'e' }),
+        formulaNode('y', refTo('combine')),
+        formulaNode('sum', refTo('addTwo')),
+        outputNode('plot', { kind: 'plot' }),
+      ],
+      [
+        wire('a.value', 'y.a'),
+        wire('b.value', 'y.b'),
+        wire('c.value', 'y.c'),
+        wire('y.y', 'sum.a'),
+        wire('e.value', 'sum.b'),
+        wire('sum.sum', 'plot.value'),
+      ],
+    );
+    const evaluation = evaluateDocument(swept, catalogues);
+    expect(evaluation.warnings.map((w) => w.kind)).toContain('plotAxisDropped');
+    const plot = evaluation.outputs[0] as PlotResult;
+    expect([plot.x.axis.id, plot.series2?.axis.id, plot.facet?.axis.id].sort()).toEqual([
+      'a',
+      'b',
+      'c',
+    ]);
+  });
+
+  it('ignores a facet axis and warns when contour is on', () => {
+    const swept = documentOf(
+      [
+        input('a', list([1, 2], ''), { axisLabel: 'a' }),
+        input('b', list([10, 20], ''), { axisLabel: 'b' }),
+        input('c', list([100, 200], ''), { axisLabel: 'c' }),
+        formulaNode('y', refTo('combine')),
+        outputNode('plot', { kind: 'plot', contour: true }),
+      ],
+      [
+        wire('a.value', 'y.a'),
+        wire('b.value', 'y.b'),
+        wire('c.value', 'y.c'),
+        wire('y.y', 'plot.value'),
+      ],
+    );
+    const evaluation = evaluateDocument(swept, catalogues);
+    expect(evaluation.warnings.map((w) => w.kind)).toContain('plotContourFacet');
+    const plot = evaluation.outputs[0] as PlotResult;
+    expect(plot.facet).toBeUndefined();
+  });
+
   it('lays a table out as columns over a shared axis', () => {
     const swept = documentOf(
       [

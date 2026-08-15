@@ -626,7 +626,7 @@ export function Canvas(): ReactElement {
                     choice.outputKind === 'check'
                       ? { kind: 'check', comparison: '>=', threshold: { value: 1, unit: parseUnit('') } }
                       : choice.outputKind === 'plot'
-                        ? { kind: 'plot', x: documentAxes(current).at(0)?.id ?? '' }
+                        ? { kind: 'plot' }
                         : choice.outputKind === 'table'
                           ? { kind: 'table', columns: [] }
                           : { kind: 'print' },

@@ -104,6 +104,7 @@ export interface PlotResult extends OutputBase {
   readonly unit: Unit;
   readonly x: PlotAxis;
   readonly series2?: PlotAxis;
+  readonly facet?: PlotAxis;
   readonly contour: boolean;
   readonly threshold?: number;
 }
@@ -635,14 +636,56 @@ function outputResult(
     };
   };
 
+  // Up to three slots — x, series (color), facet (small multiples) — each
+  // either pinned by the student or filled automatically from axes the
+  // plotted value varies along (S43), in document order. A pinned slot is
+  // never touched, and never double-filled by autofill.
+  const pinned = new Set(
+    [output.x, output.series, output.facet].filter((id): id is string => id !== undefined),
+  );
+  const autofill = [...value.axes]
+    .filter((axis) => !pinned.has(axis.id))
+    .sort((a, b) => a.order - b.order);
+  let cursor = 0;
+  const nextAuto = (): string | undefined => autofill[cursor++]?.id;
+
+  const xId =
+    output.x ??
+    nextAuto() ??
+    [...axes.values()].sort((a, b) => a.order - b.order)[0]?.id;
+  if (xId === undefined) {
+    throw new KernelError('a plot needs at least one range input node in the document', node.id);
+  }
+  const seriesId = output.series ?? nextAuto();
+  const facetId = output.facet ?? nextAuto();
+
+  for (; cursor < autofill.length; cursor += 1) {
+    const axis = autofill[cursor] as Axis;
+    warnings.push({
+      kind: 'plotAxisDropped',
+      nodeId: node.id,
+      message: `the plotted value also varies along '${axis.label}', which this plot has no room to show`,
+    });
+  }
+
+  const contour = output.contour ?? false;
+  if (contour && facetId !== undefined) {
+    warnings.push({
+      kind: 'plotContourFacet',
+      nodeId: node.id,
+      message: `the facet axis is ignored while contour is on — a contour plot only draws x and series`,
+    });
+  }
+
   return {
     ...base,
     kind: 'plot',
     series: value,
     unit: output.unit ?? portUnit,
-    x: plotAxis(output.x),
-    ...(output.series === undefined ? {} : { series2: plotAxis(output.series) }),
-    contour: output.contour ?? false,
+    x: plotAxis(xId),
+    ...(seriesId === undefined ? {} : { series2: plotAxis(seriesId) }),
+    ...(facetId === undefined || contour ? {} : { facet: plotAxis(facetId) }),
+    contour,
     ...(output.threshold === undefined
       ? {}
       : { threshold: toCanonical(output.threshold.value, output.threshold.unit) }),

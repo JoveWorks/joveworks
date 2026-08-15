@@ -94,9 +94,15 @@ item** (an explicitly deferred feature, not milestone-1 scope).
 
 ## Backlog (post-MVP, explicit — do not pull into milestone 1)
 
-**Plot node needs a real options pass** — multiple series per plot, marking
-specific values, and likely more. This is a big enough feature to warrant
-its own session after MVP, not a line item here.
+**Plot node needs a real options pass.** A first slice landed: a plot now has
+three axis slots — `x`, `series` (color) and `facet` (small multiples) —
+auto-assigned from whatever axes the wired value actually varies along, with
+any slot the student picks explicitly left alone. Contour still only ever
+uses `x`/`series`; a facet axis is ignored there with a warning
+(`plotContourFacet`) rather than half-building faceted contours. **Still
+open:** marking specific values on a curve, and a fourth axis (facet-row ×
+facet-col) if that turns out to be needed — deliberately deferred, not
+forgotten.
 
 **A plot's threshold as an optional port, overriding the hardcoded value** —
 today `output.threshold` is a quantity a student types on the node (S58);

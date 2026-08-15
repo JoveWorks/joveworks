@@ -94,7 +94,7 @@ export function Palette(): ReactElement {
         kind === 'check'
           ? { kind, comparison: '>=', threshold: { value: 1, unit: parseUnit('') } }
           : kind === 'plot'
-            ? { kind, x: documentAxes(current).at(0)?.id ?? '' }
+            ? { kind }
             : kind === 'table'
               ? { kind, columns: [] }
               : { kind: 'print' };
