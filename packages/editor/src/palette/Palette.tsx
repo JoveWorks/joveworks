@@ -20,6 +20,9 @@ import { addNode, uniqueId } from '../model/document';
 import { entries, search, type PaletteEntry } from '../model/catalogues';
 import { Symbol } from '../Symbol';
 
+/** The key the base-node section — input, print, plot, check — collapses under; no catalogue id of its own. */
+const GENERAL = '__general__';
+
 /** Where a node dropped from the palette lands: the middle of what you can see. */
 function useDropPosition(): () => Position {
   const flow = useReactFlow();
@@ -45,6 +48,7 @@ export function Palette(): ReactElement {
       else next.add(catalogueId);
       return next;
     });
+  const generalCollapsed = collapsed.has(GENERAL);
 
   const all = useMemo(() => entries(catalogues), [catalogues]);
   const found = useMemo(() => search(all, query), [all, query]);
@@ -111,43 +115,61 @@ export function Palette(): ReactElement {
             does rather than living apart from the rest of the palette. */}
         {query.trim().length === 0 ? (
           <section>
-            <h3>Input and Output Nodes</h3>
-            <ul>
-              <li>
-                <button type="button" className="entry" onClick={addInput}>
-                  <span className="entry-id">input</span>
-                  <span className="entry-output">a value, a range, or a list</span>
-                </button>
-              </li>
-              <li>
-                <button type="button" className="entry" onClick={() => addOutput('print')}>
-                  <span className="entry-id">print</span>
-                  <span className="entry-output">a value, as text</span>
-                </button>
-              </li>
-              <li>
-                <button
-                  type="button"
-                  className="entry"
-                  disabled={ranges.length === 0}
-                  title={
-                    ranges.length === 0
-                      ? 'Needs a range input somewhere in the graph to plot against'
-                      : undefined
-                  }
-                  onClick={() => addOutput('plot')}
-                >
-                  <span className="entry-id">plot</span>
-                  <span className="entry-output">a value over a swept range</span>
-                </button>
-              </li>
-              <li>
-                <button type="button" className="entry" onClick={() => addOutput('check')}>
-                  <span className="entry-id">check</span>
-                  <span className="entry-output">pass or fail against a threshold</span>
-                </button>
-              </li>
-            </ul>
+            <h3>
+              <button
+                type="button"
+                className="section-toggle"
+                onClick={() => toggleCollapsed(GENERAL)}
+              >
+                <span className="section-toggle-title">
+                  General
+                  {generalCollapsed ? (
+                    <span className="section-toggle-count"> (4)</span>
+                  ) : null}
+                </span>
+                <span className="chevron" aria-hidden="true">
+                  {generalCollapsed ? '▸' : '▾'}
+                </span>
+              </button>
+            </h3>
+            {generalCollapsed ? null : (
+              <ul>
+                <li>
+                  <button type="button" className="entry" onClick={addInput}>
+                    <span className="entry-id">input</span>
+                    <span className="entry-output">a value, a range, or a list</span>
+                  </button>
+                </li>
+                <li>
+                  <button type="button" className="entry" onClick={() => addOutput('print')}>
+                    <span className="entry-id">print</span>
+                    <span className="entry-output">a value, as text</span>
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    className="entry"
+                    disabled={ranges.length === 0}
+                    title={
+                      ranges.length === 0
+                        ? 'Needs a range input somewhere in the graph to plot against'
+                        : undefined
+                    }
+                    onClick={() => addOutput('plot')}
+                  >
+                    <span className="entry-id">plot</span>
+                    <span className="entry-output">a value over a swept range</span>
+                  </button>
+                </li>
+                <li>
+                  <button type="button" className="entry" onClick={() => addOutput('check')}>
+                    <span className="entry-id">check</span>
+                    <span className="entry-output">pass or fail against a threshold</span>
+                  </button>
+                </li>
+              </ul>
+            )}
           </section>
         ) : null}
 
