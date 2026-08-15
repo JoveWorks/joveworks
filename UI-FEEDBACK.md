@@ -125,6 +125,22 @@ before it can be scoped as a fix.
 specific values, and likely more. This is a big enough feature to warrant
 its own session after MVP, not a line item here.
 
+**A plot's threshold as an optional port, overriding the hardcoded value** —
+today `output.threshold` is a quantity a student types on the node (S58);
+this would let a wired value override it instead, so the threshold can
+itself come from upstream (a formula's own limit, a swept comparison) rather
+than only ever being retyped by hand. Needs its own discussion first: this
+is the first case of an optional port that *overrides* an authored value
+rather than just filling one in, and nothing in the port model distinguishes
+those two cases yet.
+
+**A range's two bounds showing different units** — `10 mm ... 1 m`, each
+bound keeping its own unit rather than both sharing one. Two ways to build
+it were weighed: editor-only display state (doesn't survive save/reload) or
+a schema change to carry a unit per bound (persists properly, but widens
+`ValueSpec` and ripples into the kernel and everywhere else that assumes a
+range has one unit). Neither was picked; parked here rather than decided
+
 **A range's two bounds showing different units** — `10 mm ... 1 m`, each
 bound keeping its own unit rather than both sharing one. Two ways to build
 it were weighed: editor-only display state (doesn't survive save/reload) or
