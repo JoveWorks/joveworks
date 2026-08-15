@@ -12,9 +12,10 @@ constraint at once, and look at the result as a graph.
 
 > **Status: the engine works, the interface does not exist yet.** `units`,
 > `schema`, `nodes` and `kernel` are built and tested: a graph of base nodes
-> evaluates end to end, sweeps and all, from a file. There is no editor, and no
-> textbook content — the belt catalogue is the next piece
-> ([NEXT.md](NEXT.md)). Every decision is settled (see
+> evaluates end to end, sweeps and all, from a file. The belt chapter is
+> extracted, into a separate private repository — this one still holds no
+> textbook content. Next are its golden values ([NEXT.md](NEXT.md)); there is
+> still no editor. One decision is open, D20; the rest are settled (see
 > [DECISIONS.md](DECISIONS.md)); the build sequence is in [PLAN.md](PLAN.md).
 > This document describes the intended system, so read the parts about the
 > canvas as design rather than as something you can open.

@@ -1,10 +1,11 @@
 # Plan: machine-design-studio
 
 Status: **milestone 1 under way.** Written 2026-08-14; revised the same day once
-D1–D19 closed as S13–S45. Steps 1–5 below are done as of 2026-08-15 — the
-workspace, `units`, `schema`, `nodes` and `kernel`. **Every decision is closed**
-(S1–S65); only content sign-off remains, and it gates formulas rather than build
-steps.
+D1–D19 closed as S13–S45. Steps 1–6 below are done as of 2026-08-15 — the
+workspace, `units`, `schema`, `nodes`, `kernel` and the belt extraction. S1–S65
+are settled; **`D20` is open**, raised by the extraction, and it quarantines two
+belt formulas. Otherwise only content sign-off remains, and it gates formulas
+rather than build steps.
 
 Supersedes the plan in the predecessor repository (`mechanical-design`, commit
 `348e2f0`, `PLAN.md`), which framed the work as a refactor of that package. The
@@ -327,8 +328,9 @@ contract is wrong, finding out after 55 costs a morning — after 539 it costs a
 S25 migration.
 
 0. ~~Resolve the blocking decisions.~~ **Done** — D1–D19 closed as S13–S45 on
-   2026-08-14. **All decisions are closed**; only content sign-off remains, and
-   it gates individual formulas rather than any build step.
+   2026-08-14. Nothing blocks a build step; `D20`, opened by step 6, gates two
+   formulas and one golden through the same quarantine that content sign-off
+   uses.
 
 ### Prerequisites, verified 2026-08-14
 
@@ -342,8 +344,13 @@ S25 migration.
   `[s-1]`, `[W]`, `[W/mm]` — **no junk tags**, so D7's sign-off does not gate
   milestone 1 at all. Only three need care: `[kg/dm³]` (the density trap),
   `[%]` (dimensionless with display scale, as S21), and `[s-1]`.
-- **Belt's defect exposure is one line.** None of the ~12 confirmed defects are
-  in `C16`. The density fudge at `C16_Belt.py:154-155`
+- **Belt's defect exposure is one line.** ~~None of the ~12 confirmed defects are
+  in `C16`.~~ **Wrong, corrected 2026-08-15**: running the dimension check over
+  the extracted chapter found three, at `C16_Belt.py:388`, `:410` and `:426`.
+  See DECISIONS.md under defect sign-off. The survey that produced this line
+  read the corpus for *structure*, not for dimensions — which is precisely the
+  argument for building the checker before the extraction. The density fudge at
+  `C16_Belt.py:154-155`
   (`F_c = A_S * 1E-6 * 1E3 * rho * v**2`) is the one item — and it is a
   transcription hazard rather than a checkable defect, because those constants
   are a unit conversion and the expression is dimensionally sound with or
@@ -371,12 +378,19 @@ S25 migration.
    (S18), dimension resolution including per-node generic binding (S6, S59),
    labelled-axis broadcasting (S43), and the S19 quarantine gate. Settled
    S61–S65.
-6. **Extract `C16_Belt`** — 55 formulas, self-contained, no tables and no
-   categoricals. A one-off script (S52) over stdlib `ast`. The old package is a
-   source to transcribe from, never a dependency. Read the generated file: 55
-   expressions is a reviewable diff, and a script's errors are systematic
-   rather than scattered typos. The kernel's `checkFormulaDimensions` is the
-   mechanical half of the review.
+6. ~~**Extract `C16_Belt`**~~ — **done**, as `tools/extract/c16_belt.py` writing
+   to the private catalogue repo. **54 records, not 55**: one of the chapter's
+   55 methods returns `False` and points at a table of limits, so it is a prose
+   note rather than a formula and inventing an expression for it would be the
+   silent placeholder the `status` field exists to avoid.
+
+   The dimension check answered for 49 of the 54 unaided. Of the five it
+   refused, **three are defects in the source** — belt was recorded above as
+   carrying none — and two are one seam in S54, now open as `D20`. All five are
+   quarantined with their evidence on the record. `variantOf` is captured by
+   R&M equation number (S17); `appliesWhen` is empty across the chapter, because
+   belt's conditions select on *belt type* and that needs a categorical port
+   (S38) this chapter has none of.
 7. **Golden values** from `notebooks/belt/Lab_belt.ipynb` and
    `Lab_belt_incl_Fa.ipynb`, noting both use `d_dg = 400 mm` where the
    assignment text says 420.

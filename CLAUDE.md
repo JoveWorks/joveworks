@@ -13,8 +13,10 @@ the graph becomes a design study.
 
 **Milestone 1, in progress.** As of 2026-08-15 the pnpm workspace exists and
 `packages/units`, `packages/schema`, `packages/nodes` and `packages/kernel` are
-built and tested; `editor` is a placeholder carrying only a comment. `pnpm test`
-runs everything; `pnpm build` (`tsc -b`) is also the dependency-direction check.
+built and tested; `editor` is a placeholder carrying only a comment. `C16_Belt`
+is extracted by `tools/extract/c16_belt.py` into the private catalogue repo.
+`pnpm test` runs everything; `pnpm build` (`tsc -b`) is also the
+dependency-direction check.
 
 Read [OVERVIEW.md](OVERVIEW.md) first — it is the whole project in one pass.
 Then [PLAN.md](PLAN.md) for the build sequence and
@@ -22,10 +24,13 @@ Then [PLAN.md](PLAN.md) for the build sequence and
 
 **The next concrete step** is in [NEXT.md](NEXT.md), which carries a
 ready-to-paste prompt for the current chunk of work and the ordered list after
-it. Right now that is milestone 1 step 6: extracting `C16_Belt` into the private
-catalogue repository. Do not start by extracting all 539 formulas — see the scope
-note below. **Keep NEXT.md current**: when a session finishes the chunk it
-describes, update it to name the next one.
+it. Right now that is milestone 1 step 7: the belt golden values. Do not widen
+milestone 1 to other chapters — see the scope note below. **Keep NEXT.md
+current**: when a session finishes the chunk it describes, update it to name the
+next one.
+
+**One decision is open**: `D20`, how an angle becomes a pure number. It
+quarantines two belt formulas and one golden until it is answered.
 
 Still outstanding, none of it gating code: defect and unit-tag sign-off against
 R&M, which quarantines individual formulas rather than holding up a build step.

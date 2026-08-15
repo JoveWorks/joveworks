@@ -126,13 +126,41 @@ frontend.
 
 ---
 
+## Open
+
+### D20 — how an angle becomes a pure number (from milestone 1 step 6)
+
+**Raised by the belt extraction, and the only thing it could not resolve
+itself.** S54 makes angle a tracked base dimension and lets `sin`/`cos`/`tan`
+take an angle *or* a pure number, because R&M tags belt's wrap angles `[]`. What
+it did not settle is the return side: `acos` produces an angle, so 16.24A and
+16.24B — which compute the wrap angle — declare a dimensionless output and
+produce an angle. Both are quarantined pending this.
+
+Retagging the wrap angle as an angle does not fix it, it moves it. Two other
+belt formulas consume that same angle as a pure number: one as the exponent of
+an exponential, one divided by a full turn to give a fraction. Tag it `[]` and
+16.24A/B fail; tag it `rad` or `°` and those two fail instead. Either way it is
+two records, and the seam is the same one.
+
+| Option | Effect |
+|---|---|
+| **A. Tag `[]`, quarantine 16.24A/B** | What ships today. Honest, costs the `β₁` golden, and leaves the wrap angle displayed as a bare number rather than in degrees |
+| **B. Amend S54: an angle satisfies a requirement for a pure number** — in a function argument and in an output declaration, never at a wire (S63 stands) | Tag the wrap angles `°`, and all three cases pass. Angles then display in degrees, as PLAN.md's "degrees at the display boundary" intends. One-directional, like S63, and implemented in the two places the kernel already checks dimensions |
+| **C. Make `asin`/`acos`/`atan` return a pure number** | Also passes with `[]` tags, and S63 already lets a pure number drive an angle port, so nothing breaks at a wire. But a future formula declaring a `°` output computed by `atan` would then fail, which is the common case in later chapters |
+
+**Recommendation: B.** It is the reading SI already takes — the radian is
+dimensionless — while keeping the wiring safety S54 was strengthened for, and it
+is the only option that puts degrees on the wrap angle where a student expects
+them. Needs Thomas: it changes a settled decision.
+
 ## Outstanding — content sign-off only
 
-**No decision is open.** D1–D19 are closed as S13–S45, and S46–S65 were settled
-as the packages that needed them were built. What remains are two
-content tasks. Neither gates a build step; both gate an individual formula
-reaching a student through the S19/S20 quarantine, and both need Roloff & Matek
-in hand, so both are the user's.
+D1–D19 are closed as S13–S45, and S46–S65 were settled as the packages that
+needed them were built. Beyond D20 above, what remains are two content tasks.
+Neither gates a build step; both gate an individual formula reaching a student
+through the S19/S20 quarantine, and both need Roloff & Matek in hand, so both
+are the user's.
 
 ### Defect sign-off (from D6)
 
@@ -145,6 +173,20 @@ it should shrink the list to a handful of genuine content questions:
    bugs that return `0`; the expression is fine and the guard is wrong. There is
    no textbook question to answer.
 3. Take only what survives to R&M.
+
+**Belt is no longer clean.** PLAN.md recorded C16 as carrying no confirmed
+defect; step 1 of that triage — running the dimension check over the extracted
+set — found three, and each is quarantined in the catalogue with its evidence
+and a proposed correction:
+
+| Formula | What the check refuses | Proposed reading |
+|---|---|---|
+| 16.31 | Produces a velocity where a width is declared | The specific *power* symbol — declared in the source's symbol dict and used by no method — in place of the specific torque. 16.32 is the torque twin and is sound |
+| 16.34 | Produces a length where a force is declared | The unit tag, not the expression: the belt-type factor is tagged `[]` and must carry force per unit width (S20). The docstring also writes it as an exponent where the code multiplies, and an exponent is dimensionless under any reading |
+| 16.36B | Produces an area where a length is declared | A sum, not a product. Its own docstring writes a sum, and its sibling 16.36C sums the same two quantities |
+
+The first two need R&M; the third is a transcription-grade typo with two
+independent witnesses and needs only confirmation.
 
 ### The ~30 junk unit tags (from D7)
 
@@ -186,6 +228,7 @@ MIT, so nothing in the editor is affected. Do not reopen as a blocker.
 
 | Date | Change |
 |---|---|
+| 2026-08-15 | **D20 opened by milestone 1 step 6**, the belt extraction — the first decision to open since D1–D19 closed. The dimension check answered for 49 of 54 records unaided; of the five it refused, three are defects in the source (now listed under defect sign-off) and two are one seam in S54, which settles what trig *accepts* and not what inverse trig *returns*. Nothing else about the schema moved, which is the result milestone 1 was designed to produce |
 | 2026-08-15 | **S61–S65 settled from milestone 1 step 5**, the evaluation kernel. S61 answers the fractional-exponent question NEXT.md left open: the kernel compares exponents with a tolerance and `units` keeps `===`, because only the kernel produces thirds. S62 is the one that reaches back into content — a numeric literal facing a dimensioned value is read in canonical units, which is what makes S40's nominal-size band conditions transcribable at all. S63 records S54's counterpart at a wire, S64 that a candidate connection is checked by full resolution so the editor cannot drift from the kernel, and S65 that formula ids are global, so extraction must namespace what it generates |
 | 2026-08-14 | **S59–S60 settled from milestone 1 step 4**, the base node library. S59 is the schema gap the step was designed to find: `add` and `multiply` are dimension-polymorphic and a concrete-unit port cannot express them, so a port may declare a generic signature, with an input's restricted to a bare variable. S60 records that only the operations are catalogue content — literal inputs and the four output kinds are document schema, and the editor owns only the drawing |
 | 2026-08-14 | **S56–S58 settled from milestone 1 step 3**, the `schema` package. A port declares its display unit and the dimension is derived, rather than both being authored and able to disagree. The S23 content hash is a non-cryptographic FNV-1a over canonical JSON, because `crypto.subtle` is async and Node's `crypto` is not in the browser. A check node's threshold is a quantity rather than a predicate string, since it is the one place a student types a number *with a unit* |
