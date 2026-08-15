@@ -39,6 +39,19 @@ import { FrameView } from './FrameView';
 import { InputNodeView } from './InputNodeView';
 import { OutputNodeView } from './OutputNodeView';
 
+type Measurements = ReadonlyMap<string, { width: number; height: number }>;
+
+/**
+ * A node's measured size, as a property to spread — absent rather than
+ * `undefined` when it has not been drawn yet, which is what
+ * `exactOptionalPropertyTypes` asks for and what React Flow reads as "not
+ * measured".
+ */
+function sizeOf(measured: Measurements, id: string): { measured?: { width: number; height: number } } {
+  const size = measured.get(id);
+  return size === undefined ? {} : { measured: size };
+}
+
 const NODE_TYPES = {
   input: InputNodeView,
   formula: FormulaNodeView,
@@ -51,6 +64,22 @@ export function Canvas(): ReactElement {
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [refusal, setRefusal] = useState<string | undefined>(undefined);
 
+  /**
+   * How big each node turned out to be, once drawn.
+   *
+   * React Flow measures a node in the DOM and reports the result back as a
+   * `dimensions` change; until it has one it draws the node `visibility:
+   * hidden`, because it cannot place an edge or fit a view around something of
+   * unknown size. This component rebuilds its projection from the document on
+   * every render, so a measurement that is not kept is discarded immediately
+   * and every node stays invisible for ever.
+   *
+   * It is kept *here* rather than in the document because a node's size is a
+   * fact about this rendering of the graph, not about the graph — the same
+   * reason selection is local. Nothing downstream reads it.
+   */
+  const [measured, setMeasured] = useState<Measurements>(new Map());
+
   const nodes = useMemo<FlowNode[]>(
     () => [
       ...document.frames.map((frame) => ({
@@ -59,6 +88,7 @@ export function Canvas(): ReactElement {
         position: frame.position,
         data: {},
         selected: selected.has(frame.id),
+        ...sizeOf(measured, frame.id),
         // Frames sit behind the nodes they group, and a click on one must not
         // steal the node on top of it.
         zIndex: -1,
@@ -70,9 +100,10 @@ export function Canvas(): ReactElement {
         position: node.position,
         data: {},
         selected: selected.has(node.id),
+        ...sizeOf(measured, node.id),
       })),
     ],
-    [document, selected],
+    [document, measured, selected],
   );
 
   const edges = useMemo<FlowEdge[]>(
@@ -105,6 +136,22 @@ export function Canvas(): ReactElement {
           if (change.type === 'remove') next.delete(change.id);
         }
         return next;
+      });
+
+      setMeasured((current) => {
+        const next = new Map(current);
+        let touched = false;
+        for (const change of changes) {
+          if (change.type === 'dimensions' && change.dimensions !== undefined) {
+            const seen = next.get(change.id);
+            if (seen?.width === change.dimensions.width && seen.height === change.dimensions.height)
+              continue;
+            next.set(change.id, change.dimensions);
+            touched = true;
+          }
+          if (change.type === 'remove' && next.delete(change.id)) touched = true;
+        }
+        return touched ? next : current;
       });
 
       edit((current) => {

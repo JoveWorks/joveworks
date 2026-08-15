@@ -137,6 +137,21 @@ aside.right {
 }
 
 .canvas {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+}
+
+/*
+ * React Flow's own stylesheet sizes nothing: `.react-flow` is a plain block, and
+ * every one of its children is absolutely positioned, so it collapses to zero
+ * height unless it is given one. A zero-height viewport does not fail loudly —
+ * it draws no nodes, `fitView` has nothing to fit, and `screenToFlowPosition`
+ * maps a palette click into a viewport nobody can see, so adding a node looks
+ * like a dead button. Hence a flex child rather than `height: 100%`: no
+ * percentage to resolve against a parent whose height comes from stretching.
+ */
+.canvas .react-flow {
   flex: 1;
   min-width: 0;
 }
