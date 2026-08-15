@@ -130,3 +130,24 @@ schema today (no formula, no input, no output; edges in are not reduced,
 they are relayed), and the delete-time splice (find each channel's own
 source and destination, reconnect them directly) has no precedent to build
 from either.
+
+**A short first-load tutorial for students** — the app opens on the pad
+pressure sample today (S42), which demonstrates a sweep and a plot but
+explains nothing. A guided first run — what a wire means, how to turn an
+input into a range, where the notebook comes from — would replace "here is
+a sample graph, figure it out" with an actual first five minutes. Needs a
+decision on mechanism (a scripted overlay walkthrough vs. a static page
+linked from the toolbar) before it is scoped as a build.
+
+**Extensive worked examples**, beyond the one belt lab sample. Milestone 1
+deliberately ships one chapter (S41), so this waits on breadth — more
+chapters, or more graphs within belt — rather than being an editor feature
+on its own. Revisit once the second slice (`C2_Tolerance` or `C12`'s
+press-fit material) is in.
+
+**Documentation for teachers** — how to author a catalogue formula (today
+that path is the extraction script, not an editor UI, per S51), how
+`appliesWhen`/quarantine/status work, what a schema version bump means for
+a course's in-flight graphs. Distinct audience from the student tutorial
+above: this is instructor-facing, about the tool's authoring and
+versioning model, not about wiring a first graph.
