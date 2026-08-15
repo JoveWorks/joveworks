@@ -90,6 +90,8 @@ claims rights over course-derived material** (see S44).
 | S64 | **A candidate connection is checked by resolving the graph with it added, not by a cheaper local test** | Connect time and evaluation time then cannot disagree, by construction — one set of rules rather than an approximation in the editor and the real thing in the kernel, which is the classic way a "but the editor let me wire it" bug appears. Graphs are tens of nodes, so exactness costs nothing measurable. `typesConnect` answers the cheap question the editor asks while a wire is being dragged, and is explicitly not the authority |
 | S65 | **Formula ids are unique across every loaded catalogue at once** | S23's reference is id + version + hash with no catalogue field, so a graph naming `add` names it globally. The kernel resolves a collision by hash and warns rather than guessing, but that is a safety net, not a design: **extraction must namespace what it generates**, so an R&M id cannot collide with a base node's or with another chapter's. Cheap to honour now; a data migration to fix once student graphs exist |
 
+| S66 | **D20 resolved as its option A: an angle does not satisfy a requirement for a pure number, and the two wrap-angle formulas stay quarantined** | S54 stands unamended. `acos` returns an angle, R&M tags the wrap angle `[]`, and `rm.16.24A`/`rm.16.24B` therefore declare a dimensionless output while producing an angle — so they remain unevaluable under S20 until the tag question is answered against the book, alongside the other unit-tag sign-offs. **The cost is paid, not hidden**: β₁ is one of the twelve belt goldens and cannot be reproduced, so `test/belt-goldens.test.ts` asserts that the eleven others match *and* that a graph computing β₁ is refused with the reason on the record. Choosing this over option B keeps the seam visible instead of dissolving it in a rule that would also let a radian pass wherever a pure number is wanted; option B remains available and costs nothing to adopt later, because it loosens a check rather than changing any stored data. What it does mean today: the wrap angle displays as a bare number, and the belt chapter reaches a student with 5 of 54 records unusable rather than 3 |
+
 ---
 
 ## Framework research (verified 2026-08-14)
@@ -128,39 +130,17 @@ frontend.
 
 ## Open
 
-### D20 — how an angle becomes a pure number (from milestone 1 step 6)
-
-**Raised by the belt extraction, and the only thing it could not resolve
-itself.** S54 makes angle a tracked base dimension and lets `sin`/`cos`/`tan`
-take an angle *or* a pure number, because R&M tags belt's wrap angles `[]`. What
-it did not settle is the return side: `acos` produces an angle, so 16.24A and
-16.24B — which compute the wrap angle — declare a dimensionless output and
-produce an angle. Both are quarantined pending this.
-
-Retagging the wrap angle as an angle does not fix it, it moves it. Two other
-belt formulas consume that same angle as a pure number: one as the exponent of
-an exponential, one divided by a full turn to give a fraction. Tag it `[]` and
-16.24A/B fail; tag it `rad` or `°` and those two fail instead. Either way it is
-two records, and the seam is the same one.
-
-| Option | Effect |
-|---|---|
-| **A. Tag `[]`, quarantine 16.24A/B** | What ships today. Honest, costs the `β₁` golden, and leaves the wrap angle displayed as a bare number rather than in degrees |
-| **B. Amend S54: an angle satisfies a requirement for a pure number** — in a function argument and in an output declaration, never at a wire (S63 stands) | Tag the wrap angles `°`, and all three cases pass. Angles then display in degrees, as PLAN.md's "degrees at the display boundary" intends. One-directional, like S63, and implemented in the two places the kernel already checks dimensions |
-| **C. Make `asin`/`acos`/`atan` return a pure number** | Also passes with `[]` tags, and S63 already lets a pure number drive an angle port, so nothing breaks at a wire. But a future formula declaring a `°` output computed by `atan` would then fail, which is the common case in later chapters |
-
-**Recommendation: B.** It is the reading SI already takes — the radian is
-dimensionless — while keeping the wiring safety S54 was strengthened for, and it
-is the only option that puts degrees on the wrap angle where a student expects
-them. Needs Thomas: it changes a settled decision.
+**Nothing.** D1–D20 are closed as S13–S45 and S66; S46–S65 were settled as the
+packages that needed them were built. What remains is content sign-off, below —
+it gates individual formulas through the S19/S20 quarantine, never a build step.
 
 ## Outstanding — content sign-off only
 
-D1–D19 are closed as S13–S45, and S46–S65 were settled as the packages that
-needed them were built. Beyond D20 above, what remains are two content tasks.
-Neither gates a build step; both gate an individual formula reaching a student
-through the S19/S20 quarantine, and both need Roloff & Matek in hand, so both
-are the user's.
+Two content tasks. Neither gates a build step; both gate an individual formula
+reaching a student through the S19/S20 quarantine, and both need Roloff & Matek
+in hand, so both are the user's. S66 adds a third item to the second of them —
+the wrap angle's `[]` tag, which is now the only thing standing between the belt
+chapter and its twelfth golden.
 
 ### Defect sign-off (from D6)
 
@@ -203,6 +183,15 @@ strength of the guess alone:
 The remaining ~500 tags normalise mechanically and need no sign-off
 (`[N/mm²]`/`[N/mm**2]`/`[MPa]`; `[rpm]`/`[1/min]`/`[min-1]`; `[deg]`/`[°]`).
 
+**Added by S66, and the only one of these that costs a golden today:** the belt
+wrap angle `β₁`/`β_k`, tagged `[]`. The tag parses, so it is not junk in the D7
+sense — it is a tag that reads as *a pure number* where the quantity is plainly
+an angle, and that is what quarantines `rm.16.24A`/`rm.16.24B`. The reading to
+confirm is `[°]`. Confirming it does not by itself release the two records:
+S54 would also have to be amended as D20's option B, since two other belt
+formulas consume the same angle as a pure number. So this is one sign-off and
+one decision, and they are worth taking together.
+
 ### Resolved late, recorded here for the trail
 
 **D13 — licence.** Surfaced only by the 2026-08-14 revision pass; README had
@@ -228,6 +217,7 @@ MIT, so nothing in the editor is affected. Do not reopen as a blocker.
 
 | Date | Change |
 |---|---|
+| 2026-08-15 | **D20 closed as S66 by milestone 1 step 7**, the belt goldens — its option A, so S54 is unamended and the two wrap-angle records stay quarantined. Eleven of the twelve golden values reproduce end to end through the kernel, every one on the first run, which is the schema's real result: 55 formulas were extracted to find out whether the contract was wrong, and nothing in it moved. Seven formulas earned `verified` and 42 stayed `unverified` (S19), through a re-run of the extractor rather than an edit (S51/S52). Two things surfaced that the goldens were not looking for: the notebooks print β₁ using `/3.14` where `/π` was meant, and `T = P'/(2π·n)` has no R&M number at all — the notebook computes it inline, so the graph builds it from base nodes, which is S42 earning its place |
 | 2026-08-15 | **D20 opened by milestone 1 step 6**, the belt extraction — the first decision to open since D1–D19 closed. The dimension check answered for 49 of 54 records unaided; of the five it refused, three are defects in the source (now listed under defect sign-off) and two are one seam in S54, which settles what trig *accepts* and not what inverse trig *returns*. Nothing else about the schema moved, which is the result milestone 1 was designed to produce |
 | 2026-08-15 | **S61–S65 settled from milestone 1 step 5**, the evaluation kernel. S61 answers the fractional-exponent question NEXT.md left open: the kernel compares exponents with a tolerance and `units` keeps `===`, because only the kernel produces thirds. S62 is the one that reaches back into content — a numeric literal facing a dimensioned value is read in canonical units, which is what makes S40's nominal-size band conditions transcribable at all. S63 records S54's counterpart at a wire, S64 that a candidate connection is checked by full resolution so the editor cannot drift from the kernel, and S65 that formula ids are global, so extraction must namespace what it generates |
 | 2026-08-14 | **S59–S60 settled from milestone 1 step 4**, the base node library. S59 is the schema gap the step was designed to find: `add` and `multiply` are dimension-polymorphic and a concrete-unit port cannot express them, so a port may declare a generic signature, with an input's restricted to a bare variable. S60 records that only the operations are catalogue content — literal inputs and the four output kinds are document schema, and the editor owns only the drawing |

@@ -1,11 +1,12 @@
 # Plan: machine-design-studio
 
 Status: **milestone 1 under way.** Written 2026-08-14; revised the same day once
-D1–D19 closed as S13–S45. Steps 1–6 below are done as of 2026-08-15 — the
-workspace, `units`, `schema`, `nodes`, `kernel` and the belt extraction. S1–S65
-are settled; **`D20` is open**, raised by the extraction, and it quarantines two
-belt formulas. Otherwise only content sign-off remains, and it gates formulas
-rather than build steps.
+D1–D19 closed as S13–S45. Steps 1–7 below are done as of 2026-08-15 — the
+workspace, `units`, `schema`, `nodes`, `kernel`, the belt extraction and its
+golden values. Only the editor is left in this milestone. S1–S66 are settled and
+**no decision is open**; `D20` closed as S66 taking its option A, which keeps
+two wrap-angle formulas quarantined and costs the `β₁` golden. Otherwise only
+content sign-off remains, and it gates formulas rather than build steps.
 
 Supersedes the plan in the predecessor repository (`mechanical-design`, commit
 `348e2f0`, `PLAN.md`), which framed the work as a refactor of that package. The
@@ -312,6 +313,14 @@ Also recorded: the `P_1 = 300*W_` typo across four TopDown notebooks, the `d_dg`
 400-vs-420 discrepancy, the duplicate `'F_sp'` key in `C8_ThreadConnection`
 silently discarding a description, and the ~30 junk unit tags.
 
+Added by the belt golden run (2026-08-15): both belt notebooks print the wrap
+angle as `beta_1/3.14*180`, dividing by a truncated π rather than by `pi`. It
+biases the printed value by 5·10⁻⁴ — inside the `rel=1e-3` the goldens are
+asserted at, so it would not have failed anything, and the stored `154.2°` is
+really `154.12°`. Low severity and no textbook question attached, but it is a
+golden *fixture* being slightly wrong, which is worth knowing before anyone
+tightens that tolerance.
+
 From the 2026-08-14 corpus survey: `Table/FitAndTolerance.py` executes
 `HoleDim(100, 'M', '6')` and **prints at module import**, and its `None` entries
 — meaning "this fit is not defined" — propagate to callers instead of raising.
@@ -328,9 +337,10 @@ contract is wrong, finding out after 55 costs a morning — after 539 it costs a
 S25 migration.
 
 0. ~~Resolve the blocking decisions.~~ **Done** — D1–D19 closed as S13–S45 on
-   2026-08-14. Nothing blocks a build step; `D20`, opened by step 6, gates two
-   formulas and one golden through the same quarantine that content sign-off
-   uses.
+   2026-08-14, and `D20` — opened by step 6, closed by step 7 as S66. It never
+   blocked a build step: it gated two formulas and one golden through the same
+   quarantine that content sign-off uses, and taking its option A leaves them
+   there.
 
 ### Prerequisites, verified 2026-08-14
 
@@ -386,14 +396,20 @@ S25 migration.
 
    The dimension check answered for 49 of the 54 unaided. Of the five it
    refused, **three are defects in the source** — belt was recorded above as
-   carrying none — and two are one seam in S54, now open as `D20`. All five are
+   carrying none — and two are one seam in S54, raised as `D20` and settled by
+   step 7 as S66, which leaves them quarantined. All five are
    quarantined with their evidence on the record. `variantOf` is captured by
    R&M equation number (S17); `appliesWhen` is empty across the chapter, because
    belt's conditions select on *belt type* and that needs a categorical port
    (S38) this chapter has none of.
-7. **Golden values** from `notebooks/belt/Lab_belt.ipynb` and
-   `Lab_belt_incl_Fa.ipynb`, noting both use `d_dg = 400 mm` where the
-   assignment text says 420.
+7. ~~**Golden values**~~ — **done**, from `notebooks/belt/Lab_belt.ipynb` and
+   `Lab_belt_incl_Fa.ipynb`, both using `d_dg = 400 mm` where the assignment
+   text says 420. Eleven of twelve rows per notebook reproduce; `β₁` is refused
+   by the S19 gate and the test asserts the refusal. Seven formulas earned
+   `verified` — 16.19A, 16.22, 16.23, 16.27, 16.29, 16.36, 16.37 — and the other
+   42 stay `unverified`, which is S19 working rather than a gap. The status
+   change went through a re-run of the extractor (S51/S52); its diff is seven
+   lines, all of them `status`. Settled S66.
 8. **Minimal editor** — collapsible palette left, canvas centre, collapsible
    notebook right (S46). Node-first editing, compact nodes with sparklines for
    swept values (S47, S50). Wiring, one sweep, one plot. **No formula-authoring
@@ -416,12 +432,12 @@ That slice is a working tool for one chapter, end to end.
 
 ## Verification
 
-- Belt golden values reproduce end to end through the kernel (the table above).
-  Any formula no golden path exercises stays `unverified` under S19 rather than
-  being implied correct.
+- ~~Belt golden values reproduce end to end through the kernel~~ **(done** — the
+  table above, less `β₁`, which S66 quarantines**)**. Any formula no golden path
+  exercises stays `unverified` under S19 rather than being implied correct: 7 of
+  54 belt records are `verified`, 42 `unverified`, 5 quarantined.
 - Dimensional check passes for every formula except entries parked in
   `DEFECTS.md`.
-- Golden values reproduce the notebook results end-to-end through the kernel.
 - Schema round-trips: save, reload, and confirm every formula's ports,
   dimensions, citation, defaults, ranges, `variantOf` links and status survive.
 - Every document carries a schema version stamp (S25). The N→N+1 migration

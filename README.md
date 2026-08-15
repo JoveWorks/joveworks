@@ -10,10 +10,12 @@ textbook equation number.
 Status: **milestone 1 under way.** `units`, `schema`, `nodes` and `kernel` are
 built and tested — a graph of base nodes evaluates end to end, sweeps included,
 with no textbook content anywhere in it. The belt chapter is extracted into the
-separate private catalogue repository; the golden values are next, and the
-editor is still a placeholder. One design decision is open (D20); the rest are
-closed (S1–S65). What remains besides code is content sign-off against the
-textbook, which gates individual formulas rather than any build step.
+separate private catalogue repository and **its golden values reproduce through
+the kernel**, so the engine is verified against the course's own worked
+examples. The editor is still a placeholder, and it is all that is left of this
+milestone. Every design decision is closed (S1–S66). What remains besides code
+is content sign-off against the textbook, which gates individual formulas rather
+than any build step.
 
 ```
 pnpm install

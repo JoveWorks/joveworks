@@ -27,9 +27,10 @@ later:
   entries are the unit table that was never machine-read;
 * **`variantOf`** (S17), grouping by R&M equation number — recoverable now,
   effectively unrecoverable once the method names are gone;
-* **`status`** (S19). Everything starts `unverified`; the goldens are a later
-  step and nothing is `verified` until one exercises it. The quarantine table
-  carries what the dimension check refuses, each with a reason.
+* **`status`** (S19). Everything starts `unverified`; a record earns `verified`
+  only by being named in the `VERIFIED` table below, which is the belt lab's
+  golden run reporting back. The quarantine table carries what the dimension
+  check refuses, each with a reason.
 
 Ids are namespaced `rm.16.<n>` (S65): a graph's reference carries no catalogue
 id, so an R&M id shares one namespace with `add` from the base library.
@@ -109,6 +110,26 @@ QUARANTINE: dict[str, str] = {
         "own docstring writes a sum, and its sibling 16.36C is a sum of the same two "
         "quantities. High confidence, but a defect is signed off, never fixed silently"
     ),
+}
+
+# S19. A record earns `verified` by being exercised by a golden value and
+# matching it — per formula, never per run. These seven are the belt lab's
+# calculation chain, checked end to end through the kernel by
+# `test/belt-goldens.test.ts` against the table in PLAN.md; the other 47 records
+# are not on any golden path and stay `unverified`, which is the status field
+# working rather than a gap in the tests.
+#
+# This list is the one place the two halves meet, so it is kept as a list of
+# method names rather than derived: the test asserts the resulting set, so an
+# entry added here without a golden behind it fails there.
+VERIFIED = {
+    "E16_19A",  # i, the transmission ratio
+    "E16_22",   # e, the final shaft distance
+    "E16_23",   # L', the theoretical belt length
+    "E16_27",   # F_t, the tangential force
+    "E16_29",   # z, the number of belts
+    "E16_36",   # v, the belt speed
+    "E16_37",   # f_B, the bending frequency
 }
 
 # Not a formula: the source method returns `False` and its docstring points at a
@@ -399,13 +420,18 @@ def notes_of(method: ast.FunctionDef) -> list[str]:
 
 
 def build(source: Path) -> dict:
+    if VERIFIED & set(QUARANTINE):
+        raise SystemExit(f"cannot be both verified and quarantined: {VERIFIED & set(QUARANTINE)}")
+
     cls = load_class(source, "Belt")
     tags = symbol_dict(cls)
     formulas = []
     skipped: list[str] = []
+    seen: set[str] = set()
 
     for method in formula_methods(cls):
         key = stem(method.name)
+        seen.add(key)
         if key in NOT_A_FORMULA:
             skipped.append(method.name)
             continue
@@ -440,6 +466,8 @@ def build(source: Path) -> dict:
             "citation": UNNUMBERED.get(key, f"R&M {label}"),
             "status": "unverified",
         }
+        if key in VERIFIED:
+            record["status"] = "verified"
         if key in QUARANTINE:
             record["status"] = "quarantined"
             record["quarantineReason"] = QUARANTINE[key]
@@ -455,10 +483,21 @@ def build(source: Path) -> dict:
         if counts[base] > 1:
             record["variantOf"] = ID_PREFIX + base
 
+    # A name misspelt in one of the tables above would otherwise do nothing at
+    # all — silently leaving a defect evaluable, or a golden's formula unverified.
+    for table, named in (("VERIFIED", VERIFIED), ("QUARANTINE", set(QUARANTINE))):
+        missing = named - seen
+        if missing:
+            raise SystemExit(f"{table} names methods that are not in the source: {sorted(missing)}")
+
     ordered = [order_fields(record) for record in formulas]
     if skipped:
         print(f"not formulas, skipped: {', '.join(skipped)}")
-    print(f"{len(ordered)} records, {sum(1 for r in ordered if 'quarantineReason' in r)} quarantined")
+
+    counted = {status: 0 for status in ("verified", "unverified", "quarantined")}
+    for record in ordered:
+        counted[record["status"]] += 1
+    print(f"{len(ordered)} records: " + ", ".join(f"{n} {s}" for s, n in counted.items()))
 
     return {
         "schemaVersion": SCHEMA_VERSION,

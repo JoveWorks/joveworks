@@ -10,15 +10,16 @@ The point is not to compute a number once. It is to **sweep a design space** —
 try every shaft diameter in a standard series, see which ones satisfy every
 constraint at once, and look at the result as a graph.
 
-> **Status: the engine works, the interface does not exist yet.** `units`,
-> `schema`, `nodes` and `kernel` are built and tested: a graph of base nodes
-> evaluates end to end, sweeps and all, from a file. The belt chapter is
+> **Status: the engine works and is verified; the interface does not exist yet.**
+> `units`, `schema`, `nodes` and `kernel` are built and tested: a graph of base
+> nodes evaluates end to end, sweeps and all, from a file. The belt chapter is
 > extracted, into a separate private repository — this one still holds no
-> textbook content. Next are its golden values ([NEXT.md](NEXT.md)); there is
-> still no editor. One decision is open, D20; the rest are settled (see
-> [DECISIONS.md](DECISIONS.md)); the build sequence is in [PLAN.md](PLAN.md).
-> This document describes the intended system, so read the parts about the
-> canvas as design rather than as something you can open.
+> textbook content — and **the belt lab's golden values reproduce through the
+> kernel**, eleven of twelve, the twelfth quarantined and refused on purpose.
+> What is left of milestone 1 is the editor ([NEXT.md](NEXT.md)). Every decision
+> is settled (see [DECISIONS.md](DECISIONS.md)); the build sequence is in
+> [PLAN.md](PLAN.md). This document describes the intended system, so read the
+> parts about the canvas as design rather than as something you can open.
 
 ---
 
@@ -328,7 +329,8 @@ wrong, finding out after 55 formulas costs a morning.
 
 Correctness is checked against the old course notebooks, whose results are
 frozen as fixtures — the belt lab's `i = 4.444`, `v = 7.069 m/s`,
-`F_t = 435.7 N`, or the chain drive's `i = 2.478`, `a = 1007 mm`. The formulas
+`F_t = 435.7 N`, or the chain drive's `i = 2.478`, `a = 1007 mm`. The belt set
+is reproduced today, end to end through the kernel. The formulas
 themselves are transcribed by parsing the old Python source, which is a
 reference to read, never a system to run.
 
@@ -344,7 +346,7 @@ golden exercises stay marked unverified rather than assumed sound.
 | Document | For |
 |---|---|
 | [PLAN.md](PLAN.md) | Build sequence, migration strategy, verification plan |
-| [DECISIONS.md](DECISIONS.md) | Every settled decision (S1–S65) and its reasoning |
+| [DECISIONS.md](DECISIONS.md) | Every settled decision (S1–S66) and its reasoning |
 | [CLAUDE.md](CLAUDE.md) | Conventions and the distribution restriction |
 
 ---
