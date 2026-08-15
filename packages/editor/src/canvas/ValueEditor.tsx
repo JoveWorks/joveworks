@@ -126,12 +126,14 @@ export function ValueFields({ value, onChange }: Props): ReactElement {
         <div className="quantity-split">
           <NumberField
             value={value.value}
+            autoSize={1}
             title="The value. The unit is the field beside it, and does not need retyping."
             onCommit={(next) => onChange({ ...value, value: next })}
           />
           <TextField
             className="unit"
             value={unit.symbol}
+            autoSize={1}
             placeholder="mm"
             title="An undeclared unit is an error, never a guess (S5)."
             onCommit={setUnit}

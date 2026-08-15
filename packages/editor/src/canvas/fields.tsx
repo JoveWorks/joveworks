@@ -21,6 +21,14 @@ interface TextFieldProps {
   readonly placeholder?: string;
   readonly title?: string;
   readonly className?: string;
+  /**
+   * Grows and shrinks the field to what is actually typed, via the `size`
+   * attribute rather than CSS — `field-sizing: content` does the same thing
+   * in browsers that support it, but a fixed CSS width as its fallback does
+   * not resize at all, which is what let a longer number overflow its box.
+   * `size` is universally supported and needs no fallback of its own.
+   */
+  readonly autoSize?: number;
 }
 
 /**
@@ -33,6 +41,7 @@ export function TextField({
   placeholder,
   title,
   className,
+  autoSize,
 }: TextFieldProps): ReactElement {
   const [text, setText] = useState(value);
   const [error, setError] = useState<string | undefined>(undefined);
@@ -62,6 +71,7 @@ export function TextField({
         placeholder={placeholder}
         title={error ?? title}
         aria-invalid={error !== undefined}
+        {...(autoSize === undefined ? {} : { size: Math.max(autoSize, text.length, 1) })}
         onChange={(event) => setText(event.target.value)}
         onBlur={commit}
         onKeyDown={(event) => {
@@ -87,6 +97,7 @@ interface NumberFieldProps {
   readonly title?: string;
   readonly integer?: boolean;
   readonly minimum?: number;
+  readonly autoSize?: number;
 }
 
 export function NumberField({
@@ -95,12 +106,14 @@ export function NumberField({
   title,
   integer = false,
   minimum,
+  autoSize,
 }: NumberFieldProps): ReactElement {
   return (
     <TextField
       className="number"
       value={String(value)}
       {...(title === undefined ? {} : { title })}
+      {...(autoSize === undefined ? {} : { autoSize })}
       onCommit={(text) => {
         const parsed = Number(text);
         if (!Number.isFinite(parsed)) throw new Error(`${text} is not a number`);

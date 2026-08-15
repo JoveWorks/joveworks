@@ -584,13 +584,19 @@ aside.right {
   line-height: 1.3;
 }
 
+/*
+ * No CSS `width` on either field below, on purpose: a fixed width is a fixed
+ * width, `size` or no `size` — it is what made the box not grow past it, the
+ * actual bug report. Sizing instead comes from the `size` attribute (grows
+ * and shrinks with what is typed, every browser) and `field-sizing: content`
+ * on top where supported; `min-width`/`max-width` only clamp the extremes.
+ */
 .quantity-split .number {
   /* Sized to the number itself ("12", not "12" plus however much of the row
      flex:1 would have claimed) so the unit sits right after it — "12 kN",
      not "12          kN". */
   flex: 0 1 auto;
   field-sizing: content;
-  width: 3.5em;
   min-width: 2ch;
   max-width: 100%;
   font-weight: 600;
@@ -599,10 +605,7 @@ aside.right {
 
 .quantity-split .unit {
   flex: 0 1 auto;
-  /* Shrinks to the typed unit itself (`m`, not `mm` worth of blank space) in
-     browsers that support it; the fixed width is only the fallback. */
   field-sizing: content;
-  width: 3.2em;
   min-width: 2ch;
   max-width: 6em;
   padding-left: 0;
