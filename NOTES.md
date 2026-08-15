@@ -14,6 +14,8 @@ This error when dragging the output of `Simple supported beam` labeled as M Nm t
 
 ## Add to backlog of ideas
 
+What should a multi-node selection do? One concrete gap already found: "Group into new section" ignores the current selection entirely and wraps *every* ungrouped node in the document into one frame (App.tsx's `addSection`) — there's no way to select a handful of nodes and frame just those. Open beyond that: what else (if anything) should a selection enable — move together (already true, they're independent React Flow nodes), delete together (already true via Backspace/Delete), anything else?
+
 Sliders as an input — the intent is quickly nudging a value to build intuition for its effect on the output, not precision entry. Needs a bound to travel between (the port's declared valid range, S17, when the formula has one) and a decision on whether it replaces or sits alongside the typed field.
 
 Spectrum-editing UI: a load spectrum (a hand-typed list consumed whole by an aggregation, not swept) exists in the schema but nothing in the editor can create or edit one yet. Surfaced while adding Input's palette shortcuts — left out of that pass on purpose.
