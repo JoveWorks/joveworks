@@ -22,6 +22,16 @@ import { NumberField, TextField } from './fields';
 
 type Kind = 'scalar' | 'linear' | 'logarithmic' | 'list';
 
+/**
+ * A unit field's placeholder when empty — matching `unitLabel`'s own
+ * convention for "no unit" elsewhere in the app. Blank is a real,
+ * unambiguous state here (dimensionless, S5), not an unfinished field, but
+ * with no border until hover (styles.css) and no text an empty box has
+ * nothing to make it visible at all — a placeholder is what keeps it
+ * findable rather than looking gone.
+ */
+const EMPTY_UNIT = '—';
+
 const KIND_LABELS: Readonly<Record<Kind, string>> = {
   scalar: 'value',
   linear: 'linear range',
@@ -155,7 +165,6 @@ export function ValueFields({ value, onChange }: Props): ReactElement {
     }
   };
 
-
   return (
     <div className="value-editor">
       {value.kind === 'scalar' ? (
@@ -173,8 +182,8 @@ export function ValueFields({ value, onChange }: Props): ReactElement {
             className="unit"
             value={unit.symbol}
             autoSize={1}
-            placeholder="mm"
-            title="An undeclared unit is an error, never a guess (S5)."
+            placeholder={EMPTY_UNIT}
+            title="Blank is dimensionless (S5) — that is a value, not a gap to fill in."
             onCommit={setUnit}
           />
         </div>
@@ -193,6 +202,7 @@ export function ValueFields({ value, onChange }: Props): ReactElement {
               className="unit"
               value={unit.symbol}
               autoSize={1}
+              placeholder={EMPTY_UNIT}
               onCommit={(text) => onChange(rescaleRange(value, text))}
             />
           </div>
@@ -208,6 +218,7 @@ export function ValueFields({ value, onChange }: Props): ReactElement {
               className="unit"
               value={unit.symbol}
               autoSize={1}
+              placeholder={EMPTY_UNIT}
               onCommit={(text) => onChange(rescaleRange(value, text))}
             />
           </div>
@@ -239,7 +250,12 @@ export function ValueFields({ value, onChange }: Props): ReactElement {
           </label>
           <label>
             unit
-            <TextField className="unit" value={unit.symbol} onCommit={setUnit} />
+            <TextField
+              className="unit"
+              value={unit.symbol}
+              placeholder={EMPTY_UNIT}
+              onCommit={setUnit}
+            />
           </label>
         </div>
       ) : null}
