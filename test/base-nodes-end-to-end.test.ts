@@ -250,4 +250,64 @@ describe('the base node library through the kernel', () => {
     // R&M tags belt's wrap angles `[]`, so a pure number must reach an angle port.
     expect(canConnect(document, catalogues, wire('beta.value', 'sin.theta'))).toEqual({ ok: true });
   });
+
+  describe('a spectrum port joined by several discrete wires (S71)', () => {
+    it('reduces any number of wired values, not just two', () => {
+      const document = graph(
+        [
+          input('a', { kind: 'scalar', value: 30, unit: 'mm' }),
+          input('b', { kind: 'scalar', value: 10, unit: 'mm' }),
+          input('c', { kind: 'scalar', value: 20, unit: 'mm' }),
+          node('m', 'minimum'),
+        ],
+        [wire('a.value', 'm.a'), wire('b.value', 'm.a'), wire('c.value', 'm.a')],
+      );
+      const smallest = numeric(valueAt(evaluateDocument(document, catalogues), 'm', 'smallest'));
+      expect(smallest.data).toEqual([10]);
+    });
+
+    it('lets a second wire join the port instead of replacing the first (unlike every other port)', () => {
+      const document = graph(
+        [
+          input('a', { kind: 'scalar', value: 30, unit: 'mm' }),
+          input('b', { kind: 'scalar', value: 10, unit: 'mm' }),
+          node('m', 'minimum'),
+        ],
+        [wire('a.value', 'm.a')],
+      );
+      const result = canConnect(document, catalogues, wire('b.value', 'm.a'));
+      expect(result).toEqual({ ok: true });
+      const resolved = resolveGraph(
+        { ...document, edges: [...document.edges, wire('b.value', 'm.a')] },
+        catalogues,
+      );
+      expect(resolved.incoming.get(endpointKey('m', 'a'))).toHaveLength(2);
+    });
+
+    it('refuses a value of the wrong dimension, exactly as a plain generic port would', () => {
+      const document = graph(
+        [
+          input('a', { kind: 'scalar', value: 30, unit: 'mm' }),
+          input('F', { kind: 'scalar', value: 500, unit: 'N' }),
+          node('m', 'minimum'),
+        ],
+        [wire('a.value', 'm.a')],
+      );
+      const result = canConnect(document, catalogues, wire('F.value', 'm.a'));
+      expect(result.ok).toBe(false);
+      expect(result.ok === false && result.reason).toMatch(/one dimension/u);
+    });
+
+    it('refuses a swept value — a spectrum is consumed whole, not per point', () => {
+      const document = graph(
+        [
+          input('a', { kind: 'scalar', value: 30, unit: 'mm' }),
+          input('d', { kind: 'list', values: [10, 20], unit: 'mm' }),
+          node('m', 'minimum'),
+        ],
+        [wire('a.value', 'm.a'), wire('d.value', 'm.a')],
+      );
+      expect(() => evaluateDocument(document, catalogues)).toThrow(/not a swept series/u);
+    });
+  });
 });

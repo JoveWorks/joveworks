@@ -92,8 +92,8 @@ export interface Resolution {
   readonly sources: ReadonlyMap<string, PortType>;
   /** `node.port` → the type of a port an edge may arrive at. */
   readonly targets: ReadonlyMap<string, PortType>;
-  /** `node.port` → the edge arriving there. */
-  readonly incoming: ReadonlyMap<string, Edge>;
+  /** `node.port` → the edges arriving there — more than one only for a spectrum port (S71). */
+  readonly incoming: ReadonlyMap<string, readonly Edge[]>;
   /** node id → its generic variable bindings (S59). */
   readonly bindings: ReadonlyMap<string, ReadonlyMap<string, Dimension>>;
   /** One per range input node, in document order (S43). */
@@ -287,21 +287,37 @@ export function resolveGraph(
   const formulas = new Map<string, Formula>();
   const sources = new Map<string, PortType>();
   const targets = new Map<string, PortType>();
-  const incoming = new Map<string, Edge>();
+  const incoming = new Map<string, Edge[]>();
   const bindings = new Map<string, ReadonlyMap<string, Dimension>>();
 
+  // Collected here, not refused here: whether a second edge at one port is
+  // allowed depends on that port's kind (S71), which is not known until the
+  // node's formula is looked up below.
   for (const edge of document.edges) {
     const key = endpointKey(edge.to.node, edge.to.port);
-    const existing = incoming.get(key);
-    if (existing !== undefined) {
+    const list = incoming.get(key);
+    if (list === undefined) incoming.set(key, [edge]);
+    else list.push(edge);
+  }
+
+  const oneEdge = (key: string): Edge | undefined => {
+    const edges = incoming.get(key);
+    if (edges === undefined || edges.length === 0) return undefined;
+    if (edges.length > 1) {
       throw new KernelError(
-        `two edges arrive at this input port ('${existing.id}' and '${edge.id}') — ` +
+        `two edges arrive at this input port ('${edges[0]?.id}' and '${edges[1]?.id}') — ` +
           'an input takes one connection',
         key,
       );
     }
-    incoming.set(key, edge);
-  }
+    return edges[0];
+  };
+
+  /** `oneEdge`, as the zero-or-one-element array a spectrum port's slot takes. */
+  const oneEdgeArray = (key: string): readonly Edge[] => {
+    const edge = oneEdge(key);
+    return edge === undefined ? [] : [edge];
+  };
 
   const sourceType = (edge: Edge): PortType => {
     const key = endpointKey(edge.from.node, edge.from.port);
@@ -314,6 +330,7 @@ export function resolveGraph(
 
   const checkKind = (source: PortType, target: PortType, where: string): void => {
     if (source.kind === target.kind) return;
+    if (source.kind === 'numeric' && target.kind === 'spectrum') return;
     throw new KernelError(
       `cannot connect a ${source.kind} value to a ${target.kind} port`,
       where,
@@ -336,37 +353,42 @@ export function resolveGraph(
       const bound = new Map<string, Dimension>();
       for (const port of formula.inputs) {
         const key = endpointKey(node.id, port.name);
-        const edge = incoming.get(key);
-        if (edge === undefined) continue;
-        const source = sourceType(edge);
+        // A spectrum port takes one edge per collected value (S71); every
+        // other kind takes exactly one, which `oneEdge` throws on if not true.
+        const edges = port.kind === 'spectrum' ? (incoming.get(key) ?? []) : oneEdgeArray(key);
+        if (edges.length === 0) continue;
         const declared = portType(port, bound);
-        checkKind(source, declared, key);
 
-        if (port.kind !== 'categorical' && isGenericDimension(port.unit)) {
-          const variable = bareVariable(port.unit) as string;
-          const dimension = source.dimension;
-          if (dimension === undefined) {
-            throw new KernelError(
-              `'${endpointKey(edge.from.node, edge.from.port)}' has no dimension yet — ` +
-                'wire its own inputs first',
-              key,
-            );
-          }
-          const already = bound.get(variable);
-          if (already === undefined) bound.set(variable, dimension);
-          else {
-            assertSameDimension(
-              already,
-              dimension,
-              `'$${variable}' is bound twice on this node and must be one dimension (S59)`,
-              key,
-            );
-          }
-          continue;
-        }
+        for (const edge of edges) {
+          const source = sourceType(edge);
+          checkKind(source, declared, key);
 
-        if (declared.dimension !== undefined && source.dimension !== undefined) {
-          assertConnectable(source.dimension, declared.dimension, key);
+          if (port.kind !== 'categorical' && isGenericDimension(port.unit)) {
+            const variable = bareVariable(port.unit) as string;
+            const dimension = source.dimension;
+            if (dimension === undefined) {
+              throw new KernelError(
+                `'${endpointKey(edge.from.node, edge.from.port)}' has no dimension yet — ` +
+                  'wire its own inputs first',
+                key,
+              );
+            }
+            const already = bound.get(variable);
+            if (already === undefined) bound.set(variable, dimension);
+            else {
+              assertSameDimension(
+                already,
+                dimension,
+                `'$${variable}' is bound twice on this node and must be one dimension (S59)`,
+                key,
+              );
+            }
+            continue;
+          }
+
+          if (declared.dimension !== undefined && source.dimension !== undefined) {
+            assertConnectable(source.dimension, declared.dimension, key);
+          }
         }
       }
 
@@ -383,7 +405,7 @@ export function resolveGraph(
     // check's threshold, which is a quantity a student typed (S58).
     for (const name of outputPortNames(node)) {
       const key = endpointKey(node.id, name);
-      const edge = incoming.get(key);
+      const edge = oneEdge(key);
       const type: PortType = edge === undefined ? { kind: 'numeric' } : sourceType(edge);
       targets.set(key, type);
 
@@ -412,6 +434,28 @@ export function resolveGraph(
   return { document, order, formulas, sources, targets, incoming, bindings, axes, warnings };
 }
 
+/**
+ * Whether an edge's target is a spectrum port, straight from the catalogue —
+ * cheaper than a full resolve, and all `canConnect` needs to decide whether a
+ * candidate should join what's already there or displace it (S71).
+ * Anything it cannot place (no such node, no such formula, no such port)
+ * answers `false`, which is the ordinary one-edge-per-port default.
+ */
+function isSpectrumTarget(
+  document: GraphDocument,
+  catalogues: readonly Catalogue[],
+  to: Edge['to'],
+): boolean {
+  const node = document.nodes.find((candidate) => candidate.id === to.node);
+  if (node === undefined || node.kind !== 'formula') return false;
+  for (const catalogue of catalogues) {
+    const formula = catalogue.formulas.find((entry) => matchRef(node.formula, entry) === 'match');
+    const port = formula?.inputs.find((candidate) => candidate.name === to.port);
+    if (port !== undefined) return port.kind === 'spectrum';
+  }
+  return false;
+}
+
 export type ConnectionCheck = { readonly ok: true } | { readonly ok: false; readonly reason: string };
 
 /**
@@ -435,10 +479,14 @@ export function canConnect(
     // takes one connection) rather than being refused for arriving alongside
     // it — `connect` in the editor's document model already does this; the
     // check has to agree, or a re-drag onto an occupied port is rejected here
-    // before it ever reaches that replace.
-    const displaced = document.edges.filter(
-      (edge) => !(edge.to.node === candidate.to.node && edge.to.port === candidate.to.port),
-    );
+    // before it ever reaches that replace. A spectrum port is the one
+    // exception (S71): a second wire joins it, so nothing already there is
+    // displaced.
+    const displaced = isSpectrumTarget(document, catalogues, candidate.to)
+      ? document.edges
+      : document.edges.filter(
+          (edge) => !(edge.to.node === candidate.to.node && edge.to.port === candidate.to.port),
+        );
     resolveGraph({ ...document, edges: [...displaced, candidate] }, catalogues);
     return { ok: true };
   } catch (error) {
@@ -455,7 +503,12 @@ export function canConnect(
  * about ports that are still unbound.
  */
 export function typesConnect(source: PortType, target: PortType): boolean {
-  if (source.kind !== target.kind) return false;
+  // A spectrum target takes a matching spectrum source (one authored list, as
+  // before) or a numeric one (S71) — one of what may be several discrete
+  // wires collected into a series before the formula's own expression runs.
+  const kindsMatch =
+    source.kind === target.kind || (source.kind === 'numeric' && target.kind === 'spectrum');
+  if (!kindsMatch) return false;
   if (source.dimension === undefined || target.dimension === undefined) return true;
   return connectable(source.dimension, target.dimension);
 }

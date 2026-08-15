@@ -191,11 +191,6 @@ aside.right {
   padding: 10px;
 }
 
-.palette-add {
-  display: flex;
-  gap: 6px;
-}
-
 .palette .search {
   width: 100%;
 }
@@ -498,6 +493,22 @@ aside.right {
   left: 2px;
   top: 50%;
   transform: translateY(-50%);
+}
+
+/*
+ * A spectrum port's trailing open slot (S71) — an invitation to wire another
+ * value, not a state. Dashed and faint rather than the amber "missing"
+ * treatment above, which this row only takes on when it is the *only* slot
+ * (nothing wired yet, same as any other required port).
+ */
+.node .port-open {
+  height: 12px;
+  opacity: 0.6;
+}
+
+.node .port-open .react-flow__handle {
+  border-style: dashed;
+  background: transparent;
 }
 
 .node .node-value .react-flow__handle,

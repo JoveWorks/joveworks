@@ -190,6 +190,20 @@ const REDUCTION_SPECS: readonly ReductionSpec[] = [
       return DIMENSIONLESS;
     },
   },
+  // Named `least`/`greatest`, not `min`/`max` — those already name the plain,
+  // fixed-arity whitelist functions above (`min(a, b, c)`, distinct named
+  // arguments in one expression). A reduction's argument is one spectrum
+  // port, a wholly different shape of call, and needs a name of its own.
+  {
+    name: 'least',
+    apply: (values) => values.reduce((least, value) => Math.min(least, value)),
+    dimension: (argument) => argument,
+  },
+  {
+    name: 'greatest',
+    apply: (values) => values.reduce((greatest, value) => Math.max(greatest, value)),
+    dimension: (argument) => argument,
+  },
 ];
 
 export const REDUCTIONS: ReadonlyMap<string, ReductionSpec> = new Map(

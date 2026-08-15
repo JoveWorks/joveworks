@@ -23,6 +23,7 @@ import {
   VALUE_PORT,
   isRange,
   type Catalogue,
+  type Edge,
   type GraphDocument,
   type InputNode,
   type OutputNode,
@@ -247,14 +248,40 @@ function inputPortValue(
   values: ReadonlyMap<string, PortValue>,
 ): PortValue {
   const key = endpointKey(nodeId, port.name);
-  const edge = resolution.incoming.get(key);
-  if (edge !== undefined) {
+  const edges = resolution.incoming.get(key) ?? [];
+
+  const valueOf = (edge: Edge): PortValue => {
     const value = values.get(endpointKey(edge.from.node, edge.from.port));
     if (value === undefined) {
       throw new KernelError(`nothing was computed for '${edge.from.node}.${edge.from.port}'`, key);
     }
     return value;
+  };
+
+  if (port.kind === 'spectrum' && edges.length > 0) {
+    const first = valueOf(edges[0] as Edge);
+    // One edge from an authored list, exactly as before (S36) — or one or
+    // more discrete edges, each a single scalar, collected into one (S71). A
+    // spectrum is consumed whole and does not itself vary along an axis, so
+    // a swept source has nothing well-defined to contribute.
+    if (edges.length === 1 && first.kind === 'spectrum') return first;
+    return {
+      kind: 'spectrum',
+      values: edges.map((edge) => {
+        const value = valueOf(edge);
+        if (value.kind !== 'numeric' || value.axes.length !== 0) {
+          throw new KernelError(
+            `'${edge.from.node}.${edge.from.port}' must be a single value to join this port, ` +
+              'not a swept series (S71)',
+            key,
+          );
+        }
+        return value.data[0] as number;
+      }),
+    };
   }
+
+  if (edges.length > 0) return valueOf(edges[0] as Edge);
 
   // Not wired: a declared default stands in, in the unit it was declared in.
   // Anything else is an incomplete graph, which S50 has the editor mark on the
@@ -358,7 +385,9 @@ function sourceOf(
 ): { readonly value: Series; readonly unit: Unit } {
   const key = endpointKey(node.id, port);
   const value = (() => {
-    const edge = resolution.incoming.get(key);
+    // An output's own port is never spectrum-kind (S71 only widens a
+    // formula's input), so resolveGraph has already refused a second edge.
+    const edge = resolution.incoming.get(key)?.[0];
     if (edge === undefined) throw new KernelError(`'${port}' is not connected`, key);
     const found = values.get(endpointKey(edge.from.node, edge.from.port));
     if (found === undefined) {

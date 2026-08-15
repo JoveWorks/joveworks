@@ -68,6 +68,9 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
   const wired = new Set(
     document.edges.filter((edge) => edge.to.node === id).map((edge) => edge.to.port),
   );
+  /** Every edge already arriving at one port — more than one only for a spectrum port (S71). */
+  const edgesAt = (portName: string): number =>
+    document.edges.filter((edge) => edge.to.node === id && edge.to.port === portName).length;
 
   const portUnit = (port: Port): string => {
     if (port.kind === 'categorical') return port.domain.join(' | ');
@@ -129,20 +132,65 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
       }
     >
       <ul className="ports">
-        {formula.inputs.map((port) => (
-          <li key={port.name} className={missing(port) ? 'port missing' : 'port'}>
-            <Handle
-              type="target"
-              position={Position.Left}
-              id={port.name}
-              className={missing(port) ? 'missing' : ''}
-            />
-            <span className="port-name" title={port.description ?? ''}>
-              {port.name}
-            </span>
-            <span className="port-unit">{portUnit(port)}</span>
-          </li>
-        ))}
+        {formula.inputs.flatMap((port) => {
+          // An ordinary port is exactly one slot. A spectrum port (S71) is one
+          // slot per edge already joined to it, plus a trailing open one —
+          // there is no numbered "a1, a2" identity to keep in step, since
+          // every slot targets the same port name; removing a wire and
+          // re-rendering from the edge list *is* the shift.
+          if (port.kind !== 'spectrum') {
+            return (
+              <li key={port.name} className={missing(port) ? 'port missing' : 'port'}>
+                <Handle
+                  type="target"
+                  position={Position.Left}
+                  id={port.name}
+                  className={missing(port) ? 'missing' : ''}
+                />
+                <span className="port-name" title={port.description ?? ''}>
+                  {port.name}
+                </span>
+                <span className="port-unit">{portUnit(port)}</span>
+              </li>
+            );
+          }
+
+          const count = edgesAt(port.name);
+          const filled = Array.from({ length: count }, (_unused, i) => (
+            <li key={`${port.name}-${i}`} className="port">
+              <Handle type="target" position={Position.Left} id={port.name} />
+              {i === 0 ? (
+                <>
+                  <span className="port-name" title={port.description ?? ''}>
+                    {port.name}
+                  </span>
+                  <span className="port-unit">{portUnit(port)}</span>
+                </>
+              ) : (
+                <span className="port-unit">{portUnit(port)}</span>
+              )}
+            </li>
+          ));
+          return [
+            ...filled,
+            <li
+              key={`${port.name}-open`}
+              className={count === 0 ? 'port missing' : 'port port-open'}
+            >
+              <Handle
+                type="target"
+                position={Position.Left}
+                id={port.name}
+                className={count === 0 ? 'missing' : ''}
+              />
+              {count === 0 ? (
+                <span className="port-name" title={port.description ?? ''}>
+                  {port.name}
+                </span>
+              ) : null}
+            </li>,
+          ];
+        })}
       </ul>
 
       <div className="node-value">

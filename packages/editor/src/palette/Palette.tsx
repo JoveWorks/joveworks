@@ -87,15 +87,6 @@ export function Palette(): ReactElement {
 
   return (
     <div className="palette">
-      <div className="palette-add">
-        <button type="button" onClick={addInput}>
-          + input
-        </button>
-        <button type="button" onClick={() => addOutput('check')}>
-          + check
-        </button>
-      </div>
-
       <input
         className="search"
         value={query}
@@ -104,13 +95,20 @@ export function Palette(): ReactElement {
       />
 
       <div className="palette-list">
-        {/* Ahead of the catalogues, not a one-off toolbar button (UI-FEEDBACK.md):
-            print and plot are what every output eventually is, so they read the
-            same way a catalogue entry does. */}
+        {/* Ahead of the catalogues, not one-off toolbar buttons (UI-FEEDBACK.md):
+            an input, print and plot are what every graph is built from and
+            eventually ends in, so they read the same way a catalogue entry
+            does rather than living apart from the rest of the palette. */}
         {query.trim().length === 0 ? (
           <section>
-            <h3>Outputs</h3>
+            <h3>Input and Output Nodes</h3>
             <ul>
+              <li>
+                <button type="button" className="entry" onClick={addInput}>
+                  <span className="entry-id">input</span>
+                  <span className="entry-output">a value, a range, or a list</span>
+                </button>
+              </li>
               <li>
                 <button type="button" className="entry" onClick={() => addOutput('print')}>
                   <span className="entry-id">print</span>
@@ -131,6 +129,12 @@ export function Palette(): ReactElement {
                 >
                   <span className="entry-id">plot</span>
                   <span className="entry-output">a value over a swept range</span>
+                </button>
+              </li>
+              <li>
+                <button type="button" className="entry" onClick={() => addOutput('check')}>
+                  <span className="entry-id">check</span>
+                  <span className="entry-output">pass or fail against a threshold</span>
                 </button>
               </li>
             </ul>

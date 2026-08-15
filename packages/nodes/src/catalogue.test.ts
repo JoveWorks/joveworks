@@ -113,10 +113,11 @@ describe('what the library carries', () => {
     }
   });
 
-  it('has a spectrum input on each reduction and nowhere else (S36)', () => {
+  it('has a spectrum input on each reduction and nowhere else (S36, S71)', () => {
+    const reductions = new Set(['sum', 'product', 'minimum', 'maximum']);
     for (const formula of OPERATIONS) {
       const spectrum = formula.inputs.some((port) => port.kind === 'spectrum');
-      expect(spectrum, formula.id).toBe(formula.id === 'sum' || formula.id === 'product');
+      expect(spectrum, formula.id).toBe(reductions.has(formula.id));
     }
   });
 
@@ -158,6 +159,8 @@ const FUNCTIONS = new Set([
   'exp',
   'sum',
   'prod',
+  'least',
+  'greatest',
   'pi',
 ]);
 

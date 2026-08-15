@@ -115,6 +115,29 @@ describe('analysing a graph mid-build', () => {
     expect(analysis.states.get('sum')).toBe('ok');
   });
 
+  it('blocks a spectrum port on any unready source, not just the last edge recorded (S71)', () => {
+    const document = graph(
+      [
+        scalar('a', 2),
+        scalar('b', 3),
+        formulaNode('bad', 'inv.quarantined'),
+        formulaNode('m', 'minimum'),
+      ],
+      [
+        wire('e1', ['a', 'value'], ['m', 'a']),
+        // Wired between two ready sources — a map keyed by target alone would
+        // let the third edge overwrite this one and never notice it is stuck
+        // behind a quarantined node.
+        wire('e2', ['bad', 'y'], ['m', 'a']),
+        wire('e3', ['b', 'value'], ['m', 'a']),
+      ],
+    );
+    const analysis = analyse(document, CATALOGUES);
+
+    expect(analysis.states.get('bad')).toBe('quarantined');
+    expect(analysis.states.get('m')).toBe('blocked');
+  });
+
   it('says which node a graph without its catalogue is missing (S23)', () => {
     const document = graph([formulaNode('sum', 'inv.sum')], []);
     const analysis = analyse(document, [baseCatalogue()]);

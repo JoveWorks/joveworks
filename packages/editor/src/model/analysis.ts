@@ -123,12 +123,22 @@ function readiness(
   problems: Map<string, string>,
 ): ReadonlySet<string> {
   const ready = new Set<string>();
-  const wired = new Map<string, { readonly node: string; readonly port: string }>();
-  for (const edge of document.edges) wired.set(`${edge.to.node}.${edge.to.port}`, edge.from);
+  // More than one source only for a spectrum port (S71) — a plain `Map` here
+  // would let a second edge silently overwrite the first, and readiness would
+  // only ever check whichever source happened to be recorded last.
+  const wired = new Map<string, Array<{ readonly node: string; readonly port: string }>>();
+  for (const edge of document.edges) {
+    const key = `${edge.to.node}.${edge.to.port}`;
+    const sources = wired.get(key);
+    if (sources === undefined) wired.set(key, [edge.from]);
+    else sources.push(edge.from);
+  }
+  const isWired = (nodeId: string, portName: string): boolean =>
+    (wired.get(`${nodeId}.${portName}`)?.length ?? 0) > 0;
 
   const upstreamReady = (nodeId: string, portName: string): boolean => {
-    const source = wired.get(`${nodeId}.${portName}`);
-    return source !== undefined && ready.has(source.node);
+    const sources = wired.get(`${nodeId}.${portName}`) ?? [];
+    return sources.length > 0 && sources.every((source) => ready.has(source.node));
   };
 
   for (const node of order) {
@@ -150,7 +160,7 @@ function readiness(
         continue;
       }
       const missing = formula.inputs.filter(
-        (port) => !hasDefault(port) && wired.get(`${node.id}.${port.name}`) === undefined,
+        (port) => !hasDefault(port) && !isWired(node.id, port.name),
       );
       if (missing.length > 0) {
         states.set(node.id, 'incomplete');
@@ -158,8 +168,7 @@ function readiness(
         continue;
       }
       const blocked = formula.inputs.some(
-        (port) =>
-          wired.get(`${node.id}.${port.name}`) !== undefined && !upstreamReady(node.id, port.name),
+        (port) => isWired(node.id, port.name) && !upstreamReady(node.id, port.name),
       );
       if (blocked) {
         states.set(node.id, 'blocked');
@@ -170,7 +179,7 @@ function readiness(
     }
 
     const names = node.output.kind === 'table' ? node.output.columns : ['value'];
-    const unwired = names.filter((name) => wired.get(`${node.id}.${name}`) === undefined);
+    const unwired = names.filter((name) => !isWired(node.id, name));
     if (unwired.length > 0) {
       states.set(node.id, 'incomplete');
       problems.set(node.id, `not connected: ${unwired.join(', ')}`);

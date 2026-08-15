@@ -14,19 +14,30 @@
  *
  * - trig, log and exp **require a dimensionless argument** — so their ports are
  *   concrete, not generic;
- * - `min`/`max` require **identical** dimensions — one variable, used twice;
+ * - `min`/`max` require **identical** dimensions across every value compared —
+ *   one variable, joined by any number of wires into one spectrum port (S71),
+ *   not two fixed ones;
  * - rounding **preserves** dimension — `floor` is `$A → $A`, not `$A → ''`.
  *
  * Everything else follows from the algebra: `multiply` is `$A*$B`, `divide` is
  * `$A/$B`, `sqrt` is `$A**(1/2)`.
  */
 
-import type { Formula, NumericPort, OutputPort, Port } from '@mds/schema';
+import type { Formula, NumericPort, OutputPort, Port, SpectrumPort } from '@mds/schema';
 import { parseGenericDimension, parseUnit } from '@mds/units';
 
 /** A port that adopts the dimension of whatever is wired to it (S59). */
 function generic(name: string, variable: string, description: string): NumericPort {
   return { kind: 'numeric', name, unit: parseGenericDimension(`$${variable}`), description };
+}
+
+/**
+ * A spectrum port that adopts the dimension of whatever is wired to it (S59).
+ * Unlike a plain generic port it may be joined by more than one wire (S71) —
+ * `minimum`/`maximum` are the two base nodes that need it.
+ */
+function genericSpectrum(name: string, variable: string, description: string): SpectrumPort {
+  return { kind: 'spectrum', name, unit: parseGenericDimension(`$${variable}`), description };
 }
 
 /** A port with a fixed unit. `''` is dimensionless — declared, not absent. */
@@ -74,17 +85,17 @@ const DRAFTS: readonly Draft[] = [
   },
   {
     id: 'minimum',
-    description: 'The smaller of two values. Both must have the same dimension (S35).',
-    expression: 'min(a, b)',
-    output: generic('smallest', 'A', 'min(a, b)'),
-    inputs: [generic('a', 'A', 'First value'), generic('b', 'A', 'Second value')],
+    description: 'The smallest of any number of values, all the same dimension (S35, S71).',
+    expression: 'least(a)',
+    output: generic('smallest', 'A', 'least(a)'),
+    inputs: [genericSpectrum('a', 'A', 'Values to compare — wire as many as needed')],
   },
   {
     id: 'maximum',
-    description: 'The larger of two values. Both must have the same dimension (S35).',
-    expression: 'max(a, b)',
-    output: generic('largest', 'A', 'max(a, b)'),
-    inputs: [generic('a', 'A', 'First value'), generic('b', 'A', 'Second value')],
+    description: 'The largest of any number of values, all the same dimension (S35, S71).',
+    expression: 'greatest(a)',
+    output: generic('largest', 'A', 'greatest(a)'),
+    inputs: [genericSpectrum('a', 'A', 'Values to compare — wire as many as needed')],
   },
 
   // --- arithmetic, dimension-combining -------------------------------------
