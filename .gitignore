@@ -3,3 +3,4 @@ dist/
 build/
 *.tsbuildinfo
 .vite/
+/.claude/worktrees
