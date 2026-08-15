@@ -95,7 +95,9 @@ export function Palette(): ReactElement {
           ? { kind, comparison: '>=', threshold: { value: 1, unit: parseUnit('') } }
           : kind === 'plot'
             ? { kind, x: documentAxes(current).at(0)?.id ?? '' }
-            : { kind: 'print' };
+            : kind === 'table'
+              ? { kind, columns: [] }
+              : { kind: 'print' };
       return addNode(current, { kind: 'output', id, label: id, output, position: position() });
     });
 
@@ -124,7 +126,7 @@ export function Palette(): ReactElement {
                 <span className="section-toggle-title">
                   General
                   {generalCollapsed ? (
-                    <span className="section-toggle-count"> (4)</span>
+                    <span className="section-toggle-count"> (5)</span>
                   ) : null}
                 </span>
                 <span className="chevron" aria-hidden="true">
@@ -166,6 +168,12 @@ export function Palette(): ReactElement {
                   <button type="button" className="entry" onClick={() => addOutput('check')}>
                     <span className="entry-id">check</span>
                     <span className="entry-output">pass or fail against a threshold</span>
+                  </button>
+                </li>
+                <li>
+                  <button type="button" className="entry" onClick={() => addOutput('table')}>
+                    <span className="entry-id">table</span>
+                    <span className="entry-output">several series as rows, one per column</span>
                   </button>
                 </li>
               </ul>

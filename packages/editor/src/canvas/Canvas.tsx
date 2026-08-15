@@ -32,17 +32,28 @@ import {
 
 import { canConnect, typesConnect } from '@mds/kernel';
 import { parseUnit } from '@mds/units';
-import { axes as documentAxes, formulaRef, VALUE_PORT, type Edge, type GraphNode } from '@mds/schema';
+import {
+  axes as documentAxes,
+  formulaRef,
+  VALUE_PORT,
+  type Edge,
+  type GraphDocument,
+  type GraphNode,
+} from '@mds/schema';
 
 import { useGraph } from '../graph-context';
 import {
+  addNamedColumn,
   addNode,
   connect,
   duplicateNode,
   edgeId,
   frameAround,
   moveNode,
+  NEW_COLUMN,
+  nodeLabel,
   reframe,
+  relabelColumn,
   removeEdges,
   removeNodes,
   uniqueId,
@@ -288,6 +299,45 @@ export function Canvas(): ReactElement {
     (connection: Connection) => {
       const candidate = candidateOf(connection);
       if (candidate === undefined) return;
+
+      // A table column's name follows whatever is wired to it (OutputNodeView.tsx,
+      // the same idea a spectrum port's ghost slot uses, S71) — the *node* on
+      // the wire's other end, its own title, never the port symbol, which is
+      // not what a student typed. That holds whether the wire lands on the
+      // trailing ghost slot (the column does not exist until this creates it)
+      // or replaces what an existing column already had (the column keeps its
+      // identity but is relabelled after the new source). Checked and
+      // committed against the same resolved column, computed twice rather
+      // than threaded through, so a commit never applies against a column a
+      // since-changed document no longer has under that name.
+      const tableNode = document.nodes.find((entry) => entry.id === candidate.to.node);
+      if (tableNode?.kind === 'output' && tableNode.output.kind === 'table') {
+        const columnBase = (doc: GraphDocument): string => {
+          const source = doc.nodes.find((entry) => entry.id === candidate.from.node);
+          return source === undefined ? candidate.from.port : nodeLabel(source);
+        };
+        const resolveTarget = (doc: GraphDocument): { readonly document: GraphDocument; readonly to: Edge['to'] } => {
+          const resolved =
+            candidate.to.port === NEW_COLUMN
+              ? addNamedColumn(doc, candidate.to.node, columnBase(doc))
+              : relabelColumn(doc, candidate.to.node, candidate.to.port, columnBase(doc));
+          return { document: resolved.document, to: { node: candidate.to.node, port: resolved.column } };
+        };
+
+        const checked = resolveTarget(document);
+        const verdict = canConnect(checked.document, catalogues, { ...candidate, to: checked.to });
+        if (!verdict.ok) {
+          setRefusal(verdict.reason);
+          return;
+        }
+        setRefusal(undefined);
+        edit((current) => {
+          const resolved = resolveTarget(current);
+          return connect(resolved.document, candidate.from, resolved.to);
+        });
+        return;
+      }
+
       const verdict = canConnect(document, catalogues, candidate);
       if (!verdict.ok) {
         setRefusal(verdict.reason);

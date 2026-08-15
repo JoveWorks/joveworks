@@ -21,7 +21,7 @@ import { useGraph } from '../graph-context';
 import { ContextMenu, type MenuItem } from '../canvas/ContextMenu';
 import { Symbol } from '../Symbol';
 import { moveFrame, reframe, removeNodes, reorderFrame, updateFrame, updateNode } from '../model/document';
-import { display } from '../model/quantity';
+import { display, displayNumber } from '../model/quantity';
 import { summarise } from '../model/values';
 import { PlotFigure } from './PlotFigure';
 
@@ -86,7 +86,7 @@ function Result({ result }: { readonly result: OutputResult }): ReactElement {
                       {cell === undefined
                         ? ''
                         : typeof cell === 'number'
-                          ? display(cell, column.unit)
+                          ? displayNumber(cell, column.unit)
                           : cell}
                     </td>
                   );

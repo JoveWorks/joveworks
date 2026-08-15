@@ -641,6 +641,11 @@ aside.right {
   color: var(--muted);
 }
 
+.renard-series {
+  flex: 0 0 auto;
+  font-size: 11px;
+}
+
 .points-field {
   display: flex;
   align-items: center;
@@ -678,6 +683,64 @@ aside.right {
 .output-editor input,
 .output-editor select {
   width: 100%;
+}
+
+.table-columns {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 2px 0;
+}
+
+.table-column {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  position: relative;
+}
+
+.column-grip {
+  flex: 0 0 auto;
+  cursor: grab;
+  color: var(--muted);
+}
+
+.table-column .column-name {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Same line-at-the-edge convention as .notebook-section's drag-over (S30's
+   reorder gesture, reused here for a table's columns). */
+.table-column.drag-over-before::before,
+.table-column.drag-over-after::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--accent);
+}
+
+.table-column.drag-over-before::before {
+  top: -2px;
+}
+
+.table-column.drag-over-after::after {
+  bottom: -2px;
+}
+
+.column-remove {
+  flex: 0 0 auto;
+  color: var(--muted);
+  line-height: 1;
+}
+
+.table-column-empty {
+  color: var(--muted);
+  font-size: 11px;
+  font-style: italic;
 }
 
 /* --- frames ------------------------------------------------------------- */

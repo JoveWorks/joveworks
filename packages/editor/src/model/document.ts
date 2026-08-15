@@ -13,11 +13,25 @@
  * only how a permitted change is applied.
  */
 
-import type { Edge, Endpoint, Frame, GraphDocument, GraphNode, Position } from '@mds/schema';
+import type {
+  Edge,
+  Endpoint,
+  Frame,
+  GraphDocument,
+  GraphNode,
+  OutputNode,
+  Position,
+} from '@mds/schema';
 
 /** `node.port -> node.port`, which is unique because an input takes one edge. */
 export function edgeId(from: Endpoint, to: Endpoint): string {
   return `${from.node}.${from.port}->${to.node}.${to.port}`;
+}
+
+/** What a node calls itself — the same text its own title field shows, not its id or port name. */
+export function nodeLabel(node: GraphNode): string {
+  if (node.label !== undefined) return node.label;
+  return node.kind === 'formula' ? node.formula.id : node.id;
 }
 
 /** A readable id that is not taken: `input`, `input2`, `input3`… */
@@ -71,7 +85,7 @@ export function moveNode(document: GraphDocument, id: string, position: Position
 
 /** Remove nodes and frames, and every edge that touched one of them. */
 export function removeNodes(document: GraphDocument, ids: ReadonlySet<string>): GraphDocument {
-  return {
+  return closeEmptyColumns({
     ...document,
     nodes: document.nodes
       .filter((node) => !ids.has(node.id))
@@ -82,7 +96,7 @@ export function removeNodes(document: GraphDocument, ids: ReadonlySet<string>): 
       ),
     edges: document.edges.filter((edge) => !ids.has(edge.from.node) && !ids.has(edge.to.node)),
     frames: document.frames.filter((frame) => !ids.has(frame.id)),
-  };
+  });
 }
 
 function withoutFrame(node: GraphNode): GraphNode {
@@ -105,7 +119,7 @@ function withoutAxisLabel(node: GraphNode): GraphNode {
 }
 
 export function removeEdges(document: GraphDocument, ids: ReadonlySet<string>): GraphDocument {
-  return { ...document, edges: document.edges.filter((edge) => !ids.has(edge.id)) };
+  return closeEmptyColumns({ ...document, edges: document.edges.filter((edge) => !ids.has(edge.id)) });
 }
 
 /**
@@ -125,6 +139,178 @@ export function connect(
     ? document.edges
     : document.edges.filter((existing) => !(existing.to.node === to.node && existing.to.port === to.port));
   return { ...document, edges: [...kept, edge] };
+}
+
+// --- table columns: a table output's ports (S60) ----------------------------
+
+/**
+ * A table column exists only while something is wired to it — the same rule
+ * a spectrum port's slots follow (S71), just with a name and a position kept
+ * across edits instead of an anonymous count. Called after every edit that
+ * can drop an edge into a table, so a deleted wire closes its column with it
+ * rather than leaving an empty one behind.
+ */
+function closeEmptyColumns(document: GraphDocument): GraphDocument {
+  const wired = new Set(document.edges.map((edge) => `${edge.to.node}.${edge.to.port}`));
+  return {
+    ...document,
+    nodes: document.nodes.map((node) =>
+      node.kind === 'output' && node.output.kind === 'table'
+        ? {
+            ...node,
+            output: {
+              ...node.output,
+              columns: node.output.columns.filter((column) => wired.has(`${node.id}.${column}`)),
+            },
+          }
+        : node,
+    ),
+  };
+}
+
+/**
+ * Rename a table column, carrying forward whatever is wired to it — a rename
+ * is a relabel, not a rewire, the same distinction a scalar's `setUnit` makes.
+ */
+export function renameColumn(
+  document: GraphDocument,
+  nodeId: string,
+  from: string,
+  to: string,
+): GraphDocument {
+  const renamed = updateNode<OutputNode>(document, nodeId, (node) =>
+    node.output.kind === 'table'
+      ? {
+          ...node,
+          output: {
+            ...node.output,
+            columns: node.output.columns.map((column) => (column === from ? to : column)),
+          },
+        }
+      : node,
+  );
+  return {
+    ...renamed,
+    edges: renamed.edges.map((edge) => {
+      if (edge.to.node !== nodeId || edge.to.port !== from) return edge;
+      const to_: Endpoint = { node: nodeId, port: to };
+      return { id: edgeId(edge.from, to_), from: edge.from, to: to_ };
+    }),
+  };
+}
+
+/** Drop a table column and whatever edge fed it — the port it wired to is gone with it. */
+export function removeColumn(document: GraphDocument, nodeId: string, name: string): GraphDocument {
+  const dropped = updateNode<OutputNode>(document, nodeId, (node) =>
+    node.output.kind === 'table'
+      ? { ...node, output: { ...node.output, columns: node.output.columns.filter((column) => column !== name) } }
+      : node,
+  );
+  return {
+    ...dropped,
+    edges: dropped.edges.filter((edge) => !(edge.to.node === nodeId && edge.to.port === name)),
+  };
+}
+
+/** `base` if free, else `base2`, `base3`, … — a rewire never silently merges into an existing column. */
+function uniqueColumnName(existing: readonly string[], base: string): string {
+  if (!existing.includes(base)) return base;
+  let n = 2;
+  while (existing.includes(`${base}${n}`)) n++;
+  return `${base}${n}`;
+}
+
+/**
+ * The handle id a table's trailing ghost column renders (spectrumSlots.ts's
+ * suffix convention makes this collision-proof against a real column that
+ * happens to share the text — a column named `open` still slots at index 0,
+ * never at `__new-column__::open`).
+ */
+export const NEW_COLUMN = '__new-column__';
+
+/**
+ * Wiring onto the ghost slot names the column after what was wired, the way a
+ * spectrum port's ghost slot (S71) accepts a wire with no separate "add a
+ * slot" step first — a table's columns are named and ordered where a
+ * spectrum's are not, so this is the one piece a spectrum's ghost slot never
+ * needed: the new port's name has to come from somewhere.
+ */
+export function addNamedColumn(
+  document: GraphDocument,
+  nodeId: string,
+  base: string,
+): { readonly document: GraphDocument; readonly column: string } {
+  const node = document.nodes.find((entry) => entry.id === nodeId);
+  const columns = node?.kind === 'output' && node.output.kind === 'table' ? node.output.columns : [];
+  const column = uniqueColumnName(columns, base);
+  return {
+    document: updateNode<OutputNode>(document, nodeId, (entry) =>
+      entry.output.kind === 'table'
+        ? { ...entry, output: { ...entry.output, columns: [...entry.output.columns, column] } }
+        : entry,
+    ),
+    column,
+  };
+}
+
+/**
+ * Rewiring an existing column relabels it too — a column's name follows
+ * whatever is wired to it, the same rule its creation follows (`addNamedColumn`
+ * above), not a one-time label frozen at the moment it was first connected.
+ */
+export function relabelColumn(
+  document: GraphDocument,
+  nodeId: string,
+  columnName: string,
+  base: string,
+): { readonly document: GraphDocument; readonly column: string } {
+  const node = document.nodes.find((entry) => entry.id === nodeId);
+  const columns = node?.kind === 'output' && node.output.kind === 'table' ? node.output.columns : [];
+  const column = uniqueColumnName(
+    columns.filter((existing) => existing !== columnName),
+    base,
+  );
+  return { document: renameColumn(document, nodeId, columnName, column), column };
+}
+
+/** Reorder a table's columns — dropping `source` immediately before or after `target`. */
+export function reorderColumn(
+  document: GraphDocument,
+  nodeId: string,
+  source: string,
+  target: string,
+  position: 'before' | 'after',
+): GraphDocument {
+  if (source === target) return document;
+  return updateNode<OutputNode>(document, nodeId, (node) => {
+    if (node.output.kind !== 'table') return node;
+    const columns = [...node.output.columns];
+    const sourceIndex = columns.indexOf(source);
+    if (sourceIndex === -1 || !columns.includes(target)) return node;
+    columns.splice(sourceIndex, 1);
+    // Re-found after the source is removed, so a source that sat earlier in
+    // the list does not throw the target's index off by one (same as
+    // reorderFrame).
+    const targetIndex = columns.indexOf(target);
+    columns.splice(position === 'after' ? targetIndex + 1 : targetIndex, 0, source);
+    return { ...node, output: { ...node.output, columns } };
+  });
+}
+
+/**
+ * Drop every edge into `nodeId` whose target port is not in `keep` — for when
+ * an output node's port set itself changes shape, such as switching away from
+ * `table`'s several named columns to a single `value` port.
+ */
+export function pruneEdgesTo(
+  document: GraphDocument,
+  nodeId: string,
+  keep: ReadonlySet<string>,
+): GraphDocument {
+  return {
+    ...document,
+    edges: document.edges.filter((edge) => edge.to.node !== nodeId || keep.has(edge.to.port)),
+  };
 }
 
 // --- frames: the notebook's sections (S28/S30) ------------------------------

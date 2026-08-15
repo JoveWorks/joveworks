@@ -14,7 +14,14 @@
  *   unit. A bare number is a dimensionless value and nothing else.
  */
 
-import { UnitError, formatQuantity, fromCanonical, parseUnit, type Unit } from '@mds/units';
+import {
+  UnitError,
+  formatQuantity,
+  fromCanonical,
+  parseUnit,
+  toSignificantFigures,
+  type Unit,
+} from '@mds/units';
 import type { Quantity } from '@mds/schema';
 
 /** `250 kW`, `1.5`, `-3.2e4 N/mm²` — a magnitude followed by a unit symbol. */
@@ -40,6 +47,14 @@ export function formatAuthored(quantity: Quantity): string {
 /** A canonical number in a display unit, for a node body or a notebook line. */
 export function display(canonical: number, unit: Unit, figures = 4): string {
   return formatQuantity(canonical, unit, figures);
+}
+
+/**
+ * The number alone, no unit — for a table cell whose column header already
+ * carries it (S49's unit-once-per-column, not repeated down every row).
+ */
+export function displayNumber(canonical: number, unit: Unit, figures = 4): string {
+  return toSignificantFigures(fromCanonical(canonical, unit), figures);
 }
 
 /** A unit's symbol as its author spelled it (S49 puts this on the port). */

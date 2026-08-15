@@ -8,16 +8,30 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { SCHEMA_VERSION, type GraphDocument, type InputNode } from '@mds/schema';
+import {
+  SCHEMA_VERSION,
+  type FormulaNode,
+  type GraphDocument,
+  type InputNode,
+  type OutputNode,
+} from '@mds/schema';
 import { parseUnit } from '@mds/units';
 
 import {
+  addNamedColumn,
   addNode,
   connect,
   duplicateNode,
   frameAround,
+  nodeLabel,
+  pruneEdgesTo,
   reframe,
+  relabelColumn,
+  removeColumn,
+  removeEdges,
   removeNodes,
+  renameColumn,
+  reorderColumn,
   uniqueId,
   updateNode,
 } from './document';
@@ -27,6 +41,13 @@ const input = (id: string, x: number, y: number): InputNode => ({
   id,
   position: { x, y },
   value: { kind: 'scalar', value: 1, unit: parseUnit('mm') },
+});
+
+const table = (id: string, columns: readonly string[], x: number, y: number): OutputNode => ({
+  kind: 'output',
+  id,
+  position: { x, y },
+  output: { kind: 'table', columns: [...columns] },
 });
 
 const base: GraphDocument = {
@@ -115,5 +136,119 @@ describe('document edits', () => {
       updateNode<InputNode>(framed, 'b', (node) => ({ ...node, position: { x: 10, y: 10 } })),
     );
     expect(moved.nodes.find((node) => node.id === 'b')?.frameId).toBe('section');
+  });
+});
+
+describe('table output columns (S60, S71-style)', () => {
+  const withTable: GraphDocument = { ...base, nodes: [...base.nodes, table('t', ['value'], 400, 200)] };
+
+  it('carries the wired edge along a rename, and regenerates its id', () => {
+    const wired = connect(withTable, { node: 'a', port: 'value' }, { node: 't', port: 'value' });
+    const renamed = renameColumn(wired, 't', 'value', 'width');
+    const node = renamed.nodes.find((entry) => entry.id === 't') as OutputNode;
+    expect(node.output.kind === 'table' && node.output.columns).toEqual(['width']);
+    expect(renamed.edges).toEqual([
+      { id: 'a.value->t.width', from: { node: 'a', port: 'value' }, to: { node: 't', port: 'width' } },
+    ]);
+  });
+
+  it('drops a column and whatever was wired to it', () => {
+    const twoColumns: GraphDocument = { ...base, nodes: [...base.nodes, table('t', ['value', 'a'], 400, 200)] };
+    const wired = connect(twoColumns, { node: 'b', port: 'value' }, { node: 't', port: 'value' });
+    const dropped = removeColumn(wired, 't', 'value');
+    const node = dropped.nodes.find((entry) => entry.id === 't') as OutputNode;
+    expect(node.output.kind === 'table' && node.output.columns).toEqual(['a']);
+    expect(dropped.edges).toEqual([]);
+  });
+
+  it('closes a column when the edge feeding it is removed', () => {
+    const wired = connect(withTable, { node: 'a', port: 'value' }, { node: 't', port: 'value' });
+    const closed = removeEdges(wired, new Set(wired.edges.map((edge) => edge.id)));
+    const node = closed.nodes.find((entry) => entry.id === 't') as OutputNode;
+    expect(node.output.kind === 'table' && node.output.columns).toEqual([]);
+  });
+
+  it('leaves a still-wired column untouched when an unrelated edge elsewhere is removed', () => {
+    const twoColumns: GraphDocument = { ...base, nodes: [...base.nodes, table('t', ['value', 'a'], 400, 200)] };
+    const wired = connect(
+      connect(twoColumns, { node: 'a', port: 'value' }, { node: 't', port: 'value' }),
+      { node: 'b', port: 'value' },
+      { node: 't', port: 'a' },
+    );
+    const oneRemoved = removeEdges(wired, new Set([wired.edges[0]?.id as string]));
+    const node = oneRemoved.nodes.find((entry) => entry.id === 't') as OutputNode;
+    expect(node.output.kind === 'table' && node.output.columns).toEqual(['a']);
+  });
+
+  it('closes a column when the node feeding it is removed', () => {
+    const wired = connect(withTable, { node: 'a', port: 'value' }, { node: 't', port: 'value' });
+    const closed = removeNodes(wired, new Set(['a']));
+    const node = closed.nodes.find((entry) => entry.id === 't') as OutputNode;
+    expect(node.output.kind === 'table' && node.output.columns).toEqual([]);
+  });
+
+  it('relabels a column when it is rewired, excluding its own current name from the dedupe', () => {
+    const wired = connect(withTable, { node: 'a', port: 'value' }, { node: 't', port: 'value' });
+    // Rewiring 'value' to a source also called "value" keeps the same name —
+    // it must not dedupe against itself and produce 'value2'.
+    const same = relabelColumn(wired, 't', 'value', 'value');
+    expect(same.column).toBe('value');
+
+    const relabeled = relabelColumn(wired, 't', 'value', 'width');
+    expect(relabeled.column).toBe('width');
+    const node = relabeled.document.nodes.find((entry) => entry.id === 't') as OutputNode;
+    expect(node.output.kind === 'table' && node.output.columns).toEqual(['width']);
+  });
+
+  it('prunes edges into ports a new output kind does not have', () => {
+    const twoColumns: GraphDocument = { ...base, nodes: [...base.nodes, table('t', ['value', 'a'], 400, 200)] };
+    const wired = connect(twoColumns, { node: 'b', port: 'value' }, { node: 't', port: 'a' });
+    const pruned = pruneEdgesTo(wired, 't', new Set(['value']));
+    expect(pruned.edges).toEqual([]);
+  });
+
+  it('names a ghost-slot column after whatever base string it is given', () => {
+    const named = addNamedColumn(withTable, 't', 'width');
+    expect(named.column).toBe('width');
+    const node = named.document.nodes.find((entry) => entry.id === 't') as OutputNode;
+    expect(node.output.kind === 'table' && node.output.columns).toEqual(['value', 'width']);
+  });
+
+  it('dedupes a ghost-slot name against a column already there', () => {
+    const named = addNamedColumn(withTable, 't', 'value');
+    expect(named.column).toBe('value2');
+  });
+
+  it('reorders columns, dropping before or after the target', () => {
+    const three: GraphDocument = { ...base, nodes: [...base.nodes, table('t', ['value', 'a', 'b'], 400, 200)] };
+
+    const after = reorderColumn(three, 't', 'value', 'b', 'after');
+    const afterNode = after.nodes.find((entry) => entry.id === 't') as OutputNode;
+    expect(afterNode.output.kind === 'table' && afterNode.output.columns).toEqual(['a', 'b', 'value']);
+
+    const before = reorderColumn(three, 't', 'b', 'value', 'before');
+    const beforeNode = before.nodes.find((entry) => entry.id === 't') as OutputNode;
+    expect(beforeNode.output.kind === 'table' && beforeNode.output.columns).toEqual(['b', 'value', 'a']);
+  });
+});
+
+describe('nodeLabel — what a node calls itself, for anything that needs a name rather than an id', () => {
+  it('uses the label the student typed, when there is one', () => {
+    expect(nodeLabel({ ...input('a', 0, 0), label: 'Pad width w' })).toBe('Pad width w');
+  });
+
+  it('falls back to the id for an unlabelled input or output node', () => {
+    expect(nodeLabel(input('w', 0, 0))).toBe('w');
+    expect(nodeLabel(table('t', ['value'], 0, 0))).toBe('t');
+  });
+
+  it('falls back to the formula id for an unlabelled formula node', () => {
+    const formulaNode: FormulaNode = {
+      kind: 'formula',
+      id: 'area1',
+      position: { x: 0, y: 0 },
+      formula: { id: 'invented.area', version: 1, hash: 'h' },
+    };
+    expect(nodeLabel(formulaNode)).toBe('invented.area');
   });
 });

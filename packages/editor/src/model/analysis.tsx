@@ -202,6 +202,16 @@ function readiness(
       continue;
     }
 
+    // A table's columns exist only while wired (S71-style, model/document.ts's
+    // `closeEmptyColumns`), so zero columns is not "nothing to check" the way
+    // it would be for a fixed port list — it is the same "not connected" a
+    // fresh, unwired node is in.
+    if (node.output.kind === 'table' && node.output.columns.length === 0) {
+      states.set(node.id, 'incomplete');
+      problems.set(node.id, 'wire something to it to add a column');
+      continue;
+    }
+
     const names = node.output.kind === 'table' ? node.output.columns : ['value'];
     const unwired = names.filter((name) => !isWired(node.id, name));
     if (unwired.length > 0) {

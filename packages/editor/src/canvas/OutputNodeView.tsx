@@ -1,17 +1,24 @@
 /**
  * An output node: a rendering choice over a value that already exists (S60).
  *
- * Three of S33's four kinds are offered here. A **table** is rendered when a
- * document carries one, but not offered for creation: its columns are extra
- * input ports, which is a wiring surface that belongs with the full notebook
- * view (PLAN.md step 11) rather than with the minimal editor.
+ * All four of S33's kinds are offered here. A **table**'s columns are extra
+ * target ports of its own, and exist only while something is wired to them —
+ * the same rule a spectrum port's slots follow (S71). Wiring onto the
+ * trailing ghost slot creates a column named after the *node* on the wire's
+ * other end (its own title, `nodeLabel` in Canvas.tsx — never the port
+ * symbol, which is not what a student typed), and deleting that wire closes
+ * the column with it (`closeEmptyColumns`, model/document.ts). Unlike a
+ * spectrum's anonymous slots, a table's columns are named and have an order
+ * a student cares about, so they also get a manual rename while still wired,
+ * and drag to reorder — the same before/after-half drag Notebook.tsx's
+ * sections use.
  *
  * The check node is the one that earns its place immediately — `S ≥ 1.5` as a
  * badge is what makes the notebook a dimensioning report rather than a list of
  * numbers, and it is the scalar counterpart of the plot's threshold line (S33).
  */
 
-import type { ReactElement } from 'react';
+import { useState, type ReactElement } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 
 import { parseUnit } from '@mds/units';
@@ -25,7 +32,16 @@ import {
 } from '@mds/schema';
 
 import { useGraph } from '../graph-context';
-import { reframe, removeNodes, updateNode } from '../model/document';
+import {
+  NEW_COLUMN,
+  pruneEdgesTo,
+  reframe,
+  removeColumn,
+  removeNodes,
+  renameColumn,
+  reorderColumn,
+  updateNode,
+} from '../model/document';
 import { Symbol } from '../Symbol';
 import { formatAuthored, parseAuthored, unitLabel } from '../model/quantity';
 import { reading, summarise } from '../model/values';
@@ -58,7 +74,11 @@ function Verdict({ nodeId }: { readonly nodeId: string }): ReactElement | null {
   }
 
   if (result.kind === 'table') {
-    return <span className="badge plot">{result.columns.length} columns</span>;
+    return (
+      <span className="badge plot">
+        {result.columns.length} column{result.columns.length === 1 ? '' : 's'}
+      </span>
+    );
   }
 
   return null;
@@ -66,6 +86,9 @@ function Verdict({ nodeId }: { readonly nodeId: string }): ReactElement | null {
 
 export function OutputNodeView({ id, selected }: NodeProps): ReactElement | null {
   const { document, analysis, edit, pinned, togglePin } = useGraph();
+  const [columnDrag, setColumnDrag] = useState<
+    { readonly over: string; readonly position: 'before' | 'after' } | undefined
+  >(undefined);
   const node = document.nodes.find((candidate) => candidate.id === id);
   if (node === undefined || node.kind !== 'output') return null;
 
@@ -117,21 +140,33 @@ export function OutputNodeView({ id, selected }: NodeProps): ReactElement | null
             <select
               className="nodrag"
               value={output.kind}
-              disabled={output.kind === 'table'}
               onChange={(event) => {
                 const kind = event.target.value as Output['kind'];
-                if (kind === 'print') setOutput({ kind });
-                if (kind === 'check') {
-                  setOutput({
-                    kind,
-                    comparison: '>=',
-                    threshold: { value: 1, unit: shown?.unit ?? parseUnit('') },
-                  });
-                }
-                if (kind === 'plot') {
-                  const first = ranges[0];
-                  if (first !== undefined) setOutput({ kind, x: first.id });
-                }
+                // Leaving `table` behind: only its `value` column, if any,
+                // means the same thing under the new kind — the rest of its
+                // columns are ports the new kind does not have.
+                const keep = new Set([VALUE_PORT]);
+                edit((current) => {
+                  const withPrunedEdges =
+                    output.kind === 'table' ? pruneEdgesTo(current, id, keep) : current;
+                  const next: Output =
+                    kind === 'print'
+                      ? { kind }
+                      : kind === 'check'
+                        ? {
+                            kind,
+                            comparison: '>=',
+                            threshold: { value: 1, unit: shown?.unit ?? parseUnit('') },
+                          }
+                        : kind === 'plot'
+                          ? { kind, x: ranges[0]?.id ?? '' }
+                          : { kind, columns: [] };
+                  if (kind === 'plot' && ranges[0] === undefined) return withPrunedEdges;
+                  return updateNode<OutputNode>(withPrunedEdges, id, (entry) => ({
+                    ...entry,
+                    output: next,
+                  }));
+                });
               }}
             >
               <option value="print">print</option>
@@ -139,7 +174,7 @@ export function OutputNodeView({ id, selected }: NodeProps): ReactElement | null
               <option value="plot" disabled={ranges.length === 0}>
                 plot
               </option>
-              {output.kind === 'table' ? <option value="table">table</option> : null}
+              <option value="table">table</option>
             </select>
           </label>
 
@@ -269,6 +304,72 @@ export function OutputNodeView({ id, selected }: NodeProps): ReactElement | null
             </>
           ) : null}
 
+          {output.kind === 'table' ? (
+            <label className="wide">
+              columns
+              <ul className="table-columns">
+                {output.columns.map((column) => (
+                  <li
+                    key={column}
+                    className={`table-column nodrag${
+                      columnDrag?.over === column ? ` drag-over-${columnDrag.position}` : ''
+                    }`}
+                    draggable
+                    onDragStart={(event) => {
+                      event.dataTransfer.setData('text/plain', column);
+                      event.dataTransfer.effectAllowed = 'move';
+                    }}
+                    onDragOver={(event) => {
+                      event.preventDefault();
+                      event.dataTransfer.dropEffect = 'move';
+                      const bounds = event.currentTarget.getBoundingClientRect();
+                      const position = event.clientY - bounds.top < bounds.height / 2 ? 'before' : 'after';
+                      setColumnDrag({ over: column, position });
+                    }}
+                    onDragLeave={() => setColumnDrag(undefined)}
+                    onDrop={(event) => {
+                      event.preventDefault();
+                      const position = columnDrag?.position;
+                      setColumnDrag(undefined);
+                      if (position === undefined) return;
+                      const source = event.dataTransfer.getData('text/plain');
+                      if (source.length === 0) return;
+                      edit((current) => reorderColumn(current, id, source, column, position));
+                    }}
+                  >
+                    <span className="column-grip" aria-hidden="true">
+                      ⠿
+                    </span>
+                    <TextField
+                      className="column-name"
+                      value={column}
+                      autoSize={1}
+                      title="Wires stay attached across a rename — a rename is a relabel, not a rewire."
+                      onCommit={(next) => {
+                        if (next.trim().length === 0) throw new Error('a column needs a name');
+                        if (next !== column && output.columns.includes(next)) {
+                          throw new Error(`'${next}' is already a column here`);
+                        }
+                        edit((current) => renameColumn(current, id, column, next));
+                      }}
+                    />
+                    <button
+                      type="button"
+                      className="column-remove"
+                      title={`remove column '${column}'`}
+                      onClick={() => edit((current) => removeColumn(current, id, column))}
+                    >
+                      ×
+                    </button>
+                  </li>
+                ))}
+                {output.columns.length === 0 ? (
+                  <li className="table-column table-column-empty">wire something to add a column</li>
+                ) : null}
+              </ul>
+            </label>
+          ) : null}
+
           <label className="wide">
             caption
             <TextField
@@ -300,13 +401,22 @@ export function OutputNodeView({ id, selected }: NodeProps): ReactElement | null
             </span>
           </li>
         ))}
+        {output.kind === 'table' ? (
+          <li className="port port-open" title="Wire something here to add a column named after it.">
+            <Handle type="target" position={Position.Left} id={slotHandleId(NEW_COLUMN, 'open')} />
+          </li>
+        ) : null}
       </ul>
 
       <div className="node-value">
-        <span className="reading">
-          {value === undefined ? '—' : summarise(value, output.kind === 'print' ? output.figures ?? 4 : 4)}
-        </span>
-        {value === undefined ? null : <Sparkline reading={value} />}
+        {output.kind === 'table' ? null : (
+          <>
+            <span className="reading">
+              {value === undefined ? '—' : summarise(value, output.kind === 'print' ? output.figures ?? 4 : 4)}
+            </span>
+            {value === undefined ? null : <Sparkline reading={value} />}
+          </>
+        )}
         <Verdict nodeId={id} />
       </div>
     </NodeShell>
