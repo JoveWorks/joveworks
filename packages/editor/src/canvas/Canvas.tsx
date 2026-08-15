@@ -36,7 +36,9 @@ import {
   axes as documentAxes,
   formulaRef,
   VALUE_PORT,
+  VERDICT_PORT,
   type Edge,
+  type Formula,
   type GraphDocument,
   type GraphNode,
 } from '@mds/schema';
@@ -65,8 +67,70 @@ import { FormulaNodeView } from './FormulaNodeView';
 import { FrameView } from './FrameView';
 import { InputNodeView } from './InputNodeView';
 import { OutputNodeView } from './OutputNodeView';
-import { QuickAddMenu, type QuickAddChoice } from './QuickAddMenu';
+import { QuickAddMenu, type ExistingCandidate, type QuickAddChoice } from './QuickAddMenu';
 import { basePortName, slotHandleId } from './spectrumSlots';
+
+/**
+ * Every already-placed node with a port fitting the drag's direction —
+ * QuickAddMenu.tsx's "find one already on the canvas" list. `from.type`
+ * names the *dragged* endpoint's own kind, so a dragged source needs a
+ * candidate with a free target port, and vice versa (mirrors `pickQuickAdd`
+ * below, which wires a fresh node the same way).
+ */
+function existingCandidates(
+  document: GraphDocument,
+  formulas: ReadonlyMap<string, Formula>,
+  from: { readonly nodeId: string; readonly type: 'source' | 'target' },
+): readonly ExistingCandidate[] {
+  const candidates: ExistingCandidate[] = [];
+  for (const node of document.nodes) {
+    if (node.id === from.nodeId) continue;
+
+    if (from.type === 'source') {
+      if (node.kind === 'formula') {
+        const formula = formulas.get(node.id);
+        const port = formula?.inputs[0]?.name;
+        if (formula === undefined || port === undefined) continue;
+        candidates.push({
+          nodeId: node.id,
+          label: nodeLabel(node),
+          subtitle: formula.citation ?? formula.id,
+          port,
+        });
+      } else if (node.kind === 'output') {
+        // A table's several named ports have no single obvious one to
+        // land on — offer its ghost slot instead (NEW_COLUMN), the same
+        // "wire it and the column names itself" a direct drag onto the
+        // node gets (OutputNodeView.tsx).
+        candidates.push({
+          nodeId: node.id,
+          label: nodeLabel(node),
+          subtitle: node.output.kind,
+          port: node.output.kind === 'table' ? NEW_COLUMN : VALUE_PORT,
+        });
+      } else if (node.kind === 'compare') {
+        candidates.push({ nodeId: node.id, label: nodeLabel(node), subtitle: 'compare', port: VALUE_PORT });
+      }
+      continue;
+    }
+
+    if (node.kind === 'input') {
+      candidates.push({ nodeId: node.id, label: nodeLabel(node), subtitle: 'input', port: VALUE_PORT });
+    } else if (node.kind === 'formula') {
+      const formula = formulas.get(node.id);
+      if (formula === undefined) continue;
+      candidates.push({
+        nodeId: node.id,
+        label: nodeLabel(node),
+        subtitle: formula.citation ?? formula.id,
+        port: formula.output.name,
+      });
+    } else if (node.kind === 'compare') {
+      candidates.push({ nodeId: node.id, label: nodeLabel(node), subtitle: 'compare', port: VERDICT_PORT });
+    }
+  }
+  return candidates;
+}
 
 type MenuTarget =
   | { readonly kind: 'node'; readonly id: string; readonly x: number; readonly y: number }
@@ -469,12 +533,57 @@ export function Canvas(): ReactElement {
   };
 
   /**
+   * Finish a wire dropped on empty canvas by wiring it to a port that is
+   * already there — no node placed, just the edge (S64's refusal path is
+   * the same one a manual drag onto that node's own handle would get).
+   * A table's ghost slot needs the same column-creation `onConnect` gives a
+   * direct drag (`addNamedColumn`, named after the drag's own source).
+   */
+  const wireToExisting = (target: QuickAddTarget, nodeId: string, port: string): void => {
+    edit((current) => {
+      const dragEndpoint = { node: target.from.nodeId, port: target.from.port };
+      const existingEndpoint = { node: nodeId, port };
+      const [from, to] =
+        target.from.type === 'source' ? [dragEndpoint, existingEndpoint] : [existingEndpoint, dragEndpoint];
+
+      if (to.port === NEW_COLUMN) {
+        const source = current.nodes.find((entry) => entry.id === from.node);
+        const base = source === undefined ? from.port : nodeLabel(source);
+        const named = addNamedColumn(current, to.node, base);
+        const resolvedTo = { node: to.node, port: named.column };
+        const candidate: Edge = { id: edgeId(from, resolvedTo), from, to: resolvedTo };
+        const verdict = canConnect(named.document, catalogues, candidate);
+        if (!verdict.ok) {
+          setRefusal(verdict.reason);
+          return current;
+        }
+        setRefusal(undefined);
+        return connect(named.document, from, resolvedTo);
+      }
+
+      const candidate: Edge = { id: edgeId(from, to), from, to };
+      const verdict = canConnect(current, catalogues, candidate);
+      if (!verdict.ok) {
+        setRefusal(verdict.reason);
+        return current;
+      }
+      setRefusal(undefined);
+      return connect(current, candidate.from, candidate.to, isSpectrumTarget(candidate.to));
+    });
+  };
+
+  /**
    * Finish a wire dropped on empty canvas: place the chosen node, then wire
    * the dragged endpoint to whichever of its ports fits the drag's direction.
    * A refusal here is the same refusal a manual drag-and-drop would get,
    * surfaced the same way (S64) — the node still lands, just unconnected.
    */
   const pickQuickAdd = (target: QuickAddTarget, choice: QuickAddChoice): void => {
+    if (choice.kind === 'existing') {
+      wireToExisting(target, choice.nodeId, choice.port);
+      return;
+    }
+
     const position = flow.screenToFlowPosition({ x: target.x, y: target.y });
     edit((current) => {
       const id = uniqueId(
@@ -635,6 +744,7 @@ export function Canvas(): ReactElement {
             y={quickAdd.y}
             direction={quickAdd.from.type}
             catalogues={catalogues}
+            existing={existingCandidates(document, analysis.formulas, quickAdd.from)}
             canPlot={documentAxes(document).length > 0}
             onPick={(choice) => pickQuickAdd(quickAdd, choice)}
             onClose={() => setQuickAdd(undefined)}
