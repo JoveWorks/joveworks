@@ -30,6 +30,7 @@ import { formatAuthored, parseAuthored, unitLabel } from '../model/quantity';
 import { reading, summarise } from '../model/values';
 import { NodeShell } from './NodeShell';
 import { Sparkline } from './Sparkline';
+import { slotHandleId } from './spectrumSlots';
 import { NumberField, TextField } from './fields';
 
 /** What the node shows when the kernel has an answer for it. */
@@ -289,7 +290,10 @@ export function OutputNodeView({ id, selected }: NodeProps): ReactElement | null
       <ul className="ports">
         {ports.map((name) => (
           <li key={name} className="port">
-            <Handle type="target" position={Position.Left} id={name} />
+            {/* Every target handle is slot-suffixed now (spectrumSlots.ts),
+                even a single-occupancy one, since Canvas's edge projection
+                does not know port kinds and suffixes uniformly. */}
+            <Handle type="target" position={Position.Left} id={slotHandleId(name, 0)} />
             <span className="port-name">{name}</span>
           </li>
         ))}
