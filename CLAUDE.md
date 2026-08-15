@@ -193,6 +193,10 @@ These follow from settled decisions; do not relitigate them in code.
 
 ## Working style
 
+- **Thomas tests the editor in the browser himself. Do not launch `pnpm dev`
+  or drive it yourself** — he already has it running and killing/restarting it
+  from underneath him loses that session. State what you changed and what to
+  check for; let him report back what he saw.
 - **Work on `main`.** No feature branches until there is an MVP.
 - **Do not build for hypothetical futures.** This is early development; scope
   decisions have repeatedly been narrowed on purpose (S25, S41, S51, S52). When
