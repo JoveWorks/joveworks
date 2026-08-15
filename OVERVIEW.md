@@ -10,16 +10,18 @@ The point is not to compute a number once. It is to **sweep a design space** —
 try every shaft diameter in a standard series, see which ones satisfy every
 constraint at once, and look at the result as a graph.
 
-> **Status: the engine works and is verified; the interface does not exist yet.**
-> `units`, `schema`, `nodes` and `kernel` are built and tested: a graph of base
-> nodes evaluates end to end, sweeps and all, from a file. The belt chapter is
-> extracted, into a separate private repository — this one still holds no
-> textbook content — and **the belt lab's golden values reproduce through the
-> kernel**, eleven of twelve, the twelfth quarantined and refused on purpose.
-> What is left of milestone 1 is the editor ([NEXT.md](NEXT.md)). Every decision
-> is settled (see [DECISIONS.md](DECISIONS.md)); the build sequence is in
-> [PLAN.md](PLAN.md). This document describes the intended system, so read the
-> parts about the canvas as design rather than as something you can open.
+> **Status: the engine works and is verified, and the editor opens.** `units`,
+> `schema`, `nodes`, `kernel` and `editor` are built and tested: `pnpm dev`
+> gives you a canvas with a palette and a live notebook, and a graph of base
+> nodes evaluates end to end, sweeps and all. The belt chapter is extracted,
+> into a separate private repository — this one still holds no textbook
+> content — and **the belt lab's golden values reproduce**, eleven of twelve,
+> the twelfth quarantined and refused on purpose, both through the kernel and
+> through the editor. What is left of milestone 1 is a hand pass over the
+> interface ([NEXT.md](NEXT.md)). Every decision is settled (see
+> [DECISIONS.md](DECISIONS.md)); the build sequence is in [PLAN.md](PLAN.md).
+> Parts of this document still describe intent rather than what is built —
+> export, authoring and autosave are the notable ones.
 
 ---
 

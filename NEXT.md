@@ -15,68 +15,65 @@ the *next* step rather than a finished one.
 satisfy a requirement for a pure number, so `rm.16.24A`/`rm.16.24B` stay
 quarantined and `β₁` stays out of reach. What would release them is now a
 content question — confirm the wrap angle's `[]` tag against R&M — paired with
-amending S54. Neither is code, and neither blocks the editor.
+amending S54. Neither is code.
+
+`S67`–`S69` were settled by step 8 and needed no schema change: the editor's
+questions were all about how an *unfinished* graph behaves, not about the rules.
 
 ---
 
-## Current: milestone 1, step 8 — the minimal editor
+## Current: milestone 1, step 8 — fix what the browser pass found
+
+The editor is built and the model layer is tested. What is left is the pass no
+test can do: opening it and using it. That is
+[packages/editor/TESTING.md](packages/editor/TESTING.md), done by hand, on a
+machine with a browser.
 
 ```
 Continue milestone 1 of machine-design-studio.
 
-Read OVERVIEW.md first (the "What it looks like" and "Outputs and the
-notebook" sections are the spec), then PLAN.md and DECISIONS.md. S1–S66 are
-settled — implement them, don't relitigate them. Nothing is open.
+Steps 1–7 are done and step 8 — the minimal editor — is built: canvas,
+palette, notebook, wiring, one sweep, one plot. `pnpm build` and `pnpm test`
+are green, and the belt lab reproduces its golden values through the editor's
+own path (packages/editor/src/model/samples.test.ts).
 
-Steps 1–7 are done. `units`, `schema`, `nodes` and `kernel` are built and
-tested; C16_Belt is extracted (54 records, 7 verified, 42 unverified, 5
-quarantined) and its golden values reproduce end to end —
-test/belt-goldens.test.ts is the worked example of driving the kernel from a
-GraphDocument, and the closest thing to documentation for the API.
+Read CLAUDE.md, then packages/editor/TESTING.md, which is the hand checklist
+for the interface. I have run it and here is what I found:
 
-Scope for this session: PLAN.md milestone 1, step 8 — the minimal editor.
-Canvas, wiring, one sweep, one plot. Do not extract another chapter, and do
-not build a formula-authoring UI (S51).
+  <paste findings here>
 
-The kernel already answers every question the canvas needs to ask, so the
-editor should call it rather than reimplement any of it:
+Fix those. Keep the kernel the authority — every "can I do this?" already has
+an answer in @mds/kernel and S64 exists so the canvas cannot drift from it —
+and do not widen the milestone: no second chapter, no formula-authoring UI
+(S51), no autosave (S24 is settled but was not in step 8's scope).
 
-- `typesConnect` — what to grey out while a wire is being dragged. Cheap and
-  explicitly not the authority (S64).
-- `canConnect` — whether to attach this wire. It resolves the whole graph
-  with the edge added, so connect time and evaluation time cannot disagree.
-- `evaluateDocument` — the numbers, the outputs and the warnings, in one call.
-- `valueAt` — what a given port produced, for the node bodies.
-
-Layout is settled (S46–S50): collapsible palette left, canvas centre,
-collapsible notebook right; **no permanent inspector** — values, units and
-ranges are edited on the node. Units are text on the port; colour is reserved
-for state (quarantined, out of applicability, failing check, error). Nodes are
-compact by default, and a swept value shows a sparkline where a scalar shows a
-number.
-
-React Flow (`@xyflow/react`), Vite, and Observable Plot for the one plot
-(S26). Keep React out of the kernel — `pnpm build` is what enforces that
-(S22/S55), so run it.
-
-The obvious graph to open it with is the belt lab, since it is already known
-to be right. It needs the private catalogue, so the editor must degrade
-honestly when none is loaded rather than shipping a fixture that embeds one.
+Where a finding is a judgement call rather than a defect — node density, what
+colour means, how much a compact node shows — say so and propose, rather than
+quietly changing a settled decision (S46–S50).
 ```
 
-### Why it is shaped this way
+### If the pass came back clean
 
-- **The kernel is the authority, and it is finished.** The editor's job is
-  drawing and editing, not deciding. Every "can I do this?" already has an
-  answer in `@mds/kernel`, and S64 exists precisely so the canvas cannot drift
-  from it.
-- **No authoring UI** (S51). A catalogue correction is a re-run of the
-  extractor, as step 7 demonstrated: seven statuses changed, and the diff was
-  seven lines.
-- **The editor is the first place a distribution mistake can happen.** A
-  fixture graph with belt formulas embedded in it would put R&M content in a
-  public repo — graphs reference formulas by id, version and hash, never embed
-  them (S23), and that is what makes this safe.
+Then milestone 1 is done, and the next chunk is the first of milestone 2. Two
+candidates, and the order matters less than picking one deliberately:
+
+- **The second slice** (step 10) — `C2_Tolerance` or the press-fit material in
+  `C12`, chosen to exercise tables and categorical ports (S37, S38). Belt
+  touches neither, and the kernel raises on both today rather than
+  half-working. This is the one that tests whether the schema holds.
+- **DEFECTS.md** (step 9) — which needs a home first; see the standing items.
+
+### Why the current chunk is shaped this way
+
+- **The editor's job is drawing and editing, not deciding.** Every rule about
+  graphs was settled before it existed, and `canConnect` resolves the whole
+  graph with the candidate edge added so connect time and evaluation time cannot
+  disagree (S64). A finding that seems to call for new logic in the editor is
+  usually a finding about the kernel, or about a decision.
+- **A hand pass is not a formality here.** Three of the four things the editor
+  must get right are perceptual: that a refusal is *visible*, that a sweep reads
+  as a sweep propagating (S50), that colour means state and nothing else (S49).
+  A green test suite says nothing about any of them.
 
 ---
 
@@ -84,9 +81,7 @@ honestly when none is loaded rather than shipping a fixture that embeds one.
 
 Milestone 1 ends with step 8; milestone 2 is breadth — DEFECTS.md across the
 corpus, the remaining chapters, and the full notebook view. **Choose the second
-slice to exercise tables and categorical ports** (S37, S38): `C2_Tolerance` or
-the press-fit material in `C12`. Belt touches neither, and the kernel raises on
-both today rather than half-working.
+slice to exercise tables and categorical ports** (S37, S38).
 
 ## Standing items, none blocking
 
@@ -106,7 +101,16 @@ both today rather than half-working.
   but the book and its tables. A content task, and the extractor is where the
   answers would go.
 - **Tables and categorical ports are unvalidated** (S37, S38), and the kernel
-  says so out loud rather than half-working.
+  says so out loud rather than half-working. The editor accordingly offers
+  neither as an input kind.
+- **No autosave.** S24 settled IndexedDB autosave plus file export; step 8 built
+  the export half only, so a refresh loses the graph *and* the loaded catalogue.
+  Worth doing before anyone uses this for real work, and it is small.
+- **Contour is drawn but unverified.** S26 asks for it to be checked against the
+  key-design case before it is trusted; a non-uniformly spaced axis is currently
+  stretched onto a uniform grid.
+- **The bundle is 718 kB** (238 kB gzipped), most of it React Flow and Observable
+  Plot. Fine for now, worth a look before students on a phone tether open it.
 - **DEFECTS.md has no home yet.** PLAN.md's format carries the current
   expression, which cannot live in this repository. Either it goes to the
   private repo or the entries drop the expression and cite file:line. The

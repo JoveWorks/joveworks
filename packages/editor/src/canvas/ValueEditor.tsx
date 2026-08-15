@@ -1,0 +1,163 @@
+/**
+ * Turning an input into a range, on the node (S29, S47).
+ *
+ * This is the control the whole tool is about: the same node holds `250 kW` and
+ * `linspace(20, 60, 21)`, and switching between them is what turns a calculation
+ * into a design study. Nothing downstream is rewired, because a scalar is a
+ * series with no axes (S43).
+ *
+ * Four kinds are offered. `tableColumn` is absent because tables arrive with the
+ * second slice (S37) and the kernel says so rather than half-working, and the
+ * categorical kinds are absent because nothing in milestone 1 has a categorical
+ * port to receive one (S38, S41's accepted gap) — offering them would be a field
+ * whose every value is refused at the next connection.
+ */
+
+import type { ReactElement } from 'react';
+
+import { parseUnit, type Unit } from '@mds/units';
+import type { ValueSpec } from '@mds/schema';
+
+import { formatAuthored, parseAuthored } from '../model/quantity';
+import { NumberField, TextField } from './fields';
+
+type Kind = 'scalar' | 'linear' | 'logarithmic' | 'list';
+
+const KIND_LABELS: Readonly<Record<Kind, string>> = {
+  scalar: 'value',
+  linear: 'linear range',
+  logarithmic: 'log range',
+  list: 'list',
+};
+
+function unitOf(value: ValueSpec): Unit {
+  return 'unit' in value ? value.unit : parseUnit('');
+}
+
+/** A first guess when the kind changes, so a switch never lands on nothing. */
+function converted(value: ValueSpec, kind: Kind): ValueSpec {
+  const unit = unitOf(value);
+  const sample = value.kind === 'scalar' ? value.value : 1;
+  switch (kind) {
+    case 'scalar':
+      return { kind, value: value.kind === 'list' ? (value.values[0] ?? sample) : sample, unit };
+    case 'linear':
+    case 'logarithmic': {
+      const start = kind === 'logarithmic' && sample <= 0 ? 1 : sample;
+      return { kind, start, stop: start * 2, points: 21, unit };
+    }
+    case 'list':
+      return { kind, values: [sample, sample * 2], unit };
+  }
+}
+
+interface Props {
+  readonly value: ValueSpec;
+  readonly onChange: (value: ValueSpec) => void;
+}
+
+export function ValueEditor({ value, onChange }: Props): ReactElement {
+  const kind = (['scalar', 'linear', 'logarithmic', 'list'] as const).includes(value.kind as Kind)
+    ? (value.kind as Kind)
+    : 'scalar';
+  const unit = unitOf(value);
+
+  const setUnit = (text: string): void => {
+    const parsed = parseUnit(text); // throws, and the field shows why
+    switch (value.kind) {
+      case 'scalar':
+      case 'spectrum':
+      case 'linear':
+      case 'logarithmic':
+      case 'list':
+        onChange({ ...value, unit: parsed });
+        break;
+      default:
+        // The categorical kinds carry no unit, and neither does a table column.
+        break;
+    }
+  };
+
+  return (
+    <div className="value-editor">
+      <select
+        className="kind"
+        value={kind}
+        onChange={(event) => onChange(converted(value, event.target.value as Kind))}
+      >
+        {Object.entries(KIND_LABELS).map(([option, label]) => (
+          <option key={option} value={option}>
+            {label}
+          </option>
+        ))}
+      </select>
+
+      {value.kind === 'scalar' ? (
+        <TextField
+          className="quantity"
+          value={formatAuthored(value)}
+          placeholder="250 kW"
+          title="A number and its unit. An undeclared unit is an error, never a guess (S5)."
+          onCommit={(text) => onChange({ kind: 'scalar', ...parseAuthored(text) })}
+        />
+      ) : null}
+
+      {value.kind === 'linear' || value.kind === 'logarithmic' ? (
+        <div className="range-fields">
+          <label>
+            from
+            <NumberField value={value.start} onCommit={(start) => onChange({ ...value, start })} />
+          </label>
+          <label>
+            to
+            <NumberField value={value.stop} onCommit={(stop) => onChange({ ...value, stop })} />
+          </label>
+          <label>
+            points
+            <NumberField
+              value={value.points}
+              integer
+              minimum={2}
+              title="Point count is the control, not step size (S29)."
+              onCommit={(points) => onChange({ ...value, points })}
+            />
+          </label>
+          <label>
+            unit
+            <TextField className="unit" value={unit.symbol} onCommit={setUnit} />
+          </label>
+        </div>
+      ) : null}
+
+      {value.kind === 'list' ? (
+        <div className="range-fields">
+          <label className="wide">
+            values
+            <TextField
+              className="list"
+              value={value.values.join(', ')}
+              placeholder="25, 30, 35, 40"
+              title="Standard sizes — the range that answers which part to buy (S29)."
+              onCommit={(text) => {
+                const values = text
+                  .split(/[,;\s]+/u)
+                  .filter((entry) => entry.length > 0)
+                  .map((entry) => {
+                    const parsed = Number(entry);
+                    if (!Number.isFinite(parsed)) throw new Error(`'${entry}' is not a number`);
+                    return parsed;
+                  });
+                if (values.length === 0) throw new Error('a list needs at least one value');
+                onChange({ ...value, values });
+              }}
+            />
+          </label>
+          <label>
+            unit
+            <TextField className="unit" value={unit.symbol} onCommit={setUnit} />
+          </label>
+        </div>
+      ) : null}
+    </div>
+  );
+}

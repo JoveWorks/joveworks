@@ -11,14 +11,20 @@ the graph becomes a design study.
 
 ## Start here
 
-**Milestone 1, in progress.** As of 2026-08-15 the pnpm workspace exists and
-`packages/units`, `packages/schema`, `packages/nodes` and `packages/kernel` are
-built and tested; `editor` is a placeholder carrying only a comment. `C16_Belt`
-is extracted by `tools/extract/c16_belt.py` into the private catalogue repo, and
-its golden values reproduce through the kernel — `test/belt-goldens.test.ts`,
-which needs `MDS_CATALOGUE` set and skips without it, exactly as
-`test/catalogue-check.test.ts` does. `pnpm test` runs everything; `pnpm build`
-(`tsc -b`) is also the dependency-direction check.
+**Milestone 1, in progress.** As of 2026-08-15 every package is built and
+tested — `units`, `schema`, `nodes`, `kernel` and now `editor`, which is a
+working React Flow canvas with a palette, a notebook panel, one sweep and one
+plot. `C16_Belt` is extracted by `tools/extract/c16_belt.py` into the private
+catalogue repo, and its golden values reproduce both through the kernel
+(`test/belt-goldens.test.ts`) and through the editor's own path
+(`packages/editor/src/model/samples.test.ts`); both need `MDS_CATALOGUE` set and
+skip without it, exactly as `test/catalogue-check.test.ts` does. `pnpm test`
+runs everything; `pnpm build` (`tsc -b`) is also the dependency-direction check;
+`pnpm dev` serves the editor.
+
+**What is left of milestone 1 is a hand pass over the editor in a browser** —
+`packages/editor/TESTING.md`. Nothing automated can tell us whether a refusal is
+visible or a twenty-node graph is legible.
 
 Read [OVERVIEW.md](OVERVIEW.md) first — it is the whole project in one pass.
 Then [PLAN.md](PLAN.md) for the build sequence and
@@ -26,10 +32,10 @@ Then [PLAN.md](PLAN.md) for the build sequence and
 
 **The next concrete step** is in [NEXT.md](NEXT.md), which carries a
 ready-to-paste prompt for the current chunk of work and the ordered list after
-it. Right now that is milestone 1 step 8: the minimal editor. Do not widen
-milestone 1 to other chapters — see the scope note below. **Keep NEXT.md
-current**: when a session finishes the chunk it describes, update it to name the
-next one.
+it. Right now that is fixing whatever the browser pass over the editor turns up.
+Do not widen milestone 1 to other chapters — see the scope note below. **Keep
+NEXT.md current**: when a session finishes the chunk it describes, update it to
+name the next one.
 
 **No decision is open.** `D20` — how an angle becomes a pure number — closed as
 S66 taking its option A: the two wrap-angle formulas stay quarantined, and the
@@ -104,7 +110,7 @@ distributed or shared**. Consequences:
 
 ## Architecture
 
-Planned layout, not yet created. This repo — **MIT, publishable**:
+This repo — **MIT, publishable**. Every package below now exists:
 
 ```
 packages/

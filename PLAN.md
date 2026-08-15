@@ -410,11 +410,22 @@ S25 migration.
    42 stay `unverified`, which is S19 working rather than a gap. The status
    change went through a re-run of the extractor (S51/S52); its diff is seven
    lines, all of them `status`. Settled S66.
-8. **Minimal editor** — collapsible palette left, canvas centre, collapsible
-   notebook right (S46). Node-first editing, compact nodes with sparklines for
-   swept values (S47, S50). Wiring, one sweep, one plot. **No formula-authoring
-   UI** (S51): the catalogue is a regenerated artefact of the extraction script, so a
-   correction is a re-run rather than an in-app edit.
+8. **Minimal editor** — **built; browser verification outstanding.** Collapsible
+   palette left, canvas centre, collapsible notebook right (S46); node-first
+   editing, compact nodes with sparklines for swept values (S47, S50); wiring
+   checked by `canConnect` at drop and `typesConnect` in the air (S64); one
+   sweep, one plot (S26, S29). No formula-authoring UI (S51).
+
+   The kernel needed nothing added to it. What the step settled is how an
+   *unfinished* graph behaves — S67's ready-subgraph evaluation, S68's samples
+   built against the loaded catalogue, S69's frames as regions rather than
+   containers. The belt lab reproduces its goldens through the editor's own path
+   (`packages/editor/src/model/samples.test.ts`), which is the same acceptance
+   criterion reached the way a student reaches it.
+
+   **What no automated test reaches** is whether it behaves like a tool: a
+   refusal that is visible, a sweep that reads as one, a twenty-node graph that
+   is legible. `packages/editor/TESTING.md` is that pass, and it is done by hand.
 
 That slice is a working tool for one chapter, end to end.
 

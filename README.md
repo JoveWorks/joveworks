@@ -7,18 +7,21 @@ Built for the KU Leuven course on dimensioning of machine parts. Formulas follow
 **Roloff & Matek, 6th edition**, and each one carries a citation back to its
 textbook equation number.
 
-Status: **milestone 1 under way.** `units`, `schema`, `nodes` and `kernel` are
-built and tested — a graph of base nodes evaluates end to end, sweeps included,
-with no textbook content anywhere in it. The belt chapter is extracted into the
-separate private catalogue repository and **its golden values reproduce through
-the kernel**, so the engine is verified against the course's own worked
-examples. The editor is still a placeholder, and it is all that is left of this
-milestone. Every design decision is closed (S1–S66). What remains besides code
-is content sign-off against the textbook, which gates individual formulas rather
-than any build step.
+Status: **milestone 1 nearly done.** `units`, `schema`, `nodes`, `kernel` and
+`editor` are built and tested — a graph of base nodes evaluates end to end,
+sweeps included, with no textbook content anywhere in it, and `pnpm dev` opens
+the canvas on a worked sweep. The belt chapter is extracted into the separate
+private catalogue repository and **its golden values reproduce**, through the
+kernel and through the editor alike, so the engine is verified against the
+course's own worked examples. What is left of the milestone is a hand pass over
+the interface ([packages/editor/TESTING.md](packages/editor/TESTING.md)). Every
+design decision is closed (S1–S69). What remains besides code is content
+sign-off against the textbook, which gates individual formulas rather than any
+build step.
 
 ```
 pnpm install
+pnpm dev         # the editor, at http://localhost:5173/
 pnpm test        # vitest
 pnpm build       # tsc -b; an undeclared cross-package import fails here (S55)
 ```

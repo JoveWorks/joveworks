@@ -3,13 +3,15 @@
 Companion to [PLAN.md](PLAN.md). Records what is settled and why. Last updated
 2026-08-15.
 
-**Every decision is closed.** S1–S65 are settled; D1–D19 are all resolved.
+**Every decision is closed.** S1–S69 are settled; D1–D20 are all resolved.
 S53–S55 were added from building `packages/units`, and S53 **corrects** an
 earlier claim that the dimension checker would catch the density fudge. S56–S58
 were added from building `packages/schema`; S56 **amends** the recurring
 "per-port dimension and display unit" wording, which asked for the same fact
-twice. S59–S60 came from `packages/nodes`, and S61–S65 from `packages/kernel`,
-where S62 is the one that changes what a transcriber may write in a formula.
+twice. S59–S60 came from `packages/nodes`, S61–S65 from `packages/kernel`,
+where S62 is the one that changes what a transcriber may write in a formula, and
+S67–S69 from `packages/editor` — where the question was not what the rules are
+but how a graph looks while it is still being built.
 
 The only work left that is not code is **content sign-off** — the known defects
 and the junk unit tags — which needs Roloff & Matek in hand. It gates individual
@@ -91,6 +93,9 @@ claims rights over course-derived material** (see S44).
 | S65 | **Formula ids are unique across every loaded catalogue at once** | S23's reference is id + version + hash with no catalogue field, so a graph naming `add` names it globally. The kernel resolves a collision by hash and warns rather than guessing, but that is a safety net, not a design: **extraction must namespace what it generates**, so an R&M id cannot collide with a base node's or with another chapter's. Cheap to honour now; a data migration to fix once student graphs exist |
 
 | S66 | **D20 resolved as its option A: an angle does not satisfy a requirement for a pure number, and the two wrap-angle formulas stay quarantined** | S54 stands unamended. `acos` returns an angle, R&M tags the wrap angle `[]`, and `rm.16.24A`/`rm.16.24B` therefore declare a dimensionless output while producing an angle — so they remain unevaluable under S20 until the tag question is answered against the book, alongside the other unit-tag sign-offs. **The cost is paid, not hidden**: β₁ is one of the twelve belt goldens and cannot be reproduced, so `test/belt-goldens.test.ts` asserts that the eleven others match *and* that a graph computing β₁ is refused with the reason on the record. Choosing this over option B keeps the seam visible instead of dissolving it in a rule that would also let a radian pass wherever a pure number is wanted; option B remains available and costs nothing to adopt later, because it loosens a check rather than changing any stored data. What it does mean today: the wrap angle displays as a bare number, and the belt chapter reaches a student with 5 of 54 records unusable rather than 3 |
+| S67 | **The editor evaluates the part of the graph that is ready and marks the rest; it does not implement a second, laxer kernel to do it** | From building the editor. `evaluateDocument` answers about a *finished* graph — an unwired input or a quarantined formula is a refusal (S19) — which is right for a test and wrong for a canvas, where every number would vanish because the node you have not wired yet is not wired yet. So `model/analysis.ts` decides which nodes are **ready** (an incoming edge or a declared default on every input; not quarantined; nothing upstream unready) and hands that subgraph to the real kernel under the real rules. The decision is made from the same facts the kernel uses, and no rule is relaxed anywhere. It yields the four states S49 spends colour on — `incomplete`, `quarantined`, `blocked`, `error` — and the distinction between the first and third is the one that matters to a student: "you have not finished here" against "you have not finished over there". A node the kernel refuses outright is dropped with its descendants and the remainder re-evaluated, bounded, so one bad node costs its own subtree and not the graph |
+| S68 | **A sample graph is built against the loaded catalogue at runtime, never shipped as a fixture** | The belt lab is the graph already known to be right, so it is the obvious thing to open the editor with — but a stored fixture would have to carry formula references, and a reference is id + version + **hash** (S23), which cannot be computed without the record. Building it in memory from the loaded catalogue means the sample holds ids and numbers only, exactly as `test/belt-goldens.test.ts` does, and it is *unavailable* rather than embedded when no catalogue is loaded. That is what makes "the editor degrades honestly" a mechanism rather than an intention: there is nothing to degrade from. The base-node sample (pad pressure) is always available for the same reason in reverse — arithmetic is unrestricted (S42), so the app demonstrates a sweep, a check and a plot with zero textbook content present |
+| S69 | **Group frames are passive regions of the canvas; membership is decided by where a node sits** | S30 makes the canvas layout the report outline, so dragging a node into a frame is how it joins that section — there is no membership to manage separately, and no container to add a node to. The frame therefore does not carry its nodes when it moves, which is the accepted cost: it keeps one source of truth for what is in a section, and it keeps the frame from becoming a parent node whose children need coordinates relative to it. Overlap resolves to the frame drawn last |
 
 ---
 
@@ -130,7 +135,7 @@ frontend.
 
 ## Open
 
-**Nothing.** D1–D20 are closed as S13–S45 and S66; S46–S65 were settled as the
+**Nothing.** D1–D20 are closed as S13–S45 and S66; S46–S69 were settled as the
 packages that needed them were built. What remains is content sign-off, below —
 it gates individual formulas through the S19/S20 quarantine, never a build step.
 
@@ -217,6 +222,7 @@ MIT, so nothing in the editor is affected. Do not reopen as a blocker.
 
 | Date | Change |
 |---|---|
+| 2026-08-15 | **S67–S69 settled from milestone 1 step 8**, the minimal editor. None of them is a rule about graphs — the kernel had already settled every one of those, and S64 is why the canvas cannot drift from it. They are about the *unfinished* graph, which no test had reason to describe: the editor evaluates the ready subgraph through the real kernel rather than relaxing anything (S67), a sample is built against the loaded catalogue so the belt lab is unavailable rather than embedded without one (S68), and a frame is a region of the canvas rather than a container, so membership follows position (S69). What the step did **not** produce is a schema change, which is the second time milestone 1 has left the contract untouched. Browser verification is a separate pass — `packages/editor/TESTING.md` carries it |
 | 2026-08-15 | **D20 closed as S66 by milestone 1 step 7**, the belt goldens — its option A, so S54 is unamended and the two wrap-angle records stay quarantined. Eleven of the twelve golden values reproduce end to end through the kernel, every one on the first run, which is the schema's real result: 55 formulas were extracted to find out whether the contract was wrong, and nothing in it moved. Seven formulas earned `verified` and 42 stayed `unverified` (S19), through a re-run of the extractor rather than an edit (S51/S52). Two things surfaced that the goldens were not looking for: the notebooks print β₁ using `/3.14` where `/π` was meant, and `T = P'/(2π·n)` has no R&M number at all — the notebook computes it inline, so the graph builds it from base nodes, which is S42 earning its place |
 | 2026-08-15 | **D20 opened by milestone 1 step 6**, the belt extraction — the first decision to open since D1–D19 closed. The dimension check answered for 49 of 54 records unaided; of the five it refused, three are defects in the source (now listed under defect sign-off) and two are one seam in S54, which settles what trig *accepts* and not what inverse trig *returns*. Nothing else about the schema moved, which is the result milestone 1 was designed to produce |
 | 2026-08-15 | **S61–S65 settled from milestone 1 step 5**, the evaluation kernel. S61 answers the fractional-exponent question NEXT.md left open: the kernel compares exponents with a tolerance and `units` keeps `===`, because only the kernel produces thirds. S62 is the one that reaches back into content — a numeric literal facing a dimensioned value is read in canonical units, which is what makes S40's nominal-size band conditions transcribable at all. S63 records S54's counterpart at a wire, S64 that a candidate connection is checked by full resolution so the editor cannot drift from the kernel, and S65 that formula ids are global, so extraction must namespace what it generates |
