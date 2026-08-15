@@ -206,7 +206,18 @@ function Section({
         setMenu({ x: event.clientX, y: event.clientY });
       }}
     >
-      <h2>{frame === undefined ? 'Not in a section' : <span className="grip">⠿ {frame.title}</span>}</h2>
+      <h2>
+        {frame === undefined ? (
+          'Not in a section'
+        ) : (
+          <>
+            <span className="grip" aria-hidden="true">
+              ⠿
+            </span>
+            {frame.title}
+          </>
+        )}
+      </h2>
       {menu === undefined ? null : (
         <ContextMenu x={menu.x} y={menu.y} items={menuItems} onClose={() => setMenu(undefined)} />
       )}

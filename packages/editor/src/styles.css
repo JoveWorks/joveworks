@@ -837,7 +837,7 @@ aside.right {
 /* --- notebook ----------------------------------------------------------- */
 
 .notebook {
-  padding: 12px 14px 40px;
+  padding: 12px 14px 40px 22px;
 }
 
 .notebook h1 {
@@ -860,8 +860,14 @@ aside.right {
   cursor: grabbing;
 }
 
+/* Sits in the panel's own left padding, ahead of where the title text
+   starts — a drag affordance next to the name, not a character of it. */
 .notebook-section .grip {
+  display: inline-block;
+  width: 14px;
+  margin-left: -18px;
   color: var(--muted);
+  font-size: 11px;
 }
 
 /* A line at the exact edge the section would land on, not a box around the
