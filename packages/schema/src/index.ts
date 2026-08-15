@@ -46,7 +46,15 @@ export type {
   Monotonicity,
 } from './port.js';
 
-export { VALUE_KINDS, isRange, axisLength, parseValueSpec, serializeValueSpec } from './value.js';
+export {
+  VALUE_KINDS,
+  RENARD_SERIES,
+  isRange,
+  axisLength,
+  renardValues,
+  parseValueSpec,
+  serializeValueSpec,
+} from './value.js';
 export type {
   ValueSpec,
   ValueKind,
@@ -57,6 +65,8 @@ export type {
   LinearRange,
   LogarithmicRange,
   ListRange,
+  RenardRange,
+  RenardSeries,
   TableColumnRange,
   CategoricalListRange,
 } from './value.js';

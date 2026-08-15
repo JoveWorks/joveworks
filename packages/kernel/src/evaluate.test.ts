@@ -12,6 +12,7 @@ import {
   list,
   outputNode,
   refTo,
+  renard,
   scalar,
   wire,
 } from './invented.fixtures.js';
@@ -122,6 +123,12 @@ describe('sweeps (S29, S43)', () => {
     expect(numeric(valueAt(evaluateDocument(document, catalogues), 'area', 'A')).data).toEqual([
       25, 30, 35, 40,
     ]);
+  });
+
+  it('sweeps a Renard series (ISO 3) as an axis, expanded and converted at the boundary', () => {
+    const document = documentOf([input('w', renard('R10', 10, 100, 'mm'))], []);
+    const series = numeric(valueAt(evaluateDocument(document, catalogues), 'w', 'value'));
+    expect(series.data).toEqual([10, 12.5, 16, 20, 25, 31.5, 40, 50, 63, 80, 100]);
   });
 
   it('gives two ranges an n × m grid with no grid node (S43)', () => {

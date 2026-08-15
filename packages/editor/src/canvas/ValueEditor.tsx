@@ -6,7 +6,7 @@
  * into a design study. Nothing downstream is rewired, because a scalar is a
  * series with no axes (S43).
  *
- * Four kinds are offered. `tableColumn` is absent because tables arrive with the
+ * Five kinds are offered. `tableColumn` is absent because tables arrive with the
  * second slice (S37) and the kernel says so rather than half-working, and the
  * categorical kinds are absent because nothing in milestone 1 has a categorical
  * port to receive one (S38, S41's accepted gap) — offering them would be a field
@@ -16,11 +16,11 @@
 import type { ReactElement } from 'react';
 
 import { dimensionsEqual, parseUnit, type Unit } from '@mds/units';
-import type { ValueSpec } from '@mds/schema';
+import { RENARD_SERIES, type RenardSeries, type ValueSpec } from '@mds/schema';
 
 import { NumberField, TextField } from './fields';
 
-type Kind = 'scalar' | 'linear' | 'logarithmic' | 'list';
+type Kind = 'scalar' | 'linear' | 'logarithmic' | 'list' | 'renard';
 
 /**
  * A unit field's placeholder when empty — matching `unitLabel`'s own
@@ -37,6 +37,7 @@ const KIND_LABELS: Readonly<Record<Kind, string>> = {
   linear: 'linear range',
   logarithmic: 'log range',
   list: 'list',
+  renard: 'Renard series',
 };
 
 function unitOf(value: ValueSpec): Unit {
@@ -47,7 +48,9 @@ function unitOf(value: ValueSpec): Unit {
 function smallest(value: ValueSpec): number {
   if (value.kind === 'scalar') return value.value;
   if (value.kind === 'list') return Math.min(...value.values);
-  if (value.kind === 'linear' || value.kind === 'logarithmic') return Math.min(value.start, value.stop);
+  if (value.kind === 'linear' || value.kind === 'logarithmic' || value.kind === 'renard') {
+    return Math.min(value.start, value.stop);
+  }
   return 1;
 }
 
@@ -73,10 +76,14 @@ export function converted(value: ValueSpec, kind: Kind): ValueSpec {
     }
     case 'list':
       return { kind, values: [sample, sample * 2], unit };
+    case 'renard': {
+      const start = sample <= 0 ? 1 : sample;
+      return { kind, series: 'R20', start, stop: start * 2, unit };
+    }
   }
 }
 
-type Range = ValueSpec & { readonly kind: 'linear' | 'logarithmic' };
+type Range = ValueSpec & { readonly kind: 'linear' | 'logarithmic' | 'renard' };
 
 /**
  * A bound's own unit box, typed as a convenience — "10 mm ... 1 m" reads
@@ -113,7 +120,9 @@ interface Props {
  * re-typing during iteration and belong on the card at all times.
  */
 export function ValueKindSelect({ value, onChange }: Props): ReactElement {
-  const kind = (['scalar', 'linear', 'logarithmic', 'list'] as const).includes(value.kind as Kind)
+  const kind = (['scalar', 'linear', 'logarithmic', 'list', 'renard'] as const).includes(
+    value.kind as Kind,
+  )
     ? (value.kind as Kind)
     : 'scalar';
 
@@ -165,6 +174,7 @@ export function ValueFields({ value, onChange }: Props): ReactElement {
       case 'linear':
       case 'logarithmic':
       case 'list':
+      case 'renard':
         onChange({ ...value, unit: parsed });
         break;
       default:
@@ -199,6 +209,54 @@ export function ValueFields({ value, onChange }: Props): ReactElement {
 
       {value.kind === 'linear' || value.kind === 'logarithmic' ? (
         <div className="range-split">
+          <div className="quantity-split">
+            <NumberField
+              value={value.start}
+              autoSize={1}
+              title="The low end. Type a unit here too (10 mm ... 1 m) to re-express both bounds in it."
+              onCommit={(start) => onChange({ ...value, start })}
+            />
+            <TextField
+              className="unit"
+              value={unit.symbol}
+              autoSize={1}
+              placeholder={EMPTY_UNIT}
+              onCommit={(text) => onChange(rescaleRange(value, text))}
+            />
+          </div>
+          <span className="range-sep">…</span>
+          <div className="quantity-split">
+            <NumberField
+              value={value.stop}
+              autoSize={1}
+              title="The high end."
+              onCommit={(stop) => onChange({ ...value, stop })}
+            />
+            <TextField
+              className="unit"
+              value={unit.symbol}
+              autoSize={1}
+              placeholder={EMPTY_UNIT}
+              onCommit={(text) => onChange(rescaleRange(value, text))}
+            />
+          </div>
+        </div>
+      ) : null}
+
+      {value.kind === 'renard' ? (
+        <div className="range-split">
+          <select
+            className="renard-series"
+            value={value.series}
+            title="Preferred numbers (ISO 3) — the standard sizes a part actually comes in."
+            onChange={(event) => onChange({ ...value, series: event.target.value as RenardSeries })}
+          >
+            {RENARD_SERIES.map((series) => (
+              <option key={series} value={series}>
+                {series}
+              </option>
+            ))}
+          </select>
           <div className="quantity-split">
             <NumberField
               value={value.start}

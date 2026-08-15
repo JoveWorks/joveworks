@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { axisLength, isRange, parseValueSpec, serializeValueSpec } from './value.js';
+import { axisLength, isRange, parseValueSpec, renardValues, serializeValueSpec } from './value.js';
 import { canonicalValue } from './quantity.js';
 import type { JsonObject } from './json.js';
 
@@ -68,6 +68,29 @@ describe('range kinds (S29)', () => {
     const json = { kind: 'tableColumn', table: 'iso-fits', column: 'd' } as const;
     expect(roundTrip(json)).toEqual(json);
     expect(lengthOf(json)).toBeUndefined();
+  });
+
+  it('expands a Renard series (ISO 3) to its standard numbers in range', () => {
+    const json = { kind: 'renard', series: 'R20', start: 10, stop: 100, unit: 'mm' } as const;
+    expect(roundTrip(json)).toEqual(json);
+    // R20 puts twenty preferred numbers per decade, both endpoints included:
+    // 10, 11.2, 12.5, ... 90, 100.
+    expect(lengthOf(json)).toBe(21);
+  });
+
+  it('gives R5, R10, R20 and R40 the textbook preferred numbers for one decade', () => {
+    expect(renardValues('R5', 1, 10)).toEqual([1.0, 1.6, 2.5, 4.0, 6.3, 10]);
+    expect(renardValues('R10', 1, 10)).toEqual([1.0, 1.25, 1.6, 2.0, 2.5, 3.15, 4.0, 5.0, 6.3, 8.0, 10]);
+  });
+
+  it('refuses a Renard range that touches zero, same as a logarithmic one', () => {
+    const json = { kind: 'renard', series: 'R20', start: 0, stop: 100, unit: 'mm' };
+    expect(() => parseValueSpec(json, 'v')).toThrow(/both endpoints above zero/);
+  });
+
+  it('refuses a high end below the low end', () => {
+    const json = { kind: 'renard', series: 'R20', start: 100, stop: 10, unit: 'mm' };
+    expect(() => parseValueSpec(json, 'v')).toThrow(/high end must not be below/);
   });
 });
 

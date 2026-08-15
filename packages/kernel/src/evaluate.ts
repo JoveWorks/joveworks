@@ -22,6 +22,7 @@ import { DIMENSIONLESS, toCanonical, type Unit } from '@mds/units';
 import {
   VALUE_PORT,
   isRange,
+  renardValues,
   type Catalogue,
   type Edge,
   type GraphDocument,
@@ -232,6 +233,15 @@ function inputValue(node: InputNode, axes: ReadonlyMap<string, Axis>): PortValue
         data: Array.from({ length: spec.points }, (_, i) => start * Math.exp((ratio * i) / last)),
       };
     }
+
+    case 'renard':
+      return {
+        kind: 'numeric',
+        axes: [axis as Axis],
+        data: renardValues(spec.series, spec.start, spec.stop).map((value) =>
+          toCanonical(value, spec.unit),
+        ),
+      };
 
     case 'tableColumn':
       throw new KernelError(

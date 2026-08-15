@@ -94,6 +94,13 @@ export const list = (values: readonly number[], unit: string): JsonObject => ({
   unit,
 });
 
+export const renard = (
+  series: string,
+  start: number,
+  stop: number,
+  unit: string,
+): JsonObject => ({ kind: 'renard', series, start, stop, unit });
+
 // --- invented formulas ------------------------------------------------------
 
 /** `A = w * h` — two lengths in, an area out. */

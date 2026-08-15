@@ -38,10 +38,14 @@ export const VALUE_KINDS = [
   'linear',
   'logarithmic',
   'list',
+  'renard',
   'tableColumn',
   'categoricalList',
 ] as const;
 export type ValueKind = (typeof VALUE_KINDS)[number];
+
+export const RENARD_SERIES = ['R5', 'R10', 'R20', 'R40'] as const;
+export type RenardSeries = (typeof RENARD_SERIES)[number];
 
 /** A single number, in the unit it was typed with. */
 export interface ScalarValue {
@@ -93,6 +97,62 @@ export interface ListRange {
   readonly unit: Unit;
 }
 
+/**
+ * Preferred numbers (ISO 3) — the range kind for standard sizes the catalogue
+ * itself doesn't enumerate: bolt diameters, bearing bores, stock shaft sizes.
+ * `list` answers the same "which part do I buy" question by hand-typed
+ * values; this answers it by formula, so the document keeps saying "R20 from
+ * 10 to 100" rather than freezing the expansion at authoring time the way a
+ * `list` would.
+ */
+export interface RenardRange {
+  readonly kind: 'renard';
+  readonly series: RenardSeries;
+  readonly start: number;
+  readonly stop: number;
+  readonly unit: Unit;
+}
+
+/**
+ * The rounded R5/R10/R20/R40 base values (ISO 3), one decade from 1 to just
+ * under 10. Every other decade is this array scaled by a power of ten — the
+ * series repeats geometrically by construction.
+ */
+const RENARD_BASE: Readonly<Record<RenardSeries, readonly number[]>> = {
+  R5: [1.0, 1.6, 2.5, 4.0, 6.3],
+  R10: [1.0, 1.25, 1.6, 2.0, 2.5, 3.15, 4.0, 5.0, 6.3, 8.0],
+  R20: [
+    1.0, 1.12, 1.25, 1.4, 1.6, 1.8, 2.0, 2.24, 2.5, 2.8, 3.15, 3.55, 4.0, 4.5, 5.0, 5.6, 6.3, 7.1,
+    8.0, 9.0,
+  ],
+  R40: [
+    1.0, 1.06, 1.12, 1.18, 1.25, 1.32, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0, 2.12, 2.24, 2.36, 2.5,
+    2.65, 2.8, 3.0, 3.15, 3.35, 3.55, 3.75, 4.0, 4.25, 4.5, 4.75, 5.0, 5.3, 5.6, 6.0, 6.3, 6.7,
+    7.1, 7.5, 8.0, 8.5, 9.0, 9.5,
+  ],
+};
+
+/** Every standard number of `series` in `[start, stop]`, ascending. */
+export function renardValues(
+  series: RenardSeries,
+  start: number,
+  stop: number,
+): readonly number[] {
+  const base = RENARD_BASE[series];
+  const minExponent = Math.floor(Math.log10(start)) - 1;
+  const maxExponent = Math.ceil(Math.log10(stop)) + 1;
+  const values: number[] = [];
+  for (let exponent = minExponent; exponent <= maxExponent; exponent++) {
+    const scale = 10 ** exponent;
+    for (const digit of base) {
+      const value = Number((digit * scale).toPrecision(10));
+      if (value >= start && value <= stop) values.push(value);
+    }
+  }
+  values.sort((a, b) => a - b);
+  return values;
+}
+
 /** A column of catalogue table data, resolved by the kernel against the table. */
 export interface TableColumnRange {
   readonly kind: 'tableColumn';
@@ -110,6 +170,7 @@ export type RangeSpec =
   | LinearRange
   | LogarithmicRange
   | ListRange
+  | RenardRange
   | TableColumnRange
   | CategoricalListRange;
 
@@ -119,6 +180,7 @@ const RANGE_KINDS: readonly ValueKind[] = [
   'linear',
   'logarithmic',
   'list',
+  'renard',
   'tableColumn',
   'categoricalList',
 ];
@@ -140,6 +202,8 @@ export function axisLength(range: RangeSpec): number | undefined {
     case 'list':
     case 'categoricalList':
       return range.values.length;
+    case 'renard':
+      return renardValues(range.series, range.start, range.stop).length;
     case 'tableColumn':
       return undefined;
   }
@@ -198,6 +262,30 @@ export function parseValueSpec(value: JsonValue, path: string): ValueSpec {
       return { kind, ...range };
     }
 
+    case 'renard': {
+      const series = readEnum(
+        required(object, 'series', path),
+        join(path, 'series'),
+        RENARD_SERIES,
+      );
+      const start = readNumber(required(object, 'start', path), join(path, 'start'));
+      const stop = readNumber(required(object, 'stop', path), join(path, 'stop'));
+      // A Renard series is preferred numbers on a decade scale, same as the
+      // logarithmic range it sits beside — zero and negative bounds have no
+      // decade to belong to.
+      if (start <= 0 || stop <= 0) {
+        fail(path, 'a Renard series needs both endpoints above zero');
+      }
+      if (stop < start) fail(path, 'the high end must not be below the low end');
+      return {
+        kind,
+        series,
+        start,
+        stop,
+        unit: parseUnitField(required(object, 'unit', path), join(path, 'unit')),
+      };
+    }
+
     case 'tableColumn':
       return {
         kind,
@@ -229,6 +317,14 @@ export function serializeValueSpec(value: ValueSpec): JsonObject {
         start: value.start,
         stop: value.stop,
         points: value.points,
+        unit: value.unit.symbol,
+      };
+    case 'renard':
+      return {
+        kind: value.kind,
+        series: value.series,
+        start: value.start,
+        stop: value.stop,
         unit: value.unit.symbol,
       };
     case 'tableColumn':

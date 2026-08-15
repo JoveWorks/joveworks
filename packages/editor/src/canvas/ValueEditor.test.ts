@@ -43,6 +43,22 @@ describe('switching an input value between kinds', () => {
       unit: mm,
     });
   });
+
+  it('defaults to R20 and, like a log range, refuses to start at or below zero', () => {
+    const scalar = { kind: 'scalar' as const, value: -5, unit: mm };
+    expect(converted(scalar, 'renard')).toEqual({
+      kind: 'renard',
+      series: 'R20',
+      start: 1,
+      stop: 2,
+      unit: mm,
+    });
+  });
+
+  it('takes the smallest bound of a Renard range as the value, going back to scalar', () => {
+    const range = { kind: 'renard' as const, series: 'R20' as const, start: 60, stop: 20, unit: mm };
+    expect(converted(range, 'scalar')).toEqual({ kind: 'scalar', value: 20, unit: mm });
+  });
 });
 
 describe('typing a unit on one bound of a range', () => {
@@ -89,6 +105,17 @@ describe('typing a unit on one bound of a range', () => {
       stop: 20,
       points: 21,
       unit: parseUnit(''),
+    });
+  });
+
+  it('rescales a Renard range the same way as a linear one', () => {
+    const range = { kind: 'renard' as const, series: 'R20' as const, start: 10, stop: 1000, unit: mm };
+    expect(rescaleRange(range, 'm')).toEqual({
+      kind: 'renard',
+      series: 'R20',
+      start: 0.01,
+      stop: 1,
+      unit: parseUnit('m'),
     });
   });
 
