@@ -100,25 +100,6 @@ item** (an explicitly deferred feature, not milestone-1 scope).
 
 ---
 
-## Known bug (not a UX item)
-
-Connecting a node threw the following at runtime — the kernel rejects an
-edge that would leave a plotted series carrying an axis its target grid
-doesn't have:
-
-```
-Uncaught KernelError: a series carries an axis the target grid does not
-    KernelError errors.ts:18
-    indexer series.ts:136
-    rows PlotFigure.tsx:49
-    PlotFigure PlotFigure.tsx:75
-    ...
-errors.ts:18:5
-```
-
-Needs reproduction steps and root-causing in `PlotFigure.tsx` / `series.ts`
-before it can be scoped as a fix.
-
 ## Backlog (post-MVP, explicit — do not pull into milestone 1)
 
 **Plot node needs a real options pass** — multiple series per plot, marking

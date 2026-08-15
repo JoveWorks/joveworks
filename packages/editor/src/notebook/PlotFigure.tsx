@@ -22,11 +22,11 @@
 import { useEffect, useRef, type ReactElement } from 'react';
 import * as Plot from '@observablehq/plot';
 
-import { indexer, type PlotResult } from '@mds/kernel';
+import { gridSize, indexer, unionAxes, type Axis, type PlotResult } from '@mds/kernel';
 import { fromCanonical } from '@mds/units';
 import type { GraphDocument } from '@mds/schema';
 
-interface Row {
+export interface Row {
   readonly x: number | string;
   readonly y: number;
   readonly series?: number | string;
@@ -44,16 +44,34 @@ function isLogAxis(document: GraphDocument, axisId: string): boolean {
   return node?.kind === 'input' && node.value.kind === 'logarithmic';
 }
 
-function rows(result: PlotResult): readonly Row[] {
-  const target = result.series.axes;
+/**
+ * Every axis actually in play, not just the plotted value's own — a value
+ * that does not vary along the x axis (or the second series axis) is a
+ * legitimate flat curve, and evaluate.ts warns rather than refuses it
+ * (`plotAxis`). Iterating the value's own axes alone would ask `indexer` to
+ * broadcast the x coordinates onto a grid that does not contain the x axis,
+ * which is exactly the "a series carries an axis the target grid does not"
+ * crash this fixes.
+ */
+function plotGrid(result: PlotResult): readonly Axis[] {
+  return unionAxes(
+    result.series.axes,
+    result.x.coordinates.axes,
+    result.series2 === undefined ? [] : result.series2.coordinates.axes,
+  );
+}
+
+export function rows(result: PlotResult): readonly Row[] {
+  const target = plotGrid(result);
+  const valueAt = indexer(result.series, target);
   const xAt = indexer(result.x.coordinates, target);
   const xs = coordinates(result.x);
   const seriesAt = result.series2 === undefined ? undefined : indexer(result.series2.coordinates, target);
   const seriesValues = result.series2 === undefined ? undefined : coordinates(result.series2);
 
-  return result.series.data.map((value, cell) => ({
+  return Array.from({ length: gridSize(target) }, (_unused, cell) => ({
     x: xs[xAt(cell)] as number | string,
-    y: fromCanonical(value, result.unit),
+    y: fromCanonical(result.series.data[valueAt(cell)] as number, result.unit),
     ...(seriesAt === undefined || seriesValues === undefined
       ? {}
       : { series: seriesValues[seriesAt(cell)] as number | string }),
@@ -89,10 +107,15 @@ export function PlotFigure({ result, document: graph }: Props): ReactElement {
       const xs = coordinates(result.x).map(Number);
       const ys = coordinates(result.series2).map(Number);
       const values = new Array<number>(xs.length * ys.length).fill(Number.NaN);
-      const xAt = indexer(result.x.coordinates, result.series.axes);
-      const yAt = indexer(result.series2.coordinates, result.series.axes);
-      for (const [cell, value] of result.series.data.entries()) {
-        values[yAt(cell) * xs.length + xAt(cell)] = fromCanonical(value, result.unit);
+      const target = plotGrid(result);
+      const valueAt = indexer(result.series, target);
+      const xAt = indexer(result.x.coordinates, target);
+      const yAt = indexer(result.series2.coordinates, target);
+      for (let cell = 0; cell < gridSize(target); cell += 1) {
+        values[yAt(cell) * xs.length + xAt(cell)] = fromCanonical(
+          result.series.data[valueAt(cell)] as number,
+          result.unit,
+        );
       }
       marks.push(
         Plot.contour(values, {
