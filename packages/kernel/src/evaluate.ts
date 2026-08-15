@@ -30,6 +30,7 @@ import {
   type Comparison,
   type Formula,
   type Port,
+  type SpectrumPort,
 } from '@mds/schema';
 
 import { comparator } from './compile.js';
@@ -47,6 +48,7 @@ import {
   type NumericSeries,
   type PortValue,
   type Series,
+  type Spectrum,
 } from './series.js';
 import type { Warning } from './warnings.js';
 
@@ -241,6 +243,15 @@ function inputValue(node: InputNode, axes: ReadonlyMap<string, Axis>): PortValue
 
 // --- formula nodes ----------------------------------------------------------
 
+function valueAtEdge(edge: Edge, key: string, values: ReadonlyMap<string, PortValue>): PortValue {
+  const value = values.get(endpointKey(edge.from.node, edge.from.port));
+  if (value === undefined) {
+    throw new KernelError(`nothing was computed for '${edge.from.node}.${edge.from.port}'`, key);
+  }
+  return value;
+}
+
+/** A non-spectrum port takes exactly one edge (`oneEdge` in graph.ts already refused a second). */
 function inputPortValue(
   nodeId: string,
   port: Port,
@@ -248,39 +259,8 @@ function inputPortValue(
   values: ReadonlyMap<string, PortValue>,
 ): PortValue {
   const key = endpointKey(nodeId, port.name);
-  const edges = resolution.incoming.get(key) ?? [];
-
-  const valueOf = (edge: Edge): PortValue => {
-    const value = values.get(endpointKey(edge.from.node, edge.from.port));
-    if (value === undefined) {
-      throw new KernelError(`nothing was computed for '${edge.from.node}.${edge.from.port}'`, key);
-    }
-    return value;
-  };
-
-  if (port.kind === 'spectrum' && edges.length > 0) {
-    // Every wired edge flattens into one collection (S71) — an authored
-    // list, a single scalar, or a swept series contribute its `.values` or
-    // its whole `.data` alike. A spectrum value is a flat `number[]`
-    // regardless of where it came from, so there is nothing more specific
-    // to preserve: `minimum` wired straight to a range answers the range's
-    // minimum, exactly as wiring several scalars answers theirs.
-    const values: number[] = [];
-    for (const edge of edges) {
-      const value = valueOf(edge);
-      if (value.kind === 'categorical') {
-        throw new KernelError(
-          `'${edge.from.node}.${edge.from.port}' is a categorical value, and this port needs a ` +
-            'number',
-          key,
-        );
-      }
-      values.push(...(value.kind === 'spectrum' ? value.values : value.data));
-    }
-    return { kind: 'spectrum', values };
-  }
-
-  if (edges.length > 0) return valueOf(edges[0] as Edge);
+  const edge = resolution.incoming.get(key)?.[0];
+  if (edge !== undefined) return valueAtEdge(edge, key, values);
 
   // Not wired: a declared default stands in, in the unit it was declared in.
   // Anything else is an incomplete graph, which S50 has the editor mark on the
@@ -292,6 +272,41 @@ function inputPortValue(
     return categoricalScalar(port.default);
   }
   throw new KernelError(`'${port.name}' is not connected and has no default`, key);
+}
+
+/**
+ * Every edge wired to a spectrum port (S71), each keeping its own value —
+ * and so its own axes — rather than flattened into one collection up front.
+ *
+ * S72 first amended S71 to accept a swept edge at all; S73 amends it again,
+ * the same direction: two ranges wired into `minimum` used to broadcast
+ * pointwise when it was an ordinary two-port generic node (S43's "two
+ * ranges give an n × m grid" applies here exactly as it does to `add`), and
+ * flattening across edges silently lost that — collapsing the whole grid to
+ * one scalar instead of a grid of pointwise reductions. `evaluateFormula`
+ * broadcasts each edge against the node's own axes and collects one value
+ * per edge per cell; only an authored spectrum list (S36) — invariant by
+ * definition — still contributes every one of its values at every cell.
+ */
+function spectrumEdgeValues(
+  nodeId: string,
+  port: Port,
+  resolution: Resolution,
+  values: ReadonlyMap<string, PortValue>,
+): readonly (NumericSeries | Spectrum)[] {
+  const key = endpointKey(nodeId, port.name);
+  const edges = resolution.incoming.get(key) ?? [];
+  if (edges.length === 0) throw new KernelError(`'${port.name}' is not connected and has no default`, key);
+  return edges.map((edge) => {
+    const value = valueAtEdge(edge, key, values);
+    if (value.kind === 'categorical') {
+      throw new KernelError(
+        `'${edge.from.node}.${edge.from.port}' is a categorical value, and this port needs a number`,
+        key,
+      );
+    }
+    return value;
+  });
 }
 
 function evaluateFormula(
@@ -311,13 +326,35 @@ function evaluateFormula(
   }
 
   const compiled = compileFormula(formula, resolution.bindings.get(nodeId) ?? new Map(), nodeId);
-  const inputs = formula.inputs.map((port) => ({
+
+  const regularPorts = formula.inputs.filter((port) => port.kind !== 'spectrum');
+  const regularInputs = regularPorts.map((port) => {
+    const value = inputPortValue(nodeId, port, resolution, values);
+    // An ordinary port's own source is never spectrum-kind — a formula
+    // cannot produce one (S36) — so this is a defensive check, not a real
+    // case, but it is what lets everything below see NumericSeries |
+    // CategoricalSeries instead of the full PortValue union.
+    if (value.kind === 'spectrum') {
+      throw new KernelError(`'${port.name}' cannot hold a spectrum — only a spectrum port can`, nodeId);
+    }
+    return { port, value };
+  });
+  const spectrumPorts = formula.inputs.filter(
+    (port): port is SpectrumPort => port.kind === 'spectrum',
+  );
+  const spectrumInputs = spectrumPorts.map((port) => ({
     port,
-    value: inputPortValue(nodeId, port, resolution, values),
+    edgeValues: spectrumEdgeValues(nodeId, port, resolution, values),
   }));
 
+  // Every axis actually in play — a regular port's own, and each spectrum
+  // edge's own (S73: broadcast per source, not flattened across them; an
+  // authored list contributes no axis, invariant by S36).
   const axes = unionAxes(
-    ...inputs.map(({ value }) => (value.kind === 'spectrum' ? [] : value.axes)),
+    ...regularInputs.map(({ value }) => value.axes),
+    ...spectrumInputs.flatMap(({ edgeValues }) =>
+      edgeValues.map((value) => (value.kind === 'spectrum' ? [] : value.axes)),
+    ),
   );
   const cells = gridSize(axes);
   if (cells >= largeGrid) {
@@ -331,15 +368,9 @@ function evaluateFormula(
     });
   }
 
-  // One mutable environment, rewritten per cell. A spectrum is written once:
-  // it is consumed whole and does not vary along any axis (S36).
   const env: Record<string, number | readonly number[]> = {};
   const readers: Array<{ readonly name: string; readonly read: (cell: number) => number }> = [];
-  for (const { port, value } of inputs) {
-    if (value.kind === 'spectrum') {
-      env[port.name] = value.values;
-      continue;
-    }
+  for (const { port, value } of regularInputs) {
     if (value.kind === 'categorical') {
       throw new KernelError(
         `'${port.name}' is a categorical value, and using one in an expression needs a ` +
@@ -350,10 +381,33 @@ function evaluateFormula(
     readers.push({ name: port.name, read: reader(value, axes) });
   }
 
+  // One reader per spectrum edge — a swept edge contributes one broadcast
+  // value per cell, an authored list contributes all of its values at every
+  // cell — collected into one array per spectrum port, per cell.
+  type EdgeContribution =
+    | { readonly kind: 'reader'; readonly read: (cell: number) => number }
+    | { readonly kind: 'fixed'; readonly values: readonly number[] };
+  const spectrumReaders: Array<{
+    readonly name: string;
+    readonly perEdge: readonly EdgeContribution[];
+  }> = spectrumInputs.map(({ port, edgeValues }) => ({
+    name: port.name,
+    perEdge: edgeValues.map((value): EdgeContribution =>
+      value.kind === 'spectrum'
+        ? { kind: 'fixed', values: value.values }
+        : { kind: 'reader', read: reader(value, axes) },
+    ),
+  }));
+
   const data = new Array<number>(cells);
   let outside = 0;
   for (let cell = 0; cell < cells; cell += 1) {
     for (const { name, read } of readers) env[name] = read(cell);
+    for (const { name, perEdge } of spectrumReaders) {
+      env[name] = perEdge.flatMap((contribution) =>
+        contribution.kind === 'reader' ? [contribution.read(cell)] : contribution.values,
+      );
+    }
     if (compiled.appliesWhen !== undefined && !compiled.appliesWhen(env)) outside += 1;
     data[cell] = compiled.evaluate(env);
   }

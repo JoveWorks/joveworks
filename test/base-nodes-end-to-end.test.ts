@@ -298,9 +298,10 @@ describe('the base node library through the kernel', () => {
       expect(result.ok === false && result.reason).toMatch(/one dimension/u);
     });
 
-    it('takes a swept range whole, same as any other wired value (S72)', () => {
-      // `minimum` wired straight to a range answers the range's own minimum —
-      // as sensible as wiring several discrete scalars, and not refused.
+    it('broadcasts a swept range pointwise against a scalar, not flattened together (S73)', () => {
+      // Each wired edge keeps its own axes rather than being merged into one
+      // flat bag — a scalar is invariant, so it competes at every point of
+      // the range: min(30, 10) = 10, min(30, 20) = 20.
       const document = graph(
         [
           input('a', { kind: 'scalar', value: 30, unit: 'mm' }),
@@ -310,7 +311,26 @@ describe('the base node library through the kernel', () => {
         [wire('a.value', 'm.a'), wire('d.value', 'm.a')],
       );
       const smallest = numeric(valueAt(evaluateDocument(document, catalogues), 'm', 'smallest'));
-      expect(smallest.data).toEqual([10]);
+      expect(smallest.data).toEqual([10, 20]);
+    });
+
+    it('gives two different ranges wired into one port an n × m grid of pointwise reductions (S43, S73)', () => {
+      // Before S71 this was `minimum(a, b)`, two ordinary ports broadcast
+      // like any other generic node — wiring two ranges gave a grid, same
+      // as `add`/`multiply` do. S71's first cut flattened every edge into
+      // one bag and lost that; this is the amendment that gets it back,
+      // through a spectrum port instead of two fixed ones.
+      const document = graph(
+        [
+          input('a', { kind: 'list', values: [10, 20], unit: 'mm' }),
+          input('b', { kind: 'list', values: [5, 15, 25], unit: 'mm' }),
+          node('m', 'minimum'),
+        ],
+        [wire('a.value', 'm.a'), wire('b.value', 'm.a')],
+      );
+      const smallest = numeric(valueAt(evaluateDocument(document, catalogues), 'm', 'smallest'));
+      expect(smallest.axes.map((axis) => axis.id)).toEqual(['a', 'b']);
+      expect(smallest.data).toEqual([5, 10, 10, 5, 15, 20]);
     });
   });
 });
