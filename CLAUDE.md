@@ -29,7 +29,10 @@ describes, update it to name the next one.
 
 Still outstanding, none of it gating code: defect and unit-tag sign-off against
 R&M, which quarantines individual formulas rather than holding up a build step.
-Nothing has been pushed to `origin` in either repository yet.
+Both repositories have an `origin` on GitHub —
+`ThomasVanRiel/machine-design-studio` here and
+`ThomasVanRiel/machine-design-catalogue` for the restricted half, which **must
+be private** (S45).
 
 ## Milestone 1 is a vertical slice — do not widen it
 
