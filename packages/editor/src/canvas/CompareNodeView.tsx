@@ -107,11 +107,11 @@ export function CompareNodeView({ id, selected }: NodeProps): ReactElement | nul
           onCommit={(label) => edit((current) => renameNode(current, id, label))}
         />
       }
-      subtitle={
-        impliedUnit === undefined
-          ? `${node.comparison} ${formatAuthored(node.threshold, format)}`
-          : `${node.comparison} ${node.threshold.value} ${unitLabel(impliedUnit)}`
-      }
+      // The threshold's own value is on the port row now, always visible —
+      // repeating it here would just be the same number twice. What still
+      // only lives in `detail` is the comparison operator, so that's what
+      // stays worth a glance without opening the node.
+      subtitle={node.comparison}
       detail={
         <div className="output-editor">
           <label>
@@ -127,30 +127,6 @@ export function CompareNodeView({ id, selected }: NodeProps): ReactElement | nul
                 </option>
               ))}
             </select>
-          </label>
-          <label>
-            threshold
-            <span className="quantity-split">
-              <TextField
-                className="quantity"
-                value={formatAuthored(node.threshold, format)}
-                placeholder="1.5"
-                title={
-                  wired.has(THRESHOLD_PORT)
-                    ? 'Overridden by the wire — this is what applies when it is removed.'
-                    : 'A number a student types, with its unit (S58), unless something is wired in.'
-                }
-                onCommit={(text) => setNode({ threshold: parseAuthored(text, format) })}
-              />
-              {impliedUnit === undefined ? null : (
-                <span
-                  className="unit implied"
-                  title="No unit typed — taken from the value's own unit. Type one to fix it instead."
-                >
-                  {unitLabel(impliedUnit)}
-                </span>
-              )}
-            </span>
           </label>
         </div>
       }
@@ -171,6 +147,34 @@ export function CompareNodeView({ id, selected }: NodeProps): ReactElement | nul
           <Handle type="target" position={Position.Left} id={slotHandleId(THRESHOLD_PORT, 0)} />
           <span className="port-name">
             <Symbol name={THRESHOLD_PORT} />
+          </span>
+          {/* Editable right on the port row — a typed default with a wire
+              that can override it is meant to be as quick to retype as an
+              input node's own value, not require opening the node first. */}
+          <span className="quantity-split port-quantity">
+            <TextField
+              className="quantity"
+              value={formatAuthored(node.threshold, format)}
+              placeholder="1.5"
+              // Sized to its own content, not `.output-editor .quantity`'s
+              // width: 100% — that assumed a full-width label row, and this
+              // now sits inline on the port row instead.
+              autoSize={4}
+              title={
+                wired.has(THRESHOLD_PORT)
+                  ? 'Overridden by the wire — this is what applies when it is removed.'
+                  : 'A number a student types, with its unit, unless something is wired in.'
+              }
+              onCommit={(text) => setNode({ threshold: parseAuthored(text, format) })}
+            />
+            {impliedUnit === undefined ? null : (
+              <span
+                className="unit implied"
+                title="No unit typed — taken from the value's own unit. Type one to fix it instead."
+              >
+                {unitLabel(impliedUnit)}
+              </span>
+            )}
           </span>
         </li>
       </ul>

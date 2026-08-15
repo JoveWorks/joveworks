@@ -399,6 +399,10 @@ aside.right {
   margin-left: auto;
 }
 
+.node .port-quantity {
+  margin-left: auto;
+}
+
 .node .node-detail {
   margin-top: 6px;
   padding-top: 6px;

@@ -4,7 +4,7 @@ The documentation is getting a bit chaotic and probably stale in a lot of points
 
 ## Findings in UX and talking points
 
-Some nodes, especially basic math nodes, can have a default value like the threshold in compare. I would like this default to be next to the port instead of in the dropdown.
+Should the `list` range kind keep that name, or become `sweep`? A load spectrum is also a hand-typed list of values (just consumed whole, not swept — see the spectrum-editing backlog item below), so "list" alone doesn't say which behaviour a student is choosing. Discuss.
 
 make the minimap toggleable in settings, default off.
 
