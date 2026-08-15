@@ -350,6 +350,14 @@ describe('compare nodes', () => {
     expect(verdict.data).toEqual(['pass', 'fail']);
   });
 
+  it('reads a bare, unitless threshold default in the canonical unit value resolves to (S62)', () => {
+    // A fresh threshold's unit is blank until the student sets one; that
+    // must not force a 100 read as 100 dimensionless when p is N/mm².
+    const document = pressureGraph(compareNode('c', '<=', { value: 100, unit: '' }));
+    const verdict = valueAt(evaluateDocument(document, catalogues), 'c', 'verdict') as CategoricalSeries;
+    expect(verdict.data).toEqual(['pass', 'fail']);
+  });
+
   it('uses a wired threshold instead of the typed default, once something is wired to it', () => {
     const document = documentOf(
       [

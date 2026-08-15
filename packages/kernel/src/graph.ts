@@ -427,7 +427,16 @@ export function resolveGraph(
           : { kind: 'numeric', dimension, unit: canonicalUnit(dimension) },
       );
 
-      if (dimension !== undefined) {
+      // An unwired threshold with no unit of its own is a bare literal, and
+      // takes whatever dimension `value` resolves to (S62) — the same
+      // reading `d < 50` gets in a length-typed expression. Asserting here
+      // would refuse the ordinary case of a freshly dropped node, whose
+      // threshold has not been given a unit yet, the moment `value` is
+      // wired to anything but a dimensionless port. A wired edge is a real
+      // port and still has to match exactly (S62), and so does a threshold
+      // whose unit the student *did* set, even unwired.
+      const bareDefault = thresholdEdge === undefined && isDimensionless(node.threshold.unit.dimension);
+      if (dimension !== undefined && !bareDefault) {
         const boundDimension =
           thresholdEdge === undefined ? node.threshold.unit.dimension : sourceType(thresholdEdge).dimension;
         if (boundDimension !== undefined) {

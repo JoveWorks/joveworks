@@ -211,6 +211,16 @@ describe('compare nodes', () => {
     expect(() => resolveGraph(document, catalogues)).toThrow(/same dimension/u);
   });
 
+  it('takes a bare, unitless threshold default in whatever dimension value resolves to (S62)', () => {
+    // A freshly dropped compare node's threshold has no unit yet — wiring
+    // `value` to something dimensioned must not be refused for that alone.
+    const document = documentOf(
+      [input('w', scalar(20, 'mm')), compareNode('c', '>=', { value: 1.5, unit: '' })],
+      [wire('w.value', 'c.value')],
+    );
+    expect(() => resolveGraph(document, catalogues)).not.toThrow();
+  });
+
   it('refuses a wired threshold of a different dimension than value', () => {
     const document = documentOf(
       [
