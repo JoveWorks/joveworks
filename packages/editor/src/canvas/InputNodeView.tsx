@@ -44,7 +44,16 @@ export function InputNodeView({ id, selected }: NodeProps): ReactElement | null 
           value={node.label ?? id}
           onCommit={(label) =>
             edit((current) =>
-              updateNode<InputNode>(current, id, (input) => ({ ...input, label })),
+              updateNode<InputNode>(current, id, (input) => {
+                // A rename should be seen wherever the axis label was
+                // following it. axisLabel is only ever set by sample
+                // authoring or copied forward by duplicateNode — there is no
+                // UI to edit it directly — so once set it would otherwise
+                // keep showing the old text in the plot's axis picker no
+                // matter how many times the node was renamed afterwards.
+                const { axisLabel: _stale, ...rest } = input;
+                return { ...rest, label };
+              }),
             )
           }
         />

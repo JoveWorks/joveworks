@@ -11,7 +11,16 @@ import { describe, expect, it } from 'vitest';
 import { SCHEMA_VERSION, type GraphDocument, type InputNode } from '@mds/schema';
 import { parseUnit } from '@mds/units';
 
-import { addNode, connect, frameAround, reframe, removeNodes, uniqueId, updateNode } from './document';
+import {
+  addNode,
+  connect,
+  duplicateNode,
+  frameAround,
+  reframe,
+  removeNodes,
+  uniqueId,
+  updateNode,
+} from './document';
 
 const input = (id: string, x: number, y: number): InputNode => ({
   kind: 'input',
@@ -56,6 +65,19 @@ describe('document edits', () => {
     );
     expect(joined.edges).toHaveLength(2);
     expect(joined.edges.map((edge) => edge.from.node).sort()).toEqual(['a', 'c']);
+  });
+
+  it('drops a duplicated range\'s axisLabel, so it does not read as the same axis twice', () => {
+    const range: InputNode = {
+      ...input('w', 0, 0),
+      value: { kind: 'linear', start: 10, stop: 60, points: 21, unit: parseUnit('mm') },
+      label: 'Pad width w',
+      axisLabel: 'pad width w (mm)',
+    };
+    const duplicated = duplicateNode({ ...base, nodes: [range] }, 'w');
+    const copy = duplicated.nodes.find((node) => node.id !== 'w') as InputNode;
+    expect(copy.axisLabel).toBeUndefined();
+    expect(copy.label).toBe('Pad width w');
   });
 
   it('drops the edges of a node it removes', () => {

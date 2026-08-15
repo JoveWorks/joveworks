@@ -46,7 +46,7 @@ export function duplicateNode(document: GraphDocument, id: string): GraphDocumen
   const source = document.nodes.find((node) => node.id === id);
   if (source === undefined) return document;
   const copy: GraphNode = {
-    ...withoutFrame(source),
+    ...withoutAxisLabel(withoutFrame(source)),
     id: uniqueId(document, source.id),
     position: { x: source.position.x + 32, y: source.position.y + 32 },
   };
@@ -88,6 +88,20 @@ export function removeNodes(document: GraphDocument, ids: ReadonlySet<string>): 
 function withoutFrame(node: GraphNode): GraphNode {
   const { frameId: _dropped, ...rest } = node;
   return rest as GraphNode;
+}
+
+/**
+ * Without this, a duplicated range shows the exact same text as the
+ * original in the plot's axis picker (`axisLabel ?? label ?? id`) until
+ * explicitly renamed — and even then, only if the rename also clears
+ * `axisLabel` (InputNodeView's title field does). Dropping it here lets the
+ * copy's own label take over immediately, same as a fresh node's always
+ * does.
+ */
+function withoutAxisLabel(node: GraphNode): GraphNode {
+  if (node.kind !== 'input') return node;
+  const { axisLabel: _dropped, ...rest } = node;
+  return rest;
 }
 
 export function removeEdges(document: GraphDocument, ids: ReadonlySet<string>): GraphDocument {
