@@ -4,8 +4,6 @@ The documentation is getting a bit chaotic and probably stale in a lot of points
 
 ## Findings in UX and talking points
 
-I want to observe the input and output of a node by hovering over a port — a popup after a short delay.
-
 I occasionally notice literal "mm^4" in the table output header instead of superscript 4. In the `Newton's second law` node, acceleration unit also has literal "m/s^2" instead of superscript 2.
 
 Dragging the section frames should also move the contents. They should furthermore be the last selection filter. When one is selected now, it is presented on top of the other nodes, prohibiting selection of the contents unless first clicking elsewhere.
