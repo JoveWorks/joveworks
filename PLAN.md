@@ -425,7 +425,8 @@ S25 migration.
 
    **What no automated test reaches** is whether it behaves like a tool: a
    refusal that is visible, a sweep that reads as one, a twenty-node graph that
-   is legible. `packages/editor/TESTING.md` is that pass, and it is done by hand.
+   is legible. That pass was done by hand and its findings are recorded and
+   fixed in `UX-SPEC.md`.
 
 That slice is a working tool for one chapter, end to end.
 

@@ -11,8 +11,8 @@ the graph becomes a design study.
 
 ## Start here
 
-**Milestone 1, in progress.** As of 2026-08-15 every package is built and
-tested — `units`, `schema`, `nodes`, `kernel` and now `editor`, which is a
+**Milestone 1 is done.** As of 2026-08-15 every package is built and
+tested — `units`, `schema`, `nodes`, `kernel` and `editor`, which is a
 working React Flow canvas with a palette, a notebook panel, one sweep and one
 plot. `C16_Belt` is extracted by `tools/extract/c16_belt.py` into the private
 catalogue repo, and its golden values reproduce both through the kernel
@@ -22,20 +22,17 @@ skip without it, exactly as `test/catalogue-check.test.ts` does. `pnpm test`
 runs everything; `pnpm build` (`tsc -b`) is also the dependency-direction check;
 `pnpm dev` serves the editor.
 
-**What is left of milestone 1 is a hand pass over the editor in a browser** —
-`packages/editor/TESTING.md`. Nothing automated can tell us whether a refusal is
-visible or a twenty-node graph is legible.
+The hand pass over the editor in a browser — the one thing no automated test
+could do — is done; its findings are recorded and fixed in `UX-SPEC.md`.
 
 Read [OVERVIEW.md](OVERVIEW.md) first — it is the whole project in one pass.
 Then [PLAN.md](PLAN.md) for the build sequence and
-[DECISIONS.md](DECISIONS.md) for what is settled (`S1`–`S66`) and why.
+[DECISIONS.md](DECISIONS.md) for what is settled (`S1`–`S74`) and why.
 
 **The next concrete step** is in [NEXT.md](NEXT.md), which carries a
 ready-to-paste prompt for the current chunk of work and the ordered list after
-it. Right now that is fixing whatever the browser pass over the editor turns up.
-Do not widen milestone 1 to other chapters — see the scope note below. **Keep
-NEXT.md current**: when a session finishes the chunk it describes, update it to
-name the next one.
+it. That is now the start of milestone 2. **Keep NEXT.md current**: when a
+session finishes the chunk it describes, update it to name the next one.
 
 **No decision is open.** `D20` — how an angle becomes a pure number — closed as
 S66 taking its option A: the two wrap-angle formulas stay quarantined, and the

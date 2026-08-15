@@ -25,51 +25,41 @@ state — reopens on reload, same as a pinned node — never a document field.
 
 ---
 
-## Current: milestone 1, step 8 — fix what the browser pass found
+## Milestone 1 is done
 
-The editor is built and the model layer is tested. What is left is the pass no
-test can do: opening it and using it. That is
-[packages/editor/TESTING.md](packages/editor/TESTING.md), done by hand, on a
-machine with a browser.
+Steps 1–8 are complete. The editor is built, the model layer is tested, and
+the hand pass no automated test could do — opening it in a browser and using
+it — is done across two passes. Findings are recorded and fixed; `UX-SPEC.md`
+is the record, and its Backlog section (post-MVP, explicitly deferred) is the
+only part still open. `packages/editor/TESTING.md`, the checklist that drove
+those passes, has been removed — it was a one-time hand-testing aid, not a
+living document, and its job is finished.
 
-**Thomas drives the browser himself now** (a `pnpm dev` he keeps running) and
-reports findings live rather than as a pasted checklist — the prompt below is
-still the shape of the work, not the literal handoff. A second pass, mid-way
-through, landed `S74` (collapsible palette/notebook sections) plus a run of
-smaller fixes: a still-blank range bound no longer refuses a unit, and a
-range's unit field never refuses a retype at all; the "not connected" reason
-renders port names the way their own labels do (a true subscript, not the
-raw id); the notebook's drag grip and default width. `UX-SPEC.md` reflects
-what is now fixed — read it fresh rather than trusting memory of the first
-pass.
+## Since milestone 1: two small additions, ahead of picking the milestone-2 chunk
 
-```
-Continue milestone 1 of machine-design-studio.
+- **A Renard-series range** (`renard` in `ValueSpec`/`RangeSpec`, S29's family):
+  standard sizes by formula rather than by hand-typed list — R5/R10/R20/R40,
+  a start and stop, expanded by the kernel at evaluation and converted to
+  canonical units the same as `linear`/`logarithmic`. Editor exposes it as a
+  fifth kind in the input node's dropdown, series selector plus bounds.
+- **Table output creation in the editor.** The schema and kernel already had
+  the whole `table` output kind (S33) — named columns, each its own port,
+  rows shared across one axis — but `OutputNodeView.tsx` refused to let a
+  student build one, reserving that for step 11's "full notebook view."
+  Built now instead: `table` is a normal choice in the output kind dropdown
+  and in the palette. Its ports work like a spectrum port's ghost slot
+  (S71) — a trailing open handle that names a new column after whatever gets
+  wired to it, `addNamedColumn` in `model/document.ts` — but unlike a
+  spectrum's slots, a table's columns are ordered and named, so the detail
+  panel also offers manual rename (carrying the wire along, same as a
+  relabel), removal, and drag-to-reorder using the same before/after-half
+  gesture `Notebook.tsx`'s section reordering already has. This is a slice
+  of step 11, not all of it — frame section notes, per-output caption
+  editing and export are what step 11 still means.
 
-Steps 1–7 are done and step 8 — the minimal editor — is built: canvas,
-palette, notebook, wiring, one sweep, one plot. `pnpm build` and `pnpm test`
-are green, and the belt lab reproduces its golden values through the editor's
-own path (packages/editor/src/model/samples.test.ts).
+## Current: milestone 1 → milestone 2, pick the first chunk
 
-Read CLAUDE.md, then packages/editor/TESTING.md, which is the hand checklist
-for the interface. I have run it and here is what I found:
-
-  <paste findings here>
-
-Fix those. Keep the kernel the authority — every "can I do this?" already has
-an answer in @mds/kernel and S64 exists so the canvas cannot drift from it —
-and do not widen the milestone: no second chapter, no formula-authoring UI
-(S51), no autosave (S24 is settled but was not in step 8's scope).
-
-Where a finding is a judgement call rather than a defect — node density, what
-colour means, how much a compact node shows — say so and propose, rather than
-quietly changing a settled decision (S46–S50).
-```
-
-### If the pass came back clean
-
-Then milestone 1 is done, and the next chunk is the first of milestone 2. Two
-candidates, and the order matters less than picking one deliberately:
+Two candidates, and the order matters less than picking one deliberately:
 
 - **The second slice** (step 10) — `C2_Tolerance` or the press-fit material in
   `C12`, chosen to exercise tables and categorical ports (S37, S38). Belt
@@ -77,17 +67,7 @@ candidates, and the order matters less than picking one deliberately:
   half-working. This is the one that tests whether the schema holds.
 - **DEFECTS.md** (step 9) — which needs a home first; see the standing items.
 
-### Why the current chunk is shaped this way
-
-- **The editor's job is drawing and editing, not deciding.** Every rule about
-  graphs was settled before it existed, and `canConnect` resolves the whole
-  graph with the candidate edge added so connect time and evaluation time cannot
-  disagree (S64). A finding that seems to call for new logic in the editor is
-  usually a finding about the kernel, or about a decision.
-- **A hand pass is not a formality here.** Three of the four things the editor
-  must get right are perceptual: that a refusal is *visible*, that a sweep reads
-  as a sweep propagating (S50), that colour means state and nothing else (S49).
-  A green test suite says nothing about any of them.
+Ask Thomas which one before starting; nothing in CLAUDE.md picks for you.
 
 ---
 

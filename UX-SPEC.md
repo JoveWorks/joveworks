@@ -1,9 +1,9 @@
 # Editor UX spec
 
-Written from the first browser pass over the milestone-1 editor
-(`packages/editor/TESTING.md`). Organised by area rather than by the order
-findings came in. Each item is a requirement, not a suggestion — where a
-finding was a judgement call rather than a clear defect, it says so.
+Written from the hand passes over the milestone-1 editor in a browser.
+Organised by area rather than by the order findings came in. Each item is a
+requirement, not a suggestion — where a finding was a judgement call rather
+than a clear defect, it says so.
 
 Two items are called out separately at the end rather than folded into the
 spec: a **known bug** (a stack trace, not a UX opinion) and a **backlog

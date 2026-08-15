@@ -7,17 +7,16 @@ Built for the KU Leuven course on dimensioning of machine parts. Formulas follow
 **Roloff & Matek, 6th edition**, and each one carries a citation back to its
 textbook equation number.
 
-Status: **milestone 1 nearly done.** `units`, `schema`, `nodes`, `kernel` and
+Status: **milestone 1 done.** `units`, `schema`, `nodes`, `kernel` and
 `editor` are built and tested — a graph of base nodes evaluates end to end,
 sweeps included, with no textbook content anywhere in it, and `pnpm dev` opens
 the canvas on a worked sweep. The belt chapter is extracted into the separate
 private catalogue repository and **its golden values reproduce**, through the
 kernel and through the editor alike, so the engine is verified against the
-course's own worked examples. What is left of the milestone is a hand pass over
-the interface ([packages/editor/TESTING.md](packages/editor/TESTING.md)). Every
-design decision is closed (S1–S69). What remains besides code is content
-sign-off against the textbook, which gates individual formulas rather than any
-build step.
+course's own worked examples. The hand pass over the interface is done and its
+findings are fixed (see `UX-SPEC.md`). Every design decision is closed
+(S1–S74). What remains besides code is content sign-off against the textbook,
+which gates individual formulas rather than any build step.
 
 ```
 pnpm install
