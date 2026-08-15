@@ -420,7 +420,7 @@ export function Canvas(): ReactElement {
             ? 'input'
             : choice.outputKind === 'print'
               ? 'result'
-              : 'check',
+              : choice.outputKind,
       );
       const node: GraphNode =
         choice.kind === 'formula'
@@ -440,7 +440,9 @@ export function Canvas(): ReactElement {
                 output:
                   choice.outputKind === 'check'
                     ? { kind: 'check', comparison: '>=', threshold: { value: 1, unit: parseUnit('') } }
-                    : { kind: 'print' },
+                    : choice.outputKind === 'plot'
+                      ? { kind: 'plot', x: documentAxes(current).at(0)?.id ?? '' }
+                      : { kind: 'print' },
                 position,
               };
 
@@ -566,6 +568,7 @@ export function Canvas(): ReactElement {
             y={quickAdd.y}
             direction={quickAdd.from.type}
             catalogues={catalogues}
+            canPlot={documentAxes(document).length > 0}
             onPick={(choice) => pickQuickAdd(quickAdd, choice)}
             onClose={() => setQuickAdd(undefined)}
           />
