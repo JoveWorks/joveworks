@@ -121,7 +121,7 @@ function Result({ result }: { readonly result: OutputResult }): ReactElement {
   return (
     <div className="result plot">
       <span className="label">{label}</span>
-      <PlotFigure result={result} document={document} />
+      <PlotFigure result={result} document={document} format={format} />
       {result.threshold === undefined ? null : (
         <p className="threshold">
           threshold at {display(result.threshold, result.unit, 4, format)} — where the curve crosses

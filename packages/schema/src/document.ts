@@ -93,13 +93,24 @@ export interface CheckOutput {
   readonly threshold: Quantity;
 }
 
-/** Line or contour over swept inputs, with an optional threshold overlay. */
+/**
+ * Line or contour over swept inputs, with an optional threshold overlay.
+ *
+ * Up to three axes get a slot — `x`, `series` (color) and `facet` (small
+ * multiples) — each naming the range input node that introduced it.
+ * Any slot left unset is filled automatically at evaluate time from axes the
+ * plotted value actually varies along (kernel `evaluate.ts`); a slot the
+ * student *has* set is never touched. Leaving all three unset is the default
+ * a new plot node starts in.
+ */
 export interface PlotOutput {
   readonly kind: 'plot';
-  /** Axis for x — the id of the range input node that introduced it. */
-  readonly x: string;
-  /** A second axis, drawn as separate series or as the second contour axis. */
+  /** Axis for x — the id of the range input node that introduced it. Auto-assigned when absent. */
+  readonly x?: string;
+  /** A second axis, drawn as a colored series (or, with `contour`, the second grid axis). */
   readonly series?: string;
+  /** A third axis, drawn as one small-multiple panel per value. */
+  readonly facet?: string;
   readonly contour?: boolean;
   readonly threshold?: Quantity;
   readonly unit?: Unit;
@@ -255,8 +266,9 @@ function parseOutput(value: JsonValue, path: string): Output {
     case 'plot':
       return {
         kind,
-        x: readName(required(object, 'x', path), join(path, 'x')),
+        ...put('x', optional(object, 'x', path, readName)),
         ...put('series', optional(object, 'series', path, readName)),
+        ...put('facet', optional(object, 'facet', path, readName)),
         ...put('contour', optional(object, 'contour', path, readBoolean)),
         ...put('threshold', optional(object, 'threshold', path, parseQuantity)),
         ...put('unit', optional(object, 'unit', path, parseUnitField)),
@@ -287,8 +299,9 @@ function serializeOutput(output: Output): JsonObject {
     case 'plot':
       return {
         kind: output.kind,
-        x: output.x,
+        ...put('x', output.x),
         ...put('series', output.series),
+        ...put('facet', output.facet),
         ...put('contour', output.contour),
         ...put(
           'threshold',
@@ -457,8 +470,8 @@ function checkReferences(document: GraphDocument, path: string): void {
     if (!nodeIds.has(edge.to.node)) fail(`${at}.to.node`, `no node '${edge.to.node}' exists`);
   }
 
-  // A plot names its axes by node id, and an axis exists only where a range does
-  //. Pointing at a scalar input is the mistake this catches.
+  // A plot names its axes by node id, and an axis exists only where a range
+  // does. Pointing at a scalar input is the mistake this catches.
   const axisIds = new Set(axes(document).map((node) => node.id));
   for (const [i, node] of document.nodes.entries()) {
     if (node.kind !== 'output' || node.output.kind !== 'plot') continue;
@@ -466,9 +479,10 @@ function checkReferences(document: GraphDocument, path: string): void {
     for (const [key, axis] of [
       ['x', node.output.x],
       ['series', node.output.series],
+      ['facet', node.output.facet],
     ] as const) {
       if (axis !== undefined && !axisIds.has(axis)) {
-        fail(`${at}.${key}`, `'${axis}' is not a range input node, so it introduces no axis (S43)`);
+        fail(`${at}.${key}`, `'${axis}' is not a range input node, so it introduces no axis`);
       }
     }
   }

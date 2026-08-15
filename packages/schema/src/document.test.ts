@@ -150,6 +150,44 @@ describe('labelled axes (S43)', () => {
     };
     expect(() => parseDocument(broken)).toThrow(/'load' is not a range input node/);
   });
+
+  it('rejects a plot facet pointing at a node that introduces no axis', () => {
+    const broken = {
+      ...study,
+      nodes: (study['nodes'] as JsonObject[]).map((node) =>
+        node['id'] === 'o-plot'
+          ? { ...node, output: { kind: 'plot', x: 'd', facet: 'load' } }
+          : node,
+      ),
+    };
+    expect(() => parseDocument(broken)).toThrow(/'load' is not a range input node/);
+  });
+
+  it('accepts a plot with x left unset — the kernel fills it in (S43)', () => {
+    const auto = {
+      ...study,
+      nodes: (study['nodes'] as JsonObject[]).map((node) =>
+        node['id'] === 'o-plot' ? { ...node, output: { kind: 'plot', series: 'fit' } } : node,
+      ),
+    };
+    const document = parseDocument(auto);
+    expect(document.nodes.find((node) => node.id === 'o-plot')).toMatchObject({
+      output: { kind: 'plot', series: 'fit' },
+    });
+  });
+
+  it('round-trips a plot with a facet axis', () => {
+    const withFacet = {
+      ...study,
+      nodes: (study['nodes'] as JsonObject[]).map((node) =>
+        node['id'] === 'o-plot'
+          ? { ...node, output: { ...(node as { output: JsonObject }).output, facet: 'fit' } }
+          : node,
+      ),
+    };
+    const document = parseDocument(withFacet);
+    expect(serializeDocument(document)).toEqual(withFacet);
+  });
 });
 
 describe('group frames as notebook sections (S28/S30)', () => {

@@ -17,6 +17,10 @@ export const WARNING_KINDS = [
   'appliesWhen',
   /** A plot names an axis its data does not vary along. */
   'plotAxis',
+  /** A plot's data varies along more axes than it has slots (x/series/facet) for. */
+  'plotAxisDropped',
+  /** A contoured plot also has a facet axis, which the contour path ignores. */
+  'plotContourFacet',
 ] as const;
 
 export type WarningKind = (typeof WARNING_KINDS)[number];

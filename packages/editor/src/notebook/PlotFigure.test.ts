@@ -9,9 +9,9 @@
 import { describe, expect, it } from 'vitest';
 
 import type { Axis, PlotResult } from '@mds/kernel';
-import { parseUnit } from '@mds/units';
+import { PLAIN_NUMBER_FORMAT, parseUnit, type NumberFormat } from '@mds/units';
 
-import { rows } from './PlotFigure';
+import { rows, siAxisUnit, siResult } from './PlotFigure';
 
 const mm = parseUnit('mm');
 
@@ -55,6 +55,82 @@ describe('a plotted value that does not vary along the x axis', () => {
       { x: 10, y: 1 },
       { x: 20, y: 2 },
       { x: 30, y: 3 },
+    ]);
+  });
+});
+
+describe('a plot with a facet axis', () => {
+  const axisG: Axis = { id: 'g', label: 'g', length: 2, order: 1 };
+
+  it('reads out a facet field per row, broadcast the same way series does', () => {
+    const result: PlotResult = {
+      ...base,
+      series: { kind: 'numeric', axes: [axisW, axisG], data: [1, 2, 3, 4, 5, 6] },
+      x: {
+        axis: axisW,
+        coordinates: { kind: 'numeric', axes: [axisW], data: [10, 20, 30] },
+        unit: mm,
+      },
+      facet: {
+        axis: axisG,
+        coordinates: { kind: 'categorical', axes: [axisG], data: ['low', 'high'] },
+        unit: parseUnit(''),
+      },
+    };
+
+    // Row-major over [axisW, axisG] with the last axis contiguous (series.ts):
+    // facet (axisG, order 1) varies fastest, x (axisW, order 0) slowest.
+    expect(rows(result)).toEqual([
+      { x: 10, y: 1, facet: 'low' },
+      { x: 10, y: 2, facet: 'high' },
+      { x: 20, y: 3, facet: 'low' },
+      { x: 20, y: 4, facet: 'high' },
+      { x: 30, y: 5, facet: 'low' },
+      { x: 30, y: 6, facet: 'high' },
+    ]);
+  });
+});
+
+describe("the 'si' number format", () => {
+  const pa = parseUnit('Pa');
+  const si: NumberFormat = { ...PLAIN_NUMBER_FORMAT, notation: 'si' };
+
+  // Canonical stress is N/mm² (S5) — 1 MPa lands exactly on 1 canonical unit,
+  // so a canonical value of 250 is "250 MPa", the case UX-SPEC's bug report
+  // named: read as raw Pa it prints as 250 000 000, not 250.
+  it('picks one shared prefix off the largest magnitude, instead of a raw base unit', () => {
+    expect(siAxisUnit(pa, [100, 200, 150], si).symbol).toBe('MPa');
+  });
+
+  it('leaves the unit alone outside si notation', () => {
+    expect(siAxisUnit(pa, [200], PLAIN_NUMBER_FORMAT).symbol).toBe('Pa');
+  });
+
+  it('leaves the unit alone when it has nothing to prefix (a ratio, a compound unit)', () => {
+    expect(siAxisUnit(parseUnit(''), [200], si).symbol).toBe('');
+    expect(siAxisUnit(parseUnit('N/mm²'), [200], si).symbol).toBe('N/mm²');
+  });
+
+  it('rescales the plotted value, x axis and threshold together, and converts the data with it', () => {
+    const result: PlotResult = {
+      nodeId: 'p',
+      kind: 'plot',
+      contour: false,
+      unit: pa,
+      threshold: 150,
+      series: { kind: 'numeric', axes: [axisW], data: [100, 200, 300] },
+      x: {
+        axis: axisW,
+        coordinates: { kind: 'numeric', axes: [axisW], data: [10, 20, 30] },
+        unit: mm,
+      },
+    };
+    const scaled = siResult(result, si);
+    expect(scaled.unit.symbol).toBe('MPa');
+    expect(rows(scaled)).toEqual([
+      { x: 10, y: 100 },
+      { x: 20, y: 200 },
+      { x: 30, y: 300 },
     ]);
   });
 });

@@ -17,19 +17,37 @@
  * The contour path is drawn from the kernel's grid, and S26 wants it verified
  * against the key-design case before it is trusted — it renders here, and that
  * verification is still owed.
+ *
+ * A third axis facets: one small-multiple panel per value, via Observable
+ * Plot's own `fx` channel. Contour ignores facet rather than half-supporting
+ * faceted contours — the kernel already declines to attach `facet` to a
+ * `PlotResult` when `contour` is on, and warns why (`plotContourFacet`).
+ *
+ * The `'si'` number format picks one shared prefix per axis — `MPa` rather
+ * than a raw `Pa` axis printing millions — the same substitution
+ * `formatQuantity` does for a single reading (`units/convert.ts`), applied
+ * once to the whole series rather than per point, off the largest magnitude
+ * on that axis. A categorical axis has nothing to prefix and passes through.
  */
 
-import { useEffect, useRef, type ReactElement } from 'react';
+import { useEffect, useMemo, useRef, type ReactElement } from 'react';
 import * as Plot from '@observablehq/plot';
 
-import { gridSize, indexer, unionAxes, type Axis, type PlotResult } from '@mds/kernel';
-import { fromCanonical } from '@mds/units';
+import { gridSize, indexer, unionAxes, type Axis, type PlotAxis, type PlotResult } from '@mds/kernel';
+import {
+  fromCanonical,
+  prefixableAtomOf,
+  siPrefixedUnit,
+  type NumberFormat,
+  type Unit,
+} from '@mds/units';
 import type { GraphDocument } from '@mds/schema';
 
 export interface Row {
   readonly x: number | string;
   readonly y: number;
   readonly series?: number | string;
+  readonly facet?: number | string;
 }
 
 function coordinates(axis: PlotResult['x']): readonly (number | string)[] {
@@ -58,6 +76,7 @@ function plotGrid(result: PlotResult): readonly Axis[] {
     result.series.axes,
     result.x.coordinates.axes,
     result.series2 === undefined ? [] : result.series2.coordinates.axes,
+    result.facet === undefined ? [] : result.facet.coordinates.axes,
   );
 }
 
@@ -68,6 +87,8 @@ export function rows(result: PlotResult): readonly Row[] {
   const xs = coordinates(result.x);
   const seriesAt = result.series2 === undefined ? undefined : indexer(result.series2.coordinates, target);
   const seriesValues = result.series2 === undefined ? undefined : coordinates(result.series2);
+  const facetAt = result.facet === undefined ? undefined : indexer(result.facet.coordinates, target);
+  const facetValues = result.facet === undefined ? undefined : coordinates(result.facet);
 
   return Array.from({ length: gridSize(target) }, (_unused, cell) => ({
     x: xs[xAt(cell)] as number | string,
@@ -75,16 +96,46 @@ export function rows(result: PlotResult): readonly Row[] {
     ...(seriesAt === undefined || seriesValues === undefined
       ? {}
       : { series: seriesValues[seriesAt(cell)] as number | string }),
+    ...(facetAt === undefined || facetValues === undefined
+      ? {}
+      : { facet: facetValues[facetAt(cell)] as number | string }),
   }));
+}
+
+/** One shared SI prefix for a whole axis, off the largest magnitude on it. */
+export function siAxisUnit(unit: Unit, data: readonly number[], format: NumberFormat): Unit {
+  if (format.notation !== 'si') return unit;
+  const atom = prefixableAtomOf(unit.symbol.trim());
+  if (atom === undefined) return unit;
+  const largest = data.reduce((max, value) => Math.max(max, Math.abs(value)), 0);
+  return largest === 0 ? unit : siPrefixedUnit(atom, largest);
+}
+
+function siAxis(axis: PlotAxis, format: NumberFormat): PlotAxis {
+  if (axis.coordinates.kind !== 'numeric') return axis;
+  return { ...axis, unit: siAxisUnit(axis.unit, axis.coordinates.data, format) };
+}
+
+/** `result`, with each numeric axis (and the plotted value) re-scaled to one shared SI prefix. */
+export function siResult(result: PlotResult, format: NumberFormat): PlotResult {
+  return {
+    ...result,
+    unit: siAxisUnit(result.unit, result.series.data, format),
+    x: siAxis(result.x, format),
+    ...(result.series2 === undefined ? {} : { series2: siAxis(result.series2, format) }),
+    ...(result.facet === undefined ? {} : { facet: siAxis(result.facet, format) }),
+  };
 }
 
 interface Props {
   readonly result: PlotResult;
   readonly document: GraphDocument;
+  readonly format: NumberFormat;
 }
 
-export function PlotFigure({ result, document: graph }: Props): ReactElement {
+export function PlotFigure({ result: rawResult, document: graph, format }: Props): ReactElement {
   const host = useRef<HTMLDivElement>(null);
+  const result = useMemo(() => siResult(rawResult, format), [rawResult, format]);
 
   useEffect(() => {
     const container = host.current;
@@ -132,9 +183,11 @@ export function PlotFigure({ result, document: graph }: Props): ReactElement {
       );
     } else {
       const stroke = result.series2 === undefined ? undefined : 'series';
+      const fx = result.facet === undefined ? undefined : 'facet';
+      const channels = { ...(stroke === undefined ? {} : { stroke }), ...(fx === undefined ? {} : { fx }) };
       marks.push(
-        Plot.line(data as Row[], { x: 'x', y: 'y', ...(stroke === undefined ? {} : { stroke }) }),
-        Plot.dot(data as Row[], { x: 'x', y: 'y', r: 2, ...(stroke === undefined ? {} : { stroke }) }),
+        Plot.line(data as Row[], { x: 'x', y: 'y', ...channels }),
+        Plot.dot(data as Row[], { x: 'x', y: 'y', r: 2, ...channels }),
       );
     }
 
@@ -153,7 +206,7 @@ export function PlotFigure({ result, document: graph }: Props): ReactElement {
     }
 
     const chart = Plot.plot({
-      width: 360,
+      width: result.facet === undefined ? 360 : Math.min(180 * result.facet.axis.length, 1080),
       height: 240,
       marginLeft: 56,
       marginBottom: 40,
@@ -165,6 +218,7 @@ export function PlotFigure({ result, document: graph }: Props): ReactElement {
       ...(result.series2 === undefined || result.contour
         ? {}
         : { color: { legend: true, label: result.series2.axis.label } }),
+      ...(result.facet === undefined ? {} : { fx: { label: result.facet.axis.label } }),
       marks,
     });
 

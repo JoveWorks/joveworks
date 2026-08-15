@@ -113,6 +113,7 @@ export function OutputNodeView({ id, selected }: NodeProps): ReactElement | null
     result?.kind === 'print' || result?.kind === 'check' || result?.kind === 'plot'
       ? { series: result.series, unit: result.unit }
       : shown;
+  const plotResult = result?.kind === 'plot' ? result : undefined;
 
   const setOutput = (next: Output): void =>
     edit((current) => updateNode<OutputNode>(current, id, (entry) => ({ ...entry, output: next })));
@@ -153,7 +154,7 @@ export function OutputNodeView({ id, selected }: NodeProps): ReactElement | null
                     : kind === 'check'
                       ? { kind, comparison: '>=', threshold: { value: 1, unit: shown?.unit ?? parseUnit('') } }
                       : kind === 'plot'
-                        ? { kind, x: ranges[0]?.id ?? '' }
+                        ? { kind }
                         : { kind, columns: [] };
                 edit((current) => changeOutputKind(current, id, next));
               }}
@@ -233,18 +234,31 @@ export function OutputNodeView({ id, selected }: NodeProps): ReactElement | null
 
           {output.kind === 'plot' ? (
             <>
+              {/* Each slot left unset (`''`, meaning `undefined` in the document)
+                  is filled automatically at evaluate time from axes the plotted
+                  value varies along — the "auto" option's own label shows what
+                  that resolved to, so leaving a slot alone is a legible choice,
+                  not a silent one. A slot the student does pick is pinned and
+                  the kernel never touches it. */}
               <label>
                 x axis
                 <select
                   className="nodrag"
-                  value={output.x}
-                  onChange={(event) => setOutput({ ...output, x: event.target.value })}
+                  value={output.x ?? ''}
+                  onChange={(event) => {
+                    const chosen = event.target.value;
+                    const { x: _dropped, ...rest } = output;
+                    setOutput(chosen === '' ? rest : { ...rest, x: chosen });
+                  }}
                 >
-                  {ranges.map((range) => (
-                    <option key={range.id} value={range.id}>
-                      {range.axisLabel ?? range.label ?? range.id}
-                    </option>
-                  ))}
+                  <option value="">auto{plotResult === undefined ? '' : ` (${plotResult.x.axis.label})`}</option>
+                  {ranges
+                    .filter((range) => range.id !== output.series && range.id !== output.facet)
+                    .map((range) => (
+                      <option key={range.id} value={range.id}>
+                        {range.axisLabel ?? range.label ?? range.id}
+                      </option>
+                    ))}
                 </select>
               </label>
               <label>
@@ -258,9 +272,34 @@ export function OutputNodeView({ id, selected }: NodeProps): ReactElement | null
                     setOutput(chosen === '' ? rest : { ...rest, series: chosen });
                   }}
                 >
-                  <option value="">none</option>
+                  <option value="">
+                    auto{plotResult?.series2 === undefined ? ' (none)' : ` (${plotResult.series2.axis.label})`}
+                  </option>
                   {ranges
-                    .filter((range) => range.id !== output.x)
+                    .filter((range) => range.id !== output.x && range.id !== output.facet)
+                    .map((range) => (
+                      <option key={range.id} value={range.id}>
+                        {range.axisLabel ?? range.label ?? range.id}
+                      </option>
+                    ))}
+                </select>
+              </label>
+              <label>
+                facet
+                <select
+                  className="nodrag"
+                  value={output.facet ?? ''}
+                  onChange={(event) => {
+                    const chosen = event.target.value;
+                    const { facet: _dropped, ...rest } = output;
+                    setOutput(chosen === '' ? rest : { ...rest, facet: chosen });
+                  }}
+                >
+                  <option value="">
+                    auto{plotResult?.facet === undefined ? ' (none)' : ` (${plotResult.facet.axis.label})`}
+                  </option>
+                  {ranges
+                    .filter((range) => range.id !== output.x && range.id !== output.series)
                     .map((range) => (
                       <option key={range.id} value={range.id}>
                         {range.axisLabel ?? range.label ?? range.id}
@@ -284,7 +323,7 @@ export function OutputNodeView({ id, selected }: NodeProps): ReactElement | null
                   }}
                 />
               </label>
-              {output.series === undefined ? null : (
+              {output.series === undefined && plotResult?.series2 === undefined ? null : (
                 <label>
                   contour
                   <input
