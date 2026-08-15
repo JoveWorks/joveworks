@@ -585,8 +585,14 @@ aside.right {
 }
 
 .quantity-split .number {
-  flex: 1;
-  min-width: 0;
+  /* Sized to the number itself ("12", not "12" plus however much of the row
+     flex:1 would have claimed) so the unit sits right after it — "12 kN",
+     not "12          kN". */
+  flex: 0 1 auto;
+  field-sizing: content;
+  width: 3.5em;
+  min-width: 2ch;
+  max-width: 100%;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
