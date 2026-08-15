@@ -815,6 +815,26 @@ aside.right {
 }
 
 /*
+ * A line strip spans its whole edge by default (React Flow's own
+ * stylesheet), running straight through the frame's own rounded corner
+ * (border-radius: 8px, .frame) — invisible while the corner square sat on
+ * top of it, but visible as a straight overrun once that square was hidden.
+ * Inset each strip by the same 8px instead of covering the seam with
+ * another shape, so the rounded corner is left alone to just be rounded.
+ */
+.react-flow__resize-control.line.left,
+.react-flow__resize-control.line.right {
+  top: 8px;
+  height: calc(100% - 16px);
+}
+
+.react-flow__resize-control.line.top,
+.react-flow__resize-control.line.bottom {
+  left: 8px;
+  width: calc(100% - 16px);
+}
+
+/*
  * The corner squares are redundant once the edges are grabbable and change
  * cursor on their own (the widened hit area above) — opacity, not display:
  * none, so the corner drag target (needed for diagonal resize, which no
