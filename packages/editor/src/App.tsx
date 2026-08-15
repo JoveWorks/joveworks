@@ -88,7 +88,7 @@ export function App(): ReactElement {
     | { readonly menu: 'file' | 'edit' | 'view' | 'help'; readonly x: number; readonly y: number }
     | undefined
   >(undefined);
-  const [paletteWidth, resizePalette] = useResizableWidth(300, 200, 480, 1);
+  const [paletteWidth, resizePalette] = useResizableWidth(320, 200, 480, 1);
   const [notebookWidth, resizeNotebook] = useResizableWidth(540, 240, 800, -1);
   const [notices, setNotices] = useState<readonly { readonly id: string; readonly message: string }[]>(
     [],
@@ -178,7 +178,7 @@ export function App(): ReactElement {
     });
 
   // Open/save belong in a conventional File/Edit/View/Help ribbon, top-left
-  // (UX-SPEC.md) — not wherever the individual actions used to live.
+  // (docs/UX-SPEC.md) — not wherever the individual actions used to live.
   const fileMenuItems: readonly MenuItem[] = [
     { label: 'Open…', onClick: () => void openDocumentFile() },
     { label: 'Save', onClick: () => saveTextFile(`${document.id}.mds.json`, saveDocument(document)) },
@@ -283,7 +283,7 @@ export function App(): ReactElement {
 
             <main>
               {/* Overlays the workspace instead of sitting in normal flow, so
-                  showing or dismissing one does not shift the canvas (UX-SPEC.md:
+                  showing or dismissing one does not shift the canvas (docs/UX-SPEC.md:
                   messages must overlay, not push other UI down). Stacks rather than
                   replacing, and each clears itself after a delay. */}
               {notices.length === 0 ? null : (

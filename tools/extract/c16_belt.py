@@ -115,7 +115,7 @@ QUARANTINE: dict[str, str] = {
 # S19. A record earns `verified` by being exercised by a golden value and
 # matching it — per formula, never per run. These seven are the belt lab's
 # calculation chain, checked end to end through the kernel by
-# `test/belt-goldens.test.ts` against the table in PLAN.md; the other 47 records
+# `test/belt-goldens.test.ts` against the table in docs/PLAN.md; the other 47 records
 # are not on any golden path and stay `unverified`, which is the status field
 # working rather than a gap in the tests.
 #

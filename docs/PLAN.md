@@ -1,12 +1,9 @@
 # Plan: machine-design-studio
 
-Status: **milestone 1 under way.** Written 2026-08-14; revised the same day once
-D1–D19 closed as S13–S45. Steps 1–7 below are done as of 2026-08-15 — the
-workspace, `units`, `schema`, `nodes`, `kernel`, the belt extraction and its
-golden values. Only the editor is left in this milestone. S1–S66 are settled and
-**no decision is open**; `D20` closed as S66 taking its option A, which keeps
-two wrap-angle formulas quarantined and costs the `β₁` golden. Otherwise only
-content sign-off remains, and it gates formulas rather than build steps.
+Historical record — **milestone 1 is done**, every step below completed as of
+2026-08-15. Kept as the build sequence and the reasoning behind it, not as a
+live status page; [ROADMAP.md](../ROADMAP.md) is where what's still open
+lives now.
 
 Supersedes the plan in the predecessor repository (`mechanical-design`, commit
 `348e2f0`, `PLAN.md`), which framed the work as a refactor of that package. The
@@ -232,27 +229,8 @@ signed off (S20). Revolutions are a dimensionless count with a 10⁶ display
 scale (S21) — bearing life L₁₀ is not stored as an angle, matching ISO 281 and
 keeping the displayed value the one students expect.
 
-Proposed readings, each needing sign-off against the book — these are *not* to
-be written into the catalogue on the strength of the guess alone:
-
-| Tag | Proposed reading |
-|---|---|
-| `[1E6rotatons]`, `[1e6revolutions]` | Millions of revolutions — bearing life L₁₀, ISO 281. The typo'd spelling and the case-variant duplicate are consistent with one quantity typed twice |
-| `[E-6m]` | Micrometres — surface roughness, or a fit/tolerance deviation |
-| `[__O]`, `[__o]` | Degrees; `°` mangled by an encoding round-trip |
-
-The remaining ~500 tags normalise mechanically and need no sign-off.
-
-**Belt's wrap angle** `β₁`/`β_k` is tagged `[]`. The tag parses, so it is not
-junk in the sense above — it reads as *a pure number* where the quantity is
-plainly an angle, which is what quarantines `rm.16.24A`/`rm.16.24B` and costs
-the `β₁` golden (test/belt-goldens.test.ts asserts the other eleven match and
-that a graph computing β₁ is refused, on the record). The reading to confirm
-is `[°]`; confirming it does not by itself release the two records, since
-`sin`/`cos`/`tan` accepting a dimensionless argument (`packages/kernel/src/dimensions.ts`)
-would also need loosening for `acos`'s *return* — two other belt formulas
-consume the same angle as a pure number. Worth taking both together, and worth
-a golden.
+Proposed readings for the ~30 junk tags, and the wrap angle's own sign-off
+question, moved to [ROADMAP.md](../ROADMAP.md) — still open, needs the book.
 
 ## Migration and verification
 
@@ -380,16 +358,8 @@ S25 migration.
 - **Belt's defect exposure is one line.** ~~None of the ~12 confirmed defects are
   in `C16`.~~ **Wrong, corrected 2026-08-15**: running the dimension check over
   the extracted chapter found three, quarantined in the catalogue with their
-  evidence and a proposed correction — the first two need R&M to confirm, the
-  third only needs confirmation since it has two independent witnesses:
-
-  | Formula | What the check refuses | Proposed reading |
-  |---|---|---|
-  | 16.31 | Produces a velocity where a width is declared | The specific *power* symbol — declared in the source's symbol dict and used by no method — in place of the specific torque. 16.32 is the torque twin and is sound |
-  | 16.34 | Produces a length where a force is declared | The unit tag, not the expression: the belt-type factor is tagged `[]` and must carry force per unit width. The docstring also writes it as an exponent where the code multiplies, and an exponent is dimensionless under any reading |
-  | 16.36B | Produces an area where a length is declared | A sum, not a product. Its own docstring writes a sum, and its sibling 16.36C sums the same two quantities |
-
-  The survey that produced this line
+  evidence and a proposed correction — the sign-off table itself moved to
+  [ROADMAP.md](../ROADMAP.md), still open. The survey that produced this line
   read the corpus for *structure*, not for dimensions — which is precisely the
   argument for building the checker before the extraction. The density fudge at
   `C16_Belt.py:154-155`
@@ -462,17 +432,8 @@ S25 migration.
 
 That slice is a working tool for one chapter, end to end.
 
-### Milestone 2 — breadth
-
-9. **DEFECTS.md** across the whole corpus. Per S19 this runs alongside
-   migration, not ahead of it — flagged formulas are quarantined by `status`.
-10. **Extract the remaining chapters.** Generalise the per-chapter script only
-    if their number justifies it. A second slice should be chosen to
-    exercise tables and categorical ports (S37, S38), which belt does not touch —
-    `C2_Tolerance` or the press-fit material in `C12` are the candidates. The
-    kernel raises on both today rather than half-supporting them.
-11. **Full notebook view** (S30–S33). Group frames carry its section structure,
-    so the schema reserved them from step 3 (S28, as upgraded by S30).
+Milestone 2 (breadth: DEFECTS.md across the corpus, the remaining chapters,
+the full notebook view) is [ROADMAP.md](../ROADMAP.md) from here.
 
 ## Verification
 

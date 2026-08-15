@@ -14,9 +14,10 @@ the canvas on a worked sweep. The belt chapter is extracted into the separate
 private catalogue repository and **its golden values reproduce**, through the
 kernel and through the editor alike, so the engine is verified against the
 course's own worked examples. The hand pass over the interface is done and its
-findings are fixed (see `UX-SPEC.md`). Every design decision is closed
-(S1–S74). What remains besides code is content sign-off against the textbook,
-which gates individual formulas rather than any build step.
+findings are fixed (see `docs/UX-SPEC.md`). Every design decision is closed.
+What remains besides code is content sign-off against the textbook, which
+gates individual formulas rather than any build step — see
+[ROADMAP.md](ROADMAP.md) for that and everything else still open.
 
 ```
 pnpm install
@@ -26,7 +27,8 @@ pnpm build       # tsc -b; an undeclared cross-package import fails here (S55)
 ```
 
 **New here? Start with [OVERVIEW.md](OVERVIEW.md)** — the whole project in one
-read. Then [PLAN.md](PLAN.md) for the build sequence.
+read. Then [ROADMAP.md](ROADMAP.md) for what's still open, or
+[docs/PLAN.md](docs/PLAN.md) for the build sequence that got here.
 
 ## What it is
 

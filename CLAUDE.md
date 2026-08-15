@@ -23,23 +23,23 @@ runs everything; `pnpm build` (`tsc -b`) is also the dependency-direction check;
 `pnpm dev` serves the editor.
 
 The hand pass over the editor in a browser — the one thing no automated test
-could do — is done; its findings are recorded and fixed in `UX-SPEC.md`.
+could do — is done; its findings are recorded and fixed in `docs/UX-SPEC.md`.
 
 Read [OVERVIEW.md](OVERVIEW.md) first — it is the whole project in one pass.
-Then [PLAN.md](PLAN.md) for the build sequence. Design rationale that isn't
-obvious from the code lives as comments at the site it explains, not in a
-separate decisions doc — this is still a solo project days old, not one with
-a meeting trail to keep.
-
-**Milestone 2 is breadth** — DEFECTS.md across the corpus, the remaining
-chapters, and the full notebook view (PLAN.md's steps 9–11). Ask Thomas which
-chunk to start before picking one; nothing here decides it for you.
+**[ROADMAP.md](ROADMAP.md) is where what's still open lives** — content
+sign-off against R&M, the milestone-2 build sequence, and the editor
+backlog. `docs/PLAN.md` and `docs/UX-SPEC.md` are historical record (the
+build sequence already completed, and the hand-testing findings already
+fixed), not live status pages. Design rationale that isn't obvious from the
+code lives as comments at the site it explains, not in a separate decisions
+doc — this is still a solo project days old, not one with a meeting trail to
+keep.
 
 **No design decision is open.** How an angle becomes a pure number is settled:
 the two wrap-angle formulas (`rm.16.24A`/`rm.16.24B`) stay quarantined, and the
 `β₁` golden stays out of reach, until the wrap angle's `[]` tag is confirmed
-against R&M as `[°]` — a content question now, not a design one; see PLAN.md's
-unit-tag sign-off section.
+against R&M as `[°]` — a content question now, not a design one; see
+ROADMAP.md's content sign-off section.
 
 Still outstanding, none of it gating code: defect and unit-tag sign-off against
 R&M, which quarantines individual formulas rather than holding up a build step.
@@ -57,7 +57,7 @@ corpus is committed to it: wrong schema after 55 formulas costs a morning,
 after 539 it costs a data migration.
 
 Belt was chosen on evidence. It imports only `sympy` and `MySymbol` — no tables,
-no other chapter — it has golden values (in PLAN.md), and it exercises the
+no other chapter — it has golden values (in `docs/PLAN.md`), and it exercises the
 hardest units cases deliberately: `[kg/dm³]` is the density trap that
 `C16_Belt.py:154` fudges as `1E-6 * 1E3 * rho`, and `[%]` needs
 dimensionless-with-display-scale handling.
@@ -80,8 +80,8 @@ the project has no Python dependencies at all. It is consulted for three things:
    (`E17_5b_MaxTopCircleDiameter`); a class-level `MySymbolDict` maps each symbol
    to `'[unit] description'`. Docstrings carry the formula in near-readable form.
 2. **Verification fixtures** — 22 notebooks under `notebooks/`. Golden values are
-   recorded in PLAN.md; do not re-derive them.
-3. **Known defects** — listed in PLAN.md, so they are not transcribed again.
+   recorded in `docs/PLAN.md`; do not re-derive them.
+3. **Known defects** — listed in `docs/PLAN.md`, so they are not transcribed again.
 
 Do **not** port its architecture, its `MySymbol`/SymPy layer, its unit-symbol
 convention (trailing-underscore SymPy symbols), or its helpers. Those are what
@@ -202,8 +202,9 @@ These follow from settled decisions; do not relitigate them in code.
   decisions have repeatedly been narrowed on purpose (S25, S41, S51, S52). When
   something looks like infrastructure for a problem that does not exist yet, say
   so rather than building it.
-- The valuable, testable core is the catalogue and the evaluation kernel. PLAN.md
-  sequences them ahead of any UI deliberately; keep that order.
+- The valuable, testable core is the catalogue and the evaluation kernel.
+  `docs/PLAN.md` sequenced them ahead of any UI deliberately; keep that order
+  in mind.
 - Reproducing the golden values proves a transcription is *faithful*, not that a
   formula is *correct* — the known defects would survive it, because the error is
   in the source. Defects are reported and signed off explicitly, never fixed

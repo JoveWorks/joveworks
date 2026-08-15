@@ -18,8 +18,9 @@ constraint at once, and look at the result as a graph.
 > content — and **the belt lab's golden values reproduce**, eleven of twelve,
 > the twelfth quarantined and refused on purpose, both through the kernel and
 > through the editor. **Milestone 1 is done**, including the hand pass over
-> the interface (`UX-SPEC.md`). Every design decision is settled; the build
-> sequence is in [PLAN.md](PLAN.md).
+> the interface (`docs/UX-SPEC.md`). Every design decision is settled; the
+> build sequence that got here is in [docs/PLAN.md](docs/PLAN.md), and
+> what's still open is in [ROADMAP.md](ROADMAP.md).
 > Parts of this document still describe intent rather than what is built —
 > export, authoring and autosave are the notable ones.
 
@@ -299,12 +300,12 @@ hand:
   `BallBearing` `is list` bugs are Python type errors with no textbook question
   attached. Only the remainder needs the book.
 - **Unit-tag sign-off.** About 30 tags could not be machine-parsed. Most have a
-  plausible reading already proposed in PLAN.md's unit-tag sign-off section and
-  need confirming, not reconstructing.
+  plausible reading already proposed in ROADMAP.md's content sign-off section
+  and need confirming, not reconstructing.
 
-**The code that exists** follows PLAN.md's deliberate order: units and schema,
-the base node library, then the kernel — and the UI last. The core is testable
-without any interface, and that is where correctness is won.
+**The code that exists** followed `docs/PLAN.md`'s deliberate order: units and
+schema, the base node library, then the kernel — and the UI last. The core is
+testable without any interface, and that is where correctness is won.
 
 **Ground rules that are settled — please do not relitigate them in code:**
 
@@ -347,9 +348,10 @@ golden exercises stay marked unverified rather than assumed sound.
 
 | Document | For |
 |---|---|
-| [PLAN.md](PLAN.md) | Build sequence, migration strategy, verification plan |
+| [ROADMAP.md](ROADMAP.md) | What's actually still open — content sign-off, milestone 2, the backlog |
 | [CLAUDE.md](CLAUDE.md) | Conventions and the distribution restriction |
-| [UX-SPEC.md](UX-SPEC.md) | Editor UX requirements from the hand-testing passes |
+| [docs/PLAN.md](docs/PLAN.md) | Historical: the build sequence, migration strategy, verification plan |
+| [docs/UX-SPEC.md](docs/UX-SPEC.md) | Historical: editor UX findings from the hand-testing passes, all fixed |
 
 Design rationale beyond what's in these documents lives as comments at the
 code site it explains, not in a separate decisions log.

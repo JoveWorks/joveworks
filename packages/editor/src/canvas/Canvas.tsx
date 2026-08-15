@@ -77,7 +77,7 @@ import { basePortName, slotHandleId } from './spectrumSlots';
  * exception does not apply to any port `existingCandidates` below offers,
  * which are always a formula's or output's *first* ordinary input), so
  * picking a candidate with something already here silently replaces it —
- * exactly the trap NOTES.md's quick-add report was: an uncited base
+ * exactly the trap a reported quick-add bug turned out to be: an uncited base
  * formula's subtitle (its bare id, "multiply") reads identically to what a
  * *fresh* instance of that formula would show, so a click meant as "give me
  * a new node" can land on "rewire this existing one instead" with nothing

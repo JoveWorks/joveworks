@@ -89,7 +89,7 @@ export function compileFormula(
 
 /**
  * Check a record against itself, with no graph in sight — the dimensional check
- * PLAN.md asks of every migrated formula. Generic variables are bound to
+ * docs/PLAN.md asks of every migrated formula. Generic variables are bound to
  * distinct base dimensions, which proves the case for all of them.
  */
 export function checkFormulaDimensions(formula: Formula): void {

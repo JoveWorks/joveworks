@@ -1,11 +1,11 @@
 /**
  * Milestone 1's acceptance criterion: the belt lab, end to end through the
- * kernel (PLAN.md, "Migration and verification").
+ * kernel (docs/PLAN.md, "Migration and verification").
  *
  * Two graphs, one per predecessor notebook — `notebooks/belt/Lab_belt.ipynb`
  * and `Lab_belt_incl_Fa.ipynb`, which differ only in the stock belt length
  * chosen (2187 mm against 2240 mm) and in the second one going on to the shaft
- * torque and the tangential force. The expected numbers are PLAN.md's table,
+ * torque and the tangential force. The expected numbers are docs/PLAN.md's table,
  * recovered from the stored notebook outputs; they are not re-derived here.
  *
  * **The catalogue is not in this repository and never will be** (S45), so this
@@ -111,7 +111,7 @@ const graph = (id: string, title: string, nodes: JsonObject[], edges: JsonObject
  *
  * Two of these are worth naming. `d_dg` is 400 mm where the assignment text
  * says 420 — a defect in the source material, recorded rather than reproduced
- * differently (PLAN.md). And `n` is a rotational *frequency*: 1500 rpm is 25
+ * differently (docs/PLAN.md). And `n` is a rotational *frequency*: 1500 rpm is 25
  * s⁻¹ canonically, which is what makes `v = π·d·n` come out at 7.069 m/s
  * without the 2π the old notebook's `rpm_` symbol carried.
  */
@@ -250,12 +250,12 @@ function shown(evaluation: Evaluation, nodeId: string): number {
   return fromCanonical(first, unit);
 }
 
-/** PLAN.md: assert at rel=1e-3, because the stored outputs are 4 significant figures. */
+/** docs/PLAN.md: assert at rel=1e-3, because the stored outputs are 4 significant figures. */
 function expectGolden(actual: number, expected: number, what: string): void {
   expect(Math.abs(actual - expected) / Math.abs(expected), `${what} = ${actual}`).toBeLessThan(1e-3);
 }
 
-// --- PLAN.md's table ---------------------------------------------------------
+// --- docs/PLAN.md's table ---------------------------------------------------------
 
 const LAB_BELT: readonly (readonly [string, number, string])[] = [
   ['out_i', 4.444, 'i'],
