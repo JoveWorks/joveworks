@@ -6,13 +6,14 @@
  * canvas arranges the report. Prose lives at two levels: a section note
  * here, and a caption on each output, both edited where they are read.
  *
- * What is *not* here is export. S32's rule — citation and values by default,
- * expressions only behind a marked toggle — is a promise about a file that
- * leaves the app, and there is no such file in milestone 1. Nothing in this
- * panel renders an expression, which is the same rule holding trivially.
+ * Export is the browser's own print-to-PDF, aimed at just this panel by
+ * `@media print` rules in styles.css — no PDF library, no second renderer to
+ * keep in sync with this one. S32's rule (citation and values by default,
+ * expressions only behind a marked toggle) holds trivially: nothing in this
+ * panel renders an expression, printed or not.
  */
 
-import { useState, type ReactElement } from 'react';
+import { useEffect, useState, type ReactElement } from 'react';
 
 import type { OutputResult } from '@mds/kernel';
 import type { Frame, GraphDocument, OutputNode } from '@mds/schema';
@@ -306,22 +307,45 @@ export function Notebook(): ReactElement {
       return next;
     });
 
+  // A collapsed section renders nothing (Section returns before its body), so
+  // a printed PDF would silently drop whatever was folded up on screen.
+  // Printing forces every section open for the print, then restores whatever
+  // was collapsed — collapse state is session UI, not something export changes.
+  const [printing, setPrinting] = useState(false);
+  useEffect(() => {
+    if (!printing) return;
+    const done = (): void => setPrinting(false);
+    window.addEventListener('afterprint', done);
+    window.print();
+    return () => window.removeEventListener('afterprint', done);
+  }, [printing]);
+
   return (
     <div className="notebook">
-      <h1>{document.title}</h1>
+      <div className="notebook-header">
+        <h1>{document.title}</h1>
+        <button
+          type="button"
+          className="notebook-export-button"
+          disabled={printing}
+          onClick={() => setPrinting(true)}
+        >
+          Export PDF…
+        </button>
+      </div>
 
       {document.frames.map((frame) => (
         <Section
           key={frame.id}
           frame={frame}
           outputs={outputsOf(document, frame.id)}
-          collapsed={collapsed.has(frame.id)}
+          collapsed={printing ? false : collapsed.has(frame.id)}
           onToggle={() => toggle(frame.id)}
         />
       ))}
       <Section
         outputs={outputsOf(document, undefined)}
-        collapsed={collapsed.has(UNGROUPED)}
+        collapsed={printing ? false : collapsed.has(UNGROUPED)}
         onToggle={() => toggle(UNGROUPED)}
       />
 
