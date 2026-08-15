@@ -124,41 +124,20 @@ export function QuickAddMenu({
           onKeyDown={(event) => {
             if (event.key === 'Escape') onClose();
             if (event.key === 'Enter') {
+              // "Add new" before "On this canvas" (QuickAddMenu's own render
+              // order below) — picking with Enter should land on the same
+              // thing hitting the first visible row would.
               const special = matchingSpecials.find((entry) => entry.disabled !== true)?.choice;
               const existingMatch = matchingExisting[0];
               if (special !== undefined) pick(special);
+              else if (formulas[0] !== undefined) pick({ kind: 'formula', formula: formulas[0].formula });
               else if (existingMatch !== undefined) {
                 pick({ kind: 'existing', nodeId: existingMatch.nodeId, port: existingMatch.port });
-              } else if (formulas[0] !== undefined) pick({ kind: 'formula', formula: formulas[0].formula });
+              }
             }
           }}
         />
         <div className="quick-add-list">
-          {matchingExisting.length === 0 ? null : (
-            <>
-              <div className="quick-add-heading">On this canvas</div>
-              {matchingExisting.slice(0, 20).map((candidate) => (
-                <button
-                  key={candidate.nodeId}
-                  type="button"
-                  title={
-                    candidate.replaces === undefined
-                      ? undefined
-                      : `Replaces the wire from ${candidate.replaces} — that input takes one connection.`
-                  }
-                  onClick={() => pick({ kind: 'existing', nodeId: candidate.nodeId, port: candidate.port })}
-                >
-                  <span className="entry-id">{candidate.label}</span>
-                  <span className="entry-output">
-                    {candidate.subtitle}
-                    {candidate.replaces === undefined ? null : (
-                      <span className="replaces"> replaces {candidate.replaces}</span>
-                    )}
-                  </span>
-                </button>
-              ))}
-            </>
-          )}
           {matchingSpecials.length === 0 && formulas.length === 0 ? null : (
             <>
               <div className="quick-add-heading">Add new</div>
@@ -180,6 +159,31 @@ export function QuickAddMenu({
                   <span className="entry-id">{formula.citation ?? formula.id}</span>
                   <span className="entry-output">
                     <Symbol name={formula.output.name} />
+                  </span>
+                </button>
+              ))}
+            </>
+          )}
+          {matchingExisting.length === 0 ? null : (
+            <>
+              <div className="quick-add-heading">On this canvas</div>
+              {matchingExisting.slice(0, 20).map((candidate) => (
+                <button
+                  key={candidate.nodeId}
+                  type="button"
+                  title={
+                    candidate.replaces === undefined
+                      ? undefined
+                      : `Replaces the wire from ${candidate.replaces} — that input takes one connection.`
+                  }
+                  onClick={() => pick({ kind: 'existing', nodeId: candidate.nodeId, port: candidate.port })}
+                >
+                  <span className="entry-id">{candidate.label}</span>
+                  <span className="entry-output">
+                    {candidate.subtitle}
+                    {candidate.replaces === undefined ? null : (
+                      <span className="replaces"> replaces {candidate.replaces}</span>
+                    )}
                   </span>
                 </button>
               ))}
