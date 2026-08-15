@@ -298,7 +298,9 @@ describe('the base node library through the kernel', () => {
       expect(result.ok === false && result.reason).toMatch(/one dimension/u);
     });
 
-    it('refuses a swept value — a spectrum is consumed whole, not per point', () => {
+    it('takes a swept range whole, same as any other wired value (S72)', () => {
+      // `minimum` wired straight to a range answers the range's own minimum —
+      // as sensible as wiring several discrete scalars, and not refused.
       const document = graph(
         [
           input('a', { kind: 'scalar', value: 30, unit: 'mm' }),
@@ -307,7 +309,8 @@ describe('the base node library through the kernel', () => {
         ],
         [wire('a.value', 'm.a'), wire('d.value', 'm.a')],
       );
-      expect(() => evaluateDocument(document, catalogues)).toThrow(/not a swept series/u);
+      const smallest = numeric(valueAt(evaluateDocument(document, catalogues), 'm', 'smallest'));
+      expect(smallest.data).toEqual([10]);
     });
   });
 });

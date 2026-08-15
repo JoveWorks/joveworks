@@ -259,26 +259,25 @@ function inputPortValue(
   };
 
   if (port.kind === 'spectrum' && edges.length > 0) {
-    const first = valueOf(edges[0] as Edge);
-    // One edge from an authored list, exactly as before (S36) — or one or
-    // more discrete edges, each a single scalar, collected into one (S71). A
-    // spectrum is consumed whole and does not itself vary along an axis, so
-    // a swept source has nothing well-defined to contribute.
-    if (edges.length === 1 && first.kind === 'spectrum') return first;
-    return {
-      kind: 'spectrum',
-      values: edges.map((edge) => {
-        const value = valueOf(edge);
-        if (value.kind !== 'numeric' || value.axes.length !== 0) {
-          throw new KernelError(
-            `'${edge.from.node}.${edge.from.port}' must be a single value to join this port, ` +
-              'not a swept series (S71)',
-            key,
-          );
-        }
-        return value.data[0] as number;
-      }),
-    };
+    // Every wired edge flattens into one collection (S71) — an authored
+    // list, a single scalar, or a swept series contribute its `.values` or
+    // its whole `.data` alike. A spectrum value is a flat `number[]`
+    // regardless of where it came from, so there is nothing more specific
+    // to preserve: `minimum` wired straight to a range answers the range's
+    // minimum, exactly as wiring several scalars answers theirs.
+    const values: number[] = [];
+    for (const edge of edges) {
+      const value = valueOf(edge);
+      if (value.kind === 'categorical') {
+        throw new KernelError(
+          `'${edge.from.node}.${edge.from.port}' is a categorical value, and this port needs a ` +
+            'number',
+          key,
+        );
+      }
+      values.push(...(value.kind === 'spectrum' ? value.values : value.data));
+    }
+    return { kind: 'spectrum', values };
   }
 
   if (edges.length > 0) return valueOf(edges[0] as Edge);
