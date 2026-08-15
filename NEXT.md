@@ -19,6 +19,9 @@ amending S54. Neither is code.
 
 `S67`–`S69` were settled by step 8 and needed no schema change: the editor's
 questions were all about how an *unfinished* graph behaves, not about the rules.
+`S74`, from a second browser pass over the same editor, settled that a panel's
+own subdivisions (a catalogue, a notebook section) collapse as session UI
+state — reopens on reload, same as a pinned node — never a document field.
 
 ---
 
@@ -28,6 +31,17 @@ The editor is built and the model layer is tested. What is left is the pass no
 test can do: opening it and using it. That is
 [packages/editor/TESTING.md](packages/editor/TESTING.md), done by hand, on a
 machine with a browser.
+
+**Thomas drives the browser himself now** (a `pnpm dev` he keeps running) and
+reports findings live rather than as a pasted checklist — the prompt below is
+still the shape of the work, not the literal handoff. A second pass, mid-way
+through, landed `S74` (collapsible palette/notebook sections) plus a run of
+smaller fixes: a still-blank range bound no longer refuses a unit, and a
+range's unit field never refuses a retype at all; the "not connected" reason
+renders port names the way their own labels do (a true subscript, not the
+raw id); the notebook's drag grip and default width. `UI-FEEDBACK.md` reflects
+what is now fixed — read it fresh rather than trusting memory of the first
+pass.
 
 ```
 Continue milestone 1 of machine-design-studio.

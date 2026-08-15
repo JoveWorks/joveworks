@@ -40,8 +40,6 @@ item** (an explicitly deferred feature, not milestone-1 scope).
 - **Section frames must be resizable.**
 - **Sections must be reorderable by dragging** in the notebook view.
 - **Notebook and catalogue panels must be resizable**, notebook especially.
-- **Notebook and catalogue panels should be collapsible**, independent of
-  resizing.
 - **Notebooks need image support**, alongside the existing prose and output
   captions.
 
@@ -65,12 +63,6 @@ item** (an explicitly deferred feature, not milestone-1 scope).
   simplification, or a user override exposed on hover (a dropdown of
   equivalent unit spellings). Which of the two — or both — is open; flagging
   as a design question rather than deciding it here.
-
-## Variable name rendering
-
-- **Subscripts and Greek letters must render properly.** `F_a` should show
-  `a` as a true subscript; `beta`, `epsilon` and other spelled-out Greek
-  names should render as the actual glyphs (β, ε, …), not their names.
 
 ## Visual system
 
@@ -122,10 +114,6 @@ a schema change to carry a unit per bound (persists properly, but widens
 `ValueSpec` and ripples into the kernel and everywhere else that assumes a
 range has one unit). Neither was picked; parked here rather than decided
 under scope pressure.
-
-**Notebook section drag grip (`⠿`) reads as part of the title** — it should
-sit in the margin, lighter, clearly separate from the section name rather
-than looking like a character of it.
 
 **A waypoint node, to bundle and redirect edges** — a passive routing point
 on the canvas: straight connections in and out, and an always-available open
