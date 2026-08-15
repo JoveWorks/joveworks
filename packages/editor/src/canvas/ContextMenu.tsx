@@ -8,11 +8,22 @@
 
 import type { ReactElement } from 'react';
 
-export interface MenuItem {
+export interface ActionItem {
   readonly label: string;
   readonly onClick: () => void;
   readonly danger?: boolean;
   readonly disabled?: boolean;
+}
+
+/** A section label within a menu — text, not a control, so it never looks clickable. */
+export interface HeadingItem {
+  readonly heading: string;
+}
+
+export type MenuItem = ActionItem | HeadingItem;
+
+function isHeading(item: MenuItem): item is HeadingItem {
+  return 'heading' in item;
 }
 
 interface Props {
@@ -29,20 +40,26 @@ export function ContextMenu({ x, y, items, onClose }: Props): ReactElement {
           panel and none of them share a single "click missed everything" handler. */}
       <div className="context-menu-backdrop" onClick={onClose} onContextMenu={onClose} />
       <div className="context-menu" style={{ left: x, top: y }}>
-        {items.map((item) => (
-          <button
-            key={item.label}
-            type="button"
-            disabled={item.disabled ?? false}
-            className={item.danger === true ? 'danger' : ''}
-            onClick={() => {
-              item.onClick();
-              onClose();
-            }}
-          >
-            {item.label}
-          </button>
-        ))}
+        {items.map((item, i) =>
+          isHeading(item) ? (
+            <div key={`heading-${i}`} className="menu-heading">
+              {item.heading}
+            </div>
+          ) : (
+            <button
+              key={item.label}
+              type="button"
+              disabled={item.disabled ?? false}
+              className={item.danger === true ? 'danger' : ''}
+              onClick={() => {
+                item.onClick();
+                onClose();
+              }}
+            >
+              {item.label}
+            </button>
+          ),
+        )}
       </div>
     </>
   );

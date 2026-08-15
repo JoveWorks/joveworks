@@ -941,6 +941,14 @@ aside.right {
   color: var(--state-error);
 }
 
+.context-menu .menu-heading {
+  padding: 5px 8px 2px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
 .quick-add {
   position: fixed;
   z-index: 20;

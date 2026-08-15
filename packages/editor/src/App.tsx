@@ -192,7 +192,7 @@ export function App(): ReactElement {
   // place a student (or a colleague seeing a demo) looks for "show me
   // something that already works".
   const helpMenuItems: readonly MenuItem[] = [
-    { label: 'Examples', disabled: true, onClick: () => {} },
+    { heading: 'Examples' },
     {
       label: 'Pad pressure sweep',
       onClick: () => {
