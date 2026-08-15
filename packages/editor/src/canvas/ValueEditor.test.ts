@@ -27,7 +27,7 @@ describe('switching an input value between kinds', () => {
       kind: 'linear',
       start: 20,
       stop: 40,
-      points: 21,
+      points: 10,
       unit: mm,
     });
     expect(converted(scalar, 'list')).toEqual({ kind: 'list', values: [20, 40], unit: mm });
@@ -39,7 +39,7 @@ describe('switching an input value between kinds', () => {
       kind: 'logarithmic',
       start: 1,
       stop: 2,
-      points: 21,
+      points: 10,
       unit: mm,
     });
   });

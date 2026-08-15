@@ -2,7 +2,7 @@
  * Turning an input into a range, on the node (S29, S47).
  *
  * This is the control the whole tool is about: the same node holds `250 kW` and
- * `linspace(20, 60, 21)`, and switching between them is what turns a calculation
+ * `linspace(20, 60, 10)`, and switching between them is what turns a calculation
  * into a design study. Nothing downstream is rewired, because a scalar is a
  * series with no axes (S43).
  *
@@ -69,7 +69,7 @@ export function converted(value: ValueSpec, kind: Kind): ValueSpec {
     case 'linear':
     case 'logarithmic': {
       const start = kind === 'logarithmic' && sample <= 0 ? 1 : sample;
-      return { kind, start, stop: start * 2, points: 21, unit };
+      return { kind, start, stop: start * 2, points: 10, unit };
     }
     case 'list':
       return { kind, values: [sample, sample * 2], unit };
