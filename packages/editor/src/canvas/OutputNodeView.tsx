@@ -25,7 +25,7 @@ import {
 } from '@mds/schema';
 
 import { useGraph } from '../graph-context';
-import { updateNode } from '../model/document';
+import { reframe, removeNodes, updateNode } from '../model/document';
 import { formatAuthored, parseAuthored, unitLabel } from '../model/quantity';
 import { reading, summarise } from '../model/values';
 import { NodeShell } from './NodeShell';
@@ -95,6 +95,7 @@ export function OutputNodeView({ id, selected }: NodeProps): ReactElement | null
       selected={selected ?? false}
       pinned={pinned.has(id)}
       onTogglePin={() => togglePin(id)}
+      onDelete={() => edit((current) => reframe(removeNodes(current, new Set([id]))))}
       title={
         <TextField
           className="title"

@@ -105,7 +105,11 @@ export function App(): ReactElement {
   return (
     <GraphContext.Provider value={context}>
       <ReactFlowProvider>
-        <div className="app">
+        {/* Right-click opens an app menu wherever one is wired up (Canvas,
+            Notebook); everywhere else it should do nothing rather than fall
+            through to the browser's own menu, which offers nothing useful over
+            a canvas. */}
+        <div className="app" onContextMenu={(event) => event.preventDefault()}>
           <header className="toolbar">
             <button
               type="button"

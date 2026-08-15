@@ -29,6 +29,7 @@ interface Props {
   readonly selected: boolean;
   readonly pinned: boolean;
   readonly onTogglePin: () => void;
+  readonly onDelete: () => void;
   /** Always drawn — the value, and the handles a wire attaches to. */
   readonly children: ReactNode;
   /** Drawn only when the node is open: ports with units, editors, description. */
@@ -45,6 +46,7 @@ export function NodeShell({
   selected,
   pinned,
   onTogglePin,
+  onDelete,
   children,
   detail,
 }: Props): ReactElement {
@@ -66,6 +68,9 @@ export function NodeShell({
           onClick={onTogglePin}
         >
           ▣
+        </button>
+        <button type="button" className="delete" title="Delete this node" onClick={onDelete}>
+          ✕
         </button>
       </header>
       {subtitle === undefined ? null : <div className="node-subtitle">{subtitle}</div>}

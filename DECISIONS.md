@@ -3,7 +3,7 @@
 Companion to [PLAN.md](PLAN.md). Records what is settled and why. Last updated
 2026-08-15.
 
-**Every decision is closed.** S1–S69 are settled; D1–D20 are all resolved.
+**Every decision is closed.** S1–S70 are settled; D1–D20 are all resolved.
 S53–S55 were added from building `packages/units`, and S53 **corrects** an
 earlier claim that the dimension checker would catch the density fudge. S56–S58
 were added from building `packages/schema`; S56 **amends** the recurring
@@ -11,7 +11,8 @@ were added from building `packages/schema`; S56 **amends** the recurring
 twice. S59–S60 came from `packages/nodes`, S61–S65 from `packages/kernel`,
 where S62 is the one that changes what a transcriber may write in a formula, and
 S67–S69 from `packages/editor` — where the question was not what the rules are
-but how a graph looks while it is still being built.
+but how a graph looks while it is still being built. S70 came from the first
+browser pass over the editor (`UI-FEEDBACK.md`) and amends S50.
 
 The only work left that is not code is **content sign-off** — the known defects
 and the junk unit tags — which needs Roloff & Matek in hand. It gates individual
@@ -96,6 +97,7 @@ claims rights over course-derived material** (see S44).
 | S67 | **The editor evaluates the part of the graph that is ready and marks the rest; it does not implement a second, laxer kernel to do it** | From building the editor. `evaluateDocument` answers about a *finished* graph — an unwired input or a quarantined formula is a refusal (S19) — which is right for a test and wrong for a canvas, where every number would vanish because the node you have not wired yet is not wired yet. So `model/analysis.ts` decides which nodes are **ready** (an incoming edge or a declared default on every input; not quarantined; nothing upstream unready) and hands that subgraph to the real kernel under the real rules. The decision is made from the same facts the kernel uses, and no rule is relaxed anywhere. It yields the four states S49 spends colour on — `incomplete`, `quarantined`, `blocked`, `error` — and the distinction between the first and third is the one that matters to a student: "you have not finished here" against "you have not finished over there". A node the kernel refuses outright is dropped with its descendants and the remainder re-evaluated, bounded, so one bad node costs its own subtree and not the graph |
 | S68 | **A sample graph is built against the loaded catalogue at runtime, never shipped as a fixture** | The belt lab is the graph already known to be right, so it is the obvious thing to open the editor with — but a stored fixture would have to carry formula references, and a reference is id + version + **hash** (S23), which cannot be computed without the record. Building it in memory from the loaded catalogue means the sample holds ids and numbers only, exactly as `test/belt-goldens.test.ts` does, and it is *unavailable* rather than embedded when no catalogue is loaded. That is what makes "the editor degrades honestly" a mechanism rather than an intention: there is nothing to degrade from. The base-node sample (pad pressure) is always available for the same reason in reverse — arithmetic is unrestricted (S42), so the app demonstrates a sweep, a check and a plot with zero textbook content present |
 | S69 | **Group frames are passive regions of the canvas; membership is decided by where a node sits** | S30 makes the canvas layout the report outline, so dragging a node into a frame is how it joins that section — there is no membership to manage separately, and no container to add a node to. The frame therefore does not carry its nodes when it moves, which is the accepted cost: it keeps one source of truth for what is in a section, and it keeps the frame from becoming a parent node whose children need coordinates relative to it. Overlap resolves to the frame drawn last |
+| S70 | **Amends S50: a compact node still shows every port's name and unit, and the value line's axis/output unit** | From the first browser pass (`UI-FEEDBACK.md`). S50's density argument traded port labels for a card that fit a twenty-node graph, but in the browser that traded away legibility that mattered more — a collapsed node with only bare handles gave no way to tell one port from another without hovering, and hover-to-open resized the card and shifted the very content the student was reading. S50's other two calls stand: compact-by-default with hover/selection/pin to open the description and applies-when detail, and unconnected required inputs marked even when compact. What compact no longer hides is port text; what still only appears on open is the detail block, which is appended below rather than reflowing what is already visible |
 
 ---
 

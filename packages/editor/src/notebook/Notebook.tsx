@@ -12,13 +12,14 @@
  * panel renders an expression, which is the same rule holding trivially.
  */
 
-import type { ReactElement } from 'react';
+import { useState, type ReactElement } from 'react';
 
 import type { OutputResult } from '@mds/kernel';
 import type { Frame, GraphDocument, OutputNode } from '@mds/schema';
 
 import { useGraph } from '../graph-context';
-import { updateFrame, updateNode } from '../model/document';
+import { ContextMenu, type MenuItem } from '../canvas/ContextMenu';
+import { moveFrame, reframe, removeNodes, updateFrame, updateNode } from '../model/document';
 import { display } from '../model/quantity';
 import { summarise } from '../model/values';
 import { PlotFigure } from './PlotFigure';
@@ -139,16 +140,48 @@ function Section({
   readonly frame?: Frame;
   readonly outputs: readonly OutputNode[];
 }): ReactElement | null {
-  const { analysis, edit } = useGraph();
+  const { document, analysis, edit } = useGraph();
+  const [menu, setMenu] = useState<{ x: number; y: number } | undefined>(undefined);
   if (outputs.length === 0) return null;
 
   const results = new Map(
     (analysis.evaluation?.outputs ?? []).map((result) => [result.nodeId, result] as const),
   );
 
+  const menuItems: readonly MenuItem[] =
+    frame === undefined
+      ? []
+      : [
+          {
+            label: 'Move up',
+            disabled: document.frames[0]?.id === frame.id,
+            onClick: () => edit((current) => moveFrame(current, frame.id, 'up')),
+          },
+          {
+            label: 'Move down',
+            disabled: document.frames.at(-1)?.id === frame.id,
+            onClick: () => edit((current) => moveFrame(current, frame.id, 'down')),
+          },
+          {
+            label: 'Delete section',
+            danger: true,
+            onClick: () => edit((current) => reframe(removeNodes(current, new Set([frame.id])))),
+          },
+        ];
+
   return (
-    <section className="notebook-section">
+    <section
+      className="notebook-section"
+      onContextMenu={(event) => {
+        if (frame === undefined) return;
+        event.preventDefault();
+        setMenu({ x: event.clientX, y: event.clientY });
+      }}
+    >
       <h2>{frame?.title ?? 'Not in a section'}</h2>
+      {menu === undefined ? null : (
+        <ContextMenu x={menu.x} y={menu.y} items={menuItems} onClose={() => setMenu(undefined)} />
+      )}
       {frame === undefined ? null : (
         <textarea
           className="note"

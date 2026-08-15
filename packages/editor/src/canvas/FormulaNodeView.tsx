@@ -20,7 +20,7 @@ import { isGenericPort, type Port } from '@mds/schema';
 import type { Unit } from '@mds/units';
 
 import { useGraph } from '../graph-context';
-import { updateNode } from '../model/document';
+import { reframe, removeNodes, updateNode } from '../model/document';
 import { unitLabel } from '../model/quantity';
 import { axisLabel, reading, summarise } from '../model/values';
 import { NodeShell } from './NodeShell';
@@ -53,6 +53,7 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
         selected={selected ?? false}
         pinned={pinned.has(id)}
         onTogglePin={() => togglePin(id)}
+        onDelete={() => edit((current) => reframe(removeNodes(current, new Set([id]))))}
         title={node.label ?? node.formula.id}
         subtitle="formula not loaded"
       >
@@ -92,6 +93,7 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
       selected={selected ?? false}
       pinned={pinned.has(id)}
       onTogglePin={() => togglePin(id)}
+      onDelete={() => edit((current) => reframe(removeNodes(current, new Set([id]))))}
       title={
         <TextField
           className="title"

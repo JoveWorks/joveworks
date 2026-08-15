@@ -37,6 +37,22 @@ export function addNode(document: GraphDocument, node: GraphNode): GraphDocument
   return { ...document, nodes: [...document.nodes, node] };
 }
 
+/**
+ * A copy of one node, offset so it does not sit exactly on top of the
+ * original, and carrying none of its wires — a duplicate is a fresh node, not
+ * a fork of one that is already wired into the graph.
+ */
+export function duplicateNode(document: GraphDocument, id: string): GraphDocument {
+  const source = document.nodes.find((node) => node.id === id);
+  if (source === undefined) return document;
+  const copy: GraphNode = {
+    ...withoutFrame(source),
+    id: uniqueId(document, source.id),
+    position: { x: source.position.x + 32, y: source.position.y + 32 },
+  };
+  return addNode(document, copy);
+}
+
 /** Replace one node, leaving everything else — and its identity — alone. */
 export function updateNode<T extends GraphNode>(
   document: GraphDocument,
@@ -106,6 +122,23 @@ export function updateFrame(
     ...document,
     frames: document.frames.map((frame) => (frame.id === id ? change(frame) : frame)),
   };
+}
+
+/**
+ * Move a section earlier or later in `document.frames` — the notebook's
+ * section order (S30), which the canvas has no drag gesture for yet.
+ */
+export function moveFrame(
+  document: GraphDocument,
+  id: string,
+  direction: 'up' | 'down',
+): GraphDocument {
+  const index = document.frames.findIndex((frame) => frame.id === id);
+  const swapWith = direction === 'up' ? index - 1 : index + 1;
+  if (index === -1 || swapWith < 0 || swapWith >= document.frames.length) return document;
+  const frames = [...document.frames];
+  [frames[index], frames[swapWith]] = [frames[swapWith] as Frame, frames[index] as Frame];
+  return { ...document, frames };
 }
 
 function inside(position: Position, frame: Frame): boolean {

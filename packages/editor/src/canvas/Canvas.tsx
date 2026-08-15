@@ -22,6 +22,7 @@ import {
   MiniMap,
   Panel,
   ReactFlow,
+  useReactFlow,
   type Connection,
   type Edge as FlowEdge,
   type EdgeChange,
@@ -30,14 +31,41 @@ import {
 } from '@xyflow/react';
 
 import { canConnect, typesConnect } from '@mds/kernel';
-import type { Edge } from '@mds/schema';
+import { parseUnit } from '@mds/units';
+import { formulaRef, VALUE_PORT, type Edge, type GraphNode } from '@mds/schema';
 
 import { useGraph } from '../graph-context';
-import { connect, edgeId, moveNode, reframe, removeEdges, removeNodes, updateFrame } from '../model/document';
+import {
+  addNode,
+  connect,
+  duplicateNode,
+  edgeId,
+  frameAround,
+  moveNode,
+  reframe,
+  removeEdges,
+  removeNodes,
+  uniqueId,
+  updateFrame,
+} from '../model/document';
+import { ContextMenu, type MenuItem } from './ContextMenu';
 import { FormulaNodeView } from './FormulaNodeView';
 import { FrameView } from './FrameView';
 import { InputNodeView } from './InputNodeView';
 import { OutputNodeView } from './OutputNodeView';
+import { QuickAddMenu, type QuickAddChoice } from './QuickAddMenu';
+
+type MenuTarget =
+  | { readonly kind: 'node'; readonly id: string; readonly x: number; readonly y: number }
+  | { readonly kind: 'edge'; readonly id: string; readonly x: number; readonly y: number }
+  | { readonly kind: 'frame'; readonly id: string; readonly x: number; readonly y: number }
+  | { readonly kind: 'pane'; readonly x: number; readonly y: number };
+
+interface QuickAddTarget {
+  readonly x: number;
+  readonly y: number;
+  readonly from: { readonly nodeId: string; readonly port: string; readonly type: 'source' | 'target' };
+}
 
 type Measurements = ReadonlyMap<string, { width: number; height: number }>;
 
@@ -60,9 +88,12 @@ const NODE_TYPES = {
 };
 
 export function Canvas(): ReactElement {
-  const { document, catalogues, analysis, edit } = useGraph();
+  const { document, catalogues, analysis, edit, pinned, togglePin } = useGraph();
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [refusal, setRefusal] = useState<string | undefined>(undefined);
+  const [menu, setMenu] = useState<MenuTarget | undefined>(undefined);
+  const [quickAdd, setQuickAdd] = useState<QuickAddTarget | undefined>(undefined);
+  const flow = useReactFlow();
 
   /**
    * How big each node turned out to be, once drawn.
@@ -208,6 +239,16 @@ export function Canvas(): ReactElement {
     (connection: Connection | FlowEdge): boolean => {
       const candidate = candidateOf(connection);
       if (candidate === undefined || candidate.from.node === candidate.to.node) return false;
+      // A port that already carries a wire is about to have it replaced, not
+      // joined — but `resolution.targets` here still reflects the *old* edge,
+      // which is wrong to check against for a generic port (S59): its bound
+      // dimension came from that very edge, so a legitimate rewire to a
+      // different dimension would be greyed out before the drop ever reaches
+      // `canConnect`, which already accounts for the replacement.
+      const alreadyWired = document.edges.some(
+        (edge) => edge.to.node === candidate.to.node && edge.to.port === candidate.to.port,
+      );
+      if (alreadyWired) return true;
       const resolution = analysis.resolution;
       if (resolution === undefined) return true;
       const source = resolution.sources.get(`${candidate.from.node}.${candidate.from.port}`);
@@ -215,7 +256,7 @@ export function Canvas(): ReactElement {
       if (source === undefined || target === undefined) return true;
       return typesConnect(source, target);
     },
-    [analysis.resolution],
+    [analysis.resolution, document.edges],
   );
 
   /** The authority, when it lands (S64): the whole graph, resolved with it added. */
@@ -234,6 +275,173 @@ export function Canvas(): ReactElement {
     [catalogues, document, edit],
   );
 
+  /** What a right click offers, worked out from what was clicked. */
+  const menuItems = (target: MenuTarget): readonly MenuItem[] => {
+    if (target.kind === 'node') {
+      const { id } = target;
+      return [
+        {
+          label: pinned.has(id) ? 'Unpin' : 'Pin open',
+          onClick: () => togglePin(id),
+        },
+        {
+          label: 'Duplicate',
+          onClick: () => edit((current) => reframe(duplicateNode(current, id))),
+        },
+        {
+          label: 'Delete',
+          danger: true,
+          onClick: () => edit((current) => reframe(removeNodes(current, new Set([id])))),
+        },
+      ];
+    }
+    if (target.kind === 'edge') {
+      const { id } = target;
+      return [
+        {
+          label: 'Delete wire',
+          danger: true,
+          onClick: () => edit((current) => removeEdges(current, new Set([id]))),
+        },
+      ];
+    }
+    if (target.kind === 'frame') {
+      const { id } = target;
+      return [
+        {
+          label: 'Delete section',
+          danger: true,
+          onClick: () => edit((current) => reframe(removeNodes(current, new Set([id])))),
+        },
+      ];
+    }
+    const ungrouped = document.nodes.filter((node) => node.frameId === undefined);
+    const at = flow.screenToFlowPosition({ x: target.x, y: target.y });
+    return [
+      {
+        label: 'Add input',
+        onClick: () =>
+          edit((current) => {
+            const id = uniqueId(current, 'input');
+            return addNode(current, {
+              kind: 'input',
+              id,
+              label: id,
+              value: { kind: 'scalar', value: 1, unit: parseUnit('') },
+              position: at,
+            });
+          }),
+      },
+      {
+        label: 'Add value output',
+        onClick: () =>
+          edit((current) => {
+            const id = uniqueId(current, 'result');
+            return addNode(current, {
+              kind: 'output',
+              id,
+              label: id,
+              output: { kind: 'value' },
+              position: at,
+            });
+          }),
+      },
+      {
+        label: 'Add check output',
+        onClick: () =>
+          edit((current) => {
+            const id = uniqueId(current, 'check');
+            return addNode(current, {
+              kind: 'output',
+              id,
+              label: id,
+              output: { kind: 'check', comparison: '>=', threshold: { value: 1, unit: parseUnit('') } },
+              position: at,
+            });
+          }),
+      },
+      {
+        label: 'Group into new section',
+        disabled: ungrouped.length === 0,
+        onClick: () =>
+          edit((current) => {
+            const inside = current.nodes.filter((node) => node.frameId === undefined);
+            if (inside.length === 0) return current;
+            const id = uniqueId(current, 'section');
+            const frame = frameAround(id, 'New section', inside);
+            return reframe({ ...current, frames: [...current.frames, frame] });
+          }),
+      },
+    ];
+  };
+
+  /**
+   * Finish a wire dropped on empty canvas: place the chosen node, then wire
+   * the dragged endpoint to whichever of its ports fits the drag's direction.
+   * A refusal here is the same refusal a manual drag-and-drop would get,
+   * surfaced the same way (S64) — the node still lands, just unconnected.
+   */
+  const pickQuickAdd = (target: QuickAddTarget, choice: QuickAddChoice): void => {
+    const position = flow.screenToFlowPosition({ x: target.x, y: target.y });
+    edit((current) => {
+      const id = uniqueId(
+        current,
+        choice.kind === 'formula'
+          ? choice.formula.id.replace(/[^\w.]/gu, '_')
+          : choice.kind === 'input'
+            ? 'input'
+            : choice.outputKind === 'value'
+              ? 'result'
+              : 'check',
+      );
+      const node: GraphNode =
+        choice.kind === 'formula'
+          ? { kind: 'formula', id, formula: formulaRef(choice.formula), position }
+          : choice.kind === 'input'
+            ? {
+                kind: 'input',
+                id,
+                label: id,
+                value: { kind: 'scalar', value: 1, unit: parseUnit('') },
+                position,
+              }
+            : {
+                kind: 'output',
+                id,
+                label: id,
+                output:
+                  choice.outputKind === 'check'
+                    ? { kind: 'check', comparison: '>=', threshold: { value: 1, unit: parseUnit('') } }
+                    : { kind: 'value' },
+                position,
+              };
+
+      const port =
+        choice.kind === 'formula'
+          ? target.from.type === 'source'
+            ? choice.formula.inputs[0]?.name
+            : choice.formula.output.name
+          : VALUE_PORT;
+
+      let next = addNode(current, node);
+      if (port === undefined) return next;
+
+      const newEndpoint = { node: id, port };
+      const dragEndpoint = { node: target.from.nodeId, port: target.from.port };
+      const [from, to] =
+        target.from.type === 'source' ? [dragEndpoint, newEndpoint] : [newEndpoint, dragEndpoint];
+      const candidate: Edge = { id: edgeId(from, to), from, to };
+      const verdict = canConnect(next, catalogues, candidate);
+      if (verdict.ok) {
+        setRefusal(undefined);
+        next = connect(next, candidate.from, candidate.to);
+      } else {
+        setRefusal(verdict.reason);
+      }
+      return next;
+    });
+  };
+
   return (
     <div className="canvas">
       <ReactFlow
@@ -244,14 +452,96 @@ export function Canvas(): ReactElement {
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         isValidConnection={isValidConnection}
+        deleteKeyCode={['Backspace', 'Delete']}
         onNodeDragStop={() => edit(reframe)}
-        onPaneClick={() => setRefusal(undefined)}
+        onPaneClick={() => {
+          setRefusal(undefined);
+          setMenu(undefined);
+        }}
+        onNodeContextMenu={(event, node) => {
+          event.preventDefault();
+          const kind = node.type === 'frame' ? 'frame' : 'node';
+          setMenu({ kind, id: node.id, x: event.clientX, y: event.clientY });
+        }}
+        onEdgeContextMenu={(event, edge) => {
+          event.preventDefault();
+          setMenu({ kind: 'edge', id: edge.id, x: event.clientX, y: event.clientY });
+        }}
+        onPaneContextMenu={(event) => {
+          event.preventDefault();
+          if (!('clientX' in event)) return;
+          setMenu({ kind: 'pane', x: event.clientX, y: event.clientY });
+        }}
+        onConnectEnd={(event, state) => {
+          if (state.fromHandle === null) return;
+
+          if (state.toHandle !== null) {
+            // Dropped on a real port. `isValidConnection` may have blocked
+            // `onConnect` from firing — the cheap check while dragging (S64),
+            // or a genuine mismatch — so resolve it for real here rather than
+            // let the wire snap back with no explanation.
+            if (state.isValid !== true) {
+              const endpointOf = (handle: typeof state.fromHandle) => ({
+                node: handle.nodeId,
+                port: handle.id ?? '',
+              });
+              const [from, to] =
+                state.fromHandle.type === 'source'
+                  ? [endpointOf(state.fromHandle), endpointOf(state.toHandle)]
+                  : [endpointOf(state.toHandle), endpointOf(state.fromHandle)];
+              const candidate: Edge = { id: edgeId(from, to), from, to };
+              const verdict = canConnect(document, catalogues, candidate);
+              if (verdict.ok) {
+                setRefusal(undefined);
+                edit((current) => connect(current, candidate.from, candidate.to));
+              } else {
+                setRefusal(verdict.reason);
+              }
+            }
+            return;
+          }
+
+          if (!('clientX' in event)) return;
+          const dropTarget = event.target as HTMLElement | null;
+          if (dropTarget?.closest('.react-flow__pane') === null || dropTarget === null) return;
+          setQuickAdd({
+            x: event.clientX,
+            y: event.clientY,
+            from: {
+              nodeId: state.fromHandle.nodeId,
+              port: state.fromHandle.id ?? '',
+              type: state.fromHandle.type,
+            },
+          });
+        }}
+        onMove={() => {
+          setMenu(undefined);
+          setQuickAdd(undefined);
+        }}
         minZoom={0.15}
         fitView
       >
         <Background gap={24} />
         <Controls />
         <MiniMap pannable zoomable />
+        {menu === undefined ? null : (
+          <ContextMenu
+            x={menu.x}
+            y={menu.y}
+            items={menuItems(menu)}
+            onClose={() => setMenu(undefined)}
+          />
+        )}
+        {quickAdd === undefined ? null : (
+          <QuickAddMenu
+            x={quickAdd.x}
+            y={quickAdd.y}
+            direction={quickAdd.from.type}
+            catalogues={catalogues}
+            onPick={(choice) => pickQuickAdd(quickAdd, choice)}
+            onClose={() => setQuickAdd(undefined)}
+          />
+        )}
         {refusal === undefined ? null : (
           <Panel position="top-center">
             <div className="refusal" role="status">

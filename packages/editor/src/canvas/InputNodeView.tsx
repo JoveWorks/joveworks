@@ -12,7 +12,7 @@ import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { VALUE_PORT, isRange, type InputNode } from '@mds/schema';
 
 import { useGraph } from '../graph-context';
-import { updateNode } from '../model/document';
+import { reframe, removeNodes, updateNode } from '../model/document';
 import { axisLabel, reading, summarise } from '../model/values';
 import { NodeShell } from './NodeShell';
 import { Sparkline } from './Sparkline';
@@ -35,6 +35,7 @@ export function InputNodeView({ id, selected }: NodeProps): ReactElement | null 
       selected={selected ?? false}
       pinned={pinned.has(id)}
       onTogglePin={() => togglePin(id)}
+      onDelete={() => edit((current) => reframe(removeNodes(current, new Set([id]))))}
       title={
         <TextField
           className="title"
@@ -64,8 +65,8 @@ export function InputNodeView({ id, selected }: NodeProps): ReactElement | null 
         {value === undefined ? null : (
           <span className="axis">{axisLabel(value) ?? ''}</span>
         )}
+        <Handle type="source" position={Position.Right} id={VALUE_PORT} />
       </div>
-      <Handle type="source" position={Position.Right} id={VALUE_PORT} />
     </NodeShell>
   );
 }
