@@ -4,8 +4,6 @@ The documentation is getting a bit chaotic and probably stale in a lot of points
 
 ## Findings in UX and talking points
 
-`Settings` should be under file in the ribbon instead of edit. Is it stored in localstorage?
-
 Some nodes, especially basic math nodes, can have a default value like the threshold in compare. I would like this default to be next to the port instead of in the dropdown.
 
 make the minimap toggleable in settings, default off.

@@ -176,11 +176,11 @@ export function App(): ReactElement {
     { label: 'Open…', onClick: () => void openDocumentFile() },
     { label: 'Save', onClick: () => saveTextFile(`${document.id}.mds.json`, saveDocument(document)) },
     { label: 'Load catalogue…', onClick: () => void loadCatalogueFile() },
+    { label: 'Settings…', onClick: () => setShowSettings(true) },
   ];
 
   const editMenuItems: readonly MenuItem[] = [
     { label: 'Group into new section', onClick: addSection },
-    { label: 'Settings…', onClick: () => setShowSettings(true) },
   ];
 
   const viewMenuItems: readonly MenuItem[] = [
