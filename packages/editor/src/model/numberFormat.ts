@@ -26,7 +26,7 @@ export interface NumberFormatSettings {
 
 export const DEFAULT_NUMBER_FORMAT_SETTINGS: NumberFormatSettings = {
   style: 'plain',
-  notation: 'auto',
+  notation: 'si',
 };
 
 export const STYLE_LABELS: Readonly<Record<ThousandsStyle, string>> = {
