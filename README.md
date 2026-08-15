@@ -7,11 +7,12 @@ Built for the KU Leuven course on dimensioning of machine parts. Formulas follow
 **Roloff & Matek, 6th edition**, and each one carries a citation back to its
 textbook equation number.
 
-Status: **milestone 1 under way.** The pnpm workspace is scaffolded and the
-`units` package is built and tested; schema, kernel, nodes and editor are
-placeholders. Every design decision is closed (S1–S55). What remains besides
-code is content sign-off against the textbook, which gates individual formulas
-rather than any build step.
+Status: **milestone 1 under way.** `units`, `schema`, `nodes` and `kernel` are
+built and tested — a graph of base nodes evaluates end to end, sweeps included,
+with no textbook content anywhere in it. The editor is still a placeholder, and
+the belt catalogue is the next piece. Every design decision is closed (S1–S65).
+What remains besides code is content sign-off against the textbook, which gates
+individual formulas rather than any build step.
 
 ```
 pnpm install

@@ -1,8 +1,10 @@
 # Plan: machine-design-studio
 
-Status: **agreed, not started.** Written 2026-08-14; revised the same day once
-D1–D19 closed as S13–S45. **Every decision is closed**; only content sign-off
-remains, and it gates formulas rather than build steps.
+Status: **milestone 1 under way.** Written 2026-08-14; revised the same day once
+D1–D19 closed as S13–S45. Steps 1–5 below are done as of 2026-08-15 — the
+workspace, `units`, `schema`, `nodes` and `kernel`. **Every decision is closed**
+(S1–S65); only content sign-off remains, and it gates formulas rather than build
+steps.
 
 Supersedes the plan in the predecessor repository (`mechanical-design`, commit
 `348e2f0`, `PLAN.md`), which framed the work as a refactor of that package. The
@@ -350,26 +352,35 @@ S25 migration.
 
 ### Milestone 1 — vertical slice
 
-1. **Workspace scaffolding.** pnpm workspaces, TypeScript project references,
-   Vitest, Vite (S22).
-2. **Schema + units package.** The contract everything else depends on. Belt
-   deliberately exercises the hard cases: `[kg/dm³]` is the density trap that
-   `C16_Belt.py:155` fudges as `1E-6 * 1E3 * rho`, and `[%]` needs the
-   dimensionless-with-display-scale handling of S21.
-3. **Base node library** (S42) — literal inputs, arithmetic and math operations,
-   output nodes. No textbook content, so it is unrestricted, and it makes the
-   kernel testable end to end before any catalogue exists.
-4. **Evaluation kernel** — topological sort, vectorised ranges, the predicate
-   layer (S39).
-5. **Extract `C16_Belt`** — 55 formulas, self-contained, no tables and no
+1. ~~**Workspace scaffolding.**~~ **Done.** pnpm workspaces, TypeScript project
+   references, Vitest, Vite (S22).
+2. ~~**Units package.**~~ **Done.** Canonical mm-N-s-rad-K, dimension algebra,
+   boundary conversion. Belt deliberately exercises the hard cases: `[kg/dm³]`
+   is the density trap that `C16_Belt.py:155` fudges as `1E-6 * 1E3 * rho`, and
+   `[%]` needs the dimensionless-with-display-scale handling of S21. Settled
+   S53–S55.
+3. ~~**Schema package.**~~ **Done.** The formula record and the graph document —
+   the contract everything else depends on. Settled S56–S58.
+4. ~~**Base node library**~~ (S42) — **done.** Arithmetic and math operations as
+   ordinary formula records; literal inputs and output nodes turned out to be
+   document schema rather than catalogue content. No textbook content, so it is
+   unrestricted, and it makes the kernel testable end to end before any
+   catalogue exists. Settled S59–S60.
+5. ~~**Evaluation kernel**~~ — **done.** Expression and predicate parsing to
+   closures (S34/S39), topological sort with cycles refused at connect time
+   (S18), dimension resolution including per-node generic binding (S6, S59),
+   labelled-axis broadcasting (S43), and the S19 quarantine gate. Settled
+   S61–S65.
+6. **Extract `C16_Belt`** — 55 formulas, self-contained, no tables and no
    categoricals. A one-off script (S52) over stdlib `ast`. The old package is a
    source to transcribe from, never a dependency. Read the generated file: 55
    expressions is a reviewable diff, and a script's errors are systematic
-   rather than scattered typos.
-6. **Golden values** from `notebooks/belt/Lab_belt.ipynb` and
+   rather than scattered typos. The kernel's `checkFormulaDimensions` is the
+   mechanical half of the review.
+7. **Golden values** from `notebooks/belt/Lab_belt.ipynb` and
    `Lab_belt_incl_Fa.ipynb`, noting both use `d_dg = 400 mm` where the
    assignment text says 420.
-7. **Minimal editor** — collapsible palette left, canvas centre, collapsible
+8. **Minimal editor** — collapsible palette left, canvas centre, collapsible
    notebook right (S46). Node-first editing, compact nodes with sparklines for
    swept values (S47, S50). Wiring, one sweep, one plot. **No formula-authoring
    UI** (S51): the catalogue is a regenerated artefact of the extraction script, so a
@@ -379,14 +390,15 @@ That slice is a working tool for one chapter, end to end.
 
 ### Milestone 2 — breadth
 
-8. **DEFECTS.md** across the whole corpus. Per S19 this runs alongside
+9. **DEFECTS.md** across the whole corpus. Per S19 this runs alongside
    migration, not ahead of it — flagged formulas are quarantined by `status`.
-9. **Extract the remaining chapters.** Generalise the per-chapter script only
-   if their number justifies it. A second slice should be chosen to
-   exercise tables and categorical ports (S37, S38), which belt does not touch —
-   `C2_Tolerance` or the press-fit material in `C12` are the candidates.
-10. **Full notebook view** (S30–S33). Group frames carry its section structure,
-    so the schema reserves them from step 2 (S28, as upgraded by S30).
+10. **Extract the remaining chapters.** Generalise the per-chapter script only
+    if their number justifies it. A second slice should be chosen to
+    exercise tables and categorical ports (S37, S38), which belt does not touch —
+    `C2_Tolerance` or the press-fit material in `C12` are the candidates. The
+    kernel raises on both today rather than half-supporting them.
+11. **Full notebook view** (S30–S33). Group frames carry its section structure,
+    so the schema reserved them from step 3 (S28, as upgraded by S30).
 
 ## Verification
 

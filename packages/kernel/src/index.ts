@@ -1,3 +1,109 @@
-// Placeholder. The evaluation kernel is milestone 1 step 5 (PLAN.md):
-// topological sort, labelled-axis broadcasting (S43), the predicate layer (S39).
-export const KERNEL_PACKAGE_PLACEHOLDER = true;
+/**
+ * The evaluation kernel: a graph in, numbers out.
+ *
+ * It is the half of this project that has to be right. The editor can be
+ * rebuilt; a kernel that quietly computes a wrong number is the failure the
+ * predecessor library made, and the whole shape of this package is a reply to
+ * it — expressions parsed rather than `eval`ed (S34), dimensions checked at
+ * connection time rather than trusted (S6), cycles refused rather than iterated
+ * (S18), quarantined formulas refused outright (S19), and sweeps first-class
+ * rather than bolted on (S43).
+ *
+ * It knows nothing about React, nothing about files, and nothing about Roloff &
+ * Matek. Its test corpus is the base node library (S42), which is arithmetic and
+ * carries no textbook content at all.
+ */
+
+export { KernelError } from './errors.js';
+
+export { BINARY_OPERATORS, expressionNames, predicateNames } from './ast.js';
+export type {
+  Expr,
+  BinaryExpr,
+  BinaryOperator,
+  CallExpr,
+  NameExpr,
+  NumberExpr,
+  UnaryExpr,
+  Predicate,
+  ComparePredicate,
+  LogicalPredicate,
+  NotPredicate,
+} from './ast.js';
+
+export { KEYWORDS, parseExpression, parsePredicate } from './parse.js';
+
+export {
+  CONSTANTS,
+  FUNCTIONS,
+  REDUCTIONS,
+  isFunctionName,
+} from './functions.js';
+export type { FunctionSpec, ReductionSpec } from './functions.js';
+
+export {
+  EXPONENT_TOLERANCE,
+  assertConnectable,
+  assertSameDimension,
+  connectable,
+  dimensionsClose,
+} from './dimensions.js';
+
+export {
+  checkPredicateDimensions,
+  comparator,
+  compileExpression,
+  compilePredicate,
+  constantValue,
+  expressionDimension,
+} from './compile.js';
+export type { CompiledExpression, CompiledPredicate, DimensionScope, Env } from './compile.js';
+
+export {
+  LARGE_GRID,
+  categoricalScalar,
+  gridSize,
+  indexer,
+  isSeries,
+  reader,
+  scalarSeries,
+  unionAxes,
+} from './series.js';
+export type {
+  Axis,
+  CategoricalSeries,
+  NumericSeries,
+  PortValue,
+  Series,
+  Spectrum,
+} from './series.js';
+
+export { assertEvaluable, checkFormulaDimensions, compileFormula } from './formula.js';
+export type { CompiledFormula } from './formula.js';
+
+export {
+  canConnect,
+  canonicalUnit,
+  endpointKey,
+  resolveGraph,
+  topologicalOrder,
+  typesConnect,
+  wouldCycle,
+} from './graph.js';
+export type { ConnectionCheck, PortType, Resolution } from './graph.js';
+
+export { evaluateDocument, valueAt } from './evaluate.js';
+export type {
+  CheckResult,
+  Evaluation,
+  EvaluationOptions,
+  OutputResult,
+  PlotAxis,
+  PlotResult,
+  TableColumnResult,
+  TableResult,
+  ValueResult,
+} from './evaluate.js';
+
+export { WARNING_KINDS } from './warnings.js';
+export type { Warning, WarningKind } from './warnings.js';

@@ -10,11 +10,14 @@ The point is not to compute a number once. It is to **sweep a design space** —
 try every shaft diameter in a standard series, see which ones satisfy every
 constraint at once, and look at the result as a graph.
 
-> **Status: greenfield.** Documentation only — no source, no build yet. Every
-> decision that gates the first commit is settled (see
+> **Status: the engine works, the interface does not exist yet.** `units`,
+> `schema`, `nodes` and `kernel` are built and tested: a graph of base nodes
+> evaluates end to end, sweeps and all, from a file. There is no editor, and no
+> textbook content — the belt catalogue is the next piece
+> ([NEXT.md](NEXT.md)). Every decision is settled (see
 > [DECISIONS.md](DECISIONS.md)); the build sequence is in [PLAN.md](PLAN.md).
-> This document describes the intended system, and flags where something is
-> still a proposal rather than a decision.
+> This document describes the intended system, so read the parts about the
+> canvas as design rather than as something you can open.
 
 ---
 
@@ -295,9 +298,9 @@ hand:
   plausible reading already proposed in DECISIONS.md and need confirming, not
   reconstructing.
 
-**Once there is code**, the sequence in PLAN.md is deliberate: schema and units,
-then migration, then the kernel and its verification, and the UI last. The core
-is testable without any interface, and that is where correctness is won.
+**The code that exists** follows PLAN.md's deliberate order: units and schema,
+the base node library, then the kernel — and the UI last. The core is testable
+without any interface, and that is where correctness is won.
 
 **Ground rules that are settled — please do not relitigate them in code:**
 
@@ -340,7 +343,7 @@ golden exercises stay marked unverified rather than assumed sound.
 | Document | For |
 |---|---|
 | [PLAN.md](PLAN.md) | Build sequence, migration strategy, verification plan |
-| [DECISIONS.md](DECISIONS.md) | Every settled decision (S1–S51) and its reasoning |
+| [DECISIONS.md](DECISIONS.md) | Every settled decision (S1–S65) and its reasoning |
 | [CLAUDE.md](CLAUDE.md) | Conventions and the distribution restriction |
 
 ---

@@ -9,60 +9,75 @@ the *next* step rather than a finished one.
 
 ---
 
-## Current: milestone 1, step 5 — the evaluation kernel
+## Blocked until one thing is cloned
+
+`~/source/mechanical-design` **is not on this machine** (checked 2026-08-15).
+Extraction parses it, so the next step cannot start without it:
+
+```
+git clone https://github.com/ThomasVanRiel/mechanical-design ~/source/mechanical-design
+```
+
+It is a source to read, never to run — no `pip install`, no venv, and `348e2f0`
+is the frozen commit the plan's line numbers refer to.
+`~/source/machine-design-catalogue` *is* present, primed and empty.
+
+---
+
+## Current: milestone 1, step 6 — extract `C16_Belt`
 
 ```
 Continue milestone 1 of machine-design-studio.
 
-Read OVERVIEW.md first, then PLAN.md (especially Sequencing) and DECISIONS.md.
-S1–S60 are settled — implement them, don't relitigate them. If something looks
-wrong, say so before building around it.
+Read OVERVIEW.md first, then PLAN.md (Migration and verification, and
+Sequencing) and DECISIONS.md. S1–S65 are settled — implement them, don't
+relitigate them. If something looks wrong, say so before building around it.
 
-Steps 1–4 are done: `packages/units`, `packages/schema` and `packages/nodes`
-are built and tested. Read S59 and S60 before starting — the kernel is what
-consumes both, along with S56–S58.
+Steps 1–5 are done: `units`, `schema`, `nodes` and `kernel` are built and
+tested, and a graph of base nodes evaluates end to end with sweeps, checks and
+plots. Read S51, S52, S53, S62 and S65 before starting — they are the five that
+shape what the extraction script may write.
 
-Scope for this session: PLAN.md milestone 1, step 5 — `packages/kernel` only.
-Do not build the editor and do not extract formulas. The base node catalogue
-in `@mds/nodes` is your test corpus; it needs no textbook content.
+Scope for this session: PLAN.md milestone 1, step 6 — `C16_Belt` only, 55
+formulas. Do not generalise the script to other chapters (S52) and do not start
+the editor. The script is public and lives in `tools/extract/`; **its output
+goes to the private repo at ~/source/machine-design-catalogue** and never into
+this one.
 
-Build `packages/kernel`:
+1. Parse `~/source/mechanical-design/MechDesign/RnM/C16_Belt.py` with stdlib
+   `ast`. Never import it, never run it — no sympy, no venv.
+2. Read the docstring form, the code expression and the class-level
+   `MySymbolDict` (`'[unit] description'`) into `Formula` records.
+3. Capture `variantOf` and `appliesWhen` *while extracting* (S17, S40) — the
+   equation numbers are in front of you now and effectively unrecoverable later.
+4. Strip inlined conversion constants (S53): `1E-6 * 1E3 * rho` is the boundary
+   conversion, not part of the formula. Every constant that survives is in
+   canonical mm-N-s-rad-K (S62).
+5. Namespace the ids (S65). A graph's reference carries no catalogue id, so
+   `add` from the base library and anything from R&M share one namespace.
+6. Status is `unverified` for everything (S19). The goldens are step 7; nothing
+   is `verified` until one of them exercises it.
 
-1. The expression parser and compiler (S34/S35): strings to an AST to closures.
-   Never `eval`, never `new Function` — catalogues are files students exchange.
-2. Topological sort over the graph, with cycles rejected at connect time (S18).
-3. Dimension resolution at connection time (S6), including binding generic
-   signatures per node instance (S59) — this is the half of S59 that `schema`
-   deliberately left undone.
-4. Labelled-axis broadcasting (S43): two range inputs give an n × m grid with
-   no grid node. Warn when the product of axis lengths grows large.
-5. The boolean predicate layer (S39): comparisons plus and/or, serving check
-   nodes, plot thresholds and `appliesWhen` alike.
-6. The S19 gate: a quarantined formula cannot be evaluated, by anyone, ever.
+The acceptance test is the kernel's, and it is why the kernel came first: load
+the generated catalogue and run `checkFormulaDimensions` over all 55. A record
+that fails is either a transcription error or a defect — triage it, don't
+silence it. Then read the generated file: 55 expressions is a reviewable diff,
+and a script's errors are systematic rather than scattered.
 
-Two things the base library surfaced that land on you:
-
-- **Fractional dimension exponents.** `cbrt` of a force is force^(1/3), a real
-  dimension no unit names. `dimensionsEqual` compares with `===`, which is
-  right for integer exponents and fragile for thirds. Decide whether to compare
-  with a tolerance and record it.
-- **S54's permissiveness at a port.** The whitelist rule is "trig accepts an
-  angle or a dimensionless argument". The node-graph counterpart is a
-  connection rule — a dimensionless source may connect to an angle target —
-  because the `sine` node's input port is declared `rad`. Implement it in the
-  connection check, one-directionally, and nowhere else.
-
-Stop when kernel has passing tests, including belt-shaped arithmetic built from
-base nodes only. Report before starting the editor.
+Stop when the catalogue generates, parses and passes the dimension check, with
+the diff read. Report before starting the goldens.
 ```
 
 ### Why it is shaped this way
 
-- **It names a stopping point.** The editor is the visible payoff and the
-  tempting thing to start in the same pass; the kernel is what has to be right.
-- **It has a test corpus already.** The base node library exists precisely so
-  the kernel can be exercised end to end before any catalogue does (S42).
-- **It names the two loose ends** rather than leaving them to be rediscovered.
+- **The kernel is the acceptance test.** Step 5 built a dimension checker that
+  can be run over a whole catalogue; this is the first content it has to answer
+  for, and a systematic parser bug shows up as many failures at once.
+- **It names a stopping point** before the goldens, because reproducing numbers
+  and transcribing faithfully are different claims (PLAN.md is explicit that
+  neither proves the formula *correct*).
+- **The restricted output never touches this repo.** That is a repository
+  boundary (S45), and the one instruction worth repeating in every prompt.
 
 ---
 
@@ -70,26 +85,27 @@ base nodes only. Report before starting the editor.
 
 From PLAN.md's milestone 1:
 
-6. **Extract `C16_Belt`** — a one-off script over stdlib `ast`, into the private
-   catalogue repo. Read the generated file; 55 expressions is a reviewable diff.
-7. **Belt golden values** end to end — the table in PLAN.md.
-8. **Minimal editor** — canvas, wiring, one sweep, one plot. No authoring UI.
+7. **Belt golden values** end to end through the kernel — the table in PLAN.md,
+   asserted at `rel=1e-3`. Both notebooks use `d_dg = 400 mm` where the
+   assignment text says 420; that is a `DEFECTS.md` entry, not a value to
+   reproduce differently.
+8. **Minimal editor** — canvas, wiring, one sweep, one plot. No authoring UI
+   (S51). The kernel already answers every question the canvas needs to ask:
+   `canConnect` for a candidate wire, `typesConnect` for what to grey out while
+   dragging, `evaluateDocument` for the numbers and the warnings.
 
 ## Standing items, none blocking
 
-- **Defect and unit-tag sign-off** against R&M. Needs the book, so it is Thomas's.
-  Belt is clean of junk tags and carries only one defect, so this does not gate
-  milestone 1 at all.
-- **Five decisions now sit under the kernel**: S56–S58 from step 3 (a port
-  derives its dimension from its display unit; the content hash is a
-  non-cryptographic FNV-1a over canonical JSON; a check node's threshold is a
-  quantity rather than a predicate string), and S59–S60 from step 4 (generic
-  dimension signatures on a port; only operations are catalogue content). The
-  kernel consumes all five.
-- **What actually enforces the dependency direction: S55**, measured while
-  scaffolding rather than assumed. `test/project-references.test.ts` pins both
-  the enforcement and its limit, so do not add a lint-based boundary rule on top
-  without a reason the test does not already cover.
+- **Defect and unit-tag sign-off** against R&M. Needs the book, so it is
+  Thomas's. Belt is clean of junk tags and carries only one defect, so this does
+  not gate milestone 1 at all.
+- **Tables and categorical ports are unvalidated** (S37, S38), and the kernel
+  says so out loud rather than half-working: a table column, a categorical value
+  in an expression, or a categorical formula output each raise "tables arrive
+  with the second slice". `C2_Tolerance` or the press-fit material in `C12` is
+  what will exercise them.
+- **What enforces the dependency direction: S55**, measured rather than assumed.
+  `test/project-references.test.ts` pins both the enforcement and its limit.
 - **Neither repository has been pushed.** No remotes exist yet. When creating the
   catalogue repo on a host, it must be **private at creation** — a repository
   that is public even briefly is indexable.

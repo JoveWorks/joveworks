@@ -11,20 +11,21 @@ the graph becomes a design study.
 
 ## Start here
 
-**Milestone 1, in progress.** As of 2026-08-14 the pnpm workspace exists and
-`packages/units`, `packages/schema` and `packages/nodes` are built and tested;
-`kernel` and `editor` are placeholders carrying only a comment. `pnpm test` runs
-everything; `pnpm build` (`tsc -b`) is also the dependency-direction check.
+**Milestone 1, in progress.** As of 2026-08-15 the pnpm workspace exists and
+`packages/units`, `packages/schema`, `packages/nodes` and `packages/kernel` are
+built and tested; `editor` is a placeholder carrying only a comment. `pnpm test`
+runs everything; `pnpm build` (`tsc -b`) is also the dependency-direction check.
 
 Read [OVERVIEW.md](OVERVIEW.md) first — it is the whole project in one pass.
 Then [PLAN.md](PLAN.md) for the build sequence and
-[DECISIONS.md](DECISIONS.md) for what is settled (`S1`–`S58`) and why.
+[DECISIONS.md](DECISIONS.md) for what is settled (`S1`–`S65`) and why.
 
 **The next concrete step** is in [NEXT.md](NEXT.md), which carries a
 ready-to-paste prompt for the current chunk of work and the ordered list after
-it. Right now that is milestone 1 step 5: the evaluation kernel. Do not start by
-extracting all 539 formulas — see the scope note below. **Keep NEXT.md current**:
-when a session finishes the chunk it describes, update it to name the next one.
+it. Right now that is milestone 1 step 6: extracting `C16_Belt` into the private
+catalogue repository. Do not start by extracting all 539 formulas — see the scope
+note below. **Keep NEXT.md current**: when a session finishes the chunk it
+describes, update it to name the next one.
 
 Still outstanding, none of it gating code: defect and unit-tag sign-off against
 R&M, which quarantines individual formulas rather than holding up a build step.
@@ -140,7 +141,9 @@ These follow from settled decisions; do not relitigate them in code.
 - **Expressions are strings**, parsed to an AST and compiled to closures. Never
   `eval` or `new Function` — catalogues are files students exchange. No
   conditionals inside an expression; `sum`/`prod` aggregation over load spectra
-  is needed.
+  is needed. **Every number written in an expression is canonical** (S62): `d <
+  50` in a length context means 50 mm, because an expression string cannot carry
+  a unit and the kernel has only one unit system.
 - **Branching selects formulas, it does not live inside them.** R&M numbers case
   variants and states the condition in prose; formulas carry it as a
   machine-readable `appliesWhen` predicate, and using a formula outside its
@@ -153,7 +156,9 @@ These follow from settled decisions; do not relitigate them in code.
 - **Client-side web app.** No backend, no Node-only APIs in app code; file I/O
   sits behind an adapter so a Tauri build can drop in later.
 - **Graphs reference formulas by ID, version and hash** — never embed them.
-  Embedding would leak R&M content into files students circulate.
+  Embedding would leak R&M content into files students circulate. That reference
+  carries no catalogue id, so **formula ids are global**: extraction namespaces
+  what it generates or an R&M id collides with a base node's (S65).
 - **Documents carry an integer schema version stamp.** The N→N+1 migration chain
   is deliberately deferred until real student graphs exist (S25, amended).
 - **The notebook is a view over the graph**, not a second document. Titled group
