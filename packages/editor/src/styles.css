@@ -1167,6 +1167,11 @@ aside.right {
   font-weight: 600;
 }
 
+.notebook .result .count {
+  color: var(--muted);
+  font-size: 11px;
+}
+
 .notebook .result.check.pass .mark,
 .notebook .result.check.pass .number {
   color: var(--state-pass);

@@ -56,10 +56,22 @@ function Result({ result }: { readonly result: OutputResult }): ReactElement {
 
   if (result.kind === 'check') {
     const shown = display(result.threshold, result.unit, 4, format);
+    // A scalar check has exactly one verdict, so ✓/✗ already says everything.
+    // A swept one has one verdict per point (S33), and a single mark for the
+    // whole range used to read as "the range failed" on the first bad point
+    // — the count says which, and how many, instead, matching the wording
+    // the compact node's own badge already uses (OutputNodeView.tsx).
+    const swept = result.results.length > 1;
+    const failures = result.results.filter((passed) => !passed).length;
     return (
       <p className={`result check ${result.passed ? 'pass' : 'fail'}`}>
         <span className="mark">{result.passed ? '✓' : '✗'}</span>
         <span className="label">{label}</span>
+        {swept && !result.passed ? (
+          <span className="count">
+            fails at {failures} of {result.results.length} points
+          </span>
+        ) : null}
         <span className="number">
           {summarise({ series: result.series, unit: result.unit }, 4, format)}{' '}
           {COMPARISON_TEXT[result.comparison] ?? result.comparison} {shown}
