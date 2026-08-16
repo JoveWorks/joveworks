@@ -166,7 +166,11 @@ function AppShell(): ReactElement {
   const [themePreference, setThemePreferenceState] =
     useState<ThemePreference>(loadThemePreference);
   const [showSettings, setShowSettings] = useState(false);
-  const [tutorialActive, setTutorialActive] = useState(() => !loadTutorialSeen());
+  // Only offers itself unprompted on the document it was actually written
+  // for: a restored autosave is somebody's own graph, not the pad-pressure
+  // sample the script's steps assume. Launching it from the Help menu still
+  // works on any document — it loads the sample first (see `helpMenuItems`).
+  const [tutorialActive, setTutorialActive] = useState(() => !restoredAutosave && !loadTutorialSeen());
   const [openMenu, setOpenMenu] = useState<
     | { readonly menu: 'file' | 'edit' | 'view' | 'help'; readonly x: number; readonly y: number }
     | undefined
@@ -433,7 +437,15 @@ function AppShell(): ReactElement {
     },
     {
       label: 'Take the tour',
-      onClick: () => setTutorialActive(true),
+      onClick: () => {
+        // The script's steps are written against the pad-pressure sample
+        // specifically, so launching it loads that sample first — same as
+        // any other item under Examples below, and just as destructive to
+        // whatever is currently on the canvas.
+        const sample = padPressure(catalogues);
+        if (sample !== undefined) resetDocument(sample);
+        setTutorialActive(true);
+      },
     },
     { heading: 'Examples' },
     {
@@ -579,7 +591,12 @@ function AppShell(): ReactElement {
             />
           ) : null}
 
-          <Tutorial active={tutorialActive} onClose={() => setTutorialActive(false)} />
+          <Tutorial
+            active={tutorialActive}
+            onClose={() => setTutorialActive(false)}
+            pinned={pinned}
+            setPinned={setPinned}
+          />
         </div>
       </GraphContext.Provider>
     </SettingsContext.Provider>
