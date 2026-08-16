@@ -1,10 +1,10 @@
 name: CI
 
+# Disabled for solo work — build+test already run locally, and the
+# release workflow has its own build/test gate. Re-add `push`/`pull_request`
+# triggers here (see git history) to bring it back.
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+  workflow_dispatch:
 
 jobs:
   build-and-test:
