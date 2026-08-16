@@ -156,6 +156,20 @@ describe('round-tripping (the verification docs/PLAN.md asks for)', () => {
     });
   });
 
+  it('round-trips waypoint, pack and unpack nodes, which declare no ports of their own', () => {
+    const routed = {
+      ...study,
+      nodes: [
+        { kind: 'waypoint', id: 'via', position: { x: 0, y: 0 } },
+        { kind: 'pack', id: 'bundle', position: { x: 200, y: 0 } },
+        { kind: 'unpack', id: 'split', position: { x: 400, y: 0 } },
+      ],
+      edges: [],
+    };
+    const document = parseDocument(routed);
+    expect(serializeDocument(document)).toEqual(routed);
+  });
+
   it('stamps an empty document with the version this build writes', () => {
     const document = emptyDocument('study-2', 'Untitled');
     expect(document.schemaVersion).toBe(SCHEMA_VERSION);

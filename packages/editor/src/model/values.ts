@@ -33,7 +33,7 @@ export function reading(
 ): Reading | undefined {
   const key = `${nodeId}.${port}`;
   const series = analysis.evaluation?.values.get(key);
-  if (series === undefined || series.kind === 'spectrum') return undefined;
+  if (series === undefined || series.kind === 'spectrum' || series.kind === 'bundle') return undefined;
   const type = analysis.resolution?.sources.get(key);
   return { series, unit: type?.unit ?? canonicalUnit(type?.dimension ?? DIMENSIONLESS) };
 }

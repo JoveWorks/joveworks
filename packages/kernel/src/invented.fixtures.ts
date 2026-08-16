@@ -71,6 +71,18 @@ export function outputNode(id: string, output: JsonObject, extra: JsonObject = {
   return { kind: 'output', id, position: { x: 0, y: 0 }, output, ...extra };
 }
 
+export function waypointNode(id: string, extra: JsonObject = {}): JsonObject {
+  return { kind: 'waypoint', id, position: { x: 0, y: 0 }, ...extra };
+}
+
+export function packNode(id: string, extra: JsonObject = {}): JsonObject {
+  return { kind: 'pack', id, position: { x: 0, y: 0 }, ...extra };
+}
+
+export function unpackNode(id: string, extra: JsonObject = {}): JsonObject {
+  return { kind: 'unpack', id, position: { x: 0, y: 0 }, ...extra };
+}
+
 export function compareNode(
   id: string,
   comparison: string,
