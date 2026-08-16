@@ -521,6 +521,24 @@ function AppShell(): ReactElement {
             {menuButton('view', 'View')}
             {menuButton('help', 'Help')}
 
+            {/* Students are the target audience and mostly don't know what a
+                GitHub issue is, so the guidance spells out email as the first
+                option rather than assuming familiarity with issue trackers. */}
+            <span className="menubar-feedback">
+              Feedback:{' '}
+              <a href="mailto:thomas.van.riel@gmail.com?subject=machine-design-studio%20feedback">
+                email
+              </a>{' '}
+              or{' '}
+              <a
+                href="https://github.com/ThomasVanRiel/machine-design-studio/issues/new"
+                target="_blank"
+                rel="noopener"
+              >
+                open an issue
+              </a>
+            </span>
+
             {/* v0.x is unstable by semver convention — the badge names that
                 explicitly rather than relying on a reader knowing the
                 convention, and drops away on its own once a 1.0 ships. */}
