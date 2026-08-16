@@ -307,6 +307,58 @@ describe('output nodes', () => {
     expect(check.threshold).toBe(100);
   });
 
+  it('uses a wired threshold instead of the typed default, once something is wired to it', () => {
+    const graphWithLimit = documentOf(
+      [
+        input('F', scalar(1000, 'N')),
+        input('A', scalar(20, 'mm²')),
+        input('limit', scalar(60, 'N/mm²')),
+        formulaNode('p', refTo('pressure')),
+        outputNode('out', { kind: 'check', comparison: '<=', threshold: { value: 100, unit: 'N/mm²' } }),
+      ],
+      [
+        wire('F.value', 'p.F'),
+        wire('A.value', 'p.A'),
+        wire('p.p', 'out.value'),
+        wire('limit.value', 'out.threshold'),
+      ],
+    );
+    const check = evaluateDocument(graphWithLimit, catalogues).outputs[0] as CheckResult;
+    expect(check.threshold).toBe(60);
+    expect(check.passed).toBe(true);
+  });
+
+  it('refuses a wired threshold that is swept — a check is one bound, not one per point', () => {
+    const swept = documentOf(
+      [
+        input('F', list([1000, 2000], 'N')),
+        input('A', scalar(20, 'mm²')),
+        input('limit', list([60, 70], 'N/mm²')),
+        formulaNode('p', refTo('pressure')),
+        outputNode('out', { kind: 'check', comparison: '<=', threshold: { value: 100, unit: 'N/mm²' } }),
+      ],
+      [
+        wire('F.value', 'p.F'),
+        wire('A.value', 'p.A'),
+        wire('p.p', 'out.value'),
+        wire('limit.value', 'out.threshold'),
+      ],
+    );
+    expect(() => evaluateDocument(swept, catalogues)).toThrow(/one bound, not one per point/u);
+  });
+
+  it("reads a bare, unitless threshold default in the value port's own display unit, not canonical", () => {
+    // Regression case: before the threshold port existed, a bare-unitless
+    // default was read as dimensionless canonical, silently mis-scaling
+    // anything not already in mm-N-s-rad-K.
+    const check = evaluateDocument(
+      graph({ kind: 'check', comparison: '<=', threshold: { value: 100, unit: '' } }),
+      catalogues,
+    ).outputs[0] as CheckResult;
+    expect(check.unit.symbol).toBe('N/mm²');
+    expect(check.threshold).toBe(100);
+  });
+
   it('gives a plot its x axis and the coordinates along it', () => {
     const swept = documentOf(
       [

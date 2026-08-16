@@ -254,6 +254,48 @@ describe('compare nodes', () => {
   });
 });
 
+const checkOutputNode = (id: string, comparison: string, threshold: number, unit: string) => ({
+  kind: 'output' as const,
+  id,
+  position: { x: 0, y: 0 },
+  output: {
+    kind: 'check' as const,
+    comparison: comparison as never,
+    threshold: { value: threshold, unit: parseUnit(unit) },
+  },
+});
+
+describe('check outputs', () => {
+  it('is ready with only its value wired — the threshold has its own typed default', () => {
+    const document = graph(
+      [scalar('a', 2), checkOutputNode('c', '>=', 1, 'mm')],
+      [wire('e1', ['a', 'value'], ['c', 'value'])],
+    );
+    const analysis = analyse(document, CATALOGUES);
+
+    expect(analysis.states.get('c')).toBe('ok');
+  });
+
+  it('is blocked when its threshold is wired to a node that is not ready yet', () => {
+    const document = graph(
+      [
+        scalar('a', 2),
+        formulaNode('bad', 'inv.quarantined'),
+        checkOutputNode('c', '>=', 1, 'mm'),
+      ],
+      [
+        wire('e1', ['a', 'value'], ['c', 'value']),
+        wire('e2', ['a', 'value'], ['bad', 'a']),
+        wire('e3', ['bad', 'y'], ['c', 'threshold']),
+      ],
+    );
+    const analysis = analyse(document, CATALOGUES);
+
+    expect(analysis.states.get('bad')).toBe('quarantined');
+    expect(analysis.states.get('c')).toBe('blocked');
+  });
+});
+
 describe('closure nodes', () => {
   it('is incomplete while a name its expression uses is unwired', () => {
     const document = graph([scalar('a', 2), closureNode('eq', 'a + b')], [

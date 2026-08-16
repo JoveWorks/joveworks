@@ -89,6 +89,11 @@ export interface PrintOutput {
  * and unitless by the time the kernel sees them). It is still the one
  * predicate layer: comparison against a value, the scalar counterpart of the
  * threshold line a plot draws.
+ *
+ * `threshold` is the `threshold` port's default when nothing is wired to it
+ * — the same wireable-with-a-typed-default shape `CompareNode.threshold`
+ * and `PlotOutput.threshold` use, except mandatory: a check with no bound at
+ * all is meaningless, unlike a plot, which can be drawn with no reference line.
  */
 export interface CheckOutput {
   readonly kind: 'check';
@@ -181,8 +186,8 @@ export interface OutputNode extends NodeBase {
  * thing a student wants to wire onward, which an output node cannot do.
  *
  * `threshold` is the `threshold` port's default when nothing is wired to it
- * — the same typed `Quantity` the check output kind uses, now a
- * fallback rather than the only way to set the bound.
+ * — the same typed `Quantity` the check output kind uses, and now wireable
+ * there too.
  */
 export interface CompareNode extends NodeBase {
   readonly kind: 'compare';

@@ -375,6 +375,61 @@ describe("a plot's threshold port", () => {
   });
 });
 
+describe("a check's threshold port", () => {
+  function checkGraph(
+    edges: readonly ReturnType<typeof wire>[],
+    threshold: { readonly value: number; readonly unit: string } = { value: 1, unit: '' },
+  ) {
+    return documentOf(
+      [
+        input('w', scalar(20, 'mm')),
+        input('h', scalar(5, 'mm')),
+        formulaNode('area', refTo('area')),
+        outputNode('check', { kind: 'check', comparison: '>=', threshold }),
+      ],
+      edges,
+    );
+  }
+
+  const wiredToValue = [wire('w.value', 'area.w'), wire('h.value', 'area.h'), wire('area.A', 'check.value')];
+
+  it("binds the threshold target to the value port's dimension once value is wired", () => {
+    const resolution = resolveGraph(checkGraph(wiredToValue), catalogues);
+    expect(resolution.targets.get(endpointKey('check', 'threshold'))?.dimension).toEqual(AREA);
+  });
+
+  it('leaves the threshold target unbound while nothing is wired to value', () => {
+    const resolution = resolveGraph(checkGraph([]), catalogues);
+    expect(resolution.targets.get(endpointKey('check', 'threshold'))?.dimension).toBeUndefined();
+  });
+
+  it('takes a bare, unitless threshold default in whatever dimension value resolves to', () => {
+    // A freshly dropped check node's threshold has no unit yet (Canvas.tsx's
+    // default) — wiring `value` to something dimensioned must not be refused
+    // for that alone.
+    expect(() => resolveGraph(checkGraph(wiredToValue), catalogues)).not.toThrow();
+  });
+
+  it('refuses a typed threshold default of a different dimension than value', () => {
+    const document = checkGraph(wiredToValue, { value: 5, unit: 'N' });
+    expect(() => resolveGraph(document, catalogues)).toThrow(/same dimension/u);
+  });
+
+  it('refuses a wired threshold of a different dimension than value', () => {
+    const document = documentOf(
+      [
+        input('w', scalar(20, 'mm')),
+        input('h', scalar(5, 'mm')),
+        input('f', scalar(10, 'N')),
+        formulaNode('area', refTo('area')),
+        outputNode('check', { kind: 'check', comparison: '>=', threshold: { value: 1, unit: 'mm²' } }),
+      ],
+      [...wiredToValue, wire('f.value', 'check.threshold')],
+    );
+    expect(() => resolveGraph(document, catalogues)).toThrow(/same dimension/u);
+  });
+});
+
 describe('generic signatures bind per node instance', () => {
   it('gives a multiply node the product of what is wired to it', () => {
     const document = documentOf(

@@ -82,8 +82,9 @@ export interface CheckResult extends OutputBase {
   readonly kind: 'check';
   readonly series: NumericSeries;
   readonly comparison: Comparison;
-  /** In canonical units, converted from the quantity the student typed. */
+  /** In canonical units — from a wire if one is connected, else the typed default. */
   readonly threshold: number;
+  /** The typed default's unit, or the value's own display unit for a bare unitless default. */
   readonly unit: Unit;
   /** One verdict per cell of the swept grid. */
   readonly results: readonly boolean[];
@@ -643,7 +644,42 @@ function outputResult(
   }
 
   if (output.kind === 'check') {
-    const threshold = toCanonical(output.threshold.value, output.threshold.unit);
+    // A bare, unitless default is read in the value's own display unit, not
+    // its canonical one — same reasoning as `evaluateCompare`'s
+    // `thresholdUnit` above. An explicit unit the student did type is never
+    // overridden by this.
+    const thresholdUnit =
+      isDimensionless(output.threshold.unit.dimension) && !isDimensionless(portUnit.dimension)
+        ? portUnit
+        : output.threshold.unit;
+
+    // `threshold` follows `CompareNode.threshold`'s rule — wired wins, else
+    // the typed default — but resolves to a single value, not a per-point
+    // bound: a check's badge is one line crossed or not, the scalar
+    // counterpart of the reference line a plot draws (mirrors plot's own
+    // threshold resolution below).
+    const thresholdKey = endpointKey(node.id, THRESHOLD_PORT);
+    const thresholdEdge = resolution.incoming.get(thresholdKey)?.[0];
+    const threshold =
+      thresholdEdge === undefined
+        ? toCanonical(output.threshold.value, thresholdUnit)
+        : (() => {
+            const series = valueAtEdge(thresholdEdge, thresholdKey, values);
+            if (series.kind !== 'numeric') {
+              throw new KernelError(
+                "a check's threshold needs a numeric value, not a categorical one",
+                thresholdKey,
+              );
+            }
+            if (series.data.length !== 1) {
+              throw new KernelError(
+                "a check's threshold needs a single value — it is one bound, not one per point",
+                thresholdKey,
+              );
+            }
+            return series.data[0] as number;
+          })();
+
     const compare = comparator(output.comparison);
     const results = value.data.map((cell) => compare(cell, threshold));
     return {
@@ -652,7 +688,7 @@ function outputResult(
       series: value,
       comparison: output.comparison,
       threshold,
-      unit: output.threshold.unit,
+      unit: thresholdUnit,
       results,
       passed: results.every(Boolean),
     };
