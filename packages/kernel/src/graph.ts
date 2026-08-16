@@ -175,10 +175,17 @@ function inputValueType(node: InputNode): PortType {
   }
 }
 
-/** The input port names an output node offers: one, or one per table column. */
+/**
+ * The input port names an output node offers: one, or one per table column —
+ * plus a `threshold` port on a plot, the wire that can override its typed
+ * line (mirrors `CompareNode.threshold`, the first port with both a typed
+ * default and an overriding wire).
+ */
 function outputPortNames(node: GraphNode): readonly string[] {
   if (node.kind !== 'output') return [];
-  return node.output.kind === 'table' ? node.output.columns : [VALUE_PORT];
+  if (node.output.kind === 'table') return node.output.columns;
+  if (node.output.kind === 'plot') return [VALUE_PORT, THRESHOLD_PORT];
+  return [VALUE_PORT];
 }
 
 function portType(port: Port, bindings: ReadonlyMap<string, Dimension>): PortType {
@@ -520,6 +527,37 @@ export function resolveGraph(
           'a check compares a value against a threshold of the same dimension',
           key,
         );
+      }
+
+      // A plot's threshold is optional — `CompareNode.threshold`'s pattern,
+      // minus the requirement that one exist at all. Once the plotted
+      // value's own dimension is known (processed first — VALUE_PORT
+      // precedes THRESHOLD_PORT in `outputPortNames`), the threshold's
+      // target narrows to match it, and a bare unitless default (a freshly
+      // dropped node, or one whose typed threshold was never given a unit)
+      // is read in that dimension rather than refused.
+      if (node.output.kind === 'plot' && name === THRESHOLD_PORT) {
+        const dimension = targets.get(endpointKey(node.id, VALUE_PORT))?.dimension;
+        targets.set(
+          key,
+          dimension === undefined
+            ? { kind: 'numeric' }
+            : { kind: 'numeric', dimension, unit: canonicalUnit(dimension) },
+        );
+        const authoredUnit = node.output.threshold?.unit;
+        const bareDefault =
+          edge === undefined && (authoredUnit === undefined || isDimensionless(authoredUnit.dimension));
+        if (dimension !== undefined && !bareDefault) {
+          const boundDimension = edge === undefined ? authoredUnit?.dimension : type.dimension;
+          if (boundDimension !== undefined) {
+            assertSameDimension(
+              dimension,
+              boundDimension,
+              "a plot's threshold needs the same dimension as the plotted value",
+              key,
+            );
+          }
+        }
       }
 
       // An equation output shows the wired node's *expression*, not its

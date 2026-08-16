@@ -722,6 +722,35 @@ function outputResult(
     });
   }
 
+  // `threshold` follows `CompareNode.threshold`'s rule — wired wins, else the
+  // typed default, else (unlike compare, whose threshold is mandatory) no
+  // line at all. A plot's threshold is one reference line, not a per-point
+  // bound the way compare's can be, so a wired series has to resolve to a
+  // single value.
+  const thresholdKey = endpointKey(node.id, THRESHOLD_PORT);
+  const thresholdEdge = resolution.incoming.get(thresholdKey)?.[0];
+  const threshold =
+    thresholdEdge === undefined
+      ? output.threshold === undefined
+        ? undefined
+        : toCanonical(output.threshold.value, output.threshold.unit)
+      : (() => {
+          const series = valueAtEdge(thresholdEdge, thresholdKey, values);
+          if (series.kind !== 'numeric') {
+            throw new KernelError(
+              "a plot's threshold needs a numeric value, not a categorical one",
+              thresholdKey,
+            );
+          }
+          if (series.data.length !== 1) {
+            throw new KernelError(
+              "a plot's threshold needs a single value — it draws one reference line, not one per point",
+              thresholdKey,
+            );
+          }
+          return series.data[0] as number;
+        })();
+
   return {
     ...base,
     kind: 'plot',
@@ -731,8 +760,6 @@ function outputResult(
     ...(seriesId === undefined ? {} : { series2: plotAxis(seriesId) }),
     ...(facetId === undefined || contour ? {} : { facet: plotAxis(facetId) }),
     contour,
-    ...(output.threshold === undefined
-      ? {}
-      : { threshold: toCanonical(output.threshold.value, output.threshold.unit) }),
+    ...(threshold === undefined ? {} : { threshold }),
   };
 }

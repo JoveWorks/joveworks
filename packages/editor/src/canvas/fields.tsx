@@ -36,6 +36,13 @@ interface TextFieldProps {
    * `size` is universally supported and needs no fallback of its own.
    */
   readonly autoSize?: number;
+  /**
+   * A wire is supplying the value instead — the field shows it but refuses
+   * the edit, rather than staying editable with a tooltip explaining it is
+   * overridden (the choice `CompareNodeView`'s threshold made). Unplugging
+   * the wire is what makes the field editable again.
+   */
+  readonly disabled?: boolean;
 }
 
 /**
@@ -49,6 +56,7 @@ export function TextField({
   title,
   className,
   autoSize,
+  disabled,
 }: TextFieldProps): ReactElement {
   const [text, setText] = useState(value);
   const [error, setError] = useState<string | undefined>(undefined);
@@ -78,6 +86,7 @@ export function TextField({
         placeholder={placeholder}
         title={error ?? title}
         aria-invalid={error !== undefined}
+        disabled={disabled}
         {...(autoSize === undefined ? {} : { size: Math.max(autoSize, text.length, 1) })}
         onChange={(event) => setText(event.target.value)}
         onBlur={commit}
