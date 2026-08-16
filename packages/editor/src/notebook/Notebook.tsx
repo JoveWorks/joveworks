@@ -265,6 +265,7 @@ function Section({
             <input
               className="section-title"
               value={frame.title}
+              size={Math.max(frame.title.length, 1)}
               onChange={(event) => {
                 const title = event.target.value;
                 editLive((current) => updateFrame(current, frame.id, (entry) => ({ ...entry, title })));

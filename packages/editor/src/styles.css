@@ -1255,8 +1255,13 @@ aside.right {
 .section-toggle {
   display: flex;
   align-items: flex-start;
+  justify-content: flex-end;
   gap: 5px;
-  flex-shrink: 0;
+  /* Grows to fill whatever the (content-sized) title doesn't use — most of
+     the row stays clickable for collapse, the way it was before the title
+     became editable, rather than shrinking to just the chevron's own width. */
+  flex: 1;
+  min-width: 0;
   border: none;
   background: none;
   padding: 0;
@@ -1278,8 +1283,12 @@ aside.right {
 }
 
 .section-title {
-  flex: 1;
-  min-width: 0;
+  /* Sized to its own text (`size` attribute, set from the title's length —
+     same trick as a value field's `autoSize`, see fields.tsx) rather than
+     flex-filling the row, so the toggle button next to it keeps most of the
+     row clickable. */
+  flex: 0 0 auto;
+  max-width: 100%;
   border: none;
   background: transparent;
   font: inherit;
