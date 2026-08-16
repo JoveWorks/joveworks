@@ -28,14 +28,14 @@ import { Canvas } from './canvas/Canvas';
 import { ContextMenu, type MenuItem } from './canvas/ContextMenu';
 import { GraphContext } from './graph-context';
 import { SettingsContext } from './settings-context';
-import {
-  clearAutosaveSnapshot,
-  loadAutosaveSnapshot,
-  saveAutosaveSnapshot,
-  type AutosaveSnapshot,
-} from './io/autosave';
+import { clearAutosaveSnapshot, loadAutosaveSnapshot, saveAutosaveSnapshot } from './io/autosave';
 import { cacheCatalogue, cachedCatalogueTexts } from './io/catalogueCache';
 import { openTextFile, saveTextFile } from './io/files';
+import {
+  loadRecentDocuments,
+  recordRecentDocument,
+  type RecentDocument,
+} from './io/recentDocuments';
 import { analyse } from './model/analysis';
 import { bundledCatalogues, baseCatalogue, withCatalogue } from './model/catalogues';
 import { frameAround, reframe, uniqueId } from './model/document';
@@ -98,11 +98,31 @@ function initialCatalogues(): readonly Catalogue[] {
  * to stay off the profiler for graphs of the size this app targets. */
 const AUTOSAVE_INTERVAL_MS = 30_000;
 
+/** An autosave snapshot left over from a session that never hit explicit
+ * Save takes priority over the usual startup document — recovery from an
+ * accidental close should not require a prompt to get back to work. A
+ * corrupted snapshot falls back to the usual default silently; there is
+ * nothing a student could do about a bad cache entry except lose the session
+ * to a dialog explaining it. */
+function startupDocument(): { readonly document: GraphDocument; readonly restored: boolean } {
+  const snapshot = loadAutosaveSnapshot();
+  if (snapshot !== undefined) {
+    try {
+      return { document: loadDocument(snapshot.text), restored: true };
+    } catch {
+      // Falls through to the default document below.
+    }
+  }
+  return {
+    document: padPressure([baseCatalogue()]) ?? emptyDocument('untitled', 'Untitled'),
+    restored: false,
+  };
+}
+
 export function App(): ReactElement {
   const [catalogues, setCatalogues] = useState<readonly Catalogue[]>(initialCatalogues);
-  const [history, setHistory] = useState<History<GraphDocument>>(() =>
-    initHistory(padPressure([baseCatalogue()]) ?? emptyDocument('untitled', 'Untitled')),
-  );
+  const [{ document: initialDocument, restored: restoredAutosave }] = useState(startupDocument);
+  const [history, setHistory] = useState<History<GraphDocument>>(() => initHistory(initialDocument));
   const document = history.present;
   const canUndo = history.past.length > 0;
   const canRedo = history.future.length > 0;
@@ -134,13 +154,6 @@ export function App(): ReactElement {
   const [notices, setNotices] = useState<readonly { readonly id: string; readonly message: string }[]>(
     [],
   );
-  // Captured once at startup — a snapshot left over from a session that
-  // never hit explicit Save. `undefined` once resolved (restored, discarded,
-  // or never present).
-  const [restoreSnapshot, setRestoreSnapshot] = useState<AutosaveSnapshot | undefined>(
-    loadAutosaveSnapshot,
-  );
-
   const dismissNotice = (id: string): void =>
     setNotices((current) => current.filter((notice) => notice.id !== id));
 
@@ -168,21 +181,11 @@ export function App(): ReactElement {
     };
   }, []);
 
-  const restoreAutosave = (): void => {
-    if (restoreSnapshot === undefined) return;
-    try {
-      resetDocument(loadDocument(restoreSnapshot.text));
-      pushNotice('Restored unsaved work from the last session.');
-    } catch (error) {
-      pushNotice(`Could not restore the autosaved document: ${messageOf(error)}`);
-    }
-    setRestoreSnapshot(undefined);
-  };
-
-  const discardAutosave = (): void => {
-    clearAutosaveSnapshot();
-    setRestoreSnapshot(undefined);
-  };
+  // Runs once: a notice, not a blocking prompt, so it doesn't stand between
+  // the student and the graph autosave already restored onto the canvas.
+  useEffect(() => {
+    if (restoredAutosave) pushNotice('Restored unsaved work from the last session.');
+  }, []);
 
   const setNumberFormat = (next: NumberFormatSettings): void => {
     setNumberFormatState(next);
@@ -285,9 +288,27 @@ export function App(): ReactElement {
     const file = await openTextFile();
     if (file === undefined) return;
     try {
-      resetDocument(loadDocument(file.text));
+      const loaded = loadDocument(file.text);
+      resetDocument(loaded);
+      recordRecentDocument(loaded);
+      clearAutosaveSnapshot();
     } catch (error) {
       pushNotice(`That file is not a graph: ${messageOf(error)}`);
+    }
+  };
+
+  const newDocument = (): void => {
+    resetDocument(emptyDocument('untitled', 'Untitled'));
+    clearAutosaveSnapshot();
+  };
+
+  const openRecentDocument = (recent: RecentDocument): void => {
+    try {
+      const loaded = loadDocument(recent.text);
+      resetDocument(loaded);
+      recordRecentDocument(loaded);
+    } catch (error) {
+      pushNotice(`Could not reopen "${recent.title}": ${messageOf(error)}`);
     }
   };
 
@@ -305,15 +326,29 @@ export function App(): ReactElement {
 
   // Open/save belong in a conventional File/Edit/View/Help ribbon, top-left
   // (docs/UX-SPEC.md) — not wherever the individual actions used to live.
+  // Recent is read fresh on every render rather than kept in its own state:
+  // the list only changes as a side effect of actions that already trigger a
+  // re-render (Open, Save, picking a recent entry), so there is nothing an
+  // extra state variable would keep in sync that a plain read doesn't.
+  const recentDocuments = loadRecentDocuments();
   const fileMenuItems: readonly MenuItem[] = [
+    { label: 'New', onClick: newDocument },
     { label: 'Open…', onClick: () => void openDocumentFile() },
     {
       label: 'Save',
       onClick: () => {
         saveTextFile(`${document.id}.mds.json`, saveDocument(document));
+        recordRecentDocument(document);
         clearAutosaveSnapshot();
       },
     },
+    { heading: 'Recent' },
+    ...(recentDocuments.length === 0
+      ? [{ label: 'No recent documents', disabled: true, onClick: () => undefined }]
+      : recentDocuments.map((recent) => ({
+          label: recent.title,
+          onClick: () => openRecentDocument(recent),
+        }))),
     { label: 'Load catalogue…', onClick: () => void loadCatalogueFile() },
     { label: 'Settings…', onClick: () => setShowSettings(true) },
   ];
@@ -471,28 +506,6 @@ export function App(): ReactElement {
                 </>
               ) : null}
             </main>
-
-            {restoreSnapshot === undefined ? null : (
-              <>
-                <div className="dialog-backdrop" onClick={discardAutosave} />
-                <div className="dialog" role="dialog" aria-label="Restore unsaved work">
-                  <h2>Restore unsaved work?</h2>
-                  <p className="dialog-note">
-                    Found a snapshot from {new Date(restoreSnapshot.savedAt).toLocaleString()} that
-                    was never explicitly saved — likely an interrupted session. Restore it, or
-                    discard it and start from the usual document.
-                  </p>
-                  <div className="dialog-actions">
-                    <button type="button" onClick={discardAutosave}>
-                      Discard
-                    </button>
-                    <button type="button" onClick={restoreAutosave}>
-                      Restore
-                    </button>
-                  </div>
-                </div>
-              </>
-            )}
 
             {showSettings ? (
               <SettingsDialog
