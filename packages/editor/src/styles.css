@@ -1199,9 +1199,14 @@ aside.right {
   font-size: 11px;
 }
 
+.dialog-message {
+  margin: 0;
+}
+
 .dialog-actions {
   display: flex;
   justify-content: flex-end;
+  gap: 8px;
 }
 
 .dialog-actions button {
@@ -1210,6 +1215,11 @@ aside.right {
   border-radius: 4px;
   background: var(--panel);
   cursor: pointer;
+}
+
+.dialog-actions button.danger {
+  border-color: var(--state-error);
+  color: var(--state-error);
 }
 
 .tutorial-backdrop {

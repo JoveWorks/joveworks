@@ -26,6 +26,7 @@ import {
 
 import { Canvas } from './canvas/Canvas';
 import { ContextMenu, type MenuItem } from './canvas/ContextMenu';
+import { ConfirmDialog } from './ConfirmDialog';
 import { DOCS_BASE_URL } from './help-links';
 import { GraphContext } from './graph-context';
 import { SettingsContext } from './settings-context';
@@ -152,16 +153,29 @@ function AppShell(): ReactElement {
   const commitEdit = (): void => setHistory((current) => commitPending(current));
   const undo = (): void => setHistory(undoHistory);
   const redo = (): void => setHistory(redoHistory);
+  // The serialized text of the document the last time it was known to be
+  // safe to walk away from — right after an explicit Save, or right after
+  // loading something new (whatever just loaded is by definition not
+  // unsaved yet). `undefined` while a restored autosave hasn't been saved
+  // to a file at all, so it reads as dirty from the very first render
+  // rather than only once it's edited again.
+  const [savedSnapshot, setSavedSnapshot] = useState<string | undefined>(() =>
+    restoredAutosave ? undefined : saveDocument(initialDocument),
+  );
+  const isDirty = savedSnapshot === undefined || saveDocument(document) !== savedSnapshot;
   // Loading a different document (open file, a sample) starts a fresh undo
   // history — there is nothing to gain from undoing back into a document
-  // that is no longer open, same as most editors treat "open a file".
-  // It also asks the canvas to re-fit: the `fitView` prop on `<ReactFlow>`
-  // (`Canvas.tsx`) only ever fires once, on mount, so swapping in a
-  // different document leaves whatever pan/zoom was already on screen —
-  // opening a sample (or the tutorial) into a distant or zoomed-in
-  // viewport can land on an empty patch of canvas with nothing visible.
+  // that is no longer open, same as most editors treat "open a file". It
+  // also resets the dirty baseline (what just loaded is the new "saved"
+  // state until it's edited again) and asks the canvas to re-fit: the
+  // `fitView` prop on `<ReactFlow>` (`Canvas.tsx`) only ever fires once, on
+  // mount, so swapping in a different document leaves whatever pan/zoom was
+  // already on screen — opening a sample (or the tutorial) into a distant or
+  // zoomed-in viewport can land on an empty patch of canvas with nothing
+  // visible.
   const resetDocument = (next: GraphDocument): void => {
     setHistory(initHistory(next));
+    setSavedSnapshot(saveDocument(next));
     setFitRequest((current) => current + 1);
   };
   const [fitRequest, setFitRequest] = useState(0);
@@ -175,6 +189,14 @@ function AppShell(): ReactElement {
     const frame = requestAnimationFrame(() => flow.fitView({ padding: 0.2, duration: 200 }));
     return () => cancelAnimationFrame(frame);
   }, [fitRequest, flow]);
+  // Guards anything that calls `resetDocument` behind a confirmation once
+  // there's something to lose — New, Open, a recent document, a sample, the
+  // tutorial. Runs the action immediately when the graph is already clean.
+  const [pendingDiscard, setPendingDiscard] = useState<(() => void) | undefined>(undefined);
+  const guardDiscard = (action: () => void): void => {
+    if (isDirty) setPendingDiscard(() => action);
+    else action();
+  };
   const [pinned, setPinned] = useState<ReadonlySet<string>>(new Set());
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [hovered, setHovered] = useState<ReadonlySet<string>>(new Set());
@@ -395,14 +417,16 @@ function AppShell(): ReactElement {
   // extra state variable would keep in sync that a plain read doesn't.
   const recentDocuments = loadRecentDocuments();
   const fileMenuItems: readonly MenuItem[] = [
-    { label: 'New', onClick: newDocument },
-    { label: 'Open…', onClick: () => void openDocumentFile() },
+    { label: 'New', onClick: () => guardDiscard(newDocument) },
+    { label: 'Open…', onClick: () => guardDiscard(() => void openDocumentFile()) },
     {
       label: 'Save',
       onClick: () => {
-        saveTextFile(`${document.id}.mds.json`, saveDocument(document));
+        const text = saveDocument(document);
+        saveTextFile(`${document.id}.mds.json`, text);
         recordRecentDocument(document);
         clearAutosaveSnapshot();
+        setSavedSnapshot(text);
       },
     },
     { heading: 'Recent' },
@@ -410,7 +434,7 @@ function AppShell(): ReactElement {
       ? [{ label: 'No recent documents', disabled: true, onClick: () => undefined }]
       : recentDocuments.map((recent) => ({
           label: recent.title,
-          onClick: () => openRecentDocument(recent),
+          onClick: () => guardDiscard(() => openRecentDocument(recent)),
         }))),
     { label: 'Load catalogue…', onClick: () => void loadCatalogueFile() },
     { label: 'Settings…', onClick: () => setShowSettings(true) },
@@ -456,41 +480,45 @@ function AppShell(): ReactElement {
     },
     {
       label: 'Take the tour',
-      onClick: () => {
-        // The script's steps are written against the pad-pressure sample
-        // specifically, so launching it loads that sample first — same as
-        // any other item under Examples below, and just as destructive to
-        // whatever is currently on the canvas. Its notebook step has
-        // nothing to point at if the panel was hidden going in.
-        const sample = padPressure(catalogues);
-        if (sample !== undefined) resetDocument(sample);
-        setShowNotebook(true);
-        setTutorialActive(true);
-      },
+      onClick: () =>
+        guardDiscard(() => {
+          // The script's steps are written against the pad-pressure sample
+          // specifically, so launching it loads that sample first — same as
+          // any other item under Examples below, and just as destructive to
+          // whatever is currently on the canvas. Its notebook step has
+          // nothing to point at if the panel was hidden going in.
+          const sample = padPressure(catalogues);
+          if (sample !== undefined) resetDocument(sample);
+          setShowNotebook(true);
+          setTutorialActive(true);
+        }),
     },
     { heading: 'Examples' },
     {
       label: 'Pad pressure sweep',
-      onClick: () => {
-        const sample = padPressure(catalogues);
-        if (sample !== undefined) resetDocument(sample);
-      },
+      onClick: () =>
+        guardDiscard(() => {
+          const sample = padPressure(catalogues);
+          if (sample !== undefined) resetDocument(sample);
+        }),
     },
     {
       label: 'Belt lab',
       disabled: !beltAvailable,
-      onClick: () => {
-        const sample = beltLab(catalogues);
-        if (sample !== undefined) resetDocument(sample);
-      },
+      onClick: () =>
+        guardDiscard(() => {
+          const sample = beltLab(catalogues);
+          if (sample !== undefined) resetDocument(sample);
+        }),
     },
     {
       label: 'Cantilever — hollow sections',
       disabled: !cantileverAvailable,
-      onClick: () => {
-        const sample = cantileverHollowSections(catalogues);
-        if (sample !== undefined) resetDocument(sample);
-      },
+      onClick: () =>
+        guardDiscard(() => {
+          const sample = cantileverHollowSections(catalogues);
+          if (sample !== undefined) resetDocument(sample);
+        }),
     },
   ];
 
@@ -640,6 +668,18 @@ function AppShell(): ReactElement {
             pinned={pinned}
             setPinned={setPinned}
           />
+
+          {pendingDiscard === undefined ? null : (
+            <ConfirmDialog
+              message="Discard the current graph? Unsaved changes will be lost."
+              onConfirm={() => {
+                const action = pendingDiscard;
+                setPendingDiscard(undefined);
+                action();
+              }}
+              onCancel={() => setPendingDiscard(undefined)}
+            />
+          )}
         </div>
       </GraphContext.Provider>
     </SettingsContext.Provider>
