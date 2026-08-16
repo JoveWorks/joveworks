@@ -179,6 +179,11 @@ input[aria-invalid='true'] {
   padding: 4px 8px;
   border-bottom: 1px solid var(--line);
   background: var(--panel);
+  /* Above `.context-menu-backdrop` (z-index 19): otherwise, with an open
+     menu, a click on a different ribbon button lands on the backdrop first
+     and only closes the current menu instead of opening the one clicked. */
+  position: relative;
+  z-index: 20;
 }
 
 .menu-button {
