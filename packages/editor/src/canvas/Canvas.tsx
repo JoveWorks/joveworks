@@ -226,7 +226,7 @@ const NODE_TYPES = {
 };
 
 export function Canvas(): ReactElement {
-  const { document, catalogues, analysis, edit, pinned, togglePin } = useGraph();
+  const { document, catalogues, analysis, edit, editLive, commitEdit, pinned, togglePin } = useGraph();
   const { minimapVisible, themePreference } = useSettings();
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [refusal, setRefusal] = useState<string | undefined>(undefined);
@@ -332,7 +332,14 @@ export function Canvas(): ReactElement {
         return touched ? next : current;
       });
 
-      edit((current) => {
+      // A removal always goes through `editLive`, coalesced by the
+      // `queueMicrotask` below rather than `edit`'s usual one-call-one-step —
+      // React Flow's own `deleteElements` (`useGlobalKeyHandler`, Backspace/
+      // Delete) fires this callback for the node *and* `onEdgesChange` for
+      // its connected edges as two separate calls for one keypress, and
+      // without coalescing, undoing once would only bring the node back,
+      // leaving its wire still gone.
+      editLive((current) => {
         let next = current;
         for (const change of changes) {
           if (change.type === 'position' && change.position !== undefined) {
@@ -374,8 +381,14 @@ export function Canvas(): ReactElement {
         }
         return removed.size === 0 ? next : reframe(removeNodes(next, removed));
       });
+      // Drag/resize ticks (removed.size === 0) are coalesced by
+      // `onNodeDragStop`/`onResizeEnd` calling `commitEdit` at gesture end;
+      // a removal has no such callback, so it commits itself, once the
+      // current synchronous burst of change events (this one and possibly
+      // `onEdgesChange`'s, for the same keypress) has fully landed.
+      if (removed.size > 0) queueMicrotask(() => commitEdit());
     },
-    [document.frames, edit],
+    [document.frames, editLive, commitEdit],
   );
 
   const onEdgesChange = useCallback(
@@ -394,9 +407,16 @@ export function Canvas(): ReactElement {
       const removed = new Set(
         changes.filter((change) => change.type === 'remove').map((change) => change.id),
       );
-      if (removed.size > 0) edit((current) => removeEdges(current, removed));
+      // `editLive` + a microtask commit, not a discrete `edit` — see the
+      // comment in `onNodesChange`: React Flow fires this callback and
+      // `onNodesChange` separately for one Backspace/Delete press when the
+      // deleted node has a wire, and both need to land as one undo step.
+      if (removed.size > 0) {
+        editLive((current) => removeEdges(current, removed));
+        queueMicrotask(() => commitEdit());
+      }
     },
-    [edit],
+    [editLive, commitEdit],
   );
 
   const candidateOf = (connection: Connection | FlowEdge): Edge | undefined => {
@@ -782,7 +802,10 @@ export function Canvas(): ReactElement {
         // to click empty canvas first before a node inside could be reached.
         // With this off, declared zIndex is what stacking follows, always.
         elevateNodesOnSelect={false}
-        onNodeDragStop={() => edit(reframe)}
+        onNodeDragStop={() => {
+          editLive(reframe);
+          commitEdit();
+        }}
         onPaneClick={() => {
           setRefusal(undefined);
           setMenu(undefined);

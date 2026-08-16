@@ -19,6 +19,14 @@ export interface GraphContextValue {
   readonly catalogues: readonly Catalogue[];
   readonly analysis: Analysis;
   readonly edit: (change: (document: GraphDocument) => GraphDocument) => void;
+  /**
+   * Like `edit`, but for a change that is one tick of a longer gesture (a
+   * drag, a keystroke) — applies immediately without recording its own undo
+   * step. `commitEdit` finalizes everything since the last commit into one
+   * step, at the gesture's end (drag-stop, resize-end, blur).
+   */
+  readonly editLive: (change: (document: GraphDocument) => GraphDocument) => void;
+  readonly commitEdit: () => void;
   /** Nodes held open while working elsewhere. */
   readonly pinned: ReadonlySet<string>;
   readonly togglePin: (id: string) => void;
