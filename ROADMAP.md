@@ -148,9 +148,11 @@ above: instructor-facing, about the tool's authoring and versioning model.
 "Group into new section" ignores the current selection entirely and wraps
 *every* ungrouped node in the document into one frame (`App.tsx`'s
 `addSection`) — there's no way to select a handful of nodes and frame just
-those. Open beyond that: what else, if anything, should a selection enable —
-move together (already true, independent React Flow nodes), delete together
-(already true, Backspace/Delete), anything else?
+those. Fix: with a selection, the new frame should contain only the selected
+nodes; with none, it should spawn empty at an open location rather than
+sweeping up every free node. Open beyond that: what else, if anything, should
+a selection enable — move together (already true, independent React Flow
+nodes), delete together (already true, Backspace/Delete), anything else?
 
 **Spectrum-editing UI.** A load spectrum (a hand-typed collection consumed
 whole by an aggregation, not swept) exists in the schema, but nothing in the
@@ -168,9 +170,21 @@ which complicate calculations via the combination of normal and bending
 loads. Catalogue content, for when that chapter is designed — not an editor
 question.
 
-**Catalogue source should be clear on the nodes.**
+**Catalogue source should be clear on the nodes.** In the dropdown is fine.
 
 **Are all nodes addable in the quick add?**
+
+**Settings should be persistent.** Panel widths are not stored.
+
+**Section frames: notebook order and resize behavior.** Two gaps once
+membership itself is fixed (see multi-node selection, above): the notebook
+doesn't define an order for a frame's contents — should read top-to-bottom,
+then left-to-right on near-ties, comic-book style. And resizing a frame from
+its top or left edge drags the contained nodes along with it, which fights
+against using a resize to shrink a frame's membership — a resize should
+never move contained nodes, only a move should.
+
+**Ribbon stays open.** Moving out of a ribbon menu window does not close it, maybe with a short delay so it does not close the instant the cursor leaves, I hate this in other GUIs.
 
 **Custom closure nodes are built** — a student writes an equation on the
 node itself (`ClosureNodeView.tsx`) and its ports populate from whatever
