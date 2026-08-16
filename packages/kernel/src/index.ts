@@ -96,7 +96,12 @@ export type { CompiledFormula } from './formula.js';
 
 export { closureFormula } from './closure.js';
 
-export { nextPackChannel, packChannelIndices } from './bundle.js';
+export {
+  nextPackChannel,
+  packChannelIndices,
+  ROUTING_KINDS,
+  ROUTING_QUARANTINE_REASON,
+} from './bundle.js';
 
 export {
   adaptInputUnit,

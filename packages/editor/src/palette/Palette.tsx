@@ -18,6 +18,7 @@ import { useMemo, useState, type ReactElement } from 'react';
 import { useReactFlow } from '@xyflow/react';
 
 import { BASE_CATALOGUE_ID } from '@mds/nodes';
+import { ROUTING_QUARANTINE_REASON } from '@mds/kernel';
 import { parseUnit, type Unit } from '@mds/units';
 import {
   axes as documentAxes,
@@ -319,25 +320,43 @@ export function Palette(): ReactElement {
                   ) : null}
                   {isMath ? (
                     <li>
-                      <button type="button" className="entry" onClick={addWaypoint}>
+                      <button
+                        type="button"
+                        className="entry quarantined"
+                        title={`Quarantined: ${ROUTING_QUARANTINE_REASON.waypoint}`}
+                        onClick={addWaypoint}
+                      >
                         <span className="entry-id">waypoint</span>
                         <span className="entry-output">a routed stop on a wire, no operation</span>
+                        <span className="entry-status">quarantined</span>
                       </button>
                     </li>
                   ) : null}
                   {isMath ? (
                     <li>
-                      <button type="button" className="entry" onClick={addPack}>
+                      <button
+                        type="button"
+                        className="entry quarantined"
+                        title={`Quarantined: ${ROUTING_QUARANTINE_REASON.pack}`}
+                        onClick={addPack}
+                      >
                         <span className="entry-id">pack</span>
                         <span className="entry-output">bundle several wires into one</span>
+                        <span className="entry-status">quarantined</span>
                       </button>
                     </li>
                   ) : null}
                   {isMath ? (
                     <li>
-                      <button type="button" className="entry" onClick={addUnpack}>
+                      <button
+                        type="button"
+                        className="entry quarantined"
+                        title={`Quarantined: ${ROUTING_QUARANTINE_REASON.unpack}`}
+                        onClick={addUnpack}
+                      >
                         <span className="entry-id">unpack</span>
                         <span className="entry-output">split a bundle back into its wires</span>
+                        <span className="entry-status">quarantined</span>
                       </button>
                     </li>
                   ) : null}

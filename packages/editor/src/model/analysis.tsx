@@ -30,6 +30,8 @@ import {
   evaluateDocument,
   packChannelIndices,
   resolveGraph,
+  ROUTING_KINDS,
+  ROUTING_QUARANTINE_REASON,
   type Evaluation,
   type Resolution,
   type Warning,
@@ -381,8 +383,17 @@ export function analyse(document: GraphDocument, catalogues: readonly Catalogue[
         message = error.message;
         break;
       }
-      states.set(nodeId, 'error');
-      problems.set(nodeId, error.message);
+      // A routing node's resolution failure is always the quarantine gate
+      // (`graph.ts`) — nothing else can throw from those three kinds right
+      // now — so it reads as `quarantined`, not a generic refusal.
+      const routingKind = document.nodes.find((node) => node.id === nodeId)?.kind;
+      if (routingKind !== undefined && ROUTING_KINDS.has(routingKind)) {
+        states.set(nodeId, 'quarantined');
+        problems.set(nodeId, ROUTING_QUARANTINE_REASON[routingKind as 'waypoint' | 'pack' | 'unpack']);
+      } else {
+        states.set(nodeId, 'error');
+        problems.set(nodeId, error.message);
+      }
       const dropped = descendants(document, nodeId);
       for (const id of dropped) {
         if (id !== nodeId) states.set(id, 'blocked');

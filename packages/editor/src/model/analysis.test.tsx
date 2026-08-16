@@ -87,6 +87,8 @@ const closureNode = (id: string, expression: string) => ({
   expression,
 });
 
+const waypointNode = (id: string) => ({ kind: 'waypoint' as const, id, position: { x: 0, y: 0 } });
+
 const wire = (id: string, from: [string, string], to: [string, string]) => ({
   id,
   from: { node: from[0], port: from[1] },
@@ -148,6 +150,22 @@ describe('analysing a graph mid-build', () => {
     expect(analysis.problems.get('bad')).toBe('invented, and quarantined on purpose');
     expect(analysis.states.get('out')).toBe('blocked');
     expect(analysis.states.get('sum')).toBe('ok');
+  });
+
+  it('shows a waypoint as quarantined, not a raw resolution error', () => {
+    const document = graph(
+      [
+        scalar('a', 2),
+        waypointNode('via'),
+        { kind: 'output', id: 'out', position: { x: 0, y: 0 }, output: { kind: 'print' } },
+      ],
+      [wire('e1', ['a', 'value'], ['via', 'in']), wire('e2', ['via', 'out'], ['out', 'value'])],
+    );
+    const analysis = analyse(document, CATALOGUES);
+
+    expect(analysis.states.get('via')).toBe('quarantined');
+    expect(analysis.problems.get('via')).toMatch(/independent in.+out pairs/);
+    expect(analysis.states.get('out')).toBe('blocked');
   });
 
   it('blocks a spectrum port on any unready source, not just the last edge recorded', () => {

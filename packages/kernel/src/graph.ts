@@ -56,7 +56,7 @@ import {
   type PortKind,
 } from '@mds/schema';
 
-import { packChannelIndices } from './bundle.js';
+import { packChannelIndices, ROUTING_KINDS, ROUTING_QUARANTINE_REASON } from './bundle.js';
 import { closureFormula } from './closure.js';
 import { expressionDimension, type DimensionScope } from './compile.js';
 import { assertConnectable, assertSameDimension, connectable } from './dimensions.js';
@@ -472,6 +472,18 @@ export function resolveGraph(
         sources.set(outputKey, { kind: 'numeric' });
       }
       continue;
+    }
+
+    // Quarantined pending a redesign (ROADMAP.md) — gated here, the one
+    // choke point every path to evaluating one of these three kinds runs
+    // through, the same "gate stated once" reasoning `formula.ts`'s own
+    // quarantine gate follows. The branches below stay in place, unreached,
+    // for when the gate lifts.
+    if (ROUTING_KINDS.has(node.kind)) {
+      throw new KernelError(
+        `'${node.id}' is quarantined and cannot be evaluated: ${ROUTING_QUARANTINE_REASON[node.kind as 'waypoint' | 'pack' | 'unpack']}`,
+        node.id,
+      );
     }
 
     if (node.kind === 'waypoint') {

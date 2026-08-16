@@ -88,14 +88,6 @@ necessarily milestone-2 either.
 varies along. Still open: marking specific values on a curve, and a fourth
 axis (facet-row × facet-col) if that turns out to be needed.
 
-**A plot's threshold as an optional port**, overriding the hardcoded value —
-today `output.threshold` is a quantity typed on the node; this would let a
-wired value override it, so the threshold could come from upstream (a
-formula's own limit, a swept comparison) instead of only ever being retyped
-by hand. Needs its own discussion first: this is the first case of an
-optional port that *overrides* an authored value rather than just filling
-one in, and nothing in the port model distinguishes those two cases yet.
-
 **A range's two bounds showing different units** — `10 mm ... 1 m`, each
 bound keeping its own unit rather than both sharing one. Two ways to build
 it were weighed: editor-only display state (doesn't survive save/reload) or
@@ -132,14 +124,14 @@ in the browser (2026-08-16) found this isn't what's needed:
   rather than a `pack`-specific bug, but the exact error text is real and
   worth chasing down first.
 
-**A short first-load tutorial for students** — the app opens on the pad
-pressure sample today, which demonstrates a sweep and a plot but explains
-nothing. A guided first run — what a wire means, how to turn an input into a
-range, where the notebook comes from — would replace "here is a sample
-graph, figure it out" with an actual first five minutes. Mechanism is
-decided: a scripted overlay walkthrough, not a static page (that's for a
-future docs companion app), reachable again afterwards from the ribbon's
-existing help menu rather than shown once and gone.
+All three are quarantined for now (`packages/kernel/src/bundle.ts`'s
+`ROUTING_KINDS`/`ROUTING_QUARANTINE_REASON`, gated in `graph.ts`'s
+`resolveGraph`, the one choke point every evaluation path runs through) —
+same mechanism a quarantined formula uses: still listed in the palette,
+marked and explained rather than hidden, still lands on the canvas, but
+`resolveGraph` refuses it outright instead of computing a wrong or
+confusing result. Lift the gate once the waypoint redesign above lands and
+the pack error is traced.
 
 **Catalogue authoring should be easier for contributors.** Today a
 catalogue is authored by running the extraction script (`tools/extract/`,
@@ -182,15 +174,9 @@ which complicate calculations via the combination of normal and bending
 loads. Catalogue content, for when that chapter is designed — not an editor
 question.
 
-**Catalogue source should be clear on the nodes.** In the dropdown is fine.
-
 **Are all nodes addable in the quick add?**
 
 **Settings should be persistent.** Panel widths are not stored.
-
-**Auto-arrange the graph** — no overlaps of (open) nodes, frames keep their
-contents, edges ignored for now (untangling them neatly is a future
-problem).
 
 **Visualization nodes** — cantilever beams, bending-moment diagrams and the
 like. Generic mechanics content, not R&M-specific, so this lives in the
@@ -209,18 +195,6 @@ citations and values by default, expressions only behind the explicit
 toggle. Gate it behind a hidden console command for now rather than a UI
 button — personal-use export, not a student-facing feature yet.
 
-**Contextual help ("?") throughout the UX**, linking into the docs site
-below. Interaction direction floated: hover shows a tooltip, click opens the
-relevant docs page. Needs full discussion — where the icons go, how granular
-the linking is.
-
-**A docs site.** VitePress, as a new package in this repo (public, no
-textbook content), built and deployed independently of the editor so it
-never blocks `pnpm build`. This is the "future docs companion app" the
-first-load tutorial item above already gestures at — the two should be
-designed together: the tutorial is the first five minutes, the docs site is
-what the tutorial and the "?" hints above point into.
-
 **Plausible analytics during alpha.** A thin adapter — mirrors the existing
 file-I/O adapter pattern — with a no-op and a Plausible-backed
 implementation behind one flag, so removing it before public launch is
@@ -230,9 +204,9 @@ e.g. feature-usage events like "sweep run" or "plot created" — is still
 open; whatever set gets chosen should be documented in one place so "what
 does this log" has a single answer.
 
-**Hovering over notebook items should higlight graph.** Frames on section title hover, output nodes on their generated block.
+**Fuzzy find in the catalogue palette too!** There is precedent in the quick add menu.
 
-**How to provide feedback?** Add a short guide next to the version number in the title bar on what to do. Send me an email or open an issue.
+**Optional ports should change the unit when it is connected with a port.** Now it blocks connections.
 
 ## Commit conventions and release tooling
 
