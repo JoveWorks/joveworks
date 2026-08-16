@@ -2,7 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { formatQuantity } from '@mds/units';
 
 import type { JsonObject } from '@mds/schema';
-import { evaluateDocument, valueAt, type CheckResult, type PlotResult, type TableResult, type PrintResult } from './evaluate.js';
+import {
+  evaluateDocument,
+  valueAt,
+  type CheckResult,
+  type EquationResult,
+  type PlotResult,
+  type TableResult,
+  type PrintResult,
+} from './evaluate.js';
 import { KernelError } from './errors.js';
 import {
   CATALOGUE,
@@ -456,6 +464,68 @@ describe('output nodes', () => {
     const [output] = evaluateDocument(framed, catalogues).outputs;
     expect(output?.frameId).toBe('section');
     expect(output?.caption).toBe('A caption.');
+  });
+});
+
+describe('equation outputs', () => {
+  it("shows a catalogue formula's expression and citation, not its value", () => {
+    const CITED: JsonObject = {
+      id: 'cited',
+      version: 1,
+      output: { kind: 'numeric', name: 'y', unit: '' },
+      inputs: [
+        { kind: 'numeric', name: 'a', unit: '' },
+        { kind: 'numeric', name: 'b', unit: '' },
+      ],
+      expression: 'a * b',
+      description: 'Invented, and citation-bearing, for the equation-output test.',
+      citation: 'Test 1.1',
+      status: 'unverified',
+    };
+    const citedCatalogue = catalogueOf([CITED], 'cited-test');
+    const document = documentOf(
+      [
+        input('a', scalar(2, '')),
+        input('b', scalar(3, '')),
+        formulaNode('f', refTo('cited', citedCatalogue)),
+        outputNode('eq', { kind: 'equation' }),
+      ],
+      [wire('a.value', 'f.a'), wire('b.value', 'f.b'), wire('f.y', 'eq.value')],
+    );
+    const result = evaluateDocument(document, [citedCatalogue]).outputs[0] as EquationResult;
+    expect(result.kind).toBe('equation');
+    expect(result.expression).toBe('a * b');
+    expect(result.citation).toBe('Test 1.1');
+  });
+
+  it("shows a closure node's own expression, with no citation", () => {
+    const document = documentOf(
+      [
+        input('a', scalar(2, '')),
+        input('b', scalar(3, '')),
+        closureNode('eq', 'a + b'),
+        outputNode('out', { kind: 'equation' }),
+      ],
+      [wire('a.value', 'eq.a'), wire('b.value', 'eq.b'), wire('eq.result', 'out.value')],
+    );
+    const result = evaluateDocument(document, catalogues).outputs[0] as EquationResult;
+    expect(result.expression).toBe('a + b');
+    expect(result.citation).toBeUndefined();
+  });
+
+  it('refuses an unwired equation output', () => {
+    const document = documentOf([outputNode('out', { kind: 'equation' })], []);
+    expect(() => evaluateDocument(document, catalogues)).toThrow(/not connected/u);
+  });
+
+  it('refuses a wire from a node that is not a formula or closure', () => {
+    const document = documentOf(
+      [input('a', scalar(2, 'mm')), outputNode('out', { kind: 'equation' })],
+      [wire('a.value', 'out.value')],
+    );
+    expect(() => evaluateDocument(document, catalogues)).toThrow(
+      /is not a formula or equation node/u,
+    );
   });
 });
 

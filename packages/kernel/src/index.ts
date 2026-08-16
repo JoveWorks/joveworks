@@ -109,6 +109,7 @@ export type { ConnectionCheck, PortType, Resolution } from './graph.js';
 export { evaluateDocument, valueAt } from './evaluate.js';
 export type {
   CheckResult,
+  EquationResult,
   Evaluation,
   EvaluationOptions,
   OutputResult,
@@ -118,6 +119,8 @@ export type {
   TableResult,
   PrintResult,
 } from './evaluate.js';
+
+export { toLatex } from './toLatex.js';
 
 export { WARNING_KINDS } from './warnings.js';
 export type { Warning, WarningKind } from './warnings.js';

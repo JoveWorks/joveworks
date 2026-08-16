@@ -121,7 +121,14 @@ export interface TableResult extends OutputBase {
   readonly axes: readonly Axis[];
 }
 
-export type OutputResult = PrintResult | CheckResult | PlotResult | TableResult;
+/** Shows the wired formula's own expression, typeset — not its value. */
+export interface EquationResult extends OutputBase {
+  readonly kind: 'equation';
+  readonly expression: string;
+  readonly citation?: string;
+}
+
+export type OutputResult = PrintResult | CheckResult | PlotResult | TableResult | EquationResult;
 
 export interface Evaluation {
   readonly document: GraphDocument;
@@ -586,6 +593,21 @@ function outputResult(
     ...(node.frameId === undefined ? {} : { frameId: node.frameId }),
   };
   const output = node.output;
+
+  if (output.kind === 'equation') {
+    const key = endpointKey(node.id, VALUE_PORT);
+    const edge = resolution.incoming.get(key)?.[0];
+    if (edge === undefined) throw new KernelError("'value' is not connected", key);
+    // Guaranteed defined: resolveGraph already refused any wire whose
+    // source is not a formula or closure node (graph.ts).
+    const formula = resolution.formulas.get(edge.from.node) as Formula;
+    return {
+      ...base,
+      kind: 'equation',
+      expression: formula.expression,
+      ...(formula.citation === undefined ? {} : { citation: formula.citation }),
+    };
+  }
 
   if (output.kind === 'table') {
     const columns = output.columns.map((name) => {

@@ -126,9 +126,20 @@ export interface TableOutput {
   readonly columns: readonly string[];
 }
 
-export type Output = PrintOutput | CheckOutput | PlotOutput | TableOutput;
+/**
+ * Shows the wired formula's own expression as typeset math, instead of its
+ * value — the opt-in escape hatch from "expressions only behind an
+ * explicitly marked toggle." Nothing to configure: everything it shows
+ * (expression, citation) comes from the formula or closure node wired to
+ * `value`.
+ */
+export interface EquationOutput {
+  readonly kind: 'equation';
+}
 
-export const OUTPUT_KINDS = ['print', 'check', 'plot', 'table'] as const;
+export type Output = PrintOutput | CheckOutput | PlotOutput | TableOutput | EquationOutput;
+
+export const OUTPUT_KINDS = ['print', 'check', 'plot', 'table', 'equation'] as const;
 export type OutputKind = (typeof OUTPUT_KINDS)[number];
 
 interface NodeBase {
@@ -296,6 +307,9 @@ function parseOutput(value: JsonValue, path: string): Output {
       if (columns.length === 0) fail(join(path, 'columns'), 'is empty');
       return { kind, columns };
     }
+
+    case 'equation':
+      return { kind };
   }
 }
 
@@ -328,6 +342,8 @@ function serializeOutput(output: Output): JsonObject {
       };
     case 'table':
       return { kind: output.kind, columns: [...output.columns] };
+    case 'equation':
+      return { kind: output.kind };
   }
 }
 

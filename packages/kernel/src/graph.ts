@@ -521,6 +521,18 @@ export function resolveGraph(
           key,
         );
       }
+
+      // An equation output shows the wired node's *expression*, not its
+      // value — so, unlike every other output kind, what it accepts is
+      // restricted to a node that has one: a formula or a closure, both
+      // already resolved into `formulas` by the time this node is reached
+      // (topological order).
+      if (node.output.kind === 'equation' && edge !== undefined && !formulas.has(edge.from.node)) {
+        throw new KernelError(
+          `an equation output shows a formula's expression — '${edge.from.node}' is not a formula or equation node`,
+          key,
+        );
+      }
     }
   }
 

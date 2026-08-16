@@ -24,6 +24,7 @@
 import { useState, type ReactElement } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 
+import { parseExpression, toLatex } from '@mds/kernel';
 import { parseUnit } from '@mds/units';
 import {
   COMPARISONS,
@@ -48,6 +49,7 @@ import {
   reorderColumn,
   updateNode,
 } from '../model/document';
+import { Equation } from '../Equation';
 import { Symbol } from '../Symbol';
 import { formatAuthored, parseAuthored, unitLabel } from '../model/quantity';
 import { reading, summarise } from '../model/values';
@@ -114,6 +116,14 @@ export function OutputNodeView({ id, selected }: NodeProps): ReactElement | null
       ? { series: result.series, unit: result.unit }
       : shown;
   const plotResult = result?.kind === 'plot' ? result : undefined;
+  const equationResult = result?.kind === 'equation' ? result : undefined;
+  // Not the upstream formula's own id — a closure's is always the literal
+  // 'closure' (kernel/closure.ts), which would be a useless caption default
+  // repeated across every closure-sourced equation node.
+  const captionPlaceholder =
+    output.kind === 'equation'
+      ? (equationResult?.citation ?? node.label ?? id)
+      : 'the 1.5 threshold is crossed at 38 mm';
 
   const setOutput = (next: Output): void =>
     edit((current) => updateNode<OutputNode>(current, id, (entry) => ({ ...entry, output: next })));
@@ -155,7 +165,9 @@ export function OutputNodeView({ id, selected }: NodeProps): ReactElement | null
                       ? { kind, comparison: '>=', threshold: { value: 1, unit: shown?.unit ?? parseUnit('') } }
                       : kind === 'plot'
                         ? { kind }
-                        : { kind, columns: [] };
+                        : kind === 'equation'
+                          ? { kind }
+                          : { kind, columns: [] };
                 edit((current) => changeOutputKind(current, id, next));
               }}
             >
@@ -165,6 +177,7 @@ export function OutputNodeView({ id, selected }: NodeProps): ReactElement | null
                 plot
               </option>
               <option value="table">table</option>
+              <option value="equation">equation</option>
             </select>
           </label>
 
@@ -408,7 +421,7 @@ export function OutputNodeView({ id, selected }: NodeProps): ReactElement | null
             <TextField
               className="caption"
               value={node.caption ?? ''}
-              placeholder="the 1.5 threshold is crossed at 38 mm"
+              placeholder={captionPlaceholder}
               onCommit={(caption) =>
                 edit((current) =>
                   updateNode<OutputNode>(current, id, (entry) => {
@@ -442,7 +455,13 @@ export function OutputNodeView({ id, selected }: NodeProps): ReactElement | null
       </ul>
 
       <div className="node-value">
-        {output.kind === 'table' ? null : (
+        {output.kind === 'equation' ? (
+          equationResult === undefined ? (
+            <span className="reading">—</span>
+          ) : (
+            <Equation latex={toLatex(parseExpression(equationResult.expression))} displayMode={false} />
+          )
+        ) : output.kind === 'table' ? null : (
           <>
             <span className="reading">
               {value === undefined

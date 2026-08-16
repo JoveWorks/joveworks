@@ -87,6 +87,12 @@ const study: JsonObject = {
       output: { kind: 'table', columns: ['d', 'S'] },
     },
     {
+      kind: 'output',
+      id: 'o-equation',
+      position: { x: 520, y: 480 },
+      output: { kind: 'equation' },
+    },
+    {
       kind: 'compare',
       id: 'c1',
       label: 'S adequate?',
@@ -106,6 +112,7 @@ const study: JsonObject = {
     { id: 'e1', from: { node: 'd', port: 'value' }, to: { node: 'n1', port: 'a' } },
     { id: 'e2', from: { node: 'load', port: 'value' }, to: { node: 'n1', port: 'c' } },
     { id: 'e3', from: { node: 'n1', port: 'y' }, to: { node: 'o-value', port: 'value' } },
+    { id: 'e-eq', from: { node: 'n1', port: 'y' }, to: { node: 'o-equation', port: 'value' } },
   ],
   frames: [
     {
@@ -241,13 +248,13 @@ describe('structural integrity', () => {
         { id: 'e4', from: { node: 'ghost', port: 'value' }, to: { node: 'n1', port: 'b' } },
       ],
     };
-    expect(() => parseDocument(broken)).toThrow(/edges\[3\]\.from\.node: no node 'ghost' exists/);
+    expect(() => parseDocument(broken)).toThrow(/edges\[4\]\.from\.node: no node 'ghost' exists/);
   });
 
   it('rejects a duplicated node id', () => {
     const nodes = study['nodes'] as JsonObject[];
     const broken = { ...study, nodes: [...nodes, nodes[0] as JsonObject] };
-    expect(() => parseDocument(broken)).toThrow(/nodes\[10\]\.id: 'd' appears twice/);
+    expect(() => parseDocument(broken)).toThrow(/nodes\[11\]\.id: 'd' appears twice/);
   });
 
   it('refuses a document written by a schema version it does not read', () => {

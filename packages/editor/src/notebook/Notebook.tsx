@@ -9,13 +9,16 @@
  * Export is the browser's own print-to-PDF, aimed at just this panel by
  * `@media print` rules in styles.css — no PDF library, no second renderer to
  * keep in sync with this one. The rule that citation and values show by
- * default, with expressions only behind a marked toggle, holds trivially:
- * nothing in this panel renders an expression, printed or not.
+ * default, with expressions only behind a marked toggle, now has exactly one
+ * exception, and it is the toggle itself: an `equation` output node renders
+ * its wired formula's expression as typeset math, opt-in by construction —
+ * a student adds this specific node type to show an equation, rather than
+ * expressions leaking out from a global setting.
  */
 
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactElement } from 'react';
 
-import type { OutputResult } from '@mds/kernel';
+import { parseExpression, toLatex, type OutputResult } from '@mds/kernel';
 import type { Frame, GraphDocument, OutputNode } from '@mds/schema';
 
 import type { NumberFormat } from '@mds/units';
@@ -23,6 +26,7 @@ import type { NumberFormat } from '@mds/units';
 import { useGraph } from '../graph-context';
 import { useSettings } from '../settings-context';
 import { ContextMenu, type MenuItem } from '../canvas/ContextMenu';
+import { Equation } from '../Equation';
 import { Symbol } from '../Symbol';
 import { moveFrame, reframe, removeNodes, reorderFrame, updateFrame, updateNode } from '../model/document';
 import { toUnitsFormat } from '../model/numberFormat';
@@ -93,6 +97,15 @@ function Result({ result }: { readonly result: OutputResult }): ReactElement {
     );
   }
 
+  if (result.kind === 'equation') {
+    return (
+      <div className="result equation">
+        <span className="label">{label}</span>
+        <Equation latex={toLatex(parseExpression(result.expression))} />
+      </div>
+    );
+  }
+
   if (result.kind === 'table') {
     const rows = Math.max(...result.columns.map((column) => column.series.data.length));
     return (
@@ -145,13 +158,19 @@ function Result({ result }: { readonly result: OutputResult }): ReactElement {
   );
 }
 
-function Caption({ node }: { readonly node: OutputNode }): ReactElement {
+function Caption({
+  node,
+  defaultCaption,
+}: {
+  readonly node: OutputNode;
+  readonly defaultCaption?: string;
+}): ReactElement {
   const { editLive, commitEdit } = useGraph();
   return (
     <textarea
       className="caption"
       value={node.caption ?? ''}
-      placeholder="caption — what this result says"
+      placeholder={defaultCaption ?? 'caption — what this result says'}
       rows={1}
       onKeyDown={commitOnEnter}
       onChange={(event) => {
@@ -356,6 +375,10 @@ function Section({
 
           {outputs.map((node) => {
             const result = results.get(node.id);
+            const captionProps =
+              result?.kind === 'equation'
+                ? { defaultCaption: result.citation ?? node.label ?? node.id }
+                : {};
             return (
               <div key={node.id} className="entry">
                 {result === undefined ? (
@@ -368,7 +391,7 @@ function Section({
                 ) : (
                   <Result result={result} />
                 )}
-                <Caption node={node} />
+                <Caption node={node} {...captionProps} />
               </div>
             );
           })}
