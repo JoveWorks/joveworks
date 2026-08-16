@@ -202,15 +202,17 @@ problem).
 
 ## Commit conventions and release tooling
 
-Triggered by being past MVP and ready to share the public repo — not
-speculative infra. There is no CI, changelog, or release process today (no
-`.github`, no `CHANGELOG.md`, no release scripts).
+Done. `.github/workflows/ci.yml` builds and tests every push/PR to `main`.
+`.github/workflows/release.yml` is manual-trigger only (`workflow_dispatch`,
+optional patch/minor/major override) — no auto-publish on push, a release is
+still something Thomas decides to cut. It builds, tests, then runs
+`pnpm release` (`commit-and-tag-version`, config in `.versionrc.json`),
+pushes the version-bump commit and tag, and cuts a GitHub Release from the
+new `CHANGELOG.md` section.
 
 Commit messages move to Conventional Commits (`type(scope): subject`),
 scope enforced against the package boundaries (`schema`, `kernel`, `units`,
 `nodes`, `editor`, `tools`) — codified in CLAUDE.md's Conventions section as
-a standing rule, not just tracked here. Changelog and version bumps are
-generated from that history with a manual-trigger tool (e.g.
-`standard-version`/`commit-and-tag-version`), not one that auto-publishes on
-every push — a release is something Thomas decides to cut. Needs a GitHub
-Actions workflow to run it, to be added alongside this.
+a standing rule. History before this point isn't in that format, so the
+first changelog's coverage of older commits will be thin; that's expected,
+not a bug in the tooling.

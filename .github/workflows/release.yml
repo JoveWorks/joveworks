@@ -1,0 +1,63 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release-as:
+        description: "Version bump (leave blank to let commit history decide)"
+        type: choice
+        options: ["", patch, minor, major]
+        default: ""
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm build
+
+      - run: pnpm test
+
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump version, update changelog, tag
+        run: |
+          if [ -n "${{ inputs.release-as }}" ]; then
+            pnpm release --release-as "${{ inputs.release-as }}"
+          else
+            pnpm release
+          fi
+
+      - run: git push --follow-tags origin main
+
+      - name: Extract release notes
+        id: notes
+        run: |
+          tag=$(git describe --tags --abbrev=0)
+          awk '/^## /{ if (found) exit; found=1 } found' CHANGELOG.md > /tmp/release-notes.md
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.notes.outputs.tag }}" \
+            --title "${{ steps.notes.outputs.tag }}" \
+            --notes-file /tmp/release-notes.md

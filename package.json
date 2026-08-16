@@ -11,9 +11,11 @@
     "clean": "tsc -b --clean",
     "test": "vitest run",
     "test:watch": "vitest",
-    "dev": "pnpm --filter @mds/editor dev"
+    "dev": "pnpm --filter @mds/editor dev",
+    "release": "commit-and-tag-version"
   },
   "devDependencies": {
+    "commit-and-tag-version": "^13.1.2",
     "typescript": "^5.9.2",
     "vite": "^7.1.3",
     "vitest": "^3.2.4"
