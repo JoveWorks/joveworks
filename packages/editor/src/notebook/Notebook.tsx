@@ -253,20 +253,45 @@ function Section({
             ⠿
           </span>
         )}
-        <button type="button" className="section-toggle" onClick={onToggle}>
-          <span className="section-toggle-title">
-            {frame === undefined ? 'Not in a section' : frame.title}
-            {collapsed ? (
-              <span className="section-toggle-count">
-                {' '}
-                ({outputs.length} result{outputs.length === 1 ? '' : 's'})
+        {frame === undefined ? (
+          <button type="button" className="section-toggle" onClick={onToggle}>
+            <span className="section-toggle-title">Not in a section</span>
+            <span className="chevron" aria-hidden="true">
+              {collapsed ? '▸' : '▾'}
+            </span>
+          </button>
+        ) : (
+          <>
+            <input
+              className="section-title"
+              value={frame.title}
+              onChange={(event) => {
+                const title = event.target.value;
+                editLive((current) => updateFrame(current, frame.id, (entry) => ({ ...entry, title })));
+              }}
+              onKeyDown={(event) => {
+                if (event.key !== 'Enter') return;
+                event.currentTarget.blur();
+              }}
+              onBlur={() => commitEdit()}
+            />
+            <button
+              type="button"
+              className="section-toggle"
+              onClick={onToggle}
+              aria-label={collapsed ? 'Expand section' : 'Collapse section'}
+            >
+              {collapsed ? (
+                <span className="section-toggle-count">
+                  {outputs.length} result{outputs.length === 1 ? '' : 's'}
+                </span>
+              ) : null}
+              <span className="chevron" aria-hidden="true">
+                {collapsed ? '▸' : '▾'}
               </span>
-            ) : null}
-          </span>
-          <span className="chevron" aria-hidden="true">
-            {collapsed ? '▸' : '▾'}
-          </span>
-        </button>
+            </button>
+          </>
+        )}
       </h2>
       {menu === undefined ? null : (
         <ContextMenu x={menu.x} y={menu.y} items={menuItems} onClose={() => setMenu(undefined)} />

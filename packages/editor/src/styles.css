@@ -1255,10 +1255,8 @@ aside.right {
 .section-toggle {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
   gap: 5px;
-  flex: 1;
-  min-width: 0;
+  flex-shrink: 0;
   border: none;
   background: none;
   padding: 0;
@@ -1277,6 +1275,25 @@ aside.right {
   /* Wraps like ordinary text — a long catalogue or section name should grow
      the header, not get truncated with no way to read the rest of it. */
   min-width: 0;
+}
+
+.section-title {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-weight: inherit;
+  color: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  padding: 0;
+}
+
+.section-title:hover,
+.section-title:focus {
+  outline: 1px dashed var(--muted);
+  outline-offset: 2px;
 }
 
 /* How many entries are hidden — the only cue a collapsed section gives that
