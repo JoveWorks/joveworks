@@ -10,6 +10,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   SCHEMA_VERSION,
+  type ClosureNode,
   type FormulaNode,
   type GraphDocument,
   type InputNode,
@@ -34,6 +35,7 @@ import {
   renameColumn,
   renameNode,
   reorderColumn,
+  setClosureExpression,
   syncColumnLabels,
   uniqueId,
   updateNode,
@@ -58,6 +60,13 @@ const table = (id: string, columns: readonly string[], x: number, y: number): Ou
   id,
   position: { x, y },
   output: { kind: 'table', columns: [...columns] },
+});
+
+const closure = (id: string, expression: string, x: number, y: number): ClosureNode => ({
+  kind: 'closure',
+  id,
+  position: { x, y },
+  expression,
 });
 
 const base: GraphDocument = {
@@ -390,5 +399,48 @@ describe('renaming a node keeps table columns in sync', () => {
       { node: 't', port: 'a' },
     );
     expect(syncColumnLabels(wired, 'a', 'a', 'a')).toBe(wired);
+  });
+});
+
+describe('setClosureExpression — a closure node’s ports follow its own expression', () => {
+  it('rewrites the expression and leaves an unaffected wire alone', () => {
+    const wired = connect(
+      { ...base, nodes: [...base.nodes, closure('eq', 'a + b', 400, 0)] },
+      { node: 'a', port: 'value' },
+      { node: 'eq', port: 'a' },
+    );
+    const edited = setClosureExpression(wired, 'eq', 'a - b');
+    const node = edited.nodes.find((entry) => entry.id === 'eq') as ClosureNode;
+    expect(node.expression).toBe('a - b');
+    expect(edited.edges).toEqual(wired.edges);
+  });
+
+  it('prunes a wire whose port the new expression no longer mentions', () => {
+    const wired = connect(
+      connect(
+        { ...base, nodes: [...base.nodes, closure('eq', 'a + b', 400, 0)] },
+        { node: 'a', port: 'value' },
+        { node: 'eq', port: 'a' },
+      ),
+      { node: 'b', port: 'value' },
+      { node: 'eq', port: 'b' },
+    );
+    // 'b' drops out of the expression entirely — its wire has nowhere left to land.
+    const edited = setClosureExpression(wired, 'eq', 'a * 2');
+    expect(edited.edges).toEqual([
+      { id: 'a.value->eq.a', from: { node: 'a', port: 'value' }, to: { node: 'eq', port: 'a' } },
+    ]);
+  });
+
+  it('prunes every wire when the new text does not parse, visibly rather than silently', () => {
+    const wired = connect(
+      { ...base, nodes: [...base.nodes, closure('eq', 'a + b', 400, 0)] },
+      { node: 'a', port: 'value' },
+      { node: 'eq', port: 'a' },
+    );
+    const edited = setClosureExpression(wired, 'eq', 'a + * b');
+    expect(edited.edges).toEqual([]);
+    const node = edited.nodes.find((entry) => entry.id === 'eq') as ClosureNode;
+    expect(node.expression).toBe('a + * b');
   });
 });

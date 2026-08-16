@@ -149,8 +149,16 @@ which complicate calculations via the combination of normal and bending
 loads. Catalogue content, for when that chapter is designed — not an editor
 question.
 
-**Custom closure nodes** — a student writes an equation in a field, and the
-ports populate themselves from whatever symbols the expression uses.
+**Custom closure nodes are built** — a student writes an equation on the
+node itself (`ClosureNodeView.tsx`) and its ports populate from whatever
+free names the expression uses (`packages/kernel/src/closure.ts`), each its
+own generic dimension, proven live against this node's own wiring rather
+than a reusable template (`graph.ts`'s `closure` branch) — see that file's
+own comment for why a template can't express this correctly. Still open: it
+is reachable only from the palette, not from `QuickAddMenu`'s drag-a-wire
+flow — a fresh closure has no ports until it is written, so finishing a
+dropped wire onto one would need a "type first, then wire" interaction this
+pass didn't build.
 
 **Auto-arrange the graph** — no overlaps of (open) nodes, frames keep their
 contents, edges ignored for now (untangling them neatly is a future

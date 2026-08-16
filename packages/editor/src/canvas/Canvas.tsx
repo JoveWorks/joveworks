@@ -62,6 +62,7 @@ import {
   uniqueId,
   updateFrame,
 } from '../model/document';
+import { ClosureNodeView } from './ClosureNodeView';
 import { CompareNodeView } from './CompareNodeView';
 import { ContextMenu, type MenuItem } from './ContextMenu';
 import { FormulaNodeView } from './FormulaNodeView';
@@ -211,7 +212,7 @@ function sizeOf(measured: Measurements, id: string): { measured?: { width: numbe
  * `formula`/`compare` never had, since neither name collides). Prefixed here
  * so the type string is ours alone; `node.kind` in the document is untouched.
  */
-function flowType(kind: 'input' | 'formula' | 'output' | 'compare'): string {
+function flowType(kind: 'input' | 'formula' | 'output' | 'compare' | 'closure'): string {
   return kind === 'input' || kind === 'output' ? `mds-${kind}` : kind;
 }
 
@@ -220,6 +221,7 @@ const NODE_TYPES = {
   formula: FormulaNodeView,
   'mds-output': OutputNodeView,
   compare: CompareNodeView,
+  closure: ClosureNodeView,
   frame: FrameView,
 };
 

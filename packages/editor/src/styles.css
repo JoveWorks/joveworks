@@ -335,6 +335,18 @@ aside.right {
   font-size: 11px;
 }
 
+/* A closure node's own equation — shown and edited right on the node
+   (ClosureNodeView.tsx), unlike a catalogue formula's expression. */
+.node input.expression {
+  width: 100%;
+  border: none;
+  padding: 0;
+  background: transparent;
+  color: var(--ink);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 12px;
+}
+
 .node .status.verified {
   color: var(--state-pass);
 }

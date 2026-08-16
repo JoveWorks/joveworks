@@ -12,6 +12,7 @@ import {
 } from './graph.js';
 import {
   CATALOGUE,
+  closureNode,
   compareNode,
   documentOf,
   formulaNode,
@@ -311,6 +312,81 @@ describe('generic signatures bind per node instance (S59)', () => {
       [wire('F.value', 'check.value')],
     );
     expect(() => resolveGraph(document, catalogues)).toThrow(/same dimension/u);
+  });
+});
+
+describe('closure nodes', () => {
+  it('leaves the output unresolved until every free name it uses is wired', () => {
+    const document = documentOf([closureNode('eq', 'a + b')], []);
+    const resolution = resolveGraph(document, catalogues);
+    expect(resolution.sources.get(endpointKey('eq', 'result'))?.dimension).toBeUndefined();
+  });
+
+  it('proves the output dimension live once wired, the way a hand-authored add does', () => {
+    const document = documentOf(
+      [input('F1', scalar(10, 'N')), input('F2', scalar(20, 'N')), closureNode('eq', 'a + b')],
+      [wire('F1.value', 'eq.a'), wire('F2.value', 'eq.b')],
+    );
+    const resolution = resolveGraph(document, catalogues);
+    expect(resolution.sources.get(endpointKey('eq', 'result'))?.dimension).toEqual(FORCE);
+  });
+
+  it('refuses to add two different dimensions', () => {
+    const document = documentOf(
+      [input('F', scalar(10, 'N')), input('d', scalar(20, 'mm')), closureNode('eq', 'a + b')],
+      [wire('F.value', 'eq.a'), wire('d.value', 'eq.b')],
+    );
+    expect(() => resolveGraph(document, catalogues)).toThrow(/cannot add/u);
+  });
+
+  it("gets 'a*b + c*d' right — two independent products that only need to match", () => {
+    // The case a static per-symbol template cannot express without wrongly
+    // forcing a, b, c and d onto one shared dimension (see closure.ts).
+    const document = documentOf(
+      [
+        input('w1', scalar(4, 'mm')),
+        input('h1', scalar(3, 'mm')),
+        input('w2', scalar(2, 'mm')),
+        input('h2', scalar(6, 'mm')),
+        closureNode('eq', 'a*b + c*d'),
+      ],
+      [
+        wire('w1.value', 'eq.a'),
+        wire('h1.value', 'eq.b'),
+        wire('w2.value', 'eq.c'),
+        wire('h2.value', 'eq.d'),
+      ],
+    );
+    const resolution = resolveGraph(document, catalogues);
+    expect(resolution.sources.get(endpointKey('eq', 'result'))?.dimension).toEqual(AREA);
+  });
+
+  it('requires an angle or a dimensionless argument to sin, like the base node does', () => {
+    const document = documentOf(
+      [input('d', scalar(20, 'mm')), closureNode('eq', 'sin(theta)')],
+      [wire('d.value', 'eq.theta')],
+    );
+    expect(() => resolveGraph(document, catalogues)).toThrow(/takes an angle/u);
+  });
+
+  it('accepts an angle into sin and produces a dimensionless result', () => {
+    const document = documentOf(
+      [input('theta', scalar(1, 'rad')), closureNode('eq', 'sin(theta)')],
+      [wire('theta.value', 'eq.theta')],
+    );
+    const resolution = resolveGraph(document, catalogues);
+    expect(resolution.sources.get(endpointKey('eq', 'result'))?.dimension).toEqual(DIMENSIONLESS);
+  });
+
+  it('derives a spectrum port from a bare reduction argument', () => {
+    const document = documentOf([closureNode('eq', 'sum(xs)')], []);
+    const resolution = resolveGraph(document, catalogues);
+    expect(resolution.targets.get(endpointKey('eq', 'xs'))?.kind).toBe('spectrum');
+  });
+
+  it('reports a bad expression at the node, not the whole graph silently', () => {
+    const document = documentOf([closureNode('eq', 'a + * b')], []);
+    expect(() => resolveGraph(document, catalogues)).toThrow(KernelError);
   });
 });
 

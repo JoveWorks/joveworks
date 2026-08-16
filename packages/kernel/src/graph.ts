@@ -55,8 +55,11 @@ import {
   type PortKind,
 } from '@mds/schema';
 
+import { closureFormula } from './closure.js';
+import { expressionDimension, type DimensionScope } from './compile.js';
 import { assertConnectable, assertSameDimension, connectable } from './dimensions.js';
 import { KernelError } from './errors.js';
+import { parseExpression } from './parse.js';
 import type { Axis } from './series.js';
 import type { Warning } from './warnings.js';
 
@@ -340,6 +343,59 @@ export function resolveGraph(
     );
   };
 
+  /**
+   * Bind a node's generic variables from what is wired in, then check every
+   * edge against the port it arrives at. An input's signature is a bare
+   * variable, so this is an assignment and never an equation — shared by a
+   * `formula` node (whose ports may deliberately reuse one variable, as
+   * `add`'s two inputs both do with `$A`) and a `closure` node (whose ports
+   * never do, each free name having its own).
+   */
+  const bindInputs = (nodeId: string, formula: Formula): Map<string, Dimension> => {
+    const bound = new Map<string, Dimension>();
+    for (const port of formula.inputs) {
+      const key = endpointKey(nodeId, port.name);
+      // A spectrum port takes one edge per collected value; every
+      // other kind takes exactly one, which `oneEdge` throws on if not true.
+      const edges = port.kind === 'spectrum' ? (incoming.get(key) ?? []) : oneEdgeArray(key);
+      if (edges.length === 0) continue;
+      const declared = portType(port, bound);
+
+      for (const edge of edges) {
+        const source = sourceType(edge);
+        checkKind(source, declared, key);
+
+        if (port.kind !== 'categorical' && isGenericDimension(port.unit)) {
+          const variable = bareVariable(port.unit) as string;
+          const dimension = source.dimension;
+          if (dimension === undefined) {
+            throw new KernelError(
+              `'${endpointKey(edge.from.node, edge.from.port)}' has no dimension yet — ` +
+                'wire its own inputs first',
+              key,
+            );
+          }
+          const already = bound.get(variable);
+          if (already === undefined) bound.set(variable, dimension);
+          else {
+            assertSameDimension(
+              already,
+              dimension,
+              `'$${variable}' is bound twice on this node and must be one dimension (S59)`,
+              key,
+            );
+          }
+          continue;
+        }
+
+        if (declared.dimension !== undefined && source.dimension !== undefined) {
+          assertConnectable(source.dimension, declared.dimension, key);
+        }
+      }
+    }
+    return bound;
+  };
+
   for (const node of order) {
     if (node.kind === 'input') {
       sources.set(endpointKey(node.id, VALUE_PORT), inputValueType(node));
@@ -349,57 +405,42 @@ export function resolveGraph(
     if (node.kind === 'formula') {
       const formula = lookupFormula(index, node.formula, node.id, warnings);
       formulas.set(node.id, formula);
-
-      // Bind the generic variables from what is wired in, then read every port
-      // through those bindings. An input's signature is a bare variable,
-      // so this is an assignment and never an equation.
-      const bound = new Map<string, Dimension>();
-      for (const port of formula.inputs) {
-        const key = endpointKey(node.id, port.name);
-        // A spectrum port takes one edge per collected value; every
-        // other kind takes exactly one, which `oneEdge` throws on if not true.
-        const edges = port.kind === 'spectrum' ? (incoming.get(key) ?? []) : oneEdgeArray(key);
-        if (edges.length === 0) continue;
-        const declared = portType(port, bound);
-
-        for (const edge of edges) {
-          const source = sourceType(edge);
-          checkKind(source, declared, key);
-
-          if (port.kind !== 'categorical' && isGenericDimension(port.unit)) {
-            const variable = bareVariable(port.unit) as string;
-            const dimension = source.dimension;
-            if (dimension === undefined) {
-              throw new KernelError(
-                `'${endpointKey(edge.from.node, edge.from.port)}' has no dimension yet — ` +
-                  'wire its own inputs first',
-                key,
-              );
-            }
-            const already = bound.get(variable);
-            if (already === undefined) bound.set(variable, dimension);
-            else {
-              assertSameDimension(
-                already,
-                dimension,
-                `'$${variable}' is bound twice on this node and must be one dimension (S59)`,
-                key,
-              );
-            }
-            continue;
-          }
-
-          if (declared.dimension !== undefined && source.dimension !== undefined) {
-            assertConnectable(source.dimension, declared.dimension, key);
-          }
-        }
-      }
-
+      const bound = bindInputs(node.id, formula);
       bindings.set(node.id, bound);
       for (const port of formula.inputs) {
         targets.set(endpointKey(node.id, port.name), portType(port, bound));
       }
       sources.set(endpointKey(node.id, formula.output.name), portType(formula.output, bound));
+      continue;
+    }
+
+    if (node.kind === 'closure') {
+      const formula = closureFormula(node.expression);
+      formulas.set(node.id, formula);
+      const bound = bindInputs(node.id, formula);
+      bindings.set(node.id, bound);
+      for (const port of formula.inputs) {
+        targets.set(endpointKey(node.id, port.name), portType(port, bound));
+      }
+
+      // No reusable template to resolve the output against (see closure.ts):
+      // once every free name the expression uses is bound, prove its
+      // dimension live, the same way `formula.ts`'s own self-check does for
+      // a hand-authored record — just against this one node's real wiring
+      // instead of a probed basis.
+      const outputKey = endpointKey(node.id, formula.output.name);
+      if (formula.inputs.every((port) => bound.has(port.name))) {
+        const scope: DimensionScope = {
+          dimensions: Object.fromEntries(bound),
+          spectra: new Set(
+            formula.inputs.filter((port) => port.kind === 'spectrum').map((port) => port.name),
+          ),
+        };
+        const dimension = expressionDimension(parseExpression(node.expression), scope, node.id);
+        sources.set(outputKey, { kind: 'numeric', dimension, unit: canonicalUnit(dimension) });
+      } else {
+        sources.set(outputKey, { kind: 'numeric' });
+      }
       continue;
     }
 
@@ -500,7 +541,17 @@ function isSpectrumTarget(
   to: Edge['to'],
 ): boolean {
   const node = document.nodes.find((candidate) => candidate.id === to.node);
-  if (node === undefined || node.kind !== 'formula') return false;
+  if (node === undefined) return false;
+
+  if (node.kind === 'closure') {
+    try {
+      return closureFormula(node.expression).inputs.find((port) => port.name === to.port)?.kind === 'spectrum';
+    } catch {
+      return false;
+    }
+  }
+
+  if (node.kind !== 'formula') return false;
   for (const catalogue of catalogues) {
     const formula = catalogue.formulas.find((entry) => matchRef(node.formula, entry) === 'match');
     const port = formula?.inputs.find((candidate) => candidate.name === to.port);

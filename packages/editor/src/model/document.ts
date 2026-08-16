@@ -13,8 +13,10 @@
  * only how a permitted change is applied.
  */
 
+import { closureFormula } from '@mds/kernel';
 import {
   VALUE_PORT,
+  type ClosureNode,
   type Edge,
   type Endpoint,
   type Frame,
@@ -318,6 +320,32 @@ export function renameNode(document: GraphDocument, nodeId: string, label: strin
   const renamed = updateNode(document, nodeId, (entry) => ({ ...entry, label }));
   const updated = renamed.nodes.find((entry) => entry.id === nodeId) as GraphNode;
   return syncColumnLabels(renamed, nodeId, oldLabel, nodeLabel(updated));
+}
+
+/**
+ * Rewrite a closure node's expression and drop every edge whose target port
+ * the new expression no longer mentions — the same shape-change pruning
+ * `changeOutputKind` does for a table's columns, via the same `pruneEdgesTo`.
+ * An expression that fails to parse simply has no ports at all until it is
+ * fixed: every existing wire is pruned, visibly, rather than kept pointing at
+ * a port that may no longer mean the same thing.
+ */
+export function setClosureExpression(
+  document: GraphDocument,
+  nodeId: string,
+  expression: string,
+): GraphDocument {
+  const withExpression = updateNode<ClosureNode>(document, nodeId, (node) => ({
+    ...node,
+    expression,
+  }));
+  let keep: ReadonlySet<string>;
+  try {
+    keep = new Set(closureFormula(expression).inputs.map((port) => port.name));
+  } catch {
+    keep = new Set();
+  }
+  return pruneEdgesTo(withExpression, nodeId, keep);
 }
 
 /** Reorder a table's columns — dropping `source` immediately before or after `target`. */

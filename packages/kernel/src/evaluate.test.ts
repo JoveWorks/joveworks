@@ -7,6 +7,7 @@ import { KernelError } from './errors.js';
 import {
   CATALOGUE,
   catalogueOf,
+  closureNode,
   compareNode,
   documentOf,
   formulaNode,
@@ -79,6 +80,37 @@ describe('a scalar graph', () => {
       [wire('h.value', 'area.h')],
     );
     expect(() => evaluateDocument(partial, catalogues)).toThrow(/not connected and has no default/u);
+  });
+});
+
+describe('closure nodes', () => {
+  it('computes a student-typed expression, ports and all', () => {
+    const document = documentOf(
+      [input('F1', scalar(10, 'N')), input('F2', scalar(25, 'N')), closureNode('eq', 'a + b')],
+      [wire('F1.value', 'eq.a'), wire('F2.value', 'eq.b')],
+    );
+    const evaluation = evaluateDocument(document, catalogues);
+    expect(numeric(valueAt(evaluation, 'eq', 'result')).data).toEqual([35]);
+  });
+
+  it('does not require its output template to be resolvable — there is none', () => {
+    const document = documentOf(
+      [
+        input('w1', scalar(4, 'mm')),
+        input('h1', scalar(3, 'mm')),
+        input('w2', scalar(2, 'mm')),
+        input('h2', scalar(6, 'mm')),
+        closureNode('eq', 'a*b + c*d'),
+      ],
+      [
+        wire('w1.value', 'eq.a'),
+        wire('h1.value', 'eq.b'),
+        wire('w2.value', 'eq.c'),
+        wire('h2.value', 'eq.d'),
+      ],
+    );
+    const evaluation = evaluateDocument(document, catalogues);
+    expect(numeric(valueAt(evaluation, 'eq', 'result')).data).toEqual([24]);
   });
 });
 

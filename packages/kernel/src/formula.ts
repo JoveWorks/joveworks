@@ -88,6 +88,22 @@ export function compileFormula(
 }
 
 /**
+ * Compile a closure node's derived formula. Its declared output (`closure.ts`:
+ * an inert `$result` placeholder) has nothing real to check the expression
+ * against — the dimension it actually produces was already proven live in
+ * `graph.ts`'s own resolution pass, against this node's real wiring, so
+ * `checkRecord`'s declared-vs-produced comparison is skipped rather than
+ * made to fail on a template that was never meant to be resolved.
+ */
+export function compileClosureFormula(formula: Formula, where?: string): CompiledFormula {
+  return {
+    formula,
+    scope: { dimensions: {}, spectra: new Set() },
+    evaluate: compileExpression(formula.expression, where ?? formula.id),
+  };
+}
+
+/**
  * Check a record against itself, with no graph in sight — the dimensional check
  * docs/PLAN.md asks of every migrated formula. Generic variables are bound to
  * distinct base dimensions, which proves the case for all of them.

@@ -55,6 +55,9 @@ export const VALUE_PORT = 'value';
 export const THRESHOLD_PORT = 'threshold';
 export const VERDICT_PORT = 'verdict';
 
+/** A closure node's one output port — its inputs are whatever its expression mentions. */
+export const CLOSURE_RESULT_PORT = 'result';
+
 export interface Position {
   readonly x: number;
   readonly y: number;
@@ -176,7 +179,21 @@ export interface CompareNode extends NodeBase {
   readonly threshold: Quantity;
 }
 
-export type GraphNode = InputNode | FormulaNode | OutputNode | CompareNode;
+/**
+ * A student-authored equation: the expression is embedded directly (S65's
+ * never-embed rule protects R&M content leaving the repository boundary —
+ * this is the student's own content, and showing it is the point), and its
+ * ports are not declared here at all. They are derived from whatever names
+ * the expression mentions — `packages/kernel/src/closure.ts` is what can do
+ * that derivation, since it needs the parser.
+ */
+export interface ClosureNode extends NodeBase {
+  readonly kind: 'closure';
+  /** May be empty — a freshly dropped node that has not been written yet. */
+  readonly expression: string;
+}
+
+export type GraphNode = InputNode | FormulaNode | OutputNode | CompareNode | ClosureNode;
 
 export interface Endpoint {
   readonly node: string;
@@ -314,7 +331,7 @@ function serializeOutput(output: Output): JsonObject {
   }
 }
 
-const NODE_KINDS = ['input', 'formula', 'output', 'compare'] as const;
+const NODE_KINDS = ['input', 'formula', 'output', 'compare', 'closure'] as const;
 
 function parseNode(value: JsonValue, path: string): GraphNode {
   const object = readObject(value, path);
@@ -358,6 +375,12 @@ function parseNode(value: JsonValue, path: string): GraphNode {
         ),
         threshold: parseQuantity(required(object, 'threshold', path), join(path, 'threshold')),
       };
+    case 'closure':
+      return {
+        ...base,
+        kind,
+        expression: readString(required(object, 'expression', path), join(path, 'expression')),
+      };
   }
 }
 
@@ -386,6 +409,8 @@ function serializeNode(node: GraphNode): JsonObject {
         comparison: node.comparison,
         threshold: serializeQuantity(node.threshold),
       };
+    case 'closure':
+      return { ...base, expression: node.expression };
   }
 }
 

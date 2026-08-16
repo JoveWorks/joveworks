@@ -3,9 +3,9 @@
  * schema node kinds that aren't formulas at all — Input and Output, each its
  * own header with a shortcut per starting kind (the kind stays switchable on
  * the node afterward; the shortcut only saves the first click). `compare`
- * isn't a formula either, but by shape — two ports in, one value out — it
- * reads as an operation, so it rides along in the Math section instead of
- * getting a third header for itself.
+ * and `equation` (a closure node) aren't formulas either, but each reads as
+ * an operation by shape, so they ride along in the Math section instead of
+ * getting a header of their own.
  *
  * A student finds a formula by equation number or by what it computes, so the
  * search reads ids, citations, descriptions and port names alike. Quarantined
@@ -138,6 +138,12 @@ export function Palette(): ReactElement {
       });
     });
 
+  const addClosure = (): void =>
+    edit((current) => {
+      const id = uniqueId(current, 'equation');
+      return addNode(current, { kind: 'closure', id, label: id, expression: '', position: position() });
+    });
+
   return (
     <div className="palette">
       <input
@@ -252,7 +258,7 @@ export function Palette(): ReactElement {
           // others by shape — two ports in, one computed value out — so it
           // rides along in the Math section rather than earning its own.
           const isMath = catalogueId === BASE_CATALOGUE_ID;
-          const count = list.length + (isMath ? 1 : 0);
+          const count = list.length + (isMath ? 2 : 0);
           return (
             <section key={catalogueId}>
               <h3>
@@ -282,6 +288,14 @@ export function Palette(): ReactElement {
                       <button type="button" className="entry" onClick={addCompare}>
                         <span className="entry-id">compare</span>
                         <span className="entry-output">a wireable pass/fail verdict</span>
+                      </button>
+                    </li>
+                  ) : null}
+                  {isMath ? (
+                    <li>
+                      <button type="button" className="entry" onClick={addClosure}>
+                        <span className="entry-id">equation</span>
+                        <span className="entry-output">type one — its ports follow from what it uses</span>
                       </button>
                     </li>
                   ) : null}
