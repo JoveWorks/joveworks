@@ -38,6 +38,7 @@ export function InputNodeView({ id, selected }: NodeProps): ReactElement | null 
       pinned={pinned.has(id)}
       onTogglePin={() => togglePin(id)}
       onDelete={() => edit((current) => reframe(removeNodes(current, new Set([id]))))}
+      dataTour={`input-${id}`}
       title={
         <TextField
           className="title"

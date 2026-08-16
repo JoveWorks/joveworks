@@ -72,6 +72,8 @@ import {
 import { Notebook } from './notebook/Notebook';
 import { Palette } from './palette/Palette';
 import { SettingsDialog } from './settings/SettingsDialog';
+import { Tutorial } from './tutorial/Tutorial';
+import { loadTutorialSeen } from './tutorial/tutorialSettings';
 import { useResizableWidth } from './useResizableWidth';
 
 /**
@@ -161,6 +163,7 @@ function AppShell(): ReactElement {
   const [themePreference, setThemePreferenceState] =
     useState<ThemePreference>(loadThemePreference);
   const [showSettings, setShowSettings] = useState(false);
+  const [tutorialActive, setTutorialActive] = useState(() => !loadTutorialSeen());
   const [openMenu, setOpenMenu] = useState<
     | { readonly menu: 'file' | 'edit' | 'view' | 'help'; readonly x: number; readonly y: number }
     | undefined
@@ -412,6 +415,10 @@ function AppShell(): ReactElement {
   // place a student (or a colleague seeing a demo) looks for "show me
   // something that already works".
   const helpMenuItems: readonly MenuItem[] = [
+    {
+      label: 'Take the tour',
+      onClick: () => setTutorialActive(true),
+    },
     { heading: 'Examples' },
     {
       label: 'Pad pressure sweep',
@@ -555,6 +562,8 @@ function AppShell(): ReactElement {
               onClose={() => setShowSettings(false)}
             />
           ) : null}
+
+          <Tutorial active={tutorialActive} onClose={() => setTutorialActive(false)} />
         </div>
       </GraphContext.Provider>
     </SettingsContext.Provider>

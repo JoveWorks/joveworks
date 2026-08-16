@@ -1175,6 +1175,77 @@ aside.right {
   cursor: pointer;
 }
 
+.tutorial-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  background: var(--scrim);
+}
+
+.tutorial-cutout {
+  position: fixed;
+  z-index: 45;
+  border-radius: 6px;
+  /* Dims everything outside the target rect without a four-panel frame. */
+  box-shadow: 0 0 0 9999px var(--scrim);
+  transition:
+    top 0.2s ease,
+    left 0.2s ease,
+    width 0.2s ease,
+    height 0.2s ease;
+  pointer-events: none;
+}
+
+.tutorial-caption {
+  position: fixed;
+  z-index: 46;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 300px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  box-shadow: var(--shadow-lg);
+  font-size: 13px;
+}
+
+.tutorial-caption.placement-center {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.tutorial-caption h2 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.tutorial-caption p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.tutorial-progress {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.tutorial-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.tutorial-actions button {
+  padding: 5px 12px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--panel);
+  cursor: pointer;
+}
+
 .context-menu {
   position: fixed;
   z-index: 20;

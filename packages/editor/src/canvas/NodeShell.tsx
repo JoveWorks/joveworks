@@ -34,6 +34,8 @@ interface Props {
   readonly children: ReactNode;
   /** Drawn only when the node is open: ports with units, editors, description. */
   readonly detail?: ReactNode;
+  /** A hook for the tutorial walkthrough to spotlight this node by. */
+  readonly dataTour?: string;
 }
 
 export function NodeShell({
@@ -49,6 +51,7 @@ export function NodeShell({
   onDelete,
   children,
   detail,
+  dataTour,
 }: Props): ReactElement {
   const [hovered, setHovered] = useState(false);
   const open = selected || hovered || pinned;
@@ -56,6 +59,7 @@ export function NodeShell({
   return (
     <div
       className={`node node-${kind} state-${state}${open ? ' open' : ''}`}
+      data-tour={dataTour}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
