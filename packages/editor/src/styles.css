@@ -193,10 +193,16 @@ input[aria-invalid='true'] {
   background: var(--line);
 }
 
-.menubar .document-title {
-  flex: 0 1 260px;
-  margin-left: 12px;
-  font-weight: 600;
+.menubar-version {
+  margin-left: auto;
+  padding-right: 4px;
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.menubar-version.alpha {
+  color: var(--state-quarantined);
 }
 
 .notices {
@@ -1207,9 +1213,21 @@ aside.right {
   gap: 10px;
 }
 
-.notebook h1 {
+.notebook-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: none;
+  background: transparent;
   font-size: 16px;
+  font-weight: 700;
   margin: 0 0 10px;
+  padding: 0;
+}
+
+.notebook-title:hover,
+.notebook-title:focus {
+  outline: 1px dashed var(--muted);
+  outline-offset: 2px;
 }
 
 .notebook-export-button {

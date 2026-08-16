@@ -324,7 +324,7 @@ function outputsOf(document: GraphDocument, frameId: string | undefined): readon
 }
 
 export function Notebook(): ReactElement {
-  const { document, analysis } = useGraph();
+  const { document, analysis, editLive, commitEdit } = useGraph();
   // Session UI state, not a document field (same call as Palette.tsx) —
   // a section's collapse reopens on reload, same as a pinned node.
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
@@ -352,7 +352,15 @@ export function Notebook(): ReactElement {
   return (
     <div className="notebook">
       <div className="notebook-header">
-        <h1>{document.title}</h1>
+        <input
+          className="notebook-title"
+          value={document.title}
+          onChange={(event) => {
+            const title = event.target.value;
+            editLive((current) => ({ ...current, title }));
+          }}
+          onBlur={() => commitEdit()}
+        />
         <button
           type="button"
           className="notebook-export-button"

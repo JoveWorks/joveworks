@@ -359,15 +359,15 @@ export function App(): ReactElement {
               {menuButton('view', 'View')}
               {menuButton('help', 'Help')}
 
-              <input
-                className="document-title"
-                value={document.title}
-                onChange={(event) => {
-                  const title = event.target.value;
-                  editLive((current) => ({ ...current, title }));
-                }}
-                onBlur={() => commitEdit()}
-              />
+              {/* v0.x is unstable by semver convention — the badge names that
+                  explicitly rather than relying on a reader knowing the
+                  convention, and drops away on its own once a 1.0 ships. */}
+              <span
+                className={`menubar-version${__APP_VERSION__.startsWith('0.') ? ' alpha' : ''}`}
+                title={`machine-design-studio v${__APP_VERSION__}`}
+              >
+                {__APP_VERSION__.startsWith('0.') ? 'alpha · ' : ''}v{__APP_VERSION__}
+              </span>
             </header>
             {openMenu === undefined ? null : (
               <ContextMenu
