@@ -1,6 +1,6 @@
 # Node reference
 
-Every node on the canvas is one of five kinds. This page is what the "?"
+Every node on the canvas is one of eight kinds. This page is what the "?"
 button on a node's header links to.
 
 ## Input
@@ -33,3 +33,22 @@ A student-typed equation, not a catalogue formula — its ports are whatever
 names the expression mentions. Useful for a one-off relation that doesn't
 need its own catalogue entry, without leaving the typed, unit-checked
 world the rest of the graph lives in.
+
+## Waypoint
+
+A redirect on the canvas, not an operation — it copies the wire it carries
+through unchanged. Useful for bending a connection around other nodes, or
+for giving a long wire a labelled stop, without touching a single number
+along the way.
+
+## Pack
+
+Bundles any number of independently-dimensioned wires into one — a length,
+a force and an angle can travel together as a single edge instead of three
+parallel wires. Pairs with [Unpack](#unpack) at the other end; a pack's
+bundle may feed more than one unpack.
+
+## Unpack
+
+The inverse of [Pack](#pack): one bundle in, and as many outputs as the
+bundle carries — each with the dimension its matching pack channel had.
