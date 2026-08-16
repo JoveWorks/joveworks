@@ -179,6 +179,8 @@ function Section({
   dragOver,
   onDragOver,
   onDragLeave,
+  onDrop,
+  onDragEnd,
 }: {
   readonly frame?: Frame;
   readonly outputs: readonly OutputNode[];
@@ -188,6 +190,24 @@ function Section({
   readonly dragOver: 'before' | 'after' | undefined;
   readonly onDragOver: (position: 'before' | 'after') => void;
   readonly onDragLeave: () => void;
+  /**
+   * The notebook decides what a drop actually does — it knows the canonical
+   * drop target (`dragOver`'s state), which after normalising "after A" into
+   * "before B" isn't necessarily *this* section even when the pointer is
+   * physically over it. Resolving the reorder here, against this section's
+   * own `frame.id`, would silently no-op on exactly the boundary that
+   * normalising was meant to fix.
+   */
+  readonly onDrop: (sourceId: string) => void;
+  /**
+   * Fires on the drag *source* when the operation ends for any reason —
+   * dropped on a valid target, dropped outside one, or cancelled (Escape).
+   * dragover/dragleave/drop on a *target* aren't guaranteed to fire in every
+   * one of those cases, so this is the only reliable place to clear the
+   * indicator — without it, ending a drag outside a valid target (or right
+   * back over the section being dragged) could leave the line stuck.
+   */
+  readonly onDragEnd: () => void;
 }): ReactElement | null {
   const { document, analysis, edit, editLive, commitEdit } = useGraph();
   const [menu, setMenu] = useState<{ x: number; y: number } | undefined>(undefined);
@@ -233,13 +253,14 @@ function Section({
       }}
       onDragLeave={onDragLeave}
       onDrop={(event) => {
-        if (frame === undefined || dragOver === undefined) return;
+        if (frame === undefined) return;
+        // Unconditional, regardless of whether `dragOver` (this section's own,
+        // possibly-normalised-away slice of the shared state) says this is
+        // the drop target — without it, the browser's default action for a
+        // text/plain drop onto a descendant text field (inserting it as
+        // literal text) goes through instead of being suppressed.
         event.preventDefault();
-        const position = dragOver;
-        onDragLeave();
-        const sourceId = event.dataTransfer.getData('text/plain');
-        if (sourceId.length === 0) return;
-        edit((current) => reorderFrame(current, sourceId, frame.id, position));
+        onDrop(event.dataTransfer.getData('text/plain'));
       }}
       onContextMenu={(event) => {
         if (frame === undefined) return;
@@ -294,6 +315,7 @@ function Section({
                 event.dataTransfer.setData('text/plain', frame.id);
                 event.dataTransfer.effectAllowed = 'move';
               }}
+              onDragEnd={onDragEnd}
             >
               {collapsed ? (
                 <span className="section-toggle-count">
@@ -363,7 +385,7 @@ function outputsOf(document: GraphDocument, frameId: string | undefined): readon
 }
 
 export function Notebook(): ReactElement {
-  const { document, analysis, editLive, commitEdit } = useGraph();
+  const { document, analysis, edit, editLive, commitEdit } = useGraph();
   // Session UI state, not a document field (same call as Palette.tsx) —
   // a section's collapse reopens on reload, same as a pinned node.
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
@@ -396,6 +418,10 @@ export function Notebook(): ReactElement {
   // event only clears the state it's actually still responsible for, not one
   // a neighbour has since (validly) taken over.
   const dragSource = useRef<string | undefined>(undefined);
+  const clearDragOver = (): void => {
+    dragSource.current = undefined;
+    setDragOver(undefined);
+  };
 
   // A collapsed section renders nothing (Section returns before its body), so
   // a printed PDF would silently drop whatever was folded up on screen.
@@ -449,9 +475,19 @@ export function Notebook(): ReactElement {
           }}
           onDragLeave={() => {
             if (dragSource.current !== frame.id) return;
-            dragSource.current = undefined;
-            setDragOver(undefined);
+            clearDragOver();
           }}
+          // Uses whatever `dragOver` currently holds — the canonical target,
+          // not necessarily this section's own frame.id (see the prop's own
+          // comment) — rather than resolving the reorder against `frame`
+          // directly, which would silently no-op on a normalised boundary.
+          onDrop={(sourceId) => {
+            const target = dragOver;
+            clearDragOver();
+            if (target === undefined || sourceId.length === 0) return;
+            edit((current) => reorderFrame(current, sourceId, target.frameId, target.position));
+          }}
+          onDragEnd={clearDragOver}
         />
       ))}
       <Section
@@ -461,6 +497,8 @@ export function Notebook(): ReactElement {
         dragOver={undefined}
         onDragOver={() => {}}
         onDragLeave={() => {}}
+        onDrop={() => {}}
+        onDragEnd={() => {}}
       />
 
       {analysis.message === undefined ? null : (
