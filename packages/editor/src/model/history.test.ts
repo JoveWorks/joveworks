@@ -84,6 +84,27 @@ describe('pushLiveEdit / commitPending', () => {
     expect(same.pending).toBeUndefined();
   });
 
+  it('two live edits from different sources, each followed by their own commit, still coalesce into one step', () => {
+    // The shape of a Backspace/Delete on a wired node: React Flow fires
+    // `onEdgesChange` (removes the wire) and `onNodesChange` (removes the
+    // node) as two separate calls for one keypress, each naively wanting to
+    // commit its own step. Both go live instead, and whichever commit call
+    // lands first does the work; the second is a no-op (already covered
+    // above) — the point here is the *net result* undoes as one step.
+    const h0 = initHistory({ nodes: ['a', 'b'], edges: ['a-b'] });
+    const afterEdgeRemoved = pushLiveEdit(h0, (doc) => ({ ...doc, edges: [] }));
+    const afterNodeRemoved = pushLiveEdit(afterEdgeRemoved, (doc) => ({
+      ...doc,
+      nodes: doc.nodes.filter((n) => n !== 'a'),
+    }));
+    const committedOnce = commitPending(afterNodeRemoved);
+    const committedTwice = commitPending(committedOnce);
+    expect(committedTwice.past).toEqual([{ nodes: ['a', 'b'], edges: ['a-b'] }]);
+
+    const undone = undoHistory(committedTwice);
+    expect(undone.present).toEqual({ nodes: ['a', 'b'], edges: ['a-b'] });
+  });
+
   it('commitPending with nothing pending is a no-op', () => {
     const h0 = initHistory(0);
     expect(commitPending(h0)).toBe(h0);
