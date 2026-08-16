@@ -86,7 +86,7 @@ export interface PrintOutput {
  * The threshold is a `Quantity` rather than a predicate string because it is a
  * number a student types with a unit — `200 N/mm²` — and unit-carrying literals
  * are exactly what an expression string cannot hold (expressions are canonical
- * and unitless by the time the kernel sees them). It is still S39's one
+ * and unitless by the time the kernel sees them). It is still the one
  * predicate layer: comparison against a value, the scalar counterpart of the
  * threshold line a plot draws.
  */
@@ -170,7 +170,7 @@ export interface OutputNode extends NodeBase {
  * thing a student wants to wire onward, which an output node cannot do.
  *
  * `threshold` is the `threshold` port's default when nothing is wired to it
- * — the same typed `Quantity` S58 gave the check output kind, now a
+ * — the same typed `Quantity` the check output kind uses, now a
  * fallback rather than the only way to set the bound.
  */
 export interface CompareNode extends NodeBase {
@@ -180,8 +180,8 @@ export interface CompareNode extends NodeBase {
 }
 
 /**
- * A student-authored equation: the expression is embedded directly (S65's
- * never-embed rule protects R&M content leaving the repository boundary —
+ * A student-authored equation: the expression is embedded directly (the
+ * never-embed rule protects R&M content from leaving the repository boundary —
  * this is the student's own content, and showing it is the point), and its
  * ports are not declared here at all. They are derived from whatever names
  * the expression mentions — `packages/kernel/src/closure.ts` is what can do

@@ -20,7 +20,7 @@
  * - **categorical** — a value from an enumerated domain, `H7` and friends.
  *   Sweepable by explicit list only; there is no spacing between `H7`
  *   and `K7`.
- * - **spectrum** — a whole series consumed at once, the load spectrum of S36.
+ * - **spectrum** — a whole series consumed at once, the load spectrum.
  *   A sweep *produces* a series and a spectrum *consumes* one, so a spectrum
  *   port cannot itself be swept; that is enforced where values are attached,
  *   in `value.ts`.
@@ -68,7 +68,7 @@ export type PortKind = (typeof PORT_KINDS)[number];
 /**
  * A port's valid range, in the port's own display unit.
  *
- * Load-bearing, not a UI nicety: it bounds a sweep, and S17 makes it the
+ * Load-bearing, not a UI nicety: it bounds a sweep, and it is the
  * bracketing interval a future 1-D inversion would need. That is why it lives
  * on the port rather than in the editor's state.
  */
@@ -100,7 +100,7 @@ export interface NumericPort extends PortBase {
   readonly validRange?: ValidRange;
   /**
    * How the output moves with this input, when it is known and monotonic.
-   * Recorded for S17: a later per-node inversion needs it to pick a bracket,
+   * Recorded because a later per-node inversion needs it to pick a bracket,
    * and adding it afterwards would be a schema migration for no reason.
    */
   readonly monotonic?: Monotonicity;
@@ -234,17 +234,17 @@ export function asInputPort(port: Port, path: string): Port {
       fail(
         join(path, 'unit'),
         `'${port.unit.symbol}' is not a bare variable — an input's generic unit must be ` +
-          "one variable to the first power, like '$A' (S59)",
+          "one variable to the first power, like '$A'",
       );
     }
   }
   return port;
 }
 
-/** Reject an output port declared as a spectrum, which S36 forbids. */
+/** Reject an output port declared as a spectrum, which is forbidden. */
 export function asOutputPort(port: Port, path: string): OutputPort {
   if (port.kind === 'spectrum') {
-    fail(path, 'a spectrum is an input only — a formula cannot produce one (S36)');
+    fail(path, 'a spectrum is an input only — a formula cannot produce one');
   }
   return port;
 }

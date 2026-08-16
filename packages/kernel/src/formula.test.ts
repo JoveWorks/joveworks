@@ -14,7 +14,7 @@ const byId = (id: string): Formula => {
 
 const only = (json: JsonObject): Formula => catalogueOf([json]).formulas[0] as Formula;
 
-describe('the quarantine gate (S19)', () => {
+describe('the quarantine gate', () => {
   it('refuses to evaluate a quarantined formula, and says why', () => {
     const broken = byId('broken');
     expect(() => assertEvaluable(broken)).toThrow(/quarantined/u);
@@ -83,7 +83,7 @@ describe('a record checked against its own expression', () => {
     expect(() => checkFormulaDimensions(wrong)).toThrow(/not a port/u);
   });
 
-  it('checks a generic record once, on a basis, rather than per binding (S59)', () => {
+  it('checks a generic record once, on a basis, rather than per binding', () => {
     expect(() => checkFormulaDimensions(byId('multiplyTwo'))).not.toThrow();
 
     const wrong = only({
@@ -102,7 +102,7 @@ describe('a record checked against its own expression', () => {
     expect(() => checkFormulaDimensions(wrong)).toThrow(/declares its output/u);
   });
 
-  it('checks an appliesWhen predicate too (S40)', () => {
+  it('checks an appliesWhen predicate too', () => {
     const wrong = only({
       id: 'badCondition',
       version: 1,

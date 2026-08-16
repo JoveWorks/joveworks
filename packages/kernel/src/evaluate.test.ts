@@ -51,7 +51,7 @@ describe('a scalar graph', () => {
     expect(formatQuantity(output.series.data[0] as number, output.unit)).toBe('100 mm²');
   });
 
-  it('converts at the boundary and nowhere else (S5)', () => {
+  it('converts at the boundary and nowhere else', () => {
     // 2 cm × 50 mm is 1000 mm², and the kernel never sees a centimetre.
     const centimetres = documentOf(
       [
@@ -114,7 +114,7 @@ describe('closure nodes', () => {
   });
 });
 
-describe('sweeps (S29, S43)', () => {
+describe('sweeps', () => {
   it('turns the whole downstream graph into a series with no rewiring', () => {
     const document = documentOf(
       [
@@ -129,7 +129,7 @@ describe('sweeps (S29, S43)', () => {
     expect(series.data).toEqual([20, 40, 60, 80, 100]);
   });
 
-  it('includes both endpoints of a linear range exactly (S29)', () => {
+  it('includes both endpoints of a linear range exactly', () => {
     const document = documentOf([input('w', linear(20, 60, 21, 'mm'))], []);
     const series = numeric(valueAt(evaluateDocument(document, catalogues), 'w', 'value'));
     expect(series.data).toHaveLength(21);
@@ -137,7 +137,7 @@ describe('sweeps (S29, S43)', () => {
     expect(series.data[20]).toBe(60);
   });
 
-  it('spaces a logarithmic range geometrically (S29)', () => {
+  it('spaces a logarithmic range geometrically', () => {
     const document = documentOf(
       [input('n', { kind: 'logarithmic', start: 1, stop: 1000, points: 4, unit: '' })],
       [],
@@ -166,7 +166,7 @@ describe('sweeps (S29, S43)', () => {
     expect(series.data).toEqual([10, 12.5, 16, 20, 25, 31.5, 40, 50, 63, 80, 100]);
   });
 
-  it('gives two ranges an n × m grid with no grid node (S43)', () => {
+  it('gives two ranges an n × m grid with no grid node', () => {
     const document = documentOf(
       [
         input('w', list([1, 2, 3], 'mm')),
@@ -190,7 +190,7 @@ describe('sweeps (S29, S43)', () => {
     expect(series.data).toEqual([2, 4, 6]);
   });
 
-  it('warns when the grid grows large, and still computes it (S43)', () => {
+  it('warns when the grid grows large, and still computes it', () => {
     const document = documentOf(
       [
         input('w', linear(1, 100, 100, 'mm')),
@@ -205,7 +205,7 @@ describe('sweeps (S29, S43)', () => {
   });
 });
 
-describe('spectra (S36)', () => {
+describe('spectra', () => {
   it('consumes a whole series and produces one number', () => {
     const document = documentOf(
       [
@@ -233,7 +233,7 @@ describe('spectra (S36)', () => {
   });
 });
 
-describe('output nodes (S33)', () => {
+describe('output nodes', () => {
   const graph = (output: Parameters<typeof outputNode>[1]) =>
     documentOf(
       [
@@ -245,7 +245,7 @@ describe('output nodes (S33)', () => {
       [wire('F.value', 'p.F'), wire('A.value', 'p.A'), wire('p.p', 'out.value')],
     );
 
-  it('passes a check when the value clears the threshold (S58)', () => {
+  it('passes a check when the value clears the threshold', () => {
     const evaluation = evaluateDocument(
       graph({ kind: 'check', comparison: '<=', threshold: { value: 100, unit: 'N/mm²' } }),
       catalogues,
@@ -276,7 +276,7 @@ describe('output nodes (S33)', () => {
     expect(check.passed).toBe(false);
   });
 
-  it('converts a threshold typed in another unit (S5)', () => {
+  it('converts a threshold typed in another unit', () => {
     const check = evaluateDocument(
       graph({ kind: 'check', comparison: '<=', threshold: { value: 100, unit: 'MPa' } }),
       catalogues,
@@ -434,7 +434,7 @@ describe('output nodes (S33)', () => {
     expect(table.axes.map((axis) => axis.id)).toEqual(['F']);
   });
 
-  it('keeps a notebook section with its output (S30)', () => {
+  it('keeps a notebook section with its output', () => {
     const framed = documentOf(
       [
         input('F', scalar(1000, 'N')),
@@ -487,7 +487,7 @@ describe('compare nodes', () => {
     expect(verdict.data).toEqual(['pass', 'fail']);
   });
 
-  it("reads a bare threshold default in the value port's own display unit, not canonical (S53)", () => {
+  it("reads a bare threshold default in the value port's own display unit, not canonical", () => {
     // The pressure formula here displays in Pa, not N/mm² — a bare threshold
     // has to mean Pa too, or a student comparing against a Pa-displayed
     // value has no way to know 6 secretly meant 6 N/mm² canonical, a unit
@@ -542,7 +542,7 @@ describe('compare nodes', () => {
     expect(verdict.data).toEqual(['pass', 'fail']);
   });
 
-  it('lines a swept threshold up elementwise with the value, sharing the same axis (S43)', () => {
+  it('lines a swept threshold up elementwise with the value, sharing the same axis', () => {
     const document = documentOf(
       [
         input('F', list([1000, 4000], 'N'), { axisLabel: 'load' }),
@@ -614,7 +614,7 @@ describe('compare nodes', () => {
 });
 
 describe('the gates', () => {
-  it('will not evaluate a quarantined formula, however it was wired (S19)', () => {
+  it('will not evaluate a quarantined formula, however it was wired', () => {
     const document = documentOf(
       [input('a', scalar(1, 'mm')), formulaNode('broken', refTo('broken'))],
       [wire('a.value', 'broken.a')],
@@ -623,7 +623,7 @@ describe('the gates', () => {
     expect(() => evaluateDocument(document, catalogues)).toThrow(/quarantined/u);
   });
 
-  it('warns when a formula is used outside its condition, and still answers (S40)', () => {
+  it('warns when a formula is used outside its condition, and still answers', () => {
     const document = documentOf(
       [input('d', list([10, 80], 'mm')), formulaNode('c', refTo('conditional'))],
       [wire('d.value', 'c.d')],

@@ -74,7 +74,7 @@ describe('value expressions', () => {
   });
 });
 
-describe('predicates (S39)', () => {
+describe('predicates', () => {
   it('reads a comparison', () => {
     expect(parsePredicate('S >= 1.5')).toEqual({
       kind: 'compare',

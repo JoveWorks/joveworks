@@ -1,5 +1,5 @@
 /**
- * The base node library and the kernel, end to end (S42).
+ * The base node library and the kernel, end to end.
  *
  * This is what the base library was built for: a graph that runs through the
  * whole stack — a catalogue loaded from JSON, ports typed by dimension, generic
@@ -14,7 +14,7 @@
  *
  * It lives at the workspace level rather than inside `packages/kernel` because
  * it is the only test that needs both the kernel and the node library, and the
- * kernel does not depend on the nodes (S22's direction).
+ * kernel does not depend on the nodes.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -137,13 +137,13 @@ describe('the base node library through the kernel', () => {
   it('checks every operation against its own expression', () => {
     // The nodes package could not do this: the dimension checker is the
     // kernel's. This is where `add` and `multiply` are shown to mean what they
-    // declare, for every dimension at once (S59).
+    // declare, for every dimension at once.
     for (const formula of OPERATIONS) {
       expect(() => checkFormulaDimensions(formula), formula.id).not.toThrow();
     }
   });
 
-  it('binds each generic node to what it is wired to (S59)', () => {
+  it('binds each generic node to what it is wired to', () => {
     const resolution = resolveGraph(driveGraph([100]), catalogues);
     const speed = resolution.sources.get(endpointKey('v', 'product'))?.dimension;
     const force = resolution.sources.get(endpointKey('F', 'quotient'))?.dimension;
@@ -151,7 +151,7 @@ describe('the base node library through the kernel', () => {
     expect(force !== undefined && dimensionsEqual(force, FORCE)).toBe(true);
   });
 
-  it('computes π·d·n and P/v, converting kW and rpm at the boundary (S5)', () => {
+  it('computes π·d·n and P/v, converting kW and rpm at the boundary', () => {
     const evaluation = evaluateDocument(driveGraph([100]), catalogues);
     const v = numeric(valueAt(evaluation, 'v', 'product')).data[0] as number;
     const F = numeric(valueAt(evaluation, 'F', 'quotient')).data[0] as number;
@@ -171,7 +171,7 @@ describe('the base node library through the kernel', () => {
     expect(speed?.kind === 'print' && speed.unit.symbol).toBe('m/s');
   });
 
-  it('turns one range into a study of the whole graph (S29, S43)', () => {
+  it('turns one range into a study of the whole graph', () => {
     const diameters = [90, 100, 112, 125];
     const evaluation = evaluateDocument(driveGraph(diameters), catalogues);
 
@@ -183,7 +183,7 @@ describe('the base node library through the kernel', () => {
     }
   });
 
-  it('reads the answer off the sweep: which diameters clear the threshold (S33)', () => {
+  it('reads the answer off the sweep: which diameters clear the threshold', () => {
     const evaluation = evaluateDocument(driveGraph([90, 100, 112, 125]), catalogues);
     const check = evaluation.outputs.find((entry) => entry.kind === 'check') as CheckResult;
     // F falls as d rises, so the smallest diameter is the one that fails.
@@ -200,7 +200,7 @@ describe('the base node library through the kernel', () => {
     expect(plot.series.data).toHaveLength(4);
   });
 
-  it('evaluates a two-range study as a grid, with nothing rewired (S43)', () => {
+  it('evaluates a two-range study as a grid, with nothing rewired', () => {
     const document = graph(
       [
         input('d', { kind: 'list', values: [90, 100, 112], unit: 'mm' }),
@@ -223,7 +223,7 @@ describe('the base node library through the kernel', () => {
     expect(speeds.data[5]).toBeCloseTo(Math.PI * 112 * 25, 9);
   });
 
-  it('will not add a length to a force, even through a generic node (S6, S59)', () => {
+  it('will not add a length to a force, even through a generic node', () => {
     const document = graph(
       [
         input('d', { kind: 'scalar', value: 100, unit: 'mm' }),
@@ -237,7 +237,7 @@ describe('the base node library through the kernel', () => {
     expect(result.ok === false && result.reason).toMatch(/bound twice/u);
   });
 
-  it('will not put a length into the angle port of a trig node, but will a pure number (S54)', () => {
+  it('will not put a length into the angle port of a trig node, but will a pure number', () => {
     const document = graph(
       [
         input('d', { kind: 'scalar', value: 100, unit: 'mm' }),
@@ -251,7 +251,7 @@ describe('the base node library through the kernel', () => {
     expect(canConnect(document, catalogues, wire('beta.value', 'sin.theta'))).toEqual({ ok: true });
   });
 
-  describe('a spectrum port joined by several discrete wires (S71)', () => {
+  describe('a spectrum port joined by several discrete wires', () => {
     it('reduces any number of wired values, not just two', () => {
       const document = graph(
         [
@@ -298,7 +298,7 @@ describe('the base node library through the kernel', () => {
       expect(result.ok === false && result.reason).toMatch(/one dimension/u);
     });
 
-    it('broadcasts a swept range pointwise against a scalar, not flattened together (S73)', () => {
+    it('broadcasts a swept range pointwise against a scalar, not flattened together', () => {
       // Each wired edge keeps its own axes rather than being merged into one
       // flat bag — a scalar is invariant, so it competes at every point of
       // the range: min(30, 10) = 10, min(30, 20) = 20.
@@ -314,10 +314,10 @@ describe('the base node library through the kernel', () => {
       expect(smallest.data).toEqual([10, 20]);
     });
 
-    it('gives two different ranges wired into one port an n × m grid of pointwise reductions (S43, S73)', () => {
-      // Before S71 this was `minimum(a, b)`, two ordinary ports broadcast
+    it('gives two different ranges wired into one port an n × m grid of pointwise reductions', () => {
+      // Before this was `minimum(a, b)`, two ordinary ports broadcast
       // like any other generic node — wiring two ranges gave a grid, same
-      // as `add`/`multiply` do. S71's first cut flattened every edge into
+      // as `add`/`multiply` do. An earlier cut flattened every edge into
       // one bag and lost that; this is the amendment that gets it back,
       // through a spectrum port instead of two fixed ones.
       const document = graph(

@@ -8,7 +8,7 @@
  * torque and the tangential force. The expected numbers are docs/PLAN.md's table,
  * recovered from the stored notebook outputs; they are not re-derived here.
  *
- * **The catalogue is not in this repository and never will be** (S45), so this
+ * **The catalogue is not in this repository and never will be**, so this
  * points at `MDS_CATALOGUE` and skips when it is unset, exactly as
  * `catalogue-check.test.ts` does:
  *
@@ -22,7 +22,7 @@
  * transcription is *faithful*. It does not show the formula is *correct* — the
  * three defects the dimension check found in this same chapter would have
  * survived a green run here, because no golden path touches them. That is why
- * only the seven formulas below earn `verified` (S19) and the other forty-seven
+ * only the seven formulas below earn `verified` and the other forty-seven
  * records stay `unverified`.
  *
  * **β₁ is absent on purpose.** The wrap angle comes from `rm.16.24A`, which is
@@ -238,7 +238,7 @@ function beltGraph(id: string, title: string, stockLength: number, withForces: b
  * Going through the output node rather than reading the port directly is the
  * point: mm-N-s means the belt speed is 7068.6 internally and the torque
  * 19608.7, and a golden that matched canonically while displaying wrongly would
- * be no use to a student. This is the boundary S53 says the goldens confirm.
+ * be no use to a student. This is the boundary the goldens confirm.
  */
 function shown(evaluation: Evaluation, nodeId: string): number {
   const result = evaluation.outputs.find((entry) => entry.nodeId === nodeId);
@@ -312,7 +312,7 @@ describe.runIf(present)('the belt lab, end to end (milestone 1 acceptance)', () 
     }
   });
 
-  it('carries the canonical-unit traps rather than sidestepping them (S53)', () => {
+  it('carries the canonical-unit traps rather than sidestepping them', () => {
     // Two orders of magnitude and a 2π live between the printed number and the
     // stored one. If a golden ever misses by a round factor, this is the line
     // that says which boundary moved.
@@ -323,7 +323,7 @@ describe.runIf(present)('the belt lab, end to end (milestone 1 acceptance)', () 
 
   it('cannot produce β₁: 16.24A is quarantined and D20 was settled as A', () => {
     // The honest half of the acceptance criterion. Eleven rows reproduce; the
-    // wrap angle is refused, loudly, with the reason on the record (S19).
+    // wrap angle is refused, loudly, with the reason on the record.
     const document = graph(
       'wrap-angle',
       'The golden D20 costs',
@@ -342,7 +342,7 @@ describe.runIf(present)('the belt lab, end to end (milestone 1 acceptance)', () 
     expect(() => evaluateDocument(document, CATALOGUES)).toThrow(/quarantined/u);
   });
 
-  it('marks exactly the formulas a golden exercised as verified (S19)', () => {
+  it('marks exactly the formulas a golden exercised as verified', () => {
     // `verified` is earned per formula, not per run: most of the chapter is
     // still `unverified` afterwards, and that is the status field working.
     const verified = BELT.formulas
@@ -354,7 +354,7 @@ describe.runIf(present)('the belt lab, end to end (milestone 1 acceptance)', () 
 });
 
 describe('the belt goldens', () => {
-  it('are only run when a catalogue is named — the restricted half is another repo (S45)', () => {
+  it('are only run when a catalogue is named — the restricted half is another repo', () => {
     expect(present || path === undefined).toBe(true);
   });
 });

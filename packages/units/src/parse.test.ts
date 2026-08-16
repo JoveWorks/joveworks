@@ -81,7 +81,7 @@ describe('unit parsing', () => {
     expect(parseUnitTag('[] transmission ratio').unit.factor).toBe(1);
   });
 
-  it('carries a display scale on dimensionless quantities (S21)', () => {
+  it('carries a display scale on dimensionless quantities', () => {
     expectUnit('%', DIMENSIONLESS, 0.01);
     expectUnit('rev', DIMENSIONLESS, 1);
   });

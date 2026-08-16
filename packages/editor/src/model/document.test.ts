@@ -95,7 +95,7 @@ describe('document edits', () => {
     expect(rewired.edges[0]?.from.node).toBe('c');
   });
 
-  it('joins a spectrum port instead of replacing it, when told to (S71)', () => {
+  it('joins a spectrum port instead of replacing it, when told to', () => {
     const wired = connect(base, { node: 'a', port: 'value' }, { node: 'b', port: 'x' }, true);
     const joined = connect(
       addNode(wired, input('c', 0, 200)),
@@ -158,7 +158,7 @@ describe('document edits', () => {
   });
 });
 
-describe('table output columns (S60, S71-style)', () => {
+describe('table output columns', () => {
   const withTable: GraphDocument = { ...base, nodes: [...base.nodes, table('t', ['value'], 400, 200)] };
 
   it('carries the wired edge along a rename, and regenerates its id', () => {

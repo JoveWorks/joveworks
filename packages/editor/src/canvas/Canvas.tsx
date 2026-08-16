@@ -2,7 +2,7 @@
  * The canvas: React Flow drawing the document, and the kernel deciding what may
  * be wired.
  *
- * The division of labour is the whole point of this file, and it is S64:
+ * The division of labour is the whole point of this file:
  *
  * - **`typesConnect` while a wire is being dragged.** Cheap, local, and
  *   explicitly not the authority — it greys out what obviously cannot attach.
@@ -345,7 +345,7 @@ export function Canvas(): ReactElement {
           if (change.type === 'position' && change.position !== undefined) {
             const position = change.position;
             if (frames.has(change.id)) {
-              // A frame is passive (S69) — nothing about membership changes
+              // A frame is passive — nothing about membership changes
               // here, only every member's own position, by the same delta the
               // frame itself just moved by. Fires every drag tick, not only
               // at drop, so contents visibly travel with the frame rather
@@ -466,7 +466,7 @@ export function Canvas(): ReactElement {
       if (candidate === undefined) return;
 
       // A table column's name follows whatever is wired to it (OutputNodeView.tsx,
-      // the same idea a spectrum port's ghost slot uses, S71) — the *node* on
+      // the same idea a spectrum port's ghost slot uses) — the *node* on
       // the wire's other end, its own title, never the port symbol, which is
       // not what a student typed. That holds whether the wire lands on the
       // trailing ghost slot (the column does not exist until this creates it)
@@ -633,7 +633,7 @@ export function Canvas(): ReactElement {
 
   /**
    * Finish a wire dropped on empty canvas by wiring it to a port that is
-   * already there — no node placed, just the edge (S64's refusal path is
+   * already there — no node placed, just the edge (the refusal path is
    * the same one a manual drag onto that node's own handle would get).
    * A table's ghost slot needs the same column-creation `onConnect` gives a
    * direct drag (`addNamedColumn`, named after the drag's own source).

@@ -183,7 +183,7 @@ function readiness(
         problems.set(
           node.id,
           formula.quarantineReason ??
-            'this formula is quarantined and cannot be evaluated (S19/S20)',
+            'this formula is quarantined and cannot be evaluated',
         );
         continue;
       }
@@ -226,7 +226,7 @@ function readiness(
       continue;
     }
 
-    // A table's columns exist only while wired (S71-style, model/document.ts's
+    // A table's columns exist only while wired (model/document.ts's
     // `closeEmptyColumns`), so zero columns is not "nothing to check" the way
     // it would be for a fixed port list — it is the same "not connected" a
     // fresh, unwired node is in.
@@ -269,7 +269,7 @@ export function analyse(document: GraphDocument, catalogues: readonly Catalogue[
         problems.set(
           node.id,
           `no formula '${node.formula.id}' in the loaded catalogues — a graph needs its ` +
-            'catalogue to open (S23)',
+            'catalogue to open',
         );
         continue;
       }

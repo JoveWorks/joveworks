@@ -23,7 +23,7 @@ gates individual formulas rather than any build step — see
 pnpm install
 pnpm dev         # the editor, at http://localhost:5173/
 pnpm test        # vitest
-pnpm build       # tsc -b; an undeclared cross-package import fails here (S55)
+pnpm build       # tsc -b; an undeclared cross-package import fails here
 ```
 
 **New here? Start with [OVERVIEW.md](OVERVIEW.md)** — the whole project in one

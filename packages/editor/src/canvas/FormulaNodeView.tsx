@@ -122,7 +122,7 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
           {provenance === title ? null : <span className="citation">{provenance}</span>}
           {formula.status === 'verified' ? <span className="status verified">verified</span> : null}
           {formula.status === 'unverified' ? (
-            <span className="status unverified" title="No golden value exercises this yet (S19).">
+            <span className="status unverified" title="No golden value exercises this yet.">
               unverified
             </span>
           ) : null}

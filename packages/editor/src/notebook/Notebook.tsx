@@ -8,9 +8,9 @@
  *
  * Export is the browser's own print-to-PDF, aimed at just this panel by
  * `@media print` rules in styles.css — no PDF library, no second renderer to
- * keep in sync with this one. S32's rule (citation and values by default,
- * expressions only behind a marked toggle) holds trivially: nothing in this
- * panel renders an expression, printed or not.
+ * keep in sync with this one. The rule that citation and values show by
+ * default, with expressions only behind a marked toggle, holds trivially:
+ * nothing in this panel renders an expression, printed or not.
  */
 
 import { useEffect, useState, type KeyboardEvent, type ReactElement } from 'react';
@@ -70,7 +70,7 @@ function Result({ result }: { readonly result: OutputResult }): ReactElement {
   if (result.kind === 'check') {
     const shown = display(result.threshold, result.unit, 4, format);
     // A scalar check has exactly one verdict, so ✓/✗ already says everything.
-    // A swept one has one verdict per point (S33), and a single mark for the
+    // A swept one has one verdict per point, and a single mark for the
     // whole range used to read as "the range failed" on the first bad point
     // — the count says which, and how many, instead, matching the wording
     // the compact node's own badge already uses (OutputNodeView.tsx).
@@ -325,7 +325,7 @@ function outputsOf(document: GraphDocument, frameId: string | undefined): readon
 
 export function Notebook(): ReactElement {
   const { document, analysis } = useGraph();
-  // Session UI state, not a document field (S74, same call as Palette.tsx) —
+  // Session UI state, not a document field (same call as Palette.tsx) —
   // a section's collapse reopens on reload, same as a pinned node.
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
   const toggle = (key: string): void =>

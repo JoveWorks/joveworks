@@ -62,7 +62,7 @@ describe('dimension algebra', () => {
 
   it('stays a bare base symbol rather than a named unit that is not canonical', () => {
     // LENGTH has a named atom too (`m`), but the base symbol is already `mm`
-    // (S5) — naming it here would silently swap the display unit.
+    // — naming it here would silently swap the display unit.
     expect(namedUnit(LENGTH)).toBeUndefined();
     expect(namedUnit(FORCE)).toBeUndefined();
   });

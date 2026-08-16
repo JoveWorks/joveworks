@@ -81,8 +81,8 @@ const PAD = ['multiply', 'divide'] as const;
  * `p = F / (w · L)` is the definition of pressure rather than anything a book
  * numbers, which is deliberate: a demo fixture must not be a catalogue formula
  * (CLAUDE.md), and this one is assembled from `multiply` and `divide` on the
- * canvas anyway. What it demonstrates is S29 and S43 — one range input, and
- * everything downstream of it is a series with no rewiring.
+ * canvas anyway. What it demonstrates is one range input, and everything
+ * downstream of it is a series with no rewiring.
  */
 export function padPressure(catalogues: readonly Catalogue[]): GraphDocument | undefined {
   const multiply = lookup(catalogues, 'multiply');

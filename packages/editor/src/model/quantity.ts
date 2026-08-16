@@ -1,8 +1,8 @@
 /**
  * What a student types into a field on a node, and what a node shows back.
  *
- * The editor is one of the two ends of the S5 boundary — the kernel is the
- * other — so this file is small and deliberate. Two rules it must not break:
+ * The editor is one of the two ends of the authored-to-canonical boundary —
+ * the kernel is the other — so this file is small and deliberate. Two rules it must not break:
  *
  * - **A document stores the authored magnitude**, not the canonical one
  *   (`schema/quantity.ts`). `units.parseQuantity` returns the canonical value,
@@ -36,7 +36,7 @@ const AUTHORED = /^\s*([+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?)\s*(.*?)\s*$/su
  * unit it was written in. Throws `UnitError`, which the field renders in place.
  *
  * `format` undoes whatever grouping/decimal punctuation the settings dialog
- * chose (S5's "read what was typed" boundary, extended to cover punctuation
+ * chose ("read what was typed" boundary, extended to cover punctuation
  * as well as units) before the numeral pattern runs.
  */
 export function parseAuthored(text: string, format: NumberFormat = PLAIN_NUMBER_FORMAT): Quantity {
@@ -68,7 +68,7 @@ export function display(
 
 /**
  * The number alone, no unit — for a table cell whose column header already
- * carries it (S49's unit-once-per-column, not repeated down every row).
+ * carries it (unit-once-per-column, not repeated down every row).
  */
 export function displayNumber(
   canonical: number,

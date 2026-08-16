@@ -119,7 +119,7 @@ a safety net alongside the explicit save, not a replacement for it.
 **An Equation output node**, wired to a single upstream formula node's
 output port, that renders that node's `Formula.expression` as typeset math
 rather than a value. This is the mechanism for showing equations in the
-notebook per S32 ("expressions only behind an explicitly marked toggle") —
+notebook ("expressions only behind an explicitly marked toggle") —
 the node itself is the marked toggle, opt-in by construction, rather than a
 global setting. Citation defaults to the caption, overridable like any other
 node's caption. Needs an AST→LaTeX printer (new, but not a CAS — expressions
@@ -135,8 +135,8 @@ discussed further, just needs doing.
 
 **Catalogue authoring should be easier for contributors.** Today a
 catalogue is authored by running the extraction script (`tools/extract/`,
-R&M content only) or hand-writing JSON against the schema — S51 deferred a
-real authoring UI out of milestone 1. Unscoped for now: could mean better
+R&M content only) or hand-writing JSON against the schema — a real authoring
+UI was deferred out of milestone 1. Unscoped for now: could mean better
 docs for hand-writing JSON, a schema validator with useful errors, a
 scaffold CLI, or eventually the authoring UI itself. Revisit later; keep in
 mind rather than build toward yet.

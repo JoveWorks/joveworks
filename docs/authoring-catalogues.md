@@ -6,15 +6,15 @@ directly, for the cases where there is no source script to extract from — an
 invented or textbook-independent catalogue, a demo, a course pack from a
 source other than R&M.
 
-**This is a workaround, not the intended path.** S51 defers the in-editor
-authoring UI out of milestone 1; until it exists, hand-written JSON is what
-S52 called "the smell" — the right tool is missing, not the right approach.
+**This is a workaround, not the intended path.** The in-editor
+authoring UI is deferred out of milestone 1; until it exists, hand-written JSON is
+"the smell" — the right tool is missing, not the right approach.
 Fine for a few dozen records; if you are writing hundreds by hand, that itself
 is the signal the authoring UI is now worth building.
 
 For an R&M chapter specifically, do not use this guide — see
-`tools/extract/c16_belt.py` and write a per-chapter extraction script instead
-(S52). This guide is for catalogues with no such source.
+`tools/extract/c16_belt.py` and write a per-chapter extraction script instead.
+This guide is for catalogues with no such source.
 
 ## File shape
 
@@ -28,12 +28,12 @@ For an R&M chapter specifically, do not use this guide — see
 }
 ```
 
-`restricted` is a statement of intent inside the app (S32) — the app refuses
+`restricted` is a statement of intent inside the app — the app refuses
 to export a restricted catalogue's expressions. Set it `false` only for
 content you actually have the right to redistribute; it is not what enforces
-distribution restrictions (S45 does that, with a repository boundary).
+distribution restrictions — a repository boundary does that.
 
-## Formula ids are global (S65)
+## Formula ids are global
 
 A graph names a formula by id + version + hash, with no catalogue field, so
 ids must not collide across every catalogue that might ever be loaded
@@ -60,7 +60,7 @@ for your catalogue and stick to it, e.g. `basic.<n>` or `<catalogue-id>.<n>`.
 Fields:
 
 - **id, version** — version bumps whenever the record's *meaning* changes; a
-  graph pins to a specific version + content hash (S23), so editing an
+  graph pins to a specific version + content hash, so editing an
   existing record's expression or ports without bumping version is a silent
   break for anyone who already referenced it.
 - **output, inputs** — ports, see below. Output first is the drawing order,
@@ -69,14 +69,14 @@ Fields:
   evaluated here. See the expression rules below.
 - **description** — what it computes and when it applies. This is the only
   prose most users read; write it as such.
-- **citation** — optional. Omit it entirely for invented formulas (S42's base
-  nodes cite nothing); do not invent a fake one.
-- **variantOf** — links rearranged forms of one relation (S17). Skip unless
+- **citation** — optional. Omit it entirely for invented formulas — base
+  nodes cite nothing; do not invent a fake one.
+- **variantOf** — links rearranged forms of one relation. Skip unless
   you are actually authoring more than one arrangement of the same equation.
 - **appliesWhen** — a boolean predicate over this formula's own input port
   names, e.g. `"d < 50"`, for the case where a relation only holds under some
   condition. Omit if it always applies.
-- **status** — `verified`, `unverified`, or `quarantined` (S19). Be honest,
+- **status** — `verified`, `unverified`, or `quarantined`. Be honest,
   not optimistic:
   - `unverified` is the correct default for a formula you derived and did not
     check end to end against an independent numeric example. It is not a
@@ -89,7 +89,7 @@ Fields:
   - `quarantined` needs a `quarantineReason` and makes the record unusable
     (`isEvaluable` returns false). Use it for a formula you know is wrong or
     whose unit tag you could not resolve — never delete or silently fix such
-    a record; quarantine keeps it visible (S19/S20).
+    a record; quarantine keeps it visible.
 
 ## Ports
 
@@ -97,35 +97,35 @@ Three kinds (`packages/schema/src/port.ts`):
 
 - **numeric** — `{ kind, name, unit, default?, validRange?, monotonic? }`.
   `unit` is a display-unit string like `N/mm²`, `mm`, `rad`, or `""` for
-  dimensionless; the dimension is derived from it (S56), never declared
+  dimensionless; the dimension is derived from it, never declared
   separately. `validRange` is load-bearing — it bounds sweeps, not just a UI
   hint — so set it wherever a formula only makes physical sense over part of
   the number line (`F >= 0`, an angle in `[0, pi]`).
 - **categorical** — `{ kind, name, domain, default? }`. An enumerated set of
   strings, e.g. `["H7", "H8", "K7"]`. Sweeps by explicit list only.
 - **spectrum** — `{ kind, name, unit }`, input-only. A whole series consumed
-  at once by `sum`/`prod`/`least`/`greatest` (S36) — you will not need this
+  at once by `sum`/`prod`/`least`/`greatest` — you will not need this
   for straightforward single-value formulas.
 
 A port's `name` is the symbol used in `expression` — keep it the way you'd
 write it in the formula (`sigma`, `F`, `A`), not a display label; a longer
 label belongs in `description`.
 
-## Units are canonical internally: mm, N, s, rad, K (S5)
+## Units are canonical internally: mm, N, s, rad, K
 
 Write every port's display unit however is natural for a reader (`kN`,
 `MPa`, `deg`), but **every bare number written inside `expression`** is
-interpreted in canonical units regardless of a port's display unit (S62) —
+interpreted in canonical units regardless of a port's display unit —
 `d < 50` means 50 mm even if `d`'s display unit is `m`. Angles are radians
-internally and degrees only at the display boundary (S54); if a port is an
+internally and degrees only at the display boundary; if a port is an
 angle, its unit should be `rad` or `deg`, and trig functions inside the
 expression accept either an angle-dimensioned or a dimensionless argument.
 
-## Expression rules (S34, S35, S62)
+## Expression rules
 
 - A string, never `eval`'d — parsed to an AST, compiled to closures.
 - No conditionals inside an expression. Branching selects *which formula
-  applies* (`appliesWhen`, `variantOf`), never lives inside one (S39/S40).
+  applies* (`appliesWhen`, `variantOf`), never lives inside one.
 - Allowed functions (`packages/kernel/src/functions.ts`): `abs`, `sqrt`,
   `cbrt`, `min`, `max`, `floor`, `ceil`, `round`, `sin`, `cos`, `tan`, `asin`,
   `acos`, `atan`, `sinh`, `cosh`, `tanh`, `log`, `exp`, plus the constant
@@ -136,7 +136,7 @@ expression accept either an angle-dimensioned or a dimensionless argument.
   require a dimensionless argument. `min`/`max` require identical dimensions
   across arguments. Rounding preserves dimension.
 - A bare numeric literal facing a dimensioned value takes that dimension, in
-  canonical units (S62) — so `F < 1000` in a newton context is 1000 N. Two
+  canonical units — so `F < 1000` in a newton context is 1000 N. Two
   *ports* with disagreeing declared units is still a hard error.
 
 ## Validate what you wrote

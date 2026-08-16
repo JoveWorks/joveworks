@@ -27,12 +27,12 @@ describe('numeric ports', () => {
     expect(serializePort(port)['unit']).toBe('N/mm²');
   });
 
-  it("treats '%' as dimensionless with a display scale (S21)", () => {
+  it("treats '%' as dimensionless with a display scale", () => {
     const port = parsePort({ kind: 'numeric', name: 'eta', unit: '%' }, 'port');
     expect(portDimension(port)).toEqual(DIMENSIONLESS);
   });
 
-  it('rejects an unknown unit rather than guessing (S5)', () => {
+  it('rejects an unknown unit rather than guessing', () => {
     expect(() => parsePort({ ...numeric, unit: 'furlong' }, 'port')).toThrow(
       /port\.unit:.*unknown unit symbol/,
     );
@@ -56,7 +56,7 @@ describe('numeric ports', () => {
     expect(() => parsePort({ ...numeric, validRange: {} }, 'p')).toThrow(/neither a min nor a max/);
   });
 
-  it('carries the range and monotonicity hint S17 asks for', () => {
+  it('carries the range and monotonicity hint', () => {
     const port = parsePort(
       { ...numeric, default: 100, validRange: { min: 10, max: 500 }, monotonic: 'increasing' },
       'port',
@@ -67,7 +67,7 @@ describe('numeric ports', () => {
   });
 });
 
-describe('categorical ports (S38)', () => {
+describe('categorical ports', () => {
   const fit: JsonValue = { kind: 'categorical', name: 'fit', domain: ['H7', 'H8', 'K7'] };
 
   it('round-trips its domain', () => {
@@ -86,7 +86,7 @@ describe('categorical ports (S38)', () => {
   });
 });
 
-describe('spectrum ports (S36)', () => {
+describe('spectrum ports', () => {
   const spectrum: JsonValue = { kind: 'spectrum', name: 'P_i', unit: 'kW' };
 
   it('is an input only — a formula cannot produce one', () => {
@@ -111,7 +111,7 @@ it('reports the path of the field at fault', () => {
   }
 });
 
-describe('generic ports (S59)', () => {
+describe('generic ports', () => {
   it('has no dimension until the wiring binds one', () => {
     const port = parsePort({ kind: 'numeric', name: 'a', unit: '$A' }, 'port');
     expect(portDimension(port)).toBeUndefined();
@@ -142,7 +142,7 @@ describe('generic ports (S59)', () => {
     expect(() => asInputPort(squared, 'inputs[0]')).toThrow(/not a bare variable/);
   });
 
-  it('lets a spectrum port be generic — sum consumes a series of anything (S36)', () => {
+  it('lets a spectrum port be generic — sum consumes a series of anything', () => {
     const port = parsePort({ kind: 'spectrum', name: 'xs', unit: '$A' }, 'port');
     expect(isGenericPort(port)).toBe(true);
     expect(portDimension(port)).toBeUndefined();

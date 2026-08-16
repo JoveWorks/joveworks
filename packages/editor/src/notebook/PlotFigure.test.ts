@@ -95,7 +95,7 @@ describe("the 'si' number format", () => {
   const pa = parseUnit('Pa');
   const si: NumberFormat = { ...PLAIN_NUMBER_FORMAT, notation: 'si' };
 
-  // Canonical stress is N/mm² (S5) — 1 MPa lands exactly on 1 canonical unit,
+  // Canonical stress is N/mm² — 1 MPa lands exactly on 1 canonical unit,
   // so a canonical value of 250 is "250 MPa", the case UX-SPEC's bug report
   // named: read as raw Pa it prints as 250 000 000, not 250.
   it('picks one shared prefix off the largest magnitude, instead of a raw base unit', () => {

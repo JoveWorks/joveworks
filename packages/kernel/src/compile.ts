@@ -76,7 +76,7 @@ function reductionArgument(expr: Expr, callee: string, where: string | undefined
   const [only] = expr.kind === 'call' ? expr.args : [];
   if (expr.kind !== 'call' || expr.args.length !== 1 || only === undefined || only.kind !== 'name') {
     throw new KernelError(
-      `${callee}() takes one spectrum port by name, as in '${callee}(xs)' (S36)`,
+      `${callee}() takes one spectrum port by name, as in '${callee}(xs)'`,
       where,
     );
   }
@@ -142,7 +142,7 @@ function compileNode(expr: Expr, where: string | undefined): CompiledExpression 
       const spec = FUNCTIONS.get(expr.callee);
       if (spec === undefined) {
         throw new KernelError(
-          `'${expr.callee}' is not one of the functions an expression may call (S35)`,
+          `'${expr.callee}' is not one of the functions an expression may call`,
           where,
         );
       }
@@ -170,7 +170,7 @@ const COMPARE: Readonly<Record<string, (a: number, b: number) => boolean>> = {
 };
 
 /**
- * The comparison itself, shared by the three things S39 says are one thing: a
+ * The comparison itself, shared by three things that are one and the same: a
  * predicate's `<`, a check node's stored comparison, and a plot's
  * threshold overlay.
  */
@@ -267,7 +267,7 @@ export function constantValue(expr: Expr): number | undefined {
  *
  * R&M forces the case rather than convenience suggesting it: `E2_4A/B` select on
  * a nominal-size band, and a band is a number with a dimension. Refusing it
- * would make S40's conditions untranscribable for the one class of condition
+ * would make those conditions untranscribable for the one class of condition
  * that is not a comparison between two ports.
  *
  * Returns the adopted dimension, or `undefined` when neither side is a literal.
@@ -296,7 +296,7 @@ function dimensionOf(expr: Expr, scope: DimensionScope, where: string | undefine
       }
       if (scope.spectra?.has(expr.name) === true) {
         throw new KernelError(
-          `'${expr.name}' is a spectrum and can only be reduced, as in 'sum(${expr.name})' (S36)`,
+          `'${expr.name}' is a spectrum and can only be reduced, as in 'sum(${expr.name})'`,
           where,
         );
       }
@@ -353,7 +353,7 @@ function dimensionOf(expr: Expr, scope: DimensionScope, where: string | undefine
         }
         if (scope.spectra !== undefined && !scope.spectra.has(name)) {
           throw new KernelError(
-            `${expr.callee}() takes a spectrum port, and '${name}' is not one (S36)`,
+            `${expr.callee}() takes a spectrum port, and '${name}' is not one`,
             where,
           );
         }
@@ -363,7 +363,7 @@ function dimensionOf(expr: Expr, scope: DimensionScope, where: string | undefine
       const spec = FUNCTIONS.get(expr.callee);
       if (spec === undefined) {
         throw new KernelError(
-          `'${expr.callee}' is not one of the functions an expression may call (S35)`,
+          `'${expr.callee}' is not one of the functions an expression may call`,
           where,
         );
       }
@@ -397,7 +397,7 @@ export function checkPredicateDimensions(
       const left = dimensionOf(predicate.left, scope, where);
       const right = dimensionOf(predicate.right, scope, where);
       // A band condition — `d < 50` — is a literal against a dimension, and R&M
-      // states several of S40's conditions that way.
+      // states several conditions that way.
       if (literalAgainstDimension(predicate.left, left, predicate.right, right) !== undefined) {
         return;
       }

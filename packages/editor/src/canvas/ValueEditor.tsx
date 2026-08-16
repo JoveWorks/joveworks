@@ -28,7 +28,7 @@ type Kind = 'scalar' | 'linear' | 'logarithmic' | 'list' | 'renard';
 /**
  * A unit field's placeholder when empty — matching `unitLabel`'s own
  * convention for "no unit" elsewhere in the app. Blank is a real,
- * unambiguous state here (dimensionless, S5), not an unfinished field, but
+ * unambiguous state here (dimensionless), not an unfinished field, but
  * with no border until hover (styles.css) and no text an empty box has
  * nothing to make it visible at all — a placeholder is what keeps it
  * findable rather than looking gone.
@@ -97,7 +97,7 @@ type Range = ValueSpec & { readonly kind: 'linear' | 'logarithmic' | 'renard' };
  *
  * Nothing here refuses a *different* dimension, though — same as a scalar's
  * `setUnit`, which never has (connection-time is where a wrong dimension
- * gets caught, S64, and a range must stay correctable there too: a student
+ * gets caught, and a range must stay correctable there too: a student
  * who mistypes a force input's unit as `m` needs a way back to `N` that
  * doesn't route through deleting the field). Retyping across dimensions has
  * no meaningful factor to convert by, so it is adopted outright rather than
@@ -158,7 +158,7 @@ export function ValuePointsField({ value, onChange }: Props): ReactElement | nul
         value={value.points}
         integer
         minimum={2}
-        title="Point count is the control, not step size (S29)."
+        title="Point count is the control, not step size."
         onCommit={(points) => onChange({ ...value, points })}
       />
     </label>
@@ -212,7 +212,7 @@ export function ValueFields({ value, onChange }: Props): ReactElement {
             value={unit.symbol}
             autoSize={1}
             placeholder={EMPTY_UNIT}
-            title="Blank is dimensionless (S5) — that is a value, not a gap to fill in."
+            title="Blank is dimensionless — that is a value, not a gap to fill in."
             onCommit={setUnit}
           />
         </div>
@@ -314,7 +314,7 @@ export function ValueFields({ value, onChange }: Props): ReactElement {
               className="list"
               value={value.values.join(', ')}
               placeholder="25, 30, 35, 40"
-              title="Standard sizes — the range that answers which part to buy (S29)."
+              title="Standard sizes — the range that answers which part to buy."
               onCommit={(text) => {
                 const values = text
                   .split(/[,;\s]+/u)

@@ -44,7 +44,7 @@ describe('compiled closures', () => {
     expect(compileExpression('2 * pi')({})).toBeCloseTo(Math.PI * 2, 12);
   });
 
-  it('calls the whitelist and nothing else (S35)', () => {
+  it('calls the whitelist and nothing else', () => {
     expect(compileExpression('sqrt(a)')({ a: 16 })).toBe(4);
     expect(compileExpression('cbrt(a)')({ a: 27 })).toBe(3);
     expect(compileExpression('min(a, b)')({ a: 2, b: 5 })).toBe(2);
@@ -57,7 +57,7 @@ describe('compiled closures', () => {
     expect(() => compileExpression('sqrt(a, b)')).toThrow(/takes 1 argument/u);
   });
 
-  it('reduces a whole spectrum, and only by name (S36)', () => {
+  it('reduces a whole spectrum, and only by name', () => {
     expect(compileExpression('sum(xs)')({ xs: [1, 2, 3] })).toBe(6);
     expect(compileExpression('prod(xs)')({ xs: [2, 3, 4] })).toBe(24);
     expect(() => compileExpression('sum(xs * 2)')).toThrow(/one spectrum port by name/u);
@@ -69,7 +69,7 @@ describe('compiled closures', () => {
   });
 
   it('never reaches for eval or new Function', async () => {
-    // The rule of S34 stated as a test: the whole point of a hand-written
+    // Stated as a test: the whole point of a hand-written
     // parser is that a catalogue file cannot become executable code.
     const source = await import('node:fs/promises').then((fs) =>
       fs.readFile(new URL('./compile.ts', import.meta.url), 'utf8'),
@@ -88,7 +88,7 @@ describe('predicates', () => {
     expect(compilePredicate('not a < 1')({ a: 0 })).toBe(false);
   });
 
-  it('exposes the same comparison a check node stores (S58)', () => {
+  it('exposes the same comparison a check node stores', () => {
     expect(comparator('>=')(2, 1)).toBe(true);
     expect(comparator('!=')(2, 2)).toBe(false);
   });
@@ -134,7 +134,7 @@ describe('dimensions of an expression', () => {
     expect(dimensionOf('sqrt(A)', ports)).toEqual(LENGTH);
   });
 
-  it('takes trig from an angle or a pure number, and back (S54)', () => {
+  it('takes trig from an angle or a pure number, and back', () => {
     expect(dimensionOf('sin(theta)', ports)).toEqual(DIMENSIONLESS);
     expect(dimensionOf('sin(n)', ports)).toEqual(DIMENSIONLESS);
     expect(() => dimensionOf('sin(d)', ports)).toThrow(/angle or a pure number/u);
@@ -142,13 +142,13 @@ describe('dimensions of an expression', () => {
     expect(() => dimensionOf('asin(theta)', ports)).toThrow(/pure number/u);
   });
 
-  it('requires a pure argument for log and exp (S35)', () => {
+  it('requires a pure argument for log and exp', () => {
     expect(dimensionOf('log(n)', ports)).toEqual(DIMENSIONLESS);
     expect(() => dimensionOf('log(F)', ports)).toThrow(/pure number/u);
     expect(() => dimensionOf('exp(d)', ports)).toThrow(/pure number/u);
   });
 
-  it('keeps the dimension through rounding (S35)', () => {
+  it('keeps the dimension through rounding', () => {
     expect(dimensionOf('floor(d)', ports)).toEqual(LENGTH);
     expect(dimensionOf('abs(F)', ports)).toEqual(FORCE);
   });

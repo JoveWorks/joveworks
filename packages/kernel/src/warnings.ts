@@ -1,8 +1,7 @@
 /**
  * What the kernel says without refusing.
  *
- * The line between a warning and an error is drawn by S6/S18 on one side and
- * S23/S40 on the other: **a bad connection does not attach**, so anything about
+ * The line between a warning and an error: **a bad connection does not attach**, so anything about
  * wiring is an error, while a formula that has changed under a saved graph, or
  * one used outside the condition R&M states for it, is a result you should look
  * at rather than a result that cannot exist.

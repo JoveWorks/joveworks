@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Extract the belt chapter of the predecessor package into catalogue data.
 
-One-off, one chapter (S52). It **parses** `~/source/mechanical-design` with
+One-off, one chapter. It **parses** `~/source/mechanical-design` with
 stdlib `ast` and never imports or runs it, so there is no sympy here and no
 dependency of any kind.
 
@@ -12,27 +12,27 @@ dependency of any kind.
 **This file is public; its output is not.** Nothing here may quote a formula:
 the canonicalisation table below names methods and the numeric factors to
 remove, never an expression. The generated JSON goes to the private catalogue
-repository (S45) and nowhere else.
+repository and nowhere else.
 
 What it produces per method, and why each part is captured here rather than
 later:
 
 * the **expression**, transcribed from the code rather than the docstring —
   the two have drifted, and the code is what the golden notebooks ran;
-* **canonical constants** (S53, S62). The predecessor wrote unit conversions
+* **canonical constants**. The predecessor wrote unit conversions
   into its expressions because it had no unit system. Here conversion happens
   at the boundary, so those factors are stripped and every number that survives
   is in mm-N-s-rad-K;
 * **ports** from the class-level `MySymbolDict`, whose `'[unit] description'`
   entries are the unit table that was never machine-read;
-* **`variantOf`** (S17), grouping by R&M equation number — recoverable now,
+* **`variantOf`**, grouping by R&M equation number — recoverable now,
   effectively unrecoverable once the method names are gone;
-* **`status`** (S19). Everything starts `unverified`; a record earns `verified`
+* **`status`**. Everything starts `unverified`; a record earns `verified`
   only by being named in the `VERIFIED` table below, which is the belt lab's
   golden run reporting back. The quarantine table carries what the dimension
   check refuses, each with a reason.
 
-Ids are namespaced `rm.16.<n>` (S65): a graph's reference carries no catalogue
+Ids are namespaced `rm.16.<n>`: a graph's reference carries no catalogue
 id, so an R&M id shares one namespace with `add` from the base library.
 """
 
@@ -53,7 +53,7 @@ CHAPTER = "16"
 # --- what the transcription deliberately changes -----------------------------
 
 # Numeric factors that are a unit conversion rather than part of the relation,
-# listed per method and removed once each (S53). The predecessor had no unit
+# listed per method and removed once each. The predecessor had no unit
 # system, so it wrote the conversion into the expression; conversion at the
 # boundary supplies the same factor, and leaving these in would apply it twice.
 STRIP_FACTORS: dict[str, list[float]] = {
@@ -66,27 +66,27 @@ STRIP_FACTORS: dict[str, list[float]] = {
 }
 
 # Literals that are a percent scale rather than a quantity. A port tagged `[%]`
-# holds a fraction canonically (S21), so the hundreds written around it become
+# holds a fraction canonically, so the hundreds written around it become
 # ones. Applied after the factors above, which have already consumed any `100`
 # standing as a plain multiplier.
 REPLACE_LITERALS: dict[str, dict[float, float]] = {
     "E16_9": {100: 1},
 }
 
-# S19/S20. A record here is extracted like any other and simply cannot be
+# A record here is extracted like any other and simply cannot be
 # evaluated until signed off. Each reason states what the dimension check
 # refuses and what the evidence for a correction is; none of them is fixed
 # here, because a defect corrected silently is the failure mode this project
 # exists to remove.
 QUARANTINE: dict[str, str] = {
     "E16_24A": (
-        "the expression produces an angle (acos returns one, S54) while R&M tags the "
+        "the expression produces an angle (acos returns one) while R&M tags the "
         "wrap angle []. Every other belt formula consumes that angle as a pure number, "
         "so retagging it alone would break the wiring. Needs a decision, not a fix — "
         "see the session report; not believed to be a defect in the source"
     ),
     "E16_24B": (
-        "same as 16.24A: acos returns an angle (S54) and the declared tag is []. "
+        "same as 16.24A: acos returns an angle and the declared tag is []. "
         "Needs a decision, not a fix"
     ),
     "E16_31": (
@@ -102,7 +102,7 @@ QUARANTINE: dict[str, str] = {
         "suspect is the unit tag rather than the expression — the belt-type factor is "
         "tagged [] and would have to carry force per unit width. The docstring also "
         "writes the factor as an exponent where the code multiplies, and an exponent "
-        "must be dimensionless in any reading. Needs sign-off against R&M (S20)"
+        "must be dimensionless in any reading. Needs sign-off against R&M"
     ),
     "E16_36B": (
         "dimensionally unsound as transcribed: a product of two lengths declared as a "
@@ -112,7 +112,7 @@ QUARANTINE: dict[str, str] = {
     ),
 }
 
-# S19. A record earns `verified` by being exercised by a golden value and
+# A record earns `verified` by being exercised by a golden value and
 # matching it — per formula, never per run. These seven are the belt lab's
 # calculation chain, checked end to end through the kernel by
 # `test/belt-goldens.test.ts` against the table in docs/PLAN.md; the other 47 records
@@ -139,7 +139,7 @@ NOT_A_FORMULA = {"E16_35"}
 
 # Docstring notes that describe the predecessor's own API rather than the
 # formula. 16.1's second form carries seven lines warning that assigning its
-# result back to its own input creates a loop — a hazard S18 removes by
+# result back to its own input creates a loop — a hazard removed by
 # refusing the connection, so the warning would only confuse a student. The one
 # sentence about the formula is kept.
 NOTE_OVERRIDES: dict[str, list[str]] = {
@@ -182,7 +182,7 @@ TAG = re.compile(r"^\s*\[([^\]]*)\]\s*(.*)$", re.DOTALL)
 
 
 def read_tag(text: str) -> tuple[str, str]:
-    """Split `'[N] normal force'`. A missing tag is an undeclared unit (S5)."""
+    """Split `'[N] normal force'`. A missing tag is an undeclared unit."""
     match = TAG.match(text)
     if match is None:
         raise SystemExit(f"undeclared unit in tag {text!r}")
@@ -225,7 +225,7 @@ class Transcribe(ast.NodeTransformer):
 
 
 def strip_factors(node: ast.expr, factors: list[float]) -> ast.expr:
-    """Remove each listed constant once, where it multiplies (S53)."""
+    """Remove each listed constant once, where it multiplies."""
     remaining = list(factors)
 
     def walk(current: ast.expr) -> ast.expr:
@@ -313,7 +313,7 @@ def number(value: float | int) -> str:
 
 
 def render(node: ast.expr, parent: int = 0) -> str:
-    """The kernel's grammar (S34): no implicit multiplication, `**` right-assoc."""
+    """The kernel's grammar: no implicit multiplication, `**` right-assoc."""
     if isinstance(node, ast.Constant):
         return number(node.value)
     if isinstance(node, ast.Name):
@@ -401,9 +401,9 @@ METHOD_REFERENCE = re.compile(r"\bE16_(\d+)([A-Z]\d*)?\b")
 def notes_of(method: ast.FunctionDef) -> list[str]:
     """Docstring lines after the formula line — where R&M's prose conditions are.
 
-    S40 wants these machine-readable, and belt's are not expressible: they
+    These need to be machine-readable, and belt's are not expressible: they
     select on *belt type* (flat, V, toothed, poly-V), which is a categorical
-    port this chapter has none of (S38, and the gap S41 accepted). Keeping the
+    port this chapter has none of. Keeping the
     prose on the description is what stops it being lost in the meantime.
     """
     override = NOTE_OVERRIDES.get(stem(method.name))
@@ -474,7 +474,7 @@ def build(source: Path) -> dict:
         record["_base"] = base
         formulas.append(record)
 
-    # `variantOf` only where R&M itself numbered more than one form (S17).
+    # `variantOf` only where R&M itself numbered more than one form.
     counts: dict[str, int] = {}
     for record in formulas:
         counts[record["_base"]] = counts.get(record["_base"], 0) + 1
@@ -530,7 +530,7 @@ def order_fields(record: dict) -> dict:
 
 def port(name: str, tags: dict[str, str]) -> dict:
     if name not in tags:
-        raise SystemExit(f"'{name}' has no entry in the symbol dict — undeclared unit (S5)")
+        raise SystemExit(f"'{name}' has no entry in the symbol dict — undeclared unit")
     unit, description = read_tag(tags[name])
     return {"kind": "numeric", "name": name, "unit": unit, "description": description}
 

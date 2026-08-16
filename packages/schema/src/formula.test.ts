@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 /**
  * Every fixture here is invented. Reaching for a real R&M formula is the natural
- * move and the wrong one — the restriction of S9/S45 is a repository boundary,
+ * move and the wrong one — the restriction is a repository boundary,
  * and `y = a*b + c` exercises a parser exactly as well while carrying nothing
  * anyone could copy.
  */
@@ -63,7 +63,7 @@ describe('the formula record', () => {
     expect(serializeFormula(parse(json))).toEqual(json);
   });
 
-  it('leaves the expression a string for the kernel to parse (S34)', () => {
+  it('leaves the expression a string for the kernel to parse', () => {
     expect(parse().expression).toBe('a*b + c');
   });
 
@@ -92,7 +92,7 @@ describe('the formula record', () => {
   });
 });
 
-describe('status and quarantine (S19/S20)', () => {
+describe('status and quarantine', () => {
   it('cannot be evaluated when quarantined', () => {
     const quarantined = parse({
       ...product,
@@ -116,7 +116,7 @@ describe('status and quarantine (S19/S20)', () => {
   });
 });
 
-describe('references by id, version and hash (S23)', () => {
+describe('references by id, version and hash', () => {
   it('does not embed the formula', () => {
     const ref = formulaRef(parse());
     expect(Object.keys(ref).sort()).toEqual(['hash', 'id', 'version']);
@@ -167,7 +167,7 @@ describe('catalogues', () => {
     expect(findFormula(parseCatalogue(catalogue), 'demo.missing')).toBeUndefined();
   });
 
-  it('carries the restricted flag a catalogue needs (S32)', () => {
+  it('carries the restricted flag a catalogue needs', () => {
     expect(parseCatalogue({ ...catalogue, restricted: true }).restricted).toBe(true);
     const { restricted: _ignored, ...rest } = catalogue;
     expect(() => parseCatalogue(rest)).toThrow('restricted: is required');
@@ -179,14 +179,14 @@ describe('catalogues', () => {
     );
   });
 
-  it('refuses a version it does not read, rather than guessing (S25)', () => {
+  it('refuses a version it does not read, rather than guessing', () => {
     expect(() => parseCatalogue({ ...catalogue, schemaVersion: SCHEMA_VERSION + 1 })).toThrow(
       /schemaVersion: is 2, but this build reads version 1 only/,
     );
   });
 });
 
-describe('generic formulas (S59)', () => {
+describe('generic formulas', () => {
   const generic = (unit: string) => ({ kind: 'numeric', name: 'a', unit });
 
   it('accepts an output monomial built from the variables its inputs bind', () => {

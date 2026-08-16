@@ -3,7 +3,7 @@
  *
  * Every value the kernel carries is a **series over zero or more axes**. A
  * scalar is the zero-axis case rather than a separate kind, which is the whole
- * economy of S43: there is no code path that special-cases 1-D or 2-D, no grid
+ * economy of this: there is no code path that special-cases 1-D or 2-D, no grid
  * node to wire, and adding a second range to a finished graph changes nothing
  * downstream except the shape of the answer.
  *
@@ -153,7 +153,7 @@ export function reader(series: NumericSeries, target: readonly Axis[]): (cell: n
 }
 
 /**
- * S43's guard: warn when a grid grows large enough to be felt.
+ * The guard: warn when a grid grows large enough to be felt.
  *
  * A warning and not a refusal — a 40 000-point study is a legitimate thing to
  * ask for, and the study is the primary use of this tool. What is not

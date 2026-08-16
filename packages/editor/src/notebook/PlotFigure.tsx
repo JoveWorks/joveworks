@@ -14,7 +14,7 @@
  * - **The threshold is the point.** A curve crossing `S = 1.5` is what turns a
  *   plot into an answer, so it is drawn as a rule with the value on it.
  *
- * The contour path is drawn from the kernel's grid, and S26 wants it verified
+ * The contour path is drawn from the kernel's grid, and it wants verifying
  * against the key-design case before it is trusted — it renders here, and that
  * verification is still owed.
  *

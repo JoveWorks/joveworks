@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
 
 /**
- * S22 leans on the workspace to enforce the dependency direction — that is the
+ * This leans on the workspace to enforce the dependency direction — that is the
  * whole reason there is no Turborepo here. A configuration that quietly fails
  * to enforce it is worse than none, because it is trusted. So this checks the
  * enforcement rather than the configuration.
@@ -54,7 +54,7 @@ afterAll(() => {
   for (const dir of scratch) rmSync(dir, { recursive: true, force: true });
 });
 
-describe('dependency direction (S22)', () => {
+describe('dependency direction', () => {
   it('builds the workspace as it stands', () => {
     const result = build(workspaceCopy());
     expect(result.output).toBe('');

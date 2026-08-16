@@ -22,7 +22,7 @@ export function readSchemaVersion(object: JsonObject, path: string): number {
     fail(
       field,
       `is ${version}, but this build reads version ${SCHEMA_VERSION} only. ` +
-        'Documents are regenerated rather than migrated until real graphs exist (S25)',
+        'Documents are regenerated rather than migrated until real graphs exist',
     );
   }
   return version;

@@ -37,7 +37,7 @@ function areaGraph(edges = [wire('w.value', 'area.w'), wire('h.value', 'area.h')
   );
 }
 
-describe('order (S18)', () => {
+describe('order', () => {
   it('puts a node after everything it reads from', () => {
     const order = topologicalOrder(areaGraph()).map((node) => node.id);
     expect(order.indexOf('area')).toBeGreaterThan(order.indexOf('w'));
@@ -85,11 +85,11 @@ describe('resolution', () => {
     );
   });
 
-  it('needs the catalogue a graph references (S23)', () => {
+  it('needs the catalogue a graph references', () => {
     expect(() => resolveGraph(areaGraph(), [])).toThrow(/needs its catalogue/u);
   });
 
-  it('warns rather than recomputing silently when a formula has changed (S23)', () => {
+  it('warns rather than recomputing silently when a formula has changed', () => {
     const stale = documentOf(
       [input('w', scalar(20, 'mm')), formulaNode('area', { id: 'area', version: 1, hash: 'stale' })],
       [wire('w.value', 'area.w')],
@@ -100,7 +100,7 @@ describe('resolution', () => {
   });
 });
 
-describe('connections (S6)', () => {
+describe('connections', () => {
   const connect = (document: ReturnType<typeof areaGraph>, from: string, to: string) =>
     canConnect(document, catalogues, wire(from, to));
 
@@ -118,7 +118,7 @@ describe('connections (S6)', () => {
     expect(result.ok === false && result.reason).toMatch(/cannot connect force/u);
   });
 
-  it('will not close a cycle (S18)', () => {
+  it('will not close a cycle', () => {
     const result = connect(areaGraph(), 'area.A', 'area.w');
     expect(result.ok).toBe(false);
     expect(result.ok === false && result.reason).toMatch(/cycle/u);
@@ -149,7 +149,7 @@ describe('connections (S6)', () => {
     expect(result.ok === false && result.reason).toMatch(/categorical value to a numeric port/u);
   });
 
-  it('lets a pure number drive an angle port, and not the other way (S54)', () => {
+  it('lets a pure number drive an angle port, and not the other way', () => {
     const intoAngle = documentOf(
       [input('x', scalar(0.5, '')), formulaNode('sine', refTo('sineOf'))],
       [],
@@ -212,7 +212,7 @@ describe('compare nodes', () => {
     expect(() => resolveGraph(document, catalogues)).toThrow(/same dimension/u);
   });
 
-  it('takes a bare, unitless threshold default in whatever dimension value resolves to (S62)', () => {
+  it('takes a bare, unitless threshold default in whatever dimension value resolves to', () => {
     // A freshly dropped compare node's threshold has no unit yet — wiring
     // `value` to something dimensioned must not be refused for that alone.
     const document = documentOf(
@@ -243,7 +243,7 @@ describe('compare nodes', () => {
   });
 });
 
-describe('generic signatures bind per node instance (S59)', () => {
+describe('generic signatures bind per node instance', () => {
   it('gives a multiply node the product of what is wired to it', () => {
     const document = documentOf(
       [
@@ -299,7 +299,7 @@ describe('generic signatures bind per node instance (S59)', () => {
     expect(resolution.sources.get(endpointKey('sum', 'sum'))?.dimension).toBeUndefined();
   });
 
-  it('checks a check node against the value it is wired to (S58)', () => {
+  it('checks a check node against the value it is wired to', () => {
     const document = documentOf(
       [
         input('F', scalar(100, 'N')),
@@ -391,7 +391,7 @@ describe('closure nodes', () => {
 });
 
 describe('what the unit package still owns', () => {
-  it('reads a display unit into the dimension a port is typed by (S56)', () => {
+  it('reads a display unit into the dimension a port is typed by', () => {
     expect(parseUnit('N/mm²').dimension).toEqual({
       force: 1,
       length: -2,

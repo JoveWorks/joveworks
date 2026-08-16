@@ -67,7 +67,7 @@ Organised by area rather than by the order findings came in.
 ## Visual system
 
 - **More use of colour overall.** Candidate: tint input / calc / output
-  nodes differently by kind, consistent with colour-means-state (S49) —
+  nodes differently by kind, consistent with colour-means-state —
   kind is a form of state.
 - **UI chrome font is too small**, and both font size and the colour
   palette should be parametrised so they're easy to change later — this

@@ -15,8 +15,8 @@
  *     power      := primary (('**' | '^') unary)?      -- right associative
  *     primary    := number | name | name '(' args ')' | '(' expression ')'
  *
- * Predicate grammar, layered on top and never inside it (S35's "no conditionals
- * in an expression" is this separation):
+ * Predicate grammar, layered on top and never inside it — "no conditionals
+ * in an expression" is this separation:
  *
  *     predicate   := conjunction ('or' conjunction)*
  *     conjunction := negation ('and' negation)*
@@ -295,7 +295,7 @@ class Parser {
     if (token.kind !== 'punct' || !COMPARISON_OPERATORS.has(token.text)) {
       throw new KernelError(
         `expected a comparison like '>=' but found '${token.text}' at position ${token.at} — ` +
-          'a predicate is a comparison, not a value (S39)',
+          'a predicate is a comparison, not a value',
         this.source,
       );
     }

@@ -3,7 +3,7 @@
  *
  * The point of drawing it on the *node* rather than only in a plot is to make a
  * sweep visible propagating: you set one input to a range and every node
- * downstream of it grows a line, which is S43 made visible. It is not a chart —
+ * downstream of it grows a line, which is the broadcasting model made visible. It is not a chart —
  * no axes, no ticks, no interaction. The plot node is the chart.
  *
  * A grid over more than one axis is drawn as one line per row rather than one

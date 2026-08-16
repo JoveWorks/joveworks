@@ -19,7 +19,7 @@
  * integers or simple fractions — nothing legitimate lands within 1e-9 of a
  * different exponent, and a genuine mismatch is off by at least a third.
  *
- * The other rule here is S54's, and it belongs to connections alone: the base
+ * The other rule here belongs to connections alone: the base
  * library declares `sine`'s input `rad`, R&M tags belt's wrap angles `[]`, so a
  * **dimensionless source may drive an angle target**. One-directional — an angle
  * will not enter a dimensionless port, because that is the case where a stray
@@ -64,8 +64,8 @@ export function assertSameDimension(
 /**
  * May a value of `source` dimension drive a port of `target` dimension?
  *
- * Equal dimensions connect. A dimensionless source into an angle port connects,
- * per S54. Nothing else does.
+ * Equal dimensions connect. A dimensionless source into an angle port connects.
+ * Nothing else does.
  */
 export function connectable(source: Dimension, target: Dimension): boolean {
   if (dimensionsClose(source, target)) return true;

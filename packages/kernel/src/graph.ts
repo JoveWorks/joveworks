@@ -9,8 +9,8 @@
  * a graph with one has no such order.
  *
  * **Resolution tolerates an unfinished graph and refuses an impossible one.** An
- * input that is not yet wired is normal — a student is mid-build, and S50 has
- * the editor mark it. A dimension mismatch, a cycle, a second edge into one
+ * input that is not yet wired is normal — a student is mid-build, and the editor
+ * marks it. A dimension mismatch, a cycle, a second edge into one
  * input port: those cannot be repaired by wiring more, so they are errors, and
  * `canConnect` is what lets the editor refuse the edge before it attaches rather
  * than after.
@@ -138,7 +138,7 @@ function lookupFormula(
   const [first] = candidates;
   if (first === undefined) {
     throw new KernelError(
-      `no formula '${ref.id}' in the loaded catalogues — a graph needs its catalogue to open (S23)`,
+      `no formula '${ref.id}' in the loaded catalogues — a graph needs its catalogue to open`,
       nodeId,
     );
   }
@@ -167,7 +167,7 @@ function inputValueType(node: InputNode): PortType {
       return { kind: 'spectrum', dimension: spec.unit.dimension, unit: spec.unit };
     case 'tableColumn':
       throw new KernelError(
-        'a table column needs a table, and tables arrive with the second slice (S37)',
+        'a table column needs a table, and tables arrive with the second slice',
         node.id,
       );
     default:
@@ -198,8 +198,8 @@ function portType(port: Port, bindings: ReadonlyMap<string, Dimension>): PortTyp
 
 /**
  * Kahn's algorithm over the node graph, in document order so the result is
- * stable. A graph that does not fully drain has a cycle, and S18 makes that
- * impossible to reach through the editor — but a hand-edited file can carry one,
+ * stable. A graph that does not fully drain has a cycle, which is impossible
+ * to reach through the editor — but a hand-edited file can carry one,
  * and it must not become an infinite loop.
  */
 export function topologicalOrder(document: GraphDocument): readonly GraphNode[] {
@@ -233,13 +233,13 @@ export function topologicalOrder(document: GraphDocument): readonly GraphNode[] 
       .filter((node) => !order.some((done) => done.id === node.id))
       .map((node) => node.id);
     throw new KernelError(
-      `these nodes form a cycle, and the graph cannot be evaluated (S18): ${stuck.join(', ')}`,
+      `these nodes form a cycle, and the graph cannot be evaluated: ${stuck.join(', ')}`,
     );
   }
   return order;
 }
 
-/** Would this edge close a cycle? The check S18 makes at connect time. */
+/** Would this edge close a cycle? The check made at connect time. */
 export function wouldCycle(document: GraphDocument, candidate: Edge): boolean {
   if (candidate.from.node === candidate.to.node) return true;
   const outgoing = new Map<string, string[]>();
@@ -270,7 +270,7 @@ function axisOf(node: InputNode, order: number): Axis {
   const length = axisLength(node.value);
   if (length === undefined) {
     throw new KernelError(
-      'a table column needs a table, and tables arrive with the second slice (S37)',
+      'a table column needs a table, and tables arrive with the second slice',
       node.id,
     );
   }
@@ -381,7 +381,7 @@ export function resolveGraph(
             assertSameDimension(
               already,
               dimension,
-              `'$${variable}' is bound twice on this node and must be one dimension (S59)`,
+              `'$${variable}' is bound twice on this node and must be one dimension`,
               key,
             );
           }
@@ -464,8 +464,8 @@ export function resolveGraph(
       const valueType: PortType = valueEdge === undefined ? { kind: 'numeric' } : sourceType(valueEdge);
       targets.set(valueKey, valueType);
 
-      // `threshold` does have a default (S58's typed quantity, now a port
-      // fallback rather than the only way to set the bound), so once
+      // `threshold` does have a default — a typed quantity, now a port
+      // fallback rather than the only way to set the bound — so once
       // `value`'s dimension is known, `threshold`'s target follows it either
       // way — narrowing what may be wired there to match.
       const dimension = valueType.dimension;
@@ -517,7 +517,7 @@ export function resolveGraph(
         assertSameDimension(
           type.dimension,
           node.output.threshold.unit.dimension,
-          'a check compares a value against a threshold of the same dimension (S58)',
+          'a check compares a value against a threshold of the same dimension',
           key,
         );
       }
@@ -586,7 +586,7 @@ export function canConnect(
   candidate: Edge,
 ): ConnectionCheck {
   if (wouldCycle(document, candidate)) {
-    return { ok: false, reason: 'this connection would close a cycle, which is not allowed (S18)' };
+    return { ok: false, reason: 'this connection would close a cycle, which is not allowed' };
   }
   try {
     // A dragged wire replaces whatever already arrives at that input (an input

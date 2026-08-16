@@ -1,5 +1,5 @@
 /**
- * A formula record, made ready to evaluate: the S19 gate, the dimension check,
+ * A formula record, made ready to evaluate: the quarantine gate, the dimension check,
  * and the compiled closures.
  *
  * **The gate comes first.** A quarantined formula cannot be evaluated, by
@@ -42,12 +42,12 @@ import { dimensionsClose } from './dimensions.js';
 import { KernelError } from './errors.js';
 import { parseExpression, parsePredicate } from './parse.js';
 
-/** S19's gate, stated once so every path through the kernel uses the same one. */
+/** The quarantine gate, stated once so every path through the kernel uses the same one. */
 export function assertEvaluable(formula: Formula, where?: string): void {
   if (isEvaluable(formula)) return;
   throw new KernelError(
     `'${formula.id}' is quarantined and cannot be evaluated: ` +
-      `${formula.quarantineReason ?? 'no reason recorded'} (S19)`,
+      `${formula.quarantineReason ?? 'no reason recorded'}`,
     where,
   );
 }
@@ -150,7 +150,7 @@ function checkRecord(formula: Formula, bindings: Bindings, where: string): Dimen
     const dimension = portDimensionUnder(port, bindings, where);
     if (dimension === undefined) {
       throw new KernelError(
-        `'${port.name}' is categorical, and using one in an expression needs a table (S37)`,
+        `'${port.name}' is categorical, and using one in an expression needs a table`,
         where,
       );
     }
@@ -183,7 +183,7 @@ function portDimensionUnder(port: Port, bindings: Bindings, where: string): Dime
     return resolveGeneric(port.unit, bindings);
   } catch {
     throw new KernelError(
-      `'${port.name}' declares ${port.unit.symbol}, and nothing wired to this node binds it (S59)`,
+      `'${port.name}' declares ${port.unit.symbol}, and nothing wired to this node binds it`,
       where,
     );
   }

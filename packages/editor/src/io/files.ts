@@ -4,8 +4,8 @@
  * The app is a static page with no backend, so a "file" is whatever the
  * browser will give us: a picked file in, a download out. Both sit behind these
  * two functions so a Tauri build can replace them with real filesystem calls
- * without touching a single call site — which is the whole reason S15 asks for
- * an adapter rather than for `input[type=file]` scattered through the UI.
+ * without touching a single call site — which is the whole reason for an
+ * adapter rather than for `input[type=file]` scattered through the UI.
  *
  * The File System Access API is a progressive enhancement and is not used
  * here: it would add a second code path for save-in-place before there is
@@ -38,7 +38,7 @@ export function openTextFile(accept = 'application/json,.json'): Promise<PickedF
   });
 }
 
-/** Hand the text back as a download — the export half of S24. */
+/** Hand the text back as a download — the export half of file I/O. */
 export function saveTextFile(name: string, text: string): void {
   const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
   const link = document.createElement('a');

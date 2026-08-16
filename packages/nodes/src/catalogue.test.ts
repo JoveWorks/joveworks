@@ -65,20 +65,20 @@ describe('the catalogue as a file', () => {
 });
 
 describe('what the library carries', () => {
-  it('cites nothing — arithmetic is not textbook content (S42)', () => {
+  it('cites nothing — arithmetic is not textbook content', () => {
     for (const formula of OPERATIONS) {
       expect(formula.citation).toBeUndefined();
     }
   });
 
-  it('claims nothing is verified until a golden value says so (S19)', () => {
+  it('claims nothing is verified until a golden value says so', () => {
     for (const formula of OPERATIONS) {
       expect(formula.status).toBe('unverified');
       expect(isEvaluable(formula)).toBe(true);
     }
   });
 
-  it('covers the whitelist of S35 and the reductions of S36', () => {
+  it('covers the function whitelist and the reductions', () => {
     const ids = new Set(OPERATIONS.map((formula) => formula.id));
     for (const id of [
       'add',
@@ -113,7 +113,7 @@ describe('what the library carries', () => {
     }
   });
 
-  it('has a spectrum input on each reduction and nowhere else (S36, S71)', () => {
+  it('has a spectrum input on each reduction and nowhere else', () => {
     const reductions = new Set(['sum', 'product', 'minimum', 'maximum']);
     for (const formula of OPERATIONS) {
       const spectrum = formula.inputs.some((port) => port.kind === 'spectrum');
@@ -136,7 +136,7 @@ describe('what the library carries', () => {
   });
 });
 
-/** S35's whitelist, plus the constants an expression may name. */
+/** The function whitelist, plus the constants an expression may name. */
 const FUNCTIONS = new Set([
   'abs',
   'sqrt',
@@ -228,7 +228,7 @@ describe('dimensions are consistent with the expression, by inspection', () => {
     }
   });
 
-  it('takes trig from an angle to a pure number and back (S54)', () => {
+  it('takes trig from an angle to a pure number and back', () => {
     for (const id of ['sine', 'cosine', 'tangent']) {
       const formula = byId(id);
       expect(resolved(formula.inputs[0] as Port, {})).toEqual(parseUnit('rad').dimension);
@@ -241,7 +241,7 @@ describe('dimensions are consistent with the expression, by inspection', () => {
     }
   });
 
-  it('keeps every generic input a bare variable, so binding is an assignment (S59)', () => {
+  it('keeps every generic input a bare variable, so binding is an assignment', () => {
     for (const formula of OPERATIONS) {
       for (const port of formula.inputs) {
         if (port.kind === 'categorical' || !isGenericDimension(port.unit)) continue;

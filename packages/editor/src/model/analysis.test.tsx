@@ -15,7 +15,7 @@ import { parseUnit } from '@mds/units';
 
 import { analyse, lookup } from './analysis';
 
-/** A `problems` entry is a rendered reason (symbol names get a real <sub>, S49) — text out for assertions. */
+/** A `problems` entry is a rendered reason (symbol names get a real <sub>) — text out for assertions. */
 function text(node: ReactNode): string {
   return renderToStaticMarkup(<>{node}</>);
 }
@@ -113,7 +113,7 @@ describe('analysing a graph mid-build', () => {
     expect(text(analysis.problems.get('half'))).toContain('not connected');
   });
 
-  it('refuses a quarantined formula and blocks what depends on it, not the rest (S19)', () => {
+  it('refuses a quarantined formula and blocks what depends on it, not the rest', () => {
     const document = graph(
       [
         scalar('a', 2),
@@ -137,7 +137,7 @@ describe('analysing a graph mid-build', () => {
     expect(analysis.states.get('sum')).toBe('ok');
   });
 
-  it('blocks a spectrum port on any unready source, not just the last edge recorded (S71)', () => {
+  it('blocks a spectrum port on any unready source, not just the last edge recorded', () => {
     const document = graph(
       [
         scalar('a', 2),
@@ -160,7 +160,7 @@ describe('analysing a graph mid-build', () => {
     expect(analysis.states.get('m')).toBe('blocked');
   });
 
-  it('says which node a graph without its catalogue is missing (S23)', () => {
+  it('says which node a graph without its catalogue is missing', () => {
     const document = graph([formulaNode('sum', 'inv.sum')], []);
     const analysis = analyse(document, [baseCatalogue()]);
 
@@ -229,7 +229,7 @@ describe('compare nodes', () => {
     });
   });
 
-  it('is blocked, not ready, when its value comes from a node that is not ready yet (S19)', () => {
+  it('is blocked, not ready, when its value comes from a node that is not ready yet', () => {
     const document = graph(
       [scalar('a', 2), formulaNode('bad', 'inv.quarantined'), compareNode('c', '>=', 1, 'mm')],
       [wire('e1', ['a', 'value'], ['bad', 'a']), wire('e2', ['bad', 'y'], ['c', 'value'])],

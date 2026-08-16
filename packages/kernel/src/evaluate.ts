@@ -11,11 +11,11 @@
  * - **Units.** A document stores what its author typed — `250 kW` — and the
  *   kernel computes in mm-N-s-rad-K. Conversion happens here, when a value
  *   enters, and again when an output declares what to display in. Inside, there
- *   are no display units at all, which is what makes S53's density trap a
+ *   are no display units at all, which is what makes the density trap a
  *   transcription question rather than a live hazard.
  * - **Sweeps.** A range becomes a series with an axis; a scalar is the same
  *   thing with no axes. There is no second code path for the swept case, which
- *   is the economy S43 was chosen for.
+ *   is the economy that was chosen for.
  */
 
 import { DIMENSIONLESS, isDimensionless, toCanonical, type Unit } from '@mds/units';
@@ -58,7 +58,7 @@ import {
 import type { Warning } from './warnings.js';
 
 export interface EvaluationOptions {
-  /** Cell count at which S43's guard warns. */
+  /** Cell count at which the large-grid guard warns. */
   readonly largeGrid?: number;
 }
 
@@ -198,7 +198,7 @@ export function evaluateDocument(
 
 /**
  * A literal, a categorical choice, a spectrum or a range, converted into
- * canonical units on the way in. This is the boundary S5 means.
+ * canonical units on the way in. This is the boundary.
  */
 function inputValue(node: InputNode, axes: ReadonlyMap<string, Axis>): PortValue {
   const spec = node.value;
@@ -269,7 +269,7 @@ function inputValue(node: InputNode, axes: ReadonlyMap<string, Axis>): PortValue
 
     case 'tableColumn':
       throw new KernelError(
-        'a table column needs a table, and tables arrive with the second slice (S37)',
+        'a table column needs a table, and tables arrive with the second slice',
         node.id,
       );
   }
@@ -297,7 +297,7 @@ function inputPortValue(
   if (edge !== undefined) return valueAtEdge(edge, key, values);
 
   // Not wired: a declared default stands in, in the unit it was declared in.
-  // Anything else is an incomplete graph, which S50 has the editor mark on the
+  // Anything else is an incomplete graph, which the editor marks on the
   // node — this is the same fact, said in an error.
   if (port.kind === 'numeric' && port.default !== undefined && !('variables' in port.unit)) {
     return scalarSeries(toCanonical(port.default, port.unit as Unit));
@@ -312,10 +312,10 @@ function inputPortValue(
  * Every edge wired to a spectrum port, each keeping its own value —
  * and so its own axes — rather than flattened into one collection up front.
  *
- * S72 first amended S71 to accept a swept edge at all; S73 amends it again,
- * the same direction: two ranges wired into `minimum` used to broadcast
- * pointwise when it was an ordinary two-port generic node (S43's "two
- * ranges give an n × m grid" applies here exactly as it does to `add`), and
+ * A swept edge is broadcast per source, not flattened across edges: two
+ * ranges wired into `minimum` used to broadcast pointwise when it was an
+ * ordinary two-port generic node ("two ranges give an n × m grid" applies
+ * here exactly as it does to `add`), and
  * flattening across edges silently lost that — collapsing the whole grid to
  * one scalar instead of a grid of pointwise reductions. `evaluateFormula`
  * broadcasts each edge against the node's own axes and collects one value
@@ -355,7 +355,7 @@ function evaluateFormula(
   assertEvaluable(formula, nodeId);
   if (formula.output.kind === 'categorical') {
     throw new KernelError(
-      `'${formula.id}' produces a categorical value, which needs a table (S37)`,
+      `'${formula.id}' produces a categorical value, which needs a table`,
       nodeId,
     );
   }
@@ -389,8 +389,8 @@ function evaluateFormula(
   }));
 
   // Every axis actually in play — a regular port's own, and each spectrum
-  // edge's own (S73: broadcast per source, not flattened across them; an
-  // authored list contributes no axis, invariant by S36).
+  // edge's own, broadcast per source, not flattened across them; an
+  // authored list contributes no axis, invariant.
   const axes = unionAxes(
     ...regularInputs.map(({ value }) => value.axes),
     ...spectrumInputs.flatMap(({ edgeValues }) =>
@@ -405,7 +405,7 @@ function evaluateFormula(
       message:
         `this node evaluates ${cells} points (${axes
           .map((axis) => `${axis.label}: ${axis.length}`)
-          .join(' × ')}) — a sweep that large takes a moment (S43)`,
+          .join(' × ')}) — a sweep that large takes a moment`,
     });
   }
 
@@ -415,7 +415,7 @@ function evaluateFormula(
     if (value.kind === 'categorical') {
       throw new KernelError(
         `'${port.name}' is a categorical value, and using one in an expression needs a ` +
-          'table (S37)',
+          'table',
         endpointKey(nodeId, port.name),
       );
     }
@@ -453,7 +453,7 @@ function evaluateFormula(
     data[cell] = compiled.evaluate(env);
   }
 
-  // S40: using a formula outside the condition R&M states for it warns. It does
+  // Using a formula outside the condition R&M states for it warns. It does
   // not block — the predecessor library never read these conditions at all, and
   // a student who does not know one exists is exactly who this is for.
   if (outside > 0) {
@@ -545,8 +545,8 @@ function sourceOf(
 ): { readonly value: Series; readonly unit: Unit } {
   const key = endpointKey(node.id, port);
   const value = (() => {
-    // An output's own port is never spectrum-kind (S71 only widens a
-    // formula's input), so resolveGraph has already refused a second edge.
+    // An output's own port is never spectrum-kind — only a
+    // formula's input can be widened that way — so resolveGraph has already refused a second edge.
     const edge = resolution.incoming.get(key)?.[0];
     if (edge === undefined) throw new KernelError(`'${port}' is not connected`, key);
     const found = values.get(endpointKey(edge.from.node, edge.from.port));
@@ -660,7 +660,7 @@ function outputResult(
 
   // Up to three slots — x, series (color), facet (small multiples) — each
   // either pinned by the student or filled automatically from axes the
-  // plotted value varies along (S43), in document order. A pinned slot is
+  // plotted value varies along, in document order. A pinned slot is
   // never touched, and never double-filled by autofill.
   const pinned = new Set(
     [output.x, output.series, output.facet].filter((id): id is string => id !== undefined),

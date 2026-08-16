@@ -32,7 +32,7 @@ describe('single values', () => {
   });
 });
 
-describe('range kinds (S29)', () => {
+describe('range kinds', () => {
   it('counts points, both endpoints included', () => {
     expect(lengthOf({ kind: 'linear', start: 20, stop: 60, points: 21, unit: 'mm' })).toBe(21);
   });
@@ -53,7 +53,7 @@ describe('range kinds (S29)', () => {
     expect(lengthOf(json)).toBe(4);
   });
 
-  it('sweeps categoricals by explicit list only (S38)', () => {
+  it('sweeps categoricals by explicit list only', () => {
     const json = { kind: 'categoricalList', values: ['H7', 'H8', 'K7'] } as const;
     expect(roundTrip(json)).toEqual(json);
     expect(lengthOf(json)).toBe(3);
@@ -94,7 +94,7 @@ describe('range kinds (S29)', () => {
   });
 });
 
-describe('spectrum values (S36)', () => {
+describe('spectrum values', () => {
   it('is an explicit list and is not a range, so it introduces no axis', () => {
     const json = { kind: 'spectrum', values: [12, 30, 58], unit: 'kW' } as const;
     const value = parseValueSpec(json, 'v');

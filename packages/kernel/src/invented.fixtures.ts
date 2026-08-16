@@ -159,7 +159,7 @@ export const COMBINE: JsonObject = {
   status: 'unverified',
 };
 
-/** Quarantined, so that S19's gate has something to refuse. */
+/** Quarantined, so that the quarantine gate has something to refuse. */
 export const BROKEN: JsonObject = {
   id: 'broken',
   version: 1,
@@ -199,7 +199,7 @@ export const MULTIPLY: JsonObject = {
   status: 'unverified',
 };
 
-/** Takes an angle, so the S54 connection rule has a port to arrive at. */
+/** Takes an angle, so the dimensionless-into-angle connection rule has a port to arrive at. */
 export const SINE: JsonObject = {
   id: 'sineOf',
   version: 1,
@@ -221,7 +221,7 @@ export const TOTAL: JsonObject = {
   status: 'unverified',
 };
 
-/** Carries a condition, so S40's warning has something to fire on. */
+/** Carries a condition, so the appliesWhen warning has something to fire on. */
 export const CONDITIONAL: JsonObject = {
   id: 'conditional',
   version: 1,

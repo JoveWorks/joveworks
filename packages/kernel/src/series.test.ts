@@ -46,7 +46,7 @@ describe('axes', () => {
   });
 });
 
-describe('broadcasting (S43)', () => {
+describe('broadcasting', () => {
   const grid = unionAxes([d], [t]);
 
   it('repeats a scalar over every cell', () => {

@@ -17,7 +17,7 @@ import type { JsonObject } from './json.js';
  * test of the fields that happened to be written.
  *
  * The formula it references is invented (`demo.product`, `y = a*b + c`), and the
- * document does not carry its expression at all — that is S23 working.
+ * document does not carry its expression at all — that is deliberate.
  */
 const study: JsonObject = {
   schemaVersion: SCHEMA_VERSION,
@@ -128,7 +128,7 @@ describe('round-tripping (the verification docs/PLAN.md asks for)', () => {
     expect(serializeDocument(reloaded)).toEqual(study);
   });
 
-  it('never carries a catalogue formula’s expression into the graph file (S23)', () => {
+  it('never carries a catalogue formula’s expression into the graph file', () => {
     expect(saveDocument(parseDocument(study))).not.toMatch(/a\*b/);
   });
 
@@ -149,7 +149,7 @@ describe('round-tripping (the verification docs/PLAN.md asks for)', () => {
     });
   });
 
-  it('stamps an empty document with the version this build writes (S25)', () => {
+  it('stamps an empty document with the version this build writes', () => {
     const document = emptyDocument('study-2', 'Untitled');
     expect(document.schemaVersion).toBe(SCHEMA_VERSION);
     expect(loadDocument(saveDocument(document))).toEqual(document);
@@ -160,7 +160,7 @@ describe('round-tripping (the verification docs/PLAN.md asks for)', () => {
   });
 });
 
-describe('labelled axes (S43)', () => {
+describe('labelled axes', () => {
   it('counts one axis per range input node, and no others', () => {
     expect(axes(parseDocument(study)).map((node) => node.id)).toEqual(['d', 'fit']);
   });
@@ -187,7 +187,7 @@ describe('labelled axes (S43)', () => {
     expect(() => parseDocument(broken)).toThrow(/'load' is not a range input node/);
   });
 
-  it('accepts a plot with x left unset — the kernel fills it in (S43)', () => {
+  it('accepts a plot with x left unset — the kernel fills it in', () => {
     const auto = {
       ...study,
       nodes: (study['nodes'] as JsonObject[]).map((node) =>
@@ -214,7 +214,7 @@ describe('labelled axes (S43)', () => {
   });
 });
 
-describe('group frames as notebook sections (S28/S30)', () => {
+describe('group frames as notebook sections', () => {
   it('collects the nodes of a section', () => {
     const document = parseDocument(study);
     expect(nodesInFrame(document, 'sizing').map((node) => node.id)).toEqual(['d', 'n1', 'o-value']);
@@ -250,7 +250,7 @@ describe('structural integrity', () => {
     expect(() => parseDocument(broken)).toThrow(/nodes\[10\]\.id: 'd' appears twice/);
   });
 
-  it('refuses a document written by a schema version it does not read (S25)', () => {
+  it('refuses a document written by a schema version it does not read', () => {
     expect(() => parseDocument({ ...study, schemaVersion: 99 })).toThrow(
       /this build reads version 1 only/,
     );

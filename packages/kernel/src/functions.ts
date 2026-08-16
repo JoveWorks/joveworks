@@ -1,5 +1,5 @@
 /**
- * S35's function whitelist: what an expression may call, what it computes, and
+ * The function whitelist: what an expression may call, what it computes, and
  * what it does to a dimension.
  *
  * A whitelist rather than a namespace import is the point. `Math` carries
@@ -8,10 +8,10 @@
  * one, `log` refuses one. Each entry states its own rule, because that is the
  * part a wrong answer hides in.
  *
- * Three rules from S35, and one from S54:
+ * Three rules govern this whitelist:
  *
  * - trig, log and exp **require a dimensionless argument** — except that `sin`,
- *   `cos` and `tan` also accept an angle, which is S54 read the other way round:
+ *   `cos` and `tan` also accept an angle, read the other way round:
  *   angle is a tracked dimension here, and R&M tags belt's wrap angles `[]`, so
  *   both spellings arrive and both are correct;
  * - `min`/`max` require **identical** dimensions across their arguments;
@@ -62,7 +62,7 @@ function pureArgument(args: readonly Dimension[], where: string | undefined, nam
   const argument = args[0] as Dimension;
   if (isDimensionless(argument)) return DIMENSIONLESS;
   throw new KernelError(
-    `${name}() takes a pure number, not ${describeDimension(argument)} (S35)`,
+    `${name}() takes a pure number, not ${describeDimension(argument)}`,
     where,
   );
 }
@@ -70,7 +70,7 @@ function pureArgument(args: readonly Dimension[], where: string | undefined, nam
 function sameAcross(args: readonly Dimension[], where: string | undefined, name: string): Dimension {
   const first = args[0] as Dimension;
   for (const other of args.slice(1)) {
-    assertSameDimension(first, other, `${name}() compares values of one dimension (S35)`, where);
+    assertSameDimension(first, other, `${name}() compares values of one dimension`, where);
   }
   return first;
 }
@@ -158,7 +158,7 @@ export const FUNCTIONS: ReadonlyMap<string, FunctionSpec> = new Map(
 );
 
 /**
- * The reductions of S36. Separate from `FUNCTIONS` because their argument is a
+ * The spectrum reductions. Separate from `FUNCTIONS` because their argument is a
  * whole series rather than a value: a sweep *produces* a series and these
  * *consume* one, so they can only be applied to a spectrum port, by name.
  */

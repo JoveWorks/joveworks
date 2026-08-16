@@ -6,7 +6,7 @@ const src = (pkg: string) =>
 
 // Tests run against source, not dist, so a test run never depends on a build
 // having happened first. `tsc -b` is what enforces the dependency direction
-// (S22); these aliases deliberately do not add resolution the compiler refuses.
+//; these aliases deliberately do not add resolution the compiler refuses.
 export default defineConfig({
   resolve: {
     alias: {

@@ -13,8 +13,8 @@
  * never `(N/mm)·s`. `s-1`, `mm²`, `mm**2` and `mm^2` are all accepted, because
  * all of those spellings occur in the tags this has to read.
  *
- * There is no fallback: an unrecognised symbol raises. S5 makes an undeclared
- * unit a hard error, and a unit that silently parses to the wrong thing is the
+ * There is no fallback: an unrecognised symbol raises. An undeclared
+ * unit is a hard error, and a unit that silently parses to the wrong thing is the
  * same failure wearing a better disguise.
  */
 

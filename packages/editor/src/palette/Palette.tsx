@@ -254,7 +254,7 @@ export function Palette(): ReactElement {
 
         {grouped.map(([catalogueId, list]) => {
           const isCollapsed = query.trim().length === 0 && collapsed.has(catalogueId);
-          // `compare` isn't a formula (S60) but reads as one operation among
+          // `compare` isn't a formula but reads as one operation among
           // others by shape — two ports in, one computed value out — so it
           // rides along in the Math section rather than earning its own.
           const isMath = catalogueId === BASE_CATALOGUE_ID;
@@ -270,7 +270,7 @@ export function Palette(): ReactElement {
                   <span className="section-toggle-title">
                     {list[0]?.catalogue.name ?? catalogueId}
                     {list[0]?.catalogue.restricted === true ? (
-                      <span className="restricted" title="Restricted content — never exported (S32).">
+                      <span className="restricted" title="Restricted content — never exported.">
                         restricted
                       </span>
                     ) : null}

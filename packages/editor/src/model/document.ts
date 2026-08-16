@@ -398,7 +398,7 @@ export function pruneEdgesTo(
  * its first column as `value` and drops the rest (a single-port kind has
  * nowhere else for them to go); entering table adopts whatever was on
  * `value` as a first column, named after its source the same way a fresh
- * column from the ghost slot is (Canvas.tsx, S71-style). Between print,
+ * column from the ghost slot is (Canvas.tsx). Between print,
  * check and plot — all single-`value`-port kinds — nothing needs adapting.
  */
 export function changeOutputKind(document: GraphDocument, nodeId: string, next: Output): GraphDocument {
@@ -501,7 +501,7 @@ function inside(position: Position, frame: Frame): boolean {
 /**
  * Which section each node is in, decided by where it sits.
  *
- * Membership is *not* a thing to manage separately: S30 makes the canvas layout
+ * Membership is *not* a thing to manage separately: the canvas layout is
  * the report outline, so dragging a node into a frame is how it joins that
  * section. The last frame wins where two overlap, which is the one drawn on top.
  */

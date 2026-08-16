@@ -8,7 +8,7 @@
  * binary floating point.
  *
  * So the rule is: documents carry authored numbers, and **conversion happens
- * when a document is loaded into the kernel**. That is the boundary S5 means.
+ * when a document is loaded into the kernel**. That is the boundary.
  * `canonicalValue` is the one function that crosses it.
  */
 
@@ -74,7 +74,7 @@ export function serializeQuantity(quantity: Quantity): JsonObject {
   return { value: quantity.value, unit: quantity.unit.symbol };
 }
 
-/** The one crossing of the S5 boundary: authored magnitude → mm-N-s-rad-K. */
+/** The one crossing of that boundary: authored magnitude → mm-N-s-rad-K. */
 export function canonicalValue(quantity: Quantity): number {
   return toCanonical(quantity.value, quantity.unit);
 }

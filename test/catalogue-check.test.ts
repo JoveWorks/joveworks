@@ -12,7 +12,7 @@ import { KernelError, checkFormulaDimensions } from '@mds/kernel';
  * docs/PLAN.md asks this of every migrated formula, and it is why the kernel was
  * built before any extraction ran. It lives here rather than in `kernel`
  * because the catalogue it checks is **not in this repository** and never will
- * be (S45): the R&M content sits in a separate private repo, so this points at
+ * be: the R&M content sits in a separate private repo, so this points at
  * a path given in `MDS_CATALOGUE` and skips when there is none. A public
  * checkout has nothing to check, and that is the boundary working rather than
  * a gap in the tests.
@@ -43,7 +43,7 @@ function check(formula: Formula): string | undefined {
 }
 
 describe('a migrated catalogue', () => {
-  it('is only checked when one is named — the restricted half is another repo (S45)', () => {
+  it('is only checked when one is named — the restricted half is another repo', () => {
     expect(present || path === undefined).toBe(true);
   });
 
@@ -72,7 +72,7 @@ describe('a migrated catalogue', () => {
     expect(spurious).toEqual([]);
   });
 
-  it.runIf(present)('names every formula uniquely and under a namespace (S65)', () => {
+  it.runIf(present)('names every formula uniquely and under a namespace', () => {
     // A graph's reference carries no catalogue id, so these ids share one
     // namespace with `add` from the base library.
     const ids = catalogue().formulas.map((formula) => formula.id);

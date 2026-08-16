@@ -6,7 +6,7 @@
  * output results — which is the path a student actually takes, and the one that
  * could quietly diverge from the test's hand-built document.
  *
- * The catalogue is not in this repository and never will be (S45), so this skips
+ * The catalogue is not in this repository and never will be, so this skips
  * without `MDS_CATALOGUE`, exactly as the goldens test does. What is asserted
  * here is numbers and ids; no expression appears.
  */
@@ -30,11 +30,11 @@ const CATALOGUES: readonly Catalogue[] = present
   : [baseCatalogue()];
 
 describe('the samples the editor opens with', () => {
-  it('offers the pad sweep with nothing but the base library loaded (S42)', () => {
+  it('offers the pad sweep with nothing but the base library loaded', () => {
     expect(padPressure([baseCatalogue()])).toBeDefined();
   });
 
-  it('withholds the belt lab until its catalogue is loaded, rather than embedding it (S23)', () => {
+  it('withholds the belt lab until its catalogue is loaded, rather than embedding it', () => {
     expect(beltLab([baseCatalogue()])).toBeUndefined();
   });
 });

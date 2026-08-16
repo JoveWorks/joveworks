@@ -1,7 +1,7 @@
 /**
  * An output node: a rendering choice over a value that already exists.
  *
- * All four of S33's kinds are offered here. A **table**'s columns are extra
+ * All four kinds are offered here. A **table**'s columns are extra
  * target ports of its own, and exist only while something is wired to them —
  * the same rule a spectrum port's slots follow. Wiring onto the
  * trailing ghost slot creates a column named after the *node* on the wire's
@@ -225,7 +225,7 @@ export function OutputNodeView({ id, selected }: NodeProps): ReactElement | null
                   className="quantity"
                   value={formatAuthored(output.threshold, format)}
                   placeholder="1.5"
-                  title="A number a student types, with its unit (S58)."
+                  title="A number a student types, with its unit."
                   onCommit={(text) => setOutput({ ...output, threshold: parseAuthored(text, format) })}
                 />
               </label>

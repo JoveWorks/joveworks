@@ -41,7 +41,7 @@ export function basicMechanicsCatalogue(): Catalogue {
 /**
  * Add or replace a catalogue by id. Loading the same file twice is a normal
  * thing to do — a corrected catalogue lands the same way the first one did
- * — and it must not leave two copies for S65 to trip over.
+ * — and it must not leave two copies lying around to trip over.
  */
 export function withCatalogue(
   catalogues: readonly Catalogue[],

@@ -1,8 +1,8 @@
 /**
- * The base node library's operations: arithmetic, the S35 function whitelist,
- * and the two reductions of S36.
+ * The base node library's operations: arithmetic, the function whitelist,
+ * and the two reductions.
  *
- * Every one of these is an ordinary `Formula` record. That is the point of S42 —
+ * Every one of these is an ordinary `Formula` record. That is the point —
  * the palette has one kind of entry, a graph references a base node exactly as
  * it references a belt formula (id, version, hash), and the kernel gets one
  * evaluation path rather than two.
@@ -10,7 +10,7 @@
  * **Nothing here is textbook content.** These are the operations of arithmetic;
  * they carry no citation, and the catalogue is `restricted: false`.
  *
- * Three rules govern the dimensions, and all three are S35's:
+ * Three rules govern the dimensions:
  *
  * - trig, log and exp **require a dimensionless argument** — so their ports are
  *   concrete, not generic;
@@ -85,14 +85,14 @@ const DRAFTS: readonly Draft[] = [
   },
   {
     id: 'minimum',
-    description: 'The smallest of any number of values, all the same dimension (S35, S71).',
+    description: 'The smallest of any number of values, all the same dimension.',
     expression: 'least(a)',
     output: generic('smallest', 'A', 'least(a)'),
     inputs: [genericSpectrum('a', 'A', 'Values to compare — wire as many as needed')],
   },
   {
     id: 'maximum',
-    description: 'The largest of any number of values, all the same dimension (S35, S71).',
+    description: 'The largest of any number of values, all the same dimension.',
     expression: 'greatest(a)',
     output: generic('largest', 'A', 'greatest(a)'),
     inputs: [genericSpectrum('a', 'A', 'Values to compare — wire as many as needed')],
@@ -261,14 +261,14 @@ const DRAFTS: readonly Draft[] = [
   },
   {
     id: 'naturalLogarithm',
-    description: 'Natural logarithm. The argument must be dimensionless (S35).',
+    description: 'Natural logarithm. The argument must be dimensionless.',
     expression: 'log(x)',
     output: plain('result', '', 'ln x'),
     inputs: [plain('x', '', 'Value, greater than zero')],
   },
   {
     id: 'exponential',
-    description: 'e raised to a power. The argument must be dimensionless (S35).',
+    description: 'e raised to a power. The argument must be dimensionless.',
     expression: 'exp(x)',
     output: plain('result', '', 'eˣ'),
     inputs: [plain('x', '', 'Exponent')],
@@ -287,7 +287,7 @@ const DRAFTS: readonly Draft[] = [
   {
     id: 'sum',
     description:
-      'Total of a whole series — a load spectrum consumed at once, not a swept range (S36).',
+      'Total of a whole series — a load spectrum consumed at once, not a swept range.',
     expression: 'sum(xs)',
     output: generic('total', 'A', 'Σ xᵢ'),
     inputs: [
@@ -308,9 +308,9 @@ const DRAFTS: readonly Draft[] = [
 /**
  * The operation records.
  *
- * Every one is `unverified` under S19, and honestly so: no golden value
+ * Every one is `unverified`, and honestly so: no golden value
  * exercises them yet. The kernel's own tests are what will move them, and until
- * then "we wrote it, so it is right" is exactly the assumption S19 exists to
+ * then "we wrote it, so it is right" is exactly the assumption `unverified` exists to
  * refuse.
  */
 export const OPERATIONS: readonly Formula[] = DRAFTS.map((draft) => ({

@@ -1,14 +1,14 @@
 /**
- * Dimension algebra over the canonical base of S5: mm, N, s, rad, K.
+ * Dimension algebra over the canonical base: mm, N, s, rad, K.
  *
  * The base is a *force* base, not a mass base, so mass is derived: from F = m·a,
- * mass = force·time²/length = N·s²/mm = tonne. That is the trap S5 names — a
+ * mass = force·time²/length = N·s²/mm = tonne. That is the trap — a
  * density given in kg/dm³ is 1e-9 t/mm³, and getting it wrong is silent.
  *
  * Angle is tracked as its own exponent rather than folded into dimensionless.
  * SI calls the radian dimensionless, so this is a deliberate strengthening: it
  * stops a length being wired into an angle port. The cost lands on the function
- * whitelist of S35 — `sin` has to accept a dimensionless argument as well as an
+ * whitelist — `sin` has to accept a dimensionless argument as well as an
  * angle, because R&M tags belt's wrap angles `[]`. That rule belongs to the
  * expression checker, not here; this package only supplies the algebra.
  */

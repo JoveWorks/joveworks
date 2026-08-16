@@ -1,10 +1,10 @@
 /**
  * Units: a dimension plus the factor that takes a displayed number into the
- * canonical base of S5.
+ * canonical base.
  *
  *     canonical = displayed * factor
  *
- * Factors only, no offsets — which is why S5 fixes Kelvin rather than Celsius.
+ * Factors only, no offsets — which is why Kelvin is used rather than Celsius.
  */
 
 import {
@@ -175,8 +175,8 @@ export function knownUnitSymbols(): readonly string[] {
  * under a prefix already applied (`kPa` → `Pa`). Undefined for anything
  * else: a compound expression such as `N/mm²` never matches an `ATOMS` key
  * with or without a prefix stripped, so it is excluded with no special case
- * needed — there is no unambiguous SI prefix for a ratio (S49: a display
- * unit is printed exactly as authored unless this says otherwise).
+ * needed — there is no unambiguous SI prefix for a ratio, and a display
+ * unit is printed exactly as authored unless this says otherwise.
  */
 export function prefixableAtomOf(symbol: string): string | undefined {
   if (ATOMS[symbol]?.prefixable === true) return symbol;

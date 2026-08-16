@@ -46,7 +46,7 @@ function portVariables(port: Port): readonly string[] {
 }
 
 /**
- * S19/S20. `verified` means a golden value exercises it and the result matched;
+ * `verified` means a golden value exercises it and the result matched;
  * `unverified` is the honest default for everything no golden path touches;
  * `quarantined` cannot be evaluated at all — a known defect, or a unit tag that
  * could not be resolved. Quarantine is visible rather than silently dropped,
@@ -82,7 +82,7 @@ export interface Formula {
   readonly quarantineReason?: string;
 }
 
-/** S19's gate: a quarantined formula cannot be evaluated, by anyone, ever. */
+/** The quarantine gate: a quarantined formula cannot be evaluated, by anyone, ever. */
 export function isEvaluable(formula: Formula): boolean {
   return formula.status !== 'quarantined';
 }
@@ -114,7 +114,7 @@ export function parseFormula(value: JsonValue, path: string): Formula {
     const bound = new Set(inputs.flatMap(portVariables));
     for (const name of genericVariables(output.unit)) {
       if (!bound.has(name)) {
-        fail(join(path, 'output.unit'), `'$${name}' is not bound by any input port (S59)`);
+        fail(join(path, 'output.unit'), `'$${name}' is not bound by any input port`);
       }
     }
   }
@@ -133,7 +133,7 @@ export function parseFormula(value: JsonValue, path: string): Formula {
   const status = readEnum(required(object, 'status', path), join(path, 'status'), FORMULA_STATUSES);
   const quarantineReason = optional(object, 'quarantineReason', path, readString);
   if (status === 'quarantined' && quarantineReason === undefined) {
-    fail(join(path, 'quarantineReason'), 'is required when a formula is quarantined (S19)');
+    fail(join(path, 'quarantineReason'), 'is required when a formula is quarantined');
   }
 
   return {
@@ -167,7 +167,7 @@ export function serializeFormula(formula: Formula): JsonObject {
   };
 }
 
-/** The content hash of S23, taken over the serialized record. */
+/** The content hash, taken over the serialized record. */
 export function formulaHash(formula: Formula): string {
   return hashRecord(serializeFormula(formula));
 }
@@ -176,7 +176,7 @@ export function formulaHash(formula: Formula): string {
  * How a graph names a formula: id, version and hash, **never the formula
  * itself**. Graph files circulate — email, git, hand-ins — so an embedded
  * expression would carry restricted content straight past the repository
- * boundary of S45. The cost is that a graph needs its catalogue to open, which
+ * boundary. The cost is that a graph needs its catalogue to open, which
  * is the deliberate trade.
  */
 export interface FormulaRef {
@@ -219,7 +219,7 @@ export function matchRef(ref: FormulaRef, formula: Formula | undefined): RefMatc
  * A catalogue is just a file of formulas. `restricted` is the honest label
  * on one: the R&M catalogue is marked so the app can refuse to put its
  * expressions into an export. It is a statement of intent inside the app,
- * not the enforcement — the enforcement is the repository boundary of S45.
+ * not the enforcement — the enforcement is the repository boundary.
  */
 export interface Catalogue {
   readonly schemaVersion: number;
