@@ -110,22 +110,6 @@ decided: a scripted overlay walkthrough, not a static page (that's for a
 future docs companion app), reachable again afterwards from the ribbon's
 existing help menu rather than shown once and gone.
 
-**Autosave.** Save/load already exists (File menu → `Open…`/`Save`,
-`io/files.ts`) as an explicit action; what's missing is recovery from an
-accidental tab close. A periodic snapshot of the current document to
-localStorage/IndexedDB, with a "restore unsaved work?" prompt on next load —
-a safety net alongside the explicit save, not a replacement for it.
-
-**An Equation output node**, wired to a single upstream formula node's
-output port, that renders that node's `Formula.expression` as typeset math
-rather than a value. This is the mechanism for showing equations in the
-notebook ("expressions only behind an explicitly marked toggle") —
-the node itself is the marked toggle, opt-in by construction, rather than a
-global setting. Citation defaults to the caption, overridable like any other
-node's caption. Needs an AST→LaTeX printer (new, but not a CAS — expressions
-are already parsed to an AST for evaluation) and a renderer dependency (e.g.
-KaTeX) in the editor.
-
 **Catalogue authoring should be easier for contributors.** Today a
 catalogue is authored by running the extraction script (`tools/extract/`,
 R&M content only) or hand-writing JSON against the schema — a real authoring
