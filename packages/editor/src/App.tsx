@@ -152,10 +152,33 @@ function AppShell(): ReactElement {
   const commitEdit = (): void => setHistory((current) => commitPending(current));
   const undo = (): void => setHistory(undoHistory);
   const redo = (): void => setHistory(redoHistory);
+  // The serialized text of the document the last time it was known to be
+  // safe to walk away from — right after an explicit Save, or right after
+  // loading something new (whatever just loaded is by definition not
+  // unsaved yet). `undefined` while a restored autosave hasn't been saved
+  // to a file at all, so it reads as dirty from the very first render
+  // rather than only once it's edited again.
+  const [savedSnapshot, setSavedSnapshot] = useState<string | undefined>(() =>
+    restoredAutosave ? undefined : saveDocument(initialDocument),
+  );
+  const isDirty = savedSnapshot === undefined || saveDocument(document) !== savedSnapshot;
   // Loading a different document (open file, a sample) starts a fresh undo
   // history — there is nothing to gain from undoing back into a document
-  // that is no longer open, same as most editors treat "open a file".
-  const resetDocument = (next: GraphDocument): void => setHistory(initHistory(next));
+  // that is no longer open, same as most editors treat "open a file". It
+  // also resets the dirty baseline: what just loaded is the new "saved"
+  // state until it's edited again.
+  const resetDocument = (next: GraphDocument): void => {
+    setHistory(initHistory(next));
+    setSavedSnapshot(saveDocument(next));
+  };
+  // Guards anything that calls `resetDocument` behind a confirmation once
+  // there's something to lose — New, Open, a recent document, a sample, the
+  // tutorial. Runs the action immediately when the graph is already clean.
+  const [pendingDiscard, setPendingDiscard] = useState<(() => void) | undefined>(undefined);
+  const guardDiscard = (action: () => void): void => {
+    if (isDirty) setPendingDiscard(() => action);
+    else action();
+  };
   const [pinned, setPinned] = useState<ReadonlySet<string>>(new Set());
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [hovered, setHovered] = useState<ReadonlySet<string>>(new Set());
@@ -381,9 +404,11 @@ function AppShell(): ReactElement {
     {
       label: 'Save',
       onClick: () => {
-        saveTextFile(`${document.id}.mds.json`, saveDocument(document));
+        const text = saveDocument(document);
+        saveTextFile(`${document.id}.mds.json`, text);
         recordRecentDocument(document);
         clearAutosaveSnapshot();
+        setSavedSnapshot(text);
       },
     },
     { heading: 'Recent' },
