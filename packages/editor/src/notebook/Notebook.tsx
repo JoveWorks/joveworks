@@ -437,7 +437,17 @@ export function Notebook(): ReactElement {
   }, [printing]);
 
   return (
-    <div className="notebook">
+    <div
+      className="notebook"
+      // A dragged section's own drop targets (the sections themselves) call
+      // this already; this catch-all is for everywhere else in the panel —
+      // the title, the export button, the warnings list — none of which has
+      // a drop handler of its own, so without this the browser falls back to
+      // its default action for a text/plain drop onto a text field: inserting
+      // it as literal text.
+      onDragOver={(event) => event.preventDefault()}
+      onDrop={(event) => event.preventDefault()}
+    >
       <div className="notebook-header">
         <input
           className="notebook-title"
