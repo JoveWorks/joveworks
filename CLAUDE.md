@@ -210,7 +210,14 @@ revisit them when there's a reason to.
   or drive it yourself** — he already has it running and killing/restarting it
   from underneath him loses that session. State what you changed and what to
   check for; let him report back what he saw.
-- **Work on `main`.** No feature branches until there is an MVP.
+- **Work on `main`.** No feature branches until there is an MVP — except
+  worktree agents (`.claude/worktrees/*`, branches named `worktree-*`),
+  which by necessity work on their own branch in an isolated worktree.
+  **Before merging a worktree branch into `main`, check its work**: read the
+  diff, not just the commit message, and run `pnpm build && pnpm test` on
+  the merge result before considering it done — a clean merge is not the
+  same as a reviewed one. An agent's own summary describes what it intended
+  to do, not necessarily what it did.
 - **Do not build for hypothetical futures.** This is early development; scope
   decisions have repeatedly been narrowed on purpose. When
   something looks like infrastructure for a problem that does not exist yet, say
