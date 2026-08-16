@@ -256,7 +256,7 @@ export function ValueFields({ value, onChange }: Props): ReactElement {
         <div className="slider-split">
           <input
             type="range"
-            className="slider-track"
+            className="slider-track nodrag"
             min={value.min}
             max={value.max}
             step="any"
