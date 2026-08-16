@@ -228,9 +228,11 @@ function Section({
    */
   readonly onDragEnd: () => void;
 }): ReactElement | null {
-  const { document, analysis, edit, editLive, commitEdit } = useGraph();
+  const { document, analysis, edit, editLive, commitEdit, setHovered } = useGraph();
   const [menu, setMenu] = useState<{ x: number; y: number } | undefined>(undefined);
   if (outputs.length === 0) return null;
+
+  const clearHover = (): void => setHovered(() => new Set());
 
   const results = new Map(
     (analysis.evaluation?.outputs ?? []).map((result) => [result.nodeId, result] as const),
@@ -287,7 +289,14 @@ function Section({
         setMenu({ x: event.clientX, y: event.clientY });
       }}
     >
-      <h2>
+      <h2
+        {...(frame === undefined
+          ? {}
+          : {
+              onMouseEnter: () => setHovered(() => new Set([frame.id])),
+              onMouseLeave: clearHover,
+            })}
+      >
         {frame === undefined ? null : (
           <span className="grip" aria-hidden="true">
             ⠿
@@ -380,7 +389,12 @@ function Section({
                 ? { defaultCaption: result.citation ?? node.label ?? node.id }
                 : {};
             return (
-              <div key={node.id} className="entry">
+              <div
+                key={node.id}
+                className="entry"
+                onMouseEnter={() => setHovered(() => new Set([node.id]))}
+                onMouseLeave={clearHover}
+              >
                 {result === undefined ? (
                   <p className="result pending">
                     <span className="label">{node.label ?? node.id}</span>

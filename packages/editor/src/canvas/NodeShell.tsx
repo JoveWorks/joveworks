@@ -27,6 +27,7 @@ interface Props {
   readonly problem?: ReactNode;
   readonly warning?: string;
   readonly selected: boolean;
+  readonly highlighted?: boolean;
   readonly pinned: boolean;
   readonly onTogglePin: () => void;
   readonly onDelete: () => void;
@@ -44,6 +45,7 @@ export function NodeShell({
   problem,
   warning,
   selected,
+  highlighted,
   pinned,
   onTogglePin,
   onDelete,
@@ -55,7 +57,7 @@ export function NodeShell({
 
   return (
     <div
-      className={`node node-${kind} state-${state}${open ? ' open' : ''}`}
+      className={`node node-${kind} state-${state}${open ? ' open' : ''}${highlighted ? ' highlighted' : ''}`}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >

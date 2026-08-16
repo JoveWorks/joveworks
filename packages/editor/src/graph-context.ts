@@ -39,6 +39,15 @@ export interface GraphContextValue {
    */
   readonly selected: ReadonlySet<string>;
   readonly setSelected: (update: (current: ReadonlySet<string>) => ReadonlySet<string>) => void;
+  /**
+   * What the notebook is currently hovering, by id — a section title hovers
+   * its frame, a result block hovers its output node. Lives here for the
+   * same reason `selected` does: the notebook and the canvas are siblings
+   * under this context, not parent/child, so there is nowhere closer to
+   * share it.
+   */
+  readonly hovered: ReadonlySet<string>;
+  readonly setHovered: (update: (current: ReadonlySet<string>) => ReadonlySet<string>) => void;
 }
 
 export const GraphContext = createContext<GraphContextValue | undefined>(undefined);

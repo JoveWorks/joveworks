@@ -94,7 +94,7 @@ function Verdict({ nodeId }: { readonly nodeId: string }): ReactElement | null {
 }
 
 export function OutputNodeView({ id, selected }: NodeProps): ReactElement | null {
-  const { document, analysis, edit, pinned, togglePin } = useGraph();
+  const { document, analysis, edit, pinned, togglePin, hovered } = useGraph();
   const { numberFormat } = useSettings();
   const format = toUnitsFormat(numberFormat);
   const [columnDrag, setColumnDrag] = useState<
@@ -142,6 +142,7 @@ export function OutputNodeView({ id, selected }: NodeProps): ReactElement | null
       state={analysis.states.get(id) ?? 'ok'}
       {...(analysis.problems.has(id) ? { problem: analysis.problems.get(id) } : {})}
       selected={selected ?? false}
+      highlighted={hovered.has(id)}
       pinned={pinned.has(id)}
       onTogglePin={() => togglePin(id)}
       onDelete={() => edit((current) => reframe(removeNodes(current, new Set([id]))))}

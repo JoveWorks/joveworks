@@ -651,6 +651,14 @@ aside.right {
   border-color: var(--accent);
 }
 
+/* Hovering the notebook's own view of a node (a result block, a section
+   title) highlights its canvas counterpart the same way selection does —
+   see `hovered` in graph-context.ts. */
+.node.highlighted,
+.frame.highlighted {
+  border-color: var(--accent);
+}
+
 /*
  * A plain outline is a rectangle regardless of the element's own
  * border-radius — Chrome and Safari never clip it — so on a rounded card
