@@ -113,6 +113,19 @@ describe('analysing a graph mid-build', () => {
     expect(text(analysis.problems.get('half'))).toContain('not connected');
   });
 
+  it('carries the owning catalogue alongside each formula node, so the canvas can show provenance', () => {
+    const document = graph(
+      [scalar('a', 2), scalar('b', 3), formulaNode('sum', 'inv.sum'), closureNode('eq', 'a + b')],
+      [wire('e1', ['a', 'value'], ['sum', 'a']), wire('e2', ['b', 'value'], ['sum', 'b'])],
+    );
+    const analysis = analyse(document, CATALOGUES);
+
+    expect(analysis.sources.get('sum')).toMatchObject({ id: 'invented', name: 'Invented', restricted: false });
+    // A closure's formula is synthesised from its expression, not drawn from
+    // any catalogue, so it has no source to show.
+    expect(analysis.sources.has('eq')).toBe(false);
+  });
+
   it('refuses a quarantined formula and blocks what depends on it, not the rest', () => {
     const document = graph(
       [

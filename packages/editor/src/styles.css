@@ -489,6 +489,17 @@ aside.right {
   color: var(--muted);
 }
 
+/* Which catalogue a formula came from — quiet by default, the same way the
+   palette's section header names its source, and coloured like the
+   palette's `.restricted` badge only when the catalogue actually is one. */
+.node .source {
+  color: var(--muted);
+}
+
+.node .source.restricted {
+  color: var(--state-quarantined);
+}
+
 .node .node-value {
   position: relative;
   margin-top: 4px;

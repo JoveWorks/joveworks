@@ -77,6 +77,12 @@ export interface Analysis {
   readonly evaluation?: Evaluation;
   /** node id → the formula it references, for drawing ports and citations. */
   readonly formulas: ReadonlyMap<string, Formula>;
+  /**
+   * node id → the catalogue that formula came from, for showing provenance on
+   * the node. Only formula nodes have one — a closure's formula is synthesised
+   * from its expression, not drawn from any catalogue.
+   */
+  readonly sources: ReadonlyMap<string, Catalogue>;
   readonly states: ReadonlyMap<string, NodeState>;
   /** node id → why it is not `ok`, in the kernel's own words. */
   readonly problems: ReadonlyMap<string, ReactNode>;
@@ -92,6 +98,17 @@ export function lookup(catalogues: readonly Catalogue[], id: string): Formula | 
     if (found !== undefined) return found;
   }
   return undefined;
+}
+
+/**
+ * The catalogue that carries a formula id — the same search as `lookup`, but
+ * returning the owning catalogue rather than the formula. A canvas node needs
+ * this to show where it came from; the palette gets it for free by pairing
+ * `{ formula, catalogue }` directly off catalogue data (`PaletteEntry`), but a
+ * node only has the flat `analysis.formulas` map, which carries no back-reference.
+ */
+export function lookupCatalogue(catalogues: readonly Catalogue[], id: string): Catalogue | undefined {
+  return catalogues.find((catalogue) => findFormula(catalogue, id) !== undefined);
 }
 
 /** Whether an unwired input port can stand in for itself (the kernel's rule). */
@@ -271,6 +288,7 @@ export function analyse(document: GraphDocument, catalogues: readonly Catalogue[
   const states = new Map<string, NodeState>();
   const problems = new Map<string, ReactNode>();
   const formulas = new Map<string, Formula>();
+  const sources = new Map<string, Catalogue>();
 
   for (const node of document.nodes) {
     if (node.kind === 'formula') {
@@ -285,6 +303,8 @@ export function analyse(document: GraphDocument, catalogues: readonly Catalogue[
         continue;
       }
       formulas.set(node.id, formula);
+      const catalogue = lookupCatalogue(catalogues, node.formula.id);
+      if (catalogue !== undefined) sources.set(node.id, catalogue);
       continue;
     }
     if (node.kind === 'closure') {
@@ -329,7 +349,14 @@ export function analyse(document: GraphDocument, catalogues: readonly Catalogue[
   if (resolution === undefined) {
     // Without a resolution there are no port types and no order, so nothing can
     // be evaluated — but the canvas still draws, which is the point.
-    return { formulas, states, problems, warnings: [], ...(message === undefined ? {} : { message }) };
+    return {
+      formulas,
+      sources,
+      states,
+      problems,
+      warnings: [],
+      ...(message === undefined ? {} : { message }),
+    };
   }
 
   let ready = readiness(document, resolution.order, formulas, states, problems);
@@ -366,6 +393,7 @@ export function analyse(document: GraphDocument, catalogues: readonly Catalogue[
     resolution,
     ...(evaluation === undefined ? {} : { evaluation }),
     formulas,
+    sources,
     states,
     problems,
     warnings: evaluation?.warnings ?? [],
