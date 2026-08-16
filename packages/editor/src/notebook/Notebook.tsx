@@ -153,6 +153,9 @@ function Caption({ node }: { readonly node: OutputNode }): ReactElement {
       value={node.caption ?? ''}
       placeholder="caption — what this result says"
       rows={1}
+      // See section-title's `draggable={false}` above — same draggable-section
+      // ancestor, same fix.
+      draggable={false}
       onKeyDown={commitOnEnter}
       onChange={(event) => {
         const caption = event.target.value;
@@ -266,6 +269,11 @@ function Section({
               className="section-title"
               value={frame.title}
               size={Math.max(frame.title.length, 1)}
+              // The section this sits in is `draggable` (drag-to-reorder); without
+              // this, the browser treats a mousedown here as the start of that
+              // drag instead of a text-selection gesture, and double-click stops
+              // selecting the word.
+              draggable={false}
               onChange={(event) => {
                 const title = event.target.value;
                 editLive((current) => updateFrame(current, frame.id, (entry) => ({ ...entry, title })));
@@ -305,6 +313,9 @@ function Section({
               value={frame.note ?? ''}
               placeholder="what this section establishes"
               rows={3}
+              // See section-title's `draggable={false}` above — same draggable-section
+              // ancestor, same fix.
+              draggable={false}
               onKeyDown={commitOnEnter}
               onChange={(event) => {
                 const note = event.target.value;
