@@ -2,6 +2,42 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.3.0](https://github.com/ThomasVanRiel/machine-design-studio/compare/v0.2.0...v0.3.0) (2026-08-16)
+
+### Features
+
+* **editor:** add a "?" help button linking to the docs site ([10f9e66](https://github.com/ThomasVanRiel/machine-design-studio/commit/10f9e6631257d6793165bb99b22070a6f3adbacd))
+* **editor:** add a first-load tutorial walkthrough ([8c4c0c8](https://github.com/ThomasVanRiel/machine-design-studio/commit/8c4c0c80b698278183c6748b53473aa6765424bc))
+* **editor:** add feedback guide next to version badge ([1c34813](https://github.com/ThomasVanRiel/machine-design-studio/commit/1c348135cc23eef3f3016e098a5b07c5a7ae32e1))
+* **editor:** auto-arrange the graph ([8a29b10](https://github.com/ThomasVanRiel/machine-design-studio/commit/8a29b1066e659e738c52483fb0ec8f35d59b8860))
+* **editor:** confirm before discarding unsaved work ([172b7c2](https://github.com/ThomasVanRiel/machine-design-studio/commit/172b7c27b5e0720dcbd765229ddb667884e1bec4))
+* **editor:** draw waypoint, pack and unpack, and splice them on delete ([8396665](https://github.com/ThomasVanRiel/machine-design-studio/commit/8396665a948e2b29333a9bb96d77e775a6c9ef94))
+* **editor:** give check output a wireable threshold port ([323328d](https://github.com/ThomasVanRiel/machine-design-studio/commit/323328d7292e483c0b95b964712457a21a42b7ac))
+* **editor:** highlight canvas frame/node on notebook hover ([5e4047b](https://github.com/ThomasVanRiel/machine-design-studio/commit/5e4047b838823b15b4ce57a8152b24663f862130))
+* **editor:** link the docs site from the Help ribbon ([e9ba348](https://github.com/ThomasVanRiel/machine-design-studio/commit/e9ba3480f23750d1d9fbb7ed2599d92ce38c5748))
+* **editor:** make auto-arrange topology-aware ([7a610fc](https://github.com/ThomasVanRiel/machine-design-studio/commit/7a610fc622311d4d5b5f931bdb62aed206ae8b0d))
+* **kernel:** resolve and evaluate waypoint, pack and unpack ([17c4565](https://github.com/ThomasVanRiel/machine-design-studio/commit/17c45655fdccb3f30933608d24880015531d508b))
+* **schema:** add waypoint, pack and unpack node kinds, and a bundle port ([d9d1eac](https://github.com/ThomasVanRiel/machine-design-studio/commit/d9d1eacf8173a337ab1abcf2352a618021bdc5f6))
+
+### Fixes
+
+* anchor .vitepress/cache/ ignore pattern with **/ ([ccbb9e0](https://github.com/ThomasVanRiel/machine-design-studio/commit/ccbb9e011705fa40434f60cc5e163e14792af44f))
+* **editor:** derive the docs link from window.location.origin ([0c6a1d4](https://github.com/ThomasVanRiel/machine-design-studio/commit/0c6a1d440ec42288b6f7a97beb081b638c13fa03))
+* **editor:** fit the viewport, target the notebook precisely, keep it open ([b7e9393](https://github.com/ThomasVanRiel/machine-design-studio/commit/b7e93930759b133a06e9e09b4b600c7ee5563667))
+* **editor:** keep the tutorial on-script and on-screen ([22120d6](https://github.com/ThomasVanRiel/machine-design-studio/commit/22120d6e81f3bdacd5cbd84798a953eeede6fdcf))
+* **editor:** point the docs link at the docs dev server in dev ([5cd8430](https://github.com/ThomasVanRiel/machine-design-studio/commit/5cd8430377213d360e2156ad65bda6f34f44b2b9))
+* **editor:** stop the tutorial caption's clamp from oscillating ([e9cae35](https://github.com/ThomasVanRiel/machine-design-studio/commit/e9cae35082c76e57a02baa527cba0f32a8c50447))
+* **editor:** wire waypoint/pack/unpack into the help-link docs ([afa4f55](https://github.com/ThomasVanRiel/machine-design-studio/commit/afa4f55bb4079eedd401505f8bcf782c4669d53a))
+* **kernel:** quarantine waypoint, pack and unpack pending a redesign ([1f0b70d](https://github.com/ThomasVanRiel/machine-design-studio/commit/1f0b70d88fa137adef9d2e905c30b527799194d9))
+
+### Documentation
+
+* add notebook-hover and feedback-channel backlog items ([ce022a2](https://github.com/ThomasVanRiel/machine-design-studio/commit/ce022a2db97e90577fa8e1fa693d2845aa64eaae))
+* add VitePress docs site package ([7f6a023](https://github.com/ThomasVanRiel/machine-design-studio/commit/7f6a02376ad3a69103b53f53c52ccdde334f0600))
+* integrate inbox into roadmap — open questions, backlog, settled decisions ([6c966b2](https://github.com/ThomasVanRiel/machine-design-studio/commit/6c966b2a5b8d03e3e41bc3f5b1a449c571c7a55f))
+* record waypoint/pack browser-testing findings; ignore VitePress cache ([a5de8a0](https://github.com/ThomasVanRiel/machine-design-studio/commit/a5de8a0b1fc1dae1fe8eedf62b183d9e91fb0586))
+* **roadmap:** note editor backlog items for select-all and duplicate restore toast ([804c2f2](https://github.com/ThomasVanRiel/machine-design-studio/commit/804c2f2f11b757f11f2f4b93a53359bc6dafb48f))
+* serve the docs site at /docs/ under the app's own origin ([1af60d7](https://github.com/ThomasVanRiel/machine-design-studio/commit/1af60d758ff686fcb1ebd02abfaf2188efe98636))
 ## [0.2.0](https://github.com/ThomasVanRiel/machine-design-studio/compare/v0.1.0...v0.2.0) (2026-08-16)
 
 ### Features
