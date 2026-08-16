@@ -110,29 +110,6 @@ decided: a scripted overlay walkthrough, not a static page (that's for a
 future docs companion app), reachable again afterwards from the ribbon's
 existing help menu rather than shown once and gone.
 
-**Autosave.** Save/load already exists (File menu → `Open…`/`Save`,
-`io/files.ts`) as an explicit action; what's missing is recovery from an
-accidental tab close. A periodic snapshot of the current document to
-localStorage/IndexedDB, with a "restore unsaved work?" prompt on next load —
-a safety net alongside the explicit save, not a replacement for it.
-
-**An Equation output node**, wired to a single upstream formula node's
-output port, that renders that node's `Formula.expression` as typeset math
-rather than a value. This is the mechanism for showing equations in the
-notebook ("expressions only behind an explicitly marked toggle") —
-the node itself is the marked toggle, opt-in by construction, rather than a
-global setting. Citation defaults to the caption, overridable like any other
-node's caption. Needs an AST→LaTeX printer (new, but not a CAS — expressions
-are already parsed to an AST for evaluation) and a renderer dependency (e.g.
-KaTeX) in the editor.
-
-**Bundled catalogues should auto-populate from a directory** instead of the
-one hardcoded file (`packages/editor/src/catalogues/basic-mechanics.json`,
-loaded by name in `model/catalogues.ts`) — glob a `catalogues/` directory at
-build time so dropping a new JSON file in is enough. External import via
-`Load catalogue…` stays as-is alongside it. Small and mechanical; not
-discussed further, just needs doing.
-
 **Catalogue authoring should be easier for contributors.** Today a
 catalogue is authored by running the extraction script (`tools/extract/`,
 R&M content only) or hand-writing JSON against the schema — a real authoring
@@ -151,19 +128,12 @@ that path is the extraction script, not an editor UI), how
 course's in-flight graphs. Distinct audience from the student tutorial
 above: instructor-facing, about the tool's authoring and versioning model.
 
-**What should a multi-node selection do?** One concrete gap already found:
-"Group into new section" ignores the current selection entirely and wraps
-*every* ungrouped node in the document into one frame (`App.tsx`'s
-`addSection`) — there's no way to select a handful of nodes and frame just
-those. Open beyond that: what else, if anything, should a selection enable —
-move together (already true, independent React Flow nodes), delete together
+**What should a multi-node selection do?** "Group into new section" now
+frames only the current selection, or spawns an empty section at an open
+location with none selected (`groupIntoSection`, `model/document.ts`). Open
+beyond that: what else, if anything, should a selection enable — move
+together (already true, independent React Flow nodes), delete together
 (already true, Backspace/Delete), anything else?
-
-**Sliders as an input** — the intent is quickly nudging a value to build
-intuition for its effect on the output, not precision entry. Needs a bound
-to travel between (the port's declared valid range, when the formula has
-one) and a decision on whether it replaces or sits alongside the typed
-field.
 
 **Spectrum-editing UI.** A load spectrum (a hand-typed collection consumed
 whole by an aggregation, not swept) exists in the schema, but nothing in the
@@ -181,9 +151,13 @@ which complicate calculations via the combination of normal and bending
 loads. Catalogue content, for when that chapter is designed — not an editor
 question.
 
-**Catalogue source should be clear on the nodes.**
+**Catalogue source should be clear on the nodes.** In the dropdown is fine.
 
 **Are all nodes addable in the quick add?**
+
+**Settings should be persistent.** Panel widths are not stored.
+
+**Ribbon stays open.** Moving out of a ribbon menu window does not close it, maybe with a short delay so it does not close the instant the cursor leaves, I hate this in other GUIs.
 
 **Custom closure nodes are built** — a student writes an equation on the
 node itself (`ClosureNodeView.tsx`) and its ports populate from whatever
@@ -202,13 +176,26 @@ problem).
 
 ## Commit conventions and release tooling
 
-Done. `.github/workflows/ci.yml` builds and tests every push/PR to `main`.
-`.github/workflows/release.yml` is manual-trigger only (`workflow_dispatch`,
-optional patch/minor/major override) — no auto-publish on push, a release is
-still something Thomas decides to cut. It builds, tests, then runs
-`pnpm release` (`commit-and-tag-version`, config in `.versionrc.json`),
-pushes the version-bump commit and tag, and cuts a GitHub Release from the
-new `CHANGELOG.md` section.
+Done. `v0.1.0` is cut — first tagged release, marked pre-release on GitHub
+(project is alpha). `.github/workflows/release.yml` is manual-trigger only
+(`workflow_dispatch`, optional patch/minor/major override, defaults to
+pre-release) — no auto-publish on push, a release is still something Thomas
+decides to cut. It builds, tests, then runs `pnpm release`
+(`commit-and-tag-version`, config in `.versionrc.json`), pushes the
+version-bump commit and tag, and cuts a GitHub Release from the new
+`CHANGELOG.md` section.
+
+`.github/workflows/ci.yml` (build+test on every push/PR to `main`) exists
+but its triggers are disabled — solo work already runs build/test locally,
+and `release.yml` has its own gate before it'll cut a release, so the
+per-push run wasn't catching anything extra. Left as `workflow_dispatch` so
+it can be run by hand or have its triggers restored later.
+
+The running app now shows its build's version in the ribbon
+(`packages/editor/vite.config.ts` injects it from the root `package.json`
+at build time), flagged `alpha ·` while the major version is `0` — visible
+on every Netlify deploy of `main`, including the one a release's
+version-bump commit triggers.
 
 Commit messages move to Conventional Commits — the rule and its allowed
 types/scopes are codified in CLAUDE.md's Conventions section, not
