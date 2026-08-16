@@ -31,7 +31,7 @@ import { SettingsContext } from './settings-context';
 import { cacheCatalogue, cachedCatalogueTexts } from './io/catalogueCache';
 import { openTextFile, saveTextFile } from './io/files';
 import { analyse } from './model/analysis';
-import { basicMechanicsCatalogue, baseCatalogue, withCatalogue } from './model/catalogues';
+import { bundledCatalogues, baseCatalogue, withCatalogue } from './model/catalogues';
 import { frameAround, reframe, uniqueId } from './model/document';
 import {
   loadMinimapVisible,
@@ -75,7 +75,7 @@ import { useResizableWidth } from './useResizableWidth';
  * an R&M catalogue does, so both are always present.
  */
 function initialCatalogues(): readonly Catalogue[] {
-  let catalogues: readonly Catalogue[] = [baseCatalogue(), basicMechanicsCatalogue()];
+  let catalogues: readonly Catalogue[] = [baseCatalogue(), ...bundledCatalogues()];
   for (const text of cachedCatalogueTexts()) {
     try {
       catalogues = withCatalogue(catalogues, loadCatalogue(text));

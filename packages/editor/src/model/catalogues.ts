@@ -12,8 +12,6 @@
 import { parseCatalogue, loadCatalogue, ports, type Catalogue, type Formula, type JsonValue } from '@mds/schema';
 import { BASE_CATALOGUE_ID, baseCatalogueJson } from '@mds/nodes';
 
-import basicMechanicsData from '../catalogues/basic-mechanics.json';
-
 export interface PaletteEntry {
   readonly formula: Formula;
   readonly catalogue: Catalogue;
@@ -24,18 +22,21 @@ export function baseCatalogue(): Catalogue {
   return loadCatalogue(baseCatalogueJson());
 }
 
-export const BASIC_MECHANICS_CATALOGUE_ID = 'public-basic-mechanics';
+const bundledCatalogueModules = import.meta.glob<JsonValue>('../catalogues/*.json', {
+  eager: true,
+  import: 'default',
+});
 
 /**
- * A second catalogue that ships with the app alongside the base nodes:
- * textbook-independent basic-mechanics formulas (stress, beams, torsion,
- * dynamics), `restricted: false`, hand-authored per
- * `docs/authoring-catalogues.md` rather than extracted from a source. Unlike
- * the R&M catalogue it needs no LMS handout — nothing in it is restricted, so
- * there is no reason to make a student import it by hand.
+ * Every catalogue that ships with the app alongside the base nodes: files
+ * dropped in `src/catalogues/` — textbook-independent, `restricted: false`,
+ * hand-authored per `docs/authoring-catalogues.md` rather than extracted
+ * from a source. Unlike the R&M catalogue these need no LMS handout —
+ * nothing in them is restricted, so there is no reason to make a student
+ * import them by hand.
  */
-export function basicMechanicsCatalogue(): Catalogue {
-  return parseCatalogue(basicMechanicsData as JsonValue);
+export function bundledCatalogues(): readonly Catalogue[] {
+  return Object.values(bundledCatalogueModules).map((data) => parseCatalogue(data));
 }
 
 /**
