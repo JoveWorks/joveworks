@@ -174,6 +174,10 @@ These follow from settled decisions; do not relitigate them in code.
   bracketing interval.
 - **Client-side web app.** No backend, no Node-only APIs in app code; file I/O
   sits behind an adapter so a Tauri build can drop in later.
+- **Commit messages follow Conventional Commits** — `type(scope): subject`,
+  scope one of the package boundaries (`schema`, `kernel`, `units`, `nodes`,
+  `editor`, `tools`). Feeds automated changelog/release generation — see
+  ROADMAP.md.
 - **Graphs reference formulas by ID, version and hash** — never embed them.
   Embedding would leak R&M content into files students circulate. That reference
   carries no catalogue id, so **formula ids are global**: extraction namespaces

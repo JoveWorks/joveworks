@@ -105,9 +105,41 @@ precedent to build from.
 pressure sample today, which demonstrates a sweep and a plot but explains
 nothing. A guided first run — what a wire means, how to turn an input into a
 range, where the notebook comes from — would replace "here is a sample
-graph, figure it out" with an actual first five minutes. Needs a decision on
-mechanism (a scripted overlay walkthrough vs. a static page linked from the
-toolbar) before it's scoped as a build.
+graph, figure it out" with an actual first five minutes. Mechanism is
+decided: a scripted overlay walkthrough, not a static page (that's for a
+future docs companion app), reachable again afterwards from the ribbon's
+existing help menu rather than shown once and gone.
+
+**Autosave.** Save/load already exists (File menu → `Open…`/`Save`,
+`io/files.ts`) as an explicit action; what's missing is recovery from an
+accidental tab close. A periodic snapshot of the current document to
+localStorage/IndexedDB, with a "restore unsaved work?" prompt on next load —
+a safety net alongside the explicit save, not a replacement for it.
+
+**An Equation output node**, wired to a single upstream formula node's
+output port, that renders that node's `Formula.expression` as typeset math
+rather than a value. This is the mechanism for showing equations in the
+notebook per S32 ("expressions only behind an explicitly marked toggle") —
+the node itself is the marked toggle, opt-in by construction, rather than a
+global setting. Citation defaults to the caption, overridable like any other
+node's caption. Needs an AST→LaTeX printer (new, but not a CAS — expressions
+are already parsed to an AST for evaluation) and a renderer dependency (e.g.
+KaTeX) in the editor.
+
+**Bundled catalogues should auto-populate from a directory** instead of the
+one hardcoded file (`packages/editor/src/catalogues/basic-mechanics.json`,
+loaded by name in `model/catalogues.ts`) — glob a `catalogues/` directory at
+build time so dropping a new JSON file in is enough. External import via
+`Load catalogue…` stays as-is alongside it. Small and mechanical; not
+discussed further, just needs doing.
+
+**Catalogue authoring should be easier for contributors.** Today a
+catalogue is authored by running the extraction script (`tools/extract/`,
+R&M content only) or hand-writing JSON against the schema — S51 deferred a
+real authoring UI out of milestone 1. Unscoped for now: could mean better
+docs for hand-writing JSON, a schema validator with useful errors, a
+scaffold CLI, or eventually the authoring UI itself. Revisit later; keep in
+mind rather than build toward yet.
 
 **Extensive worked examples**, beyond the one belt lab sample. Waits on
 breadth — more chapters, or more graphs within belt — rather than being an
@@ -167,3 +199,18 @@ pass didn't build.
 **Auto-arrange the graph** — no overlaps of (open) nodes, frames keep their
 contents, edges ignored for now (untangling them neatly is a future
 problem).
+
+## Commit conventions and release tooling
+
+Triggered by being past MVP and ready to share the public repo — not
+speculative infra. There is no CI, changelog, or release process today (no
+`.github`, no `CHANGELOG.md`, no release scripts).
+
+Commit messages move to Conventional Commits (`type(scope): subject`),
+scope enforced against the package boundaries (`schema`, `kernel`, `units`,
+`nodes`, `editor`, `tools`) — codified in CLAUDE.md's Conventions section as
+a standing rule, not just tracked here. Changelog and version bumps are
+generated from that history with a manual-trigger tool (e.g.
+`standard-version`/`commit-and-tag-version`), not one that auto-publishes on
+every push — a release is something Thomas decides to cut. Needs a GitHub
+Actions workflow to run it, to be added alongside this.
