@@ -205,6 +205,19 @@ export type RangeSpec =
 
 export type ValueSpec = ScalarValue | SliderValue | CategoricalValue | SpectrumValue | RangeSpec;
 
+/** The `ValueSpec` kinds that carry a `unit` field — every one but the categorical two and `tableColumn`. */
+export type UnitedValueSpec = Exclude<ValueSpec, CategoricalValue | CategoricalListRange | TableColumnRange>;
+
+/**
+ * Whether `value` carries a `unit` field at all — false for a categorical
+ * value or list (no unit to have) and a table column (its unit lives in the
+ * table it names). Everything else — scalar, spectrum, and every numeric
+ * range — does.
+ */
+export function hasUnit(value: ValueSpec): value is UnitedValueSpec {
+  return value.kind !== 'categorical' && value.kind !== 'categoricalList' && value.kind !== 'tableColumn';
+}
+
 const RANGE_KINDS: readonly ValueKind[] = [
   'linear',
   'logarithmic',

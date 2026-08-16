@@ -40,6 +40,7 @@ import {
   THRESHOLD_PORT,
   VERDICT_PORT,
   axes as documentAxes,
+  hasUnit,
   isRange,
   matchRef,
   axisLength,
@@ -666,6 +667,47 @@ export function canConnect(
  * `canConnect` remains the authority, because only it knows about cycles and
  * about ports that are still unbound.
  */
+/**
+ * A freshly placed input node's unit is provisional — nothing has read it
+ * yet — so wiring its output straight into a port of a different dimension
+ * need not be refused the way every other mismatch is. Instead the input
+ * relabels itself to the target's unit and the connection goes through.
+ *
+ * Deliberately narrow: the source must be an `input` node (an output's or a
+ * formula's port is never adopted this way, only typed at authoring time),
+ * it must not already have an outgoing edge (a second wire would silently
+ * reinterpret a value something downstream already depends on), and its
+ * `ValueSpec` must be one of the kinds that carries a `unit` at all —
+ * `hasUnit` skips the categorical kinds, which have none to adapt.
+ *
+ * Only the unit is swapped; every magnitude already typed (`value`,
+ * `start`/`stop`, `values`, …) survives untouched. There is no principled
+ * conversion between genuinely different dimensions — this is a relabel, not
+ * a unit conversion — so `canConnect` is still what decides whether the
+ * result is actually connectable (a categorical or kind mismatch, or a
+ * cycle, still refuses exactly as before).
+ */
+export function adaptInputUnit(
+  document: GraphDocument,
+  candidate: Edge,
+  targetUnit: Unit,
+): GraphDocument | undefined {
+  const source = document.nodes.find((node) => node.id === candidate.from.node);
+  if (source === undefined || source.kind !== 'input') return undefined;
+  if (!hasUnit(source.value)) return undefined;
+  const alreadyWired = document.edges.some((edge) => edge.from.node === source.id);
+  if (alreadyWired) return undefined;
+
+  return {
+    ...document,
+    nodes: document.nodes.map((node): GraphNode =>
+      node.kind === 'input' && node.id === source.id && hasUnit(node.value)
+        ? { ...node, value: { ...node.value, unit: targetUnit } }
+        : node,
+    ),
+  };
+}
+
 export function typesConnect(source: PortType, target: PortType): boolean {
   // A spectrum target takes a matching spectrum source (one authored list, as
   // before) or a numeric one — one of what may be several discrete

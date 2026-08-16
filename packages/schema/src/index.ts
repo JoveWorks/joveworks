@@ -51,6 +51,7 @@ export {
   RENARD_SERIES,
   DEFAULT_SLIDER_FIGURES,
   isRange,
+  hasUnit,
   axisLength,
   renardValues,
   parseValueSpec,
@@ -58,6 +59,7 @@ export {
 } from './value.js';
 export type {
   ValueSpec,
+  UnitedValueSpec,
   ValueKind,
   ScalarValue,
   SliderValue,

@@ -96,6 +96,7 @@ export type { CompiledFormula } from './formula.js';
 export { closureFormula } from './closure.js';
 
 export {
+  adaptInputUnit,
   canConnect,
   canonicalUnit,
   endpointKey,
