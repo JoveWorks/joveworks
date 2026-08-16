@@ -80,6 +80,13 @@ const compareNode = (id: string, comparison: string, threshold: number, unit: st
   threshold: { value: threshold, unit: parseUnit(unit) },
 });
 
+const closureNode = (id: string, expression: string) => ({
+  kind: 'closure' as const,
+  id,
+  position: { x: 0, y: 0 },
+  expression,
+});
+
 const wire = (id: string, from: [string, string], to: [string, string]) => ({
   id,
   from: { node: from[0], port: from[1] },
@@ -194,6 +201,47 @@ describe('compare nodes', () => {
 
     expect(analysis.states.get('bad')).toBe('quarantined');
     expect(analysis.states.get('c')).toBe('blocked');
+  });
+});
+
+describe('closure nodes', () => {
+  it('is incomplete while a name its expression uses is unwired', () => {
+    const document = graph([scalar('a', 2), closureNode('eq', 'a + b')], [
+      wire('e1', ['a', 'value'], ['eq', 'a']),
+    ]);
+    const analysis = analyse(document, CATALOGUES);
+
+    expect(analysis.states.get('eq')).toBe('incomplete');
+    expect(text(analysis.problems.get('eq'))).toContain('not connected');
+  });
+
+  it('evaluates once every name it uses is wired, and blocks what depends on a bad one', () => {
+    const document = graph(
+      [
+        scalar('a', 2),
+        scalar('b', 3),
+        closureNode('eq', 'a + b'),
+        { kind: 'output' as const, id: 'out', position: { x: 0, y: 0 }, output: { kind: 'print' as const } },
+      ],
+      [
+        wire('e1', ['a', 'value'], ['eq', 'a']),
+        wire('e2', ['b', 'value'], ['eq', 'b']),
+        wire('e3', ['eq', 'result'], ['out', 'value']),
+      ],
+    );
+    const analysis = analyse(document, CATALOGUES);
+
+    expect(analysis.states.get('eq')).toBe('ok');
+    expect(analysis.evaluation?.values.get('eq.result')).toMatchObject({ data: [5] });
+    expect(analysis.states.get('out')).toBe('ok');
+  });
+
+  it('reports a bad expression at the node, not silently across the whole graph', () => {
+    const document = graph([closureNode('eq', 'a + * b')], []);
+    const analysis = analyse(document, CATALOGUES);
+
+    expect(analysis.states.get('eq')).toBe('error');
+    expect(analysis.formulas.get('eq')).toBeUndefined();
   });
 });
 

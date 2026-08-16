@@ -94,6 +94,13 @@ const study: JsonObject = {
       comparison: '>=',
       threshold: { value: 1.5, unit: '' },
     },
+    {
+      kind: 'closure',
+      id: 'eq',
+      label: 'a student equation',
+      position: { x: 260, y: 480 },
+      expression: 'p + q',
+    },
   ],
   edges: [
     { id: 'e1', from: { node: 'd', port: 'value' }, to: { node: 'n1', port: 'a' } },
@@ -121,8 +128,25 @@ describe('round-tripping (the verification docs/PLAN.md asks for)', () => {
     expect(serializeDocument(reloaded)).toEqual(study);
   });
 
-  it('never carries an expression into the graph file (S23)', () => {
+  it('never carries a catalogue formula’s expression into the graph file (S23)', () => {
     expect(saveDocument(parseDocument(study))).not.toMatch(/a\*b/);
+  });
+
+  it('does carry a closure node’s own expression — it is the student’s content, not R&M’s', () => {
+    expect(saveDocument(parseDocument(study))).toMatch(/p \+ q/);
+  });
+
+  it('accepts an empty expression — a freshly dropped closure node, not yet written', () => {
+    const fresh = parseDocument({
+      ...study,
+      nodes: [{ kind: 'closure', id: 'eq', position: { x: 0, y: 0 }, expression: '' }],
+      edges: [],
+    });
+    expect(serializeDocument(fresh)).toEqual({
+      ...study,
+      nodes: [{ kind: 'closure', id: 'eq', position: { x: 0, y: 0 }, expression: '' }],
+      edges: [],
+    });
   });
 
   it('stamps an empty document with the version this build writes (S25)', () => {
@@ -223,7 +247,7 @@ describe('structural integrity', () => {
   it('rejects a duplicated node id', () => {
     const nodes = study['nodes'] as JsonObject[];
     const broken = { ...study, nodes: [...nodes, nodes[0] as JsonObject] };
-    expect(() => parseDocument(broken)).toThrow(/nodes\[9\]\.id: 'd' appears twice/);
+    expect(() => parseDocument(broken)).toThrow(/nodes\[10\]\.id: 'd' appears twice/);
   });
 
   it('refuses a document written by a schema version it does not read (S25)', () => {

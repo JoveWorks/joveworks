@@ -39,7 +39,7 @@ import {
 
 import { comparator } from './compile.js';
 import { KernelError } from './errors.js';
-import { assertEvaluable, compileFormula } from './formula.js';
+import { assertEvaluable, compileClosureFormula, compileFormula } from './formula.js';
 import { canonicalUnit, endpointKey, resolveGraph, type PortType, type Resolution } from './graph.js';
 import {
   LARGE_GRID,
@@ -162,6 +162,21 @@ export function evaluateDocument(
       case 'formula': {
         const formula = resolution.formulas.get(node.id) as Formula;
         const output = evaluateFormula(node.id, formula, resolution, values, warnings, largeGrid);
+        values.set(endpointKey(node.id, formula.output.name), output);
+        break;
+      }
+
+      case 'closure': {
+        const formula = resolution.formulas.get(node.id) as Formula;
+        const output = evaluateFormula(
+          node.id,
+          formula,
+          resolution,
+          values,
+          warnings,
+          largeGrid,
+          /* closure */ true,
+        );
         values.set(endpointKey(node.id, formula.output.name), output);
         break;
       }
@@ -335,6 +350,7 @@ function evaluateFormula(
   values: ReadonlyMap<string, PortValue>,
   warnings: Warning[],
   largeGrid: number,
+  closure = false,
 ): NumericSeries {
   assertEvaluable(formula, nodeId);
   if (formula.output.kind === 'categorical') {
@@ -344,7 +360,13 @@ function evaluateFormula(
     );
   }
 
-  const compiled = compileFormula(formula, resolution.bindings.get(nodeId) ?? new Map(), nodeId);
+  // A closure's declared output has nothing real to check the expression
+  // against (closure.ts, formula.ts's compileClosureFormula) — its
+  // dimension was already proven live, during resolution, against this
+  // node's actual wiring.
+  const compiled = closure
+    ? compileClosureFormula(formula, nodeId)
+    : compileFormula(formula, resolution.bindings.get(nodeId) ?? new Map(), nodeId);
 
   const regularPorts = formula.inputs.filter((port) => port.kind !== 'spectrum');
   const regularInputs = regularPorts.map((port) => {

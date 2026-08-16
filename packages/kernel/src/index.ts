@@ -85,8 +85,15 @@ export type {
   Spectrum,
 } from './series.js';
 
-export { assertEvaluable, checkFormulaDimensions, compileFormula } from './formula.js';
+export {
+  assertEvaluable,
+  checkFormulaDimensions,
+  compileClosureFormula,
+  compileFormula,
+} from './formula.js';
 export type { CompiledFormula } from './formula.js';
+
+export { closureFormula } from './closure.js';
 
 export {
   canConnect,

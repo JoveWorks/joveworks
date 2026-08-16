@@ -26,6 +26,7 @@ import type { ReactNode } from 'react';
 
 import {
   KernelError,
+  closureFormula,
   evaluateDocument,
   resolveGraph,
   type Evaluation,
@@ -174,7 +175,7 @@ function readiness(
       continue;
     }
 
-    if (node.kind === 'formula') {
+    if (node.kind === 'formula' || node.kind === 'closure') {
       const formula = formulas.get(node.id);
       if (formula === undefined) continue; // already recorded as an error
       if (!isEvaluable(formula)) {
@@ -261,18 +262,28 @@ export function analyse(document: GraphDocument, catalogues: readonly Catalogue[
   const formulas = new Map<string, Formula>();
 
   for (const node of document.nodes) {
-    if (node.kind !== 'formula') continue;
-    const formula = lookup(catalogues, node.formula.id);
-    if (formula === undefined) {
-      states.set(node.id, 'error');
-      problems.set(
-        node.id,
-        `no formula '${node.formula.id}' in the loaded catalogues — a graph needs its ` +
-          'catalogue to open (S23)',
-      );
+    if (node.kind === 'formula') {
+      const formula = lookup(catalogues, node.formula.id);
+      if (formula === undefined) {
+        states.set(node.id, 'error');
+        problems.set(
+          node.id,
+          `no formula '${node.formula.id}' in the loaded catalogues — a graph needs its ` +
+            'catalogue to open (S23)',
+        );
+        continue;
+      }
+      formulas.set(node.id, formula);
       continue;
     }
-    formulas.set(node.id, formula);
+    if (node.kind === 'closure') {
+      try {
+        formulas.set(node.id, closureFormula(node.expression));
+      } catch (error) {
+        states.set(node.id, 'error');
+        problems.set(node.id, error instanceof Error ? error.message : String(error));
+      }
+    }
   }
 
   let resolution: Resolution | undefined;

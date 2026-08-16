@@ -63,6 +63,10 @@ export function formulaNode(id: string, ref: FormulaRef, extra: JsonObject = {})
   };
 }
 
+export function closureNode(id: string, expression: string, extra: JsonObject = {}): JsonObject {
+  return { kind: 'closure', id, position: { x: 0, y: 0 }, expression, ...extra };
+}
+
 export function outputNode(id: string, output: JsonObject, extra: JsonObject = {}): JsonObject {
   return { kind: 'output', id, position: { x: 0, y: 0 }, output, ...extra };
 }
