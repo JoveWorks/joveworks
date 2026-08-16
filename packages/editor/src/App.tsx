@@ -26,6 +26,7 @@ import {
 
 import { Canvas } from './canvas/Canvas';
 import { ContextMenu, type MenuItem } from './canvas/ContextMenu';
+import { ConfirmDialog } from './ConfirmDialog';
 import { DOCS_BASE_URL } from './help-links';
 import { GraphContext } from './graph-context';
 import { SettingsContext } from './settings-context';
@@ -162,6 +163,8 @@ function AppShell(): ReactElement {
     restoredAutosave ? undefined : saveDocument(initialDocument),
   );
   const isDirty = savedSnapshot === undefined || saveDocument(document) !== savedSnapshot;
+  // Loading a different document (open file, a sample) starts a fresh undo
+  // history — there is nothing to gain from undoing back into a document
   // that is no longer open, same as most editors treat "open a file". It
   // also resets the dirty baseline (what just loaded is the new "saved"
   // state until it's edited again) and asks the canvas to re-fit: the
@@ -414,8 +417,8 @@ function AppShell(): ReactElement {
   // extra state variable would keep in sync that a plain read doesn't.
   const recentDocuments = loadRecentDocuments();
   const fileMenuItems: readonly MenuItem[] = [
-    { label: 'New', onClick: newDocument },
-    { label: 'Open…', onClick: () => void openDocumentFile() },
+    { label: 'New', onClick: () => guardDiscard(newDocument) },
+    { label: 'Open…', onClick: () => guardDiscard(() => void openDocumentFile()) },
     {
       label: 'Save',
       onClick: () => {
@@ -431,7 +434,7 @@ function AppShell(): ReactElement {
       ? [{ label: 'No recent documents', disabled: true, onClick: () => undefined }]
       : recentDocuments.map((recent) => ({
           label: recent.title,
-          onClick: () => openRecentDocument(recent),
+          onClick: () => guardDiscard(() => openRecentDocument(recent)),
         }))),
     { label: 'Load catalogue…', onClick: () => void loadCatalogueFile() },
     { label: 'Settings…', onClick: () => setShowSettings(true) },
@@ -477,41 +480,45 @@ function AppShell(): ReactElement {
     },
     {
       label: 'Take the tour',
-      onClick: () => {
-        // The script's steps are written against the pad-pressure sample
-        // specifically, so launching it loads that sample first — same as
-        // any other item under Examples below, and just as destructive to
-        // whatever is currently on the canvas. Its notebook step has
-        // nothing to point at if the panel was hidden going in.
-        const sample = padPressure(catalogues);
-        if (sample !== undefined) resetDocument(sample);
-        setShowNotebook(true);
-        setTutorialActive(true);
-      },
+      onClick: () =>
+        guardDiscard(() => {
+          // The script's steps are written against the pad-pressure sample
+          // specifically, so launching it loads that sample first — same as
+          // any other item under Examples below, and just as destructive to
+          // whatever is currently on the canvas. Its notebook step has
+          // nothing to point at if the panel was hidden going in.
+          const sample = padPressure(catalogues);
+          if (sample !== undefined) resetDocument(sample);
+          setShowNotebook(true);
+          setTutorialActive(true);
+        }),
     },
     { heading: 'Examples' },
     {
       label: 'Pad pressure sweep',
-      onClick: () => {
-        const sample = padPressure(catalogues);
-        if (sample !== undefined) resetDocument(sample);
-      },
+      onClick: () =>
+        guardDiscard(() => {
+          const sample = padPressure(catalogues);
+          if (sample !== undefined) resetDocument(sample);
+        }),
     },
     {
       label: 'Belt lab',
       disabled: !beltAvailable,
-      onClick: () => {
-        const sample = beltLab(catalogues);
-        if (sample !== undefined) resetDocument(sample);
-      },
+      onClick: () =>
+        guardDiscard(() => {
+          const sample = beltLab(catalogues);
+          if (sample !== undefined) resetDocument(sample);
+        }),
     },
     {
       label: 'Cantilever — hollow sections',
       disabled: !cantileverAvailable,
-      onClick: () => {
-        const sample = cantileverHollowSections(catalogues);
-        if (sample !== undefined) resetDocument(sample);
-      },
+      onClick: () =>
+        guardDiscard(() => {
+          const sample = cantileverHollowSections(catalogues);
+          if (sample !== undefined) resetDocument(sample);
+        }),
     },
   ];
 
@@ -661,6 +668,18 @@ function AppShell(): ReactElement {
             pinned={pinned}
             setPinned={setPinned}
           />
+
+          {pendingDiscard === undefined ? null : (
+            <ConfirmDialog
+              message="Discard the current graph? Unsaved changes will be lost."
+              onConfirm={() => {
+                const action = pendingDiscard;
+                setPendingDiscard(undefined);
+                action();
+              }}
+              onCancel={() => setPendingDiscard(undefined)}
+            />
+          )}
         </div>
       </GraphContext.Provider>
     </SettingsContext.Provider>
