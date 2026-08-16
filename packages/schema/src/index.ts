@@ -42,6 +42,7 @@ export type {
   NumericPort,
   CategoricalPort,
   SpectrumPort,
+  BundlePort,
   ValidRange,
   Monotonicity,
 } from './port.js';
@@ -116,6 +117,9 @@ export type {
   OutputNode,
   CompareNode,
   ClosureNode,
+  WaypointNode,
+  PackNode,
+  UnpackNode,
   Edge,
   Endpoint,
   Frame,

@@ -30,6 +30,7 @@ import {
   DIMENSIONLESS,
   bareVariable,
   isGenericDimension,
+  parseGenericDimension,
   type Dimension,
   type GenericDimension,
 } from '@mds/units';
@@ -59,10 +60,11 @@ import type { Unit } from '@mds/units';
 export type PortUnit = Unit | GenericDimension;
 
 export function isGenericPort(port: Port): boolean {
-  return port.kind !== 'categorical' && isGenericDimension(port.unit);
+  if (port.kind === 'categorical' || port.kind === 'bundle') return false;
+  return isGenericDimension(port.unit);
 }
 
-export const PORT_KINDS = ['numeric', 'categorical', 'spectrum'] as const;
+export const PORT_KINDS = ['numeric', 'categorical', 'spectrum', 'bundle'] as const;
 export type PortKind = (typeof PORT_KINDS)[number];
 
 /**
@@ -118,7 +120,22 @@ export interface SpectrumPort extends PortBase {
   readonly unit: PortUnit;
 }
 
-export type Port = NumericPort | CategoricalPort | SpectrumPort;
+/**
+ * A whole ordered bundle of channels, each its own generic signature — the
+ * ports `pack`/`unpack` synthesise for themselves at resolve/render time
+ * (`packages/kernel/src/graph.ts`). Unlike every other port kind this
+ * declares a *list* of signatures rather than one: `pack`'s output is
+ * however many channels are currently wired, in index order. No catalogue
+ * formula ever declares one — R&M names every unit, and there is nothing to
+ * bundle in a hand-authored expression — but the kind has to exist and
+ * round-trip like the others it sits beside.
+ */
+export interface BundlePort extends PortBase {
+  readonly kind: 'bundle';
+  readonly channels: readonly GenericDimension[];
+}
+
+export type Port = NumericPort | CategoricalPort | SpectrumPort | BundlePort;
 
 /** What a formula may produce. A spectrum is consumed, never produced. */
 export type OutputPort = NumericPort | CategoricalPort;
@@ -128,6 +145,7 @@ export type OutputPort = NumericPort | CategoricalPort;
  * generic port — which has no dimension until the wiring binds one.
  */
 export function portDimension(port: Port): Dimension | undefined {
+  if (port.kind === 'bundle') return undefined;
   if (port.kind === 'categorical') return DIMENSIONLESS;
   return isGenericDimension(port.unit) ? undefined : port.unit.dimension;
 }
@@ -161,6 +179,13 @@ export function parsePort(value: JsonValue, path: string): Port {
       fail(join(path, 'default'), `'${fallback}' is not in the declared domain`);
     }
     return { kind, name, domain, ...put('description', description), ...put('default', fallback) };
+  }
+
+  if (kind === 'bundle') {
+    const channels = readStringArray(required(object, 'channels', path), join(path, 'channels')).map(
+      (text) => parseGenericDimension(text),
+    );
+    return { kind, name, channels, ...put('description', description) };
   }
 
   const unit = parsePortUnitField(required(object, 'unit', path), join(path, 'unit'));
@@ -203,6 +228,9 @@ export function serializePort(port: Port): JsonObject {
   if (port.kind === 'categorical') {
     return { ...base, domain: [...port.domain], ...put('default', port.default) };
   }
+  if (port.kind === 'bundle') {
+    return { ...base, channels: port.channels.map((channel) => channel.symbol) };
+  }
   if (port.kind === 'spectrum') {
     return { ...base, unit: port.unit.symbol };
   }
@@ -229,7 +257,7 @@ export function serializePort(port: Port): JsonObject {
  * used to make them: `$A*$B` is exactly what `multiply` produces.
  */
 export function asInputPort(port: Port, path: string): Port {
-  if (port.kind !== 'categorical' && isGenericDimension(port.unit)) {
+  if (port.kind !== 'categorical' && port.kind !== 'bundle' && isGenericDimension(port.unit)) {
     if (bareVariable(port.unit) === undefined) {
       fail(
         join(path, 'unit'),
@@ -241,10 +269,13 @@ export function asInputPort(port: Port, path: string): Port {
   return port;
 }
 
-/** Reject an output port declared as a spectrum, which is forbidden. */
+/** Reject an output port declared as a spectrum or a bundle, neither of which a formula may produce. */
 export function asOutputPort(port: Port, path: string): OutputPort {
   if (port.kind === 'spectrum') {
     fail(path, 'a spectrum is an input only — a formula cannot produce one');
+  }
+  if (port.kind === 'bundle') {
+    fail(path, "a bundle is 'pack's own output only — a catalogue formula cannot produce one");
   }
   return port;
 }

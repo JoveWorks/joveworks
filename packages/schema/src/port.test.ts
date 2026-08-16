@@ -101,6 +101,27 @@ describe('spectrum ports', () => {
   });
 });
 
+describe('bundle ports', () => {
+  const bundle: JsonValue = { kind: 'bundle', name: 'bundle', channels: ['$C0', '$C1'] };
+
+  it('round-trips its ordered channel list', () => {
+    const port = parsePort(bundle, 'port');
+    if (port.kind !== 'bundle') throw new Error('expected a bundle port');
+    expect(port.channels.map((channel) => channel.symbol)).toEqual(['$C0', '$C1']);
+    expect(serializePort(port)).toEqual({ kind: 'bundle', name: 'bundle', channels: ['$C0', '$C1'] });
+  });
+
+  it('has no single dimension — portDimension is undefined', () => {
+    expect(portDimension(parsePort(bundle, 'port'))).toBeUndefined();
+  });
+
+  it('is never a formula output — a catalogue formula cannot produce one', () => {
+    expect(() => asOutputPort(parsePort(bundle, 'output'), 'output')).toThrow(
+      /a bundle is 'pack's own output only/,
+    );
+  });
+});
+
 it('reports the path of the field at fault', () => {
   try {
     parsePort({ kind: 'numeric', name: '  ' }, 'formulas[2].inputs[1]');

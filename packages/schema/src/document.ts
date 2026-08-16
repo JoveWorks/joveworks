@@ -204,7 +204,59 @@ export interface ClosureNode extends NodeBase {
   readonly expression: string;
 }
 
-export type GraphNode = InputNode | FormulaNode | OutputNode | CompareNode | ClosureNode;
+/**
+ * A redirect: one wireable input, one generic output of exactly the same
+ * dimension. Neither port is declared here — like `ClosureNode`, both are
+ * derived at resolve/render time (`packages/kernel/src/graph.ts`'s
+ * `waypoint` branch), because there is nothing to declare: the output's
+ * dimension is always the input's, whatever that turns out to be.
+ *
+ * Exists so a wire can be routed through a visible stop on the canvas —
+ * bent around other nodes, given a label — without the redirect itself
+ * changing a single number. Its input accepts any number of wires the same
+ * way `minimum`'s does, and copies the first one straight through, unlike a
+ * reduction: this is passthrough, not aggregation.
+ */
+export interface WaypointNode extends NodeBase {
+  readonly kind: 'waypoint';
+}
+
+/**
+ * Bundles any number of independently-dimensioned wires into one wire — the
+ * counterpart of `UnpackNode`. Its `in0..inN` inputs and single `bundle`
+ * output are, like `WaypointNode`'s ports, not declared here: they are
+ * derived from `document.edges` at resolve/render time, because a channel
+ * exists exactly while something is wired to it (`packages/kernel/src/graph.ts`'s
+ * `pack` branch, `packages/kernel/src/bundle.ts`'s `packChannelIndices`).
+ *
+ * Channel indices are never renumbered once assigned — dropping a wire from
+ * `in1` while `in0` and `in2` stay wired leaves a gap rather than closing
+ * it, so a rewire never silently jumps to a channel a student did not drag
+ * onto.
+ */
+export interface PackNode extends NodeBase {
+  readonly kind: 'pack';
+}
+
+/**
+ * The inverse of `PackNode`: one `bundle` input, unbound until something is
+ * wired to it, and `out0..outN` outputs that appear only once it is —
+ * their count and dimensions come entirely from the bundle wired in, so
+ * (like every port on these three node kinds) none of it is declared here.
+ */
+export interface UnpackNode extends NodeBase {
+  readonly kind: 'unpack';
+}
+
+export type GraphNode =
+  | InputNode
+  | FormulaNode
+  | OutputNode
+  | CompareNode
+  | ClosureNode
+  | WaypointNode
+  | PackNode
+  | UnpackNode;
 
 export interface Endpoint {
   readonly node: string;
@@ -347,7 +399,16 @@ function serializeOutput(output: Output): JsonObject {
   }
 }
 
-const NODE_KINDS = ['input', 'formula', 'output', 'compare', 'closure'] as const;
+const NODE_KINDS = [
+  'input',
+  'formula',
+  'output',
+  'compare',
+  'closure',
+  'waypoint',
+  'pack',
+  'unpack',
+] as const;
 
 function parseNode(value: JsonValue, path: string): GraphNode {
   const object = readObject(value, path);
@@ -397,6 +458,12 @@ function parseNode(value: JsonValue, path: string): GraphNode {
         kind,
         expression: readString(required(object, 'expression', path), join(path, 'expression')),
       };
+    case 'waypoint':
+      return { ...base, kind };
+    case 'pack':
+      return { ...base, kind };
+    case 'unpack':
+      return { ...base, kind };
   }
 }
 
@@ -427,6 +494,10 @@ function serializeNode(node: GraphNode): JsonObject {
       };
     case 'closure':
       return { ...base, expression: node.expression };
+    case 'waypoint':
+    case 'pack':
+    case 'unpack':
+      return base;
   }
 }
 
