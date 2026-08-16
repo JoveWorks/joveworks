@@ -220,6 +220,8 @@ does this log" has a single answer.
 
 **Unit on output port should be in parentheses.** Like in all other parts of the UX, e.g. tables. Now it is just besides the parameter, and is confusing. This should be the case for all combinations of [parameter] [unit], explore and discuss.
 
+**Should we work in dev and main branch?** As deploy rebuilds on every new commit in main. How do other projects handle this?
+
 ## Commit conventions and release tooling
 
 Done. `v0.1.0` is cut — first tagged release, marked pre-release on GitHub
