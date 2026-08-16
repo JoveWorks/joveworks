@@ -51,7 +51,7 @@ import {
   connect,
   duplicateNode,
   edgeId,
-  frameAround,
+  groupIntoSection,
   moveNode,
   NEW_COLUMN,
   nodeLabel,
@@ -226,9 +226,9 @@ const NODE_TYPES = {
 };
 
 export function Canvas(): ReactElement {
-  const { document, catalogues, analysis, edit, editLive, commitEdit, pinned, togglePin } = useGraph();
+  const { document, catalogues, analysis, edit, editLive, commitEdit, pinned, togglePin, selected, setSelected } =
+    useGraph();
   const { minimapVisible, themePreference } = useSettings();
-  const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [refusal, setRefusal] = useState<string | undefined>(undefined);
   const [menu, setMenu] = useState<MenuTarget | undefined>(undefined);
   const [quickAdd, setQuickAdd] = useState<QuickAddTarget | undefined>(undefined);
@@ -339,6 +339,16 @@ export function Canvas(): ReactElement {
       // its connected edges as two separate calls for one keypress, and
       // without coalescing, undoing once would only bring the node back,
       // leaving its wire still gone.
+      // NodeResizer reports a resize from the top or left edge as a
+      // `position` change too, alongside its `dimensions` change, to keep the
+      // opposite corner anchored — that is not a drag, and must not carry
+      // the frame's members along with it the way an actual drag does.
+      const resizing = new Set(
+        changes
+          .filter((change) => change.type === 'dimensions')
+          .filter((change) => frames.has(change.id))
+          .map((change) => change.id),
+      );
       editLive((current) => {
         let next = current;
         for (const change of changes) {
@@ -352,7 +362,7 @@ export function Canvas(): ReactElement {
               // than the frame abandoning them mid-drag.
               const before = next.frames.find((frame) => frame.id === change.id);
               next = updateFrame(next, change.id, (frame) => ({ ...frame, position }));
-              if (before !== undefined) {
+              if (before !== undefined && !resizing.has(change.id)) {
                 const dx = position.x - before.position.x;
                 const dy = position.y - before.position.y;
                 if (dx !== 0 || dy !== 0) {
@@ -554,7 +564,6 @@ export function Canvas(): ReactElement {
         },
       ];
     }
-    const ungrouped = document.nodes.filter((node) => node.frameId === undefined);
     const at = flow.screenToFlowPosition({ x: target.x, y: target.y });
     return [
       {
@@ -618,15 +627,7 @@ export function Canvas(): ReactElement {
       },
       {
         label: 'Group into new section',
-        disabled: ungrouped.length === 0,
-        onClick: () =>
-          edit((current) => {
-            const inside = current.nodes.filter((node) => node.frameId === undefined);
-            if (inside.length === 0) return current;
-            const id = uniqueId(current, 'section');
-            const frame = frameAround(id, 'New section', inside);
-            return reframe({ ...current, frames: [...current.frames, frame] });
-          }),
+        onClick: () => edit((current) => groupIntoSection(current, selected, at)),
       },
     ];
   };

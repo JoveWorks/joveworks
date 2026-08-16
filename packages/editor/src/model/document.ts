@@ -544,3 +544,24 @@ export function frameAround(
     },
   };
 }
+
+/**
+ * "Group into new section" — around the current selection, or, with nothing
+ * selected, an empty frame dropped at `at` rather than sweeping every free
+ * node in the document into one. `selected` is whatever the canvas last
+ * reported as selected (nodes, frames and edges alike), so it is filtered
+ * against `document.nodes` here rather than trusted directly.
+ */
+export function groupIntoSection(
+  document: GraphDocument,
+  selected: ReadonlySet<string>,
+  at: Position,
+): GraphDocument {
+  const id = uniqueId(document, 'section');
+  const chosen = document.nodes.filter((node) => selected.has(node.id));
+  const frame: Frame =
+    chosen.length > 0
+      ? frameAround(id, 'New section', chosen)
+      : { id, title: 'New section', position: at, size: { width: 320, height: 220 } };
+  return reframe({ ...document, frames: [...document.frames, frame] });
+}
