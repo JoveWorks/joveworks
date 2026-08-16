@@ -175,6 +175,8 @@ revisit them when there's a reason to.
   bracketing interval.
 - **Client-side web app.** No backend, no Node-only APIs in app code; file I/O
   sits behind an adapter so a Tauri build can drop in later.
+- **Desktop only.** No responsive/narrow-screen layout is planned; the editor
+  targets a desktop-sized canvas.
 - **Commit messages follow Conventional Commits**: `type(scope): subject`,
   scope optional. `type` is one of `feat`, `fix`, `perf`, `refactor`, `docs`
   (these five drive the changelog — see `.versionrc.json`) or `test`,

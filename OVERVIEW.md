@@ -6,6 +6,11 @@ outputs together on a canvas, and **the graph is the calculation**.
 Built for the KU Leuven machine-parts course. Formulas come from *Roloff &
 Matek, 6th ed.*, and every one carries a citation back to its equation number.
 
+**Learning is free.** The engine and editor are open source and stay that
+way — no paid tier planned, no monetization on the core tool. The project is
+supported by the people who use it becoming better engineers, not by a
+subscription.
+
 The point is not to compute a number once. It is to **sweep a design space** —
 try every shaft diameter in a standard series, see which ones satisfy every
 constraint at once, and look at the result as a graph.

@@ -72,6 +72,7 @@ restriction follows the formula content into this project — see
 ## Licence
 
 Engine and editor: **MIT.** This repository contains no textbook content.
+Learning stays free — no paid tier is planned for the core tool.
 
 The R&M formula catalogue: **restricted, not redistributable.** It lives in a
 separate private repository and is delivered to students through the course LMS

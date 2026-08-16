@@ -63,6 +63,20 @@ breadth:
 Ask Thomas which chunk to start before picking one; nothing here decides it
 for you.
 
+## Open product questions
+
+Not editor features — decisions that shape scope before any building starts.
+
+**A backend.** Server-hosted catalogues (distribute R&M content behind auth
+instead of a file through the LMS) and saving graphs server-side (accounts, a
+saved-graph library, shareable links) would be genuinely useful — especially
+for a collaborative classroom setting, sharing course catalogues and worked
+examples server-side rather than per-student files. But "client-side web app,
+no backend" is a stated architecture convention here, not an oversight —
+adding one is a decision on the order of the wrap-angle unit question, not a
+backlog line. Left open until it's discussed and decided explicitly; nothing
+below assumes it's happening.
+
 ## Editor backlog
 
 Deferred or explicitly parked features from the hand-testing passes
@@ -163,6 +177,44 @@ question.
 contents, edges ignored for now (untangling them neatly is a future
 problem).
 
+**Visualization nodes** — cantilever beams, bending-moment diagrams and the
+like. Generic mechanics content, not R&M-specific, so this lives in the
+public repo's node library, not the private catalogue — and should be
+referenceable from the notebook the way Plot nodes already are. A bigger
+design question than most items here: how it's parametrized, what rendering
+approach draws the diagram from port values, and which diagram to build
+first. Needs its own discussion before building.
+
+**Notebook export to Markdown**, for pasting a finished graph into an
+external site. Checked against `~/source/website`'s Astro content
+collections: entries are Markdown/MDX with frontmatter (`title`, `subtitle`,
+`summary`, `date`, `tags`) under `src/content/{articles,projects,...}` — an
+export matching that shape drops straight in. Same rule as any other export:
+citations and values by default, expressions only behind the explicit
+toggle. Gate it behind a hidden console command for now rather than a UI
+button — personal-use export, not a student-facing feature yet.
+
+**Contextual help ("?") throughout the UX**, linking into the docs site
+below. Interaction direction floated: hover shows a tooltip, click opens the
+relevant docs page. Needs full discussion — where the icons go, how granular
+the linking is.
+
+**A docs site.** VitePress, as a new package in this repo (public, no
+textbook content), built and deployed independently of the editor so it
+never blocks `pnpm build`. This is the "future docs companion app" the
+first-load tutorial item above already gestures at — the two should be
+designed together: the tutorial is the first five minutes, the docs site is
+what the tutorial and the "?" hints above point into.
+
+**Plausible analytics during alpha.** A thin adapter — mirrors the existing
+file-I/O adapter pattern — with a no-op and a Plausible-backed
+implementation behind one flag, so removing it before public launch is
+deleting a script tag and flipping the flag, not a codebase search. What to
+log beyond default pageviews (aggregate, cookieless, no PII either way) —
+e.g. feature-usage events like "sweep run" or "plot created" — is still
+open; whatever set gets chosen should be documented in one place so "what
+does this log" has a single answer.
+
 ## Commit conventions and release tooling
 
 Done. `v0.1.0` is cut — first tagged release, marked pre-release on GitHub
@@ -191,3 +243,8 @@ types/scopes are codified in CLAUDE.md's Conventions section, not
 duplicated here. History before this point isn't in that format, so the
 first changelog's coverage of older commits will be thin; that's expected,
 not a bug in the tooling.
+
+**No commit-msg hook enforces the format, and none is planned.** A
+misformatted commit doesn't error — it just doesn't get a CHANGELOG section,
+or lands in the wrong one, at release time. Decided: that's an acceptable
+outcome for solo work, not a gap to close with `commitlint`/`husky`.
