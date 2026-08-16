@@ -1289,7 +1289,13 @@ aside.right {
 
 .section-toggle-title {
   /* Wraps like ordinary text — a long catalogue or section name should grow
-     the header, not get truncated with no way to read the rest of it. */
+     the header, not get truncated with no way to read the rest of it.
+     flex: 1 claims the row's leftover space so it stays left-aligned against
+     .section-toggle's justify-content: flex-end, which otherwise pushes an
+     auto-width child (this one, in the "Not in a section" pseudo-section —
+     the only place left using this class) to the right along with the
+     chevron. */
+  flex: 1;
   min-width: 0;
 }
 
