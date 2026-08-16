@@ -175,10 +175,18 @@ revisit them when there's a reason to.
   bracketing interval.
 - **Client-side web app.** No backend, no Node-only APIs in app code; file I/O
   sits behind an adapter so a Tauri build can drop in later.
-- **Commit messages follow Conventional Commits** — `type(scope): subject`,
-  scope one of the package boundaries (`schema`, `kernel`, `units`, `nodes`,
-  `editor`, `tools`). Feeds automated changelog/release generation — see
-  ROADMAP.md.
+- **Commit messages follow Conventional Commits**: `type(scope): subject`,
+  scope optional. `type` is one of `feat`, `fix`, `perf`, `refactor`, `docs`
+  (these five drive the changelog — see `.versionrc.json`) or `test`,
+  `build`, `ci`, `chore`, `style` (housekeeping; recorded but hidden from the
+  changelog). When a change is scoped to one package, `scope` is that
+  package boundary (`schema`, `kernel`, `units`, `nodes`, `editor`, `tools`);
+  omit it for changes spanning the repo (root docs, CI workflows, release
+  config). A `!` after the type/scope (`feat(units)!: ...`) or a
+  `BREAKING CHANGE:` footer marks a breaking change. This feeds automated
+  changelog/release generation — see ROADMAP.md and
+  `.github/workflows/release.yml`. Applies going forward; history before
+  this convention was adopted is not being rewritten.
 - **Graphs reference formulas by ID, version and hash** — never embed them.
   Embedding would leak R&M content into files students circulate. That reference
   carries no catalogue id, so **formula ids are global**: extraction namespaces

@@ -210,9 +210,8 @@ still something Thomas decides to cut. It builds, tests, then runs
 pushes the version-bump commit and tag, and cuts a GitHub Release from the
 new `CHANGELOG.md` section.
 
-Commit messages move to Conventional Commits (`type(scope): subject`),
-scope enforced against the package boundaries (`schema`, `kernel`, `units`,
-`nodes`, `editor`, `tools`) — codified in CLAUDE.md's Conventions section as
-a standing rule. History before this point isn't in that format, so the
+Commit messages move to Conventional Commits — the rule and its allowed
+types/scopes are codified in CLAUDE.md's Conventions section, not
+duplicated here. History before this point isn't in that format, so the
 first changelog's coverage of older commits will be thin; that's expected,
 not a bug in the tooling.
