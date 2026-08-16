@@ -213,11 +213,13 @@ revisit them when there's a reason to.
 - **Work on `main`.** No feature branches until there is an MVP — except
   worktree agents (`.claude/worktrees/*`, branches named `worktree-*`),
   which by necessity work on their own branch in an isolated worktree.
-  **Before merging a worktree branch into `main`, check its work**: read the
-  diff, not just the commit message, and run `pnpm build && pnpm test` on
-  the merge result before considering it done — a clean merge is not the
-  same as a reviewed one. An agent's own summary describes what it intended
-  to do, not necessarily what it did.
+  They can commit freely there; merging into `main` is a separate, later
+  step, not something a worktree agent does itself. **Before merging a
+  worktree branch into `main`, check its work**: read the diff, not just the
+  commit message, and run `pnpm build && pnpm test` on the merge result
+  before considering it done — a clean merge is not the same as a reviewed
+  one. An agent's own summary describes what it intended to do, not
+  necessarily what it did.
 - **Do not build for hypothetical futures.** This is early development; scope
   decisions have repeatedly been narrowed on purpose. When
   something looks like infrastructure for a problem that does not exist yet, say
