@@ -27,6 +27,8 @@ import {
   type Position,
 } from '@mds/schema';
 
+import { GAP, NODE_HEIGHT, NODE_WIDTH } from './layout-constants';
+
 /** `node.port -> node.port`, which is unique because an input takes one edge. */
 export function edgeId(from: Endpoint, to: Endpoint): string {
   return `${from.node}.${from.port}->${to.node}.${to.port}`;
@@ -526,7 +528,7 @@ export function frameAround(
   id: string,
   title: string,
   nodes: readonly GraphNode[],
-  padding = 48,
+  padding: number = GAP,
 ): Frame {
   const xs = nodes.map((node) => node.position.x);
   const ys = nodes.map((node) => node.position.y);
@@ -539,8 +541,8 @@ export function frameAround(
     size: {
       // Node bodies extend right and down from their position, so the far edge
       // is the furthest node plus a node's width rather than plus the padding.
-      width: Math.max(...xs) + 260 + padding - left,
-      height: Math.max(...ys) + 180 + padding - top,
+      width: Math.max(...xs) + NODE_WIDTH + padding - left,
+      height: Math.max(...ys) + NODE_HEIGHT + padding - top,
     },
   };
 }

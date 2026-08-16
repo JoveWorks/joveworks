@@ -5,9 +5,19 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { SCHEMA_VERSION, type Frame, type GraphDocument, type InputNode } from '@mds/schema';
+import {
+  SCHEMA_VERSION,
+  type ClosureNode,
+  type CompareNode,
+  type Edge,
+  type Frame,
+  type GraphDocument,
+  type InputNode,
+  type OutputNode,
+} from '@mds/schema';
 import { parseUnit } from '@mds/units';
 
+import { NODE_HEIGHT, NODE_WIDTH } from './layout-constants';
 import { autoArrange } from './layout';
 
 const input = (id: string, x: number, y: number, frameId?: string): InputNode => ({
@@ -16,6 +26,37 @@ const input = (id: string, x: number, y: number, frameId?: string): InputNode =>
   position: { x, y },
   frameId,
   value: { kind: 'scalar', value: 1, unit: parseUnit('mm') },
+});
+
+const closure = (id: string, x: number, y: number, frameId?: string): ClosureNode => ({
+  kind: 'closure',
+  id,
+  position: { x, y },
+  frameId,
+  expression: 'a + 1',
+});
+
+const output = (id: string, x: number, y: number, frameId?: string): OutputNode => ({
+  kind: 'output',
+  id,
+  position: { x, y },
+  frameId,
+  output: { kind: 'print' },
+});
+
+const compare = (id: string, x: number, y: number, frameId?: string): CompareNode => ({
+  kind: 'compare',
+  id,
+  position: { x, y },
+  frameId,
+  comparison: '<',
+  threshold: { value: 1, unit: parseUnit('mm') },
+});
+
+const edge = (id: string, fromNode: string, toNode: string): Edge => ({
+  id,
+  from: { node: fromNode, port: 'out' },
+  to: { node: toNode, port: 'in' },
 });
 
 const base: GraphDocument = {
@@ -40,11 +81,19 @@ function overlaps(a: ReturnType<typeof bounds>[number], b: ReturnType<typeof bou
   return a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
 }
 
+function nodeX(document: GraphDocument, id: string): number {
+  return document.nodes.find((node) => node.id === id)!.position.x;
+}
+
+function nodeY(document: GraphDocument, id: string): number {
+  return document.nodes.find((node) => node.id === id)!.position.y;
+}
+
 describe('autoArrange', () => {
   it('spreads overlapping loose nodes apart', () => {
     const document: GraphDocument = { ...base, nodes: [input('a', 0, 0), input('b', 5, 5)] };
     const arranged = autoArrange(document);
-    const boxes = bounds(arranged.nodes, 260, 180);
+    const boxes = bounds(arranged.nodes, NODE_WIDTH, NODE_HEIGHT);
     expect(overlaps(boxes[0], boxes[1])).toBe(false);
   });
 
@@ -83,16 +132,162 @@ describe('autoArrange', () => {
     const frameBox = bounds(arranged.frames, arranged.frames[0].size.width, arranged.frames[0].size.height)[0];
     const looseBox = bounds(
       arranged.nodes.filter((n) => n.frameId === undefined),
-      260,
-      180,
+      NODE_WIDTH,
+      NODE_HEIGHT,
     )[0];
     expect(overlaps(frameBox, looseBox)).toBe(false);
   });
 
-  it('is stable when run twice', () => {
+  it('is stable when run twice (isolated nodes)', () => {
     const document: GraphDocument = {
       ...base,
       nodes: [input('a', 5, 5), input('b', 5, 5), input('c', 900, 10)],
+    };
+    const once = autoArrange(document);
+    const twice = autoArrange(once);
+    expect(twice.nodes.map((n) => n.position)).toEqual(once.nodes.map((n) => n.position));
+  });
+
+  it('lays out a straight chain in increasing columns', () => {
+    const document: GraphDocument = {
+      ...base,
+      nodes: [input('in', 0, 0), closure('mid', 0, 0), closure('sink', 0, 0)],
+      edges: [edge('e1', 'in', 'mid'), edge('e2', 'mid', 'sink')],
+    };
+    const arranged = autoArrange(document);
+    expect(nodeX(arranged, 'in')).toBeLessThan(nodeX(arranged, 'mid'));
+    expect(nodeX(arranged, 'mid')).toBeLessThan(nodeX(arranged, 'sink'));
+  });
+
+  it('pins a framed output node to the rightmost column', () => {
+    const frame: Frame = { id: 'f', title: 'Section', position: { x: 0, y: 0 }, size: { width: 300, height: 200 } };
+    const document: GraphDocument = {
+      ...base,
+      nodes: [input('in', 0, 0), closure('mid', 0, 0), output('out', 0, 0, 'f')],
+      edges: [edge('e1', 'in', 'mid'), edge('e2', 'mid', 'out')],
+      frames: [frame],
+    };
+    const arranged = autoArrange(document);
+    expect(nodeX(arranged, 'in')).toBeLessThan(nodeX(arranged, 'mid'));
+    expect(nodeX(arranged, 'mid')).toBeLessThan(arranged.frames[0].position.x);
+  });
+
+  it('places a diamond\'s two branches in the same column, disjoint vertically', () => {
+    const document: GraphDocument = {
+      ...base,
+      nodes: [input('in', 0, 0), closure('a', 0, 0), closure('b', 0, 0), output('out', 0, 0)],
+      edges: [
+        edge('e1', 'in', 'a'),
+        edge('e2', 'in', 'b'),
+        edge('e3', 'a', 'out'),
+        edge('e4', 'b', 'out'),
+      ],
+    };
+    const arranged = autoArrange(document);
+    expect(nodeX(arranged, 'a')).toBe(nodeX(arranged, 'b'));
+    const boxes = bounds(
+      arranged.nodes.filter((n) => n.id === 'a' || n.id === 'b'),
+      NODE_WIDTH,
+      NODE_HEIGHT,
+    );
+    expect(overlaps(boxes[0], boxes[1])).toBe(false);
+  });
+
+  it("places a frame's column between what it depends on and what depends on it", () => {
+    const frame: Frame = { id: 'f', title: 'Section', position: { x: 0, y: 0 }, size: { width: 400, height: 300 } };
+    const document: GraphDocument = {
+      ...base,
+      nodes: [
+        input('upstream', 0, 0),
+        closure('a1', 0, 0, 'f'),
+        closure('a2', 0, 0, 'f'),
+        closure('downstream', 0, 0),
+      ],
+      edges: [edge('e1', 'upstream', 'a1'), edge('e2', 'a2', 'downstream')],
+      frames: [frame],
+    };
+    const arranged = autoArrange(document);
+    const frameX = arranged.frames[0].position.x;
+    expect(nodeX(arranged, 'upstream')).toBeLessThan(frameX);
+    expect(frameX).toBeLessThan(nodeX(arranged, 'downstream'));
+  });
+
+  it('lets a frame share a column with a loose node at the same rank', () => {
+    const frame: Frame = { id: 'f', title: 'Section', position: { x: 0, y: 0 }, size: { width: 400, height: 300 } };
+    const document: GraphDocument = {
+      ...base,
+      nodes: [
+        input('inA', 0, 0),
+        closure('member', 0, 0, 'f'),
+        input('inB', 0, 0),
+        closure('loose', 0, 0),
+      ],
+      edges: [edge('e1', 'inA', 'member'), edge('e2', 'inB', 'loose')],
+      frames: [frame],
+    };
+    const arranged = autoArrange(document);
+    expect(arranged.frames[0].position.x).toBe(nodeX(arranged, 'loose'));
+  });
+
+  it('places a loose output node in a row underneath the main layout', () => {
+    const document: GraphDocument = {
+      ...base,
+      nodes: [input('in', 0, 0), closure('mid', 0, 0), input('inY', 0, 0), output('out', 0, 0)],
+      edges: [edge('e1', 'in', 'mid'), edge('e2', 'inY', 'out')],
+    };
+    const arranged = autoArrange(document);
+    const mainBottom = Math.max(
+      nodeY(arranged, 'in') + NODE_HEIGHT,
+      nodeY(arranged, 'mid') + NODE_HEIGHT,
+      nodeY(arranged, 'inY') + NODE_HEIGHT,
+    );
+    expect(nodeY(arranged, 'out')).toBeGreaterThanOrEqual(mainBottom);
+  });
+
+  it('does not pin a compare node to the rightmost column like an output', () => {
+    const frame: Frame = { id: 'f', title: 'Section', position: { x: 0, y: 0 }, size: { width: 300, height: 200 } };
+    const document: GraphDocument = {
+      ...base,
+      nodes: [
+        input('in', 0, 0),
+        compare('cmp', 0, 0),
+        output('out', 0, 0, 'f'),
+        // a longer, unrelated chain, so the output's pin actually has to move
+        // it further right than its own natural longest-path rank would
+        input('in2', 0, 0),
+        closure('x1', 0, 0),
+        closure('x2', 0, 0),
+      ],
+      edges: [
+        edge('e1', 'in', 'cmp'),
+        edge('e2', 'cmp', 'out'),
+        edge('e3', 'in2', 'x1'),
+        edge('e4', 'x1', 'x2'),
+      ],
+      frames: [frame],
+    };
+    const arranged = autoArrange(document);
+    expect(nodeX(arranged, 'cmp')).toBeLessThan(arranged.frames[0].position.x);
+    expect(arranged.frames[0].position.x).toBe(nodeX(arranged, 'x2'));
+  });
+
+  it('falls back to a grid pack on a cyclic document instead of throwing', () => {
+    const document: GraphDocument = {
+      ...base,
+      nodes: [closure('a', 0, 0), closure('b', 10, 10)],
+      edges: [edge('e1', 'a', 'b'), edge('e2', 'b', 'a')],
+    };
+    expect(() => autoArrange(document)).not.toThrow();
+    const arranged = autoArrange(document);
+    const boxes = bounds(arranged.nodes, NODE_WIDTH, NODE_HEIGHT);
+    expect(overlaps(boxes[0], boxes[1])).toBe(false);
+  });
+
+  it('is stable when run twice on a real topology', () => {
+    const document: GraphDocument = {
+      ...base,
+      nodes: [input('in', 3, 7), closure('mid', 90, 4), output('out', 5, 200)],
+      edges: [edge('e1', 'in', 'mid'), edge('e2', 'mid', 'out')],
     };
     const once = autoArrange(document);
     const twice = autoArrange(once);
