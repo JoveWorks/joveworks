@@ -144,6 +144,24 @@ export function Palette(): ReactElement {
       return addNode(current, { kind: 'closure', id, label: id, expression: '', position: position() });
     });
 
+  const addWaypoint = (): void =>
+    edit((current) => {
+      const id = uniqueId(current, 'waypoint');
+      return addNode(current, { kind: 'waypoint', id, label: id, position: position() });
+    });
+
+  const addPack = (): void =>
+    edit((current) => {
+      const id = uniqueId(current, 'pack');
+      return addNode(current, { kind: 'pack', id, label: id, position: position() });
+    });
+
+  const addUnpack = (): void =>
+    edit((current) => {
+      const id = uniqueId(current, 'unpack');
+      return addNode(current, { kind: 'unpack', id, label: id, position: position() });
+    });
+
   return (
     <div className="palette">
       <input
@@ -258,7 +276,7 @@ export function Palette(): ReactElement {
           // others by shape — two ports in, one computed value out — so it
           // rides along in the Math section rather than earning its own.
           const isMath = catalogueId === BASE_CATALOGUE_ID;
-          const count = list.length + (isMath ? 2 : 0);
+          const count = list.length + (isMath ? 5 : 0);
           return (
             <section key={catalogueId}>
               <h3>
@@ -296,6 +314,30 @@ export function Palette(): ReactElement {
                       <button type="button" className="entry" onClick={addClosure}>
                         <span className="entry-id">equation</span>
                         <span className="entry-output">type one — its ports follow from what it uses</span>
+                      </button>
+                    </li>
+                  ) : null}
+                  {isMath ? (
+                    <li>
+                      <button type="button" className="entry" onClick={addWaypoint}>
+                        <span className="entry-id">waypoint</span>
+                        <span className="entry-output">a routed stop on a wire, no operation</span>
+                      </button>
+                    </li>
+                  ) : null}
+                  {isMath ? (
+                    <li>
+                      <button type="button" className="entry" onClick={addPack}>
+                        <span className="entry-id">pack</span>
+                        <span className="entry-output">bundle several wires into one</span>
+                      </button>
+                    </li>
+                  ) : null}
+                  {isMath ? (
+                    <li>
+                      <button type="button" className="entry" onClick={addUnpack}>
+                        <span className="entry-id">unpack</span>
+                        <span className="entry-output">split a bundle back into its wires</span>
                       </button>
                     </li>
                   ) : null}

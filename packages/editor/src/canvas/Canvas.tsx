@@ -70,7 +70,10 @@ import { FormulaNodeView } from './FormulaNodeView';
 import { FrameView } from './FrameView';
 import { InputNodeView } from './InputNodeView';
 import { OutputNodeView } from './OutputNodeView';
+import { PackNodeView } from './PackNodeView';
 import { QuickAddMenu, type ExistingCandidate, type QuickAddChoice } from './QuickAddMenu';
+import { UnpackNodeView } from './UnpackNodeView';
+import { WaypointNodeView } from './WaypointNodeView';
 import { basePortName, slotHandleId } from './spectrumSlots';
 
 /**
@@ -213,7 +216,9 @@ function sizeOf(measured: Measurements, id: string): { measured?: { width: numbe
  * `formula`/`compare` never had, since neither name collides). Prefixed here
  * so the type string is ours alone; `node.kind` in the document is untouched.
  */
-function flowType(kind: 'input' | 'formula' | 'output' | 'compare' | 'closure'): string {
+function flowType(
+  kind: 'input' | 'formula' | 'output' | 'compare' | 'closure' | 'waypoint' | 'pack' | 'unpack',
+): string {
   return kind === 'input' || kind === 'output' ? `mds-${kind}` : kind;
 }
 
@@ -223,6 +228,9 @@ const NODE_TYPES = {
   'mds-output': OutputNodeView,
   compare: CompareNodeView,
   closure: ClosureNodeView,
+  waypoint: WaypointNodeView,
+  pack: PackNodeView,
+  unpack: UnpackNodeView,
   frame: FrameView,
 };
 

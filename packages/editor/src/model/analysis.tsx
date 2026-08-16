@@ -28,6 +28,7 @@ import {
   KernelError,
   closureFormula,
   evaluateDocument,
+  packChannelIndices,
   resolveGraph,
   type Evaluation,
   type Resolution,
@@ -114,7 +115,7 @@ export function lookupCatalogue(catalogues: readonly Catalogue[], id: string): C
 /** Whether an unwired input port can stand in for itself (the kernel's rule). */
 function hasDefault(port: Port): boolean {
   if (port.kind === 'categorical') return port.default !== undefined;
-  if (port.kind === 'spectrum') return false;
+  if (port.kind === 'spectrum' || port.kind === 'bundle') return false;
   return port.default !== undefined && !isGenericPort(port);
 }
 
@@ -236,6 +237,49 @@ function readiness(
         continue;
       }
       if (isWired(node.id, THRESHOLD_PORT) && !upstreamReady(node.id, THRESHOLD_PORT)) {
+        states.set(node.id, 'blocked');
+        continue;
+      }
+      ready.add(node.id);
+      continue;
+    }
+
+    if (node.kind === 'waypoint') {
+      if (!isWired(node.id, 'in')) {
+        states.set(node.id, 'incomplete');
+        problems.set(node.id, notConnected(['in']));
+        continue;
+      }
+      if (!upstreamReady(node.id, 'in')) {
+        states.set(node.id, 'blocked');
+        continue;
+      }
+      ready.add(node.id);
+      continue;
+    }
+
+    if (node.kind === 'pack') {
+      // Any number of channels, including none — an empty bundle is a
+      // legitimate value, not an incomplete node, the same way a
+      // freshly-dropped node with zero wires anywhere is not "wrong" by
+      // itself.
+      const indices = packChannelIndices(document, node.id);
+      const blocked = indices.some((n) => !upstreamReady(node.id, `in${n}`));
+      if (blocked) {
+        states.set(node.id, 'blocked');
+        continue;
+      }
+      ready.add(node.id);
+      continue;
+    }
+
+    if (node.kind === 'unpack') {
+      if (!isWired(node.id, 'bundle')) {
+        states.set(node.id, 'incomplete');
+        problems.set(node.id, notConnected(['bundle']));
+        continue;
+      }
+      if (!upstreamReady(node.id, 'bundle')) {
         states.set(node.id, 'blocked');
         continue;
       }

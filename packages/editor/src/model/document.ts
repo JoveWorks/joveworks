@@ -13,7 +13,7 @@
  * only how a permitted change is applied.
  */
 
-import { closureFormula } from '@mds/kernel';
+import { closureFormula, packChannelIndices } from '@mds/kernel';
 import {
   VALUE_PORT,
   type ClosureNode,
@@ -87,19 +87,122 @@ export function moveNode(document: GraphDocument, id: string, position: Position
   return updateNode(document, id, (node) => ({ ...node, position }));
 }
 
+const ROUTING_KINDS = new Set(['waypoint', 'pack', 'unpack']);
+
+/** Attach `from -> to`, unless that exact edge already exists (a splice never duplicates). */
+function addSplicedEdge(document: GraphDocument, from: Endpoint, to: Endpoint): GraphDocument {
+  const id = edgeId(from, to);
+  if (document.edges.some((edge) => edge.id === id)) return document;
+  return { ...document, edges: [...document.edges, { id, from, to }] };
+}
+
+function spliceWaypoint(document: GraphDocument, nodeId: string): GraphDocument {
+  const sources = document.edges
+    .filter((edge) => edge.to.node === nodeId && edge.to.port === 'in')
+    .map((edge) => edge.from);
+  const targets = document.edges
+    .filter((edge) => edge.from.node === nodeId && edge.from.port === 'out')
+    .map((edge) => edge.to);
+  let next = document;
+  for (const from of sources) {
+    for (const to of targets) next = addSplicedEdge(next, from, to);
+  }
+  return next;
+}
+
+/**
+ * For each of a pack's currently wired channels, reconnect its upstream
+ * source straight to the matching output of every unpack the pack's bundle
+ * feeds — "matching" meaning by *position* among the pack's wired channels,
+ * not by the `inN` suffix, since `unpack`'s `outN` ports are numbered
+ * positionally off the resolved bundle (`packages/kernel/src/graph.ts`),
+ * while a pack's own channel suffixes may have gaps.
+ */
+function splicePack(document: GraphDocument, packId: string): GraphDocument {
+  const indices = packChannelIndices(document, packId);
+  const unpacks = document.edges
+    .filter((edge) => edge.from.node === packId && edge.from.port === 'bundle')
+    .map((edge) => edge.to.node)
+    .filter((id) => document.nodes.find((node) => node.id === id)?.kind === 'unpack');
+
+  let next = document;
+  indices.forEach((channel, position) => {
+    const inEdge = document.edges.find(
+      (edge) => edge.to.node === packId && edge.to.port === `in${channel}`,
+    );
+    if (inEdge === undefined) return;
+    for (const unpackId of unpacks) {
+      const outEdges = document.edges.filter(
+        (edge) => edge.from.node === unpackId && edge.from.port === `out${position}`,
+      );
+      for (const outEdge of outEdges) next = addSplicedEdge(next, inEdge.from, outEdge.to);
+    }
+  });
+  return next;
+}
+
+/**
+ * The inverse splice: reconnect the one pack feeding this unpack straight to
+ * this unpack's own downstream edges, channel by channel. Deleting one
+ * unpack out of several sharing a pack only ever touches edges *from* this
+ * unpack — the pack and any sibling unpacks are untouched.
+ */
+function spliceUnpack(document: GraphDocument, unpackId: string): GraphDocument {
+  const bundleEdge = document.edges.find(
+    (edge) => edge.to.node === unpackId && edge.to.port === 'bundle',
+  );
+  if (bundleEdge === undefined) return document;
+  const packId = bundleEdge.from.node;
+  if (document.nodes.find((node) => node.id === packId)?.kind !== 'pack') return document;
+
+  const indices = packChannelIndices(document, packId);
+  let next = document;
+  indices.forEach((channel, position) => {
+    const inEdge = document.edges.find(
+      (edge) => edge.to.node === packId && edge.to.port === `in${channel}`,
+    );
+    if (inEdge === undefined) return;
+    const outEdges = document.edges.filter(
+      (edge) => edge.from.node === unpackId && edge.from.port === `out${position}`,
+    );
+    for (const outEdge of outEdges) next = addSplicedEdge(next, inEdge.from, outEdge.to);
+  });
+  return next;
+}
+
+/**
+ * Reconnect a single deleted routing node's (`waypoint`/`pack`/`unpack`)
+ * neighbours directly to each other, so a wire routed through it does not
+ * simply snap in two. Scoped on purpose to exactly one routing node per
+ * batch: splicing several at once would mean resolving hops through each
+ * other (a waypoint feeding a pack feeding another waypoint, say), which
+ * is chain resolution this does not attempt — that batch falls back to the
+ * ordinary no-splice delete below, same as deleting any other node.
+ */
+function spliceRoutingNodes(document: GraphDocument, ids: ReadonlySet<string>): GraphDocument {
+  const routing = document.nodes.filter((node) => ids.has(node.id) && ROUTING_KINDS.has(node.kind));
+  if (routing.length !== 1) return document;
+  const [node] = routing;
+  if (node === undefined) return document;
+  if (node.kind === 'waypoint') return spliceWaypoint(document, node.id);
+  if (node.kind === 'pack') return splicePack(document, node.id);
+  return spliceUnpack(document, node.id);
+}
+
 /** Remove nodes and frames, and every edge that touched one of them. */
 export function removeNodes(document: GraphDocument, ids: ReadonlySet<string>): GraphDocument {
+  const spliced = spliceRoutingNodes(document, ids);
   return closeEmptyColumns({
-    ...document,
-    nodes: document.nodes
+    ...spliced,
+    nodes: spliced.nodes
       .filter((node) => !ids.has(node.id))
       // A node whose frame has gone belongs to no section any more; leaving the
       // id behind would fail `parseDocument` on the next save.
       .map((node) =>
         node.frameId !== undefined && ids.has(node.frameId) ? withoutFrame(node) : node,
       ),
-    edges: document.edges.filter((edge) => !ids.has(edge.from.node) && !ids.has(edge.to.node)),
-    frames: document.frames.filter((frame) => !ids.has(frame.id)),
+    edges: spliced.edges.filter((edge) => !ids.has(edge.from.node) && !ids.has(edge.to.node)),
+    frames: spliced.frames.filter((frame) => !ids.has(frame.id)),
   });
 }
 
