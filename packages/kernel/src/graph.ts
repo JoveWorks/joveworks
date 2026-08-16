@@ -415,7 +415,17 @@ export function resolveGraph(
     }
 
     if (node.kind === 'closure') {
-      const formula = closureFormula(node.expression);
+      // `closureFormula` and the parser it calls attribute their own errors to
+      // an expression string, not a node — of no use to the editor, which can
+      // only mark a *node* as failed. Re-attribute here, where the node id is
+      // known, so a bad closure expression is contained to its own node
+      // instead of aborting resolution for the whole document.
+      let formula: Formula;
+      try {
+        formula = closureFormula(node.expression);
+      } catch (error) {
+        throw error instanceof KernelError ? new KernelError(error.message, node.id) : error;
+      }
       formulas.set(node.id, formula);
       const bound = bindInputs(node.id, formula);
       bindings.set(node.id, bound);

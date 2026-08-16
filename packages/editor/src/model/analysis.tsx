@@ -287,23 +287,42 @@ export function analyse(document: GraphDocument, catalogues: readonly Catalogue[
   }
 
   let resolution: Resolution | undefined;
-  try {
-    resolution = resolveGraph(document, catalogues);
-  } catch (error) {
-    if (!(error instanceof KernelError)) throw error;
-    const nodeId = nodeOf(document, error.where);
-    if (nodeId !== undefined) {
+  let candidate = document;
+  let message: string | undefined;
+
+  // A resolution failure is contained the same way an evaluation failure is
+  // below: drop the offending node and its descendants, then resolve what's
+  // left. One bad node's wiring or expression must not blank the whole
+  // canvas — the rest of the graph may still be resolvable and evaluable.
+  for (let attempt = 0; attempt <= RETRIES; attempt += 1) {
+    try {
+      resolution = resolveGraph(candidate, catalogues);
+      break;
+    } catch (error) {
+      if (!(error instanceof KernelError)) throw error;
+      const nodeId = nodeOf(document, error.where);
+      if (nodeId === undefined) {
+        message = error.message;
+        break;
+      }
       states.set(nodeId, 'error');
       problems.set(nodeId, error.message);
+      const dropped = descendants(document, nodeId);
+      for (const id of dropped) {
+        if (id !== nodeId) states.set(id, 'blocked');
+      }
+      candidate = subgraph(candidate, new Set(candidate.nodes.map((n) => n.id).filter((id) => !dropped.has(id))));
     }
+  }
+
+  if (resolution === undefined) {
     // Without a resolution there are no port types and no order, so nothing can
     // be evaluated — but the canvas still draws, which is the point.
-    return { formulas, states, problems, warnings: [], message: error.message };
+    return { formulas, states, problems, warnings: [], ...(message === undefined ? {} : { message }) };
   }
 
   let ready = readiness(document, resolution.order, formulas, states, problems);
   let evaluation: Evaluation | undefined;
-  let message: string | undefined;
 
   for (let attempt = 0; attempt <= RETRIES; attempt += 1) {
     try {

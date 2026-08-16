@@ -167,6 +167,43 @@ describe('analysing a graph mid-build', () => {
     expect(analysis.states.get('sum')).toBe('error');
     expect(analysis.problems.get('sum')).toContain('inv.sum');
   });
+
+  it('an unfinished closure node does not stop the rest of the graph from resolving and evaluating', () => {
+    const document = graph(
+      [scalar('a', 2), scalar('b', 3), formulaNode('sum', 'inv.sum'), closureNode('eq', '')],
+      [wire('e1', ['a', 'value'], ['sum', 'a']), wire('e2', ['b', 'value'], ['sum', 'b'])],
+    );
+    const analysis = analyse(document, CATALOGUES);
+
+    expect(analysis.states.get('eq')).toBe('error');
+    expect(text(analysis.problems.get('eq'))).toContain('type an equation');
+    expect(analysis.states.get('sum')).toBe('ok');
+    expect(analysis.evaluation?.values.get('sum.y')).toMatchObject({ data: [5] });
+  });
+
+  it('blocks what depends on a closure node that fails to resolve, not the rest of the graph', () => {
+    const document = graph(
+      [
+        scalar('a', 2),
+        scalar('b', 3),
+        closureNode('bad', 'a +'),
+        { kind: 'output' as const, id: 'out', position: { x: 0, y: 0 }, output: { kind: 'print' as const } },
+        formulaNode('sum', 'inv.sum'),
+      ],
+      [
+        wire('e1', ['a', 'value'], ['bad', 'a']),
+        wire('e2', ['bad', 'result'], ['out', 'value']),
+        wire('e3', ['a', 'value'], ['sum', 'a']),
+        wire('e4', ['b', 'value'], ['sum', 'b']),
+      ],
+    );
+    const analysis = analyse(document, CATALOGUES);
+
+    expect(analysis.states.get('bad')).toBe('error');
+    expect(analysis.states.get('out')).toBe('blocked');
+    expect(analysis.states.get('sum')).toBe('ok');
+    expect(analysis.evaluation?.values.get('sum.y')).toMatchObject({ data: [5] });
+  });
 });
 
 describe('compare nodes', () => {
