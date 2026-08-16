@@ -176,15 +176,21 @@ function Section({
   outputs,
   collapsed,
   onToggle,
+  dragOver,
+  onDragOver,
+  onDragLeave,
 }: {
   readonly frame?: Frame;
   readonly outputs: readonly OutputNode[];
   readonly collapsed: boolean;
   readonly onToggle: () => void;
+  /** Set by the notebook (a single, shared value — see its own comment) rather than owned locally. */
+  readonly dragOver: 'before' | 'after' | undefined;
+  readonly onDragOver: (position: 'before' | 'after') => void;
+  readonly onDragLeave: () => void;
 }): ReactElement | null {
   const { document, analysis, edit, editLive, commitEdit } = useGraph();
   const [menu, setMenu] = useState<{ x: number; y: number } | undefined>(undefined);
-  const [dragOver, setDragOver] = useState<'before' | 'after' | undefined>(undefined);
   if (outputs.length === 0) return null;
 
   const results = new Map(
@@ -223,14 +229,14 @@ function Section({
         // drop lands before or after it — not always "before", which read as
         // arbitrary when the drop target's own bottom half was still "above".
         const bounds = event.currentTarget.getBoundingClientRect();
-        setDragOver(event.clientY - bounds.top < bounds.height / 2 ? 'before' : 'after');
+        onDragOver(event.clientY - bounds.top < bounds.height / 2 ? 'before' : 'after');
       }}
-      onDragLeave={() => setDragOver(undefined)}
+      onDragLeave={onDragLeave}
       onDrop={(event) => {
         if (frame === undefined || dragOver === undefined) return;
         event.preventDefault();
         const position = dragOver;
-        setDragOver(undefined);
+        onDragLeave();
         const sourceId = event.dataTransfer.getData('text/plain');
         if (sourceId.length === 0) return;
         edit((current) => reorderFrame(current, sourceId, frame.id, position));
@@ -369,6 +375,16 @@ export function Notebook(): ReactElement {
       return next;
     });
 
+  // Shared across every section, rather than each Section owning its own —
+  // two adjacent sections independently tracking "am I the drop target" could
+  // both end up drawing a line (theirs at the shared edge doesn't reliably
+  // clear on dragleave before the neighbour's dragover sets its own), which
+  // read as two drop targets at once instead of one line at the boundary.
+  // A single value can only ever belong to one section.
+  const [dragOver, setDragOver] = useState<{ frameId: string; position: 'before' | 'after' } | undefined>(
+    undefined,
+  );
+
   // A collapsed section renders nothing (Section returns before its body), so
   // a printed PDF would silently drop whatever was folded up on screen.
   // Printing forces every section open for the print, then restores whatever
@@ -411,12 +427,20 @@ export function Notebook(): ReactElement {
           outputs={outputsOf(document, frame.id)}
           collapsed={printing ? false : collapsed.has(frame.id)}
           onToggle={() => toggle(frame.id)}
+          dragOver={dragOver?.frameId === frame.id ? dragOver.position : undefined}
+          onDragOver={(position) => setDragOver({ frameId: frame.id, position })}
+          onDragLeave={() =>
+            setDragOver((current) => (current?.frameId === frame.id ? undefined : current))
+          }
         />
       ))}
       <Section
         outputs={outputsOf(document, undefined)}
         collapsed={printing ? false : collapsed.has(UNGROUPED)}
         onToggle={() => toggle(UNGROUPED)}
+        dragOver={undefined}
+        onDragOver={() => {}}
+        onDragLeave={() => {}}
       />
 
       {analysis.message === undefined ? null : (
