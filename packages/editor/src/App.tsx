@@ -13,7 +13,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
-import { ReactFlowProvider } from '@xyflow/react';
+import { ReactFlowProvider, useReactFlow } from '@xyflow/react';
 
 import {
   emptyDocument,
@@ -38,7 +38,7 @@ import {
 } from './io/recentDocuments';
 import { analyse } from './model/analysis';
 import { bundledCatalogues, baseCatalogue, withCatalogue } from './model/catalogues';
-import { frameAround, reframe, uniqueId } from './model/document';
+import { groupIntoSection } from './model/document';
 import {
   loadMinimapVisible,
   loadThemePreference,
@@ -119,7 +119,22 @@ function startupDocument(): { readonly document: GraphDocument; readonly restore
   };
 }
 
+/**
+ * `AppShell` needs `useReactFlow()` (an open-canvas location for a section
+ * spawned with nothing selected), which only works inside a
+ * `<ReactFlowProvider>` — so this wrapper exists purely to be the parent that
+ * renders one around it.
+ */
 export function App(): ReactElement {
+  return (
+    <ReactFlowProvider>
+      <AppShell />
+    </ReactFlowProvider>
+  );
+}
+
+function AppShell(): ReactElement {
+  const flow = useReactFlow();
   const [catalogues, setCatalogues] = useState<readonly Catalogue[]>(initialCatalogues);
   const [{ document: initialDocument, restored: restoredAutosave }] = useState(startupDocument);
   const [history, setHistory] = useState<History<GraphDocument>>(() => initHistory(initialDocument));
@@ -138,6 +153,7 @@ export function App(): ReactElement {
   // that is no longer open, same as most editors treat "open a file".
   const resetDocument = (next: GraphDocument): void => setHistory(initHistory(next));
   const [pinned, setPinned] = useState<ReadonlySet<string>>(new Set());
+  const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [showPalette, setShowPalette] = useState(true);
   const [showNotebook, setShowNotebook] = useState(true);
   const [numberFormat, setNumberFormatState] = useState<NumberFormatSettings>(loadNumberFormatSettings);
@@ -264,8 +280,10 @@ export function App(): ReactElement {
           else next.add(id);
           return next;
         }),
+      selected,
+      setSelected,
     }),
-    [analysis, catalogues, document, pinned],
+    [analysis, catalogues, document, pinned, selected],
   );
 
   const beltAvailable = provides(catalogues, BELT_LAB_FORMULAS);
@@ -312,17 +330,10 @@ export function App(): ReactElement {
     }
   };
 
-  const addSection = (): void =>
-    edit((current) => {
-      const inside = current.nodes.filter((node) => node.frameId === undefined);
-      if (inside.length === 0) {
-        pushNotice('Every node is already in a section.');
-        return current;
-      }
-      const id = uniqueId(current, 'section');
-      const frame = frameAround(id, 'New section', inside);
-      return reframe({ ...current, frames: [...current.frames, frame] });
-    });
+  const addSection = (): void => {
+    const at = flow.screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+    edit((current) => groupIntoSection(current, selected, at));
+  };
 
   // Open/save belong in a conventional File/Edit/View/Help ribbon, top-left
   // (docs/UX-SPEC.md) — not wherever the individual actions used to live.
@@ -437,87 +448,85 @@ export function App(): ReactElement {
   return (
     <SettingsContext.Provider value={settingsContext}>
       <GraphContext.Provider value={context}>
-        <ReactFlowProvider>
-          {/* Right-click opens an app menu wherever one is wired up (Canvas,
-              Notebook); everywhere else it should do nothing rather than fall
-              through to the browser's own menu, which offers nothing useful over
-              a canvas. */}
-          <div className="app" onContextMenu={(event) => event.preventDefault()}>
-            <header className="menubar">
-              {menuButton('file', 'File')}
-              {menuButton('edit', 'Edit')}
-              {menuButton('view', 'View')}
-              {menuButton('help', 'Help')}
+        {/* Right-click opens an app menu wherever one is wired up (Canvas,
+            Notebook); everywhere else it should do nothing rather than fall
+            through to the browser's own menu, which offers nothing useful over
+            a canvas. */}
+        <div className="app" onContextMenu={(event) => event.preventDefault()}>
+          <header className="menubar">
+            {menuButton('file', 'File')}
+            {menuButton('edit', 'Edit')}
+            {menuButton('view', 'View')}
+            {menuButton('help', 'Help')}
 
-              {/* v0.x is unstable by semver convention — the badge names that
-                  explicitly rather than relying on a reader knowing the
-                  convention, and drops away on its own once a 1.0 ships. */}
-              <span
-                className={`menubar-version${__APP_VERSION__.startsWith('0.') ? ' alpha' : ''}`}
-                title={`machine-design-studio v${__APP_VERSION__}`}
-              >
-                {__APP_VERSION__.startsWith('0.') ? 'alpha · ' : ''}v{__APP_VERSION__}
-              </span>
-            </header>
-            {openMenu === undefined ? null : (
-              <ContextMenu
-                x={openMenu.x}
-                y={openMenu.y}
-                items={menuItemsFor(openMenu.menu)}
-                onClose={() => setOpenMenu(undefined)}
-              />
+            {/* v0.x is unstable by semver convention — the badge names that
+                explicitly rather than relying on a reader knowing the
+                convention, and drops away on its own once a 1.0 ships. */}
+            <span
+              className={`menubar-version${__APP_VERSION__.startsWith('0.') ? ' alpha' : ''}`}
+              title={`machine-design-studio v${__APP_VERSION__}`}
+            >
+              {__APP_VERSION__.startsWith('0.') ? 'alpha · ' : ''}v{__APP_VERSION__}
+            </span>
+          </header>
+          {openMenu === undefined ? null : (
+            <ContextMenu
+              x={openMenu.x}
+              y={openMenu.y}
+              items={menuItemsFor(openMenu.menu)}
+              onClose={() => setOpenMenu(undefined)}
+            />
+          )}
+
+          <main>
+            {/* Overlays the workspace instead of sitting in normal flow, so
+                showing or dismissing one does not shift the canvas (docs/UX-SPEC.md:
+                messages must overlay, not push other UI down). Stacks rather than
+                replacing, and each clears itself after a delay. */}
+            {notices.length === 0 ? null : (
+              <div className="notices">
+                {notices.map((notice) => (
+                  <div key={notice.id} className="notice" role="status">
+                    {notice.message}
+                    <button type="button" onClick={() => dismissNotice(notice.id)}>
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
             )}
 
-            <main>
-              {/* Overlays the workspace instead of sitting in normal flow, so
-                  showing or dismissing one does not shift the canvas (docs/UX-SPEC.md:
-                  messages must overlay, not push other UI down). Stacks rather than
-                  replacing, and each clears itself after a delay. */}
-              {notices.length === 0 ? null : (
-                <div className="notices">
-                  {notices.map((notice) => (
-                    <div key={notice.id} className="notice" role="status">
-                      {notice.message}
-                      <button type="button" onClick={() => dismissNotice(notice.id)}>
-                        ✕
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {showPalette ? (
-                <>
-                  <aside className="left" style={{ width: paletteWidth, flexBasis: paletteWidth }}>
-                    <Palette />
-                  </aside>
-                  <div className="resize-handle" onMouseDown={resizePalette} />
-                </>
-              ) : null}
-
-              <Canvas />
-
-              {showNotebook ? (
-                <>
-                  <div className="resize-handle" onMouseDown={resizeNotebook} />
-                  <aside className="right" style={{ width: notebookWidth, flexBasis: notebookWidth }}>
-                    <Notebook />
-                  </aside>
-                </>
-              ) : null}
-            </main>
-
-            {showSettings ? (
-              <SettingsDialog
-                settings={numberFormat}
-                onChange={setNumberFormat}
-                minimapVisible={minimapVisible}
-                onMinimapVisibleChange={setMinimapVisible}
-                onClose={() => setShowSettings(false)}
-              />
+            {showPalette ? (
+              <>
+                <aside className="left" style={{ width: paletteWidth, flexBasis: paletteWidth }}>
+                  <Palette />
+                </aside>
+                <div className="resize-handle" onMouseDown={resizePalette} />
+              </>
             ) : null}
-          </div>
-        </ReactFlowProvider>
+
+            <Canvas />
+
+            {showNotebook ? (
+              <>
+                <div className="resize-handle" onMouseDown={resizeNotebook} />
+                <aside className="right" style={{ width: notebookWidth, flexBasis: notebookWidth }}>
+                  <Notebook />
+                </aside>
+              </>
+            ) : null}
+          </main>
+
+          {showSettings ? (
+            <SettingsDialog
+              settings={numberFormat}
+              onChange={setNumberFormat}
+              minimapVisible={minimapVisible}
+              onMinimapVisibleChange={setMinimapVisible}
+              onClose={() => setShowSettings(false)}
+            />
+          ) : null}
+        </div>
       </GraphContext.Provider>
     </SettingsContext.Provider>
   );

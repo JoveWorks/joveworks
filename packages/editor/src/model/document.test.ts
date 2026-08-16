@@ -25,6 +25,7 @@ import {
   connect,
   duplicateNode,
   frameAround,
+  groupIntoSection,
   nodeLabel,
   pruneEdgesTo,
   reframe,
@@ -155,6 +156,27 @@ describe('document edits', () => {
       updateNode<InputNode>(framed, 'b', (node) => ({ ...node, position: { x: 10, y: 10 } })),
     );
     expect(moved.nodes.find((node) => node.id === 'b')?.frameId).toBe('section');
+  });
+
+  describe('groupIntoSection — "Group into new section", selection-aware', () => {
+    it('frames only the selected nodes, not every free one in the document', () => {
+      const grouped = groupIntoSection(base, new Set(['a']), { x: 999, y: 999 });
+      expect(grouped.nodes.find((node) => node.id === 'a')?.frameId).toBeDefined();
+      expect(grouped.nodes.find((node) => node.id === 'b')?.frameId).toBeUndefined();
+    });
+
+    it('ignores ids in the selection that are not document nodes (an edge or a frame)', () => {
+      const grouped = groupIntoSection(base, new Set(['a', 'some-edge-id']), { x: 999, y: 999 });
+      expect(grouped.frames).toHaveLength(1);
+      expect(grouped.nodes.find((node) => node.id === 'a')?.frameId).toBeDefined();
+    });
+
+    it('spawns an empty section at the given position rather than sweeping every free node', () => {
+      const grouped = groupIntoSection(base, new Set(), { x: 123, y: 456 });
+      expect(grouped.frames).toHaveLength(1);
+      expect(grouped.frames[0]?.position).toEqual({ x: 123, y: 456 });
+      expect(grouped.nodes.every((node) => node.frameId === undefined)).toBe(true);
+    });
   });
 });
 

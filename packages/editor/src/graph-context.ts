@@ -30,6 +30,15 @@ export interface GraphContextValue {
   /** Nodes held open while working elsewhere. */
   readonly pinned: ReadonlySet<string>;
   readonly togglePin: (id: string) => void;
+  /**
+   * What's currently selected on the canvas — nodes, frames and edges alike,
+   * by id. Lives here rather than in `Canvas.tsx` alone (despite being
+   * exactly the kind of session-local, not-part-of-the-document state that
+   * comment describes) because actions outside the canvas — the Edit ribbon's
+   * "Group into new section" — need to read it too.
+   */
+  readonly selected: ReadonlySet<string>;
+  readonly setSelected: (update: (current: ReadonlySet<string>) => ReadonlySet<string>) => void;
 }
 
 export const GraphContext = createContext<GraphContextValue | undefined>(undefined);

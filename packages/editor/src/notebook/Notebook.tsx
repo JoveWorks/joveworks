@@ -19,7 +19,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactElement } from 'react';
 
 import { parseExpression, toLatex, type OutputResult } from '@mds/kernel';
-import type { Frame, GraphDocument, OutputNode } from '@mds/schema';
+import type { Frame, GraphDocument, OutputNode, Position } from '@mds/schema';
 
 import type { NumberFormat } from '@mds/units';
 
@@ -401,10 +401,25 @@ function Section({
   );
 }
 
+/**
+ * Two nodes within this many px of vertical distance read as the same "row" —
+ * ordered by x instead of the (functionally arbitrary) sub-pixel difference
+ * in y a hand-placed layout is full of. Roughly a node's own height, the
+ * same order of magnitude `frameAround` (`model/document.ts`) assumes.
+ */
+const ROW_TOLERANCE = 100;
+
+/** Top-to-bottom, then left-to-right on near-ties — comic-book reading order. */
+export function readingOrder(a: { readonly position: Position }, b: { readonly position: Position }): number {
+  const dy = a.position.y - b.position.y;
+  return Math.abs(dy) > ROW_TOLERANCE ? dy : a.position.x - b.position.x;
+}
+
 function outputsOf(document: GraphDocument, frameId: string | undefined): readonly OutputNode[] {
-  return document.nodes.filter(
-    (node): node is OutputNode => node.kind === 'output' && node.frameId === frameId,
-  );
+  return document.nodes
+    .filter((node): node is OutputNode => node.kind === 'output' && node.frameId === frameId)
+    .slice()
+    .sort(readingOrder);
 }
 
 export function Notebook(): ReactElement {

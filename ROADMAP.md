@@ -128,15 +128,12 @@ that path is the extraction script, not an editor UI), how
 course's in-flight graphs. Distinct audience from the student tutorial
 above: instructor-facing, about the tool's authoring and versioning model.
 
-**What should a multi-node selection do?** One concrete gap already found:
-"Group into new section" ignores the current selection entirely and wraps
-*every* ungrouped node in the document into one frame (`App.tsx`'s
-`addSection`) — there's no way to select a handful of nodes and frame just
-those. Fix: with a selection, the new frame should contain only the selected
-nodes; with none, it should spawn empty at an open location rather than
-sweeping up every free node. Open beyond that: what else, if anything, should
-a selection enable — move together (already true, independent React Flow
-nodes), delete together (already true, Backspace/Delete), anything else?
+**What should a multi-node selection do?** "Group into new section" now
+frames only the current selection, or spawns an empty section at an open
+location with none selected (`groupIntoSection`, `model/document.ts`). Open
+beyond that: what else, if anything, should a selection enable — move
+together (already true, independent React Flow nodes), delete together
+(already true, Backspace/Delete), anything else?
 
 **Spectrum-editing UI.** A load spectrum (a hand-typed collection consumed
 whole by an aggregation, not swept) exists in the schema, but nothing in the
@@ -159,14 +156,6 @@ question.
 **Are all nodes addable in the quick add?**
 
 **Settings should be persistent.** Panel widths are not stored.
-
-**Section frames: notebook order and resize behavior.** Two gaps once
-membership itself is fixed (see multi-node selection, above): the notebook
-doesn't define an order for a frame's contents — should read top-to-bottom,
-then left-to-right on near-ties, comic-book style. And resizing a frame from
-its top or left edge drags the contained nodes along with it, which fights
-against using a resize to shrink a frame's membership — a resize should
-never move contained nodes, only a move should.
 
 **Ribbon stays open.** Moving out of a ribbon menu window does not close it, maybe with a short delay so it does not close the instant the cursor leaves, I hate this in other GUIs.
 
