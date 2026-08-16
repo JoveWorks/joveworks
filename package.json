@@ -12,6 +12,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "dev": "pnpm --filter @mds/editor dev",
+    "docs:dev": "pnpm --filter @mds/docs-site dev",
+    "docs:build": "pnpm --filter @mds/docs-site build",
     "release": "commit-and-tag-version"
   },
   "devDependencies": {

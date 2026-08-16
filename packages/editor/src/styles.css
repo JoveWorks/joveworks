@@ -440,6 +440,19 @@ aside.right {
   background: transparent;
 }
 
+.node .help {
+  border: none;
+  padding: 0 2px;
+  color: var(--line);
+  background: transparent;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.node .help:hover {
+  color: var(--accent);
+}
+
 .node .pin {
   border: none;
   padding: 0 2px;
