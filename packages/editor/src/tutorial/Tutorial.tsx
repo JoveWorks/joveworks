@@ -1,23 +1,29 @@
 /**
  * The first-load walkthrough: a spotlight over one real UI element at a
- * time, plus a caption. Self-contained — the only state it needs is which
- * step it's on, so it stays decoupled from `AppShell`'s state the way
- * `SettingsDialog` is.
+ * time, plus a caption. Reads/writes `pinned` because a step that points
+ * inside a node (its detail, its value-kind select) needs that node open —
+ * open is `selected || hovered || pinned` (`NodeShell.tsx`), and a scripted
+ * step controls none of the first two.
  *
- * A step's target can be off-screen, unmounted (the notebook panel closed,
- * no input node open) or moving under React Flow's pan/zoom. Rather than
- * chase that, a target that can't be measured just means no spotlight for
- * that step — the caption still shows, centered, and the tour keeps going.
+ * A step's target can be off-screen, unmounted (the notebook panel closed)
+ * or moving under React Flow's pan/zoom. Rather than chase that, a target
+ * that can't be measured just means no spotlight for that step — the
+ * caption still shows, centered, and the tour keeps going. The caption
+ * itself is measured after every render and nudged back on-screen if its
+ * preferred position would run off any edge — a nearby handle or a wide
+ * side panel can otherwise place it (or its buttons) out of reach.
  */
 
-import { useEffect, useState, type ReactElement } from 'react';
+import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactElement } from 'react';
 
-import { TUTORIAL_STEPS } from './steps';
+import { TUTORIAL_STEPS, type TutorialStep } from './steps';
 import { saveTutorialSeen } from './tutorialSettings';
 
 interface Props {
   readonly active: boolean;
   readonly onClose: () => void;
+  readonly pinned: ReadonlySet<string>;
+  readonly setPinned: (update: (current: ReadonlySet<string>) => ReadonlySet<string>) => void;
 }
 
 const MARGIN = 12;
@@ -27,12 +33,31 @@ function measure(target: string | undefined): DOMRect | undefined {
   return document.querySelector(target)?.getBoundingClientRect();
 }
 
-export function Tutorial({ active, onClose }: Props): ReactElement | null {
+function preferredStyle(rect: DOMRect | undefined, placement: TutorialStep['placement']): CSSProperties {
+  if (rect === undefined || placement === 'center') {
+    return { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' };
+  }
+  switch (placement) {
+    case 'right':
+      return { top: `${rect.top}px`, left: `${rect.right + MARGIN * 2}px` };
+    case 'left':
+      return { top: `${rect.top}px`, left: `${rect.left - MARGIN * 2}px`, transform: 'translateX(-100%)' };
+    case 'top':
+      return { left: `${rect.left}px`, top: `${rect.top - MARGIN * 2}px`, transform: 'translateY(-100%)' };
+    case 'bottom':
+      return { left: `${rect.left}px`, top: `${rect.bottom + MARGIN * 2}px` };
+  }
+}
+
+export function Tutorial({ active, onClose, pinned, setPinned }: Props): ReactElement | null {
   const [stepIndex, setStepIndex] = useState(0);
   const [rect, setRect] = useState<DOMRect | undefined>(undefined);
+  const [offset, setOffset] = useState({ dx: 0, dy: 0 });
+  const captionRef = useRef<HTMLDivElement>(null);
+  const originalPinned = useRef<ReadonlySet<string> | undefined>(undefined);
   const step = TUTORIAL_STEPS[stepIndex];
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!active) return;
     setRect(measure(step?.target));
     const update = (): void => setRect(measure(step?.target));
@@ -49,14 +74,59 @@ export function Tutorial({ active, onClose }: Props): ReactElement | null {
     };
   }, [active, step?.target]);
 
+  // A step that points inside a node needs it open; restores whatever was
+  // pinned before the tour started once it closes, rather than leaving its
+  // own pins behind.
+  useLayoutEffect(() => {
+    if (!active) return;
+    if (originalPinned.current === undefined) originalPinned.current = pinned;
+    const base = originalPinned.current;
+    setPinned(() => new Set([...base, ...(step?.pinIds ?? [])]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, stepIndex]);
+
+  useLayoutEffect(() => {
+    if (!active && originalPinned.current !== undefined) {
+      setPinned(() => originalPinned.current ?? new Set());
+      originalPinned.current = undefined;
+    }
+  }, [active, setPinned]);
+
+  // Resets before measuring the new step's natural position, so a large
+  // correction from a previous step doesn't linger into this one.
+  useLayoutEffect(() => setOffset({ dx: 0, dy: 0 }), [stepIndex]);
+
+  useLayoutEffect(() => {
+    const el = captionRef.current;
+    if (el === null) return;
+    const box = el.getBoundingClientRect();
+    let dx = 0;
+    let dy = 0;
+    if (box.left < MARGIN) dx = MARGIN - box.left;
+    else if (box.right > window.innerWidth - MARGIN) dx = window.innerWidth - MARGIN - box.right;
+    if (box.top < MARGIN) dy = MARGIN - box.top;
+    else if (box.bottom > window.innerHeight - MARGIN) dy = window.innerHeight - MARGIN - box.bottom;
+    if (dx !== offset.dx || dy !== offset.dy) setOffset({ dx, dy });
+  });
+
   if (!active || step === undefined) return null;
 
   const close = (): void => {
     saveTutorialSeen(true);
     onClose();
+    // So the next run (Help → Take the tour) starts over rather than
+    // resuming wherever this one left off.
+    setStepIndex(0);
   };
   const last = stepIndex === TUTORIAL_STEPS.length - 1;
   const advance = (): void => (last ? close() : setStepIndex((current) => current + 1));
+
+  const base = preferredStyle(rect, step.placement);
+  const nudge = offset.dx !== 0 || offset.dy !== 0 ? `translate(${offset.dx}px, ${offset.dy}px)` : undefined;
+  const style: CSSProperties = {
+    ...base,
+    transform: [base.transform, nudge].filter((value) => value !== undefined).join(' ') || undefined,
+  };
 
   return (
     <>
@@ -74,12 +144,9 @@ export function Tutorial({ active, onClose }: Props): ReactElement | null {
         />
       )}
       <div
-        className={`tutorial-caption placement-${rect === undefined ? 'center' : step.placement}`}
-        style={
-          rect === undefined
-            ? undefined
-            : captionStyle(rect, step.placement)
-        }
+        ref={captionRef}
+        className="tutorial-caption"
+        style={style}
         role="dialog"
         aria-label="Tutorial"
         onKeyDown={(event) => {
@@ -107,25 +174,4 @@ export function Tutorial({ active, onClose }: Props): ReactElement | null {
       </div>
     </>
   );
-}
-
-function captionStyle(
-  rect: DOMRect,
-  placement: 'top' | 'bottom' | 'left' | 'right' | 'center',
-): { top?: string; left?: string; right?: string; bottom?: string; transform?: string } {
-  switch (placement) {
-    case 'right':
-      return { top: `${rect.top}px`, left: `${rect.right + MARGIN * 2}px` };
-    case 'left':
-      return { top: `${rect.top}px`, right: `${window.innerWidth - rect.left + MARGIN * 2}px` };
-    case 'top':
-      return {
-        left: `${rect.left}px`,
-        bottom: `${window.innerHeight - rect.top + MARGIN * 2}px`,
-      };
-    case 'bottom':
-      return { left: `${rect.left}px`, top: `${rect.bottom + MARGIN * 2}px` };
-    case 'center':
-      return { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' };
-  }
 }

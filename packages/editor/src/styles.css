@@ -1232,12 +1232,6 @@ aside.right {
   font-size: 13px;
 }
 
-.tutorial-caption.placement-center {
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-}
-
 .tutorial-caption h2 {
   margin: 0;
   font-size: 15px;

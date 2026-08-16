@@ -9,6 +9,11 @@ export interface TutorialStep {
    * with no spotlight — used for the welcome and closing steps, and as the
    * fallback when a targeted step's element isn't on the page. */
   readonly target?: string;
+  /** Node ids to hold open (as if pinned) for the duration of this step —
+   * a targeted node's detail, and the fields inside it, only render while
+   * the node is open, so a step that points inside one must pin it rather
+   * than hope the student happens to have it open already. */
+  readonly pinIds?: readonly string[];
   readonly title: string;
   readonly body: string;
   readonly placement: 'top' | 'bottom' | 'left' | 'right' | 'center';
@@ -27,12 +32,14 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
   },
   {
     target: '[data-tour="input-w"]',
+    pinIds: ['w'],
     title: 'An input turned into a range',
     body: 'The pad width, w, is not one number here — it sweeps from 10 to 60 mm. Everything wired downstream of it is recomputed at every point in the sweep.',
     placement: 'right',
   },
   {
     target: '[data-tour="value-kind-select"]',
+    pinIds: ['w'],
     title: 'Turning an input into a range',
     body: "This dropdown is how w became a sweep. Pick linear, logarithmic, a slider or a list here to turn any plain input into a range, the same way — F and L could sweep too if there were a reason to.",
     placement: 'right',
