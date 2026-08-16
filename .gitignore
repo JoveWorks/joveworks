@@ -3,5 +3,5 @@ dist/
 build/
 *.tsbuildinfo
 .vite/
-.vitepress/cache/
+**/.vitepress/cache/
 /.claude/worktrees
