@@ -326,8 +326,15 @@ aside.right {
 }
 
 .palette .entry {
-  display: flex;
-  gap: 8px;
+  /* Grid, not flex: a flex item sized by content only right-aligns via
+     margin-left: auto while it fits on one line — once a long hint wraps,
+     the free space it was pushed by collapses and it hugs entry-id
+     instead. Grid's second column is a fixed 1fr regardless of wrapping,
+     so a wrapped hint stays flush right on every line. */
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  column-gap: 8px;
   width: 100%;
   text-align: left;
   border: none;
@@ -346,7 +353,8 @@ aside.right {
 
 .palette .entry-output {
   color: var(--muted);
-  margin-left: auto;
+  text-align: right;
+  min-width: 0;
 }
 
 .palette .entry.quarantined .entry-id {
