@@ -216,6 +216,10 @@ does this log" has a single answer.
 
 **Docs title and editor are the same.** Both `machine-design-studio`
 
+**s^-1 unit should be Hz when it is bare**
+
+**Unit on output port should be in parentheses.** Like in all other parts of the UX, e.g. tables. Now it is just besides the parameter, and is confusing. This should be the case for all combinations of [parameter] [unit], explore and discuss.
+
 ## Commit conventions and release tooling
 
 Done. `v0.1.0` is cut — first tagged release, marked pre-release on GitHub
