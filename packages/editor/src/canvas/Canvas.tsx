@@ -63,6 +63,7 @@ import {
   uniqueId,
   updateFrame,
 } from '../model/document';
+import { autoArrange } from '../model/layout';
 import { ClosureNodeView } from './ClosureNodeView';
 import { CompareNodeView } from './CompareNodeView';
 import { ContextMenu, type MenuItem } from './ContextMenu';
@@ -664,6 +665,10 @@ export function Canvas(): ReactElement {
       {
         label: 'Group into new section',
         onClick: () => edit((current) => groupIntoSection(current, selected, at)),
+      },
+      {
+        label: 'Auto-arrange',
+        onClick: () => edit((current) => autoArrange(current)),
       },
     ];
   };
