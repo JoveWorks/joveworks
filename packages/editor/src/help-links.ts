@@ -1,9 +1,11 @@
 /**
  * Where each node kind's "?" button links to. `packages/docs-site` is not
- * deployed yet — update DOCS_BASE_URL once it has a real URL.
+ * deployed yet — update DOCS_BASE_URL once it has a real URL. It's served
+ * at /docs/ under the app's own origin (see `base` in
+ * packages/docs-site/docs/.vitepress/config.ts), not a separate subdomain.
  */
 
-export const DOCS_BASE_URL = 'https://docs.machine-design-studio.example';
+export const DOCS_BASE_URL = 'https://machine-design-studio.example/docs';
 
 export const NODE_HELP_URLS: Readonly<
   Record<'input' | 'formula' | 'output' | 'compare' | 'closure', string>
