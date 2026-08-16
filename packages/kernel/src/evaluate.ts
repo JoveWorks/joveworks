@@ -37,6 +37,7 @@ import {
   type SpectrumPort,
 } from '@mds/schema';
 
+import { packChannelIndices } from './bundle.js';
 import { comparator } from './compile.js';
 import { KernelError } from './errors.js';
 import { assertEvaluable, compileClosureFormula, compileFormula } from './formula.js';
@@ -192,6 +193,18 @@ export function evaluateDocument(
         values.set(endpointKey(node.id, VERDICT_PORT), evaluateCompare(node, resolution, values));
         break;
 
+      case 'waypoint':
+        values.set(endpointKey(node.id, 'out'), evaluateWaypoint(node.id, resolution, values));
+        break;
+
+      case 'pack':
+        values.set(endpointKey(node.id, 'bundle'), evaluatePack(node.id, resolution, values));
+        break;
+
+      case 'unpack':
+        evaluateUnpack(node.id, resolution, values, values);
+        break;
+
       case 'output':
         outputs.push(outputResult(node, resolution, values, axisById, warnings));
         break;
@@ -341,9 +354,9 @@ function spectrumEdgeValues(
   if (edges.length === 0) throw new KernelError(`'${port.name}' is not connected and has no default`, key);
   return edges.map((edge) => {
     const value = valueAtEdge(edge, key, values);
-    if (value.kind === 'categorical') {
+    if (value.kind === 'categorical' || value.kind === 'bundle') {
       throw new KernelError(
-        `'${edge.from.node}.${edge.from.port}' is a categorical value, and this port needs a number`,
+        `'${edge.from.node}.${edge.from.port}' is a ${value.kind} value, and this port needs a number`,
         key,
       );
     }
@@ -379,12 +392,12 @@ function evaluateFormula(
   const regularPorts = formula.inputs.filter((port) => port.kind !== 'spectrum');
   const regularInputs = regularPorts.map((port) => {
     const value = inputPortValue(nodeId, port, resolution, values);
-    // An ordinary port's own source is never spectrum-kind — a formula
-    // cannot produce one — so this is a defensive check, not a real
-    // case, but it is what lets everything below see NumericSeries |
+    // An ordinary port's own source is never spectrum- or bundle-kind — a
+    // formula cannot produce either — so this is a defensive check, not a
+    // real case, but it is what lets everything below see NumericSeries |
     // CategoricalSeries instead of the full PortValue union.
-    if (value.kind === 'spectrum') {
-      throw new KernelError(`'${port.name}' cannot hold a spectrum — only a spectrum port can`, nodeId);
+    if (value.kind === 'spectrum' || value.kind === 'bundle') {
+      throw new KernelError(`'${port.name}' cannot hold a ${value.kind} — only a matching port can`, nodeId);
     }
     return { port, value };
   });
@@ -543,6 +556,57 @@ function evaluateCompare(
   return { kind: 'categorical', axes: value.axes, data };
 }
 
+// --- waypoint, pack, unpack ---------------------------------------------
+
+/** Literal passthrough of the first wired input — not a reduction, unlike `minimum`/`sum`. */
+function evaluateWaypoint(
+  nodeId: string,
+  resolution: Resolution,
+  values: ReadonlyMap<string, PortValue>,
+): PortValue {
+  const key = endpointKey(nodeId, 'in');
+  const edge = resolution.incoming.get(key)?.[0];
+  if (edge === undefined) throw new KernelError("'in' is not connected", key);
+  return valueAtEdge(edge, key, values);
+}
+
+/** Collects each currently-wired channel's value, in index order, into one bundle. */
+function evaluatePack(
+  nodeId: string,
+  resolution: Resolution,
+  values: ReadonlyMap<string, PortValue>,
+): PortValue {
+  const indices = packChannelIndices(resolution.document, nodeId);
+  const collected = indices.map((n) => {
+    const key = endpointKey(nodeId, `in${n}`);
+    const edge = resolution.incoming.get(key)?.[0];
+    if (edge === undefined) throw new KernelError(`'in${n}' is not connected`, key);
+    return valueAtEdge(edge, key, values);
+  });
+  return { kind: 'bundle', values: collected };
+}
+
+/**
+ * Spreads a wired bundle's values back out onto `out0..outN`. Writes
+ * nothing when `bundle` is unwired — no outputs exist to write to, the same
+ * "just disappears" every other unwired ghost-slot port follows.
+ */
+function evaluateUnpack(
+  nodeId: string,
+  resolution: Resolution,
+  values: ReadonlyMap<string, PortValue>,
+  out: Map<string, PortValue>,
+): void {
+  const key = endpointKey(nodeId, 'bundle');
+  const edge = resolution.incoming.get(key)?.[0];
+  if (edge === undefined) return;
+  const bundle = valueAtEdge(edge, key, values);
+  if (bundle.kind !== 'bundle') {
+    throw new KernelError("'bundle' is not a bundle value", key);
+  }
+  bundle.values.forEach((value, i) => out.set(endpointKey(nodeId, `out${i}`), value));
+}
+
 // --- output nodes -----------------------------------------------------------
 
 function sourceOf(
@@ -564,8 +628,8 @@ function sourceOf(
     return found;
   })();
 
-  if (value.kind === 'spectrum') {
-    throw new KernelError(`'${port}' is a spectrum, which an output node cannot render`, key);
+  if (value.kind === 'spectrum' || value.kind === 'bundle') {
+    throw new KernelError(`'${port}' is a ${value.kind}, which an output node cannot render`, key);
   }
   return { value, unit: displayUnit(resolution.targets.get(key)) };
 }
@@ -664,7 +728,7 @@ function outputResult(
       throw new KernelError(`'${id}' is not a range input node, so it introduces no axis`, node.id);
     }
     const coordinates = values.get(endpointKey(id, VALUE_PORT));
-    if (coordinates === undefined || coordinates.kind === 'spectrum') {
+    if (coordinates === undefined || coordinates.kind === 'spectrum' || coordinates.kind === 'bundle') {
       throw new KernelError(`'${id}' produced no coordinates to plot against`, node.id);
     }
     if (!value.axes.some((own) => own.id === id)) {

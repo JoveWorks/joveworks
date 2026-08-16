@@ -56,6 +56,7 @@ import {
   type PortKind,
 } from '@mds/schema';
 
+import { packChannelIndices } from './bundle.js';
 import { closureFormula } from './closure.js';
 import { expressionDimension, type DimensionScope } from './compile.js';
 import { assertConnectable, assertSameDimension, connectable } from './dimensions.js';
@@ -71,6 +72,13 @@ export interface PortType {
   readonly dimension?: Dimension;
   /** The unit to display in, when the port declares one. */
   readonly unit?: Unit;
+  /**
+   * A `bundle`-kind port's per-channel dimensions, in order — `dimension`
+   * itself is meaningless for a bundle, which carries a list rather than
+   * one dimension. `undefined` while unbound, same as `dimension` is for
+   * every other generic port.
+   */
+  readonly channels?: readonly Dimension[];
 }
 
 /** `node.port`, the key both edge ends are indexed by. */
@@ -191,6 +199,10 @@ function outputPortNames(node: GraphNode): readonly string[] {
 
 function portType(port: Port, bindings: ReadonlyMap<string, Dimension>): PortType {
   if (port.kind === 'categorical') return { kind: 'categorical' };
+  // A catalogue formula never declares one (schema/src/port.ts), so this is
+  // unreachable from `formula`/`closure` resolution — kept only so `Port`'s
+  // full union type-checks here.
+  if (port.kind === 'bundle') return { kind: 'bundle' };
   if (!isGenericDimension(port.unit)) {
     return { kind: port.kind, dimension: port.unit.dimension, unit: port.unit };
   }
@@ -373,7 +385,7 @@ export function resolveGraph(
         const source = sourceType(edge);
         checkKind(source, declared, key);
 
-        if (port.kind !== 'categorical' && isGenericDimension(port.unit)) {
+        if (port.kind !== 'categorical' && port.kind !== 'bundle' && isGenericDimension(port.unit)) {
           const variable = bareVariable(port.unit) as string;
           const dimension = source.dimension;
           if (dimension === undefined) {
@@ -458,6 +470,104 @@ export function resolveGraph(
         sources.set(outputKey, { kind: 'numeric', dimension, unit: canonicalUnit(dimension) });
       } else {
         sources.set(outputKey, { kind: 'numeric' });
+      }
+      continue;
+    }
+
+    if (node.kind === 'waypoint') {
+      // One spectrum-shaped port, `in`, exactly like `minimum`'s own — any
+      // number of wires, all the same dimension — and one generic output,
+      // `out`, of that dimension. Neither port is declared anywhere (no
+      // catalogue formula backs a waypoint), so both are built here instead
+      // of going through `portType`/`bindInputs`, which resolve a *declared*
+      // port's generic signature rather than invent one.
+      const inKey = endpointKey(node.id, 'in');
+      const outKey = endpointKey(node.id, 'out');
+      const edges = incoming.get(inKey) ?? [];
+      let dimension: Dimension | undefined;
+      for (const edge of edges) {
+        const source = sourceType(edge);
+        checkKind(source, { kind: 'spectrum' }, inKey);
+        if (source.dimension === undefined) {
+          throw new KernelError(
+            `'${endpointKey(edge.from.node, edge.from.port)}' has no dimension yet — wire its own inputs first`,
+            inKey,
+          );
+        }
+        if (dimension === undefined) dimension = source.dimension;
+        else {
+          assertSameDimension(
+            dimension,
+            source.dimension,
+            'every wire into a waypoint must share one dimension',
+            inKey,
+          );
+        }
+      }
+      targets.set(
+        inKey,
+        dimension === undefined
+          ? { kind: 'spectrum' }
+          : { kind: 'spectrum', dimension, unit: canonicalUnit(dimension) },
+      );
+      sources.set(
+        outKey,
+        dimension === undefined
+          ? { kind: 'numeric' }
+          : { kind: 'numeric', dimension, unit: canonicalUnit(dimension) },
+      );
+      continue;
+    }
+
+    if (node.kind === 'pack') {
+      // Channels are read straight off the edges wired to `in0..inN`, in
+      // index order — there is no declared port list to consult, the same
+      // way a closure node has none (bundle.ts's `packChannelIndices`).
+      // Each channel is independently generic: `in2` binds its own `$C2`
+      // and never shares it with `in0`, unlike `add`'s two ports sharing
+      // `$A` — every channel may be a different dimension, that being the
+      // whole point of bundling several wires into one.
+      const indices = packChannelIndices(document, node.id);
+      const channels: Dimension[] = [];
+      for (const n of indices) {
+        const inKey = endpointKey(node.id, `in${n}`);
+        const edge = oneEdge(inKey);
+        if (edge === undefined) continue;
+        const source = sourceType(edge);
+        checkKind(source, { kind: 'numeric' }, inKey);
+        if (source.dimension === undefined) {
+          throw new KernelError(
+            `'${endpointKey(edge.from.node, edge.from.port)}' has no dimension yet — wire its own inputs first`,
+            inKey,
+          );
+        }
+        targets.set(inKey, { kind: 'numeric', dimension: source.dimension, unit: canonicalUnit(source.dimension) });
+        channels.push(source.dimension);
+      }
+      sources.set(endpointKey(node.id, 'bundle'), { kind: 'bundle', channels });
+      continue;
+    }
+
+    if (node.kind === 'unpack') {
+      // `bundle` is unbound until something is wired to it — the same state
+      // `compare`'s `value` sits in before it has a source — and once it is,
+      // `out0..outN` come straight from the wired bundle's own channel list,
+      // not from any declaration of unpack's own.
+      const inKey = endpointKey(node.id, 'bundle');
+      const edge = oneEdge(inKey);
+      if (edge === undefined) {
+        targets.set(inKey, { kind: 'bundle' });
+        continue;
+      }
+      const source = sourceType(edge);
+      checkKind(source, { kind: 'bundle' }, inKey);
+      targets.set(inKey, source);
+      for (const [i, dimension] of (source.channels ?? []).entries()) {
+        sources.set(endpointKey(node.id, `out${i}`), {
+          kind: 'numeric',
+          dimension,
+          unit: canonicalUnit(dimension),
+        });
       }
       continue;
     }

@@ -78,6 +78,7 @@ export {
 } from './series.js';
 export type {
   Axis,
+  BundleValue,
   CategoricalSeries,
   NumericSeries,
   PortValue,
@@ -94,6 +95,8 @@ export {
 export type { CompiledFormula } from './formula.js';
 
 export { closureFormula } from './closure.js';
+
+export { nextPackChannel, packChannelIndices } from './bundle.js';
 
 export {
   adaptInputUnit,

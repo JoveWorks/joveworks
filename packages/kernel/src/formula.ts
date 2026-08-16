@@ -133,7 +133,7 @@ function basisDimension(base: BaseDimension): Dimension {
 function genericVariablesOf(formula: Formula): ReadonlySet<string> {
   const variables = new Set<string>();
   for (const port of [formula.output, ...formula.inputs] as readonly Port[]) {
-    if (port.kind === 'categorical' || !isGenericDimension(port.unit)) continue;
+    if (port.kind === 'categorical' || port.kind === 'bundle' || !isGenericDimension(port.unit)) continue;
     for (const variable of Object.keys(port.unit.variables)) variables.add(variable);
   }
   return variables;
@@ -177,7 +177,7 @@ function checkRecord(formula: Formula, bindings: Bindings, where: string): Dimen
 
 /** A port's dimension under the bindings, or `undefined` when it is categorical. */
 function portDimensionUnder(port: Port, bindings: Bindings, where: string): Dimension | undefined {
-  if (port.kind === 'categorical') return undefined;
+  if (port.kind === 'categorical' || port.kind === 'bundle') return undefined;
   if (!isGenericDimension(port.unit)) return port.unit.dimension;
   try {
     return resolveGeneric(port.unit, bindings);
