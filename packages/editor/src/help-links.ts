@@ -3,7 +3,7 @@
  * deployed yet — update DOCS_BASE_URL once it has a real URL.
  */
 
-const DOCS_BASE_URL = 'https://docs.machine-design-studio.example';
+export const DOCS_BASE_URL = 'https://docs.machine-design-studio.example';
 
 export const NODE_HELP_URLS: Readonly<
   Record<'input' | 'formula' | 'output' | 'compare' | 'closure', string>

@@ -26,6 +26,7 @@ import {
 
 import { Canvas } from './canvas/Canvas';
 import { ContextMenu, type MenuItem } from './canvas/ContextMenu';
+import { DOCS_BASE_URL } from './help-links';
 import { GraphContext } from './graph-context';
 import { SettingsContext } from './settings-context';
 import { clearAutosaveSnapshot, loadAutosaveSnapshot, saveAutosaveSnapshot } from './io/autosave';
@@ -412,6 +413,12 @@ function AppShell(): ReactElement {
   // place a student (or a colleague seeing a demo) looks for "show me
   // something that already works".
   const helpMenuItems: readonly MenuItem[] = [
+    {
+      label: 'Documentation',
+      onClick: () => {
+        window.open(DOCS_BASE_URL, '_blank', 'noopener');
+      },
+    },
     { heading: 'Examples' },
     {
       label: 'Pad pressure sweep',
