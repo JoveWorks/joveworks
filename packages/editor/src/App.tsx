@@ -149,7 +149,7 @@ export function App(): ReactElement {
     | { readonly menu: 'file' | 'edit' | 'view' | 'help'; readonly x: number; readonly y: number }
     | undefined
   >(undefined);
-  const [paletteWidth, resizePalette] = useResizableWidth(320, 200, 480, 1);
+  const [paletteWidth, resizePalette] = useResizableWidth(360, 200, 480, 1);
   const [notebookWidth, resizeNotebook] = useResizableWidth(540, 240, 800, -1);
   const [notices, setNotices] = useState<readonly { readonly id: string; readonly message: string }[]>(
     [],
