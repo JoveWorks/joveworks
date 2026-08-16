@@ -19,7 +19,7 @@ proposed correction. The first two need R&M to confirm; the third only needs
 confirmation, since it already has two independent witnesses.
 
 | Formula | What the check refuses | Proposed reading |
-|---|---|---|
+| --- | --- | --- |
 | 16.31 | Produces a velocity where a width is declared | The specific *power* symbol — declared in the source's symbol dict and used by no method — in place of the specific torque. 16.32 is the torque twin and is sound |
 | 16.34 | Produces a length where a force is declared | The unit tag, not the expression: the belt-type factor is tagged `[]` and must carry force per unit width. The docstring also writes it as an exponent where the code multiplies, and an exponent is dimensionless under any reading |
 | 16.36B | Produces an area where a length is declared | A sum, not a product. Its own docstring writes a sum, and its sibling 16.36C sums the same two quantities |
@@ -30,7 +30,7 @@ rather than reconstruction. The remaining ~500 tags normalise mechanically
 and need no sign-off.
 
 | Tag | Proposed reading |
-|---|---|
+| --- | --- |
 | `[1E6rotatons]`, `[1e6revolutions]` | Millions of revolutions — bearing life L₁₀, ISO 281. The typo'd spelling and the case-variant duplicate are consistent with one quantity typed twice |
 | `[E-6m]` | Micrometres — surface roughness, or a fit/tolerance deviation |
 | `[__O]`, `[__o]` | Degrees; `°` mangled by an encoding round-trip |
@@ -148,6 +148,10 @@ never swept — the names don't say which is which. Leaning toward renaming
 which complicate calculations via the combination of normal and bending
 loads. Catalogue content, for when that chapter is designed — not an editor
 question.
+
+**Catalogue source should be clear on the nodes.**
+
+**Are all nodes addable in the quick add?**
 
 **Custom closure nodes are built** — a student writes an equation on the
 node itself (`ClosureNodeView.tsx`) and its ports populate from whatever
