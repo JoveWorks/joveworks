@@ -7,18 +7,6 @@ Built for the KU Leuven course on dimensioning of machine parts. Formulas follow
 **Roloff & Matek, 6th edition**, and each one carries a citation back to its
 textbook equation number.
 
-Status: **milestone 1 done.** `units`, `schema`, `nodes`, `kernel` and
-`editor` are built and tested — a graph of base nodes evaluates end to end,
-sweeps included, with no textbook content anywhere in it, and `pnpm dev` opens
-the canvas on a worked sweep. The belt chapter is extracted into the separate
-private catalogue repository and **its golden values reproduce**, through the
-kernel and through the editor alike, so the engine is verified against the
-course's own worked examples. The hand pass over the interface is done and its
-findings are fixed (see `docs/UX-SPEC.md`). Every design decision is closed.
-What remains besides code is content sign-off against the textbook, which
-gates individual formulas rather than any build step — see
-[ROADMAP.md](ROADMAP.md) for that and everything else still open.
-
 ```
 pnpm install
 pnpm dev         # the editor, at http://localhost:5173/
@@ -49,25 +37,6 @@ read. Then [ROADMAP.md](ROADMAP.md) for what's still open, or
   boundary. An undeclared unit is a hard error.
 - **Dimensions are port types.** A force output will not connect to a length
   input, and neither will a connection that would close a cycle.
-
-## Relationship to `mechanical-design`
-
-This project **replaces** [`mechanical-design`](https://github.com/ThomasVanRiel/mechanical-design),
-a SymPy library of ~539 hand-transcribed formulas plus 22 worked-example
-notebooks.
-
-No code is carried over. That repository is a **reference for formula content
-only**:
-
-| Reference use | Detail |
-|---|---|
-| Formula source | The ~539 transcribed expressions and their `[unit]` tags |
-| Verification fixtures | 22 notebooks with reproducible numeric results |
-| Known-defect list | ~12 confirmed and ~10 suspected wrong formulas to *not* repeat |
-
-Its Roloff & Matek expressions are under a distribution restriction. That
-restriction follows the formula content into this project — see
-[CLAUDE.md](CLAUDE.md).
 
 ## Licence
 

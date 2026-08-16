@@ -15,20 +15,6 @@ The point is not to compute a number once. It is to **sweep a design space** —
 try every shaft diameter in a standard series, see which ones satisfy every
 constraint at once, and look at the result as a graph.
 
-> **Status: the engine works and is verified, and the editor opens.** `units`,
-> `schema`, `nodes`, `kernel` and `editor` are built and tested: `pnpm dev`
-> gives you a canvas with a palette and a live notebook, and a graph of base
-> nodes evaluates end to end, sweeps and all. The belt chapter is extracted,
-> into a separate private repository — this one still holds no textbook
-> content — and **the belt lab's golden values reproduce**, eleven of twelve,
-> the twelfth quarantined and refused on purpose, both through the kernel and
-> through the editor. **Milestone 1 is done**, including the hand pass over
-> the interface (`docs/UX-SPEC.md`). Every design decision is settled; the
-> build sequence that got here is in [docs/PLAN.md](docs/PLAN.md), and
-> what's still open is in [ROADMAP.md](ROADMAP.md).
-> Parts of this document still describe intent rather than what is built —
-> export, authoring and autosave are the notable ones.
-
 ---
 
 ## How a student works with it
@@ -360,9 +346,3 @@ golden exercises stay marked unverified rather than assumed sound.
 
 Design rationale beyond what's in these documents lives as comments at the
 code site it explains, not in a separate decisions log.
-
----
-
-*Everything described here is settled — range kinds, the output and notebook
-model, and multi-input sweeps, which use labelled axes so that two ranges give
-an `n × m` grid with no extra wiring.*
