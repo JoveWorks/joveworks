@@ -178,14 +178,14 @@ function inputValueType(node: InputNode): PortType {
 
 /**
  * The input port names an output node offers: one, or one per table column —
- * plus a `threshold` port on a plot, the wire that can override its typed
- * line (mirrors `CompareNode.threshold`, the first port with both a typed
- * default and an overriding wire).
+ * plus a `threshold` port on a plot or check, the wire that can override its
+ * typed line (mirrors `CompareNode.threshold`, the first port with both a
+ * typed default and an overriding wire).
  */
 function outputPortNames(node: GraphNode): readonly string[] {
   if (node.kind !== 'output') return [];
   if (node.output.kind === 'table') return node.output.columns;
-  if (node.output.kind === 'plot') return [VALUE_PORT, THRESHOLD_PORT];
+  if (node.output.kind === 'plot' || node.output.kind === 'check') return [VALUE_PORT, THRESHOLD_PORT];
   return [VALUE_PORT];
 }
 
@@ -513,21 +513,43 @@ export function resolveGraph(
     }
 
     // An output node accepts whatever is wired to it — it renders a value, it
-    // does not declare one. The one thing it can be wrong about is a
-    // check's threshold, which is a quantity a student typed.
+    // does not declare one. The two things it can be wrong about are a
+    // check's or a plot's threshold, both quantities a student typed with an
+    // overriding wire — `CompareNode.threshold`'s pattern.
     for (const name of outputPortNames(node)) {
       const key = endpointKey(node.id, name);
       const edge = oneEdge(key);
       const type: PortType = edge === undefined ? { kind: 'numeric' } : sourceType(edge);
       targets.set(key, type);
 
-      if (node.output.kind === 'check' && edge !== undefined && type.dimension !== undefined) {
-        assertSameDimension(
-          type.dimension,
-          node.output.threshold.unit.dimension,
-          'a check compares a value against a threshold of the same dimension',
+      // A check's threshold is mandatory but still wireable — the same
+      // narrowing/bare-default treatment plot's optional threshold gets
+      // below, minus the "no threshold at all" case that doesn't apply here.
+      // Once the checked value's own dimension is known (processed first —
+      // VALUE_PORT precedes THRESHOLD_PORT in `outputPortNames`), the
+      // threshold's target narrows to match it, and a bare unitless default
+      // (a freshly dropped node, whose typed threshold was never given a
+      // unit) is read in that dimension rather than refused.
+      if (node.output.kind === 'check' && name === THRESHOLD_PORT) {
+        const dimension = targets.get(endpointKey(node.id, VALUE_PORT))?.dimension;
+        targets.set(
           key,
+          dimension === undefined
+            ? { kind: 'numeric' }
+            : { kind: 'numeric', dimension, unit: canonicalUnit(dimension) },
         );
+        const bareDefault = edge === undefined && isDimensionless(node.output.threshold.unit.dimension);
+        if (dimension !== undefined && !bareDefault) {
+          const boundDimension = edge === undefined ? node.output.threshold.unit.dimension : type.dimension;
+          if (boundDimension !== undefined) {
+            assertSameDimension(
+              dimension,
+              boundDimension,
+              'a check compares a value against a threshold of the same dimension',
+              key,
+            );
+          }
+        }
       }
 
       // A plot's threshold is optional — `CompareNode.threshold`'s pattern,

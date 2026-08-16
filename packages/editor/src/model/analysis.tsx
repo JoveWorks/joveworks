@@ -264,11 +264,12 @@ function readiness(
       states.set(node.id, 'blocked');
       continue;
     }
-    // A plot's threshold is optional — like compare's, it has a typed
-    // default and is never "not connected" — but a wire that is itself
-    // unready still blocks the node the same way an unready `value` would.
+    // A plot's threshold is optional, and a check's is mandatory but always
+    // has a typed default — either way it is never "not connected" like
+    // `names` above, but a wire that is itself unready still blocks the node
+    // the same way an unready `value` would.
     if (
-      node.output.kind === 'plot' &&
+      (node.output.kind === 'plot' || node.output.kind === 'check') &&
       isWired(node.id, THRESHOLD_PORT) &&
       !upstreamReady(node.id, THRESHOLD_PORT)
     ) {

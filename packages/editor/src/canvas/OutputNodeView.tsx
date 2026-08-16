@@ -134,7 +134,7 @@ export function OutputNodeView({ id, selected }: NodeProps): ReactElement | null
   const wired = new Set(
     document.edges.filter((edge) => edge.to.node === id).map((edge) => edge.to.port),
   );
-  const thresholdWired = output.kind === 'plot' && wired.has(THRESHOLD_PORT);
+  const thresholdWired = (output.kind === 'plot' || output.kind === 'check') && wired.has(THRESHOLD_PORT);
 
   return (
     <NodeShell
@@ -220,34 +220,22 @@ export function OutputNodeView({ id, selected }: NodeProps): ReactElement | null
               global thousands separator has nothing to group in a number under 20. */}
 
           {output.kind === 'check' ? (
-            <>
-              <label>
-                is
-                <select
-                  className="nodrag"
-                  value={output.comparison}
-                  onChange={(event) =>
-                    setOutput({ ...output, comparison: event.target.value as Comparison })
-                  }
-                >
-                  {COMPARISONS.map((comparison) => (
-                    <option key={comparison} value={comparison}>
-                      {comparison}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                threshold
-                <TextField
-                  className="quantity"
-                  value={formatAuthored(output.threshold, format)}
-                  placeholder="1.5"
-                  title="A number a student types, with its unit."
-                  onCommit={(text) => setOutput({ ...output, threshold: parseAuthored(text, format) })}
-                />
-              </label>
-            </>
+            <label>
+              is
+              <select
+                className="nodrag"
+                value={output.comparison}
+                onChange={(event) =>
+                  setOutput({ ...output, comparison: event.target.value as Comparison })
+                }
+              >
+                {COMPARISONS.map((comparison) => (
+                  <option key={comparison} value={comparison}>
+                    {comparison}
+                  </option>
+                ))}
+              </select>
+            </label>
           ) : null}
 
           {output.kind === 'plot' ? (
@@ -479,6 +467,35 @@ export function OutputNodeView({ id, selected }: NodeProps): ReactElement | null
                   setOutput(
                     text.trim().length === 0 ? rest : { ...rest, threshold: parseAuthored(text, format) },
                   );
+                }}
+              />
+            </span>
+          </li>
+        ) : null}
+        {output.kind === 'check' ? (
+          <li className="port">
+            <Handle type="target" position={Position.Left} id={slotHandleId(THRESHOLD_PORT, 0)} />
+            <span className="port-name">
+              <Symbol name={THRESHOLD_PORT} />
+            </span>
+            {/* Mandatory, unlike plot's — always shows and always accepts the
+                typed default, the same way CompareNodeView's threshold row
+                does, since a check's fallback stays meaningful even while a
+                wire overrides it (there's no "clear it" affordance). */}
+            <span className="quantity-split port-quantity">
+              <TextField
+                className="quantity"
+                value={formatAuthored(output.threshold, format)}
+                placeholder="1.5"
+                autoSize={4}
+                title={
+                  thresholdWired
+                    ? 'Overridden by the wire — this is what applies when it is removed.'
+                    : 'A number a student types, with its unit, unless something is wired in.'
+                }
+                onCommit={(text) => {
+                  if (text.trim().length === 0) return;
+                  setOutput({ ...output, threshold: parseAuthored(text, format) });
                 }}
               />
             </span>
