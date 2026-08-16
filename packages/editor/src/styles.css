@@ -1321,22 +1321,21 @@ aside.right {
   font-size: 10px;
 }
 
-.notebook-section[draggable='true'] {
-  cursor: grab;
-}
-
-.notebook-section[draggable='true']:active {
-  cursor: grabbing;
-}
-
 /* Sits in the panel's own left padding, ahead of where the title text
-   starts — a drag affordance next to the name, not a character of it. */
+   starts — a drag affordance next to the name, not a character of it. Only
+   the grip itself is draggable (not the whole section, see Notebook.tsx),
+   so the grab cursor lives here too. */
 .notebook-section .grip {
   display: inline-block;
   width: 14px;
   margin-left: -18px;
   color: var(--muted);
   font-size: 11px;
+  cursor: grab;
+}
+
+.notebook-section .grip:active {
+  cursor: grabbing;
 }
 
 /* A line at the exact edge the section would land on, not a box around the

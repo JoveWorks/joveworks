@@ -153,9 +153,6 @@ function Caption({ node }: { readonly node: OutputNode }): ReactElement {
       value={node.caption ?? ''}
       placeholder="caption — what this result says"
       rows={1}
-      // See section-title's `draggable={false}` above — same draggable-section
-      // ancestor, same fix.
-      draggable={false}
       onKeyDown={commitOnEnter}
       onChange={(event) => {
         const caption = event.target.value;
@@ -218,12 +215,6 @@ function Section({
   return (
     <section
       className={`notebook-section${dragOver === undefined ? '' : ` drag-over-${dragOver}`}`}
-      draggable={frame !== undefined}
-      onDragStart={(event) => {
-        if (frame === undefined) return;
-        event.dataTransfer.setData('text/plain', frame.id);
-        event.dataTransfer.effectAllowed = 'move';
-      }}
       onDragOver={(event) => {
         if (frame === undefined) return;
         event.preventDefault();
@@ -252,7 +243,20 @@ function Section({
     >
       <h2>
         {frame === undefined ? null : (
-          <span className="grip" aria-hidden="true">
+          // The drag handle: only this element carries `draggable`, not the
+          // whole section, because a draggable ancestor makes the browser
+          // treat every mousedown under it as a potential drag rather than
+          // text selection — that broke double-click in the title/note/
+          // caption fields below when the whole section carried it instead.
+          <span
+            className="grip"
+            title="Drag to reorder"
+            draggable
+            onDragStart={(event) => {
+              event.dataTransfer.setData('text/plain', frame.id);
+              event.dataTransfer.effectAllowed = 'move';
+            }}
+          >
             ⠿
           </span>
         )}
@@ -269,11 +273,6 @@ function Section({
               className="section-title"
               value={frame.title}
               size={Math.max(frame.title.length, 1)}
-              // The section this sits in is `draggable` (drag-to-reorder); without
-              // this, the browser treats a mousedown here as the start of that
-              // drag instead of a text-selection gesture, and double-click stops
-              // selecting the word.
-              draggable={false}
               onChange={(event) => {
                 const title = event.target.value;
                 editLive((current) => updateFrame(current, frame.id, (entry) => ({ ...entry, title })));
@@ -313,9 +312,6 @@ function Section({
               value={frame.note ?? ''}
               placeholder="what this section establishes"
               rows={3}
-              // See section-title's `draggable={false}` above — same draggable-section
-              // ancestor, same fix.
-              draggable={false}
               onKeyDown={commitOnEnter}
               onChange={(event) => {
                 const note = event.target.value;
