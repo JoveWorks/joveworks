@@ -18,14 +18,16 @@ import { reframe, updateFrame } from '../model/document';
 import { TextField } from './fields';
 
 export function FrameView({ id, selected }: NodeProps): ReactElement | null {
-  const { document, edit, editLive, commitEdit } = useGraph();
+  const { document, edit, editLive, commitEdit, hovered: hoveredIds } = useGraph();
   const [hovered, setHovered] = useState(false);
   const frame = document.frames.find((candidate) => candidate.id === id);
   if (frame === undefined) return null;
 
+  const highlighted = hoveredIds.has(id);
+
   return (
     <div
-      className="frame"
+      className={`frame${highlighted ? ' highlighted' : ''}`}
       style={{ width: frame.size.width, height: frame.size.height }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}

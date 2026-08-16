@@ -156,6 +156,7 @@ function AppShell(): ReactElement {
   const resetDocument = (next: GraphDocument): void => setHistory(initHistory(next));
   const [pinned, setPinned] = useState<ReadonlySet<string>>(new Set());
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
+  const [hovered, setHovered] = useState<ReadonlySet<string>>(new Set());
   const [showPalette, setShowPalette] = useState(true);
   const [showNotebook, setShowNotebook] = useState(true);
   const [numberFormat, setNumberFormatState] = useState<NumberFormatSettings>(loadNumberFormatSettings);
@@ -301,8 +302,10 @@ function AppShell(): ReactElement {
         }),
       selected,
       setSelected,
+      hovered,
+      setHovered,
     }),
-    [analysis, catalogues, document, pinned, selected],
+    [analysis, catalogues, document, pinned, selected, hovered],
   );
 
   const beltAvailable = provides(catalogues, BELT_LAB_FORMULAS);
