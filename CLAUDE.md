@@ -47,12 +47,12 @@ Of the 54 belt records, 7 are `verified`, 42 `unverified` and 5 quarantined.
 Both repositories have an `origin` on GitHub —
 `ThomasVanRiel/machine-design-studio` here and
 `ThomasVanRiel/machine-design-catalogue` for the restricted half, which **must
-be private** (S45).
+be private**.
 
 ## Milestone 1 is a vertical slice — do not widen it
 
 The first milestone is a **base node library plus `C16_Belt` only** — 55
-formulas, not 539 (S41). A thin slice validates the schema before the whole
+formulas, not 539. A thin slice validates the schema before the whole
 corpus is committed to it: wrong schema after 55 formulas costs a morning,
 after 539 it costs a data migration.
 
@@ -94,7 +94,7 @@ in the relevant package before reintroducing it.
 Roloff & Matek expressions are for internal student reference and **may never be
 distributed or shared**. Consequences:
 
-- The R&M catalogue lives in a **separate private repository** (S45), not in
+- The R&M catalogue lives in a **separate private repository**, not in
   this one: `~/source/machine-design-catalogue`. A repository boundary, not a
   `.gitignore` — this repo is MIT and public.
 - **Never use a real R&M formula as a test fixture here.** It is natural to
@@ -104,9 +104,9 @@ distributed or shared**. Consequences:
 - Never surface R&M formula content outside the repo — artifacts, issues, pasted
   output — unless the user explicitly asks.
 - The public app ships **no textbook content**; the catalogue reaches students as
-  a file through the course LMS (S14).
+  a file through the course LMS.
 - Notebook export carries citation and values by default; expressions only behind
-  an explicitly marked toggle (S32).
+  an explicitly marked toggle.
 
 ## Architecture
 
@@ -125,7 +125,7 @@ tools/
                with stdlib `ast`. Never imports or runs it
 ```
 
-The restricted catalogue lives in its own private repo (S45), primed at
+The restricted catalogue lives in its own private repo, primed at
 `~/source/machine-design-catalogue`. The extraction *script* is public — it holds
 no textbook content; its *output* goes there.
 
@@ -140,16 +140,16 @@ revisit them when there's a reason to.
 - **Canonical units: mm, N, s, rad, K.** Convert at the boundary. Undeclared unit
   is a hard error. Mass is therefore tonnes and density t/mm³ — the classic
   silent corruption — and one the dimension checker **cannot** catch, because a
-  wrong scale factor is dimensionally sound (S53). Conversion at the boundary is
+  wrong scale factor is dimensionally sound. Conversion at the boundary is
   the defence; the goldens are the confirmation.
 - **Angles: radians internally, degrees at the display boundary.** Angle is a
-  tracked dimension, so trig accepts an angle *or* a dimensionless argument
-  (S54) — belt's wrap angles are tagged `[]` in the source.
+  tracked dimension, so trig accepts an angle *or* a dimensionless argument —
+  belt's wrap angles are tagged `[]` in the source.
 - **Dimensions are port types**, enforced at connection time. Ports are
   numeric-with-dimension or **categorical**; categoricals declare an enumerated
   domain and sweep by explicit list only. A port may also declare a **generic
   dimension** — `$A`, `$A*$B` — which is how the base node library says "whatever
-  is wired here" (S59). No catalogue formula uses one; R&M names every unit.
+  is wired here". No catalogue formula uses one; R&M names every unit.
 - **Forward evaluation only.** No solver. Cycles are rejected at connect time,
   the same way a dimension mismatch is. Rearranged forms are catalogue content
   linked by `variantOf` — not computed.
@@ -161,7 +161,7 @@ revisit them when there's a reason to.
 - **Expressions are strings**, parsed to an AST and compiled to closures. Never
   `eval` or `new Function` — catalogues are files students exchange. No
   conditionals inside an expression; `sum`/`prod` aggregation over load spectra
-  is needed. **Every number written in an expression is canonical** (S62): `d <
+  is needed. **Every number written in an expression is canonical**: `d <
   50` in a length context means 50 mm, because an expression string cannot carry
   a unit and the kernel has only one unit system.
 - **Branching selects formulas, it does not live inside them.** R&M numbers case
@@ -170,8 +170,8 @@ revisit them when there's a reason to.
   condition warns. One predicate layer serves this, check nodes and thresholds.
 - **Every formula carries** a citation (`R&M 17.1B`), description, a display
   unit per port — the port's dimension is *derived* from it rather than declared
-  twice (S56) — `variantOf`, `appliesWhen`, `status`, and optional default and
-  valid range. Valid range is load-bearing: it is a sweep bound and S17's
+  twice — `variantOf`, `appliesWhen`, `status`, and optional default and
+  valid range. Valid range is load-bearing: it is a sweep bound and its own
   bracketing interval.
 - **Client-side web app.** No backend, no Node-only APIs in app code; file I/O
   sits behind an adapter so a Tauri build can drop in later.
@@ -182,9 +182,9 @@ revisit them when there's a reason to.
 - **Graphs reference formulas by ID, version and hash** — never embed them.
   Embedding would leak R&M content into files students circulate. That reference
   carries no catalogue id, so **formula ids are global**: extraction namespaces
-  what it generates or an R&M id collides with a base node's (S65).
+  what it generates or an R&M id collides with a base node's.
 - **Documents carry an integer schema version stamp.** The N→N+1 migration chain
-  is deliberately deferred until real student graphs exist (S25, amended).
+  is deliberately deferred until real student graphs exist.
 - **The notebook is a view over the graph**, not a second document. Titled group
   frames are its sections, so they are load-bearing schema, not decoration.
   Prose exists at two levels: section notes and per-output captions.
@@ -192,7 +192,7 @@ revisit them when there's a reason to.
   notebook right. **No permanent inspector** — values, units and ranges are
   edited on the node. Units are text on the port; colour is reserved for state.
 - **Formulas are data, authored in the editor** — but the authoring UI is
-  deferred out of milestone 1 (S51), so belt's catalogue is a regenerated
+  deferred out of milestone 1, so belt's catalogue is a regenerated
   artefact of the extraction script. If you find yourself hand-editing catalogue
   JSON at scale, the authoring path is missing something — say so.
 
@@ -204,7 +204,7 @@ revisit them when there's a reason to.
   check for; let him report back what he saw.
 - **Work on `main`.** No feature branches until there is an MVP.
 - **Do not build for hypothetical futures.** This is early development; scope
-  decisions have repeatedly been narrowed on purpose (S25, S41, S51, S52). When
+  decisions have repeatedly been narrowed on purpose. When
   something looks like infrastructure for a problem that does not exist yet, say
   so rather than building it.
 - The valuable, testable core is the catalogue and the evaluation kernel.
