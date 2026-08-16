@@ -104,16 +104,33 @@ a schema change to carry a unit per bound (persists properly, but widens
 range has one unit). Neither was picked; parked here rather than decided
 under scope pressure.
 
-**A waypoint node**, to bundle and redirect edges — a passive routing point
-on the canvas: straight connections in and out, and an always-available open
-slot to join another wire, the same ghost-port interaction `minimum` already
-has. Deleting one does not break what passed through it — the nodes on
-either side end up connected by a single direct edge, as if the waypoint had
-never been there. Needs a discussion before building: is it one channel per
-waypoint, or genuinely multiple independent pass-through channels sharing
-one waypoint, each its own source/destination pair? That is a different kind
-of node than anything in the schema today, and the delete-time splice has no
-precedent to build from.
+**Waypoint/pack/unpack — built, but the hand pass found real gaps.** The
+three routing node kinds landed (`waypoint`, `pack`, `unpack`; splice-on-
+delete for all three), on the design that a `waypoint` is one shared
+channel — several wires fan in, but only if they all share one dimension,
+merged into a single output — while `pack`/`unpack` carries several
+independently-dimensioned wires bundled into one edge. Thomas's first pass
+in the browser (2026-08-16) found this isn't what's needed:
+
+- **Waypoint should be the multiple-independent-channels design after
+  all.** The actual want is several `in_n → out_n` pairs on one waypoint,
+  each its own ghost slot, each its own dimension, straight through with no
+  merging — purely to bend/tidy wires on the canvas without touching
+  values. Today's single shared-dimension `in`/`out` pair doesn't cover
+  the common case (rerouting several unrelated wires through one point).
+  Revisit the waypoint design itself before touching pack/unpack, which
+  already covers a *different* need (actually bundling into one edge).
+- **Pack throws a waypoint error in ordinary use.** Reported: wiring
+  differently-dimensioned values into a `pack` node produces
+  `waypoint.in: every wire into a waypoint must share one dimension: power
+  (N·mm/s) and dimensionless (—) are different dimensions` — a message and
+  node id that belong to `waypoint`'s resolution branch, not `pack`'s.
+  Unconfirmed root cause: `pack.ts`'s current code path looked correct on
+  read-through (`packages/kernel/src/graph.ts`'s `pack` branch, separate
+  from `waypoint`'s), so this needs to be reproduced and traced rather than
+  assumed — possibly a mix-up between the two node kinds while testing
+  rather than a `pack`-specific bug, but the exact error text is real and
+  worth chasing down first.
 
 **A short first-load tutorial for students** — the app opens on the pad
 pressure sample today, which demonstrates a sweep and a plot but explains
