@@ -8,6 +8,10 @@ on:
         type: choice
         options: ["", patch, minor, major]
         default: ""
+      prerelease:
+        description: "Mark the GitHub Release as a pre-release (project is still alpha)"
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -60,4 +64,5 @@ jobs:
         run: |
           gh release create "${{ steps.notes.outputs.tag }}" \
             --title "${{ steps.notes.outputs.tag }}" \
-            --notes-file /tmp/release-notes.md
+            --notes-file /tmp/release-notes.md \
+            $([ "${{ inputs.prerelease }}" = "true" ] && echo --prerelease)
