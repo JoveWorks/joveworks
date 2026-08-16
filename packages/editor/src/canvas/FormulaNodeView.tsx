@@ -119,26 +119,7 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
         />
       }
       subtitle={
-        <>
-          {provenance === title ? null : <span className="citation">{provenance}</span>}
-          {formula.status === 'verified' ? <span className="status verified">verified</span> : null}
-          {formula.status === 'unverified' ? (
-            <span className="status unverified" title="No golden value exercises this yet.">
-              unverified
-            </span>
-          ) : null}
-          {/* Which catalogue this formula came from — the same name the palette
-              groups it under — so a restricted R&M node reads as restricted on
-              the canvas too, not only in the dropdown it was dragged from. */}
-          {source === undefined ? null : (
-            <span
-              className={source.restricted ? 'source restricted' : 'source'}
-              title={source.restricted ? 'Restricted content — never exported.' : undefined}
-            >
-              {source.name}
-            </span>
-          )}
-        </>
+        <>{provenance === title ? null : <span className="citation">{provenance}</span>}</>
       }
       detail={
         <>
@@ -149,6 +130,25 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
           {formula.variantOf === undefined ? null : (
             <p className="applies">same relation as {formula.variantOf}</p>
           )}
+          <p className="provenance">
+            {formula.status === 'verified' ? <span className="status verified">verified</span> : null}
+            {formula.status === 'unverified' ? (
+              <span className="status unverified" title="No golden value exercises this yet.">
+                unverified
+              </span>
+            ) : null}
+            {/* Which catalogue this formula came from — the same name the palette
+                groups it under — so a restricted R&M node reads as restricted on
+                the canvas too, not only in the dropdown it was dragged from. */}
+            {source === undefined ? null : (
+              <span
+                className={source.restricted ? 'source restricted' : 'source'}
+                title={source.restricted ? 'Restricted content — never exported.' : undefined}
+              >
+                {source.name}
+              </span>
+            )}
+          </p>
         </>
       }
     >

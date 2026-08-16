@@ -572,6 +572,13 @@ aside.right {
   color: var(--muted);
 }
 
+.node .provenance {
+  display: flex;
+  gap: 6px;
+  margin: 0;
+  font-size: 11px;
+}
+
 .node .node-state {
   margin-top: 4px;
   font-size: 11px;
