@@ -208,6 +208,10 @@ does this log" has a single answer.
 
 **Optional ports should change the unit when it is connected with a port.** Now it blocks connections.
 
+**Ctrl+A does not select all nodes.** It follows browser default. Maybe we need more shortcut overrides?
+
+**Restore notification pops up twice**
+
 ## Commit conventions and release tooling
 
 Done. `v0.1.0` is cut — first tagged release, marked pre-release on GitHub
