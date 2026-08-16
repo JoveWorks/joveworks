@@ -153,6 +153,8 @@ question.
 
 **Catalogue source should be clear on the nodes.** In the dropdown is fine.
 
+**Check output has not treeshhold port.** Should be like the plot treshold port.
+
 **Are all nodes addable in the quick add?**
 
 **Settings should be persistent.** Panel widths are not stored.
