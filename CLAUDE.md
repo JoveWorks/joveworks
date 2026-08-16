@@ -131,7 +131,8 @@ no textbook content; its *output* goes there.
 
 ## Conventions
 
-These follow from settled decisions; do not relitigate them in code.
+These reflect the current design and the reasons behind it, not fixed law —
+revisit them when there's a reason to.
 
 - **TypeScript** throughout, except the Python in `tools/`. No runtime CAS.
 - **pnpm workspaces**, TypeScript project references, Vitest, Vite. No Turborepo
