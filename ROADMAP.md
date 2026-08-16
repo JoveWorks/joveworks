@@ -126,13 +126,6 @@ node's caption. Needs an AST→LaTeX printer (new, but not a CAS — expressions
 are already parsed to an AST for evaluation) and a renderer dependency (e.g.
 KaTeX) in the editor.
 
-**Bundled catalogues should auto-populate from a directory** instead of the
-one hardcoded file (`packages/editor/src/catalogues/basic-mechanics.json`,
-loaded by name in `model/catalogues.ts`) — glob a `catalogues/` directory at
-build time so dropping a new JSON file in is enough. External import via
-`Load catalogue…` stays as-is alongside it. Small and mechanical; not
-discussed further, just needs doing.
-
 **Catalogue authoring should be easier for contributors.** Today a
 catalogue is authored by running the extraction script (`tools/extract/`,
 R&M content only) or hand-writing JSON against the schema — a real authoring
@@ -202,13 +195,26 @@ problem).
 
 ## Commit conventions and release tooling
 
-Done. `.github/workflows/ci.yml` builds and tests every push/PR to `main`.
-`.github/workflows/release.yml` is manual-trigger only (`workflow_dispatch`,
-optional patch/minor/major override) — no auto-publish on push, a release is
-still something Thomas decides to cut. It builds, tests, then runs
-`pnpm release` (`commit-and-tag-version`, config in `.versionrc.json`),
-pushes the version-bump commit and tag, and cuts a GitHub Release from the
-new `CHANGELOG.md` section.
+Done. `v0.1.0` is cut — first tagged release, marked pre-release on GitHub
+(project is alpha). `.github/workflows/release.yml` is manual-trigger only
+(`workflow_dispatch`, optional patch/minor/major override, defaults to
+pre-release) — no auto-publish on push, a release is still something Thomas
+decides to cut. It builds, tests, then runs `pnpm release`
+(`commit-and-tag-version`, config in `.versionrc.json`), pushes the
+version-bump commit and tag, and cuts a GitHub Release from the new
+`CHANGELOG.md` section.
+
+`.github/workflows/ci.yml` (build+test on every push/PR to `main`) exists
+but its triggers are disabled — solo work already runs build/test locally,
+and `release.yml` has its own gate before it'll cut a release, so the
+per-push run wasn't catching anything extra. Left as `workflow_dispatch` so
+it can be run by hand or have its triggers restored later.
+
+The running app now shows its build's version in the ribbon
+(`packages/editor/vite.config.ts` injects it from the root `package.json`
+at build time), flagged `alpha ·` while the major version is `0` — visible
+on every Netlify deploy of `main`, including the one a release's
+version-bump commit triggers.
 
 Commit messages move to Conventional Commits — the rule and its allowed
 types/scopes are codified in CLAUDE.md's Conventions section, not
