@@ -243,20 +243,7 @@ function Section({
     >
       <h2>
         {frame === undefined ? null : (
-          // The drag handle: only this element carries `draggable`, not the
-          // whole section, because a draggable ancestor makes the browser
-          // treat every mousedown under it as a potential drag rather than
-          // text selection — that broke double-click in the title/note/
-          // caption fields below when the whole section carried it instead.
-          <span
-            className="grip"
-            title="Drag to reorder"
-            draggable
-            onDragStart={(event) => {
-              event.dataTransfer.setData('text/plain', frame.id);
-              event.dataTransfer.effectAllowed = 'move';
-            }}
-          >
+          <span className="grip" aria-hidden="true">
             ⠿
           </span>
         )}
@@ -288,6 +275,19 @@ function Section({
               className="section-toggle"
               onClick={onToggle}
               aria-label={collapsed ? 'Expand section' : 'Collapse section'}
+              // The whole flex-filled gap between the title and the chevron is
+              // both the toggle click target and the drag-to-reorder handle —
+              // a single element can be both, since the browser only starts a
+              // drag once the pointer moves past a threshold, a click never
+              // does. Keeping this off the section's title/note/caption
+              // fields (not the section itself) is what keeps their own
+              // double-click text selection working — see the commit that
+              // moved dragging off the whole section.
+              draggable
+              onDragStart={(event) => {
+                event.dataTransfer.setData('text/plain', frame.id);
+                event.dataTransfer.effectAllowed = 'move';
+              }}
             >
               {collapsed ? (
                 <span className="section-toggle-count">

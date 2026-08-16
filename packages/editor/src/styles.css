@@ -1276,6 +1276,17 @@ aside.right {
   cursor: pointer;
 }
 
+/* Also the drag-to-reorder handle (frame-backed sections only — see
+   Notebook.tsx) — grab/grabbing wins over the plain pointer cursor above,
+   since dragging is the affordance this large a target mainly exists for. */
+.section-toggle[draggable='true'] {
+  cursor: grab;
+}
+
+.section-toggle[draggable='true']:active {
+  cursor: grabbing;
+}
+
 .section-toggle-title {
   /* Wraps like ordinary text — a long catalogue or section name should grow
      the header, not get truncated with no way to read the rest of it. */
@@ -1322,20 +1333,14 @@ aside.right {
 }
 
 /* Sits in the panel's own left padding, ahead of where the title text
-   starts — a drag affordance next to the name, not a character of it. Only
-   the grip itself is draggable (not the whole section, see Notebook.tsx),
-   so the grab cursor lives here too. */
+   starts — decorative (the actual drag handle is `.section-toggle`, which
+   has room to be a real target; this icon alone was too small). */
 .notebook-section .grip {
   display: inline-block;
   width: 14px;
   margin-left: -18px;
   color: var(--muted);
   font-size: 11px;
-  cursor: grab;
-}
-
-.notebook-section .grip:active {
-  cursor: grabbing;
 }
 
 /* A line at the exact edge the section would land on, not a box around the
