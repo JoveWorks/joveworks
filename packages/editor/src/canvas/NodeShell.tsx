@@ -8,6 +8,7 @@
 
 import { useState, type ReactElement, type ReactNode } from 'react';
 
+import { NODE_HELP_URLS } from '../help-links';
 import type { NodeState } from '../model/analysis';
 
 const STATE_LABELS: Readonly<Record<NodeState, string>> = {
@@ -61,6 +62,17 @@ export function NodeShell({
     >
       <header>
         <span className="node-title">{title}</span>
+        {NODE_HELP_URLS[kind] === undefined ? null : (
+          <a
+            className="help"
+            href={NODE_HELP_URLS[kind]}
+            target="_blank"
+            rel="noopener"
+            title="Help for this node"
+          >
+            ?
+          </a>
+        )}
         <button
           type="button"
           className={`pin${pinned ? ' on' : ''}`}
