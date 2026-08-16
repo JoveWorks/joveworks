@@ -224,7 +224,7 @@ const NODE_TYPES = {
 };
 
 export function Canvas(): ReactElement {
-  const { document, catalogues, analysis, edit, pinned, togglePin } = useGraph();
+  const { document, catalogues, analysis, edit, editLive, commitEdit, pinned, togglePin } = useGraph();
   const { minimapVisible } = useSettings();
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [refusal, setRefusal] = useState<string | undefined>(undefined);
@@ -330,7 +330,12 @@ export function Canvas(): ReactElement {
         return touched ? next : current;
       });
 
-      edit((current) => {
+      // Position/dimension changes fire every drag or resize tick; a
+      // removal (Backspace/Delete) is its own discrete gesture. Only the
+      // latter should be its own undo step — the former is coalesced by
+      // `onNodeDragStop`/`onResizeEnd` calling `commitEdit`.
+      const apply = removed.size > 0 ? edit : editLive;
+      apply((current) => {
         let next = current;
         for (const change of changes) {
           if (change.type === 'position' && change.position !== undefined) {
@@ -373,7 +378,7 @@ export function Canvas(): ReactElement {
         return removed.size === 0 ? next : reframe(removeNodes(next, removed));
       });
     },
-    [document.frames, edit],
+    [document.frames, edit, editLive],
   );
 
   const onEdgesChange = useCallback(
@@ -779,7 +784,10 @@ export function Canvas(): ReactElement {
         // to click empty canvas first before a node inside could be reached.
         // With this off, declared zIndex is what stacking follows, always.
         elevateNodesOnSelect={false}
-        onNodeDragStop={() => edit(reframe)}
+        onNodeDragStop={() => {
+          editLive(reframe);
+          commitEdit();
+        }}
         onPaneClick={() => {
           setRefusal(undefined);
           setMenu(undefined);

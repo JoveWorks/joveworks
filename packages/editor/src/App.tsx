@@ -12,7 +12,7 @@
  * the only way connect time and evaluation time cannot drift apart.
  */
 
-import { useMemo, useState, type ReactElement } from 'react';
+import { useEffect, useMemo, useState, type ReactElement } from 'react';
 import { ReactFlowProvider } from '@xyflow/react';
 
 import {
@@ -33,6 +33,15 @@ import { openTextFile, saveTextFile } from './io/files';
 import { analyse } from './model/analysis';
 import { basicMechanicsCatalogue, baseCatalogue, withCatalogue } from './model/catalogues';
 import { frameAround, reframe, uniqueId } from './model/document';
+import {
+  commitPending,
+  initHistory,
+  pushEdit,
+  pushLiveEdit,
+  redoHistory,
+  undoHistory,
+  type History,
+} from './model/history';
 import { loadMinimapVisible, saveMinimapVisible } from './model/editorSettings';
 import {
   loadNumberFormatSettings,
@@ -75,9 +84,23 @@ function initialCatalogues(): readonly Catalogue[] {
 
 export function App(): ReactElement {
   const [catalogues, setCatalogues] = useState<readonly Catalogue[]>(initialCatalogues);
-  const [document, setDocument] = useState<GraphDocument>(
-    () => padPressure([baseCatalogue()]) ?? emptyDocument('untitled', 'Untitled'),
+  const [history, setHistory] = useState<History<GraphDocument>>(() =>
+    initHistory(padPressure([baseCatalogue()]) ?? emptyDocument('untitled', 'Untitled')),
   );
+  const document = history.present;
+  const canUndo = history.past.length > 0;
+  const canRedo = history.future.length > 0;
+  const edit = (change: (current: GraphDocument) => GraphDocument): void =>
+    setHistory((current) => pushEdit(current, change));
+  const editLive = (change: (current: GraphDocument) => GraphDocument): void =>
+    setHistory((current) => pushLiveEdit(current, change));
+  const commitEdit = (): void => setHistory((current) => commitPending(current));
+  const undo = (): void => setHistory(undoHistory);
+  const redo = (): void => setHistory(redoHistory);
+  // Loading a different document (open file, a sample) starts a fresh undo
+  // history — there is nothing to gain from undoing back into a document
+  // that is no longer open, same as most editors treat "open a file".
+  const resetDocument = (next: GraphDocument): void => setHistory(initHistory(next));
   const [pinned, setPinned] = useState<ReadonlySet<string>>(new Set());
   const [showPalette, setShowPalette] = useState(true);
   const [showNotebook, setShowNotebook] = useState(true);
@@ -121,12 +144,38 @@ export function App(): ReactElement {
 
   const analysis = useMemo(() => analyse(document, catalogues), [document, catalogues]);
 
+  // The first global keyboard shortcut in the app — Backspace/Delete is
+  // React Flow's own `deleteKeyCode`, kept out of text fields by
+  // `fields.tsx`'s `stopPropagation`. The notebook's two textareas and this
+  // title input don't do that, so the guard against firing mid-typing has to
+  // check the event target itself rather than lean on that pattern.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (!(event.ctrlKey || event.metaKey)) return;
+      const key = event.key.toLowerCase();
+      const isUndo = key === 'z' && !event.shiftKey;
+      const isRedo = (key === 'z' && event.shiftKey) || key === 'y';
+      if (!isUndo && !isRedo) return;
+      const target = event.target as HTMLElement | null;
+      if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable) {
+        return;
+      }
+      event.preventDefault();
+      if (isUndo) undo();
+      else redo();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [undo, redo]);
+
   const context = useMemo(
     () => ({
       document,
       catalogues,
       analysis,
-      edit: (change: (current: GraphDocument) => GraphDocument) => setDocument(change),
+      edit,
+      editLive,
+      commitEdit,
       pinned,
       togglePin: (id: string) =>
         setPinned((current) => {
@@ -159,14 +208,14 @@ export function App(): ReactElement {
     const file = await openTextFile();
     if (file === undefined) return;
     try {
-      setDocument(loadDocument(file.text));
+      resetDocument(loadDocument(file.text));
     } catch (error) {
       pushNotice(`That file is not a graph: ${messageOf(error)}`);
     }
   };
 
   const addSection = (): void =>
-    setDocument((current) => {
+    edit((current) => {
       const inside = current.nodes.filter((node) => node.frameId === undefined);
       if (inside.length === 0) {
         pushNotice('Every node is already in a section.');
@@ -188,6 +237,8 @@ export function App(): ReactElement {
 
   const editMenuItems: readonly MenuItem[] = [
     { label: 'Group into new section', onClick: addSection },
+    { label: 'Undo', disabled: !canUndo, onClick: undo },
+    { label: 'Redo', disabled: !canRedo, onClick: redo },
   ];
 
   const viewMenuItems: readonly MenuItem[] = [
@@ -204,7 +255,7 @@ export function App(): ReactElement {
       label: 'Pad pressure sweep',
       onClick: () => {
         const sample = padPressure(catalogues);
-        if (sample !== undefined) setDocument(sample);
+        if (sample !== undefined) resetDocument(sample);
       },
     },
     {
@@ -212,7 +263,7 @@ export function App(): ReactElement {
       disabled: !beltAvailable,
       onClick: () => {
         const sample = beltLab(catalogues);
-        if (sample !== undefined) setDocument(sample);
+        if (sample !== undefined) resetDocument(sample);
       },
     },
     {
@@ -220,7 +271,7 @@ export function App(): ReactElement {
       disabled: !cantileverAvailable,
       onClick: () => {
         const sample = cantileverHollowSections(catalogues);
-        if (sample !== undefined) setDocument(sample);
+        if (sample !== undefined) resetDocument(sample);
       },
     },
   ];
@@ -267,9 +318,11 @@ export function App(): ReactElement {
               <input
                 className="document-title"
                 value={document.title}
-                onChange={(event) =>
-                  setDocument((current) => ({ ...current, title: event.target.value }))
-                }
+                onChange={(event) => {
+                  const title = event.target.value;
+                  editLive((current) => ({ ...current, title }));
+                }}
+                onBlur={() => commitEdit()}
               />
             </header>
             {openMenu === undefined ? null : (

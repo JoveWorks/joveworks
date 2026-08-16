@@ -18,7 +18,7 @@ import { reframe, updateFrame } from '../model/document';
 import { TextField } from './fields';
 
 export function FrameView({ id, selected }: NodeProps): ReactElement | null {
-  const { document, edit } = useGraph();
+  const { document, edit, editLive, commitEdit } = useGraph();
   const [hovered, setHovered] = useState(false);
   const frame = document.frames.find((candidate) => candidate.id === id);
   if (frame === undefined) return null;
@@ -40,7 +40,10 @@ export function FrameView({ id, selected }: NodeProps): ReactElement | null {
         // position). All that is left once the gesture ends is membership: a
         // frame's bounds decide it, same as `onNodeDragStop` does for
         // an ordinary drag.
-        onResizeEnd={() => edit(reframe)}
+        onResizeEnd={() => {
+          editLive(reframe);
+          commitEdit();
+        }}
       />
       <div className="frame-title">
         <TextField

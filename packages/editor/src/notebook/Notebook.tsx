@@ -146,7 +146,7 @@ function Result({ result }: { readonly result: OutputResult }): ReactElement {
 }
 
 function Caption({ node }: { readonly node: OutputNode }): ReactElement {
-  const { edit } = useGraph();
+  const { editLive, commitEdit } = useGraph();
   return (
     <textarea
       className="caption"
@@ -156,13 +156,14 @@ function Caption({ node }: { readonly node: OutputNode }): ReactElement {
       onKeyDown={commitOnEnter}
       onChange={(event) => {
         const caption = event.target.value;
-        edit((current) =>
+        editLive((current) =>
           updateNode<OutputNode>(current, node.id, (entry) => {
             const { caption: _cleared, ...rest } = entry;
             return caption.length === 0 ? rest : { ...rest, caption };
           }),
         );
       }}
+      onBlur={() => commitEdit()}
     />
   );
 }
@@ -181,7 +182,7 @@ function Section({
   readonly collapsed: boolean;
   readonly onToggle: () => void;
 }): ReactElement | null {
-  const { document, analysis, edit } = useGraph();
+  const { document, analysis, edit, editLive, commitEdit } = useGraph();
   const [menu, setMenu] = useState<{ x: number; y: number } | undefined>(undefined);
   const [dragOver, setDragOver] = useState<'before' | 'after' | undefined>(undefined);
   if (outputs.length === 0) return null;
@@ -281,13 +282,14 @@ function Section({
               onKeyDown={commitOnEnter}
               onChange={(event) => {
                 const note = event.target.value;
-                edit((current) =>
+                editLive((current) =>
                   updateFrame(current, frame.id, (entry) => {
                     const { note: _cleared, ...rest } = entry;
                     return note.length === 0 ? rest : { ...rest, note };
                   }),
                 );
               }}
+              onBlur={() => commitEdit()}
             />
           )}
 
