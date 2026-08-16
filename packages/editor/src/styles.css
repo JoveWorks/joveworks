@@ -710,6 +710,14 @@ aside.right {
   font-size: 11px;
 }
 
+/* A wire is supplying the value instead of the typed one — shown, not
+   editable, until the wire is removed. */
+.field input:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
 /* Gives the output handle a row to dock against when the value editor is a
    scalar's single field, same as .node-value does for everything else. */
 .node-value-editor {

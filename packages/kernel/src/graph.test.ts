@@ -243,6 +243,58 @@ describe('compare nodes', () => {
   });
 });
 
+describe("a plot's threshold port", () => {
+  function plotGraph(
+    edges: readonly ReturnType<typeof wire>[],
+    threshold?: { readonly value: number; readonly unit: string },
+  ) {
+    return documentOf(
+      [
+        input('w', scalar(20, 'mm')),
+        input('h', scalar(5, 'mm')),
+        formulaNode('area', refTo('area')),
+        outputNode('plot', { kind: 'plot', ...(threshold === undefined ? {} : { threshold }) }),
+      ],
+      edges,
+    );
+  }
+
+  const wiredToValue = [wire('w.value', 'area.w'), wire('h.value', 'area.h'), wire('area.A', 'plot.value')];
+
+  it("binds the threshold target to the value port's dimension once value is wired", () => {
+    const resolution = resolveGraph(plotGraph(wiredToValue), catalogues);
+    expect(resolution.targets.get(endpointKey('plot', 'threshold'))?.dimension).toEqual(AREA);
+  });
+
+  it('leaves the threshold target unbound while nothing is wired to value', () => {
+    const resolution = resolveGraph(plotGraph([]), catalogues);
+    expect(resolution.targets.get(endpointKey('plot', 'threshold'))?.dimension).toBeUndefined();
+  });
+
+  it('takes a plot with no typed threshold at all without complaint — unlike compare, a plot may have no line', () => {
+    expect(() => resolveGraph(plotGraph(wiredToValue), catalogues)).not.toThrow();
+  });
+
+  it('refuses a typed threshold default of a different dimension than value', () => {
+    const document = plotGraph(wiredToValue, { value: 5, unit: 'N' });
+    expect(() => resolveGraph(document, catalogues)).toThrow(/same dimension/u);
+  });
+
+  it('refuses a wired threshold of a different dimension than value', () => {
+    const document = documentOf(
+      [
+        input('w', scalar(20, 'mm')),
+        input('h', scalar(5, 'mm')),
+        input('f', scalar(10, 'N')),
+        formulaNode('area', refTo('area')),
+        outputNode('plot', { kind: 'plot' }),
+      ],
+      [...wiredToValue, wire('f.value', 'plot.threshold')],
+    );
+    expect(() => resolveGraph(document, catalogues)).toThrow(/same dimension/u);
+  });
+});
+
 describe('generic signatures bind per node instance', () => {
   it('gives a multiply node the product of what is wired to it', () => {
     const document = documentOf(

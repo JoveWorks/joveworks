@@ -28,6 +28,7 @@ import { parseExpression, toLatex } from '@mds/kernel';
 import { parseUnit } from '@mds/units';
 import {
   COMPARISONS,
+  THRESHOLD_PORT,
   VALUE_PORT,
   axes as documentAxes,
   type Comparison,
@@ -51,7 +52,7 @@ import {
 } from '../model/document';
 import { Equation } from '../Equation';
 import { Symbol } from '../Symbol';
-import { formatAuthored, parseAuthored, unitLabel } from '../model/quantity';
+import { display, formatAuthored, parseAuthored, unitLabel } from '../model/quantity';
 import { reading, summarise } from '../model/values';
 import { NodeShell } from './NodeShell';
 import { Sparkline } from './Sparkline';
@@ -130,6 +131,10 @@ export function OutputNodeView({ id, selected }: NodeProps): ReactElement | null
 
   const ranges = documentAxes(document);
   const ports = output.kind === 'table' ? output.columns : [VALUE_PORT];
+  const wired = new Set(
+    document.edges.filter((edge) => edge.to.node === id).map((edge) => edge.to.port),
+  );
+  const thresholdWired = output.kind === 'plot' && wired.has(THRESHOLD_PORT);
 
   return (
     <NodeShell
@@ -320,22 +325,10 @@ export function OutputNodeView({ id, selected }: NodeProps): ReactElement | null
                     ))}
                 </select>
               </label>
-              <label>
-                threshold
-                <TextField
-                  className="quantity"
-                  value={output.threshold === undefined ? '' : formatAuthored(output.threshold, format)}
-                  placeholder="none"
-                  onCommit={(text) => {
-                    const { threshold: _dropped, ...rest } = output;
-                    setOutput(
-                      text.trim().length === 0
-                        ? rest
-                        : { ...rest, threshold: parseAuthored(text, format) },
-                    );
-                  }}
-                />
-              </label>
+              {/* threshold now lives on the port row below, always visible —
+                  a typed default with a wire that can override it (the same
+                  reasoning CompareNodeView's threshold field states) rather
+                  than buried in this panel. */}
               {output.series === undefined && plotResult?.series2 === undefined ? null : (
                 <label>
                   contour
@@ -450,6 +443,41 @@ export function OutputNodeView({ id, selected }: NodeProps): ReactElement | null
         {output.kind === 'table' ? (
           <li className="port port-open" title="Wire something here to add a column named after it.">
             <Handle type="target" position={Position.Left} id={slotHandleId(NEW_COLUMN, 'open')} />
+          </li>
+        ) : null}
+        {output.kind === 'plot' ? (
+          <li className="port">
+            <Handle type="target" position={Position.Left} id={slotHandleId(THRESHOLD_PORT, 0)} />
+            <span className="port-name">
+              <Symbol name={THRESHOLD_PORT} />
+            </span>
+            <span className="quantity-split port-quantity">
+              <TextField
+                className="quantity"
+                value={
+                  thresholdWired
+                    ? plotResult?.threshold === undefined
+                      ? ''
+                      : display(plotResult.threshold, plotResult.unit)
+                    : output.threshold === undefined
+                      ? ''
+                      : formatAuthored(output.threshold, format)
+                }
+                placeholder="none"
+                disabled={thresholdWired}
+                title={
+                  thresholdWired
+                    ? 'Set by the wire — unplug it to type one by hand again.'
+                    : 'A number a student types, with its unit, unless something is wired in.'
+                }
+                onCommit={(text) => {
+                  const { threshold: _dropped, ...rest } = output;
+                  setOutput(
+                    text.trim().length === 0 ? rest : { ...rest, threshold: parseAuthored(text, format) },
+                  );
+                }}
+              />
+            </span>
           </li>
         ) : null}
       </ul>

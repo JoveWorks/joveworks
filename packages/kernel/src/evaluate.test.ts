@@ -324,6 +324,59 @@ describe('output nodes', () => {
     expect(plot.threshold).toBe(100);
   });
 
+  it('uses a wired threshold instead of the typed default, once something is wired to it', () => {
+    const swept = documentOf(
+      [
+        input('F', list([1000, 2000, 3000], 'N'), { axisLabel: 'load' }),
+        input('A', scalar(20, 'mm²')),
+        input('limit', scalar(60, 'N/mm²')),
+        formulaNode('p', refTo('pressure')),
+        outputNode('plot', { kind: 'plot', x: 'F', threshold: { value: 100, unit: 'N/mm²' } }),
+      ],
+      [
+        wire('F.value', 'p.F'),
+        wire('A.value', 'p.A'),
+        wire('p.p', 'plot.value'),
+        wire('limit.value', 'plot.threshold'),
+      ],
+    );
+    const plot = evaluateDocument(swept, catalogues).outputs[0] as PlotResult;
+    expect(plot.threshold).toBe(60);
+  });
+
+  it('draws no threshold line at all when nothing is wired and nothing typed', () => {
+    const swept = documentOf(
+      [
+        input('F', list([1000, 2000], 'N'), { axisLabel: 'load' }),
+        input('A', scalar(20, 'mm²')),
+        formulaNode('p', refTo('pressure')),
+        outputNode('plot', { kind: 'plot', x: 'F' }),
+      ],
+      [wire('F.value', 'p.F'), wire('A.value', 'p.A'), wire('p.p', 'plot.value')],
+    );
+    const plot = evaluateDocument(swept, catalogues).outputs[0] as PlotResult;
+    expect(plot.threshold).toBeUndefined();
+  });
+
+  it('refuses a wired threshold that is swept — a plot draws one reference line, not one per point', () => {
+    const swept = documentOf(
+      [
+        input('F', list([1000, 2000], 'N'), { axisLabel: 'load' }),
+        input('A', scalar(20, 'mm²')),
+        input('limit', list([60, 70], 'N/mm²'), { axisLabel: 'load' }),
+        formulaNode('p', refTo('pressure')),
+        outputNode('plot', { kind: 'plot', x: 'F' }),
+      ],
+      [
+        wire('F.value', 'p.F'),
+        wire('A.value', 'p.A'),
+        wire('p.p', 'plot.value'),
+        wire('limit.value', 'plot.threshold'),
+      ],
+    );
+    expect(() => evaluateDocument(swept, catalogues)).toThrow(/one reference line, not one per point/u);
+  });
+
   it('warns when a plotted value does not vary along the axis it names', () => {
     const flat = documentOf(
       [
