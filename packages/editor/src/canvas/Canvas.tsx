@@ -30,11 +30,12 @@ import {
   type NodeChange,
 } from '@xyflow/react';
 
-import { canConnect, typesConnect } from '@mds/kernel';
+import { adaptInputUnit, canConnect, typesConnect } from '@mds/kernel';
 import { parseUnit } from '@mds/units';
 import {
   axes as documentAxes,
   formulaRef,
+  hasUnit,
   VALUE_PORT,
   VERDICT_PORT,
   type Edge,
@@ -450,9 +451,23 @@ export function Canvas(): ReactElement {
       const source = resolution.sources.get(`${candidate.from.node}.${candidate.from.port}`);
       const target = resolution.targets.get(`${candidate.to.node}.${candidate.to.port}`);
       if (source === undefined || target === undefined) return true;
-      return typesConnect(source, target);
+      if (typesConnect(source, target)) return true;
+
+      // Not a dimension match — but a still-unwired input node's own unit is
+      // provisional and will relabel to fit at drop (`onConnect`, via
+      // `adaptInputUnit`), so its drag should not grey out a target of a
+      // different dimension the way every other mismatch does. Narrow on
+      // purpose: only the kind still has to agree here, not the dimension —
+      // simulating the adaptation itself is `onConnect`'s job, not the
+      // hover's.
+      const fromNode = document.nodes.find((node) => node.id === candidate.from.node);
+      const fromUnwired = !document.edges.some((edge) => edge.from.node === candidate.from.node);
+      if (fromNode?.kind === 'input' && hasUnit(fromNode.value) && fromUnwired) {
+        return source.kind === target.kind || (source.kind === 'numeric' && target.kind === 'spectrum');
+      }
+      return false;
     },
-    [analysis.resolution, document.edges],
+    [analysis.resolution, document.edges, document.nodes],
   );
 
   /** A spectrum port's new wire joins what is already there, not replaces it. */
@@ -504,12 +519,33 @@ export function Canvas(): ReactElement {
       }
 
       const verdict = canConnect(document, catalogues, candidate);
-      if (!verdict.ok) {
-        setRefusal(verdict.reason);
+      if (verdict.ok) {
+        setRefusal(undefined);
+        edit((current) => connect(current, candidate.from, candidate.to, isSpectrumTarget(candidate.to)));
         return;
       }
-      setRefusal(undefined);
-      edit((current) => connect(current, candidate.from, candidate.to, isSpectrumTarget(candidate.to)));
+
+      // The one case a straight dimension mismatch does not refuse: the
+      // source is a freshly placed, still-unwired input node. Its unit is
+      // provisional — nothing downstream has read it yet — so it relabels
+      // itself to the target's unit rather than blocking the wire. Only ever
+      // a relabel, never a conversion, and `canConnect` re-checked against the
+      // adapted document is still the authority: a kind or categorical
+      // mismatch, or a cycle, is unaffected and still refuses exactly as
+      // before.
+      const targetUnit = analysis.resolution?.targets.get(`${candidate.to.node}.${candidate.to.port}`)?.unit;
+      const adapted = targetUnit === undefined ? undefined : adaptInputUnit(document, candidate, targetUnit);
+      const adaptedVerdict = adapted === undefined ? undefined : canConnect(adapted, catalogues, candidate);
+      if (targetUnit !== undefined && adaptedVerdict?.ok === true) {
+        setRefusal(undefined);
+        edit((current) => {
+          const relabelled = adaptInputUnit(current, candidate, targetUnit) ?? current;
+          return connect(relabelled, candidate.from, candidate.to, isSpectrumTarget(candidate.to));
+        });
+        return;
+      }
+
+      setRefusal(verdict.reason);
     },
     [analysis.resolution, catalogues, document, edit],
   );

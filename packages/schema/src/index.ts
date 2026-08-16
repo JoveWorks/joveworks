@@ -50,6 +50,7 @@ export {
   VALUE_KINDS,
   RENARD_SERIES,
   isRange,
+  hasUnit,
   axisLength,
   renardValues,
   parseValueSpec,
@@ -57,6 +58,7 @@ export {
 } from './value.js';
 export type {
   ValueSpec,
+  UnitedValueSpec,
   ValueKind,
   ScalarValue,
   CategoricalValue,

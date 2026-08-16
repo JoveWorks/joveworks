@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { ANGLE, AREA, DIMENSIONLESS, FORCE, LENGTH, TORQUE, parseUnit } from '@mds/units';
+import type { GraphDocument } from '@mds/schema';
 
 import { KernelError } from './errors.js';
 import {
+  adaptInputUnit,
   canConnect,
   endpointKey,
   resolveGraph,
@@ -177,6 +179,84 @@ describe('connections', () => {
       typesConnect({ kind: 'numeric', dimension: ANGLE }, { kind: 'numeric', dimension: DIMENSIONLESS }),
     ).toBe(false);
     expect(typesConnect({ kind: 'numeric' }, { kind: 'categorical' })).toBe(false);
+  });
+});
+
+describe('adapting a freshly wired input node to its target', () => {
+  it('relabels an unwired input to the target unit, keeping the magnitude', () => {
+    // 'F' is typed in mm (wrong on purpose — nothing has read it yet) and
+    // wired into 'area.w', an mm port too, just to isolate the relabel from
+    // canConnect's own check; the dimension-mismatch case is exercised below.
+    const document = documentOf(
+      [input('F', scalar(100, 'N')), formulaNode('area', refTo('area'))],
+      [],
+    );
+    const adapted = adaptInputUnit(document, wire('F.value', 'area.w'), parseUnit('mm'));
+    expect(adapted).toBeDefined();
+    const node = adapted?.nodes.find((entry) => entry.id === 'F');
+    expect(node?.kind === 'input' && node.value.kind === 'scalar' && node.value.value).toBe(100);
+    expect(
+      node?.kind === 'input' && node.value.kind === 'scalar' && node.value.unit.symbol,
+    ).toBe('mm');
+  });
+
+  it('turns a refused dimension mismatch into a connection', () => {
+    const document = documentOf(
+      [input('F', scalar(100, 'N')), formulaNode('area', refTo('area'))],
+      [],
+    );
+    const candidate = wire('F.value', 'area.w');
+    expect(canConnect(document, catalogues, candidate).ok).toBe(false);
+
+    const target = resolveGraph(document, catalogues).targets.get(endpointKey('area', 'w'));
+    expect(target?.unit).toBeDefined();
+    const adapted = adaptInputUnit(document, candidate, target?.unit as NonNullable<typeof target>['unit']);
+    expect(adapted).toBeDefined();
+    expect(canConnect(adapted as GraphDocument, catalogues, candidate)).toEqual({ ok: true });
+  });
+
+  it('refuses to adapt a source that already has an outgoing wire', () => {
+    const document = documentOf(
+      [
+        input('F', scalar(100, 'N')),
+        formulaNode('pressure', refTo('pressure')),
+        formulaNode('area', refTo('area')),
+      ],
+      [wire('F.value', 'pressure.F')],
+    );
+    const adapted = adaptInputUnit(document, wire('F.value', 'area.w'), parseUnit('mm'));
+    expect(adapted).toBeUndefined();
+  });
+
+  it('does not adapt a non-input source', () => {
+    const document = documentOf(
+      [formulaNode('pressure', refTo('pressure')), formulaNode('area', refTo('area'))],
+      [],
+    );
+    const adapted = adaptInputUnit(document, wire('pressure.p', 'area.w'), parseUnit('mm'));
+    expect(adapted).toBeUndefined();
+  });
+
+  it('does not adapt a categorical value — nothing about it is a unit', () => {
+    const document = documentOf(
+      [input('fit', { kind: 'categorical', value: 'H7' }), formulaNode('area', refTo('area'))],
+      [],
+    );
+    const adapted = adaptInputUnit(document, wire('fit.value', 'area.w'), parseUnit('mm'));
+    expect(adapted).toBeUndefined();
+  });
+
+  it('still refuses a kind mismatch even once adaptation is tried', () => {
+    // Adapting only ever relabels a unit — it cannot turn a categorical
+    // source into a numeric one, so canConnect on the (unadapted, since
+    // categorical has no unit) result still refuses exactly as before.
+    const document = documentOf(
+      [input('fit', { kind: 'categorical', value: 'H7' }), formulaNode('area', refTo('area'))],
+      [],
+    );
+    const candidate = wire('fit.value', 'area.w');
+    expect(canConnect(document, catalogues, candidate).ok).toBe(false);
+    expect(adaptInputUnit(document, candidate, parseUnit('mm'))).toBeUndefined();
   });
 });
 
