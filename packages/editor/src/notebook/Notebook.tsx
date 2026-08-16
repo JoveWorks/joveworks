@@ -13,7 +13,7 @@
  * nothing in this panel renders an expression, printed or not.
  */
 
-import { useEffect, useState, type KeyboardEvent, type ReactElement } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactElement } from 'react';
 
 import type { OutputResult } from '@mds/kernel';
 import type { Frame, GraphDocument, OutputNode } from '@mds/schema';
@@ -384,6 +384,18 @@ export function Notebook(): ReactElement {
   const [dragOver, setDragOver] = useState<{ frameId: string; position: 'before' | 'after' } | undefined>(
     undefined,
   );
+  // "After section N" and "before section N+1" are the same drop point, so
+  // hovering the bottom half of a section is normalised to "before the next
+  // one" below — one canonical state per boundary instead of two sections
+  // each able to claim it, which was the actual source of the two-line bug
+  // (dragOver being shared only fixed staleness within a single
+  // representation, not this duplicate one). That normalisation means the
+  // section whose *own* dragover last fired isn't always the section whose
+  // id ends up in `dragOver` — so onDragLeave can't just compare frame ids.
+  // This ref tracks which section most recently won the write, so a leave
+  // event only clears the state it's actually still responsible for, not one
+  // a neighbour has since (validly) taken over.
+  const dragSource = useRef<string | undefined>(undefined);
 
   // A collapsed section renders nothing (Section returns before its body), so
   // a printed PDF would silently drop whatever was folded up on screen.
@@ -420,7 +432,7 @@ export function Notebook(): ReactElement {
         </button>
       </div>
 
-      {document.frames.map((frame) => (
+      {document.frames.map((frame, index) => (
         <Section
           key={frame.id}
           frame={frame}
@@ -428,10 +440,18 @@ export function Notebook(): ReactElement {
           collapsed={printing ? false : collapsed.has(frame.id)}
           onToggle={() => toggle(frame.id)}
           dragOver={dragOver?.frameId === frame.id ? dragOver.position : undefined}
-          onDragOver={(position) => setDragOver({ frameId: frame.id, position })}
-          onDragLeave={() =>
-            setDragOver((current) => (current?.frameId === frame.id ? undefined : current))
-          }
+          onDragOver={(position) => {
+            dragSource.current = frame.id;
+            const next = position === 'after' ? document.frames[index + 1] : undefined;
+            setDragOver(
+              next === undefined ? { frameId: frame.id, position } : { frameId: next.id, position: 'before' },
+            );
+          }}
+          onDragLeave={() => {
+            if (dragSource.current !== frame.id) return;
+            dragSource.current = undefined;
+            setDragOver(undefined);
+          }}
         />
       ))}
       <Section
