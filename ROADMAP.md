@@ -157,8 +157,6 @@ question.
 
 **Settings should be persistent.** Panel widths are not stored.
 
-**Ribbon stays open.** Moving out of a ribbon menu window does not close it, maybe with a short delay so it does not close the instant the cursor leaves, I hate this in other GUIs.
-
 **Auto-arrange the graph** — no overlaps of (open) nodes, frames keep their
 contents, edges ignored for now (untangling them neatly is a future
 problem).

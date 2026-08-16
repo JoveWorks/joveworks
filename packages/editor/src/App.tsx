@@ -165,6 +165,23 @@ function AppShell(): ReactElement {
     | { readonly menu: 'file' | 'edit' | 'view' | 'help'; readonly x: number; readonly y: number }
     | undefined
   >(undefined);
+  // The cursor crossing the gap between a ribbon button and its dropdown
+  // leaves both for a moment; closing on that instant (rather than on a
+  // short delay) is the "I hate this in other GUIs" behaviour ROADMAP.md
+  // flagged, so a pending close can be cancelled if the cursor lands back on
+  // the button row or the dropdown before the delay elapses.
+  const closeMenuTimeout = useRef<number | undefined>(undefined);
+  const cancelMenuClose = (): void => {
+    if (closeMenuTimeout.current !== undefined) {
+      window.clearTimeout(closeMenuTimeout.current);
+      closeMenuTimeout.current = undefined;
+    }
+  };
+  const scheduleMenuClose = (): void => {
+    cancelMenuClose();
+    closeMenuTimeout.current = window.setTimeout(() => setOpenMenu(undefined), 300);
+  };
+  useEffect(() => cancelMenuClose, []);
   const [paletteWidth, resizePalette] = useResizableWidth(360, 200, 480, 1);
   const [notebookWidth, resizeNotebook] = useResizableWidth(540, 240, 800, -1);
   const [notices, setNotices] = useState<readonly { readonly id: string; readonly message: string }[]>(
@@ -440,6 +457,16 @@ function AppShell(): ReactElement {
           current?.menu === menu ? undefined : { menu, x: rect.left, y: rect.bottom },
         );
       }}
+      onMouseEnter={(event) => {
+        cancelMenuClose();
+        // Once one ribbon menu is open, hovering another button switches
+        // straight to it — the conventional ribbon behaviour — without
+        // waiting for a click.
+        if (openMenu !== undefined && openMenu.menu !== menu) {
+          const rect = event.currentTarget.getBoundingClientRect();
+          setOpenMenu({ menu, x: rect.left, y: rect.bottom });
+        }
+      }}
     >
       {label}
     </button>
@@ -453,7 +480,7 @@ function AppShell(): ReactElement {
             through to the browser's own menu, which offers nothing useful over
             a canvas. */}
         <div className="app" onContextMenu={(event) => event.preventDefault()}>
-          <header className="menubar">
+          <header className="menubar" onMouseEnter={cancelMenuClose} onMouseLeave={scheduleMenuClose}>
             {menuButton('file', 'File')}
             {menuButton('edit', 'Edit')}
             {menuButton('view', 'View')}
@@ -475,6 +502,8 @@ function AppShell(): ReactElement {
               y={openMenu.y}
               items={menuItemsFor(openMenu.menu)}
               onClose={() => setOpenMenu(undefined)}
+              onMouseEnter={cancelMenuClose}
+              onMouseLeave={scheduleMenuClose}
             />
           )}
 
