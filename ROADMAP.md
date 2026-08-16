@@ -213,6 +213,10 @@ e.g. feature-usage events like "sweep run" or "plot created" — is still
 open; whatever set gets chosen should be documented in one place so "what
 does this log" has a single answer.
 
+**Hovering over notebook items should higlight graph.** Frames on section title hover, output nodes on their generated block.
+
+**How to provide feedback?** Add a short guide next to the version number in the title bar on what to do. Send me an email or open an issue.
+
 ## Commit conventions and release tooling
 
 Done. `v0.1.0` is cut — first tagged release, marked pre-release on GitHub
