@@ -464,6 +464,10 @@ export function OutputNodeView({ id, selected }: NodeProps): ReactElement | null
                       : formatAuthored(output.threshold, format)
                 }
                 placeholder="none"
+                // Sized to its own content, same as compare's threshold
+                // field on the same port-row layout — a full-width field
+                // wraps and pushes the row below it.
+                autoSize={4}
                 disabled={thresholdWired}
                 title={
                   thresholdWired
