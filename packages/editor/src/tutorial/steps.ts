@@ -45,7 +45,7 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
     placement: 'right',
   },
   {
-    target: '.right',
+    target: '[data-tour="notebook"]',
     title: 'Where the notebook comes from',
     body: "This panel is generated from the graph, not written by hand — every output node becomes an entry, grouped under the section frame it belongs to. Rename a node or rewire the graph, and the notebook follows.",
     placement: 'left',
