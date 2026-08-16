@@ -225,7 +225,7 @@ const NODE_TYPES = {
 
 export function Canvas(): ReactElement {
   const { document, catalogues, analysis, edit, pinned, togglePin } = useGraph();
-  const { minimapVisible } = useSettings();
+  const { minimapVisible, themePreference } = useSettings();
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [refusal, setRefusal] = useState<string | undefined>(undefined);
   const [menu, setMenu] = useState<MenuTarget | undefined>(undefined);
@@ -768,6 +768,7 @@ export function Canvas(): ReactElement {
         nodes={nodes}
         edges={edges}
         nodeTypes={NODE_TYPES}
+        colorMode={themePreference}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}

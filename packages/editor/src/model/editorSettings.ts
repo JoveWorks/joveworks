@@ -28,3 +28,27 @@ export function saveMinimapVisible(visible: boolean): void {
     // Same convenience-not-requirement stance as catalogueCache.ts.
   }
 }
+
+const THEME_KEY = 'mds:settings:theme';
+
+export type ThemePreference = 'light' | 'dark' | 'system';
+
+/** Follows the OS by default — a student's own preference, not this app's. */
+export const DEFAULT_THEME_PREFERENCE: ThemePreference = 'system';
+
+export function loadThemePreference(): ThemePreference {
+  try {
+    const raw = window.localStorage.getItem(THEME_KEY);
+    return raw === 'light' || raw === 'dark' || raw === 'system' ? raw : DEFAULT_THEME_PREFERENCE;
+  } catch {
+    return DEFAULT_THEME_PREFERENCE;
+  }
+}
+
+export function saveThemePreference(preference: ThemePreference): void {
+  try {
+    window.localStorage.setItem(THEME_KEY, preference);
+  } catch {
+    // Same convenience-not-requirement stance as catalogueCache.ts.
+  }
+}

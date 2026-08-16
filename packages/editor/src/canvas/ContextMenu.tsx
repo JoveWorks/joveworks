@@ -13,6 +13,10 @@ export interface ActionItem {
   readonly onClick: () => void;
   readonly danger?: boolean;
   readonly disabled?: boolean;
+  /** Renders a checkmark and reserves its space, for a group of mutually
+   * exclusive choices (e.g. the view menu's Light/Dark/System). Omit for an
+   * ordinary action item — its label stays flush left, unaffected. */
+  readonly checked?: boolean;
 }
 
 /** A section label within a menu — text, not a control, so it never looks clickable. */
@@ -56,6 +60,9 @@ export function ContextMenu({ x, y, items, onClose }: Props): ReactElement {
                 onClose();
               }}
             >
+              {item.checked !== undefined && (
+                <span className="menu-check">{item.checked ? '✓' : ''}</span>
+              )}
               {item.label}
             </button>
           ),

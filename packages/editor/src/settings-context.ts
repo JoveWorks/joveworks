@@ -8,6 +8,7 @@
 
 import { createContext, useContext } from 'react';
 
+import type { ThemePreference } from './model/editorSettings';
 import type { NumberFormatSettings } from './model/numberFormat';
 
 export interface SettingsContextValue {
@@ -15,6 +16,8 @@ export interface SettingsContextValue {
   readonly setNumberFormat: (settings: NumberFormatSettings) => void;
   readonly minimapVisible: boolean;
   readonly setMinimapVisible: (visible: boolean) => void;
+  readonly themePreference: ThemePreference;
+  readonly setThemePreference: (preference: ThemePreference) => void;
 }
 
 export const SettingsContext = createContext<SettingsContextValue | undefined>(undefined);

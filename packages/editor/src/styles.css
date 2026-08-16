@@ -5,7 +5,13 @@
  * interaction, and four state colours — quarantined, incomplete/blocked, error,
  * and check pass/fail. Dimensions are written as text on the port, because a
  * single chapter spans a dozen units and colour-coding them would spend the one
- * channel that should mean "look here".
+ * channel that should mean "look here". A fifth small set, the kind accents,
+ * treats a node's kind as a form of state too (S49) — a thin stripe, never
+ * competing with the state border for the same channel. Only input and
+ * output carry one, since they're the graph's actual I/O boundary; formula
+ * and compare are both "normal" interior nodes and stay unstriped. Every
+ * token has a light and a dark value; dark applies from the OS preference or
+ * an explicit choice in the view menu (`data-theme`).
  */
 
 :root {
@@ -22,7 +28,92 @@
   --state-pass: #15803d;
   --state-fail: #b91c1c;
 
+  /* Kind is a form of state (S49) — a thin per-kind accent, distinct in hue
+     from the state colours above and from each other. */
+  --kind-input: #0e7490;
+  --kind-output: #7c3aed;
+
+  --notice-bg: #fff7ed;
+  --hover-bg: #e8eefc;
+  --badge-pass-bg: #ecfdf3;
+  --badge-fail-bg: #fef2f2;
+  --refusal-bg: #fff5f5;
+  --accent-wash: rgb(37 99 235 / 3%);
+  --scrim: rgb(0 0 0 / 25%);
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 8%);
+  --shadow-md: 0 2px 8px rgb(0 0 0 / 15%);
+  --shadow-lg: 0 8px 24px rgb(0 0 0 / 20%);
+
   color-scheme: light;
+}
+
+/* Dark values follow the OS preference unless the user has explicitly chosen
+   light (view menu); duplicated below rather than deduped, since this file
+   has no build step to do that mechanically — keep the two blocks adjacent. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --ink: #e8eaed;
+    --muted: #9aa4b2;
+    --paper: #1c1f24;
+    --panel: #262a31;
+    --line: #3a3f47;
+    --accent: #5b9dfb;
+
+    --state-quarantined: #fbbf24;
+    --state-waiting: #a3adc2;
+    --state-error: #f87171;
+    --state-pass: #4ade80;
+    --state-fail: #f87171;
+
+    --kind-input: #22d3ee;
+    --kind-output: #a78bfa;
+
+    --notice-bg: #3a2a15;
+    --hover-bg: #263248;
+    --badge-pass-bg: #113322;
+    --badge-fail-bg: #3a1414;
+    --refusal-bg: #3a1414;
+    --accent-wash: rgb(96 165 250 / 6%);
+    --scrim: rgb(0 0 0 / 45%);
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / 35%);
+    --shadow-md: 0 2px 8px rgb(0 0 0 / 45%);
+    --shadow-lg: 0 8px 24px rgb(0 0 0 / 55%);
+
+    color-scheme: dark;
+  }
+}
+
+/* An explicit choice (view menu) always wins over the OS preference, in
+   either direction — this rule forces dark even when the OS is light. */
+:root[data-theme='dark'] {
+  --ink: #e8eaed;
+  --muted: #9aa4b2;
+  --paper: #1c1f24;
+  --panel: #262a31;
+  --line: #3a3f47;
+  --accent: #5b9dfb;
+
+  --state-quarantined: #fbbf24;
+  --state-waiting: #a3adc2;
+  --state-error: #f87171;
+  --state-pass: #4ade80;
+  --state-fail: #f87171;
+
+  --kind-input: #22d3ee;
+  --kind-output: #a78bfa;
+
+  --notice-bg: #3a2a15;
+  --hover-bg: #263248;
+  --badge-pass-bg: #113322;
+  --badge-fail-bg: #3a1414;
+  --refusal-bg: #3a1414;
+  --accent-wash: rgb(96 165 250 / 6%);
+  --scrim: rgb(0 0 0 / 45%);
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 35%);
+  --shadow-md: 0 2px 8px rgb(0 0 0 / 45%);
+  --shadow-lg: 0 8px 24px rgb(0 0 0 / 55%);
+
+  color-scheme: dark;
 }
 
 * {
@@ -129,8 +220,8 @@ input[aria-invalid='true'] {
   padding: 5px 10px;
   border: 1px solid var(--line);
   border-radius: 5px;
-  background: #fff7ed;
-  box-shadow: 0 2px 8px rgb(0 0 0 / 15%);
+  background: var(--notice-bg);
+  box-shadow: var(--shadow-md);
 }
 
 main {
@@ -235,7 +326,7 @@ aside.right {
 }
 
 .palette .entry:hover {
-  background: #e8eefc;
+  background: var(--hover-bg);
 }
 
 .palette .entry-id {
@@ -277,13 +368,37 @@ aside.right {
 }
 
 .node {
+  position: relative;
   width: 220px;
   border: 1px solid var(--line);
   border-radius: 6px;
   background: var(--paper);
-  box-shadow: 0 1px 2px rgb(0 0 0 / 8%);
+  box-shadow: var(--shadow-sm);
   padding: 6px 8px;
   font-size: 12px;
+}
+
+/* Kind stripe: a separate paint layer from the card's own border, so it
+   never competes with state colour (below) for the same property. Only
+   input/output carry one — they're the graph's actual I/O boundary; formula
+   and compare are both "normal" interior nodes and stay unstriped. */
+.node::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  border-radius: 6px 0 0 6px;
+  background: transparent;
+}
+
+.node-input::before {
+  background: var(--kind-input);
+}
+
+.node-output::before {
+  background: var(--kind-output);
 }
 
 .node header {
@@ -439,12 +554,12 @@ aside.right {
 
 .node .badge.pass {
   color: var(--state-pass);
-  background: #ecfdf3;
+  background: var(--badge-pass-bg);
 }
 
 .node .badge.fail {
   color: var(--state-fail);
-  background: #fef2f2;
+  background: var(--badge-fail-bg);
 }
 
 .node .badge.plot {
@@ -514,6 +629,16 @@ aside.right {
   height: 9px;
   background: var(--paper);
   border: 1.5px solid var(--muted);
+}
+
+/* Direction reads by fill, not colour — colour already means kind (on the
+   card stripe) and state (on the card border and .missing below). */
+.react-flow__handle.target {
+  background: var(--paper);
+}
+
+.react-flow__handle.source {
+  background: var(--muted);
 }
 
 .react-flow__handle.missing {
@@ -781,7 +906,7 @@ aside.right {
   height: 100%;
   border: 1px dashed var(--muted);
   border-radius: 8px;
-  background: rgb(37 99 235 / 3%);
+  background: var(--accent-wash);
 }
 
 .frame-title {
@@ -849,7 +974,7 @@ aside.right {
   padding: 5px 10px;
   border: 1px solid var(--state-error);
   border-radius: 5px;
-  background: #fff5f5;
+  background: var(--refusal-bg);
   color: var(--state-error);
 }
 
@@ -863,7 +988,7 @@ aside.right {
   position: fixed;
   inset: 0;
   z-index: 29;
-  background: rgb(0 0 0 / 25%);
+  background: var(--scrim);
 }
 
 .dialog {
@@ -880,7 +1005,7 @@ aside.right {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--paper);
-  box-shadow: 0 8px 24px rgb(0 0 0 / 20%);
+  box-shadow: var(--shadow-lg);
   font-size: 13px;
 }
 
@@ -922,7 +1047,7 @@ aside.right {
 
 .dialog-note {
   margin: 0;
-  color: #6b7280;
+  color: var(--muted);
   font-size: 11px;
 }
 
@@ -949,7 +1074,7 @@ aside.right {
   border: 1px solid var(--line);
   border-radius: 6px;
   background: var(--paper);
-  box-shadow: 0 2px 8px rgb(0 0 0 / 15%);
+  box-shadow: var(--shadow-md);
   font-size: 12px;
 }
 
@@ -971,6 +1096,13 @@ aside.right {
   color: var(--state-error);
 }
 
+/* Reserved space so a checked item's label lines up with its unchecked
+   siblings, e.g. the view menu's Light/Dark/System group. */
+.context-menu .menu-check {
+  display: inline-block;
+  width: 1em;
+}
+
 .context-menu .menu-heading {
   padding: 5px 8px 2px;
   font-size: 11px;
@@ -989,7 +1121,7 @@ aside.right {
   border: 1px solid var(--line);
   border-radius: 6px;
   background: var(--paper);
-  box-shadow: 0 2px 8px rgb(0 0 0 / 15%);
+  box-shadow: var(--shadow-md);
   font-size: 12px;
   overflow: hidden;
 }
@@ -1295,6 +1427,35 @@ aside.right {
 }
 
 @media print {
+  /* A submittable document is always light/ink-on-paper, regardless of the
+     screen theme — force every token back to its light value. */
+  :root {
+    --ink: #1b1f24;
+    --muted: #6b7280;
+    --paper: #ffffff;
+    --panel: #f6f7f9;
+    --line: #d9dde3;
+    --accent: #2563eb;
+    --state-quarantined: #b45309;
+    --state-waiting: #94a3b8;
+    --state-error: #b91c1c;
+    --state-pass: #15803d;
+    --state-fail: #b91c1c;
+    --kind-input: #0e7490;
+    --kind-output: #7c3aed;
+    --notice-bg: #fff7ed;
+    --hover-bg: #e8eefc;
+    --badge-pass-bg: #ecfdf3;
+    --badge-fail-bg: #fef2f2;
+    --refusal-bg: #fff5f5;
+    --accent-wash: rgb(37 99 235 / 3%);
+    --scrim: rgb(0 0 0 / 25%);
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / 8%);
+    --shadow-md: 0 2px 8px rgb(0 0 0 / 15%);
+    --shadow-lg: 0 8px 24px rgb(0 0 0 / 20%);
+    color-scheme: light !important;
+  }
+
   .menubar,
   .notices,
   aside.left,

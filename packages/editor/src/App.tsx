@@ -12,7 +12,7 @@
  * the only way connect time and evaluation time cannot drift apart.
  */
 
-import { useMemo, useState, type ReactElement } from 'react';
+import { useEffect, useMemo, useState, type ReactElement } from 'react';
 import { ReactFlowProvider } from '@xyflow/react';
 
 import {
@@ -33,7 +33,13 @@ import { openTextFile, saveTextFile } from './io/files';
 import { analyse } from './model/analysis';
 import { basicMechanicsCatalogue, baseCatalogue, withCatalogue } from './model/catalogues';
 import { frameAround, reframe, uniqueId } from './model/document';
-import { loadMinimapVisible, saveMinimapVisible } from './model/editorSettings';
+import {
+  loadMinimapVisible,
+  loadThemePreference,
+  saveMinimapVisible,
+  saveThemePreference,
+  type ThemePreference,
+} from './model/editorSettings';
 import {
   loadNumberFormatSettings,
   saveNumberFormatSettings,
@@ -83,6 +89,8 @@ export function App(): ReactElement {
   const [showNotebook, setShowNotebook] = useState(true);
   const [numberFormat, setNumberFormatState] = useState<NumberFormatSettings>(loadNumberFormatSettings);
   const [minimapVisible, setMinimapVisibleState] = useState<boolean>(loadMinimapVisible);
+  const [themePreference, setThemePreferenceState] =
+    useState<ThemePreference>(loadThemePreference);
   const [showSettings, setShowSettings] = useState(false);
   const [openMenu, setOpenMenu] = useState<
     | { readonly menu: 'file' | 'edit' | 'view' | 'help'; readonly x: number; readonly y: number }
@@ -114,9 +122,29 @@ export function App(): ReactElement {
     saveMinimapVisible(next);
   };
 
+  const setThemePreference = (next: ThemePreference): void => {
+    setThemePreferenceState(next);
+    saveThemePreference(next);
+  };
+
+  // `system` defers entirely to the OS via the CSS media query in
+  // styles.css; an explicit choice is the only thing that needs a DOM hook,
+  // so `data-theme` is absent rather than set to 'system'.
+  useEffect(() => {
+    if (themePreference === 'system') delete window.document.documentElement.dataset.theme;
+    else window.document.documentElement.dataset.theme = themePreference;
+  }, [themePreference]);
+
   const settingsContext = useMemo(
-    () => ({ numberFormat, setNumberFormat, minimapVisible, setMinimapVisible }),
-    [numberFormat, minimapVisible],
+    () => ({
+      numberFormat,
+      setNumberFormat,
+      minimapVisible,
+      setMinimapVisible,
+      themePreference,
+      setThemePreference,
+    }),
+    [numberFormat, minimapVisible, themePreference],
   );
 
   const analysis = useMemo(() => analyse(document, catalogues), [document, catalogues]);
@@ -193,6 +221,22 @@ export function App(): ReactElement {
   const viewMenuItems: readonly MenuItem[] = [
     { label: showPalette ? 'Hide palette' : 'Show palette', onClick: () => setShowPalette((s) => !s) },
     { label: showNotebook ? 'Hide notebook' : 'Show notebook', onClick: () => setShowNotebook((s) => !s) },
+    { heading: 'Theme' },
+    {
+      label: 'Light',
+      checked: themePreference === 'light',
+      onClick: () => setThemePreference('light'),
+    },
+    {
+      label: 'Dark',
+      checked: themePreference === 'dark',
+      onClick: () => setThemePreference('dark'),
+    },
+    {
+      label: 'System',
+      checked: themePreference === 'system',
+      onClick: () => setThemePreference('system'),
+    },
   ];
 
   // Every sample graph lives here rather than scattered under File — one
