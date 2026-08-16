@@ -222,6 +222,8 @@ does this log" has a single answer.
 
 **Should we work in dev and main branch?** As deploy rebuilds on every new commit in main. How do other projects handle this?
 
+**node titles might have latex type variables.** Input nodes can be titled e.g. c_2. SHould we resolve these kind of notations on validation?
+
 ## Commit conventions and release tooling
 
 Done. `v0.1.0` is cut — first tagged release, marked pre-release on GitHub
