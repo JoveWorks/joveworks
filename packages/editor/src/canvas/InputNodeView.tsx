@@ -17,7 +17,7 @@ import { axisLabel, reading } from '../model/values';
 import { NodeShell } from './NodeShell';
 import { Sparkline } from './Sparkline';
 import { TextField } from './fields';
-import { ValueFields, ValueKindSelect, ValuePointsField } from './ValueEditor';
+import { ValueFields, ValueKindSelect, ValuePointsField, ValueSliderBoundsFields } from './ValueEditor';
 
 export function InputNodeView({ id, selected }: NodeProps): ReactElement | null {
   const { document, analysis, edit, pinned, togglePin } = useGraph();
@@ -67,6 +67,7 @@ export function InputNodeView({ id, selected }: NodeProps): ReactElement | null 
         <>
           <ValueKindSelect value={node.value} onChange={setValue} />
           <ValuePointsField value={node.value} onChange={setValue} />
+          <ValueSliderBoundsFields value={node.value} onChange={setValue} />
         </>
       }
     >

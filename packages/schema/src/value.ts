@@ -33,6 +33,7 @@ import type { Unit } from '@mds/units';
 
 export const VALUE_KINDS = [
   'scalar',
+  'slider',
   'categorical',
   'spectrum',
   'linear',
@@ -51,6 +52,23 @@ export type RenardSeries = (typeof RENARD_SERIES)[number];
 export interface ScalarValue {
   readonly kind: 'scalar';
   readonly value: number;
+  readonly unit: Unit;
+}
+
+/**
+ * A single number with its own travel bounds, for dragging rather than
+ * typing. `min`/`max` are the slider's own — not a port's declared
+ * `validRange` — the same way a range kind carries its own `start`/`stop`
+ * rather than reading a bound from anywhere downstream. `value` may fall
+ * outside `[min, max]` (e.g. typed in directly): that stays a valid
+ * document, rendered with the thumb pinned at whichever end it overshoots,
+ * rather than silently clamped.
+ */
+export interface SliderValue {
+  readonly kind: 'slider';
+  readonly value: number;
+  readonly min: number;
+  readonly max: number;
   readonly unit: Unit;
 }
 
@@ -174,7 +192,7 @@ export type RangeSpec =
   | TableColumnRange
   | CategoricalListRange;
 
-export type ValueSpec = ScalarValue | CategoricalValue | SpectrumValue | RangeSpec;
+export type ValueSpec = ScalarValue | SliderValue | CategoricalValue | SpectrumValue | RangeSpec;
 
 const RANGE_KINDS: readonly ValueKind[] = [
   'linear',
@@ -233,6 +251,19 @@ export function parseValueSpec(value: JsonValue, path: string): ValueSpec {
         value: readNumber(required(object, 'value', path), join(path, 'value')),
         unit: parseUnitField(required(object, 'unit', path), join(path, 'unit')),
       };
+
+    case 'slider': {
+      const min = readNumber(required(object, 'min', path), join(path, 'min'));
+      const max = readNumber(required(object, 'max', path), join(path, 'max'));
+      if (min >= max) fail(path, 'a slider needs its low end below its high end');
+      return {
+        kind,
+        value: readNumber(required(object, 'value', path), join(path, 'value')),
+        min,
+        max,
+        unit: parseUnitField(required(object, 'unit', path), join(path, 'unit')),
+      };
+    }
 
     case 'categorical':
       return { kind, value: readName(required(object, 'value', path), join(path, 'value')) };
@@ -305,6 +336,14 @@ export function serializeValueSpec(value: ValueSpec): JsonObject {
   switch (value.kind) {
     case 'scalar':
       return { kind: value.kind, value: value.value, unit: value.unit.symbol };
+    case 'slider':
+      return {
+        kind: value.kind,
+        value: value.value,
+        min: value.min,
+        max: value.max,
+        unit: value.unit.symbol,
+      };
     case 'categorical':
       return { kind: value.kind, value: value.value };
     case 'spectrum':

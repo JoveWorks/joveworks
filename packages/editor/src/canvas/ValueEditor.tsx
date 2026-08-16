@@ -23,7 +23,7 @@ import { useSettings } from '../settings-context';
 import { toUnitsFormat } from '../model/numberFormat';
 import { NumberField, TextField } from './fields';
 
-type Kind = 'scalar' | 'linear' | 'logarithmic' | 'list' | 'renard';
+type Kind = 'scalar' | 'slider' | 'linear' | 'logarithmic' | 'list' | 'renard';
 
 /**
  * A unit field's placeholder when empty — matching `unitLabel`'s own
@@ -37,6 +37,7 @@ const EMPTY_UNIT = '—';
 
 const KIND_LABELS: Readonly<Record<Kind, string>> = {
   scalar: 'value',
+  slider: 'slider',
   linear: 'linear range',
   logarithmic: 'log range',
   list: 'list',
@@ -49,7 +50,7 @@ function unitOf(value: ValueSpec): Unit {
 
 /** The smallest bound already on the value, so a switch never throws away the one number worth keeping. */
 function smallest(value: ValueSpec): number {
-  if (value.kind === 'scalar') return value.value;
+  if (value.kind === 'scalar' || value.kind === 'slider') return value.value;
   if (value.kind === 'list') return Math.min(...value.values);
   if (value.kind === 'linear' || value.kind === 'logarithmic' || value.kind === 'renard') {
     return Math.min(value.start, value.stop);
@@ -72,6 +73,14 @@ export function converted(value: ValueSpec, kind: Kind): ValueSpec {
   switch (kind) {
     case 'scalar':
       return { kind, value: sample, unit };
+    case 'slider': {
+      // Same "value becomes the low end, high end is double it" convention as
+      // linear/list, guarded the way logarithmic guards zero: a slider needs
+      // min < max, so zero can't double into itself and a negative sample
+      // can't double *away* from itself and end up below its own low end.
+      const max = sample === 0 ? 1 : sample > 0 ? sample * 2 : sample / 2;
+      return { kind, value: sample, min: sample, max, unit };
+    }
     case 'linear':
     case 'logarithmic': {
       const start = kind === 'logarithmic' && sample <= 0 ? 1 : sample;
@@ -123,9 +132,9 @@ interface Props {
  * re-typing during iteration and belong on the card at all times.
  */
 export function ValueKindSelect({ value, onChange }: Props): ReactElement {
-  const kind = (['scalar', 'linear', 'logarithmic', 'list', 'renard'] as const).includes(
-    value.kind as Kind,
-  )
+  const kind = (
+    ['scalar', 'slider', 'linear', 'logarithmic', 'list', 'renard'] as const
+  ).includes(value.kind as Kind)
     ? (value.kind as Kind)
     : 'scalar';
 
@@ -165,6 +174,30 @@ export function ValuePointsField({ value, onChange }: Props): ReactElement | nul
   );
 }
 
+/**
+ * A slider's travel bounds, alone — changes rarely enough to live behind the
+ * hover/pin detail, same reasoning as `ValuePointsField`.
+ */
+export function ValueSliderBoundsFields({ value, onChange }: Props): ReactElement | null {
+  if (value.kind !== 'slider') return null;
+  return (
+    <label className="points-field">
+      min
+      <NumberField
+        value={value.min}
+        title="The low end of the slider's travel."
+        onCommit={(min) => onChange({ ...value, min })}
+      />
+      max
+      <NumberField
+        value={value.max}
+        title="The high end of the slider's travel."
+        onCommit={(max) => onChange({ ...value, max })}
+      />
+    </label>
+  );
+}
+
 /** Values here are a student's magnitudes — always in the settings' punctuation. */
 function useValueFormat(): NumberFormat {
   const { numberFormat } = useSettings();
@@ -180,6 +213,7 @@ export function ValueFields({ value, onChange }: Props): ReactElement {
     const parsed = parseUnit(text); // throws, and the field shows why
     switch (value.kind) {
       case 'scalar':
+      case 'slider':
       case 'spectrum':
       case 'linear':
       case 'logarithmic':
@@ -215,6 +249,42 @@ export function ValueFields({ value, onChange }: Props): ReactElement {
             title="Blank is dimensionless — that is a value, not a gap to fill in."
             onCommit={setUnit}
           />
+        </div>
+      ) : null}
+
+      {value.kind === 'slider' ? (
+        <div className="slider-split">
+          <input
+            type="range"
+            className="slider-track"
+            min={value.min}
+            max={value.max}
+            step="any"
+            // Clamped for the thumb's own position only — the stored value
+            // is never rewritten by this, so a value typed outside
+            // [min, max] via the field below stays exactly what was typed,
+            // shown as the thumb pinned at whichever end it overshoots.
+            value={Math.min(Math.max(value.value, value.min), value.max)}
+            title="Drag for a feel of the effect — type the field for an exact value."
+            onChange={(event) => onChange({ ...value, value: Number(event.target.value) })}
+          />
+          <div className="quantity-split">
+            <NumberField
+              value={value.value}
+              autoSize={1}
+              format={format}
+              title="The value. The unit is the field beside it, and does not need retyping."
+              onCommit={(next) => onChange({ ...value, value: next })}
+            />
+            <TextField
+              className="unit"
+              value={unit.symbol}
+              autoSize={1}
+              placeholder={EMPTY_UNIT}
+              title="Blank is dimensionless — that is a value, not a gap to fill in."
+              onCommit={setUnit}
+            />
+          </div>
         </div>
       ) : null}
 

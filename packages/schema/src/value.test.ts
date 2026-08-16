@@ -32,6 +32,25 @@ describe('single values', () => {
   });
 });
 
+describe('slider values', () => {
+  it('round-trips a value with its own travel bounds, and introduces no axis', () => {
+    const json = { kind: 'slider', value: 20, min: 0, max: 60, unit: 'mm' } as const;
+    const value = parseValueSpec(json, 'v');
+    expect(isRange(value)).toBe(false);
+    expect(roundTrip(json)).toEqual(json);
+  });
+
+  it('allows a value outside its own bounds — typed in, not clamped away', () => {
+    const json = { kind: 'slider', value: 90, min: 0, max: 60, unit: 'mm' } as const;
+    expect(roundTrip(json)).toEqual(json);
+  });
+
+  it('refuses a low end at or above the high end', () => {
+    const json = { kind: 'slider', value: 20, min: 60, max: 60, unit: 'mm' };
+    expect(() => parseValueSpec(json, 'v')).toThrow(/low end below its high end/);
+  });
+});
+
 describe('range kinds', () => {
   it('counts points, both endpoints included', () => {
     expect(lengthOf({ kind: 'linear', start: 20, stop: 60, points: 21, unit: 'mm' })).toBe(21);

@@ -26,6 +26,7 @@ import {
   refTo,
   renard,
   scalar,
+  slider,
   wire,
 } from './invented.fixtures.js';
 import type { CategoricalSeries, NumericSeries } from './series.js';
@@ -50,6 +51,19 @@ describe('a scalar graph', () => {
 
   it('computes forwards, in canonical units', () => {
     const evaluation = evaluateDocument(document, catalogues);
+    expect(numeric(valueAt(evaluation, 'area', 'A')).data).toEqual([100]);
+  });
+
+  it('evaluates a slider exactly like a scalar — its bounds are an editor concern, not the kernel’s', () => {
+    const sliders = documentOf(
+      [
+        input('w', slider(20, 0, 100, 'mm')),
+        input('h', scalar(5, 'mm')),
+        formulaNode('area', refTo('area')),
+      ],
+      [wire('w.value', 'area.w'), wire('h.value', 'area.h')],
+    );
+    const evaluation = evaluateDocument(sliders, catalogues);
     expect(numeric(valueAt(evaluation, 'area', 'A')).data).toEqual([100]);
   });
 

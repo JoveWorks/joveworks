@@ -93,6 +93,14 @@ export function wire(from: string, to: string): JsonObject {
 
 export const scalar = (value: number, unit: string): JsonObject => ({ kind: 'scalar', value, unit });
 
+export const slider = (value: number, min: number, max: number, unit: string): JsonObject => ({
+  kind: 'slider',
+  value,
+  min,
+  max,
+  unit,
+});
+
 export const linear = (start: number, stop: number, points: number, unit: string): JsonObject => ({
   kind: 'linear',
   start,

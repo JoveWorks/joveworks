@@ -820,6 +820,53 @@ aside.right {
   font-size: 11px;
 }
 
+/* A slider's own drag control, sitting above its quantity-split — the field
+   below stays the authoritative editable value, this is a feel of it. */
+.slider-split {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.slider-track {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 14px;
+  background: transparent;
+  margin: 0;
+}
+
+.slider-track::-webkit-slider-runnable-track {
+  height: 3px;
+  background: var(--line);
+  border-radius: 2px;
+}
+
+.slider-track::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 11px;
+  height: 11px;
+  margin-top: -4px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.slider-track::-moz-range-track {
+  height: 3px;
+  background: var(--line);
+  border-radius: 2px;
+}
+
+.slider-track::-moz-range-thumb {
+  width: 11px;
+  height: 11px;
+  border: none;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
 .points-field {
   display: flex;
   align-items: center;

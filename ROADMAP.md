@@ -152,12 +152,6 @@ those. Open beyond that: what else, if anything, should a selection enable —
 move together (already true, independent React Flow nodes), delete together
 (already true, Backspace/Delete), anything else?
 
-**Sliders as an input** — the intent is quickly nudging a value to build
-intuition for its effect on the output, not precision entry. Needs a bound
-to travel between (the port's declared valid range, when the formula has
-one) and a decision on whether it replaces or sits alongside the typed
-field.
-
 **Spectrum-editing UI.** A load spectrum (a hand-typed collection consumed
 whole by an aggregation, not swept) exists in the schema, but nothing in the
 editor can create or edit one yet. Surfaced while adding the palette's Input

@@ -216,6 +216,7 @@ function inputValue(node: InputNode, axes: ReadonlyMap<string, Axis>): PortValue
 
   switch (spec.kind) {
     case 'scalar':
+    case 'slider':
       return scalarSeries(toCanonical(spec.value, spec.unit));
 
     case 'categorical':

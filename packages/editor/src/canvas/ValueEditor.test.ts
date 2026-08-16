@@ -59,6 +59,26 @@ describe('switching an input value between kinds', () => {
     const range = { kind: 'renard' as const, series: 'R20' as const, start: 60, stop: 20, unit: mm };
     expect(converted(range, 'scalar')).toEqual({ kind: 'scalar', value: 20, unit: mm });
   });
+
+  it('uses the value as both the reading and the low end, doubled for the high end, switching to a slider', () => {
+    const scalar = { kind: 'scalar' as const, value: 20, unit: mm };
+    expect(converted(scalar, 'slider')).toEqual({ kind: 'slider', value: 20, min: 20, max: 40, unit: mm });
+  });
+
+  it('halves a negative value towards zero for a slider’s high end, so min still lands below max', () => {
+    const scalar = { kind: 'scalar' as const, value: -20, unit: mm };
+    expect(converted(scalar, 'slider')).toEqual({ kind: 'slider', value: -20, min: -20, max: -10, unit: mm });
+  });
+
+  it('gives a zero value a high end of 1, so a slider never collapses to a single point', () => {
+    const scalar = { kind: 'scalar' as const, value: 0, unit: mm };
+    expect(converted(scalar, 'slider')).toEqual({ kind: 'slider', value: 0, min: 0, max: 1, unit: mm });
+  });
+
+  it('takes the reading straight across, going back to scalar from a slider', () => {
+    const value = { kind: 'slider' as const, value: 35, min: 20, max: 80, unit: mm };
+    expect(converted(value, 'scalar')).toEqual({ kind: 'scalar', value: 35, unit: mm });
+  });
 });
 
 describe('typing a unit on one bound of a range', () => {
