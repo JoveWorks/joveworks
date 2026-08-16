@@ -156,7 +156,7 @@ Established by surveying the predecessor corpus, not assumed:
   arguments; `min`/`max` require matching dimensions.
 - **Tables are step functions**: a diameter band crossed with a categorical
   class, in µm. No interpolation unless a table opts in, and a missing entry
-  **raises**. This is where the `[E-6m]` tag of D7 comes from.
+  **raises**. This is where the `[E-6m]` unit tag comes from.
 - **Ports are numeric-with-dimension or categorical**. Categoricals carry
   an enumerated domain and sweep by explicit list only.
 
@@ -337,11 +337,11 @@ formulas prove the schema; 539 would only prove it more expensively. If the
 contract is wrong, finding out after 55 costs a morning — after 539 it costs a
 data migration.
 
-0. ~~Resolve the blocking decisions.~~ **Done** — D1–D19 closed on
-   2026-08-14, and `D20` — opened by step 6, closed by step 7. It never
-   blocked a build step: it gated two formulas and one golden through the same
-   quarantine that content sign-off uses, and taking its option A leaves them
-   there.
+0. ~~Resolve the blocking decisions.~~ **Done** — the open design questions
+   were closed by 2026-08-14, and the last of them, the wrap angle's unit
+   tag, was opened by step 6 and closed by step 7. It never blocked a build
+   step: it gated two formulas and one golden through the same quarantine
+   that content sign-off uses, and leaves them there.
 
 ### Prerequisites, verified 2026-08-14
 
@@ -352,8 +352,8 @@ data migration.
   description` — enough to build a catalogue record.
 - **Belt's unit tags are clean.** `[]`, `[%]`, `[kg/dm³]`, `[m]`, `[mm]`,
   `[mm²]`, `[m/s]`, `[N]`, `[Nm]`, `[N/mm]`, `[N/mm²]`, `[Nm/mm]`, `[rpm]`,
-  `[s-1]`, `[W]`, `[W/mm]` — **no junk tags**, so D7's sign-off does not gate
-  milestone 1 at all. Only three need care: `[kg/dm³]` (the density trap),
+  `[s-1]`, `[W]`, `[W/mm]` — **no junk tags**, so unit-tag sign-off does not
+  gate milestone 1 at all. Only three need care: `[kg/dm³]` (the density trap),
   `[%]` (dimensionless with display scale), and `[s-1]`.
 - **Belt's defect exposure is one line.** ~~None of the ~12 confirmed defects are
   in `C16`.~~ **Wrong, corrected 2026-08-15**: running the dimension check over
@@ -396,7 +396,7 @@ data migration.
 
    The dimension check answered for 49 of the 54 unaided. Of the five it
    refused, **three are defects in the source** — belt was recorded above as
-   carrying none — and two are one seam raised as `D20` and settled by
+   carrying none — and two are the wrap angle's unit-tag question, settled by
    step 7, which leaves them quarantined. All five are
    quarantined with their evidence on the record. `variantOf` is captured by
    R&M equation number; `appliesWhen` is empty across the chapter, because

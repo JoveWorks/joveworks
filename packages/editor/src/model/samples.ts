@@ -186,8 +186,8 @@ export const BELT_LAB_FORMULAS = [
  * golden values are the milestone 1 acceptance criterion.
  *
  * β₁ is absent for the reason it is absent from the test — `rm.16.24A` is
- * quarantined and D20 was settled as option A. Drag it in from the palette
- * and the node says so; that is the quarantine gate, visible.
+ * quarantined until its wrap-angle unit tag is confirmed. Drag it in from
+ * the palette and the node says so; that is the quarantine gate, visible.
  */
 export function beltLab(catalogues: readonly Catalogue[]): GraphDocument | undefined {
   if (!provides(catalogues, BELT_LAB_FORMULAS)) return undefined;

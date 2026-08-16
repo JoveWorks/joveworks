@@ -25,8 +25,8 @@
  * only the seven formulas below earn `verified` and the other forty-seven
  * records stay `unverified`.
  *
- * **β₁ is absent on purpose.** The wrap angle comes from `rm.16.24A`, which is
- * quarantined pending D20, and D20 was settled as option A — the quarantine
+ * **β₁ is absent on purpose.** The wrap angle comes from `rm.16.24A`, which
+ * stays quarantined until its unit tag is confirmed — the quarantine
  * stands. Eleven of the twelve golden rows are reproduced; the twelfth is
  * asserted to be *refused*, which is the quarantine gate doing its job rather
  * than a gap in the test.
@@ -321,12 +321,12 @@ describe.runIf(present)('the belt lab, end to end (milestone 1 acceptance)', () 
     expect(speed?.kind === 'numeric' && speed.data[0]).toBeCloseTo(Math.PI * 90 * 25, 9);
   });
 
-  it('cannot produce β₁: 16.24A is quarantined and D20 was settled as A', () => {
+  it('cannot produce β₁: 16.24A stays quarantined pending its unit tag', () => {
     // The honest half of the acceptance criterion. Eleven rows reproduce; the
     // wrap angle is refused, loudly, with the reason on the record.
     const document = graph(
       'wrap-angle',
-      'The golden D20 costs',
+      'The twelfth golden costs',
       [
         input('d_dg', 400, 'mm'),
         input('d_dk', 90, 'mm'),
