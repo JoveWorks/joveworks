@@ -39,6 +39,7 @@ import {
 import { analyse } from './model/analysis';
 import { bundledCatalogues, baseCatalogue, withCatalogue } from './model/catalogues';
 import { groupIntoSection } from './model/document';
+import { autoArrange } from './model/layout';
 import {
   loadMinimapVisible,
   loadThemePreference,
@@ -352,6 +353,10 @@ function AppShell(): ReactElement {
     edit((current) => groupIntoSection(current, selected, at));
   };
 
+  const arrangeGraph = (): void => {
+    edit((current) => autoArrange(current));
+  };
+
   // Open/save belong in a conventional File/Edit/View/Help ribbon, top-left
   // (docs/UX-SPEC.md) — not wherever the individual actions used to live.
   // Recent is read fresh on every render rather than kept in its own state:
@@ -383,6 +388,7 @@ function AppShell(): ReactElement {
 
   const editMenuItems: readonly MenuItem[] = [
     { label: 'Group into new section', onClick: addSection },
+    { label: 'Auto-arrange', onClick: arrangeGraph },
     { label: 'Undo', disabled: !canUndo, onClick: undo },
     { label: 'Redo', disabled: !canRedo, onClick: redo },
   ];
