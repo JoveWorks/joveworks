@@ -99,6 +99,10 @@ export function Tutorial({ active, onClose, pinned, setPinned }: Props): ReactEl
   useLayoutEffect(() => {
     const el = captionRef.current;
     if (el === null) return;
+    // The box already reflects whatever offset is currently applied (it's
+    // baked into the rendered transform), so a correction computed from it
+    // is additional, on top of that — replacing `offset` outright instead of
+    // adding to it undoes the previous correction and never converges.
     const box = el.getBoundingClientRect();
     let dx = 0;
     let dy = 0;
@@ -106,7 +110,15 @@ export function Tutorial({ active, onClose, pinned, setPinned }: Props): ReactEl
     else if (box.right > window.innerWidth - MARGIN) dx = window.innerWidth - MARGIN - box.right;
     if (box.top < MARGIN) dy = MARGIN - box.top;
     else if (box.bottom > window.innerHeight - MARGIN) dy = window.innerHeight - MARGIN - box.bottom;
-    if (dx !== offset.dx || dy !== offset.dy) setOffset({ dx, dy });
+    // Rounded, and only applied past half a pixel — an exact-zero check
+    // against a sub-pixel `getBoundingClientRect` reading would never
+    // converge, since the correction it computes always leaves a float
+    // remainder for the next pass to "fix".
+    dx = Math.round(dx);
+    dy = Math.round(dy);
+    if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
+      setOffset((current) => ({ dx: current.dx + dx, dy: current.dy + dy }));
+    }
   });
 
   if (!active || step === undefined) return null;

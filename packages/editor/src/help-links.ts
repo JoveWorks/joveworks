@@ -11,11 +11,17 @@ export const DOCS_BASE_URL = import.meta.env.DEV
   : `${window.location.origin}/docs`;
 
 export const NODE_HELP_URLS: Readonly<
-  Record<'input' | 'formula' | 'output' | 'compare' | 'closure', string>
+  Record<
+    'input' | 'formula' | 'output' | 'compare' | 'closure' | 'waypoint' | 'pack' | 'unpack',
+    string
+  >
 > = {
   input: `${DOCS_BASE_URL}/guide/node-reference#input`,
   formula: `${DOCS_BASE_URL}/guide/node-reference#formula`,
   output: `${DOCS_BASE_URL}/guide/node-reference#output`,
   compare: `${DOCS_BASE_URL}/guide/node-reference#compare`,
   closure: `${DOCS_BASE_URL}/guide/node-reference#closure`,
+  waypoint: `${DOCS_BASE_URL}/guide/node-reference#waypoint`,
+  pack: `${DOCS_BASE_URL}/guide/node-reference#pack`,
+  unpack: `${DOCS_BASE_URL}/guide/node-reference#unpack`,
 };

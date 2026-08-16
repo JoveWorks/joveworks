@@ -49,11 +49,22 @@ export interface Spectrum {
   readonly values: readonly number[];
 }
 
-export type PortValue = NumericSeries | CategoricalSeries | Spectrum;
+/**
+ * `pack`'s output and `unpack`'s input: an ordered bundle of values, one
+ * per channel — `pack`'s own evaluation collects them, `unpack`'s spreads
+ * them back out onto `out0..outN`. Never appears anywhere a formula's
+ * expression could see it; it exists only on the wire between the two.
+ */
+export interface BundleValue {
+  readonly kind: 'bundle';
+  readonly values: readonly PortValue[];
+}
+
+export type PortValue = NumericSeries | CategoricalSeries | Spectrum | BundleValue;
 export type Series = NumericSeries | CategoricalSeries;
 
 export function isSeries(value: PortValue): value is Series {
-  return value.kind !== 'spectrum';
+  return value.kind === 'numeric' || value.kind === 'categorical';
 }
 
 export function scalarSeries(value: number): NumericSeries {

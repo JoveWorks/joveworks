@@ -15,6 +15,9 @@ import {
   type GraphDocument,
   type InputNode,
   type OutputNode,
+  type PackNode,
+  type UnpackNode,
+  type WaypointNode,
 } from '@mds/schema';
 import { parseUnit } from '@mds/units';
 
@@ -464,5 +467,139 @@ describe('setClosureExpression — a closure node’s ports follow its own expre
     expect(edited.edges).toEqual([]);
     const node = edited.nodes.find((entry) => entry.id === 'eq') as ClosureNode;
     expect(node.expression).toBe('a + * b');
+  });
+});
+
+describe('removeNodes — splicing a deleted routing node', () => {
+  const waypoint = (id: string, x: number, y: number): WaypointNode => ({
+    kind: 'waypoint',
+    id,
+    position: { x, y },
+  });
+  const pack = (id: string, x: number, y: number): PackNode => ({ kind: 'pack', id, position: { x, y } });
+  const unpack = (id: string, x: number, y: number): UnpackNode => ({
+    kind: 'unpack',
+    id,
+    position: { x, y },
+  });
+
+  it('reconnects a waypoint’s source directly to its target when the waypoint is deleted', () => {
+    const wired = connect(
+      connect(
+        { ...base, nodes: [...base.nodes, waypoint('via', 200, 0)] },
+        { node: 'a', port: 'value' },
+        { node: 'via', port: 'in' },
+      ),
+      { node: 'via', port: 'out' },
+      { node: 'b', port: 'x' },
+    );
+    const spliced = removeNodes(wired, new Set(['via']));
+    expect(spliced.nodes.map((node) => node.id)).toEqual(['a', 'b']);
+    expect(spliced.edges).toEqual([
+      { id: 'a.value->b.x', from: { node: 'a', port: 'value' }, to: { node: 'b', port: 'x' } },
+    ]);
+  });
+
+  it('reconnects every upstream source to every downstream target, fan-in and fan-out alike', () => {
+    const withWaypoint = { ...base, nodes: [...base.nodes, waypoint('via', 200, 0)] };
+    const wired = connect(
+      connect(
+        connect(withWaypoint, { node: 'a', port: 'value' }, { node: 'via', port: 'in' }, true),
+        { node: 'b', port: 'value' },
+        { node: 'via', port: 'in' },
+        true,
+      ),
+      { node: 'via', port: 'out' },
+      { node: 'a', port: 'x' },
+    );
+    const spliced = removeNodes(wired, new Set(['via']));
+    const pairs = spliced.edges
+      .map((edge) => `${edge.from.node}->${edge.to.node}`)
+      .sort();
+    expect(pairs).toEqual(['a->a', 'b->a']);
+  });
+
+  it('reconnects a pack/unpack pair channel by channel, in fan-out to several unpacks', () => {
+    const withNodes = {
+      ...base,
+      nodes: [...base.nodes, pack('bundle', 200, 0), unpack('splitA', 400, 0), unpack('splitB', 400, 100)],
+    };
+    let wired = withNodes;
+    wired = connect(wired, { node: 'a', port: 'value' }, { node: 'bundle', port: 'in0' });
+    wired = connect(wired, { node: 'b', port: 'value' }, { node: 'bundle', port: 'in1' });
+    wired = connect(wired, { node: 'bundle', port: 'bundle' }, { node: 'splitA', port: 'bundle' });
+    wired = connect(wired, { node: 'bundle', port: 'bundle' }, { node: 'splitB', port: 'bundle' });
+    // splitA forwards both channels; splitB only channel 0, onto a distinct
+    // port so its edge does not collide with splitA's own.
+    wired = connect(wired, { node: 'splitA', port: 'out0' }, { node: 'a', port: 'x' });
+    wired = connect(wired, { node: 'splitA', port: 'out1' }, { node: 'b', port: 'x' });
+    wired = connect(wired, { node: 'splitB', port: 'out0' }, { node: 'a', port: 'y' });
+
+    // Delete the pack — the splice adds a direct edge from each channel's
+    // upstream source to each fed unpack's own downstream target, channel
+    // by channel: channel 0 (`a`) fans out to both splitA's and splitB's
+    // downstream targets, channel 1 (`b`) only to splitA's. The unpack
+    // nodes themselves are not deleted (only `bundle` was), so their own
+    // — now orphaned — downstream edges are left in place alongside the
+    // new direct ones, exactly as any other node's edges survive a
+    // neighbour's deletion.
+    const afterPackDeleted = removeNodes(wired, new Set(['bundle']));
+    const pairsFromPackDelete = afterPackDeleted.edges
+      .map((edge) => `${edge.from.node}->${edge.to.node}`)
+      .sort();
+    expect(pairsFromPackDelete).toEqual(['a->a', 'a->a', 'b->b', 'splitA->a', 'splitA->b', 'splitB->a']);
+
+    // Deleting one unpack out of several sharing a pack only touches that
+    // unpack's own downstream edges — splitB's out0 (fed by channel 0, `a`)
+    // reconnects; splitA and the pack itself are untouched.
+    const afterUnpackDeleted = removeNodes(wired, new Set(['splitB']));
+    expect(afterUnpackDeleted.nodes.some((node) => node.id === 'bundle')).toBe(true);
+    expect(afterUnpackDeleted.nodes.some((node) => node.id === 'splitA')).toBe(true);
+    expect(
+      afterUnpackDeleted.edges.some(
+        (edge) => edge.from.node === 'a' && edge.from.port === 'value' && edge.to.node === 'a' && edge.to.port === 'y',
+      ),
+    ).toBe(true);
+  });
+
+  it('drops an unwired channel with nothing synthesized, the same as any other unwired port', () => {
+    const withNodes = { ...base, nodes: [...base.nodes, pack('bundle', 200, 0), unpack('split', 400, 0)] };
+    const wired = connect(
+      connect(
+        connect(withNodes, { node: 'a', port: 'value' }, { node: 'bundle', port: 'in0' }),
+        { node: 'bundle', port: 'bundle' },
+        { node: 'split', port: 'bundle' },
+      ),
+      { node: 'split', port: 'out0' },
+      { node: 'b', port: 'x' },
+    );
+    // Channel 0 is wired both sides and splices; there is no channel 1 at
+    // all, so nothing is synthesized for it.
+    const spliced = removeNodes(wired, new Set(['bundle', 'split']));
+    expect(spliced.edges).toEqual([]);
+  });
+
+  it('falls back to the ordinary no-splice delete when a batch deletes more than one routing node', () => {
+    const withNodes = { ...base, nodes: [...base.nodes, waypoint('via1', 200, 0), waypoint('via2', 200, 100)] };
+    const wired = connect(
+      connect(
+        connect(
+          connect(withNodes, { node: 'a', port: 'value' }, { node: 'via1', port: 'in' }),
+          { node: 'via1', port: 'out' },
+          { node: 'via2', port: 'in' },
+        ),
+        { node: 'via2', port: 'out' },
+        { node: 'b', port: 'x' },
+      ),
+      { node: 'a', port: 'value' },
+      { node: 'via2', port: 'in' },
+      true,
+    );
+    const spliced = removeNodes(wired, new Set(['via1', 'via2']));
+    // No splice attempted for a multi-routing-node batch: every edge that
+    // touched either deleted node is simply gone, same as deleting any
+    // other pair of ordinary nodes would leave.
+    expect(spliced.edges).toEqual([]);
+    expect(spliced.nodes.map((node) => node.id)).toEqual(['a', 'b']);
   });
 });

@@ -162,15 +162,30 @@ function AppShell(): ReactElement {
     restoredAutosave ? undefined : saveDocument(initialDocument),
   );
   const isDirty = savedSnapshot === undefined || saveDocument(document) !== savedSnapshot;
-  // Loading a different document (open file, a sample) starts a fresh undo
-  // history — there is nothing to gain from undoing back into a document
   // that is no longer open, same as most editors treat "open a file". It
-  // also resets the dirty baseline: what just loaded is the new "saved"
-  // state until it's edited again.
+  // also resets the dirty baseline (what just loaded is the new "saved"
+  // state until it's edited again) and asks the canvas to re-fit: the
+  // `fitView` prop on `<ReactFlow>` (`Canvas.tsx`) only ever fires once, on
+  // mount, so swapping in a different document leaves whatever pan/zoom was
+  // already on screen — opening a sample (or the tutorial) into a distant or
+  // zoomed-in viewport can land on an empty patch of canvas with nothing
+  // visible.
   const resetDocument = (next: GraphDocument): void => {
     setHistory(initHistory(next));
     setSavedSnapshot(saveDocument(next));
+    setFitRequest((current) => current + 1);
   };
+  const [fitRequest, setFitRequest] = useState(0);
+  useEffect(() => {
+    // 0 is the initial value, already covered by `<ReactFlow fitView>`'s own
+    // on-mount fit — only re-fit for a `resetDocument` that happens after.
+    if (fitRequest === 0) return;
+    // A newly swapped-in node list is measured by React Flow asynchronously
+    // after this render commits; fitting a frame later gives it that tick
+    // rather than fitting to stale (or zero-size) node bounds.
+    const frame = requestAnimationFrame(() => flow.fitView({ padding: 0.2, duration: 200 }));
+    return () => cancelAnimationFrame(frame);
+  }, [fitRequest, flow]);
   // Guards anything that calls `resetDocument` behind a confirmation once
   // there's something to lose — New, Open, a recent document, a sample, the
   // tutorial. Runs the action immediately when the graph is already clean.
@@ -466,9 +481,11 @@ function AppShell(): ReactElement {
         // The script's steps are written against the pad-pressure sample
         // specifically, so launching it loads that sample first — same as
         // any other item under Examples below, and just as destructive to
-        // whatever is currently on the canvas.
+        // whatever is currently on the canvas. Its notebook step has
+        // nothing to point at if the panel was hidden going in.
         const sample = padPressure(catalogues);
         if (sample !== undefined) resetDocument(sample);
+        setShowNotebook(true);
         setTutorialActive(true);
       },
     },
@@ -617,7 +634,11 @@ function AppShell(): ReactElement {
             {showNotebook ? (
               <>
                 <div className="resize-handle" onMouseDown={resizeNotebook} />
-                <aside className="right" style={{ width: notebookWidth, flexBasis: notebookWidth }}>
+                <aside
+                  className="right"
+                  data-tour="notebook"
+                  style={{ width: notebookWidth, flexBasis: notebookWidth }}
+                >
                   <Notebook />
                 </aside>
               </>

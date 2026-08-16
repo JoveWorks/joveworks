@@ -80,6 +80,9 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
 
   const portUnit = (port: Port): string => {
     if (port.kind === 'categorical') return port.domain.join(' | ');
+    // A catalogue formula never declares a bundle port (schema/src/port.ts) —
+    // kept only so `Port`'s full union type-checks here.
+    if (port.kind === 'bundle') return '';
     // A generic port has no unit of its own until something is wired to it
     //, so what it shows is the unit the binding gave it.
     const bound = analysis.resolution?.targets.get(`${id}.${port.name}`)?.unit;

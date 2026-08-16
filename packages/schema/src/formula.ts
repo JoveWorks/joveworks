@@ -41,7 +41,7 @@ import { genericVariables, isGenericDimension } from '@mds/units';
 
 /** The dimension variables a port mentions — none, unless it is generic. */
 function portVariables(port: Port): readonly string[] {
-  if (port.kind === 'categorical' || !isGenericDimension(port.unit)) return [];
+  if (port.kind === 'categorical' || port.kind === 'bundle' || !isGenericDimension(port.unit)) return [];
   return genericVariables(port.unit);
 }
 
