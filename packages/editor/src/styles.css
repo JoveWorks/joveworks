@@ -874,11 +874,18 @@ aside.right {
 
 .points-field {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: 4px 10px;
   margin-top: 4px;
   color: var(--muted);
   font-size: 11px;
+}
+
+.points-field-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .points-field .number {

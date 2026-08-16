@@ -49,6 +49,14 @@ describe('slider values', () => {
     const json = { kind: 'slider', value: 20, min: 60, max: 60, unit: 'mm' };
     expect(() => parseValueSpec(json, 'v')).toThrow(/low end below its high end/);
   });
+
+  it('round-trips an explicit figures count, and omits it when unset', () => {
+    const withFigures = { kind: 'slider', value: 20, min: 0, max: 60, unit: 'mm', figures: 5 } as const;
+    expect(roundTrip(withFigures)).toEqual(withFigures);
+
+    const withoutFigures = { kind: 'slider', value: 20, min: 0, max: 60, unit: 'mm' } as const;
+    expect(roundTrip(withoutFigures)).toEqual(withoutFigures);
+  });
 });
 
 describe('range kinds', () => {

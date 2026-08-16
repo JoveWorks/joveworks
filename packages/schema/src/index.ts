@@ -49,6 +49,7 @@ export type {
 export {
   VALUE_KINDS,
   RENARD_SERIES,
+  DEFAULT_SLIDER_FIGURES,
   isRange,
   axisLength,
   renardValues,
@@ -59,6 +60,7 @@ export type {
   ValueSpec,
   ValueKind,
   ScalarValue,
+  SliderValue,
   CategoricalValue,
   SpectrumValue,
   RangeSpec,

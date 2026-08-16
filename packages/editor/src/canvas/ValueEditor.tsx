@@ -17,7 +17,7 @@
 import type { ReactElement } from 'react';
 
 import { dimensionsEqual, parseUnit, type NumberFormat, type Unit } from '@mds/units';
-import { RENARD_SERIES, type RenardSeries, type ValueSpec } from '@mds/schema';
+import { DEFAULT_SLIDER_FIGURES, RENARD_SERIES, type RenardSeries, type ValueSpec } from '@mds/schema';
 
 import { useSettings } from '../settings-context';
 import { toUnitsFormat } from '../model/numberFormat';
@@ -46,6 +46,15 @@ const KIND_LABELS: Readonly<Record<Kind, string>> = {
 
 function unitOf(value: ValueSpec): Unit {
   return 'unit' in value ? value.unit : parseUnit('');
+}
+
+/**
+ * A drag reports a value at float precision no student typed (`23.847291…`)
+ * — rounded to `figures` significant figures before it reaches the document,
+ * so the field beside the slider reads like something a student would enter.
+ */
+function roundToFigures(value: number, figures: number): number {
+  return value === 0 || !Number.isFinite(value) ? value : Number(value.toPrecision(figures));
 }
 
 /** The smallest bound already on the value, so a switch never throws away the one number worth keeping. */
@@ -182,18 +191,32 @@ export function ValueSliderBoundsFields({ value, onChange }: Props): ReactElemen
   if (value.kind !== 'slider') return null;
   return (
     <label className="points-field">
-      min
-      <NumberField
-        value={value.min}
-        title="The low end of the slider's travel."
-        onCommit={(min) => onChange({ ...value, min })}
-      />
-      max
-      <NumberField
-        value={value.max}
-        title="The high end of the slider's travel."
-        onCommit={(max) => onChange({ ...value, max })}
-      />
+      <span className="points-field-item">
+        min
+        <NumberField
+          value={value.min}
+          title="The low end of the slider's travel."
+          onCommit={(min) => onChange({ ...value, min })}
+        />
+      </span>
+      <span className="points-field-item">
+        max
+        <NumberField
+          value={value.max}
+          title="The high end of the slider's travel."
+          onCommit={(max) => onChange({ ...value, max })}
+        />
+      </span>
+      <span className="points-field-item">
+        figures
+        <NumberField
+          value={value.figures ?? DEFAULT_SLIDER_FIGURES}
+          integer
+          minimum={1}
+          title="How many significant figures a drag rounds to — typing a value directly is never rounded."
+          onCommit={(figures) => onChange({ ...value, figures })}
+        />
+      </span>
     </label>
   );
 }
@@ -266,7 +289,12 @@ export function ValueFields({ value, onChange }: Props): ReactElement {
             // shown as the thumb pinned at whichever end it overshoots.
             value={Math.min(Math.max(value.value, value.min), value.max)}
             title="Drag for a feel of the effect — type the field for an exact value."
-            onChange={(event) => onChange({ ...value, value: Number(event.target.value) })}
+            onChange={(event) =>
+              onChange({
+                ...value,
+                value: roundToFigures(Number(event.target.value), value.figures ?? DEFAULT_SLIDER_FIGURES),
+              })
+            }
           />
           <div className="quantity-split">
             <NumberField

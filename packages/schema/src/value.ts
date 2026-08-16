@@ -17,6 +17,8 @@
 import {
   fail,
   join,
+  optional,
+  put,
   readEnum,
   readInteger,
   readName,
@@ -63,6 +65,12 @@ export interface ScalarValue {
  * outside `[min, max]` (e.g. typed in directly): that stays a valid
  * document, rendered with the thumb pinned at whichever end it overshoots,
  * rather than silently clamped.
+ *
+ * `figures`: a drag reports a value at float precision no student typed —
+ * rounded to this many significant figures (default `DEFAULT_SLIDER_FIGURES`)
+ * before it ever reaches the document, the same "figures" concept a print
+ * output already has, just applied at write time instead of display time,
+ * since a slider's value is meant to be read off directly.
  */
 export interface SliderValue {
   readonly kind: 'slider';
@@ -70,7 +78,10 @@ export interface SliderValue {
   readonly min: number;
   readonly max: number;
   readonly unit: Unit;
+  readonly figures?: number;
 }
+
+export const DEFAULT_SLIDER_FIGURES = 3;
 
 /** A single member of a categorical port's domain. */
 export interface CategoricalValue {
@@ -256,12 +267,14 @@ export function parseValueSpec(value: JsonValue, path: string): ValueSpec {
       const min = readNumber(required(object, 'min', path), join(path, 'min'));
       const max = readNumber(required(object, 'max', path), join(path, 'max'));
       if (min >= max) fail(path, 'a slider needs its low end below its high end');
+      const figures = optional(object, 'figures', path, (v, p) => readInteger(v, p, 1));
       return {
         kind,
         value: readNumber(required(object, 'value', path), join(path, 'value')),
         min,
         max,
         unit: parseUnitField(required(object, 'unit', path), join(path, 'unit')),
+        ...(figures === undefined ? {} : { figures }),
       };
     }
 
@@ -343,6 +356,7 @@ export function serializeValueSpec(value: ValueSpec): JsonObject {
         min: value.min,
         max: value.max,
         unit: value.unit.symbol,
+        ...put('figures', value.figures),
       };
     case 'categorical':
       return { kind: value.kind, value: value.value };
