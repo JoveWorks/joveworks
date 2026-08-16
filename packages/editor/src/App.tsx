@@ -12,7 +12,7 @@
  * the only way connect time and evaluation time cannot drift apart.
  */
 
-import { useEffect, useMemo, useState, type ReactElement } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { ReactFlowProvider } from '@xyflow/react';
 
 import {
@@ -28,6 +28,12 @@ import { Canvas } from './canvas/Canvas';
 import { ContextMenu, type MenuItem } from './canvas/ContextMenu';
 import { GraphContext } from './graph-context';
 import { SettingsContext } from './settings-context';
+import {
+  clearAutosaveSnapshot,
+  loadAutosaveSnapshot,
+  saveAutosaveSnapshot,
+  type AutosaveSnapshot,
+} from './io/autosave';
 import { cacheCatalogue, cachedCatalogueTexts } from './io/catalogueCache';
 import { openTextFile, saveTextFile } from './io/files';
 import { analyse } from './model/analysis';
@@ -88,6 +94,10 @@ function initialCatalogues(): readonly Catalogue[] {
   return catalogues;
 }
 
+/** Frequent enough that an accidental close loses little, infrequent enough
+ * to stay off the profiler for graphs of the size this app targets. */
+const AUTOSAVE_INTERVAL_MS = 30_000;
+
 export function App(): ReactElement {
   const [catalogues, setCatalogues] = useState<readonly Catalogue[]>(initialCatalogues);
   const [history, setHistory] = useState<History<GraphDocument>>(() =>
@@ -124,6 +134,12 @@ export function App(): ReactElement {
   const [notices, setNotices] = useState<readonly { readonly id: string; readonly message: string }[]>(
     [],
   );
+  // Captured once at startup — a snapshot left over from a session that
+  // never hit explicit Save. `undefined` once resolved (restored, discarded,
+  // or never present).
+  const [restoreSnapshot, setRestoreSnapshot] = useState<AutosaveSnapshot | undefined>(
+    loadAutosaveSnapshot,
+  );
 
   const dismissNotice = (id: string): void =>
     setNotices((current) => current.filter((notice) => notice.id !== id));
@@ -133,6 +149,39 @@ export function App(): ReactElement {
     const id = crypto.randomUUID();
     setNotices((current) => [...current, { id, message }]);
     window.setTimeout(() => dismissNotice(id), 6000);
+  };
+
+  // A ref rather than a `document` dependency: restarting the interval on
+  // every edit would autosave far more often than the interval implies, for
+  // no benefit — the ref just needs to read whatever is current when the
+  // timer (or unload) fires.
+  const documentRef = useRef(document);
+  documentRef.current = document;
+
+  useEffect(() => {
+    const snapshot = (): void => saveAutosaveSnapshot(saveDocument(documentRef.current));
+    const interval = window.setInterval(snapshot, AUTOSAVE_INTERVAL_MS);
+    window.addEventListener('beforeunload', snapshot);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('beforeunload', snapshot);
+    };
+  }, []);
+
+  const restoreAutosave = (): void => {
+    if (restoreSnapshot === undefined) return;
+    try {
+      resetDocument(loadDocument(restoreSnapshot.text));
+      pushNotice('Restored unsaved work from the last session.');
+    } catch (error) {
+      pushNotice(`Could not restore the autosaved document: ${messageOf(error)}`);
+    }
+    setRestoreSnapshot(undefined);
+  };
+
+  const discardAutosave = (): void => {
+    clearAutosaveSnapshot();
+    setRestoreSnapshot(undefined);
   };
 
   const setNumberFormat = (next: NumberFormatSettings): void => {
@@ -258,7 +307,13 @@ export function App(): ReactElement {
   // (docs/UX-SPEC.md) — not wherever the individual actions used to live.
   const fileMenuItems: readonly MenuItem[] = [
     { label: 'Open…', onClick: () => void openDocumentFile() },
-    { label: 'Save', onClick: () => saveTextFile(`${document.id}.mds.json`, saveDocument(document)) },
+    {
+      label: 'Save',
+      onClick: () => {
+        saveTextFile(`${document.id}.mds.json`, saveDocument(document));
+        clearAutosaveSnapshot();
+      },
+    },
     { label: 'Load catalogue…', onClick: () => void loadCatalogueFile() },
     { label: 'Settings…', onClick: () => setShowSettings(true) },
   ];
@@ -416,6 +471,28 @@ export function App(): ReactElement {
                 </>
               ) : null}
             </main>
+
+            {restoreSnapshot === undefined ? null : (
+              <>
+                <div className="dialog-backdrop" onClick={discardAutosave} />
+                <div className="dialog" role="dialog" aria-label="Restore unsaved work">
+                  <h2>Restore unsaved work?</h2>
+                  <p className="dialog-note">
+                    Found a snapshot from {new Date(restoreSnapshot.savedAt).toLocaleString()} that
+                    was never explicitly saved — likely an interrupted session. Restore it, or
+                    discard it and start from the usual document.
+                  </p>
+                  <div className="dialog-actions">
+                    <button type="button" onClick={discardAutosave}>
+                      Discard
+                    </button>
+                    <button type="button" onClick={restoreAutosave}>
+                      Restore
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
 
             {showSettings ? (
               <SettingsDialog
