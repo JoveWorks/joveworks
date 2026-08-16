@@ -212,6 +212,10 @@ does this log" has a single answer.
 
 **Restore notification pops up twice**
 
+**Add Github link to app header.**
+
+**Docs title and editor are the same.** Both `machine-design-studio`
+
 ## Commit conventions and release tooling
 
 Done. `v0.1.0` is cut — first tagged release, marked pre-release on GitHub
