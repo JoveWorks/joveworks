@@ -150,6 +150,7 @@ export function ValueKindSelect({ value, onChange }: Props): ReactElement {
   return (
     <select
       className="kind"
+      data-tour="value-kind-select"
       value={kind}
       onChange={(event) => onChange(converted(value, event.target.value as Kind))}
     >
