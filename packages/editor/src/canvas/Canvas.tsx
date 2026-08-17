@@ -213,18 +213,6 @@ export function nodeContextMenuKind(
   return selectedNodeCount(document, selected) > 1 ? 'selection' : 'node';
 }
 
-/** Whether Shift-clicking a node will leave a multi-node selection to act on. */
-export function shiftClickOpensSelectionMenu(
-  document: GraphDocument,
-  selected: ReadonlySet<string>,
-  id: string,
-): boolean {
-  const toggled = new Set(selected);
-  if (toggled.has(id)) toggled.delete(id);
-  else toggled.add(id);
-  return selectedNodeCount(document, toggled) > 1;
-}
-
 interface QuickAddTarget {
   readonly x: number;
   readonly y: number;
@@ -1135,11 +1123,6 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
           clearRefusal();
           setMenu(undefined);
         }}
-        onNodeClick={(event, node) => {
-          if (event.shiftKey && node.type !== 'frame' && shiftClickOpensSelectionMenu(document, selected, node.id)) {
-            setMenu({ kind: 'selection', x: event.clientX, y: event.clientY });
-          }
-        }}
         onNodeContextMenu={(event, node) => {
           event.preventDefault();
           if (node.type === 'frame') {
@@ -1152,6 +1135,10 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
               ? { kind, x: event.clientX, y: event.clientY }
               : { kind, id: node.id, x: event.clientX, y: event.clientY },
           );
+        }}
+        onSelectionContextMenu={(event) => {
+          event.preventDefault();
+          setMenu({ kind: 'selection', x: event.clientX, y: event.clientY });
         }}
         onEdgeContextMenu={(event, edge) => {
           event.preventDefault();
