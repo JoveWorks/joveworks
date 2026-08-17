@@ -235,7 +235,9 @@ export function PlotFigure({ result: rawResult, document: graph, format }: Props
     }
 
     const chart = Plot.plot({
-      width: result.facet === undefined ? 360 : Math.min(180 * result.facet.axis.length, 1080),
+      // A contour's ramp lives beside the chart; reserve enough notebook
+      // width for it instead of forcing a horizontal scrollbar.
+      width: result.contour ? 280 : result.facet === undefined ? 360 : Math.min(180 * result.facet.axis.length, 1080),
       height: 240,
       marginLeft: 56,
       marginBottom: 40,
@@ -244,11 +246,25 @@ export function PlotFigure({ result: rawResult, document: graph, format }: Props
         ...(isLogAxis(graph, result.x.axis.id) ? { type: 'log' as const } : {}),
       },
       y: { label: yLabel, grid: true },
+      ...(result.contour ? { className: 'contour-colorbar' } : {}),
       ...(result.contour
-        ? { color: { scheme: contourPalette, legend: true, label: yLabel } }
+        ? {
+            color: {
+              scheme: contourPalette,
+              legend: true,
+              label: yLabel,
+            },
+          }
         : result.series2 === undefined
           ? {}
-          : { color: { legend: true, label: result.series2.axis.label } }),
+          : {
+              color: {
+                // A categorical second axis identifies one curve per named
+                // value, so it needs readable swatches rather than a ramp.
+                legend: result.series2.coordinates.kind === 'categorical' ? 'swatches' : true,
+                label: result.series2.axis.label,
+              },
+            }),
       ...(result.facet === undefined ? {} : { fx: { label: result.facet.axis.label } }),
       marks,
     });
