@@ -1,0 +1,245 @@
+{
+  "schemaVersion": 1,
+  "id": "public-machining",
+  "name": "Machining",
+  "restricted": false,
+  "formulas": [
+    {
+      "id": "machining.speed.cutting-speed",
+      "version": 1,
+      "output": { "kind": "numeric", "name": "v_c", "unit": "m/min" },
+      "inputs": [
+        { "kind": "numeric", "name": "D", "unit": "mm", "validRange": { "min": 0 } },
+        { "kind": "numeric", "name": "n", "unit": "rpm", "validRange": { "min": 0 } }
+      ],
+      "expression": "pi * D * n",
+      "description": "Cutting speed at a rotating tool or workpiece diameter.",
+      "citation": "Cutting speed",
+      "variantOf": "machining.speed.rotation",
+      "status": "verified"
+    },
+    {
+      "id": "machining.speed.spindle-speed",
+      "version": 1,
+      "output": { "kind": "numeric", "name": "n", "unit": "rpm" },
+      "inputs": [
+        { "kind": "numeric", "name": "v_c", "unit": "m/min", "validRange": { "min": 0 } },
+        { "kind": "numeric", "name": "D", "unit": "mm", "validRange": { "min": 0 } }
+      ],
+      "expression": "v_c / (pi * D)",
+      "description": "Spindle speed required for a cutting speed at a given diameter.",
+      "citation": "Spindle speed",
+      "variantOf": "machining.speed.rotation",
+      "status": "verified"
+    },
+    {
+      "id": "machining.feed.feed-rate",
+      "version": 1,
+      "output": { "kind": "numeric", "name": "v_f", "unit": "mm/min" },
+      "inputs": [
+        { "kind": "numeric", "name": "f_n", "unit": "mm/rev", "validRange": { "min": 0 } },
+        { "kind": "numeric", "name": "n", "unit": "rpm", "validRange": { "min": 0 } }
+      ],
+      "expression": "f_n * n",
+      "description": "Linear feed rate from feed per revolution and spindle speed.",
+      "citation": "Feed rate",
+      "variantOf": "machining.feed.per-revolution",
+      "status": "verified"
+    },
+    {
+      "id": "machining.feed.per-revolution",
+      "version": 1,
+      "output": { "kind": "numeric", "name": "f_n", "unit": "mm/rev" },
+      "inputs": [
+        { "kind": "numeric", "name": "v_f", "unit": "mm/min", "validRange": { "min": 0 } },
+        { "kind": "numeric", "name": "n", "unit": "rpm", "validRange": { "min": 0 } }
+      ],
+      "expression": "v_f / n",
+      "description": "Feed per spindle revolution from linear feed rate.",
+      "citation": "Feed per revolution",
+      "variantOf": "machining.feed.per-revolution",
+      "status": "verified"
+    },
+    {
+      "id": "machining.milling.table-feed",
+      "version": 1,
+      "output": { "kind": "numeric", "name": "v_f", "unit": "mm/min" },
+      "inputs": [
+        { "kind": "numeric", "name": "f_z", "unit": "mm", "validRange": { "min": 0 }, "description": "Feed per effective tooth (chip load)." },
+        { "kind": "numeric", "name": "z_c", "unit": "", "validRange": { "min": 1 }, "description": "Number of effective teeth." },
+        { "kind": "numeric", "name": "n", "unit": "rpm", "validRange": { "min": 0 } }
+      ],
+      "expression": "f_z * z_c * n",
+      "description": "Milling table feed from chip load, effective tooth count, and spindle speed.",
+      "citation": "Milling table feed",
+      "variantOf": "machining.milling.chip-load",
+      "status": "verified"
+    },
+    {
+      "id": "machining.milling.chip-load",
+      "version": 1,
+      "output": { "kind": "numeric", "name": "f_z", "unit": "mm", "description": "Feed per effective tooth (chip load)." },
+      "inputs": [
+        { "kind": "numeric", "name": "v_f", "unit": "mm/min", "validRange": { "min": 0 } },
+        { "kind": "numeric", "name": "z_c", "unit": "", "validRange": { "min": 1 }, "description": "Number of effective teeth." },
+        { "kind": "numeric", "name": "n", "unit": "rpm", "validRange": { "min": 0 } }
+      ],
+      "expression": "v_f / (z_c * n)",
+      "description": "Milling chip load, expressed as feed per effective tooth.",
+      "citation": "Milling feed per tooth",
+      "variantOf": "machining.milling.chip-load",
+      "status": "verified"
+    },
+    {
+      "id": "machining.milling.removal-rate",
+      "version": 1,
+      "output": { "kind": "numeric", "name": "Q", "unit": "cm³/min" },
+      "inputs": [
+        { "kind": "numeric", "name": "a_p", "unit": "mm", "validRange": { "min": 0 }, "description": "Axial depth of cut." },
+        { "kind": "numeric", "name": "a_e", "unit": "mm", "validRange": { "min": 0 }, "description": "Radial width of cut." },
+        { "kind": "numeric", "name": "v_f", "unit": "mm/min", "validRange": { "min": 0 } }
+      ],
+      "expression": "a_p * a_e * v_f",
+      "description": "Milling material-removal rate from axial depth, radial width, and table feed.",
+      "citation": "Milling material-removal rate",
+      "status": "verified"
+    },
+    {
+      "id": "machining.turning.removal-rate",
+      "version": 1,
+      "output": { "kind": "numeric", "name": "Q", "unit": "cm³/min" },
+      "inputs": [
+        { "kind": "numeric", "name": "v_c", "unit": "m/min", "validRange": { "min": 0 } },
+        { "kind": "numeric", "name": "a_p", "unit": "mm", "validRange": { "min": 0 }, "description": "Radial depth of cut." },
+        { "kind": "numeric", "name": "f_n", "unit": "mm/rev", "validRange": { "min": 0 } }
+      ],
+      "expression": "v_c * a_p * f_n",
+      "description": "Turning material-removal rate from cutting speed, depth of cut, and feed per revolution.",
+      "citation": "Turning material-removal rate",
+      "status": "verified"
+    },
+    {
+      "id": "machining.drilling.removal-rate",
+      "version": 1,
+      "output": { "kind": "numeric", "name": "Q", "unit": "cm³/min" },
+      "inputs": [
+        { "kind": "numeric", "name": "D", "unit": "mm", "validRange": { "min": 0 } },
+        { "kind": "numeric", "name": "v_f", "unit": "mm/min", "validRange": { "min": 0 } }
+      ],
+      "expression": "pi * D**2 * v_f / 4",
+      "description": "Drilling material-removal rate for a full-diameter cylindrical hole.",
+      "citation": "Drilling material-removal rate",
+      "status": "verified"
+    },
+    {
+      "id": "machining.time.in-cut",
+      "version": 1,
+      "output": { "kind": "numeric", "name": "t_c", "unit": "min" },
+      "inputs": [
+        { "kind": "numeric", "name": "L", "unit": "mm", "validRange": { "min": 0 }, "description": "Total fed cutting length, including approach and overtravel." },
+        { "kind": "numeric", "name": "v_f", "unit": "mm/min", "validRange": { "min": 0 } }
+      ],
+      "expression": "L / v_f",
+      "description": "Time in cut from total fed length and linear feed rate.",
+      "citation": "Machining time",
+      "status": "verified"
+    },
+    {
+      "id": "machining.force.cutting-force",
+      "version": 1,
+      "output": { "kind": "numeric", "name": "F_c", "unit": "N" },
+      "inputs": [
+        { "kind": "numeric", "name": "k_c", "unit": "N/mm²", "validRange": { "min": 0 }, "description": "Specific cutting force for the material and cutting conditions." },
+        { "kind": "numeric", "name": "A_c", "unit": "mm²", "validRange": { "min": 0 }, "description": "Uncut chip cross-sectional area." }
+      ],
+      "expression": "k_c * A_c",
+      "description": "Main cutting force estimated from specific cutting force and uncut chip area.",
+      "citation": "Specific cutting-force model",
+      "variantOf": "machining.force.specific-cutting-force",
+      "status": "verified"
+    },
+    {
+      "id": "machining.force.specific-cutting-force",
+      "version": 1,
+      "output": { "kind": "numeric", "name": "k_c", "unit": "N/mm²" },
+      "inputs": [
+        { "kind": "numeric", "name": "F_c", "unit": "N", "validRange": { "min": 0 } },
+        { "kind": "numeric", "name": "A_c", "unit": "mm²", "validRange": { "min": 0 }, "description": "Uncut chip cross-sectional area." }
+      ],
+      "expression": "F_c / A_c",
+      "description": "Effective specific cutting force inferred from cutting force and uncut chip area.",
+      "citation": "Specific cutting-force model",
+      "variantOf": "machining.force.specific-cutting-force",
+      "status": "verified"
+    },
+    {
+      "id": "machining.power.from-force",
+      "version": 1,
+      "output": { "kind": "numeric", "name": "P_c", "unit": "kW" },
+      "inputs": [
+        { "kind": "numeric", "name": "F_c", "unit": "N", "validRange": { "min": 0 } },
+        { "kind": "numeric", "name": "v_c", "unit": "m/min", "validRange": { "min": 0 } }
+      ],
+      "expression": "F_c * v_c",
+      "description": "Net cutting power from the main cutting force and cutting speed.",
+      "citation": "Machining power from cutting force",
+      "variantOf": "machining.power.net-cutting-power",
+      "status": "verified"
+    },
+    {
+      "id": "machining.power.from-removal-rate",
+      "version": 1,
+      "output": { "kind": "numeric", "name": "P_c", "unit": "kW" },
+      "inputs": [
+        { "kind": "numeric", "name": "k_c", "unit": "N/mm²", "validRange": { "min": 0 }, "description": "Specific cutting force for the material and cutting conditions." },
+        { "kind": "numeric", "name": "Q", "unit": "cm³/min", "validRange": { "min": 0 }, "description": "Material-removal rate." }
+      ],
+      "expression": "k_c * Q",
+      "description": "Net cutting power estimated from specific cutting force and material-removal rate.",
+      "citation": "Machining power from removal rate",
+      "variantOf": "machining.power.net-cutting-power",
+      "status": "verified"
+    },
+    {
+      "id": "machining.power.machine-input",
+      "version": 1,
+      "output": { "kind": "numeric", "name": "P_m", "unit": "kW" },
+      "inputs": [
+        { "kind": "numeric", "name": "P_c", "unit": "kW", "validRange": { "min": 0 } },
+        { "kind": "numeric", "name": "eta", "unit": "", "validRange": { "min": 0, "max": 1 }, "description": "Machine drivetrain efficiency as a fraction." }
+      ],
+      "expression": "P_c / eta",
+      "description": "Machine input power required to supply the net cutting power at a given efficiency.",
+      "citation": "Machine power allowance",
+      "status": "verified"
+    },
+    {
+      "id": "machining.torque.from-force",
+      "version": 1,
+      "output": { "kind": "numeric", "name": "M_c", "unit": "Nm" },
+      "inputs": [
+        { "kind": "numeric", "name": "F_c", "unit": "N", "validRange": { "min": 0 } },
+        { "kind": "numeric", "name": "D", "unit": "mm", "validRange": { "min": 0 } }
+      ],
+      "expression": "F_c * D / 2",
+      "description": "Cutting torque from tangential cutting force at the cutting diameter.",
+      "citation": "Cutting torque from force",
+      "variantOf": "machining.torque.cutting-torque",
+      "status": "verified"
+    },
+    {
+      "id": "machining.torque.from-power",
+      "version": 1,
+      "output": { "kind": "numeric", "name": "M_c", "unit": "Nm" },
+      "inputs": [
+        { "kind": "numeric", "name": "P_c", "unit": "kW", "validRange": { "min": 0 } },
+        { "kind": "numeric", "name": "n", "unit": "rpm", "validRange": { "min": 0 } }
+      ],
+      "expression": "P_c / (2 * pi * n)",
+      "description": "Cutting torque from net cutting power and spindle speed.",
+      "citation": "Cutting torque from power",
+      "variantOf": "machining.torque.cutting-torque",
+      "status": "verified"
+    }
+  ]
+}

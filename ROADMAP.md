@@ -103,11 +103,6 @@ a schema change to carry a unit per bound (persists properly, but widens
 range has one unit). Neither was picked; parked here rather than decided
 under scope pressure.
 
-**A machining catalogue** — machining power, chip load, and the rest of the
-cutting-parameter set. Content, not editor work; the nearest existing model
-is `basic-mechanics.json`, unrestricted and public, since none of this is
-R&M material.
-
 **Selection actions and a selection context menu.** A multi-node selection
 needs right-click actions, initially **align** and **arrange**. Alignment is a
 well-bounded set of canvas commands (left/right/top/bottom/centre); arrange
