@@ -78,31 +78,6 @@ importable-only if the backend never happens.
 
 ## Editor backlog
 
-Deferred or explicitly parked features from the hand-testing passes
-(`docs/UX-SPEC.md`) and later sessions — not milestone-1 scope, not
-necessarily milestone-2 either.
-
-**Table columns do not broadcast over multi-axis sweeps.** A table that mixes
-input-axis values with results over a grid currently renders each column at its
-native length: for example, a five-value chip-load input and four-value radial-
-engagement input stop after five and four rows, while their calculated columns
-continue across all 20 combinations. Build table results over the union of their
-axes and broadcast every column onto that shared grid before the notebook
-renders it. Determine the dependency from each series' existing `axes`
-metadata—axis identity and order—not from its data length, since two unrelated
-axes can have the same length. A column varying only along the outer axis
-repeats each value across the inner axis; a column varying only along the inner
-axis rolls over for every outer-axis value; scalars repeat on every row; and a
-column already carrying every table axis remains unchanged. Each row should
-then carry the coordinates and results for one complete design point, with no
-blank axis cells.
-
-**Axis labels do not typeset mathematical symbols consistently.** A range
-node's title renders `f_z` as mathematics, but its “5 along chip load f_z”
-summary shows the raw symbol. Use the same math treatment wherever an axis
-label appears: input, formula, and closure-node summaries; plot axis selectors;
-plot axis, legend, and facet labels; and quick-add or context-menu labels.
-
 **Plot node's remaining options.** A first slice landed: three axis slots
 (`x`, `series`, `facet`), auto-assigned from whatever axes the wired value
 varies along. Still open: marking specific values on a curve, and a fourth
@@ -154,8 +129,6 @@ design question than most items here: how it's parametrized, what rendering
 approach draws the diagram from port values, and which diagram to build
 first. Needs its own discussion before building.
 
-**Color palette for contours is ugly** Let me choose in settings, default to viridis. Also, the plots don't have a legend when a colourmap is active.
-
 **Notebook export to Markdown**, for pasting a finished graph into an
 external site. Checked against `~/source/website`'s Astro content
 collections: entries are Markdown/MDX with frontmatter (`title`, `subtitle`,
@@ -164,15 +137,6 @@ export matching that shape drops straight in. Same rule as any other export:
 citations and values by default, expressions only behind the explicit
 toggle. Gate it behind a hidden console command for now rather than a UI
 button — personal-use export, not a student-facing feature yet.
-
-**Plausible analytics during alpha.** A thin adapter — mirrors the existing
-file-I/O adapter pattern — with a no-op and a Plausible-backed
-implementation behind one flag, so removing it before public launch is
-deleting a script tag and flipping the flag, not a codebase search. What to
-log beyond default pageviews (aggregate, cookieless, no PII either way) —
-e.g. feature-usage events like "sweep run" or "plot created" — is still
-open; whatever set gets chosen should be documented in one place so "what
-does this log" has a single answer.
 
 **Nodes expose preferred display units.** Dimensions do not have one global
 presentation unit: values evaluate canonically, while each exposed node port
