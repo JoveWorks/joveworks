@@ -23,6 +23,9 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          # A release is always cut from the development branch, even if this
+          # manual workflow is started while viewing another branch in GitHub.
+          ref: main
 
       - uses: pnpm/action-setup@v4
 
@@ -49,7 +52,13 @@ jobs:
             pnpm release
           fi
 
-      - run: git push --follow-tags origin main
+      - name: Push version and promote production
+        run: |
+          # `production` is a deployment pointer, not a development branch:
+          # it must advance only to the just-tagged release commit. A normal
+          # Git push enforces fast-forward-only promotion and creates the
+          # branch on the first release.
+          git push --follow-tags origin HEAD:main HEAD:production
 
       - name: Extract release notes
         id: notes

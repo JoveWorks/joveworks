@@ -339,11 +339,6 @@ form one interface label, render `parameter (unit)`, including input and
 output ports; omit parentheses if no unit is shown. Implement this through
 shared presentation components/styles, not node-by-node patches.
 
-**Development branch workflow.** Decided: continue working directly on
-`main` for the solo alpha, accepting that each push triggers a Netlify deploy.
-Revisit branch deploy previews only if direct deployment begins to obstruct
-review or testing; no `dev` branch is needed now.
-
 **Typeset mathematical notation in node titles.** KaTeX already renders
 equations. Preserve raw title text in documents and render TeX-like notation
 such as `c_2` or `\\sigma` for display, with a plain-text fallback. Add a
@@ -359,8 +354,10 @@ Done. `v0.1.0` is cut — first tagged release, marked pre-release on GitHub
 pre-release) — no auto-publish on push, a release is still something Thomas
 decides to cut. It builds, tests, then runs `pnpm release`
 (`commit-and-tag-version`, config in `.versionrc.json`), pushes the
-version-bump commit and tag, and cuts a GitHub Release from the new
-`CHANGELOG.md` section.
+version-bump commit and tag, fast-forwards `production` to that same tagged
+commit, and cuts a GitHub Release from the new `CHANGELOG.md` section. Netlify
+must use `production` as its configured production branch; the action creates
+that branch on the first release. `main` remains the development branch.
 
 `.github/workflows/ci.yml` (build+test on every push/PR to `main`) exists
 but its triggers are disabled — solo work already runs build/test locally,
@@ -370,9 +367,9 @@ it can be run by hand or have its triggers restored later.
 
 The running app now shows its build's version in the ribbon
 (`packages/editor/vite.config.ts` injects it from the root `package.json`
-at build time), flagged `alpha ·` while the major version is `0` — visible
-on every Netlify deploy of `main`, including the one a release's
-version-bump commit triggers.
+at build time), flagged `alpha ·` while the major version is `0` — the live
+Netlify app therefore identifies the exact version whose tagged commit was
+promoted to `production`.
 
 Commit messages move to Conventional Commits — the rule and its allowed
 types/scopes are codified in CLAUDE.md's Conventions section, not

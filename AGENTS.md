@@ -92,8 +92,10 @@ hand-edit generated catalogue JSON is a signal to raise, not paper over.
 
 ## Development workflow
 
-- Work on `main` unless the task explicitly uses an isolated worktree. Do not
-  discard or overwrite unrelated working-tree changes.
+- Work on `main` unless the task explicitly uses an isolated worktree. The
+  `production` branch is a release-managed deployment pointer; never develop
+  on it or push to it directly. Do not discard or overwrite unrelated
+  working-tree changes.
 - Do not start, stop, or drive `pnpm dev`: the user runs and browser-tests the
   editor. Report what to verify manually instead.
 - Normal validation is `pnpm build` (also checks package direction) and
