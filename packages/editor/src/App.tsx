@@ -471,10 +471,6 @@ function AppShell(): ReactElement {
   const viewMenuItems: readonly MenuItem[] = [
     { label: showPalette ? 'Hide palette' : 'Show palette', onClick: () => setShowPalette((s) => !s) },
     { label: showNotebook ? 'Hide notebook' : 'Show notebook', onClick: () => setShowNotebook((s) => !s) },
-    {
-      label: showCanvasControls ? 'Hide canvas controls' : 'Show canvas controls',
-      onClick: () => setShowCanvasControls((visible) => !visible),
-    },
     { heading: 'Theme' },
     {
       label: 'Light',
@@ -517,6 +513,10 @@ function AppShell(): ReactElement {
           setShowNotebook(true);
           setTutorialActive(true);
         }),
+    },
+    {
+      label: showCanvasControls ? 'Hide canvas controls' : 'Show canvas controls',
+      onClick: () => setShowCanvasControls((visible) => !visible),
     },
     { heading: 'Examples' },
     {
