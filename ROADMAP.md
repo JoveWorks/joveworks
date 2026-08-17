@@ -320,19 +320,22 @@ creation path and retain one clear restore notice.
 its feedback text. Add a GitHub repository icon to the right of the NodeBooks
 title and before the version, in the right-hand header group.
 
-**Docs and editor titles.** Keep the repository/docs identity unchanged until
-the broader rename is decided; the editor itself can use the NodeBooks display
-name now.
+**Docs and editor titles.** Nodebooks docs and NodeBooks respectively. Also add a simple favicon.
 
-**Nodes declare preferred display units.** Dimensions do not have one global
-presentation unit: values evaluate canonically, while a node port declares the
-unit it prefers to show and display boundaries convert to it. A frequency port
-can therefore prefer `Hz` over bare `s⁻¹`; a machine-design stress port can
-prefer `N/mm²`, while another catalogue may legitimately prefer `Pa`. Generic
-nodes should propagate a connected unit unless they have a deliberate
-preference of their own, and outputs retain the user's existing ability to
-choose a display unit. This replaces a global SI-normalisation rule, which
-would make the right answer unreadable in the wrong domain.
+**Section frame hover accent is too subtle.** Increase border width too.
+
+**Nodes expose preferred display units.** Dimensions do not have one global
+presentation unit: values evaluate canonically, while each exposed node port
+can state the unit it prefers to show and display boundaries convert to it. A
+frequency port should prefer `Hz` over bare `s⁻¹`; a general pressure port can
+prefer `Pa`; and a machine-design stress port can legitimately prefer
+`N/mm²`. The preference is a node/port default, not a dimension-wide rewrite:
+other nodes remain free to choose the unit that fits their domain, and output
+nodes retain the user's existing display-unit override. This replaces global
+SI normalisation, which would make the right answer unreadable in the wrong
+domain. **First implementation:** generic and derived frequency ports now
+default to `Hz`; fixed catalogue ports already use their declared display unit,
+and the belt sample's frequency output now chooses `Hz` explicitly.
 
 **Use parentheses around units in labels.** Whenever a parameter and its unit
 form one interface label, render `parameter (unit)`, including input and

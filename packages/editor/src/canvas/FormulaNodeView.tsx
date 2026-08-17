@@ -85,8 +85,8 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
     if (port.kind === 'bundle') return '';
     // A generic port has no unit of its own until something is wired to it
     //, so what it shows is the unit the binding gave it.
-    const bound = analysis.resolution?.targets.get(`${id}.${port.name}`)?.unit;
-    return unitLabel(isGenericPort(port) ? bound : (port.unit as Unit));
+    const resolved = analysis.resolution?.targets.get(`${id}.${port.name}`)?.unit;
+    return unitLabel(resolved ?? (isGenericPort(port) ? undefined : (port.preferredUnit ?? port.unit) as Unit));
   };
 
   const missing = (port: Port): boolean =>

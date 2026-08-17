@@ -212,7 +212,7 @@ export function beltLab(catalogues: readonly Catalogue[]): GraphDocument | undef
     output('out_e', 'Shaft distance e', { kind: 'print', unit: parseUnit('mm') }, at(1120, 450)),
     output('out_z', 'Belts required z', { kind: 'print' }, at(1120, 600)),
     output('out_v', 'Belt speed v', { kind: 'print', unit: parseUnit('m/s') }, at(1120, 750)),
-    output('out_f_B', 'Bending frequency f_B', { kind: 'print', unit: parseUnit('s-1') }, at(1120, 900)),
+    output('out_f_B', 'Bending frequency f_B', { kind: 'print', unit: parseUnit('Hz') }, at(1120, 900)),
   ];
 
   const edges = [

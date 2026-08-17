@@ -24,12 +24,15 @@
 
 import {
   DIMENSIONLESS_UNIT,
+  FREQUENCY,
   bareVariable,
+  dimensionsEqual,
   formatDimension,
   genericVariables,
   isDimensionless,
   isGenericDimension,
   namedUnit,
+  parseUnit,
   resolveGeneric,
   unit as makeUnit,
   type Dimension,
@@ -89,11 +92,15 @@ export function endpointKey(node: string, port: string): string {
 /**
  * The unit a generic port displays in — a named unit when the dimension
  * has exactly one (`W` for power, not `N·mm/s`), the raw base-unit product
- * otherwise. `namedUnit` is the one place that decides "exactly one"; this
- * function only supplies the dimensionless case and the fallback.
+ * otherwise. A generic/derived frequency is the deliberate exception: it
+ * prefers `Hz`, while a fixed catalogue port remains free to declare `rpm` or
+ * `s-1`. `namedUnit` is the one place that decides "exactly one"; this
+ * function supplies the dimensionless case, explicit generic defaults, and
+ * the fallback.
  */
 export function canonicalUnit(dimension: Dimension): Unit {
   if (isDimensionless(dimension)) return DIMENSIONLESS_UNIT;
+  if (dimensionsEqual(dimension, FREQUENCY)) return parseUnit('Hz');
   return namedUnit(dimension) ?? makeUnit(formatDimension(dimension), dimension, 1);
 }
 
@@ -204,7 +211,7 @@ function portType(port: Port, bindings: ReadonlyMap<string, Dimension>): PortTyp
   // full union type-checks here.
   if (port.kind === 'bundle') return { kind: 'bundle' };
   if (!isGenericDimension(port.unit)) {
-    return { kind: port.kind, dimension: port.unit.dimension, unit: port.unit };
+    return { kind: port.kind, dimension: port.unit.dimension, unit: port.preferredUnit ?? port.unit };
   }
   const bound = Object.fromEntries(bindings);
   for (const variable of genericVariables(port.unit)) {

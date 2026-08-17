@@ -29,6 +29,7 @@
 import {
   DIMENSIONLESS,
   bareVariable,
+  dimensionsEqual,
   isGenericDimension,
   parseGenericDimension,
   type Dimension,
@@ -96,6 +97,8 @@ export interface NumericPort extends PortBase {
    * takes both unit and dimension from what is wired to it.
    */
   readonly unit: PortUnit;
+  /** Optional same-dimension display preference for this node's port. */
+  readonly preferredUnit?: Unit;
   /** A starting value, in `unit`. Never set on a generic port — no unit to be in. */
   readonly default?: number;
   /** In `unit`. See `ValidRange`. */
@@ -118,6 +121,7 @@ export interface CategoricalPort extends PortBase {
 export interface SpectrumPort extends PortBase {
   readonly kind: 'spectrum';
   readonly unit: PortUnit;
+  readonly preferredUnit?: Unit;
 }
 
 /**
@@ -163,6 +167,12 @@ function parseValidRange(value: JsonValue, path: string): ValidRange {
   return { ...put('min', min), ...put('max', max) };
 }
 
+function parsePreferredUnit(value: JsonValue, path: string): Unit {
+  const preferred = parsePortUnitField(value, path);
+  if (isGenericDimension(preferred)) fail(path, 'must be a concrete unit, not a generic signature');
+  return preferred;
+}
+
 export function parsePort(value: JsonValue, path: string): Port {
   const object = readObject(value, path);
   const name = readName(required(object, 'name', path), join(path, 'name'));
@@ -189,8 +199,15 @@ export function parsePort(value: JsonValue, path: string): Port {
   }
 
   const unit = parsePortUnitField(required(object, 'unit', path), join(path, 'unit'));
+  const preferredUnit = optional(object, 'preferredUnit', path, parsePreferredUnit);
+  if (preferredUnit !== undefined) {
+    if (isGenericDimension(unit)) fail(join(path, 'preferredUnit'), 'cannot accompany a generic unit');
+    if (!dimensionsEqual(unit.dimension, preferredUnit.dimension)) {
+      fail(join(path, 'preferredUnit'), 'must have the same dimension as the port unit');
+    }
+  }
   if (kind === 'spectrum') {
-    return { kind, name, unit, ...put('description', description) };
+    return { kind, name, unit, ...put('description', description), ...put('preferredUnit', preferredUnit) };
   }
 
   const fallback = optional(object, 'default', path, readNumber);
@@ -206,6 +223,7 @@ export function parsePort(value: JsonValue, path: string): Port {
     kind,
     name,
     unit,
+    ...put('preferredUnit', preferredUnit),
     ...put('description', description),
     ...put('default', fallback),
     ...put('validRange', validRange),
@@ -232,11 +250,12 @@ export function serializePort(port: Port): JsonObject {
     return { ...base, channels: port.channels.map((channel) => channel.symbol) };
   }
   if (port.kind === 'spectrum') {
-    return { ...base, unit: port.unit.symbol };
+    return { ...base, unit: port.unit.symbol, ...put('preferredUnit', port.preferredUnit?.symbol) };
   }
   return {
     ...base,
     unit: port.unit.symbol,
+    ...put('preferredUnit', port.preferredUnit?.symbol),
     ...put('default', port.default),
     ...put(
       'validRange',

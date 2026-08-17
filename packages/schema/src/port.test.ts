@@ -27,6 +27,22 @@ describe('numeric ports', () => {
     expect(serializePort(port)['unit']).toBe('N/mm²');
   });
 
+  it('round-trips a same-dimension preferred display unit', () => {
+    const port = parsePort(
+      { kind: 'numeric', name: 'f', unit: 's-1', preferredUnit: 'Hz' },
+      'port',
+    );
+    expect(port.kind).toBe('numeric');
+    expect(port.kind === 'numeric' && port.preferredUnit?.symbol).toBe('Hz');
+    expect(serializePort(port)).toMatchObject({ unit: 's-1', preferredUnit: 'Hz' });
+  });
+
+  it('rejects a preferred unit of another dimension', () => {
+    expect(() => parsePort({ kind: 'numeric', name: 'f', unit: 's-1', preferredUnit: 'N' }, 'port')).toThrow(
+      /same dimension/u,
+    );
+  });
+
   it("treats '%' as dimensionless with a display scale", () => {
     const port = parsePort({ kind: 'numeric', name: 'eta', unit: '%' }, 'port');
     expect(portDimension(port)).toEqual(DIMENSIONLESS);

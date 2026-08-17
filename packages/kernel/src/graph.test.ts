@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { ANGLE, AREA, DIMENSIONLESS, FORCE, LENGTH, TORQUE, parseUnit } from '@mds/units';
-import type { GraphDocument } from '@mds/schema';
+import { ANGLE, AREA, DIMENSIONLESS, FORCE, FREQUENCY, LENGTH, TORQUE, parseUnit } from '@mds/units';
+import type { GraphDocument, JsonObject } from '@mds/schema';
 
 import { KernelError } from './errors.js';
 import {
   adaptInputUnit,
   canConnect,
+  canonicalUnit,
   endpointKey,
   resolveGraph,
   topologicalOrder,
@@ -14,6 +15,7 @@ import {
 } from './graph.js';
 import {
   CATALOGUE,
+  catalogueOf,
   closureNode,
   compareNode,
   documentOf,
@@ -99,6 +101,35 @@ describe('resolution', () => {
     const { warnings } = resolveGraph(stale, catalogues);
     expect(warnings).toHaveLength(1);
     expect(warnings[0]?.kind).toBe('formulaChanged');
+  });
+});
+
+describe('generic display units', () => {
+  it('prefers Hz for a derived frequency without changing a fixed port\'s declaration', () => {
+    // `namedUnit(FREQUENCY)` intentionally stays ambiguous (`Hz` or `rpm`).
+    // Generic/derived nodes choose Hz as their display default; fixed formula
+    // ports retain whatever display unit their catalogue declared.
+    expect(canonicalUnit(FREQUENCY).symbol).toBe('Hz');
+  });
+
+  it('uses a concrete port preference without changing its connection type', () => {
+    const preferred: JsonObject = {
+      id: 'frequency',
+      version: 1,
+      output: { kind: 'numeric', name: 'f', unit: 's-1', preferredUnit: 'Hz' },
+      inputs: [{ kind: 'numeric', name: 't', unit: 's' }],
+      expression: '1 / t',
+      description: 'Invented frequency formula.',
+      status: 'unverified',
+    };
+    const catalogue = catalogueOf([preferred], 'preferred-unit-test');
+    const document = documentOf(
+      [input('t', scalar(2, 's')), formulaNode('f', refTo('frequency', catalogue))],
+      [wire('t.value', 'f.t')],
+    );
+    const type = resolveGraph(document, [catalogue]).sources.get(endpointKey('f', 'f'));
+    expect(type?.dimension).toEqual(FREQUENCY);
+    expect(type?.unit?.symbol).toBe('Hz');
   });
 });
 

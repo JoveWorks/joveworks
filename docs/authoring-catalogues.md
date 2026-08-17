@@ -95,10 +95,13 @@ Fields:
 
 Three kinds (`packages/schema/src/port.ts`):
 
-- **numeric** — `{ kind, name, unit, default?, validRange?, monotonic? }`.
+- **numeric** — `{ kind, name, unit, preferredUnit?, default?, validRange?, monotonic? }`.
   `unit` is a display-unit string like `N/mm²`, `mm`, `rad`, or `""` for
   dimensionless; the dimension is derived from it, never declared
-  separately. `validRange` is load-bearing — it bounds sweeps, not just a UI
+  separately. `preferredUnit` is an optional same-dimension display preference
+  for this node's port — for example, a source tagged `s-1` can display as
+  `Hz`; omit it when the authored unit is already the right presentation.
+  `validRange` is load-bearing — it bounds sweeps, not just a UI
   hint — so set it wherever a formula only makes physical sense over part of
   the number line (`F >= 0`, an angle in `[0, pi]`).
 - **categorical** — `{ kind, name, domain, default? }`. An enumerated set of
