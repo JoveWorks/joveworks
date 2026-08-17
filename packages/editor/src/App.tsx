@@ -18,6 +18,7 @@ import { ReactFlowProvider, useReactFlow } from '@xyflow/react';
 import {
   emptyDocument,
   loadCatalogue,
+  localize,
   loadDocument,
   saveDocument,
   type Catalogue,
@@ -45,14 +46,17 @@ import { groupIntoSection } from './model/document';
 import { autoArrange } from './model/layout';
 import {
   loadContourPalette,
+  loadAppLocale,
   loadMinimapVisible,
   loadTitleMathRendering,
   loadThemePreference,
   saveContourPalette,
+  saveAppLocale,
   saveMinimapVisible,
   saveTitleMathRendering,
   saveThemePreference,
   type ContourPalette,
+  type AppLocale,
   type ThemePreference,
 } from './model/editorSettings';
 import {
@@ -259,6 +263,7 @@ function AppShell(): ReactElement {
   const [showNotebook, setShowNotebook] = useState(true);
   const [showCanvasControls, setShowCanvasControls] = useState(true);
   const [numberFormat, setNumberFormatState] = useState<NumberFormatSettings>(loadNumberFormatSettings);
+  const [locale, setLocaleState] = useState<AppLocale>(loadAppLocale);
   const [minimapVisible, setMinimapVisibleState] = useState<boolean>(loadMinimapVisible);
   const [titleMathRendering, setTitleMathRenderingState] = useState<boolean>(loadTitleMathRendering);
   const [themePreference, setThemePreferenceState] =
@@ -351,6 +356,11 @@ function AppShell(): ReactElement {
     saveNumberFormatSettings(next);
   };
 
+  const setLocale = (next: AppLocale): void => {
+    setLocaleState(next);
+    saveAppLocale(next);
+  };
+
   const setMinimapVisible = (next: boolean): void => {
     setMinimapVisibleState(next);
     saveMinimapVisible(next);
@@ -381,6 +391,8 @@ function AppShell(): ReactElement {
 
   const settingsContext = useMemo(
     () => ({
+      locale,
+      setLocale,
       numberFormat,
       setNumberFormat,
       minimapVisible,
@@ -392,7 +404,7 @@ function AppShell(): ReactElement {
       contourPalette,
       setContourPalette,
     }),
-    [numberFormat, minimapVisible, titleMathRendering, themePreference, contourPalette],
+    [locale, numberFormat, minimapVisible, titleMathRendering, themePreference, contourPalette],
   );
 
   const analysis = useMemo(() => analyse(document, catalogues), [document, catalogues]);
@@ -467,7 +479,7 @@ function AppShell(): ReactElement {
       const loaded = loadCatalogue(file.text);
       setCatalogues((current) => withCatalogue(current, loaded));
       cacheCatalogue(loaded.id, file.text);
-      pushNotice(`Loaded ${loaded.name} — ${loaded.formulas.length} formulas.`);
+      pushNotice(`Loaded ${localize(loaded.name, locale)} — ${loaded.formulas.length} formulas.`);
     } catch (error) {
       pushNotice(`That file is not a catalogue: ${messageOf(error)}`);
     }
@@ -825,6 +837,8 @@ function AppShell(): ReactElement {
 
           {showSettings ? (
             <SettingsDialog
+              locale={locale}
+              onLocaleChange={setLocale}
               settings={numberFormat}
               onChange={setNumberFormat}
               minimapVisible={minimapVisible}

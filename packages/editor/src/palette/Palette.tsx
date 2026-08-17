@@ -19,6 +19,7 @@ import { useReactFlow } from '@xyflow/react';
 
 import { parseUnit, type Unit } from '@joveworks/units';
 import {
+  localize,
   axes as documentAxes,
   formulaRef,
   type Formula,
@@ -28,6 +29,7 @@ import {
 } from '@joveworks/schema';
 
 import { useGraph } from '../graph-context';
+import { useSettings } from '../settings-context';
 import { addNode, uniqueId } from '../model/document';
 import { entries, search, type PaletteEntry } from '../model/catalogues';
 import { loadFavourites, saveFavourites } from '../model/palettePreferences';
@@ -62,6 +64,7 @@ function useDropPosition(): () => Position {
 
 export function Palette(): ReactElement {
   const { document, catalogues, userEquations, removeUserEquation, edit } = useGraph();
+  const { locale } = useSettings();
   const [query, setQuery] = useState('');
   // Session UI state, not a document field — reopens on reload, same
   // precedent as a node's pin state. Which sections are open changes nothing
@@ -92,7 +95,7 @@ export function Palette(): ReactElement {
   const outputCollapsed = collapsed.has(OUTPUT);
 
   const all = useMemo(() => entries(catalogues), [catalogues]);
-  const found = useMemo(() => search(all, query), [all, query]);
+  const found = useMemo(() => search(all, query, locale), [all, query, locale]);
 
   const grouped = useMemo(() => {
     const byCatalogue = new Map<string, PaletteEntry[]>();
@@ -181,7 +184,7 @@ export function Palette(): ReactElement {
         <button
           type="button"
           className={`entry ${formula.status}`}
-          title={formula.status === 'quarantined' ? `Quarantined: ${formula.quarantineReason ?? ''}` : formula.description}
+          title={formula.status === 'quarantined' ? `Quarantined: ${formula.quarantineReason === undefined ? '' : localize(formula.quarantineReason, locale)}` : localize(formula.description, locale)}
           onClick={() => addFormula(formula)}
           onContextMenu={(event) => {
             event.preventDefault();
@@ -189,7 +192,7 @@ export function Palette(): ReactElement {
           }}
         >
           <span className="entry-id">{formula.citation ?? formula.id}</span>
-          <span className="entry-output"><Symbol name={formula.output.name} /></span>
+          <span className="entry-output">{formula.label === undefined ? <Symbol name={formula.output.name} /> : localize(formula.label, locale)}</span>
           {formula.status === 'quarantined' ? <span className="entry-status">quarantined</span> : null}
         </button>
       </li>
@@ -376,7 +379,7 @@ export function Palette(): ReactElement {
                   onClick={() => toggleCollapsed(catalogueId)}
                 >
                   <span className="section-toggle-title">
-                    {list[0]?.catalogue.name ?? catalogueId}
+                    {list[0] === undefined ? catalogueId : localize(list[0].catalogue.name, locale)}
                     {list[0]?.catalogue.restricted === true ? (
                       <span className="restricted" title="Restricted content — never exported.">
                         restricted

@@ -20,6 +20,7 @@ import {
   serializeFormula,
   type Formula,
 } from './formula.js';
+import { localize } from './localization.js';
 import { canonicalJson, type JsonObject } from './json.js';
 import { SCHEMA_VERSION } from './version.js';
 
@@ -33,7 +34,7 @@ const product: JsonObject = {
     { kind: 'numeric', name: 'c', unit: 'N' },
   ],
   expression: 'a*b + c',
-  description: 'An invented formula, used because a real one may not be redistributed.',
+  description: { en: 'An invented formula, used because a real one may not be redistributed.' },
   status: 'unverified',
 };
 
@@ -51,7 +52,7 @@ describe('the formula record', () => {
           kind: 'numeric',
           name: 'a',
           unit: 'N',
-          description: 'the first factor',
+          description: { en: 'the first factor' },
           default: 10,
           validRange: { min: 0, max: 1000 },
           monotonic: 'increasing',
@@ -97,7 +98,7 @@ describe('status and quarantine', () => {
     const quarantined = parse({
       ...product,
       status: 'quarantined',
-      quarantineReason: 'unit tag [__O] could not be resolved',
+      quarantineReason: { en: 'unit tag [__O] could not be resolved' },
     });
     expect(isEvaluable(quarantined)).toBe(false);
     expect(isEvaluable(parse())).toBe(true);
@@ -126,7 +127,7 @@ describe('references by id, version and hash', () => {
   it('hashes the same record identically whatever order it was written in', () => {
     const shuffled: JsonObject = {
       status: product['status'] as string,
-      description: product['description'] as string,
+      description: product['description'] as JsonObject,
       expression: product['expression'] as string,
       inputs: product['inputs'] as JsonObject[],
       output: product['output'] as JsonObject,
@@ -147,13 +148,32 @@ describe('references by id, version and hash', () => {
     expect(matchRef(ref, undefined)).toBe('missing');
     expect(matchRef(ref, { ...formula, id: 'demo.other' })).toBe('missing');
   });
+
+  it('does not change a reference when only translated display text changes', () => {
+    const formula = parse();
+    const translated: Formula = {
+      ...formula,
+      description: { en: formula.description.en ?? '', nl: 'Een verzonnen formule.' },
+    };
+    expect(formulaHash(translated)).toBe(formulaHash(formula));
+    expect(matchRef(formulaRef(formula), translated)).toBe('match');
+  });
+});
+
+describe('localized text', () => {
+  it('uses the selected language, then its base tag, then English', () => {
+    const text = { en: 'Add', nl: 'Optellen', 'nl-BE': 'Optellen (BE)' };
+    expect(localize(text, 'nl-BE')).toBe('Optellen (BE)');
+    expect(localize(text, 'nl-NL')).toBe('Optellen');
+    expect(localize(text, 'fr')).toBe('Add');
+  });
 });
 
 describe('catalogues', () => {
   const catalogue: JsonObject = {
     schemaVersion: SCHEMA_VERSION,
     id: 'demo',
-    name: 'Invented demonstration formulas',
+    name: { en: 'Invented demonstration formulas' },
     restricted: false,
     formulas: [product],
   };

@@ -51,6 +51,7 @@ import { toUnitsFormat } from '../model/numberFormat';
 import { display, displayNumber } from '../model/quantity';
 import { summarise } from '../model/values';
 import { PlotFigure } from './PlotFigure';
+import { ui } from '../i18n';
 
 /**
  * Enter finishes the field (blurs it, same as `fields.tsx`'s `TextField`);
@@ -171,7 +172,8 @@ function OutputTitle({ node }: { readonly node: OutputNode }): ReactElement {
 
 function Result({ result, node }: { readonly result: OutputResult; readonly node: OutputNode }): ReactElement {
   const { document } = useGraph();
-  const { numberFormat } = useSettings();
+  const { numberFormat, locale } = useSettings();
+  const notebookLocale = document.notebookLocale ?? locale;
   const format: NumberFormat = toUnitsFormat(numberFormat);
 
   if (result.kind === 'print') {
@@ -202,7 +204,7 @@ function Result({ result, node }: { readonly result: OutputResult; readonly node
         </span>
         {swept && !result.passed ? (
           <span className="count">
-            fails at {failures} of {result.results.length} points
+            {notebookLocale === 'nl' ? `faalt op ${failures} van ${result.results.length} punten` : `fails at ${failures} of ${result.results.length} points`}
           </span>
         ) : null}
         <span className="number">
@@ -562,6 +564,8 @@ function outputsOf(document: GraphDocument, frameId: string | undefined): readon
 
 export function Notebook(): ReactElement {
   const { document, analysis, edit, editLive, commitEdit } = useGraph();
+  const { locale } = useSettings();
+  const copy = ui(locale);
   // Session UI state, not a document field (same call as Palette.tsx) —
   // a section's collapse reopens on reload, same as a pinned node.
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
@@ -604,6 +608,7 @@ export function Notebook(): ReactElement {
   // Printing forces every section open for the print, then restores whatever
   // was collapsed — collapse state is session UI, not something export changes.
   const [printing, setPrinting] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   useEffect(() => {
     if (!printing) return;
     const done = (): void => setPrinting(false);
@@ -637,10 +642,37 @@ export function Notebook(): ReactElement {
         <button
           type="button"
           className="notebook-export-button"
+          aria-expanded={showSettings}
+          onClick={() => setShowSettings((visible) => !visible)}
+        >
+          {copy.nodeBookSettings}
+        </button>
+        {showSettings ? (
+          <label className="notebook-language">
+            {copy.notebookLanguage}
+            <select
+              value={document.notebookLocale ?? 'app'}
+              onChange={(event) => edit((current) => {
+                if (event.target.value === 'app') {
+                  const { notebookLocale: _notebookLocale, ...withoutOverride } = current;
+                  return withoutOverride;
+                }
+                return { ...current, notebookLocale: event.target.value as 'en' | 'nl' };
+              })}
+            >
+              <option value="app">{copy.appLanguage}</option>
+              <option value="en">{copy.english}</option>
+              <option value="nl">{copy.dutch}</option>
+            </select>
+          </label>
+        ) : null}
+        <button
+          type="button"
+          className="notebook-export-button"
           disabled={printing}
           onClick={() => setPrinting(true)}
         >
-          Export PDF…
+          {copy.exportPdf}
         </button>
       </div>
 

@@ -280,6 +280,8 @@ export interface GraphDocument {
   readonly schemaVersion: number;
   readonly id: string;
   readonly title: string;
+  /** Absent means render the NodeBook in the reader's app language. */
+  readonly notebookLocale?: 'en' | 'nl';
   readonly nodes: readonly GraphNode[];
   readonly edges: readonly Edge[];
   readonly frames: readonly Frame[];
@@ -529,6 +531,7 @@ function parseFrame(value: JsonValue, path: string): Frame {
   return {
     id: readName(required(object, 'id', path), join(path, 'id')),
     title: readString(required(object, 'title', path), join(path, 'title')),
+    ...put('notebookLocale', optional(object, 'notebookLocale', path, (v, p) => readEnum(v, p, ['en', 'nl'] as const))),
     ...put('note', optional(object, 'note', path, readString)),
     position: parsePosition(required(object, 'position', path), join(path, 'position')),
     size: parseSize(required(object, 'size', path), join(path, 'size')),
@@ -623,6 +626,7 @@ export function serializeDocument(document: GraphDocument): JsonObject {
     schemaVersion: document.schemaVersion,
     id: document.id,
     title: document.title,
+    ...put('notebookLocale', document.notebookLocale),
     nodes: document.nodes.map(serializeNode),
     edges: document.edges.map(serializeEdge),
     frames: document.frames.map(serializeFrame),

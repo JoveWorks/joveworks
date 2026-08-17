@@ -27,7 +27,7 @@ import {
   type BaseDimension,
   type Dimension,
 } from '@joveworks/units';
-import { isEvaluable, type Formula, type Port } from '@joveworks/schema';
+import { isEvaluable, localize, type Formula, type Port } from '@joveworks/schema';
 
 import {
   checkPredicateDimensions,
@@ -47,7 +47,7 @@ export function assertEvaluable(formula: Formula, where?: string): void {
   if (isEvaluable(formula)) return;
   throw new KernelError(
     `'${formula.id}' is quarantined and cannot be evaluated: ` +
-      `${formula.quarantineReason ?? 'no reason recorded'}`,
+      `${formula.quarantineReason === undefined ? 'no reason recorded' : localize(formula.quarantineReason, 'en')}`,
     where,
   );
 }

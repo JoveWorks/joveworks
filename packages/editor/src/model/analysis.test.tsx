@@ -122,7 +122,7 @@ describe('analysing a graph mid-build', () => {
     );
     const analysis = analyse(document, CATALOGUES);
 
-    expect(analysis.sources.get('sum')).toMatchObject({ id: 'invented', name: 'Invented', restricted: false });
+    expect(analysis.sources.get('sum')).toMatchObject({ id: 'invented', name: { en: 'Invented' }, restricted: false });
     // A closure's formula is synthesised from its expression, not drawn from
     // any catalogue, so it has no source to show.
     expect(analysis.sources.has('eq')).toBe(false);

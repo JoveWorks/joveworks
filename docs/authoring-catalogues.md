@@ -22,7 +22,7 @@ This guide is for catalogues with no such source.
 {
   "schemaVersion": 1,
   "id": "my-catalogue",
-  "name": "Human-readable name",
+  "name": { "en": "Human-readable name", "nl": "Leesbare naam" },
   "restricted": false,
   "formulas": [ /* Formula records */ ]
 }
@@ -52,7 +52,10 @@ for your catalogue and stick to it, e.g. `basic.<n>` or `<catalogue-id>.<n>`.
     { "kind": "numeric", "name": "A", "unit": "mm²", "validRange": { "min": 0 } }
   ],
   "expression": "F / A",
-  "description": "Normal stress under axial load.",
+  "description": {
+    "en": "Normal stress under axial load.",
+    "nl": "Normale spanning bij axiale belasting."
+  },
   "status": "unverified"
 }
 ```
@@ -67,7 +70,10 @@ Fields:
   not a schema requirement.
 - **expression** — a string, parsed and compiled by the kernel, never
   evaluated here. See the expression rules below.
-- **description** — what it computes and when it applies. This is the only
+- **name, description, port description, quarantineReason and optional label** —
+  localized text maps. Every map must contain `en`; add `nl` or any other
+  BCP-47 language tag when available. Missing translations fall back to English.
+  **description** says what it computes and when it applies. This is the only
   prose most users read; write it as such.
 - **citation** — optional. Omit it entirely for invented formulas — base
   nodes cite nothing; do not invent a fake one.

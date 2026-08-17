@@ -1,7 +1,10 @@
 {
   "schemaVersion": 1,
   "id": "public-basic-mechanics",
-  "name": "Basic mechanics",
+  "name": {
+    "en": "Basic mechanics",
+    "nl": "Basic mechanics"
+  },
   "restricted": false,
   "formulas": [
     {
@@ -10,7 +13,8 @@
       "output": {
         "kind": "numeric",
         "name": "sigma",
-        "unit": "MPa"
+        "unit": "MPa",
+        "description": null
       },
       "inputs": [
         {
@@ -19,7 +23,8 @@
           "unit": "N",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         },
         {
           "kind": "numeric",
@@ -27,11 +32,15 @@
           "unit": "mm²",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         }
       ],
       "expression": "F / A",
-      "description": "Normal stress under axial load.",
+      "description": {
+        "en": "Normal stress under axial load.",
+        "nl": "Normal stress under axial load."
+      },
       "citation": "Normal stress",
       "status": "unverified"
     },
@@ -41,7 +50,8 @@
       "output": {
         "kind": "numeric",
         "name": "tau",
-        "unit": "MPa"
+        "unit": "MPa",
+        "description": null
       },
       "inputs": [
         {
@@ -50,7 +60,8 @@
           "unit": "N",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         },
         {
           "kind": "numeric",
@@ -58,11 +69,15 @@
           "unit": "mm²",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         }
       ],
       "expression": "F / A",
-      "description": "Average shear stress over a loaded cross-section.",
+      "description": {
+        "en": "Average shear stress over a loaded cross-section.",
+        "nl": "Average shear stress over a loaded cross-section."
+      },
       "citation": "Shear stress",
       "status": "unverified"
     },
@@ -72,7 +87,8 @@
       "output": {
         "kind": "numeric",
         "name": "sigma",
-        "unit": "MPa"
+        "unit": "MPa",
+        "description": null
       },
       "inputs": [
         {
@@ -81,16 +97,21 @@
           "unit": "MPa",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         },
         {
           "kind": "numeric",
           "name": "epsilon",
-          "unit": ""
+          "unit": "",
+          "description": null
         }
       ],
       "expression": "E * epsilon",
-      "description": "Hooke's law: stress proportional to strain in the elastic range.",
+      "description": {
+        "en": "Hooke's law: stress proportional to strain in the elastic range.",
+        "nl": "Hooke's law: stress proportional to strain in the elastic range."
+      },
       "citation": "Hooke's law — stress",
       "status": "unverified"
     },
@@ -100,7 +121,8 @@
       "output": {
         "kind": "numeric",
         "name": "tau",
-        "unit": "MPa"
+        "unit": "MPa",
+        "description": null
       },
       "inputs": [
         {
@@ -109,16 +131,21 @@
           "unit": "MPa",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         },
         {
           "kind": "numeric",
           "name": "gamma",
-          "unit": ""
+          "unit": "",
+          "description": null
         }
       ],
       "expression": "G * gamma",
-      "description": "Hooke's law in shear: shear stress proportional to shear strain.",
+      "description": {
+        "en": "Hooke's law in shear: shear stress proportional to shear strain.",
+        "nl": "Hooke's law in shear: shear stress proportional to shear strain."
+      },
       "citation": "Hooke's law — shear",
       "status": "unverified"
     },
@@ -128,7 +155,8 @@
       "output": {
         "kind": "numeric",
         "name": "n",
-        "unit": ""
+        "unit": "",
+        "description": null
       },
       "inputs": [
         {
@@ -137,7 +165,8 @@
           "unit": "MPa",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         },
         {
           "kind": "numeric",
@@ -145,11 +174,15 @@
           "unit": "MPa",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         }
       ],
       "expression": "sigma_yield / sigma_allow",
-      "description": "Design factor of safety against yield.",
+      "description": {
+        "en": "Design factor of safety against yield.",
+        "nl": "Design factor of safety against yield."
+      },
       "citation": "Factor of safety",
       "status": "unverified"
     },
@@ -159,22 +192,28 @@
       "output": {
         "kind": "numeric",
         "name": "epsilon_th",
-        "unit": ""
+        "unit": "",
+        "description": null
       },
       "inputs": [
         {
           "kind": "numeric",
           "name": "alpha",
-          "unit": "1/K"
+          "unit": "1/K",
+          "description": null
         },
         {
           "kind": "numeric",
           "name": "dT",
-          "unit": "K"
+          "unit": "K",
+          "description": null
         }
       ],
       "expression": "alpha * dT",
-      "description": "Free thermal strain from a temperature change, unrestrained.",
+      "description": {
+        "en": "Free thermal strain from a temperature change, unrestrained.",
+        "nl": "Free thermal strain from a temperature change, unrestrained."
+      },
       "citation": "Thermal strain",
       "status": "unverified"
     },
@@ -184,7 +223,8 @@
       "output": {
         "kind": "numeric",
         "name": "delta",
-        "unit": "mm"
+        "unit": "mm",
+        "description": null
       },
       "inputs": [
         {
@@ -193,7 +233,8 @@
           "unit": "N",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         },
         {
           "kind": "numeric",
@@ -201,7 +242,8 @@
           "unit": "mm",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         },
         {
           "kind": "numeric",
@@ -209,7 +251,8 @@
           "unit": "mm²",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         },
         {
           "kind": "numeric",
@@ -217,11 +260,15 @@
           "unit": "MPa",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         }
       ],
       "expression": "F * L / (A * E)",
-      "description": "Elongation of a prismatic bar under axial load, from Hooke's law.",
+      "description": {
+        "en": "Elongation of a prismatic bar under axial load, from Hooke's law.",
+        "nl": "Elongation of a prismatic bar under axial load, from Hooke's law."
+      },
       "citation": "Axial elongation",
       "status": "unverified"
     },
@@ -231,7 +278,8 @@
       "output": {
         "kind": "numeric",
         "name": "I",
-        "unit": "mm⁴"
+        "unit": "mm⁴",
+        "description": null
       },
       "inputs": [
         {
@@ -240,7 +288,8 @@
           "unit": "mm",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         },
         {
           "kind": "numeric",
@@ -248,11 +297,15 @@
           "unit": "mm",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         }
       ],
       "expression": "b * h**3 / 12",
-      "description": "Second moment of area of a rectangular cross-section about its centroid.",
+      "description": {
+        "en": "Second moment of area of a rectangular cross-section about its centroid.",
+        "nl": "Second moment of area of a rectangular cross-section about its centroid."
+      },
       "citation": "Rectangular section — moment of inertia",
       "status": "unverified"
     },
@@ -262,7 +315,8 @@
       "output": {
         "kind": "numeric",
         "name": "I",
-        "unit": "mm⁴"
+        "unit": "mm⁴",
+        "description": null
       },
       "inputs": [
         {
@@ -271,11 +325,15 @@
           "unit": "mm",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         }
       ],
       "expression": "pi * d**4 / 64",
-      "description": "Second moment of area of a solid circular cross-section about its centroid.",
+      "description": {
+        "en": "Second moment of area of a solid circular cross-section about its centroid.",
+        "nl": "Second moment of area of a solid circular cross-section about its centroid."
+      },
       "citation": "Circular section — moment of inertia",
       "status": "unverified"
     },
@@ -285,7 +343,8 @@
       "output": {
         "kind": "numeric",
         "name": "I",
-        "unit": "mm⁴"
+        "unit": "mm⁴",
+        "description": null
       },
       "inputs": [
         {
@@ -294,7 +353,8 @@
           "unit": "mm",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         },
         {
           "kind": "numeric",
@@ -302,11 +362,15 @@
           "unit": "mm",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         }
       ],
       "expression": "pi * (d_o**4 - d_i**4) / 64",
-      "description": "Second moment of area of a hollow circular (tube) cross-section about its centroid.",
+      "description": {
+        "en": "Second moment of area of a hollow circular (tube) cross-section about its centroid.",
+        "nl": "Second moment of area of a hollow circular (tube) cross-section about its centroid."
+      },
       "citation": "Hollow circular section — moment of inertia",
       "status": "unverified"
     },
@@ -316,13 +380,15 @@
       "output": {
         "kind": "numeric",
         "name": "sigma",
-        "unit": "MPa"
+        "unit": "MPa",
+        "description": null
       },
       "inputs": [
         {
           "kind": "numeric",
           "name": "M",
-          "unit": "Nm"
+          "unit": "Nm",
+          "description": null
         },
         {
           "kind": "numeric",
@@ -330,7 +396,8 @@
           "unit": "mm",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         },
         {
           "kind": "numeric",
@@ -338,11 +405,15 @@
           "unit": "mm⁴",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         }
       ],
       "expression": "M * c / I",
-      "description": "Bending stress at distance c from the neutral axis.",
+      "description": {
+        "en": "Bending stress at distance c from the neutral axis.",
+        "nl": "Bending stress at distance c from the neutral axis."
+      },
       "citation": "Bending stress",
       "status": "unverified"
     },
@@ -352,7 +423,8 @@
       "output": {
         "kind": "numeric",
         "name": "W",
-        "unit": "mm³"
+        "unit": "mm³",
+        "description": null
       },
       "inputs": [
         {
@@ -361,7 +433,8 @@
           "unit": "mm⁴",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         },
         {
           "kind": "numeric",
@@ -369,11 +442,15 @@
           "unit": "mm",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         }
       ],
       "expression": "I / c",
-      "description": "Elastic section modulus, so bending stress is simply M / W.",
+      "description": {
+        "en": "Elastic section modulus, so bending stress is simply M / W.",
+        "nl": "Elastic section modulus, so bending stress is simply M / W."
+      },
       "citation": "Section modulus",
       "status": "unverified"
     },
@@ -383,7 +460,8 @@
       "output": {
         "kind": "numeric",
         "name": "delta",
-        "unit": "mm"
+        "unit": "mm",
+        "description": null
       },
       "inputs": [
         {
@@ -392,7 +470,8 @@
           "unit": "N",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         },
         {
           "kind": "numeric",
@@ -400,7 +479,8 @@
           "unit": "mm",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         },
         {
           "kind": "numeric",
@@ -408,7 +488,8 @@
           "unit": "MPa",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         },
         {
           "kind": "numeric",
@@ -416,11 +497,15 @@
           "unit": "mm⁴",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         }
       ],
       "expression": "F * L**3 / (3 * E * I)",
-      "description": "Tip deflection of a cantilever beam under a point load at its free end.",
+      "description": {
+        "en": "Tip deflection of a cantilever beam under a point load at its free end.",
+        "nl": "Tip deflection of a cantilever beam under a point load at its free end."
+      },
       "citation": "Cantilever beam — tip deflection",
       "status": "unverified"
     },
@@ -430,7 +515,8 @@
       "output": {
         "kind": "numeric",
         "name": "delta",
-        "unit": "mm"
+        "unit": "mm",
+        "description": null
       },
       "inputs": [
         {
@@ -439,7 +525,8 @@
           "unit": "N",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         },
         {
           "kind": "numeric",
@@ -447,7 +534,8 @@
           "unit": "mm",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         },
         {
           "kind": "numeric",
@@ -455,7 +543,8 @@
           "unit": "MPa",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         },
         {
           "kind": "numeric",
@@ -463,11 +552,15 @@
           "unit": "mm⁴",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         }
       ],
       "expression": "F * L**3 / (48 * E * I)",
-      "description": "Midspan deflection of a simply supported beam under a central point load.",
+      "description": {
+        "en": "Midspan deflection of a simply supported beam under a central point load.",
+        "nl": "Midspan deflection of a simply supported beam under a central point load."
+      },
       "citation": "Simply supported beam — midspan deflection",
       "status": "unverified"
     },
@@ -477,7 +570,8 @@
       "output": {
         "kind": "numeric",
         "name": "M",
-        "unit": "Nm"
+        "unit": "Nm",
+        "description": null
       },
       "inputs": [
         {
@@ -486,7 +580,8 @@
           "unit": "N",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         },
         {
           "kind": "numeric",
@@ -494,11 +589,15 @@
           "unit": "mm",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         }
       ],
       "expression": "F * L / 4",
-      "description": "Maximum bending moment of a simply supported beam under a central point load, at midspan.",
+      "description": {
+        "en": "Maximum bending moment of a simply supported beam under a central point load, at midspan.",
+        "nl": "Maximum bending moment of a simply supported beam under a central point load, at midspan."
+      },
       "citation": "Simply supported beam — max moment",
       "status": "unverified"
     },
@@ -508,7 +607,8 @@
       "output": {
         "kind": "numeric",
         "name": "J",
-        "unit": "mm⁴"
+        "unit": "mm⁴",
+        "description": null
       },
       "inputs": [
         {
@@ -517,11 +617,15 @@
           "unit": "mm",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         }
       ],
       "expression": "pi * d**4 / 32",
-      "description": "Polar moment of area of a solid circular shaft.",
+      "description": {
+        "en": "Polar moment of area of a solid circular shaft.",
+        "nl": "Polar moment of area of a solid circular shaft."
+      },
       "citation": "Solid shaft — polar moment",
       "status": "unverified"
     },
@@ -531,7 +635,8 @@
       "output": {
         "kind": "numeric",
         "name": "J",
-        "unit": "mm⁴"
+        "unit": "mm⁴",
+        "description": null
       },
       "inputs": [
         {
@@ -540,7 +645,8 @@
           "unit": "mm",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         },
         {
           "kind": "numeric",
@@ -548,11 +654,15 @@
           "unit": "mm",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         }
       ],
       "expression": "pi * (d_o**4 - d_i**4) / 32",
-      "description": "Polar moment of area of a hollow circular shaft.",
+      "description": {
+        "en": "Polar moment of area of a hollow circular shaft.",
+        "nl": "Polar moment of area of a hollow circular shaft."
+      },
       "citation": "Hollow shaft — polar moment",
       "status": "unverified"
     },
@@ -562,13 +672,15 @@
       "output": {
         "kind": "numeric",
         "name": "tau",
-        "unit": "MPa"
+        "unit": "MPa",
+        "description": null
       },
       "inputs": [
         {
           "kind": "numeric",
           "name": "T",
-          "unit": "Nm"
+          "unit": "Nm",
+          "description": null
         },
         {
           "kind": "numeric",
@@ -576,7 +688,8 @@
           "unit": "mm",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         },
         {
           "kind": "numeric",
@@ -584,11 +697,15 @@
           "unit": "mm⁴",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         }
       ],
       "expression": "T * r / J",
-      "description": "Torsional shear stress at radius r from the shaft axis.",
+      "description": {
+        "en": "Torsional shear stress at radius r from the shaft axis.",
+        "nl": "Torsional shear stress at radius r from the shaft axis."
+      },
       "citation": "Torsional shear stress",
       "status": "unverified"
     },
@@ -598,13 +715,15 @@
       "output": {
         "kind": "numeric",
         "name": "P",
-        "unit": "W"
+        "unit": "W",
+        "description": null
       },
       "inputs": [
         {
           "kind": "numeric",
           "name": "T",
-          "unit": "Nm"
+          "unit": "Nm",
+          "description": null
         },
         {
           "kind": "numeric",
@@ -612,11 +731,15 @@
           "unit": "rpm",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         }
       ],
       "expression": "2 * pi * n * T",
-      "description": "Transmitted power from torque and rotational speed.",
+      "description": {
+        "en": "Transmitted power from torque and rotational speed.",
+        "nl": "Transmitted power from torque and rotational speed."
+      },
       "citation": "Power from torque and speed",
       "variantOf": "basic.rotation.power-torque-relation",
       "status": "unverified"
@@ -627,7 +750,8 @@
       "output": {
         "kind": "numeric",
         "name": "T",
-        "unit": "Nm"
+        "unit": "Nm",
+        "description": null
       },
       "inputs": [
         {
@@ -636,7 +760,8 @@
           "unit": "W",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         },
         {
           "kind": "numeric",
@@ -644,11 +769,15 @@
           "unit": "rpm",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         }
       ],
       "expression": "P / (2 * pi * n)",
-      "description": "Torque from transmitted power and rotational speed — same relation, solved for T.",
+      "description": {
+        "en": "Torque from transmitted power and rotational speed — same relation, solved for T.",
+        "nl": "Torque from transmitted power and rotational speed — same relation, solved for T."
+      },
       "citation": "Torque from power and speed",
       "variantOf": "basic.rotation.power-torque-relation",
       "status": "unverified"
@@ -659,7 +788,8 @@
       "output": {
         "kind": "numeric",
         "name": "v",
-        "unit": "m/s"
+        "unit": "m/s",
+        "description": null
       },
       "inputs": [
         {
@@ -668,7 +798,8 @@
           "unit": "mm",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         },
         {
           "kind": "numeric",
@@ -676,11 +807,15 @@
           "unit": "rpm",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         }
       ],
       "expression": "pi * d * n",
-      "description": "Pitch line (surface) velocity of a rotating wheel, pulley or gear.",
+      "description": {
+        "en": "Pitch line (surface) velocity of a rotating wheel, pulley or gear.",
+        "nl": "Pitch line (surface) velocity of a rotating wheel, pulley or gear."
+      },
       "citation": "Pitch line velocity",
       "status": "unverified"
     },
@@ -690,7 +825,8 @@
       "output": {
         "kind": "numeric",
         "name": "F_cr",
-        "unit": "N"
+        "unit": "N",
+        "description": null
       },
       "inputs": [
         {
@@ -699,7 +835,8 @@
           "unit": "MPa",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         },
         {
           "kind": "numeric",
@@ -707,7 +844,8 @@
           "unit": "mm⁴",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         },
         {
           "kind": "numeric",
@@ -715,11 +853,15 @@
           "unit": "mm",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         }
       ],
       "expression": "pi**2 * E * I / Le**2",
-      "description": "Euler critical buckling load of a slender column, effective length Le.",
+      "description": {
+        "en": "Euler critical buckling load of a slender column, effective length Le.",
+        "nl": "Euler critical buckling load of a slender column, effective length Le."
+      },
       "citation": "Euler buckling load",
       "status": "unverified"
     },
@@ -729,7 +871,8 @@
       "output": {
         "kind": "numeric",
         "name": "r",
-        "unit": "mm"
+        "unit": "mm",
+        "description": null
       },
       "inputs": [
         {
@@ -738,7 +881,8 @@
           "unit": "mm⁴",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         },
         {
           "kind": "numeric",
@@ -746,11 +890,15 @@
           "unit": "mm²",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         }
       ],
       "expression": "sqrt(I / A)",
-      "description": "Radius of gyration of a cross-section.",
+      "description": {
+        "en": "Radius of gyration of a cross-section.",
+        "nl": "Radius of gyration of a cross-section."
+      },
       "citation": "Radius of gyration",
       "status": "unverified"
     },
@@ -760,7 +908,8 @@
       "output": {
         "kind": "numeric",
         "name": "lambda",
-        "unit": ""
+        "unit": "",
+        "description": null
       },
       "inputs": [
         {
@@ -769,7 +918,8 @@
           "unit": "mm",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         },
         {
           "kind": "numeric",
@@ -777,11 +927,15 @@
           "unit": "mm",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         }
       ],
       "expression": "Le / r",
-      "description": "Slenderness ratio of a column, governing whether Euler buckling applies.",
+      "description": {
+        "en": "Slenderness ratio of a column, governing whether Euler buckling applies.",
+        "nl": "Slenderness ratio of a column, governing whether Euler buckling applies."
+      },
       "citation": "Slenderness ratio",
       "status": "unverified"
     },
@@ -791,7 +945,8 @@
       "output": {
         "kind": "numeric",
         "name": "F",
-        "unit": "N"
+        "unit": "N",
+        "description": null
       },
       "inputs": [
         {
@@ -800,7 +955,8 @@
           "unit": "N/mm",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         },
         {
           "kind": "numeric",
@@ -808,11 +964,15 @@
           "unit": "mm",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         }
       ],
       "expression": "k * x",
-      "description": "Linear spring force from stiffness and deflection.",
+      "description": {
+        "en": "Linear spring force from stiffness and deflection.",
+        "nl": "Linear spring force from stiffness and deflection."
+      },
       "citation": "Spring force",
       "status": "unverified"
     },
@@ -822,7 +982,8 @@
       "output": {
         "kind": "numeric",
         "name": "U",
-        "unit": "J"
+        "unit": "J",
+        "description": null
       },
       "inputs": [
         {
@@ -831,7 +992,8 @@
           "unit": "N/mm",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         },
         {
           "kind": "numeric",
@@ -839,11 +1001,15 @@
           "unit": "mm",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         }
       ],
       "expression": "k * x**2 / 2",
-      "description": "Strain energy stored in a linear spring.",
+      "description": {
+        "en": "Strain energy stored in a linear spring.",
+        "nl": "Strain energy stored in a linear spring."
+      },
       "citation": "Spring strain energy",
       "status": "unverified"
     },
@@ -853,7 +1019,8 @@
       "output": {
         "kind": "numeric",
         "name": "k",
-        "unit": "N/mm"
+        "unit": "N/mm",
+        "description": null
       },
       "inputs": [
         {
@@ -862,7 +1029,8 @@
           "unit": "MPa",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         },
         {
           "kind": "numeric",
@@ -870,7 +1038,8 @@
           "unit": "mm",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         },
         {
           "kind": "numeric",
@@ -878,7 +1047,8 @@
           "unit": "mm",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         },
         {
           "kind": "numeric",
@@ -886,11 +1056,15 @@
           "unit": "",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         }
       ],
       "expression": "G * d**4 / (8 * D**3 * n)",
-      "description": "Spring rate of a helical compression spring, wire diameter d, mean coil diameter D, n active coils.",
+      "description": {
+        "en": "Spring rate of a helical compression spring, wire diameter d, mean coil diameter D, n active coils.",
+        "nl": "Spring rate of a helical compression spring, wire diameter d, mean coil diameter D, n active coils."
+      },
       "citation": "Helical spring rate",
       "status": "unverified"
     },
@@ -900,7 +1074,8 @@
       "output": {
         "kind": "numeric",
         "name": "F",
-        "unit": "N"
+        "unit": "N",
+        "description": null
       },
       "inputs": [
         {
@@ -909,16 +1084,21 @@
           "unit": "kg",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         },
         {
           "kind": "numeric",
           "name": "a",
-          "unit": "m/s²"
+          "unit": "m/s²",
+          "description": null
         }
       ],
       "expression": "m * a",
-      "description": "Newton's second law: net force from mass and acceleration.",
+      "description": {
+        "en": "Newton's second law: net force from mass and acceleration.",
+        "nl": "Newton's second law: net force from mass and acceleration."
+      },
       "citation": "Newton's second law",
       "status": "unverified"
     },
@@ -928,7 +1108,8 @@
       "output": {
         "kind": "numeric",
         "name": "KE",
-        "unit": "J"
+        "unit": "J",
+        "description": null
       },
       "inputs": [
         {
@@ -937,7 +1118,8 @@
           "unit": "kg",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         },
         {
           "kind": "numeric",
@@ -945,11 +1127,15 @@
           "unit": "m/s",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         }
       ],
       "expression": "m * v**2 / 2",
-      "description": "Translational kinetic energy of a moving mass.",
+      "description": {
+        "en": "Translational kinetic energy of a moving mass.",
+        "nl": "Translational kinetic energy of a moving mass."
+      },
       "citation": "Kinetic energy",
       "status": "unverified"
     },
@@ -959,7 +1145,8 @@
       "output": {
         "kind": "numeric",
         "name": "p",
-        "unit": "N*s"
+        "unit": "N*s",
+        "description": null
       },
       "inputs": [
         {
@@ -968,16 +1155,21 @@
           "unit": "kg",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         },
         {
           "kind": "numeric",
           "name": "v",
-          "unit": "m/s"
+          "unit": "m/s",
+          "description": null
         }
       ],
       "expression": "m * v",
-      "description": "Linear momentum of a moving mass.",
+      "description": {
+        "en": "Linear momentum of a moving mass.",
+        "nl": "Linear momentum of a moving mass."
+      },
       "citation": "Linear momentum",
       "status": "unverified"
     },
@@ -987,7 +1179,8 @@
       "output": {
         "kind": "numeric",
         "name": "a",
-        "unit": "m/s²"
+        "unit": "m/s²",
+        "description": null
       },
       "inputs": [
         {
@@ -996,7 +1189,8 @@
           "unit": "m/s",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         },
         {
           "kind": "numeric",
@@ -1004,11 +1198,15 @@
           "unit": "mm",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         }
       ],
       "expression": "v**2 / r",
-      "description": "Centripetal acceleration of a point moving on a circular path of radius r.",
+      "description": {
+        "en": "Centripetal acceleration of a point moving on a circular path of radius r.",
+        "nl": "Centripetal acceleration of a point moving on a circular path of radius r."
+      },
       "citation": "Centripetal acceleration",
       "status": "unverified"
     },
@@ -1018,7 +1216,8 @@
       "output": {
         "kind": "numeric",
         "name": "F",
-        "unit": "N"
+        "unit": "N",
+        "description": null
       },
       "inputs": [
         {
@@ -1027,7 +1226,8 @@
           "unit": "kg",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         },
         {
           "kind": "numeric",
@@ -1035,7 +1235,8 @@
           "unit": "m/s",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         },
         {
           "kind": "numeric",
@@ -1043,11 +1244,15 @@
           "unit": "mm",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         }
       ],
       "expression": "m * v**2 / r",
-      "description": "Centripetal force required to hold a mass on a circular path of radius r.",
+      "description": {
+        "en": "Centripetal force required to hold a mass on a circular path of radius r.",
+        "nl": "Centripetal force required to hold a mass on a circular path of radius r."
+      },
       "citation": "Centripetal force",
       "status": "unverified"
     },
@@ -1057,7 +1262,8 @@
       "output": {
         "kind": "numeric",
         "name": "W",
-        "unit": "J"
+        "unit": "J",
+        "description": null
       },
       "inputs": [
         {
@@ -1066,7 +1272,8 @@
           "unit": "N",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         },
         {
           "kind": "numeric",
@@ -1074,11 +1281,15 @@
           "unit": "mm",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         }
       ],
       "expression": "F * d",
-      "description": "Work done by a constant force acting along the direction of motion.",
+      "description": {
+        "en": "Work done by a constant force acting along the direction of motion.",
+        "nl": "Work done by a constant force acting along the direction of motion."
+      },
       "citation": "Work done by a force",
       "status": "unverified"
     },
@@ -1088,7 +1299,8 @@
       "output": {
         "kind": "numeric",
         "name": "P",
-        "unit": "W"
+        "unit": "W",
+        "description": null
       },
       "inputs": [
         {
@@ -1097,7 +1309,8 @@
           "unit": "N",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         },
         {
           "kind": "numeric",
@@ -1105,11 +1318,15 @@
           "unit": "m/s",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         }
       ],
       "expression": "F * v",
-      "description": "Mechanical power delivered by a force moving at velocity v.",
+      "description": {
+        "en": "Mechanical power delivered by a force moving at velocity v.",
+        "nl": "Mechanical power delivered by a force moving at velocity v."
+      },
       "citation": "Power from force and velocity",
       "status": "unverified"
     },
@@ -1119,7 +1336,8 @@
       "output": {
         "kind": "numeric",
         "name": "i",
-        "unit": ""
+        "unit": "",
+        "description": null
       },
       "inputs": [
         {
@@ -1128,7 +1346,8 @@
           "unit": "",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         },
         {
           "kind": "numeric",
@@ -1136,11 +1355,15 @@
           "unit": "",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         }
       ],
       "expression": "z2 / z1",
-      "description": "Gear ratio from tooth counts of the driven (z2) and driving (z1) gear.",
+      "description": {
+        "en": "Gear ratio from tooth counts of the driven (z2) and driving (z1) gear.",
+        "nl": "Gear ratio from tooth counts of the driven (z2) and driving (z1) gear."
+      },
       "citation": "Gear ratio",
       "status": "unverified"
     },
@@ -1150,7 +1373,8 @@
       "output": {
         "kind": "numeric",
         "name": "T2",
-        "unit": "Nm"
+        "unit": "Nm",
+        "description": null
       },
       "inputs": [
         {
@@ -1159,7 +1383,8 @@
           "unit": "Nm",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         },
         {
           "kind": "numeric",
@@ -1167,11 +1392,15 @@
           "unit": "",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         }
       ],
       "expression": "T1 * i",
-      "description": "Output torque from input torque and gear ratio, assuming no losses.",
+      "description": {
+        "en": "Output torque from input torque and gear ratio, assuming no losses.",
+        "nl": "Output torque from input torque and gear ratio, assuming no losses."
+      },
       "citation": "Ideal torque ratio",
       "status": "unverified"
     },
@@ -1181,7 +1410,8 @@
       "output": {
         "kind": "numeric",
         "name": "eta",
-        "unit": ""
+        "unit": "",
+        "description": null
       },
       "inputs": [
         {
@@ -1190,7 +1420,8 @@
           "unit": "W",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         },
         {
           "kind": "numeric",
@@ -1198,11 +1429,15 @@
           "unit": "W",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         }
       ],
       "expression": "P_out / P_in",
-      "description": "Mechanical efficiency: output power over input power.",
+      "description": {
+        "en": "Mechanical efficiency: output power over input power.",
+        "nl": "Mechanical efficiency: output power over input power."
+      },
       "citation": "Mechanical efficiency",
       "status": "unverified"
     },
@@ -1212,7 +1447,8 @@
       "output": {
         "kind": "numeric",
         "name": "F_f",
-        "unit": "N"
+        "unit": "N",
+        "description": null
       },
       "inputs": [
         {
@@ -1221,7 +1457,8 @@
           "unit": "",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         },
         {
           "kind": "numeric",
@@ -1229,11 +1466,15 @@
           "unit": "N",
           "validRange": {
             "min": 0
-          }
+          },
+          "description": null
         }
       ],
       "expression": "mu * F_N",
-      "description": "Coulomb friction force from the coefficient of friction and normal force.",
+      "description": {
+        "en": "Coulomb friction force from the coefficient of friction and normal force.",
+        "nl": "Coulomb friction force from the coefficient of friction and normal force."
+      },
       "citation": "Friction force",
       "status": "unverified"
     }

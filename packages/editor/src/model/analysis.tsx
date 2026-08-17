@@ -39,6 +39,7 @@ import {
   findFormula,
   isEvaluable,
   isGenericPort,
+  localize,
   THRESHOLD_PORT,
   VALUE_PORT,
   type Catalogue,
@@ -201,7 +202,7 @@ function readiness(
         states.set(node.id, 'quarantined');
         problems.set(
           node.id,
-          formula.quarantineReason ??
+          (formula.quarantineReason === undefined ? undefined : localize(formula.quarantineReason, 'en')) ??
             'this formula is quarantined and cannot be evaluated',
         );
         continue;

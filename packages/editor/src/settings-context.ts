@@ -9,9 +9,12 @@
 import { createContext, useContext } from 'react';
 
 import type { ContourPalette, ThemePreference } from './model/editorSettings';
+import type { AppLocale } from './model/editorSettings';
 import type { NumberFormatSettings } from './model/numberFormat';
 
 export interface SettingsContextValue {
+  readonly locale: AppLocale;
+  readonly setLocale: (locale: AppLocale) => void;
   readonly numberFormat: NumberFormatSettings;
   readonly setNumberFormat: (settings: NumberFormatSettings) => void;
   readonly minimapVisible: boolean;

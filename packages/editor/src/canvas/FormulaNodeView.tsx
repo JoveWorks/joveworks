@@ -16,7 +16,7 @@
 import type { ReactElement } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 
-import { isGenericPort, type Port } from '@joveworks/schema';
+import { isGenericPort, localize, type Port } from '@joveworks/schema';
 import type { Unit } from '@joveworks/units';
 
 import { useGraph } from '../graph-context';
@@ -33,7 +33,7 @@ import { TitleField, TitleText } from './TitleField';
 
 export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | null {
   const { document, analysis, edit, pinned, togglePin } = useGraph();
-  const { numberFormat } = useSettings();
+  const { numberFormat, locale } = useSettings();
   const format = toUnitsFormat(numberFormat);
   const node = document.nodes.find((candidate) => candidate.id === id);
   if (node === undefined || node.kind !== 'formula') return null;
@@ -100,7 +100,7 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
   // it — always citation-or-id — shown only when it says something the title
   // doesn't already: a renamed R&M node still needs "R&M 16.19A" visible, but
   // an unrenamed one showing "R&M 16.19A" twice would not.
-  const title = node.label ?? formula.citation ?? formula.id;
+  const title = node.label ?? (formula.label === undefined ? formula.citation ?? formula.id : localize(formula.label, locale));
   const provenance = formula.citation ?? formula.id;
 
   return (
@@ -124,7 +124,7 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
       }
       detail={
         <>
-          <p className="description">{formula.description}</p>
+          <p className="description">{localize(formula.description, locale)}</p>
           {formula.appliesWhen === undefined ? null : (
             <p className="applies">applies when {formula.appliesWhen}</p>
           )}
@@ -140,7 +140,7 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
                 className={source.restricted ? 'source restricted' : 'source'}
                 title={source.restricted ? 'Restricted content — never exported.' : undefined}
               >
-                From catalogue: {source.name}
+                From catalogue: {localize(source.name, locale)}
               </span>
             )}
             {/* Signs off content against R&M formula by formula — see
@@ -174,7 +174,7 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
                 <ParameterLabel
                   name={port.name}
                   unit={portUnit(port)}
-                  title={port.description ?? ''}
+                title={port.description === undefined ? '' : localize(port.description, locale)}
                   nameClassName="port-name"
                   unitClassName="port-unit"
                 />
@@ -194,7 +194,7 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
                   <ParameterLabel
                     name={port.name}
                     unit={portUnit(port)}
-                    title={port.description ?? ''}
+                    title={port.description === undefined ? '' : localize(port.description, locale)}
                     nameClassName="port-name"
                     unitClassName="port-unit"
                   />
@@ -217,7 +217,7 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
                 className={count === 0 ? 'missing' : ''}
               />
               {count === 0 ? (
-                <span className="port-name" title={port.description ?? ''}>
+                <span className="port-name" title={port.description === undefined ? '' : localize(port.description, locale)}>
                   <Symbol name={port.name} />
                 </span>
               ) : null}
