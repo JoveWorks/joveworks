@@ -4,7 +4,7 @@ import { emptyDocument, type GraphDocument } from '@joveworks/schema';
 import { parseUnit } from '@joveworks/units';
 
 import { addNode } from '../model/document';
-import { nodeContextMenuKind, sectionActionLabel } from './Canvas';
+import { nodeContextMenuKind, sectionActionLabel, shiftClickOpensSelectionMenu } from './Canvas';
 
 function documentWithNodes(): GraphDocument {
   let document = emptyDocument('study', 'Study');
@@ -38,5 +38,14 @@ describe('canvas section context', () => {
 
   it('keeps the node menu for a single-node selection', () => {
     expect(nodeContextMenuKind(document, new Set(['first']))).toBe('node');
+  });
+
+  it('opens the selection menu when Shift-clicking adds a second node', () => {
+    expect(shiftClickOpensSelectionMenu(document, new Set(['first']), 'second')).toBe(true);
+  });
+
+  it('does not open the selection menu when Shift-clicking leaves one or no nodes selected', () => {
+    expect(shiftClickOpensSelectionMenu(document, new Set(), 'first')).toBe(false);
+    expect(shiftClickOpensSelectionMenu(document, new Set(['first', 'second']), 'second')).toBe(false);
   });
 });
