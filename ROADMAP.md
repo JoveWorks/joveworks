@@ -90,6 +90,21 @@ Deferred or explicitly parked features from the hand-testing passes
 (`docs/UX-SPEC.md`) and later sessions — not milestone-1 scope, not
 necessarily milestone-2 either.
 
+**Table columns do not broadcast over multi-axis sweeps.** A table that mixes
+input-axis values with results over a grid currently renders each column at its
+native length: for example, a five-value chip-load input and four-value radial-
+engagement input stop after five and four rows, while their calculated columns
+continue across all 20 combinations. Build table results over the union of their
+axes and broadcast every column onto that shared grid before the notebook
+renders it. Determine the dependency from each series' existing `axes`
+metadata—axis identity and order—not from its data length, since two unrelated
+axes can have the same length. A column varying only along the outer axis
+repeats each value across the inner axis; a column varying only along the inner
+axis rolls over for every outer-axis value; scalars repeat on every row; and a
+column already carrying every table axis remains unchanged. Each row should
+then carry the coordinates and results for one complete design point, with no
+blank axis cells.
+
 **Plot node's remaining options.** A first slice landed: three axis slots
 (`x`, `series`, `facet`), auto-assigned from whatever axes the wired value
 varies along. Still open: marking specific values on a curve, and a fourth
@@ -103,15 +118,6 @@ a schema change to carry a unit per bound (persists properly, but widens
 range has one unit). Neither was picked; parked here rather than decided
 under scope pressure.
 
-**Selection actions and a selection context menu.** A multi-node selection
-needs right-click actions, initially **align** and **arrange**. Alignment is a
-well-bounded set of canvas commands (left/right/top/bottom/centre); arrange
-needs its own small design before implementation: preserve the user's graph
-reading order and group frames, avoid crossing wires where possible, and do
-not let an automatic layout unexpectedly rewrite a carefully placed notebook.
-This extends the existing selection behavior (move and delete together) rather
-than introducing another selection model.
-
 **Minimap visibility.** Put a Show/Hide minimap toggle in the ribbon's
 **View** menu and let a right-click on the minimap close it. Persisting that
 choice is already implemented locally; the broader settings-persistence item
@@ -120,14 +126,6 @@ below is specifically about panel widths and other remaining preferences.
 **Extensive worked examples**, beyond the one belt lab sample. Waits on
 breadth — more chapters, or more graphs within belt — rather than being an
 editor feature on its own. Revisit once the second slice is in.
-
-**What should a multi-node selection do?** "Group into new section" now
-frames only the current selection, or spawns an empty section at an open
-location with none selected (`groupIntoSection`, `model/document.ts`). Open
-beyond that: what else, if anything, should a selection enable — move
-together (already true, independent React Flow nodes), delete together
-(already true, Backspace/Delete), anything else? The first additional actions
-are now defined above: right-click offers alignment and arrange.
 
 **Spectrum-editing UI.** A load spectrum (a hand-typed collection consumed
 whole by an aggregation, not swept) exists in the schema, but nothing in the
@@ -167,6 +165,10 @@ citations and values by default, expressions only behind the explicit
 toggle. Gate it behind a hidden console command for now rather than a UI
 button — personal-use export, not a student-facing feature yet.
 
+**PDF export needs page margins.** The exported notebook currently reaches the
+page edges; define print margins so the result is readable and suitable for
+hand-in or binding.
+
 **Plausible analytics during alpha.** A thin adapter — mirrors the existing
 file-I/O adapter pattern — with a no-op and a Plausible-backed
 implementation behind one flag, so removing it before public launch is
@@ -175,15 +177,6 @@ log beyond default pageviews (aggregate, cookieless, no PII either way) —
 e.g. feature-usage events like "sweep run" or "plot created" — is still
 open; whatever set gets chosen should be documented in one place so "what
 does this log" has a single answer.
-
-**A wired optional/default port overrides its typed default.** A threshold
-with a typed default currently blocks a wire of another unit even while its
-main `value` port is unconnected. A connected wire must establish the port's
-current unit and override the default; once `value` is connected, the two
-ports must agree. Removing the wire restores the authored default and its
-unit. This is connection/type resolution, not just an editor display change.
-
-**Section frame hover accent is too subtle.** Increase border width too.
 
 **Nodes expose preferred display units.** Dimensions do not have one global
 presentation unit: values evaluate canonically, while each exposed node port
@@ -200,5 +193,3 @@ and the belt sample's frequency output now chooses `Hz` explicitly.
 Largely implemented, but R&M catalogue needs updating.
 
 **What about migration to newer versions?** I'm thinking notebooks and catalogues that the user made before.
-
-**The tutorial window should be animated.** Now it just instantly moves to the next step, I want it to flow more clearly.
