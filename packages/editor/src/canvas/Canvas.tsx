@@ -237,7 +237,7 @@ const NODE_TYPES = {
 };
 
 export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean }): ReactElement {
-  const { document, catalogues, analysis, edit, editLive, commitEdit, pinned, togglePin, selected, setSelected } =
+  const { document, catalogues, analysis, edit, editLive, commitEdit, pinned, togglePin, selected, setSelected, saveUserEquation } =
     useGraph();
   const { minimapVisible, themePreference } = useSettings();
   const [refusal, setRefusal] = useState<string | undefined>(undefined);
@@ -614,6 +614,7 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
   const menuItems = (target: MenuTarget): readonly MenuItem[] => {
     if (target.kind === 'node') {
       const { id } = target;
+      const graphNode = document.nodes.find((node) => node.id === id);
       return [
         {
           label: pinned.has(id) ? 'Unpin' : 'Pin open',
@@ -623,6 +624,12 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
           label: 'Duplicate',
           onClick: () => edit((current) => reframe(duplicateNode(current, id))),
         },
+        ...(graphNode?.kind === 'closure' && analysis.formulas.has(id)
+          ? [{
+              label: 'Save equation to palette',
+              onClick: () => saveUserEquation(nodeLabel(graphNode), graphNode.expression),
+            }]
+          : []),
         {
           label: 'Delete',
           danger: true,

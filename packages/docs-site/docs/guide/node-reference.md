@@ -30,16 +30,17 @@ from "a number to eyeball" into something the graph itself flags.
 ## Closure
 
 A student-typed equation, not a catalogue formula — its ports are whatever
-names the expression mentions. Useful for a one-off relation that doesn't
-need its own catalogue entry, without leaving the typed, unit-checked
-world the rest of the graph lives in.
+names the expression mentions. Save a finished equation from its right-click
+menu to reuse it from **My equations** in another notebook. Saved equations
+can be imported and exported from the File menu; removing one from the palette
+does not affect copies already embedded in graphs.
 
 ## Waypoint
 
-A redirect on the canvas, not an operation — it copies the wire it carries
-through unchanged. Useful for bending a connection around other nodes, or
-for giving a long wire a labelled stop, without touching a single number
-along the way.
+A redirect on the canvas, not an operation. Each `inN` port passes unchanged
+to its matching `outN`, and every pair keeps its own dimension. Use one waypoint
+to bend several unrelated connections around other nodes without merging them
+or touching a single number along the way.
 
 ## Pack
 

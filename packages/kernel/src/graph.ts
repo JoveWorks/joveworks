@@ -59,7 +59,7 @@ import {
   type PortKind,
 } from '@mds/schema';
 
-import { packChannelIndices, ROUTING_KINDS, ROUTING_QUARANTINE_REASON } from './bundle.js';
+import { packChannelIndices, waypointChannelIndices } from './bundle.js';
 import { closureFormula } from './closure.js';
 import { expressionDimension, type DimensionScope } from './compile.js';
 import { assertConnectable, assertSameDimension, connectable } from './dimensions.js';
@@ -481,60 +481,28 @@ export function resolveGraph(
       continue;
     }
 
-    // Quarantined pending a redesign (ROADMAP.md) — gated here, the one
-    // choke point every path to evaluating one of these three kinds runs
-    // through, the same "gate stated once" reasoning `formula.ts`'s own
-    // quarantine gate follows. The branches below stay in place, unreached,
-    // for when the gate lifts.
-    if (ROUTING_KINDS.has(node.kind)) {
-      throw new KernelError(
-        `'${node.id}' is quarantined and cannot be evaluated: ${ROUTING_QUARANTINE_REASON[node.kind as 'waypoint' | 'pack' | 'unpack']}`,
-        node.id,
-      );
-    }
-
     if (node.kind === 'waypoint') {
-      // One spectrum-shaped port, `in`, exactly like `minimum`'s own — any
-      // number of wires, all the same dimension — and one generic output,
-      // `out`, of that dimension. Neither port is declared anywhere (no
-      // catalogue formula backs a waypoint), so both are built here instead
-      // of going through `portType`/`bindInputs`, which resolve a *declared*
-      // port's generic signature rather than invent one.
-      const inKey = endpointKey(node.id, 'in');
-      const outKey = endpointKey(node.id, 'out');
-      const edges = incoming.get(inKey) ?? [];
-      let dimension: Dimension | undefined;
-      for (const edge of edges) {
+      for (const n of waypointChannelIndices(document, node.id)) {
+        const inKey = endpointKey(node.id, `in${n}`);
+        const outKey = endpointKey(node.id, `out${n}`);
+        const edge = oneEdge(inKey);
+        if (edge === undefined) {
+          targets.set(inKey, { kind: 'numeric' });
+          sources.set(outKey, { kind: 'numeric' });
+          continue;
+        }
         const source = sourceType(edge);
-        checkKind(source, { kind: 'spectrum' }, inKey);
+        checkKind(source, { kind: 'numeric' }, inKey);
         if (source.dimension === undefined) {
           throw new KernelError(
             `'${endpointKey(edge.from.node, edge.from.port)}' has no dimension yet — wire its own inputs first`,
             inKey,
           );
         }
-        if (dimension === undefined) dimension = source.dimension;
-        else {
-          assertSameDimension(
-            dimension,
-            source.dimension,
-            'every wire into a waypoint must share one dimension',
-            inKey,
-          );
-        }
+        const type = { kind: 'numeric' as const, dimension: source.dimension, unit: canonicalUnit(source.dimension) };
+        targets.set(inKey, type);
+        sources.set(outKey, type);
       }
-      targets.set(
-        inKey,
-        dimension === undefined
-          ? { kind: 'spectrum' }
-          : { kind: 'spectrum', dimension, unit: canonicalUnit(dimension) },
-      );
-      sources.set(
-        outKey,
-        dimension === undefined
-          ? { kind: 'numeric' }
-          : { kind: 'numeric', dimension, unit: canonicalUnit(dimension) },
-      );
       continue;
     }
 

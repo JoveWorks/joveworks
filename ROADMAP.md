@@ -109,102 +109,10 @@ a schema change to carry a unit per bound (persists properly, but widens
 range has one unit). Neither was picked; parked here rather than decided
 under scope pressure.
 
-**Waypoint/pack/unpack — built, but the hand pass found real gaps.** The
-three routing node kinds landed (`waypoint`, `pack`, `unpack`; splice-on-
-delete for all three), on the design that a `waypoint` is one shared
-channel — several wires fan in, but only if they all share one dimension,
-merged into a single output — while `pack`/`unpack` carries several
-independently-dimensioned wires bundled into one edge. Thomas's first pass
-in the browser (2026-08-16) found this isn't what's needed:
-
-- **Waypoint should be the multiple-independent-channels design after
-  all.** The actual want is several `in_n → out_n` pairs on one waypoint,
-  each its own ghost slot, each its own dimension, straight through with no
-  merging — purely to bend/tidy wires on the canvas without touching
-  values. Today's single shared-dimension `in`/`out` pair doesn't cover
-  the common case (rerouting several unrelated wires through one point).
-  Revisit the waypoint design itself before touching pack/unpack, which
-  already covers a *different* need (actually bundling into one edge).
-- **Pack throws a waypoint error in ordinary use.** Reported: wiring
-  differently-dimensioned values into a `pack` node produces
-  `waypoint.in: every wire into a waypoint must share one dimension: power
-  (N·mm/s) and dimensionless (—) are different dimensions` — a message and
-  node id that belong to `waypoint`'s resolution branch, not `pack`'s.
-  Unconfirmed root cause: `pack.ts`'s current code path looked correct on
-  read-through (`packages/kernel/src/graph.ts`'s `pack` branch, separate
-  from `waypoint`'s), so this needs to be reproduced and traced rather than
-  assumed — possibly a mix-up between the two node kinds while testing
-  rather than a `pack`-specific bug, but the exact error text is real and
-  worth chasing down first.
-
-All three are quarantined for now (`packages/kernel/src/bundle.ts`'s
-`ROUTING_KINDS`/`ROUTING_QUARANTINE_REASON`, gated in `graph.ts`'s
-`resolveGraph`, the one choke point every evaluation path runs through) —
-same mechanism a quarantined formula uses: still listed in the palette,
-marked and explained rather than hidden, still lands on the canvas, but
-`resolveGraph` refuses it outright instead of computing a wrong or
-confusing result. Lift the gate once the waypoint redesign above lands and
-the pack error is traced.
-
-**Catalogue authoring should be easier for contributors.** Today a
-catalogue is authored by running the extraction script (`tools/extract/`,
-R&M content only) or hand-writing JSON against the schema — a real authoring
-UI was deferred out of milestone 1. Unscoped for now: could mean better
-docs for hand-writing JSON, a schema validator with useful errors, a
-scaffold CLI, or eventually the authoring UI itself. Revisit later; keep in
-mind rather than build toward yet.
-
-**Why is the Math catalogue a JSON file?** Checked before writing this down:
-it isn't hand-written JSON. `packages/nodes/src/operations.ts` authors the
-operations as TypeScript `Formula` records, `catalogue.ts` serializes them
-(`baseCatalogueJson`), and `packages/editor/src/model/catalogues.ts` loads
-that string through the ordinary `loadCatalogue` path — deliberately, so a
-base node and a belt formula are the same kind of object to the palette, the
-graph and the kernel. The open part is whether that round trip is still
-worth its cost now that the palette special-cases the base catalogue by id
-anyway (`Palette.tsx`'s `isMath`), or whether the operations should just be
-a library the kernel knows about directly.
-
-**General nodes need a general catalogue.** `compare` and `closure` (the
-student-authored equation node) are node kinds in the schema
-(`packages/schema/src/document.ts`), not catalogue entries — so they arrive
-in the palette by a different route than every other node, and there's no
-place to put the next one. They belong in a general catalogue alongside
-Math: domain-free, unrestricted, citation-free. Decide together with the
-question above, since both are really "what is the base library, and how
-does it reach the palette".
-
 **A machining catalogue** — machining power, chip load, and the rest of the
 cutting-parameter set. Content, not editor work; the nearest existing model
 is `basic-mechanics.json`, unrestricted and public, since none of this is
 R&M material.
-
-**User-authored equations should be saveable to the palette.** Today a
-`closure` node's expression lives in the graph that contains it — write the
-same equation in the next notebook and you type it again. The want: save it
-as a reusable node, have it appear in the palette, and remove it from the
-palette again when it stops being useful. Design questions before building:
-where saved nodes live (a user catalogue, or a distinct store), how they're
-identified and versioned given a catalogue formula carries id/version/hash,
-and what happens to a graph referencing a node the user later deletes —
-which is the quarantine question again, not a new one.
-
-**Export and import user-authored nodes**, one node or the whole list, so a
-set can be handed to a colleague or a class. Same rule as any other export:
-the never-embed boundary makes this straightforward — user-authored content
-is the student's own, so its expression travels with it, unlike an R&M
-formula. Naturally follows the palette-saving item above and shares its
-storage decision.
-
-**Catalogue-item context menu and favourites.** Right-clicking an item in a
-catalogue should open a small menu with **Insert**, **Help**, and **Add to
-favourites**. Favourites form a catalogue section at the top of the palette;
-favouriting duplicates the entry there and leaves it in its original catalogue.
-Open details: whether favourites persist locally (the likely expectation), and
-what **Help** resolves to — formula metadata in the app, documentation, or
-both. This belongs with user catalogues, rather than being a palette-only
-preference, because user-authored nodes should be favouritable in exactly the
-same way.
 
 **Selection actions and a selection context menu.** A multi-node selection
 needs right-click actions, initially **align** and **arrange**. Alignment is a
@@ -223,12 +131,6 @@ below is specifically about panel widths and other remaining preferences.
 **Extensive worked examples**, beyond the one belt lab sample. Waits on
 breadth — more chapters, or more graphs within belt — rather than being an
 editor feature on its own. Revisit once the second slice is in.
-
-**Documentation for teachers** — how to author a catalogue formula (today
-that path is the extraction script, not an editor UI), how
-`appliesWhen`/quarantine/status work, what a schema version bump means for a
-course's in-flight graphs. Distinct audience from the student tutorial
-above: instructor-facing, about the tool's authoring and versioning model.
 
 **What should a multi-node selection do?** "Group into new section" now
 frames only the current selection, or spawns an empty section at an open
@@ -290,12 +192,6 @@ log beyond default pageviews (aggregate, cookieless, no PII either way) —
 e.g. feature-usage events like "sweep run" or "plot created" — is still
 open; whatever set gets chosen should be documented in one place so "what
 does this log" has a single answer.
-
-**Fuzzy find in the catalogue palette.** The reusable fuzzy-search helper
-already powers Quick Add. Add palette search over node/formula name, symbol,
-description, and citation; with an empty query the palette retains its normal
-catalogue grouping. This is UI state and rendering work, not a new search
-mechanism.
 
 **A wired optional/default port overrides its typed default.** A threshold
 with a typed default currently blocks a wire of another unit even while its

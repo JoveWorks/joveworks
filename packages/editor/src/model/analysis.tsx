@@ -30,8 +30,7 @@ import {
   evaluateDocument,
   packChannelIndices,
   resolveGraph,
-  ROUTING_KINDS,
-  ROUTING_QUARANTINE_REASON,
+  waypointChannelIndices,
   type Evaluation,
   type Resolution,
   type Warning,
@@ -247,12 +246,14 @@ function readiness(
     }
 
     if (node.kind === 'waypoint') {
-      if (!isWired(node.id, 'in')) {
+      const channels = waypointChannelIndices(document, node.id);
+      const inputs = channels.map((channel) => `in${channel}`);
+      if (inputs.length === 0 || inputs.some((port) => !isWired(node.id, port))) {
         states.set(node.id, 'incomplete');
-        problems.set(node.id, notConnected(['in']));
+        problems.set(node.id, notConnected(inputs.length === 0 ? ['in0'] : inputs.filter((port) => !isWired(node.id, port))));
         continue;
       }
-      if (!upstreamReady(node.id, 'in')) {
+      if (inputs.some((port) => !upstreamReady(node.id, port))) {
         states.set(node.id, 'blocked');
         continue;
       }
@@ -383,17 +384,8 @@ export function analyse(document: GraphDocument, catalogues: readonly Catalogue[
         message = error.message;
         break;
       }
-      // A routing node's resolution failure is always the quarantine gate
-      // (`graph.ts`) — nothing else can throw from those three kinds right
-      // now — so it reads as `quarantined`, not a generic refusal.
-      const routingKind = document.nodes.find((node) => node.id === nodeId)?.kind;
-      if (routingKind !== undefined && ROUTING_KINDS.has(routingKind)) {
-        states.set(nodeId, 'quarantined');
-        problems.set(nodeId, ROUTING_QUARANTINE_REASON[routingKind as 'waypoint' | 'pack' | 'unpack']);
-      } else {
-        states.set(nodeId, 'error');
-        problems.set(nodeId, error.message);
-      }
+      states.set(nodeId, 'error');
+      problems.set(nodeId, error.message);
       const dropped = descendants(document, nodeId);
       for (const id of dropped) {
         if (id !== nodeId) states.set(id, 'blocked');

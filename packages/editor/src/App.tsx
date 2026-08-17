@@ -67,6 +67,14 @@ import {
 } from './model/numberFormat';
 import { messageOf } from './model/quantity';
 import {
+  equationId,
+  loadStoredUserEquations,
+  parseUserEquations,
+  saveUserEquations,
+  storeUserEquations,
+  type UserEquation,
+} from './model/userEquations';
+import {
   BELT_LAB_FORMULAS,
   CANTILEVER_FORMULAS,
   beltLab,
@@ -144,6 +152,13 @@ export function App(): ReactElement {
 function AppShell(): ReactElement {
   const flow = useReactFlow();
   const [catalogues, setCatalogues] = useState<readonly Catalogue[]>(initialCatalogues);
+  const [userEquations, setUserEquationsState] = useState<readonly UserEquation[]>(loadStoredUserEquations);
+  const setUserEquations = (update: (current: readonly UserEquation[]) => readonly UserEquation[]): void =>
+    setUserEquationsState((current) => {
+      const next = update(current);
+      storeUserEquations(next);
+      return next;
+    });
   const [{ document: initialDocument, restored: restoredAutosave }] = useState(startupDocument);
   const [history, setHistory] = useState<History<GraphDocument>>(() => initHistory(initialDocument));
   const document = history.present;
@@ -357,6 +372,17 @@ function AppShell(): ReactElement {
     () => ({
       document,
       catalogues,
+      userEquations,
+      saveUserEquation: (label: string, expression: string) =>
+        setUserEquations((current) => {
+          const existing = current.find((equation) => equation.label === label);
+          const saved = { id: existing?.id ?? equationId(label, current), label, expression };
+          return existing === undefined
+            ? [...current, saved]
+            : current.map((equation) => (equation.id === existing.id ? saved : equation));
+        }),
+      removeUserEquation: (id: string) =>
+        setUserEquations((current) => current.filter((equation) => equation.id !== id)),
       analysis,
       edit,
       editLive,
@@ -374,7 +400,7 @@ function AppShell(): ReactElement {
       hovered,
       setHovered,
     }),
-    [analysis, catalogues, document, pinned, selected, hovered],
+    [analysis, catalogues, document, userEquations, pinned, selected, hovered],
   );
 
   const beltAvailable = provides(catalogues, BELT_LAB_FORMULAS);
@@ -390,6 +416,21 @@ function AppShell(): ReactElement {
       pushNotice(`Loaded ${loaded.name} — ${loaded.formulas.length} formulas.`);
     } catch (error) {
       pushNotice(`That file is not a catalogue: ${messageOf(error)}`);
+    }
+  };
+
+  const importUserEquationFile = async (): Promise<void> => {
+    const file = await openTextFile();
+    if (file === undefined) return;
+    try {
+      const loaded = parseUserEquations(file.text);
+      setUserEquations((current) => {
+        const incoming = new Map(loaded.map((equation) => [equation.id, equation]));
+        return [...current.filter((equation) => !incoming.has(equation.id)), ...loaded];
+      });
+      pushNotice(`Imported ${loaded.length} saved equation${loaded.length === 1 ? '' : 's'}.`);
+    } catch (error) {
+      pushNotice(`That file is not a user-equation library: ${messageOf(error)}`);
     }
   };
 
@@ -458,6 +499,13 @@ function AppShell(): ReactElement {
           onClick: () => guardDiscard(() => openRecentDocument(recent)),
         }))),
     { label: 'Load catalogue…', onClick: () => void loadCatalogueFile() },
+    { heading: 'User equations' },
+    { label: 'Import equations…', onClick: () => void importUserEquationFile() },
+    {
+      label: 'Export equations',
+      disabled: userEquations.length === 0,
+      onClick: () => saveTextFile('nodebooks-equations.json', saveUserEquations(userEquations)),
+    },
     { label: 'Settings…', onClick: () => setShowSettings(true) },
   ];
 

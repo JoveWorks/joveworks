@@ -99,8 +99,7 @@ export { closureFormula } from './closure.js';
 export {
   nextPackChannel,
   packChannelIndices,
-  ROUTING_KINDS,
-  ROUTING_QUARANTINE_REASON,
+  waypointChannelIndices,
 } from './bundle.js';
 
 export {

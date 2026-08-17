@@ -1,15 +1,7 @@
-/**
- * `waypoint`, `pack` and `unpack` — quarantined pending a redesign
- * (ROADMAP.md's "Waypoint/pack/unpack" entry): `resolveGraph` refuses all
- * three unconditionally, the same gate `formula.ts`'s `assertEvaluable`
- * gives a quarantined formula. Every fixture here is invented (CLAUDE.md's
- * distribution restriction): plain lengths and forces, never a Roloff &
- * Matek quantity.
- */
+/** Routing nodes use invented values only; no restricted formula content. */
 
 import { describe, expect, it } from 'vitest';
 
-import { KernelError } from './errors.js';
 import { evaluateDocument } from './evaluate.js';
 import { resolveGraph } from './graph.js';
 import {
@@ -23,33 +15,55 @@ import {
   wire,
 } from './invented.fixtures.js';
 
-describe('waypoint / pack / unpack — quarantined', () => {
-  it('refuses to resolve a waypoint, wired or not', () => {
-    const wired = documentOf(
-      [input('w', scalar(20, 'mm')), waypointNode('via'), outputNode('readout', { kind: 'print' })],
-      [wire('w.value', 'via.in'), wire('via.out', 'readout.value')],
-    );
-    expect(() => resolveGraph(wired, [])).toThrow(/'via' is quarantined/);
-
-    const bare = documentOf([waypointNode('via')], []);
-    expect(() => resolveGraph(bare, [])).toThrow(KernelError);
-  });
-
-  it('refuses to resolve a pack', () => {
+describe('waypoint / pack / unpack', () => {
+  it('routes independently dimensioned waypoint channels without merging them', () => {
     const document = documentOf(
-      [input('length', scalar(20, 'mm')), packNode('bundle')],
-      [wire('length.value', 'bundle.in0')],
+      [
+        input('length', scalar(20, 'mm')),
+        input('force', scalar(30, 'N')),
+        waypointNode('via'),
+        outputNode('lengthOut', { kind: 'print' }),
+        outputNode('forceOut', { kind: 'print' }),
+      ],
+      [
+        wire('length.value', 'via.in0'),
+        wire('force.value', 'via.in1'),
+        wire('via.out0', 'lengthOut.value'),
+        wire('via.out1', 'forceOut.value'),
+      ],
     );
-    expect(() => resolveGraph(document, [])).toThrow(/'bundle' is quarantined/);
+    const result = evaluateDocument(document, []);
+    expect(result.values.get('via.out0')).toMatchObject({ kind: 'numeric', data: [20] });
+    expect(result.values.get('via.out1')).toMatchObject({ kind: 'numeric', data: [30] });
+    expect(result.resolution.sources.get('via.out0')?.dimension).not.toEqual(
+      result.resolution.sources.get('via.out1')?.dimension,
+    );
   });
 
-  it('refuses to resolve an unpack', () => {
-    const document = documentOf([unpackNode('split')], []);
-    expect(() => resolveGraph(document, [])).toThrow(/'split' is quarantined/);
+  it('allows an empty waypoint to remain available for wiring', () => {
+    expect(() => resolveGraph(documentOf([waypointNode('via')], []), [])).not.toThrow();
   });
 
-  it('evaluateDocument refuses the same way, since it resolves first', () => {
-    const document = documentOf([waypointNode('via')], []);
-    expect(() => evaluateDocument(document, [])).toThrow(/quarantined/);
+  it('packs different dimensions and restores each value through unpack', () => {
+    const document = documentOf(
+      [
+        input('length', scalar(20, 'mm')),
+        input('force', scalar(30, 'N')),
+        packNode('bundle'),
+        unpackNode('split'),
+        outputNode('lengthOut', { kind: 'print' }),
+        outputNode('forceOut', { kind: 'print' }),
+      ],
+      [
+        wire('length.value', 'bundle.in0'),
+        wire('force.value', 'bundle.in1'),
+        wire('bundle.bundle', 'split.bundle'),
+        wire('split.out0', 'lengthOut.value'),
+        wire('split.out1', 'forceOut.value'),
+      ],
+    );
+    const result = evaluateDocument(document, []);
+    expect(result.values.get('split.out0')).toMatchObject({ kind: 'numeric', data: [20] });
+    expect(result.values.get('split.out1')).toMatchObject({ kind: 'numeric', data: [30] });
   });
 });

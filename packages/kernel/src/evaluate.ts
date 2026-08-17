@@ -37,7 +37,7 @@ import {
   type SpectrumPort,
 } from '@mds/schema';
 
-import { packChannelIndices } from './bundle.js';
+import { packChannelIndices, waypointChannelIndices } from './bundle.js';
 import { comparator } from './compile.js';
 import { KernelError } from './errors.js';
 import { assertEvaluable, compileClosureFormula, compileFormula } from './formula.js';
@@ -195,7 +195,7 @@ export function evaluateDocument(
         break;
 
       case 'waypoint':
-        values.set(endpointKey(node.id, 'out'), evaluateWaypoint(node.id, resolution, values));
+        evaluateWaypoint(node.id, resolution, values, values);
         break;
 
       case 'pack':
@@ -564,11 +564,13 @@ function evaluateWaypoint(
   nodeId: string,
   resolution: Resolution,
   values: ReadonlyMap<string, PortValue>,
-): PortValue {
-  const key = endpointKey(nodeId, 'in');
-  const edge = resolution.incoming.get(key)?.[0];
-  if (edge === undefined) throw new KernelError("'in' is not connected", key);
-  return valueAtEdge(edge, key, values);
+  out: Map<string, PortValue>,
+): void {
+  for (const n of waypointChannelIndices(resolution.document, nodeId)) {
+    const key = endpointKey(nodeId, `in${n}`);
+    const edge = resolution.incoming.get(key)?.[0];
+    if (edge !== undefined) out.set(endpointKey(nodeId, `out${n}`), valueAtEdge(edge, key, values));
+  }
 }
 
 /** Collects each currently-wired channel's value, in index order, into one bundle. */

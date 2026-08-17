@@ -13,10 +13,14 @@ import { createContext, useContext } from 'react';
 import type { Catalogue, GraphDocument } from '@mds/schema';
 
 import type { Analysis } from './model/analysis';
+import type { UserEquation } from './model/userEquations';
 
 export interface GraphContextValue {
   readonly document: GraphDocument;
   readonly catalogues: readonly Catalogue[];
+  readonly userEquations: readonly UserEquation[];
+  readonly saveUserEquation: (label: string, expression: string) => void;
+  readonly removeUserEquation: (id: string) => void;
   readonly analysis: Analysis;
   readonly edit: (change: (document: GraphDocument) => GraphDocument) => void;
   /**

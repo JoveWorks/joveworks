@@ -22,6 +22,7 @@ export default defineConfig({
           { text: "Sweeps", link: "/guide/sweeps" },
           { text: "Units", link: "/guide/units" },
           { text: "Node reference", link: "/guide/node-reference" },
+          { text: "Catalogue authoring", link: "/guide/catalogue-authoring" },
         ],
       },
     ],

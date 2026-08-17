@@ -11,6 +11,7 @@
 
 import { parseCatalogue, loadCatalogue, ports, type Catalogue, type Formula, type JsonValue } from '@mds/schema';
 import { BASE_CATALOGUE_ID, baseCatalogueJson } from '@mds/nodes';
+import { fuzzySearch } from './fuzzy';
 
 export interface PaletteEntry {
   readonly formula: Formula;
@@ -66,22 +67,18 @@ export function entries(catalogues: readonly Catalogue[]): readonly PaletteEntry
 }
 
 /**
- * Find a formula the way a student looks for one: by equation number, by symbol,
- * or by what it computes (OVERVIEW's "drag in formulas by equation number or by
- * what they compute"). Every word of the query has to match somewhere.
+ * Find a formula the way a student looks for one: fuzzy-matched by equation
+ * number, symbol, description, citation, or port metadata.
  */
 export function search(list: readonly PaletteEntry[], query: string): readonly PaletteEntry[] {
-  const words = query.toLowerCase().split(/\s+/u).filter((word) => word.length > 0);
-  if (words.length === 0) return list;
-  return list.filter(({ formula }) => {
-    const haystack = [
+  return fuzzySearch(query, list, ({ formula }) =>
+    [
       formula.id,
       formula.citation ?? '',
       formula.description,
       ...ports(formula).map((port) => `${port.name} ${port.description ?? ''}`),
     ]
       .join(' ')
-      .toLowerCase();
-    return words.every((word) => haystack.includes(word));
-  });
+      .toLowerCase(),
+  );
 }

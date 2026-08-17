@@ -508,9 +508,9 @@ describe('removeNodes — splicing a deleted routing node', () => {
       connect(
         { ...base, nodes: [...base.nodes, waypoint('via', 200, 0)] },
         { node: 'a', port: 'value' },
-        { node: 'via', port: 'in' },
+        { node: 'via', port: 'in0' },
       ),
-      { node: 'via', port: 'out' },
+      { node: 'via', port: 'out0' },
       { node: 'b', port: 'x' },
     );
     const spliced = removeNodes(wired, new Set(['via']));
@@ -520,23 +520,22 @@ describe('removeNodes — splicing a deleted routing node', () => {
     ]);
   });
 
-  it('reconnects every upstream source to every downstream target, fan-in and fan-out alike', () => {
+  it('reconnects each waypoint channel only to its matching downstream target', () => {
     const withWaypoint = { ...base, nodes: [...base.nodes, waypoint('via', 200, 0)] };
     const wired = connect(
       connect(
-        connect(withWaypoint, { node: 'a', port: 'value' }, { node: 'via', port: 'in' }, true),
+        connect(withWaypoint, { node: 'a', port: 'value' }, { node: 'via', port: 'in0' }),
         { node: 'b', port: 'value' },
-        { node: 'via', port: 'in' },
-        true,
+        { node: 'via', port: 'in1' },
       ),
-      { node: 'via', port: 'out' },
+      { node: 'via', port: 'out1' },
       { node: 'a', port: 'x' },
     );
     const spliced = removeNodes(wired, new Set(['via']));
     const pairs = spliced.edges
       .map((edge) => `${edge.from.node}->${edge.to.node}`)
       .sort();
-    expect(pairs).toEqual(['a->a', 'b->a']);
+    expect(pairs).toEqual(['b->a']);
   });
 
   it('reconnects a pack/unpack pair channel by channel, in fan-out to several unpacks', () => {
@@ -604,16 +603,15 @@ describe('removeNodes — splicing a deleted routing node', () => {
     const wired = connect(
       connect(
         connect(
-          connect(withNodes, { node: 'a', port: 'value' }, { node: 'via1', port: 'in' }),
-          { node: 'via1', port: 'out' },
-          { node: 'via2', port: 'in' },
+          connect(withNodes, { node: 'a', port: 'value' }, { node: 'via1', port: 'in0' }),
+          { node: 'via1', port: 'out0' },
+          { node: 'via2', port: 'in0' },
         ),
-        { node: 'via2', port: 'out' },
+        { node: 'via2', port: 'out0' },
         { node: 'b', port: 'x' },
       ),
       { node: 'a', port: 'value' },
-      { node: 'via2', port: 'in' },
-      true,
+      { node: 'via2', port: 'in1' },
     );
     const spliced = removeNodes(wired, new Set(['via1', 'via2']));
     // No splice attempted for a multi-routing-node batch: every edge that

@@ -152,20 +152,20 @@ describe('analysing a graph mid-build', () => {
     expect(analysis.states.get('sum')).toBe('ok');
   });
 
-  it('shows a waypoint as quarantined, not a raw resolution error', () => {
+  it('evaluates a wired waypoint channel', () => {
     const document = graph(
       [
         scalar('a', 2),
         waypointNode('via'),
         { kind: 'output', id: 'out', position: { x: 0, y: 0 }, output: { kind: 'print' } },
       ],
-      [wire('e1', ['a', 'value'], ['via', 'in']), wire('e2', ['via', 'out'], ['out', 'value'])],
+      [wire('e1', ['a', 'value'], ['via', 'in0']), wire('e2', ['via', 'out0'], ['out', 'value'])],
     );
     const analysis = analyse(document, CATALOGUES);
 
-    expect(analysis.states.get('via')).toBe('quarantined');
-    expect(analysis.problems.get('via')).toMatch(/independent in.+out pairs/);
-    expect(analysis.states.get('out')).toBe('blocked');
+    expect(analysis.states.get('via')).toBe('ok');
+    expect(analysis.problems.get('via')).toBeUndefined();
+    expect(analysis.states.get('out')).toBe('ok');
   });
 
   it('blocks a spectrum port on any unready source, not just the last edge recorded', () => {

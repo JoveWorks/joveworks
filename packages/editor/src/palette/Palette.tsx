@@ -4,8 +4,8 @@
  * own header with a shortcut per starting kind (the kind stays switchable on
  * the node afterward; the shortcut only saves the first click). `compare`
  * and `equation` (a closure node) aren't formulas either, but each reads as
- * an operation by shape, so they ride along in the Math section instead of
- * getting a header of their own.
+ * an operation by shape, so they live with routing nodes in the domain-free
+ * General section rather than pretending to be catalogue formulas.
  *
  * A student finds a formula by equation number or by what it computes, so the
  * search reads ids, citations, descriptions and port names alike. Quarantined
@@ -17,8 +17,6 @@
 import { useMemo, useState, type ReactElement } from 'react';
 import { useReactFlow } from '@xyflow/react';
 
-import { BASE_CATALOGUE_ID } from '@mds/nodes';
-import { ROUTING_QUARANTINE_REASON } from '@mds/kernel';
 import { parseUnit, type Unit } from '@mds/units';
 import {
   axes as documentAxes,
@@ -32,12 +30,18 @@ import {
 import { useGraph } from '../graph-context';
 import { addNode, uniqueId } from '../model/document';
 import { entries, search, type PaletteEntry } from '../model/catalogues';
+import { loadFavourites, saveFavourites } from '../model/palettePreferences';
 import { converted } from '../canvas/ValueEditor';
+import { ContextMenu } from '../canvas/ContextMenu';
+import { DOCS_BASE_URL } from '../help-links';
 import { Symbol } from '../Symbol';
 
 /** The keys the two document-schema headers — Input, Output — collapse under; neither is a catalogue id. */
 const INPUT = '__input__';
 const OUTPUT = '__output__';
+const GENERAL = '__general__';
+const USER = '__user__';
+const FAVOURITES = '__favourites__';
 
 /** An input's starting kind, built off a plain `1`, matching `ValueKindSelect`'s own conversion. */
 function seedValue(kind: 'scalar' | 'linear' | 'list', unit: Unit): ValueSpec {
@@ -57,12 +61,24 @@ function useDropPosition(): () => Position {
 }
 
 export function Palette(): ReactElement {
-  const { document, catalogues, edit } = useGraph();
+  const { document, catalogues, userEquations, removeUserEquation, edit } = useGraph();
   const [query, setQuery] = useState('');
   // Session UI state, not a document field — reopens on reload, same
   // precedent as a node's pin state. Which sections are open changes nothing
   // about what the graph is. Search ignores this and always shows a match.
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
+  const [favourites, setFavouritesState] = useState<ReadonlySet<string>>(loadFavourites);
+  const [menu, setMenu] = useState<
+    | { readonly entry: PaletteEntry; readonly x: number; readonly y: number }
+    | { readonly userEquationId: string; readonly x: number; readonly y: number }
+    | undefined
+  >();
+  const setFavourites = (update: (current: ReadonlySet<string>) => ReadonlySet<string>): void =>
+    setFavouritesState((current) => {
+      const next = update(current);
+      saveFavourites(next);
+      return next;
+    });
   const position = useDropPosition();
 
   const toggleCollapsed = (catalogueId: string): void =>
@@ -87,6 +103,8 @@ export function Palette(): ReactElement {
     }
     return [...byCatalogue.entries()];
   }, [found]);
+  const favouriteEntries = all.filter(({ formula }) => favourites.has(formula.id));
+  const favouriteUserEquations = userEquations.filter((equation) => favourites.has(`user:${equation.id}`));
 
   const addFormula = (formula: Formula): void =>
     edit((current) =>
@@ -145,6 +163,39 @@ export function Palette(): ReactElement {
       return addNode(current, { kind: 'closure', id, label: id, expression: '', position: position() });
     });
 
+  const addUserEquation = (id: string): void => {
+    const saved = userEquations.find((equation) => equation.id === id);
+    if (saved === undefined) return;
+    edit((current) => {
+      const nodeId = uniqueId(current, saved.id);
+      return addNode(current, {
+        kind: 'closure', id: nodeId, label: saved.label, expression: saved.expression, position: position(),
+      });
+    });
+  };
+
+  const formulaEntry = (entry: PaletteEntry, keyPrefix = ''): ReactElement => {
+    const { formula } = entry;
+    return (
+      <li key={`${keyPrefix}${formula.id}`}>
+        <button
+          type="button"
+          className={`entry ${formula.status}`}
+          title={formula.status === 'quarantined' ? `Quarantined: ${formula.quarantineReason ?? ''}` : formula.description}
+          onClick={() => addFormula(formula)}
+          onContextMenu={(event) => {
+            event.preventDefault();
+            setMenu({ entry, x: event.clientX, y: event.clientY });
+          }}
+        >
+          <span className="entry-id">{formula.citation ?? formula.id}</span>
+          <span className="entry-output"><Symbol name={formula.output.name} /></span>
+          {formula.status === 'quarantined' ? <span className="entry-status">quarantined</span> : null}
+        </button>
+      </li>
+    );
+  };
+
   const addWaypoint = (): void =>
     edit((current) => {
       const id = uniqueId(current, 'waypoint');
@@ -173,6 +224,18 @@ export function Palette(): ReactElement {
       />
 
       <div className="palette-list">
+        {query.trim().length === 0 && favouriteEntries.length + favouriteUserEquations.length > 0 ? (
+          <section>
+            <h3><button type="button" className="section-toggle" onClick={() => toggleCollapsed(FAVOURITES)}>
+              <span className="section-toggle-title">Favourites{collapsed.has(FAVOURITES) ? ` (${favouriteEntries.length + favouriteUserEquations.length})` : ''}</span>
+              <span className="chevron" aria-hidden="true">{collapsed.has(FAVOURITES) ? '▸' : '▾'}</span>
+            </button></h3>
+            {collapsed.has(FAVOURITES) ? null : <ul>
+              {favouriteEntries.map((entry) => formulaEntry(entry, 'fav-'))}
+              {favouriteUserEquations.map((equation) => <li key={`fav-user-${equation.id}`}><button type="button" className="entry" onClick={() => addUserEquation(equation.id)}><span className="entry-id">{equation.label}</span><span className="entry-output">saved equation</span></button></li>)}
+            </ul>}
+          </section>
+        ) : null}
         {/* Ahead of the catalogues, not one-off toolbar buttons (docs/UX-SPEC.md):
             an input and an output are what every graph is built from and
             eventually ends in, so they read the same way a catalogue entry
@@ -214,6 +277,36 @@ export function Palette(): ReactElement {
                 </li>
               </ul>
             )}
+          </section>
+        ) : null}
+
+        {query.trim().length === 0 ? (
+          <section>
+            <h3><button type="button" className="section-toggle" onClick={() => toggleCollapsed(GENERAL)}>
+              <span className="section-toggle-title">General{collapsed.has(GENERAL) ? ' (5)' : ''}</span>
+              <span className="chevron" aria-hidden="true">{collapsed.has(GENERAL) ? '▸' : '▾'}</span>
+            </button></h3>
+            {collapsed.has(GENERAL) ? null : <ul>
+              <li><button type="button" className="entry" onClick={addCompare}><span className="entry-id">compare</span><span className="entry-output">a wireable pass/fail verdict</span></button></li>
+              <li><button type="button" className="entry" onClick={addClosure}><span className="entry-id">equation</span><span className="entry-output">type one — its ports follow from what it uses</span></button></li>
+              <li><button type="button" className="entry" onClick={addWaypoint}><span className="entry-id">waypoint</span><span className="entry-output">route independent wires through one stop</span></button></li>
+              <li><button type="button" className="entry" onClick={addPack}><span className="entry-id">pack</span><span className="entry-output">bundle several wires into one</span></button></li>
+              <li><button type="button" className="entry" onClick={addUnpack}><span className="entry-id">unpack</span><span className="entry-output">split a bundle back into its wires</span></button></li>
+            </ul>}
+          </section>
+        ) : null}
+
+        {query.trim().length === 0 && userEquations.length > 0 ? (
+          <section>
+            <h3><button type="button" className="section-toggle" onClick={() => toggleCollapsed(USER)}>
+              <span className="section-toggle-title">My equations{collapsed.has(USER) ? ` (${userEquations.length})` : ''}</span>
+              <span className="chevron" aria-hidden="true">{collapsed.has(USER) ? '▸' : '▾'}</span>
+            </button></h3>
+            {collapsed.has(USER) ? null : <ul>{userEquations.map((equation) => <li key={equation.id}>
+              <button type="button" className="entry" title={equation.expression} onClick={() => addUserEquation(equation.id)} onContextMenu={(event) => { event.preventDefault(); setMenu({ userEquationId: equation.id, x: event.clientX, y: event.clientY }); }}>
+                <span className="entry-id">{equation.label}</span><span className="entry-output">saved equation</span>
+              </button>
+            </li>)}</ul>}
           </section>
         ) : null}
 
@@ -273,11 +366,7 @@ export function Palette(): ReactElement {
 
         {grouped.map(([catalogueId, list]) => {
           const isCollapsed = query.trim().length === 0 && collapsed.has(catalogueId);
-          // `compare` isn't a formula but reads as one operation among
-          // others by shape — two ports in, one computed value out — so it
-          // rides along in the Math section rather than earning its own.
-          const isMath = catalogueId === BASE_CATALOGUE_ID;
-          const count = list.length + (isMath ? 5 : 0);
+          const count = list.length;
           return (
             <section key={catalogueId}>
               <h3>
@@ -302,86 +391,7 @@ export function Palette(): ReactElement {
               </h3>
               {isCollapsed ? null : (
                 <ul>
-                  {isMath ? (
-                    <li>
-                      <button type="button" className="entry" onClick={addCompare}>
-                        <span className="entry-id">compare</span>
-                        <span className="entry-output">a wireable pass/fail verdict</span>
-                      </button>
-                    </li>
-                  ) : null}
-                  {isMath ? (
-                    <li>
-                      <button type="button" className="entry" onClick={addClosure}>
-                        <span className="entry-id">equation</span>
-                        <span className="entry-output">type one — its ports follow from what it uses</span>
-                      </button>
-                    </li>
-                  ) : null}
-                  {isMath ? (
-                    <li>
-                      <button
-                        type="button"
-                        className="entry quarantined"
-                        title={`Quarantined: ${ROUTING_QUARANTINE_REASON.waypoint}`}
-                        onClick={addWaypoint}
-                      >
-                        <span className="entry-id">waypoint</span>
-                        <span className="entry-output">a routed stop on a wire, no operation</span>
-                        <span className="entry-status">quarantined</span>
-                      </button>
-                    </li>
-                  ) : null}
-                  {isMath ? (
-                    <li>
-                      <button
-                        type="button"
-                        className="entry quarantined"
-                        title={`Quarantined: ${ROUTING_QUARANTINE_REASON.pack}`}
-                        onClick={addPack}
-                      >
-                        <span className="entry-id">pack</span>
-                        <span className="entry-output">bundle several wires into one</span>
-                        <span className="entry-status">quarantined</span>
-                      </button>
-                    </li>
-                  ) : null}
-                  {isMath ? (
-                    <li>
-                      <button
-                        type="button"
-                        className="entry quarantined"
-                        title={`Quarantined: ${ROUTING_QUARANTINE_REASON.unpack}`}
-                        onClick={addUnpack}
-                      >
-                        <span className="entry-id">unpack</span>
-                        <span className="entry-output">split a bundle back into its wires</span>
-                        <span className="entry-status">quarantined</span>
-                      </button>
-                    </li>
-                  ) : null}
-                  {list.map(({ formula }) => (
-                    <li key={formula.id}>
-                      <button
-                        type="button"
-                        className={`entry ${formula.status}`}
-                        title={
-                          formula.status === 'quarantined'
-                            ? `Quarantined: ${formula.quarantineReason ?? ''}`
-                            : formula.description
-                        }
-                        onClick={() => addFormula(formula)}
-                      >
-                        <span className="entry-id">{formula.citation ?? formula.id}</span>
-                        <span className="entry-output">
-                          <Symbol name={formula.output.name} />
-                        </span>
-                        {formula.status === 'quarantined' ? (
-                          <span className="entry-status">quarantined</span>
-                        ) : null}
-                      </button>
-                    </li>
-                  ))}
+                  {list.map((entry) => formulaEntry(entry))}
                 </ul>
               )}
             </section>
@@ -394,6 +404,22 @@ export function Palette(): ReactElement {
         {document.nodes.length} nodes · {catalogues.length} catalogue
         {catalogues.length === 1 ? '' : 's'} loaded
       </p>
+      {menu !== undefined ? (
+        <ContextMenu
+          x={menu.x}
+          y={menu.y}
+          onClose={() => setMenu(undefined)}
+          items={'entry' in menu ? [
+            { label: 'Insert', onClick: () => addFormula(menu.entry.formula) },
+            { label: 'Help', onClick: () => window.open(`${DOCS_BASE_URL}/guide/node-reference#formula`, '_blank', 'noopener') },
+            { label: favourites.has(menu.entry.formula.id) ? 'Remove from favourites' : 'Add to favourites', onClick: () => setFavourites((current) => { const next = new Set(current); if (next.has(menu.entry.formula.id)) next.delete(menu.entry.formula.id); else next.add(menu.entry.formula.id); return next; }) },
+          ] : [
+            { label: 'Insert', onClick: () => addUserEquation(menu.userEquationId) },
+            { label: favourites.has(`user:${menu.userEquationId}`) ? 'Remove from favourites' : 'Add to favourites', onClick: () => setFavourites((current) => { const key = `user:${menu.userEquationId}`; const next = new Set(current); if (next.has(key)) next.delete(key); else next.add(key); return next; }) },
+            { label: 'Remove from palette', danger: true, onClick: () => removeUserEquation(menu.userEquationId) },
+          ]}
+        />
+      ) : null}
     </div>
   );
 }

@@ -13,7 +13,7 @@
  * only how a permitted change is applied.
  */
 
-import { closureFormula, packChannelIndices } from '@mds/kernel';
+import { closureFormula, packChannelIndices, waypointChannelIndices } from '@mds/kernel';
 import {
   VALUE_PORT,
   type ClosureNode,
@@ -142,15 +142,16 @@ function addSplicedEdge(document: GraphDocument, from: Endpoint, to: Endpoint): 
 }
 
 function spliceWaypoint(document: GraphDocument, nodeId: string): GraphDocument {
-  const sources = document.edges
-    .filter((edge) => edge.to.node === nodeId && edge.to.port === 'in')
-    .map((edge) => edge.from);
-  const targets = document.edges
-    .filter((edge) => edge.from.node === nodeId && edge.from.port === 'out')
-    .map((edge) => edge.to);
   let next = document;
-  for (const from of sources) {
-    for (const to of targets) next = addSplicedEdge(next, from, to);
+  for (const channel of waypointChannelIndices(document, nodeId)) {
+    const source = document.edges.find(
+      (edge) => edge.to.node === nodeId && edge.to.port === `in${channel}`,
+    )?.from;
+    if (source === undefined) continue;
+    const targets = document.edges
+      .filter((edge) => edge.from.node === nodeId && edge.from.port === `out${channel}`)
+      .map((edge) => edge.to);
+    for (const target of targets) next = addSplicedEdge(next, source, target);
   }
   return next;
 }

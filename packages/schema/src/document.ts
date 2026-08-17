@@ -210,17 +210,10 @@ export interface ClosureNode extends NodeBase {
 }
 
 /**
- * A redirect: one wireable input, one generic output of exactly the same
- * dimension. Neither port is declared here — like `ClosureNode`, both are
- * derived at resolve/render time (`packages/kernel/src/graph.ts`'s
- * `waypoint` branch), because there is nothing to declare: the output's
- * dimension is always the input's, whatever that turns out to be.
- *
- * Exists so a wire can be routed through a visible stop on the canvas —
- * bent around other nodes, given a label — without the redirect itself
- * changing a single number. Its input accepts any number of wires the same
- * way `minimum`'s does, and copies the first one straight through, unlike a
- * reduction: this is passthrough, not aggregation.
+ * A redirect with independently typed `inN → outN` pairs. Ports are derived
+ * from edges at resolve/render time; each pair preserves its own dimension
+ * and value. This lets unrelated wires share one visual routing stop without
+ * merging them (pack/unpack is the separate operation that really bundles).
  */
 export interface WaypointNode extends NodeBase {
   readonly kind: 'waypoint';
