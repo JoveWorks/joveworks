@@ -171,6 +171,34 @@ export function knownUnitSymbols(): readonly string[] {
 }
 
 /**
+ * The finite set offered by the editor's display-unit picker.  Unit syntax is
+ * intentionally more expressive than this list (a catalogue may declare any
+ * valid expression), but a picker needs choices a student can recognise.
+ */
+const DISPLAY_UNIT_SYMBOLS = [
+  '', '%', 'mm', 'm', 'N', 'kN', 's', 'min', 'h', 'rad', 'deg', 'K',
+  'g', 'kg', 't', 'Pa', 'kPa', 'MPa', 'GPa', 'N/mm²', 'Nm', 'Nmm',
+  'J', 'kJ', 'W', 'kW', 'MW', 'Hz', 'rpm',
+] as const;
+
+/** Display-unit picker choices with exactly the requested dimension. */
+export function compatibleDisplayUnits(dimension: Dimension): readonly Unit[] {
+  return DISPLAY_UNIT_SYMBOLS.map(parseDisplayUnit).filter((candidate) =>
+    dimensionsEqual(candidate.dimension, dimension),
+  );
+}
+
+function parseDisplayUnit(symbol: string): Unit {
+  if (symbol === '') return DIMENSIONLESS_UNIT;
+  // `parse.ts` already depends on this module, so use the atomic lookup here
+  // rather than forming a cycle merely for the one compound spelling.
+  if (symbol === 'N/mm²') return unit(symbol, STRESS, 1);
+  const found = lookupAtomicUnit(symbol);
+  if (found === undefined) throw new UnitError(`${symbol} is not a picker unit`);
+  return unit(symbol, found.dimension, found.factor);
+}
+
+/**
  * The bare, prefixable atomic symbol `symbol` names — itself, or itself
  * under a prefix already applied (`kPa` → `Pa`). Undefined for anything
  * else: a compound expression such as `N/mm²` never matches an `ATOMS` key

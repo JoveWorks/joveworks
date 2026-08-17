@@ -121,6 +121,28 @@ export function rescaleRange(range: Range, text: string): Range {
   return { ...range, start: rescale(range.start), stop: rescale(range.stop), unit: parsed };
 }
 
+/** Re-express every authored numeric value under a compatible display unit. */
+export function rescaleValue(value: ValueSpec, unit: Unit): ValueSpec {
+  if (!('unit' in value) || !dimensionsEqual(value.unit.dimension, unit.dimension)) return value;
+  const scale = value.unit.factor / unit.factor;
+  switch (value.kind) {
+    case 'scalar':
+      return { ...value, value: value.value * scale, unit };
+    case 'slider':
+      return { ...value, value: value.value * scale, min: value.min * scale, max: value.max * scale, unit };
+    case 'linear':
+    case 'logarithmic':
+    case 'renard':
+      return { ...value, start: value.start * scale, stop: value.stop * scale, unit };
+    case 'list':
+      return { ...value, values: value.values.map((entry) => entry * scale), unit };
+    case 'spectrum':
+      return { ...value, values: value.values.map((entry) => entry * scale), unit };
+    default:
+      return value;
+  }
+}
+
 interface Props {
   readonly value: ValueSpec;
   readonly onChange: (value: ValueSpec) => void;

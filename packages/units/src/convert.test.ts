@@ -6,6 +6,7 @@ import {
   LENGTH,
   UnitError,
   assertDimensionsCompatible,
+  compatibleDisplayUnits,
   convert,
   formatQuantity,
   fromCanonical,
@@ -20,6 +21,13 @@ import {
 } from './index.js';
 
 describe('boundary conversion', () => {
+  it('offers only compatible choices in the display-unit picker', () => {
+    expect(compatibleDisplayUnits(parseUnit('Pa').dimension).map((unit) => unit.symbol)).toEqual(
+      expect.arrayContaining(['Pa', 'N/mm²']),
+    );
+    expect(compatibleDisplayUnits(parseUnit('Pa').dimension).map((unit) => unit.symbol)).not.toContain('mm');
+  });
+
   it('converts into and out of canonical units', () => {
     expect(toCanonical(2.5, parseUnit('m'))).toBe(2500);
     expect(fromCanonical(2500, parseUnit('m'))).toBe(2.5);

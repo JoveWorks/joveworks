@@ -52,6 +52,7 @@ const study: JsonObject = {
       position: { x: 260, y: 0 },
       frameId: 'sizing',
       formula: { id: 'demo.product', version: 1, hash: '0123456789abcdef' },
+      displayUnits: { y: 'N/mm²' },
     },
     {
       kind: 'output',
@@ -137,6 +138,12 @@ describe('round-tripping (the verification docs/PLAN.md asks for)', () => {
 
   it('never carries a catalogue formula’s expression into the graph file', () => {
     expect(saveDocument(parseDocument(study))).not.toMatch(/a\*b/);
+  });
+
+  it('preserves a graph-local port display unit', () => {
+    const document = parseDocument(study);
+    const formula = document.nodes.find((node) => node.id === 'n1');
+    expect(formula?.displayUnits?.y?.symbol).toBe('N/mm²');
   });
 
   it('does carry a closure node’s own expression — it is the student’s content, not R&M’s', () => {

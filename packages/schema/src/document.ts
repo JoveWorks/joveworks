@@ -153,6 +153,8 @@ interface NodeBase {
   /** The group frame this node sits in, and therefore its notebook section. */
   readonly frameId?: string;
   readonly label?: string;
+  /** Per-port display choices made in this graph, keyed by port name. */
+  readonly displayUnits?: Readonly<Record<string, Unit>>;
 }
 
 /** A literal, a categorical choice, a spectrum, or a range. */
@@ -417,6 +419,7 @@ function parseNode(value: JsonValue, path: string): GraphNode {
     position: parsePosition(required(object, 'position', path), join(path, 'position')),
     ...put('frameId', optional(object, 'frameId', path, readName)),
     ...put('label', optional(object, 'label', path, readString)),
+    ...put('displayUnits', optional(object, 'displayUnits', path, parseDisplayUnits)),
   };
   const kind = readEnum(required(object, 'kind', path), join(path, 'kind'), NODE_KINDS);
 
@@ -474,6 +477,7 @@ function serializeNode(node: GraphNode): JsonObject {
     position: { x: node.position.x, y: node.position.y },
     ...put('frameId', node.frameId),
     ...put('label', node.label),
+    ...put('displayUnits', serializeDisplayUnits(node.displayUnits)),
   };
   switch (node.kind) {
     case 'input':
@@ -499,6 +503,18 @@ function serializeNode(node: GraphNode): JsonObject {
     case 'unpack':
       return base;
   }
+}
+
+function parseDisplayUnits(value: JsonValue, path: string): Readonly<Record<string, Unit>> {
+  const object = readObject(value, path);
+  return Object.fromEntries(
+    Object.entries(object).map(([port, symbol]) => [readName(port, path), parseUnitField(symbol, join(path, port))]),
+  );
+}
+
+function serializeDisplayUnits(units: Readonly<Record<string, Unit>> | undefined): JsonObject | undefined {
+  if (units === undefined || Object.keys(units).length === 0) return undefined;
+  return Object.fromEntries(Object.entries(units).map(([port, unit]) => [port, unit.symbol]));
 }
 
 function parseEndpoint(value: JsonValue, path: string): Endpoint {
