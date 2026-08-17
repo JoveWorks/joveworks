@@ -9,6 +9,8 @@ import { TextField } from './fields';
 interface Props {
   readonly value: string;
   readonly onCommit: (text: string) => void;
+  /** Frames have room for titles to wrap; compact node titles deliberately do not. */
+  readonly multiline?: boolean;
 }
 
 // Deliberately conservative: prose is not LaTeX. Only tokens carrying an
@@ -42,7 +44,7 @@ export function TitleText({ value }: { readonly value: string }): ReactElement {
   return <>{typeset ?? value}</>;
 }
 
-export function TitleField({ value, onCommit }: Props): ReactElement {
+export function TitleField({ value, onCommit, multiline = false }: Props): ReactElement {
   const { titleMathRendering } = useSettings();
   const [editing, setEditing] = useState(false);
   const typeset = titleMathRendering ? typesetTitle(value) : undefined;
@@ -55,6 +57,7 @@ export function TitleField({ value, onCommit }: Props): ReactElement {
         onCommit={onCommit}
         onBlur={() => setEditing(false)}
         autoFocus={editing}
+        multiline={multiline}
       />
     );
   }

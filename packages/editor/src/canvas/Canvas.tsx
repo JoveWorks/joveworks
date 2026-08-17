@@ -318,6 +318,10 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
   const [refusal, setRefusal] = useState<string | undefined>(undefined);
   const [menu, setMenu] = useState<MenuTarget | undefined>(undefined);
   const [quickAdd, setQuickAdd] = useState<QuickAddTarget | undefined>(undefined);
+  // Edge hover is a view concern, like selection. Keeping its id here lets the
+  // projection accent both the wire and precisely its two endpoint nodes
+  // without recording anything in the graph document.
+  const [hoveredEdgeId, setHoveredEdgeId] = useState<string | undefined>(undefined);
   const flow = useReactFlow();
   const clipboard = useRef<{ document: GraphDocument; selected: ReadonlySet<string> } | undefined>(
     undefined,
@@ -376,6 +380,11 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
    */
   const [measured, setMeasured] = useState<Measurements>(new Map());
 
+  const edgeEndpointIds = useMemo(() => {
+    const edge = document.edges.find((candidate) => candidate.id === hoveredEdgeId);
+    return edge === undefined ? new Set<string>() : new Set([edge.from.node, edge.to.node]);
+  }, [document.edges, hoveredEdgeId]);
+
   const nodes = useMemo<FlowNode[]>(
     () => [
       ...document.frames.map((frame) => ({
@@ -396,10 +405,11 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
         position: node.position,
         data: {},
         selected: selected.has(node.id),
+        ...(edgeEndpointIds.has(node.id) ? { className: 'edge-connected' } : {}),
         ...sizeOf(measured, node.id),
       })),
     ],
-    [document, measured, selected],
+    [document, edgeEndpointIds, measured, selected],
   );
 
   const edges = useMemo<FlowEdge[]>(() => {
@@ -419,9 +429,10 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
         target: edge.to.node,
         targetHandle: slotHandleId(edge.to.port, slot),
         selected: selected.has(edge.id),
+        ...(edge.id === hoveredEdgeId ? { className: 'edge-hovered' } : {}),
       };
     });
-  }, [document, selected]);
+  }, [document, hoveredEdgeId, selected]);
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
@@ -1037,6 +1048,8 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
           event.preventDefault();
           setMenu({ kind: 'edge', id: edge.id, x: event.clientX, y: event.clientY });
         }}
+        onEdgeMouseEnter={(_, edge) => setHoveredEdgeId(edge.id)}
+        onEdgeMouseLeave={() => setHoveredEdgeId(undefined)}
         onPaneContextMenu={(event) => {
           event.preventDefault();
           if (!('clientX' in event)) return;

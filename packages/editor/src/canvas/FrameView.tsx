@@ -51,6 +51,7 @@ export function FrameView({ id, selected }: NodeProps): ReactElement | null {
         <TitleField
           value={frame.title}
           onCommit={(title) => edit((current) => updateFrame(current, id, (entry) => ({ ...entry, title })))}
+          multiline
         />
       </div>
     </div>

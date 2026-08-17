@@ -11,7 +11,7 @@
  * someone typed a space after the number.
  */
 
-import { useEffect, useState, type ReactElement } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactElement } from 'react';
 
 import {
   PLAIN_NUMBER_FORMAT,
@@ -45,6 +45,8 @@ interface TextFieldProps {
   readonly disabled?: boolean;
   readonly autoFocus?: boolean;
   readonly onBlur?: () => void;
+  /** A content-height textarea, for fields such as canvas frame titles. */
+  readonly multiline?: boolean;
 }
 
 /**
@@ -61,9 +63,11 @@ export function TextField({
   disabled,
   autoFocus,
   onBlur,
+  multiline = false,
 }: TextFieldProps): ReactElement {
   const [text, setText] = useState(value);
   const [error, setError] = useState<string | undefined>(undefined);
+  const textarea = useRef<HTMLTextAreaElement>(null);
 
   // The document is the source of truth: an edit from anywhere else — loading a
   // file, opening a sample — replaces what is in the field.
@@ -71,6 +75,12 @@ export function TextField({
     setText(value);
     setError(undefined);
   }, [value]);
+
+  useLayoutEffect(() => {
+    if (!multiline || textarea.current === null) return;
+    textarea.current.style.height = '0px';
+    textarea.current.style.height = `${textarea.current.scrollHeight}px`;
+  }, [multiline, text]);
 
   const commit = (): void => {
     if (text === value) return;
@@ -84,32 +94,59 @@ export function TextField({
 
   return (
     <span className="field">
-      <input
-        className={className}
-        value={text}
-        placeholder={placeholder}
-        title={error ?? title}
-        aria-invalid={error !== undefined}
-        disabled={disabled}
-        {...(autoSize === undefined ? {} : { size: Math.max(autoSize, text.length, 1) })}
-        onChange={(event) => setText(event.target.value)}
-        autoFocus={autoFocus}
-        onBlur={() => {
-          commit();
-          onBlur?.();
-        }}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter') event.currentTarget.blur();
-          if (event.key === 'Escape') {
-            setText(value);
-            setError(undefined);
-            event.currentTarget.blur();
-          }
-          // React Flow deletes the selected node on Backspace; inside a field
-          // that key belongs to the text.
-          event.stopPropagation();
-        }}
-      />
+      {multiline ? (
+        <textarea
+          ref={textarea}
+          className={className}
+          value={text}
+          placeholder={placeholder}
+          title={error ?? title}
+          aria-invalid={error !== undefined}
+          disabled={disabled}
+          autoFocus={autoFocus}
+          rows={1}
+          onChange={(event) => setText(event.target.value)}
+          onBlur={() => {
+            commit();
+            onBlur?.();
+          }}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') {
+              setText(value);
+              setError(undefined);
+              event.currentTarget.blur();
+            }
+            event.stopPropagation();
+          }}
+        />
+      ) : (
+        <input
+          className={className}
+          value={text}
+          placeholder={placeholder}
+          title={error ?? title}
+          aria-invalid={error !== undefined}
+          disabled={disabled}
+          {...(autoSize === undefined ? {} : { size: Math.max(autoSize, text.length, 1) })}
+          onChange={(event) => setText(event.target.value)}
+          autoFocus={autoFocus}
+          onBlur={() => {
+            commit();
+            onBlur?.();
+          }}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') event.currentTarget.blur();
+            if (event.key === 'Escape') {
+              setText(value);
+              setError(undefined);
+              event.currentTarget.blur();
+            }
+            // React Flow deletes the selected node on Backspace; inside a field
+            // that key belongs to the text.
+            event.stopPropagation();
+          }}
+        />
+      )}
       {error === undefined ? null : <span className="field-error">{error}</span>}
     </span>
   );

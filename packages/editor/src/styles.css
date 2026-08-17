@@ -753,6 +753,18 @@ aside.right {
   border-color: var(--accent);
 }
 
+/* Hovering a wire identifies the relationship, not just the thin SVG path.
+   Its endpoints get a quiet ring while the edge itself receives the primary
+   accent below. */
+.react-flow__node.edge-connected .node {
+  box-shadow: 0 0 0 2px var(--accent-wash), var(--shadow-sm);
+}
+
+.react-flow__edge.edge-hovered .react-flow__edge-path {
+  stroke: var(--accent);
+  stroke-width: 3;
+}
+
 .frame.highlighted {
   border-color: var(--accent);
   border-style: solid;
@@ -1132,20 +1144,31 @@ aside.right {
   padding: 4px 8px;
   font-weight: 600;
   color: var(--muted);
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
-.frame input.title {
+.frame textarea.title {
   border: none;
   background: transparent;
   font-weight: 600;
   color: var(--muted);
-  width: 90%;
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 1.4em;
+  padding: 0;
+  resize: none;
+  overflow: hidden;
+  line-height: inherit;
+  font: inherit;
 }
 
 .frame .title-math {
   display: block;
-  width: 90%;
+  width: 100%;
   cursor: text;
+  overflow-wrap: anywhere;
 }
 
 /*
