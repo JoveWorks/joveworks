@@ -105,6 +105,12 @@ column already carrying every table axis remains unchanged. Each row should
 then carry the coordinates and results for one complete design point, with no
 blank axis cells.
 
+**Axis labels do not typeset mathematical symbols consistently.** A range
+node's title renders `f_z` as mathematics, but its “5 along chip load f_z”
+summary shows the raw symbol. Use the same math treatment wherever an axis
+label appears: input, formula, and closure-node summaries; plot axis selectors;
+plot axis, legend, and facet labels; and quick-add or context-menu labels.
+
 **Plot node's remaining options.** A first slice landed: three axis slots
 (`x`, `series`, `facet`), auto-assigned from whatever axes the wired value
 varies along. Still open: marking specific values on a curve, and a fourth
