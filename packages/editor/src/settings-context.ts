@@ -16,6 +16,8 @@ export interface SettingsContextValue {
   readonly setNumberFormat: (settings: NumberFormatSettings) => void;
   readonly minimapVisible: boolean;
   readonly setMinimapVisible: (visible: boolean) => void;
+  readonly titleMathRendering: boolean;
+  readonly setTitleMathRendering: (enabled: boolean) => void;
   readonly themePreference: ThemePreference;
   readonly setThemePreference: (preference: ThemePreference) => void;
 }

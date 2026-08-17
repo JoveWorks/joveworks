@@ -18,7 +18,7 @@ import { reframe, removeNodes, renameNode } from '../model/document';
 import { unitLabel } from '../model/quantity';
 import { NodeShell } from './NodeShell';
 import { slotHandleId } from './spectrumSlots';
-import { TextField } from './fields';
+import { TitleField } from './TitleField';
 
 export function PackNodeView({ id, selected }: NodeProps): ReactElement | null {
   const { document, analysis, edit, pinned, togglePin } = useGraph();
@@ -40,8 +40,7 @@ export function PackNodeView({ id, selected }: NodeProps): ReactElement | null {
       onTogglePin={() => togglePin(id)}
       onDelete={() => edit((current) => reframe(removeNodes(current, new Set([id]))))}
       title={
-        <TextField
-          className="title"
+        <TitleField
           value={node.label ?? id}
           onCommit={(label) => edit((current) => renameNode(current, id, label))}
         />

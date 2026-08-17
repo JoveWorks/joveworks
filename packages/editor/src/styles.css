@@ -484,6 +484,16 @@ aside.right {
   background: transparent;
 }
 
+.node .title-math {
+  display: block;
+  width: 100%;
+  cursor: text;
+}
+
+.title-math .katex {
+  font-size: 1em;
+}
+
 .node .help {
   border: none;
   padding: 0 2px;
@@ -1097,6 +1107,12 @@ aside.right {
   font-weight: 600;
   color: var(--muted);
   width: 90%;
+}
+
+.frame .title-math {
+  display: block;
+  width: 90%;
+  cursor: text;
 }
 
 /*

@@ -58,6 +58,7 @@ import { NodeShell } from './NodeShell';
 import { Sparkline } from './Sparkline';
 import { slotHandleId } from './spectrumSlots';
 import { NumberField, TextField } from './fields';
+import { TitleField } from './TitleField';
 
 /** What the node shows when the kernel has an answer for it. */
 function Verdict({ nodeId }: { readonly nodeId: string }): ReactElement | null {
@@ -147,8 +148,7 @@ export function OutputNodeView({ id, selected }: NodeProps): ReactElement | null
       onTogglePin={() => togglePin(id)}
       onDelete={() => edit((current) => reframe(removeNodes(current, new Set([id]))))}
       title={
-        <TextField
-          className="title"
+        <TitleField
           value={node.label ?? id}
           onCommit={(label) => edit((current) => renameNode(current, id, label))}
         />

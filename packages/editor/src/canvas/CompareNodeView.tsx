@@ -41,6 +41,7 @@ import { NodeShell } from './NodeShell';
 import { Sparkline } from './Sparkline';
 import { slotHandleId } from './spectrumSlots';
 import { TextField } from './fields';
+import { TitleField } from './TitleField';
 
 /**
  * What a bare, unitless threshold is actually compared in — `value`'s own
@@ -101,8 +102,7 @@ export function CompareNodeView({ id, selected }: NodeProps): ReactElement | nul
       onTogglePin={() => togglePin(id)}
       onDelete={() => edit((current) => reframe(removeNodes(current, new Set([id]))))}
       title={
-        <TextField
-          className="title"
+        <TitleField
           value={node.label ?? id}
           onCommit={(label) => edit((current) => renameNode(current, id, label))}
         />

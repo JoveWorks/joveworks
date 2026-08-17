@@ -16,7 +16,7 @@ import { nodeLabel, reframe, removeNodes, syncColumnLabels, updateNode } from '.
 import { axisLabel, reading } from '../model/values';
 import { NodeShell } from './NodeShell';
 import { Sparkline } from './Sparkline';
-import { TextField } from './fields';
+import { TitleField } from './TitleField';
 import { ValueFields, ValueKindSelect, ValuePointsField, ValueSliderBoundsFields } from './ValueEditor';
 
 export function InputNodeView({ id, selected }: NodeProps): ReactElement | null {
@@ -40,8 +40,7 @@ export function InputNodeView({ id, selected }: NodeProps): ReactElement | null 
       onDelete={() => edit((current) => reframe(removeNodes(current, new Set([id]))))}
       dataTour={`input-${id}`}
       title={
-        <TextField
-          className="title"
+        <TitleField
           value={node.label ?? id}
           onCommit={(label) =>
             edit((current) => {

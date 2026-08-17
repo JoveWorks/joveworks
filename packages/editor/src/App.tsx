@@ -44,8 +44,10 @@ import { groupIntoSection } from './model/document';
 import { autoArrange } from './model/layout';
 import {
   loadMinimapVisible,
+  loadTitleMathRendering,
   loadThemePreference,
   saveMinimapVisible,
+  saveTitleMathRendering,
   saveThemePreference,
   type ThemePreference,
 } from './model/editorSettings';
@@ -204,6 +206,7 @@ function AppShell(): ReactElement {
   const [showNotebook, setShowNotebook] = useState(true);
   const [numberFormat, setNumberFormatState] = useState<NumberFormatSettings>(loadNumberFormatSettings);
   const [minimapVisible, setMinimapVisibleState] = useState<boolean>(loadMinimapVisible);
+  const [titleMathRendering, setTitleMathRenderingState] = useState<boolean>(loadTitleMathRendering);
   const [themePreference, setThemePreferenceState] =
     useState<ThemePreference>(loadThemePreference);
   const [showSettings, setShowSettings] = useState(false);
@@ -286,6 +289,11 @@ function AppShell(): ReactElement {
     saveMinimapVisible(next);
   };
 
+  const setTitleMathRendering = (next: boolean): void => {
+    setTitleMathRenderingState(next);
+    saveTitleMathRendering(next);
+  };
+
   const setThemePreference = (next: ThemePreference): void => {
     setThemePreferenceState(next);
     saveThemePreference(next);
@@ -305,10 +313,12 @@ function AppShell(): ReactElement {
       setNumberFormat,
       minimapVisible,
       setMinimapVisible,
+      titleMathRendering,
+      setTitleMathRendering,
       themePreference,
       setThemePreference,
     }),
-    [numberFormat, minimapVisible, themePreference],
+    [numberFormat, minimapVisible, titleMathRendering, themePreference],
   );
 
   const analysis = useMemo(() => analyse(document, catalogues), [document, catalogues]);
@@ -681,6 +691,8 @@ function AppShell(): ReactElement {
               onChange={setNumberFormat}
               minimapVisible={minimapVisible}
               onMinimapVisibleChange={setMinimapVisible}
+              titleMathRendering={titleMathRendering}
+              onTitleMathRenderingChange={setTitleMathRendering}
               onClose={() => setShowSettings(false)}
             />
           ) : null}

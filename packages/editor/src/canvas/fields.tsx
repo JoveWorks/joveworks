@@ -43,6 +43,8 @@ interface TextFieldProps {
    * the wire is what makes the field editable again.
    */
   readonly disabled?: boolean;
+  readonly autoFocus?: boolean;
+  readonly onBlur?: () => void;
 }
 
 /**
@@ -57,6 +59,8 @@ export function TextField({
   className,
   autoSize,
   disabled,
+  autoFocus,
+  onBlur,
 }: TextFieldProps): ReactElement {
   const [text, setText] = useState(value);
   const [error, setError] = useState<string | undefined>(undefined);
@@ -89,7 +93,11 @@ export function TextField({
         disabled={disabled}
         {...(autoSize === undefined ? {} : { size: Math.max(autoSize, text.length, 1) })}
         onChange={(event) => setText(event.target.value)}
-        onBlur={commit}
+        autoFocus={autoFocus}
+        onBlur={() => {
+          commit();
+          onBlur?.();
+        }}
         onKeyDown={(event) => {
           if (event.key === 'Enter') event.currentTarget.blur();
           if (event.key === 'Escape') {

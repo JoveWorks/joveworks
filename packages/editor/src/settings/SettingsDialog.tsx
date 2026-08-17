@@ -25,6 +25,8 @@ interface Props {
   readonly onChange: (settings: NumberFormatSettings) => void;
   readonly minimapVisible: boolean;
   readonly onMinimapVisibleChange: (visible: boolean) => void;
+  readonly titleMathRendering: boolean;
+  readonly onTitleMathRenderingChange: (enabled: boolean) => void;
   readonly onClose: () => void;
 }
 
@@ -39,6 +41,8 @@ export function SettingsDialog({
   onChange,
   minimapVisible,
   onMinimapVisibleChange,
+  titleMathRendering,
+  onTitleMathRenderingChange,
   onClose,
 }: Props): ReactElement {
   const format = toUnitsFormat(settings);
@@ -108,6 +112,15 @@ export function SettingsDialog({
             onChange={(event) => onMinimapVisibleChange(event.target.checked)}
           />
           show the canvas minimap
+        </label>
+
+        <label className="dialog-field dialog-checkbox">
+          <input
+            type="checkbox"
+            checked={titleMathRendering}
+            onChange={(event) => onTitleMathRenderingChange(event.target.checked)}
+          />
+          typeset mathematical notation in node titles
         </label>
 
         <div className="dialog-actions">

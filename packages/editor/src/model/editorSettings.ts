@@ -1,6 +1,6 @@
 /**
  * Small standalone editor preferences that don't warrant their own module —
- * today just whether the minimap is drawn. Persisted the same way
+ * such as whether the minimap and title math are drawn. Persisted the same way
  * `numberFormat.ts` is: `localStorage`, wrapped in try/catch so private
  * browsing or a full quota degrades to the default rather than failing the
  * app.
@@ -26,6 +26,29 @@ export function saveMinimapVisible(visible: boolean): void {
     window.localStorage.setItem(MINIMAP_KEY, String(visible));
   } catch {
     // Same convenience-not-requirement stance as catalogueCache.ts.
+  }
+}
+
+const TITLE_MATH_KEY = 'mds:settings:titleMathRendering';
+
+/** Mathematical notation is useful in engineering labels, but remains a
+ * display preference: documents always contain the raw title string. */
+export const DEFAULT_TITLE_MATH_RENDERING = true;
+
+export function loadTitleMathRendering(): boolean {
+  try {
+    const raw = window.localStorage.getItem(TITLE_MATH_KEY);
+    return raw === null ? DEFAULT_TITLE_MATH_RENDERING : raw !== 'false';
+  } catch {
+    return DEFAULT_TITLE_MATH_RENDERING;
+  }
+}
+
+export function saveTitleMathRendering(enabled: boolean): void {
+  try {
+    window.localStorage.setItem(TITLE_MATH_KEY, String(enabled));
+  } catch {
+    // A preference must not prevent the editor starting.
   }
 }
 

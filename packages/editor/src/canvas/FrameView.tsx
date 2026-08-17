@@ -15,7 +15,7 @@ import { NodeResizer, type NodeProps } from '@xyflow/react';
 
 import { useGraph } from '../graph-context';
 import { reframe, updateFrame } from '../model/document';
-import { TextField } from './fields';
+import { TitleField } from './TitleField';
 
 export function FrameView({ id, selected }: NodeProps): ReactElement | null {
   const { document, edit, editLive, commitEdit, hovered: hoveredIds } = useGraph();
@@ -48,8 +48,7 @@ export function FrameView({ id, selected }: NodeProps): ReactElement | null {
         }}
       />
       <div className="frame-title">
-        <TextField
-          className="title"
+        <TitleField
           value={frame.title}
           onCommit={(title) => edit((current) => updateFrame(current, id, (entry) => ({ ...entry, title })))}
         />
