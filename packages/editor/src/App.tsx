@@ -89,6 +89,7 @@ import { Notebook } from './notebook/Notebook';
 import { Palette } from './palette/Palette';
 import { SettingsDialog } from './settings/SettingsDialog';
 import { Tutorial } from './tutorial/Tutorial';
+import { exampleTutorialSteps, TUTORIAL_STEPS } from './tutorial/steps';
 import { loadTutorialSeen } from './tutorial/tutorialSettings';
 import { useResizableWidth } from './useResizableWidth';
 
@@ -134,11 +135,11 @@ function exampleDocument(
 
 function startupDocument(
   catalogues: readonly Catalogue[],
-): { readonly document: GraphDocument; readonly restored: boolean } {
+): { readonly document: GraphDocument; readonly restored: boolean; readonly example?: ExampleId } {
   const linkedExample = exampleIdFromUrl(new URL(window.location.href));
   if (linkedExample !== undefined) {
     const linkedDocument = exampleDocument(linkedExample, catalogues);
-    if (linkedDocument !== undefined) return { document: linkedDocument, restored: false };
+    if (linkedDocument !== undefined) return { document: linkedDocument, restored: false, example: linkedExample };
   }
 
   const snapshot = loadAutosaveSnapshot();
@@ -179,7 +180,7 @@ function AppShell(): ReactElement {
       storeUserEquations(next);
       return next;
     });
-  const [{ document: initialDocument, restored: restoredAutosave }] = useState(() =>
+  const [{ document: initialDocument, restored: restoredAutosave, example: linkedExample }] = useState(() =>
     startupDocument(catalogues),
   );
   const [history, setHistory] = useState<History<GraphDocument>>(() => initHistory(initialDocument));
@@ -266,7 +267,11 @@ function AppShell(): ReactElement {
   // for: a restored autosave is somebody's own graph, not the pad-pressure
   // sample the script's steps assume. Launching it from the Help menu still
   // works on any document — it loads the sample first (see `helpMenuItems`).
-  const [tutorialActive, setTutorialActive] = useState(() => !restoredAutosave && !loadTutorialSeen());
+  const [tutorial, setTutorial] = useState<{ readonly kind: 'introduction' } | { readonly kind: 'example'; readonly id: ExampleId } | undefined>(() =>
+    linkedExample === undefined
+      ? (!restoredAutosave && !loadTutorialSeen() ? { kind: 'introduction' } : undefined)
+      : { kind: 'example', id: linkedExample },
+  );
   const [openMenu, setOpenMenu] = useState<
     | { readonly menu: 'file' | 'edit' | 'view' | 'help'; readonly x: number; readonly y: number }
     | undefined
@@ -594,7 +599,7 @@ function AppShell(): ReactElement {
           // nothing to point at if the panel was hidden going in.
           openExample('pad-pressure');
           setShowNotebook(true);
-          setTutorialActive(true);
+          setTutorial({ kind: 'introduction' });
         }),
     },
     {
@@ -605,25 +610,41 @@ function AppShell(): ReactElement {
     {
       label: 'Pad pressure sweep',
       onClick: () =>
-        guardDiscard(() => openExample('pad-pressure')),
+        guardDiscard(() => {
+          openExample('pad-pressure');
+          setShowNotebook(true);
+          setTutorial({ kind: 'example', id: 'pad-pressure' });
+        }),
     },
     {
       label: 'Belt lab',
       disabled: !beltAvailable,
       onClick: () =>
-        guardDiscard(() => openExample('belt-lab')),
+        guardDiscard(() => {
+          openExample('belt-lab');
+          setShowNotebook(true);
+          setTutorial({ kind: 'example', id: 'belt-lab' });
+        }),
     },
     {
       label: 'Cantilever — hollow sections',
       disabled: !cantileverAvailable,
       onClick: () =>
-        guardDiscard(() => openExample('cantilever-hollow-sections')),
+        guardDiscard(() => {
+          openExample('cantilever-hollow-sections');
+          setShowNotebook(true);
+          setTutorial({ kind: 'example', id: 'cantilever-hollow-sections' });
+        }),
     },
     {
       label: 'Pocket milling — power envelope',
       disabled: !millingAvailable,
       onClick: () =>
-        guardDiscard(() => openExample('milling-power-envelope')),
+        guardDiscard(() => {
+          openExample('milling-power-envelope');
+          setShowNotebook(true);
+          setTutorial({ kind: 'example', id: 'milling-power-envelope' });
+        }),
     },
   ];
 
@@ -793,8 +814,11 @@ function AppShell(): ReactElement {
           ) : null}
 
           <Tutorial
-            active={tutorialActive}
-            onClose={() => setTutorialActive(false)}
+            active={tutorial !== undefined}
+            steps={tutorial?.kind === 'example' ? exampleTutorialSteps(tutorial.id) : TUTORIAL_STEPS}
+            closeLabel={tutorial?.kind === 'example' ? 'Close tutorial' : 'Skip'}
+            rememberSeen={tutorial?.kind === 'introduction'}
+            onClose={() => setTutorial(undefined)}
             pinned={pinned}
             setPinned={setPinned}
           />

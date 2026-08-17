@@ -16,11 +16,14 @@
 
 import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactElement } from 'react';
 
-import { TUTORIAL_STEPS, type TutorialStep } from './steps';
+import type { TutorialStep } from './steps';
 import { saveTutorialSeen } from './tutorialSettings';
 
 interface Props {
   readonly active: boolean;
+  readonly steps: readonly TutorialStep[];
+  readonly closeLabel?: string;
+  readonly rememberSeen?: boolean;
   readonly onClose: () => void;
   readonly pinned: ReadonlySet<string>;
   readonly setPinned: (update: (current: ReadonlySet<string>) => ReadonlySet<string>) => void;
@@ -49,14 +52,22 @@ function preferredStyle(rect: DOMRect | undefined, placement: TutorialStep['plac
   }
 }
 
-export function Tutorial({ active, onClose, pinned, setPinned }: Props): ReactElement | null {
+export function Tutorial({
+  active,
+  steps,
+  closeLabel = 'Skip',
+  rememberSeen = false,
+  onClose,
+  pinned,
+  setPinned,
+}: Props): ReactElement | null {
   const [stepIndex, setStepIndex] = useState(0);
   const [direction, setDirection] = useState<'forward' | 'backward'>('forward');
   const [rect, setRect] = useState<DOMRect | undefined>(undefined);
   const [offset, setOffset] = useState({ dx: 0, dy: 0 });
   const captionRef = useRef<HTMLDivElement>(null);
   const originalPinned = useRef<ReadonlySet<string> | undefined>(undefined);
-  const step = TUTORIAL_STEPS[stepIndex];
+  const step = steps[stepIndex];
 
   useLayoutEffect(() => {
     if (!active) return;
@@ -125,18 +136,18 @@ export function Tutorial({ active, onClose, pinned, setPinned }: Props): ReactEl
   if (!active || step === undefined) return null;
 
   const close = (): void => {
-    saveTutorialSeen(true);
+    if (rememberSeen) saveTutorialSeen(true);
     onClose();
     // So the next run (Help → Take the tour) starts over rather than
     // resuming wherever this one left off.
     setStepIndex(0);
   };
-  const last = stepIndex === TUTORIAL_STEPS.length - 1;
+  const last = stepIndex === steps.length - 1;
   const goToStep = (nextIndex: number, nextDirection: 'forward' | 'backward'): void => {
     // Update the target rectangle in the same render as the step. Otherwise
     // the new placement is briefly applied to the previous target's rectangle,
     // producing a jump before the CSS transition gets its real destination.
-    setRect(measure(TUTORIAL_STEPS[nextIndex]?.target));
+    setRect(measure(steps[nextIndex]?.target));
     setDirection(nextDirection);
     setStepIndex(nextIndex);
   };
@@ -189,11 +200,11 @@ export function Tutorial({ active, onClose, pinned, setPinned }: Props): ReactEl
           <h2>{step.title}</h2>
           <p>{step.body}</p>
           <div className="tutorial-progress">
-            {stepIndex + 1} / {TUTORIAL_STEPS.length}
+            {stepIndex + 1} / {steps.length}
           </div>
           <div className="tutorial-actions">
             <button type="button" onClick={close}>
-              Skip
+              {closeLabel}
             </button>
             {stepIndex > 0 ? (
               <button type="button" onClick={goBack}>
