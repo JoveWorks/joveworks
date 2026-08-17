@@ -101,6 +101,14 @@ hand-edit generated catalogue JSON is a signal to raise, not paper over.
 - Normal validation is `pnpm build` (also checks package direction) and
   `pnpm test`. Catalogue-dependent tests require `MDS_CATALOGUE` and skip when
   it is absent; that is expected.
+- A new worktree has no local `node_modules`, and pnpm's dependency check may
+  fail because the sandbox cannot write its global SQLite store. For a quick
+  check, symlink the main checkout's existing `node_modules` into the worktree.
+  This leaves both source trees unchanged. Be aware that package links in that
+  shared install still point at the main checkout, so React resolution and the
+  project-reference tests may fail from the worktree; use a proper frozen-lockfile
+  install in the worktree (with store access approved) before relying on the full
+  `pnpm test` and `pnpm build` results.
 - Use `pnpm --filter @mds/editor dev` only when documenting the command; do not
   run it as part of agent work.
 - Keep rationale near the code it explains. Avoid adding process or decision
