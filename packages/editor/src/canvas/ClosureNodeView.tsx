@@ -20,7 +20,7 @@ import { useSettings } from '../settings-context';
 import { toUnitsFormat } from '../model/numberFormat';
 import { reframe, removeNodes, renameNode, setClosureExpression } from '../model/document';
 import { Symbol } from '../Symbol';
-import { unitLabel } from '../model/quantity';
+import { ParameterLabel, UnitInLabel } from '../ParameterLabel';
 import { axisLabel, reading, summarise } from '../model/values';
 import { NodeShell } from './NodeShell';
 import { Sparkline } from './Sparkline';
@@ -49,10 +49,7 @@ export function ClosureNodeView({ id, selected }: NodeProps): ReactElement | nul
   const edgesAt = (portName: string): number =>
     document.edges.filter((edge) => edge.to.node === id && edge.to.port === portName).length;
 
-  const portUnit = (port: Port): string => {
-    const bound = analysis.resolution?.targets.get(`${id}.${port.name}`)?.unit;
-    return unitLabel(bound);
-  };
+  const portUnit = (port: Port) => analysis.resolution?.targets.get(`${id}.${port.name}`)?.unit;
 
   const value = formula === undefined ? undefined : reading(analysis, id, formula.output.name);
   const outputUnit =
@@ -101,10 +98,12 @@ export function ClosureNodeView({ id, selected }: NodeProps): ReactElement | nul
                   id={slotHandleId(port.name, 0)}
                   className={missing ? 'missing' : ''}
                 />
-                <span className="port-name">
-                  <Symbol name={port.name} />
-                </span>
-                <span className="port-unit">{portUnit(port)}</span>
+                <ParameterLabel
+                  name={port.name}
+                  unit={portUnit(port)}
+                  nameClassName="port-name"
+                  unitClassName="port-unit"
+                />
               </li>
             );
           }
@@ -115,13 +114,15 @@ export function ClosureNodeView({ id, selected }: NodeProps): ReactElement | nul
               <Handle type="target" position={Position.Left} id={slotHandleId(port.name, i)} />
               {i === 0 ? (
                 <>
-                  <span className="port-name">
-                    <Symbol name={port.name} />
-                  </span>
-                  <span className="port-unit">{portUnit(port)}</span>
+                  <ParameterLabel
+                    name={port.name}
+                    unit={portUnit(port)}
+                    nameClassName="port-name"
+                    unitClassName="port-unit"
+                  />
                 </>
               ) : (
-                <span className="port-unit">{portUnit(port)}</span>
+                <UnitInLabel unit={portUnit(port)} className="port-unit" />
               )}
             </li>
           ));
@@ -152,7 +153,7 @@ export function ClosureNodeView({ id, selected }: NodeProps): ReactElement | nul
         {value === undefined ? null : <Sparkline reading={value} />}
         {value === undefined ? null : <span className="axis">{axisLabel(value) ?? ''}</span>}
         <span className="port-out">
-          <Symbol name={CLOSURE_RESULT_PORT} /> <span className="port-unit">{unitLabel(outputUnit)}</span>
+          <ParameterLabel name={CLOSURE_RESULT_PORT} unit={outputUnit} unitClassName="port-unit" />
         </span>
         {/* The output's name is fixed regardless of whether the expression
             currently parses, so a downstream wire never looks disconnected

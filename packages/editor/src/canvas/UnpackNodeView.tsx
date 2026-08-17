@@ -11,7 +11,7 @@ import { Handle, Position, type NodeProps } from '@xyflow/react';
 
 import { useGraph } from '../graph-context';
 import { reframe, removeNodes, renameNode } from '../model/document';
-import { unitLabel } from '../model/quantity';
+import { ParameterLabel } from '../ParameterLabel';
 import { NodeShell } from './NodeShell';
 import { slotHandleId } from './spectrumSlots';
 import { TitleField } from './TitleField';
@@ -57,10 +57,12 @@ export function UnpackNodeView({ id, selected }: NodeProps): ReactElement | null
       <ul className="ports ports-out">
         {Array.from({ length: count }, (_unused, i) => (
           <li key={`out${i}`} className="port">
-            <span className="port-name">out{i}</span>
-            <span className="port-unit">
-              {unitLabel(analysis.resolution?.sources.get(`${id}.out${i}`)?.unit)}
-            </span>
+            <ParameterLabel
+              name={`out${i}`}
+              unit={analysis.resolution?.sources.get(`${id}.out${i}`)?.unit}
+              nameClassName="port-name"
+              unitClassName="port-unit"
+            />
             <Handle type="source" position={Position.Right} id={`out${i}`} />
           </li>
         ))}

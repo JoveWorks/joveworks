@@ -28,6 +28,7 @@ import { useSettings } from '../settings-context';
 import { ContextMenu, type MenuItem } from '../canvas/ContextMenu';
 import { Equation } from '../Equation';
 import { Symbol } from '../Symbol';
+import { ParameterLabel } from '../ParameterLabel';
 import { moveFrame, reframe, removeNodes, reorderFrame, updateFrame, updateNode } from '../model/document';
 import { toUnitsFormat } from '../model/numberFormat';
 import { display, displayNumber } from '../model/quantity';
@@ -116,7 +117,7 @@ function Result({ result }: { readonly result: OutputResult }): ReactElement {
             <tr>
               {result.columns.map((column) => (
                 <th key={column.name}>
-                  <Symbol name={column.name} /> <span className="unit">{column.unit.symbol}</span>
+                  <ParameterLabel name={column.name} unit={column.unit} unitClassName="unit" />
                 </th>
               ))}
             </tr>

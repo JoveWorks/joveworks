@@ -52,6 +52,7 @@ import {
 } from '../model/document';
 import { Equation } from '../Equation';
 import { Symbol } from '../Symbol';
+import { ParameterLabel } from '../ParameterLabel';
 import { display, formatAuthored, parseAuthored, unitLabel } from '../model/quantity';
 import { reading, summarise } from '../model/values';
 import { NodeShell } from './NodeShell';
@@ -424,9 +425,12 @@ export function OutputNodeView({ id, selected }: NodeProps): ReactElement | null
                 even a single-occupancy one, since Canvas's edge projection
                 does not know port kinds and suffixes uniformly. */}
             <Handle type="target" position={Position.Left} id={slotHandleId(name, 0)} />
-            <span className="port-name">
-              <Symbol name={name} />
-            </span>
+            <ParameterLabel
+              name={name}
+              unit={analysis.resolution?.targets.get(`${id}.${name}`)?.unit}
+              nameClassName="port-name"
+              unitClassName="port-unit"
+            />
           </li>
         ))}
         {output.kind === 'table' ? (
@@ -437,9 +441,12 @@ export function OutputNodeView({ id, selected }: NodeProps): ReactElement | null
         {output.kind === 'plot' ? (
           <li className="port">
             <Handle type="target" position={Position.Left} id={slotHandleId(THRESHOLD_PORT, 0)} />
-            <span className="port-name">
-              <Symbol name={THRESHOLD_PORT} />
-            </span>
+            <ParameterLabel
+              name={THRESHOLD_PORT}
+              unit={analysis.resolution?.targets.get(`${id}.${THRESHOLD_PORT}`)?.unit}
+              nameClassName="port-name"
+              unitClassName="port-unit"
+            />
             <span className="quantity-split port-quantity">
               <TextField
                 className="quantity"
@@ -476,9 +483,12 @@ export function OutputNodeView({ id, selected }: NodeProps): ReactElement | null
         {output.kind === 'check' ? (
           <li className="port">
             <Handle type="target" position={Position.Left} id={slotHandleId(THRESHOLD_PORT, 0)} />
-            <span className="port-name">
-              <Symbol name={THRESHOLD_PORT} />
-            </span>
+            <ParameterLabel
+              name={THRESHOLD_PORT}
+              unit={analysis.resolution?.targets.get(`${id}.${THRESHOLD_PORT}`)?.unit}
+              nameClassName="port-name"
+              unitClassName="port-unit"
+            />
             {/* Mandatory, unlike plot's — always shows and always accepts the
                 typed default, the same way CompareNodeView's threshold row
                 does, since a check's fallback stays meaningful even while a

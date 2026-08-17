@@ -37,6 +37,7 @@ import { toUnitsFormat } from '../model/numberFormat';
 import { formatAuthored, parseAuthored, unitLabel } from '../model/quantity';
 import { reading, summarise } from '../model/values';
 import { Symbol } from '../Symbol';
+import { ParameterLabel } from '../ParameterLabel';
 import { NodeShell } from './NodeShell';
 import { Sparkline } from './Sparkline';
 import { slotHandleId } from './spectrumSlots';
@@ -85,6 +86,8 @@ export function CompareNodeView({ id, selected }: NodeProps): ReactElement | nul
     document.edges.filter((edge) => edge.to.node === id).map((edge) => edge.to.port),
   );
   const valueMissing = !wired.has(VALUE_PORT);
+  const valueUnit = analysis.resolution?.targets.get(`${id}.${VALUE_PORT}`)?.unit;
+  const thresholdUnit = analysis.resolution?.targets.get(`${id}.${THRESHOLD_PORT}`)?.unit;
   const impliedUnit = impliedThresholdUnit(node, analysis.resolution?.targets.get(`${id}.${VALUE_PORT}`));
 
   const setNode = (change: Partial<Pick<CompareNode, 'comparison' | 'threshold'>>): void =>
@@ -139,15 +142,21 @@ export function CompareNodeView({ id, selected }: NodeProps): ReactElement | nul
             id={slotHandleId(VALUE_PORT, 0)}
             className={valueMissing ? 'missing' : ''}
           />
-          <span className="port-name">
-            <Symbol name={VALUE_PORT} />
-          </span>
+          <ParameterLabel
+            name={VALUE_PORT}
+            unit={valueUnit}
+            nameClassName="port-name"
+            unitClassName="port-unit"
+          />
         </li>
         <li className="port">
           <Handle type="target" position={Position.Left} id={slotHandleId(THRESHOLD_PORT, 0)} />
-          <span className="port-name">
-            <Symbol name={THRESHOLD_PORT} />
-          </span>
+          <ParameterLabel
+            name={THRESHOLD_PORT}
+            unit={thresholdUnit}
+            nameClassName="port-name"
+            unitClassName="port-unit"
+          />
           {/* Editable right on the port row — a typed default with a wire
               that can override it is meant to be as quick to retype as an
               input node's own value, not require opening the node first. */}

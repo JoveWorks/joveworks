@@ -24,7 +24,7 @@ import { useSettings } from '../settings-context';
 import { toUnitsFormat } from '../model/numberFormat';
 import { reframe, removeNodes, renameNode } from '../model/document';
 import { Symbol } from '../Symbol';
-import { unitLabel } from '../model/quantity';
+import { ParameterLabel, UnitInLabel } from '../ParameterLabel';
 import { axisLabel, reading, summarise } from '../model/values';
 import { NodeShell } from './NodeShell';
 import { Sparkline } from './Sparkline';
@@ -78,15 +78,14 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
   const edgesAt = (portName: string): number =>
     document.edges.filter((edge) => edge.to.node === id && edge.to.port === portName).length;
 
-  const portUnit = (port: Port): string => {
-    if (port.kind === 'categorical') return port.domain.join(' | ');
+  const portUnit = (port: Port): Unit | undefined => {
+    if (port.kind === 'categorical' || port.kind === 'bundle') return undefined;
     // A catalogue formula never declares a bundle port (schema/src/port.ts) —
     // kept only so `Port`'s full union type-checks here.
-    if (port.kind === 'bundle') return '';
     // A generic port has no unit of its own until something is wired to it
     //, so what it shows is the unit the binding gave it.
     const resolved = analysis.resolution?.targets.get(`${id}.${port.name}`)?.unit;
-    return unitLabel(resolved ?? (isGenericPort(port) ? undefined : (port.preferredUnit ?? port.unit) as Unit));
+    return resolved ?? (isGenericPort(port) ? undefined : (port.preferredUnit ?? port.unit) as Unit);
   };
 
   const missing = (port: Port): boolean =>
@@ -172,10 +171,16 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
                   id={slotHandleId(port.name, 0)}
                   className={missing(port) ? 'missing' : ''}
                 />
-                <span className="port-name" title={port.description ?? ''}>
-                  <Symbol name={port.name} />
-                </span>
-                <span className="port-unit">{portUnit(port)}</span>
+                <ParameterLabel
+                  name={port.name}
+                  unit={portUnit(port)}
+                  title={port.description ?? ''}
+                  nameClassName="port-name"
+                  unitClassName="port-unit"
+                />
+                {port.kind === 'categorical' ? (
+                  <span className="port-unit">{port.domain.join(' | ')}</span>
+                ) : null}
               </li>
             );
           }
@@ -186,13 +191,16 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
               <Handle type="target" position={Position.Left} id={slotHandleId(port.name, i)} />
               {i === 0 ? (
                 <>
-                  <span className="port-name" title={port.description ?? ''}>
-                    <Symbol name={port.name} />
-                  </span>
-                  <span className="port-unit">{portUnit(port)}</span>
+                  <ParameterLabel
+                    name={port.name}
+                    unit={portUnit(port)}
+                    title={port.description ?? ''}
+                    nameClassName="port-name"
+                    unitClassName="port-unit"
+                  />
                 </>
               ) : (
-                <span className="port-unit">{portUnit(port)}</span>
+                <UnitInLabel unit={portUnit(port)} className="port-unit" />
               )}
             </li>
           ));
@@ -223,7 +231,7 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
         {value === undefined ? null : <Sparkline reading={value} />}
         {value === undefined ? null : <span className="axis">{axisLabel(value) ?? ''}</span>}
         <span className="port-out">
-          <Symbol name={formula.output.name} /> <span className="port-unit">{unitLabel(outputUnit)}</span>
+          <ParameterLabel name={formula.output.name} unit={outputUnit} unitClassName="port-unit" />
         </span>
         <Handle type="source" position={Position.Right} id={formula.output.name} />
       </div>

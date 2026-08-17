@@ -15,7 +15,7 @@ import { nextPackChannel, packChannelIndices } from '@mds/kernel';
 
 import { useGraph } from '../graph-context';
 import { reframe, removeNodes, renameNode } from '../model/document';
-import { unitLabel } from '../model/quantity';
+import { ParameterLabel } from '../ParameterLabel';
 import { NodeShell } from './NodeShell';
 import { slotHandleId } from './spectrumSlots';
 import { TitleField } from './TitleField';
@@ -50,10 +50,12 @@ export function PackNodeView({ id, selected }: NodeProps): ReactElement | null {
         {indices.map((channel, position) => (
           <li key={`in${channel}`} className="port">
             <Handle type="target" position={Position.Left} id={slotHandleId(`in${channel}`, 0)} />
-            <span className="port-name">in{position}</span>
-            <span className="port-unit">
-              {unitLabel(analysis.resolution?.targets.get(`${id}.in${channel}`)?.unit)}
-            </span>
+            <ParameterLabel
+              name={`in${position}`}
+              unit={analysis.resolution?.targets.get(`${id}.in${channel}`)?.unit}
+              nameClassName="port-name"
+              unitClassName="port-unit"
+            />
           </li>
         ))}
         <li className={indices.length === 0 ? 'port missing' : 'port port-open'}>

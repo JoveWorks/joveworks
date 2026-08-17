@@ -17,7 +17,7 @@ import { useGraph } from '../graph-context';
 import { useSettings } from '../settings-context';
 import { toUnitsFormat } from '../model/numberFormat';
 import { reframe, removeNodes, renameNode } from '../model/document';
-import { unitLabel } from '../model/quantity';
+import { ParameterLabel, UnitInLabel } from '../ParameterLabel';
 import { axisLabel, reading, summarise } from '../model/values';
 import { NodeShell } from './NodeShell';
 import { Sparkline } from './Sparkline';
@@ -36,8 +36,8 @@ export function WaypointNodeView({ id, selected }: NodeProps): ReactElement | nu
   const count = document.edges.filter(
     (edge) => edge.to.node === id && edge.to.port === 'in',
   ).length;
-  const inUnit = unitLabel(analysis.resolution?.targets.get(`${id}.in`)?.unit);
-  const outUnit = unitLabel(analysis.resolution?.sources.get(`${id}.out`)?.unit);
+  const inUnit = analysis.resolution?.targets.get(`${id}.in`)?.unit;
+  const outUnit = analysis.resolution?.sources.get(`${id}.out`)?.unit;
   const value = reading(analysis, id, 'out');
 
   return (
@@ -62,7 +62,7 @@ export function WaypointNodeView({ id, selected }: NodeProps): ReactElement | nu
         {Array.from({ length: count }, (_unused, i) => (
           <li key={`in-${i}`} className="port">
             <Handle type="target" position={Position.Left} id={slotHandleId('in', i)} />
-            {i === 0 ? <span className="port-unit">{inUnit}</span> : null}
+            {i === 0 ? <UnitInLabel unit={inUnit} className="port-unit" /> : null}
           </li>
         ))}
         <li className={count === 0 ? 'port missing' : 'port port-open'}>
@@ -81,7 +81,7 @@ export function WaypointNodeView({ id, selected }: NodeProps): ReactElement | nu
         {value === undefined ? null : <Sparkline reading={value} />}
         {value === undefined ? null : <span className="axis">{axisLabel(value) ?? ''}</span>}
         <span className="port-out">
-          out <span className="port-unit">{outUnit}</span>
+          <ParameterLabel name="out" unit={outUnit} unitClassName="port-unit" />
         </span>
         <Handle type="source" position={Position.Right} id="out" />
       </div>

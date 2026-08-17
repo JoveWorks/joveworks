@@ -623,6 +623,12 @@ aside.right {
   margin-left: auto;
 }
 
+/* `ParameterLabel` owns the punctuation; this class covers labels outside
+   port rows that do not already provide their own contextual unit styling. */
+.interface-unit {
+  color: var(--muted);
+}
+
 .node .port-quantity {
   margin-left: auto;
 }
