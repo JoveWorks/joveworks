@@ -162,6 +162,8 @@ design question than most items here: how it's parametrized, what rendering
 approach draws the diagram from port values, and which diagram to build
 first. Needs its own discussion before building.
 
+**Color palette for contours is ugly** Let me choose in settings, default to viridis. Also, the plots don't have a legend when a colourmap is active.
+
 **Notebook export to Markdown**, for pasting a finished graph into an
 external site. Checked against `~/source/website`'s Astro content
 collections: entries are Markdown/MDX with frontmatter (`title`, `subtitle`,
