@@ -261,7 +261,7 @@ function AppShell(): ReactElement {
   const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
-    window.document.title = `NodeBook|${document.title}`;
+    window.document.title = `NodeBook | ${document.title}`;
   }, [document.title]);
   // Only offers itself unprompted on the document it was actually written
   // for: a restored autosave is somebody's own graph, not the pad-pressure
