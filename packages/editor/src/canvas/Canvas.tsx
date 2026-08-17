@@ -1136,9 +1136,15 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
               : { kind, id: node.id, x: event.clientX, y: event.clientY },
           );
         }}
-        onSelectionContextMenu={(event) => {
+        onSelectionContextMenu={(event, nodes) => {
           event.preventDefault();
-          setMenu({ kind: 'selection', x: event.clientX, y: event.clientY });
+          const position = { x: event.clientX, y: event.clientY };
+          const [node] = nodes;
+          if (nodes.length === 1 && node !== undefined) {
+            setMenu({ kind: 'node', id: node.id, ...position });
+            return;
+          }
+          setMenu({ kind: 'selection', ...position });
         }}
         onEdgeContextMenu={(event, edge) => {
           event.preventDefault();
