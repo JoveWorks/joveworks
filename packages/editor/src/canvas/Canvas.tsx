@@ -190,9 +190,28 @@ function existingCandidates(
 
 type MenuTarget =
   | { readonly kind: 'node'; readonly id: string; readonly x: number; readonly y: number }
+  | { readonly kind: 'selection'; readonly x: number; readonly y: number }
   | { readonly kind: 'edge'; readonly id: string; readonly x: number; readonly y: number }
   | { readonly kind: 'frame'; readonly id: string; readonly x: number; readonly y: number }
   | { readonly kind: 'pane'; readonly x: number; readonly y: number };
+
+/** Only graph nodes make a selection something that can become a section. */
+export function selectedNodeCount(document: GraphDocument, selected: ReadonlySet<string>): number {
+  return document.nodes.filter((node) => selected.has(node.id)).length;
+}
+
+/** The empty-canvas action says whether it will create or group a section. */
+export function sectionActionLabel(document: GraphDocument, selected: ReadonlySet<string>): string {
+  return selectedNodeCount(document, selected) === 0 ? 'Add new section' : 'Group into new section';
+}
+
+/** A multi-node selection is its own context, never the node under the cursor. */
+export function nodeContextMenuKind(
+  document: GraphDocument,
+  selected: ReadonlySet<string>,
+): 'node' | 'selection' {
+  return selectedNodeCount(document, selected) > 1 ? 'selection' : 'node';
+}
 
 interface QuickAddTarget {
   readonly x: number;
@@ -706,35 +725,34 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
 
   /** What a right click offers, worked out from what was clicked. */
   const menuItems = (target: MenuTarget): readonly MenuItem[] => {
+    const selectionActions = (at: { readonly x: number; readonly y: number }): readonly MenuItem[] => [
+      { heading: t('Selection') },
+      ...([
+        ['Align left', 'left'],
+        ['Align right', 'right'],
+        ['Align top', 'top'],
+        ['Align bottom', 'bottom'],
+        ['Align horizontal centres', 'horizontal-centre'],
+        ['Align vertical centres', 'vertical-centre'],
+      ] as const).map(([label, alignment]) => ({
+        label,
+        onClick: () => edit((current) => alignSelection(current, selected, alignment, measured)),
+      })),
+      {
+        label: t('Arrange selection'),
+        onClick: () => edit((current) => arrangeSelection(current, selected)),
+      },
+      {
+        label: t('Group into new section'),
+        onClick: () =>
+          edit((current) => groupIntoSection(current, selected, flow.screenToFlowPosition(at))),
+      },
+    ];
+    if (target.kind === 'selection') return selectionActions(target);
     if (target.kind === 'node') {
       const { id } = target;
       const graphNode = document.nodes.find((node) => node.id === id);
-      const selectedNodeCount = document.nodes.filter((node) => selected.has(node.id)).length;
-      const selectionActions: readonly MenuItem[] =
-        selected.has(id) && selectedNodeCount > 1
-          ? [
-              { heading: t('Selection') },
-              ...([
-                ['Align left', 'left'],
-                ['Align right', 'right'],
-                ['Align top', 'top'],
-                ['Align bottom', 'bottom'],
-                ['Align horizontal centres', 'horizontal-centre'],
-                ['Align vertical centres', 'vertical-centre'],
-              ] as const).map(([label, alignment]) => ({
-                label,
-                onClick: () =>
-                  edit((current) => alignSelection(current, selected, alignment, measured)),
-              })),
-              {
-                label: t('Arrange selection'),
-                onClick: () => edit((current) => arrangeSelection(current, selected)),
-              },
-              { heading: t('Node') },
-            ]
-          : [];
       return [
-        ...selectionActions,
         {
           label: t(pinned.has(id) ? 'Unpin' : 'Pin open'),
           onClick: () => togglePin(id),
@@ -838,7 +856,7 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
           }),
       },
       {
-        label: t('Group into new section'),
+        label: t(sectionActionLabel(document, selected)),
         onClick: () => edit((current) => groupIntoSection(current, selected, at)),
       },
       {
@@ -1050,8 +1068,16 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
         }}
         onNodeContextMenu={(event, node) => {
           event.preventDefault();
-          const kind = node.type === 'frame' ? 'frame' : 'node';
-          setMenu({ kind, id: node.id, x: event.clientX, y: event.clientY });
+          if (node.type === 'frame') {
+            setMenu({ kind: 'frame', id: node.id, x: event.clientX, y: event.clientY });
+            return;
+          }
+          const kind = nodeContextMenuKind(document, selected);
+          setMenu(
+            kind === 'selection'
+              ? { kind, x: event.clientX, y: event.clientY }
+              : { kind, id: node.id, x: event.clientX, y: event.clientY },
+          );
         }}
         onEdgeContextMenu={(event, edge) => {
           event.preventDefault();

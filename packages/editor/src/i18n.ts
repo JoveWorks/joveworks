@@ -26,7 +26,7 @@ const DUTCH_PHRASES: Readonly<Record<string, string>> = {
   'New': 'Nieuw', 'Open…': 'Openen…', 'Save': 'Opslaan', 'Recent': 'Recent',
   'No recent documents': 'Geen recente documenten', 'Load catalogue…': 'Catalogus laden…',
   'User equations': 'Gebruikersvergelijkingen', 'Import equations…': 'Vergelijkingen importeren…',
-  'Export equations': 'Vergelijkingen exporteren', 'Group into new section': 'Groepeer in nieuwe sectie',
+  'Export equations': 'Vergelijkingen exporteren', 'Add new section': 'Nieuwe sectie toevoegen', 'Group into new section': 'Groepeer in nieuwe sectie',
   'Auto-arrange': 'Automatisch schikken', 'Undo': 'Ongedaan maken', 'Redo': 'Opnieuw uitvoeren',
   'Theme': 'Thema', 'Light': 'Licht', 'Dark': 'Donker', 'System': 'Systeem',
   'Documentation': 'Documentatie', 'Take the tour': 'Volg de rondleiding', 'Examples': 'Voorbeelden',
