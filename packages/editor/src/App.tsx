@@ -27,6 +27,7 @@ import {
 import { Canvas } from './canvas/Canvas';
 import { ContextMenu, type MenuItem } from './canvas/ContextMenu';
 import { ConfirmDialog } from './ConfirmDialog';
+import { exampleIdFromUrl, urlForExample, type ExampleId } from './exampleUrl';
 import { DOCS_BASE_URL } from './help-links';
 import { GraphContext } from './graph-context';
 import { SettingsContext } from './settings-context';
@@ -114,13 +115,29 @@ function initialCatalogues(): readonly Catalogue[] {
 const AUTOSAVE_INTERVAL_MS = 30_000;
 const RESTORED_AUTOSAVE_NOTICE = 'Restored unsaved work from the last session.';
 
-/** An autosave snapshot left over from a session that never hit explicit
- * Save takes priority over the usual startup document — recovery from an
+/** A linked example takes priority because opening that URL is an explicit
+ * request. Otherwise, an autosave snapshot left over from a session that never
+ * hit Save takes priority over the usual startup document — recovery from an
  * accidental close should not require a prompt to get back to work. A
- * corrupted snapshot falls back to the usual default silently; there is
- * nothing a student could do about a bad cache entry except lose the session
- * to a dialog explaining it. */
-function startupDocument(): { readonly document: GraphDocument; readonly restored: boolean } {
+ * corrupted snapshot falls back to the usual default silently. */
+function exampleDocument(
+  id: ExampleId,
+  catalogues: readonly Catalogue[],
+): GraphDocument | undefined {
+  if (id === 'pad-pressure') return padPressure(catalogues);
+  if (id === 'belt-lab') return beltLab(catalogues);
+  return cantileverHollowSections(catalogues);
+}
+
+function startupDocument(
+  catalogues: readonly Catalogue[],
+): { readonly document: GraphDocument; readonly restored: boolean } {
+  const linkedExample = exampleIdFromUrl(new URL(window.location.href));
+  if (linkedExample !== undefined) {
+    const linkedDocument = exampleDocument(linkedExample, catalogues);
+    if (linkedDocument !== undefined) return { document: linkedDocument, restored: false };
+  }
+
   const snapshot = loadAutosaveSnapshot();
   if (snapshot !== undefined) {
     try {
@@ -159,7 +176,9 @@ function AppShell(): ReactElement {
       storeUserEquations(next);
       return next;
     });
-  const [{ document: initialDocument, restored: restoredAutosave }] = useState(startupDocument);
+  const [{ document: initialDocument, restored: restoredAutosave }] = useState(() =>
+    startupDocument(catalogues),
+  );
   const [history, setHistory] = useState<History<GraphDocument>>(() => initHistory(initialDocument));
   const document = history.present;
   const canUndo = history.past.length > 0;
@@ -195,6 +214,15 @@ function AppShell(): ReactElement {
     setHistory(initHistory(next));
     setSavedSnapshot(saveDocument(next));
     setFitRequest((current) => current + 1);
+  };
+  const openExample = (id: ExampleId): void => {
+    const sample = exampleDocument(id, catalogues);
+    if (sample === undefined) return;
+    resetDocument(sample);
+    // This describes the document currently open; replacing avoids creating
+    // browser-history entries whose URL changes on Back while the canvas does
+    // not (the editor deliberately has no general-purpose router yet).
+    window.history.replaceState({}, '', urlForExample(new URL(window.location.href), id));
   };
   const [fitRequest, setFitRequest] = useState(0);
   useEffect(() => {
@@ -560,8 +588,7 @@ function AppShell(): ReactElement {
           // any other item under Examples below, and just as destructive to
           // whatever is currently on the canvas. Its notebook step has
           // nothing to point at if the panel was hidden going in.
-          const sample = padPressure(catalogues);
-          if (sample !== undefined) resetDocument(sample);
+          openExample('pad-pressure');
           setShowNotebook(true);
           setTutorialActive(true);
         }),
@@ -574,28 +601,19 @@ function AppShell(): ReactElement {
     {
       label: 'Pad pressure sweep',
       onClick: () =>
-        guardDiscard(() => {
-          const sample = padPressure(catalogues);
-          if (sample !== undefined) resetDocument(sample);
-        }),
+        guardDiscard(() => openExample('pad-pressure')),
     },
     {
       label: 'Belt lab',
       disabled: !beltAvailable,
       onClick: () =>
-        guardDiscard(() => {
-          const sample = beltLab(catalogues);
-          if (sample !== undefined) resetDocument(sample);
-        }),
+        guardDiscard(() => openExample('belt-lab')),
     },
     {
       label: 'Cantilever — hollow sections',
       disabled: !cantileverAvailable,
       onClick: () =>
-        guardDiscard(() => {
-          const sample = cantileverHollowSections(catalogues);
-          if (sample !== undefined) resetDocument(sample);
-        }),
+        guardDiscard(() => openExample('cantilever-hollow-sections')),
     },
   ];
 
