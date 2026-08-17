@@ -15,7 +15,7 @@
  * local to the student's own machine, not a network call.
  */
 
-const PREFIX = 'mds:catalogue:';
+const PREFIX = 'joveworks:catalogue:';
 
 function key(id: string): string {
   return `${PREFIX}${id}`;

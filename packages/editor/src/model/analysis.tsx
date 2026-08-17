@@ -34,7 +34,7 @@ import {
   type Evaluation,
   type Resolution,
   type Warning,
-} from '@mds/kernel';
+} from '@joveworks/kernel';
 import {
   findFormula,
   isEvaluable,
@@ -46,7 +46,7 @@ import {
   type GraphDocument,
   type GraphNode,
   type Port,
-} from '@mds/schema';
+} from '@joveworks/schema';
 
 import { Symbol } from '../Symbol';
 

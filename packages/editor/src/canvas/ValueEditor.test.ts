@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseUnit } from '@mds/units';
+import { parseUnit } from '@joveworks/units';
 
 import { converted, rescaleRange } from './ValueEditor';
 

@@ -8,8 +8,8 @@
 
 import { describe, expect, it } from 'vitest';
 
-import type { Axis, PlotResult } from '@mds/kernel';
-import { PLAIN_NUMBER_FORMAT, parseUnit, type NumberFormat } from '@mds/units';
+import type { Axis, PlotResult } from '@joveworks/kernel';
+import { PLAIN_NUMBER_FORMAT, parseUnit, type NumberFormat } from '@joveworks/units';
 
 import { rows, siAxisUnit, siResult } from './PlotFigure';
 

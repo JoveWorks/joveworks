@@ -10,8 +10,8 @@ import type { ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
-import { SCHEMA_VERSION, loadCatalogue, formulaRef, type Catalogue, type GraphDocument } from '@mds/schema';
-import { parseUnit } from '@mds/units';
+import { SCHEMA_VERSION, loadCatalogue, formulaRef, type Catalogue, type GraphDocument } from '@joveworks/schema';
+import { parseUnit } from '@joveworks/units';
 
 import { analyse, lookup } from './analysis';
 

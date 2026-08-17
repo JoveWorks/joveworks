@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react';
 
-import type { Unit } from '@mds/units';
+import type { Unit } from '@joveworks/units';
 
 import { unitLabel } from './model/quantity';
 import { Symbol } from './Symbol';

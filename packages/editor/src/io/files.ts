@@ -17,6 +17,12 @@ export interface PickedFile {
   readonly text: string;
 }
 
+export const userEquationsFileName = 'joveworks-equations.json';
+
+export function documentFileName(id: string): string {
+  return `${id}.jove.json`;
+}
+
 /** Ask for a file and read it as text. Resolves `undefined` if nothing is picked. */
 export function openTextFile(accept = 'application/json,.json'): Promise<PickedFile | undefined> {
   return new Promise((resolve) => {

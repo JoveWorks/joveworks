@@ -22,7 +22,7 @@ import {
   parseUnit,
   resolveGeneric,
   type Dimension,
-} from '@mds/units';
+} from '@joveworks/units';
 import {
   SCHEMA_VERSION,
   formulaHash,
@@ -32,7 +32,7 @@ import {
   serializeCatalogue,
   type Formula,
   type Port,
-} from '@mds/schema';
+} from '@joveworks/schema';
 
 import { BASE_CATALOGUE, OPERATIONS, baseCatalogueJson } from './index.js';
 

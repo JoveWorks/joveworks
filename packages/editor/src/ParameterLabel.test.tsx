@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
-import { parseUnit } from '@mds/units';
+import { parseUnit } from '@joveworks/units';
 
 import { ParameterLabel } from './ParameterLabel';
 

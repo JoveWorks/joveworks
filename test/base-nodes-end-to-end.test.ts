@@ -27,9 +27,9 @@ import {
   type Catalogue,
   type GraphDocument,
   type JsonObject,
-} from '@mds/schema';
-import { FORCE, VELOCITY, dimensionsEqual } from '@mds/units';
-import { OPERATIONS, baseCatalogueJson } from '@mds/nodes';
+} from '@joveworks/schema';
+import { FORCE, VELOCITY, dimensionsEqual } from '@joveworks/units';
+import { OPERATIONS, baseCatalogueJson } from '@joveworks/nodes';
 import {
   canConnect,
   checkFormulaDimensions,
@@ -40,7 +40,7 @@ import {
   type CheckResult,
   type NumericSeries,
   type PlotResult,
-} from '@mds/kernel';
+} from '@joveworks/kernel';
 
 const BASE: Catalogue = loadCatalogue(baseCatalogueJson());
 const catalogues = [BASE];

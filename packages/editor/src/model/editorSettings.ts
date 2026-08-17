@@ -6,7 +6,7 @@
  * app.
  */
 
-const MINIMAP_KEY = 'mds:settings:minimapVisible';
+const MINIMAP_KEY = 'joveworks:settings:minimapVisible';
 
 /** Off by default — a small canvas overview is a convenience, not something
  * every graph is big enough to need cluttering the view for. */
@@ -29,7 +29,7 @@ export function saveMinimapVisible(visible: boolean): void {
   }
 }
 
-const TITLE_MATH_KEY = 'mds:settings:titleMathRendering';
+const TITLE_MATH_KEY = 'joveworks:settings:titleMathRendering';
 
 /** Mathematical notation is useful in engineering labels, but remains a
  * display preference: documents always contain the raw title string. */
@@ -52,7 +52,7 @@ export function saveTitleMathRendering(enabled: boolean): void {
   }
 }
 
-const THEME_KEY = 'mds:settings:theme';
+const THEME_KEY = 'joveworks:settings:theme';
 
 export type ThemePreference = 'light' | 'dark' | 'system';
 

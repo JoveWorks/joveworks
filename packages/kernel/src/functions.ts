@@ -30,7 +30,7 @@ import {
   dimensionsEqual,
   powerDimension,
   type Dimension,
-} from '@mds/units';
+} from '@joveworks/units';
 
 import { assertSameDimension, dimensionsClose } from './dimensions.js';
 import { KernelError } from './errors.js';

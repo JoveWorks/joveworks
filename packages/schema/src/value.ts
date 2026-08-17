@@ -31,7 +31,7 @@ import {
   type JsonValue,
 } from './json.js';
 import { parseUnitField } from './quantity.js';
-import type { Unit } from '@mds/units';
+import type { Unit } from '@joveworks/units';
 
 export const VALUE_KINDS = [
   'scalar',

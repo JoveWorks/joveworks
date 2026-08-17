@@ -1,6 +1,6 @@
 # Authoring a formula catalogue by hand
 
-A catalogue is a JSON file of `Formula` records read by `@mds/schema`
+A catalogue is a JSON file of `Formula` records read by `@joveworks/schema`
 (`packages/schema/src/formula.ts`, `port.ts`). This is a guide to writing one
 directly, for the cases where there is no source script to extract from — an
 invented or textbook-independent catalogue, a demo, a course pack from a
@@ -144,15 +144,15 @@ expression accept either an angle-dimensioned or a dimensionless argument.
 
 ## Validate what you wrote
 
-`@mds/schema`'s `loadCatalogue` parses and throws on a malformed record.
-`@mds/kernel`'s `checkFormulaDimensions` checks every evaluable formula's
+`@joveworks/schema`'s `loadCatalogue` parses and throws on a malformed record.
+`@joveworks/kernel`'s `checkFormulaDimensions` checks every evaluable formula's
 expression against its declared ports — this is what catches a `+` that
 should have been a `*`, or a port unit that does not match what the
 expression actually produces. Point `test/catalogue-check.test.ts` at your
 file:
 
 ```
-MDS_CATALOGUE=/path/to/your-catalogue.json pnpm test
+JOVEWORKS_CATALOGUE=/path/to/your-catalogue.json pnpm test
 ```
 
 It parses the file, runs the dimension check over every non-quarantined

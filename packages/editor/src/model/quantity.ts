@@ -25,8 +25,8 @@ import {
   toSignificantFigures,
   type NumberFormat,
   type Unit,
-} from '@mds/units';
-import type { Quantity } from '@mds/schema';
+} from '@joveworks/units';
+import type { Quantity } from '@joveworks/schema';
 
 /** `250 kW`, `1.5`, `-3.2e4 N/mm²` — a magnitude followed by a unit symbol. */
 const AUTHORED = /^\s*([+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?)\s*(.*?)\s*$/su;

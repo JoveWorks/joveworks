@@ -37,7 +37,7 @@ import {
   unit as makeUnit,
   type Dimension,
   type Unit,
-} from '@mds/units';
+} from '@joveworks/units';
 import {
   VALUE_PORT,
   THRESHOLD_PORT,
@@ -57,7 +57,7 @@ import {
   type InputNode,
   type Port,
   type PortKind,
-} from '@mds/schema';
+} from '@joveworks/schema';
 
 import { packChannelIndices, waypointChannelIndices } from './bundle.js';
 import { closureFormula } from './closure.js';

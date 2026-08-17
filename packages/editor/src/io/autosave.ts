@@ -7,7 +7,7 @@
  * disk, so there is nothing left to recover.
  */
 
-const AUTOSAVE_KEY = 'mds:autosave';
+const AUTOSAVE_KEY = 'joveworks:autosave';
 
 export interface AutosaveSnapshot {
   readonly text: string;

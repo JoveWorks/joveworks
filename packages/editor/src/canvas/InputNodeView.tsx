@@ -9,7 +9,7 @@
 import type { ReactElement } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 
-import { VALUE_PORT, isRange, type InputNode } from '@mds/schema';
+import { VALUE_PORT, isRange, type InputNode } from '@joveworks/schema';
 
 import { useGraph } from '../graph-context';
 import { nodeLabel, reframe, removeNodes, syncColumnLabels, updateNode } from '../model/document';

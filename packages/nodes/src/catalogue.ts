@@ -14,7 +14,7 @@ import {
   saveCatalogue,
   serializeCatalogue,
   type Catalogue,
-} from '@mds/schema';
+} from '@joveworks/schema';
 
 import { OPERATIONS } from './operations.js';
 

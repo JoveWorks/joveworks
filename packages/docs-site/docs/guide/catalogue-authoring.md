@@ -1,6 +1,6 @@
 # Catalogue authoring for teachers
 
-NodeBook loads formula catalogues as data. Public, textbook-independent
+JoveWorks loads formula catalogues as data. Public, textbook-independent
 catalogues may ship with the editor; restricted course content belongs in a
 separate private repository and should be distributed through the course LMS.
 Never use the `restricted` flag as a substitute for that repository boundary.
@@ -18,14 +18,14 @@ variant group. Numeric ports declare units; categorical ports declare their
 allowed domain. Valid ranges are functional data: they also bound sweeps.
 
 The complete field-by-field guide and an invented example live in
-[`docs/authoring-catalogues.md`](https://github.com/ThomasVanRiel/machine-design-studio/blob/main/docs/authoring-catalogues.md).
+[`docs/authoring-catalogues.md`](https://github.com/ThomasVanRiel/joveworks/blob/main/docs/authoring-catalogues.md).
 
 ## Validate before distributing
 
 Run the repository's catalogue check against the file:
 
 ```sh
-MDS_CATALOGUE=/absolute/path/to/catalogue.json pnpm test
+JOVEWORKS_CATALOGUE=/absolute/path/to/catalogue.json pnpm test
 ```
 
 It parses every record, checks the dimensions of every evaluable expression,

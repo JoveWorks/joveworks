@@ -33,7 +33,7 @@ import {
   dimensionsEqual,
   isDimensionless,
   type Dimension,
-} from '@mds/units';
+} from '@joveworks/units';
 
 import { KernelError } from './errors.js';
 

@@ -24,9 +24,9 @@
  * one shared dimension.
  */
 
-import type { Formula, Port } from '@mds/schema';
-import { CLOSURE_RESULT_PORT } from '@mds/schema';
-import { parseGenericDimension } from '@mds/units';
+import type { Formula, Port } from '@joveworks/schema';
+import { CLOSURE_RESULT_PORT } from '@joveworks/schema';
+import { parseGenericDimension } from '@joveworks/units';
 
 import type { Expr } from './ast.js';
 import { expressionNames } from './ast.js';

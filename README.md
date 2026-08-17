@@ -1,4 +1,6 @@
-# machine-design-studio
+# JoveWorks
+
+> Build engineering **NodeBooks**.
 
 A node-editor design tool for dimensioning machine parts. Wire inputs,
 equations and outputs together on a canvas; the graph *is* the calculation.
@@ -17,6 +19,12 @@ pnpm build       # tsc -b; an undeclared cross-package import fails here
 **New here? Start with [OVERVIEW.md](OVERVIEW.md)** — the whole project in one
 read. Then [ROADMAP.md](ROADMAP.md) for what's still open, or
 [docs/PLAN.md](docs/PLAN.md) for the build sequence that got here.
+
+## Why JoveWorks?
+
+The name is a playful nod to Jupyter notebooks: Jove is another name for
+Jupiter, and each visual calculation becomes a **NodeBook** — a notebook whose
+calculation is built from connected nodes.
 
 ## What it is
 

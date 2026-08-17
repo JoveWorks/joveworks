@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { FORCE, LENGTH } from '@mds/units';
-import type { Formula, JsonObject } from '@mds/schema';
+import { FORCE, LENGTH } from '@joveworks/units';
+import type { Formula, JsonObject } from '@joveworks/schema';
 
 import { KernelError } from './errors.js';
 import { assertEvaluable, checkFormulaDimensions, compileFormula } from './formula.js';

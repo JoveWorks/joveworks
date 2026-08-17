@@ -11,7 +11,7 @@ are useful history, not live status.
 
 ## Project and scope
 
-Machine Design Studio is a browser-based node editor for dimensioning machine
+JoveWorks is a browser-based node editor for dimensioning machine
 parts. A directed graph of inputs, formula nodes, and outputs is the
 calculation; input sweeps turn it into a design study.
 
@@ -99,7 +99,7 @@ hand-edit generated catalogue JSON is a signal to raise, not paper over.
 - Do not start, stop, or drive `pnpm dev`: the user runs and browser-tests the
   editor. Report what to verify manually instead.
 - Normal validation is `pnpm build` (also checks package direction) and
-  `pnpm test`. Catalogue-dependent tests require `MDS_CATALOGUE` and skip when
+  `pnpm test`. Catalogue-dependent tests require `JOVEWORKS_CATALOGUE` and skip when
   it is absent; that is expected.
 - A new worktree has no local `node_modules`, and pnpm's dependency check may
   fail because the sandbox cannot write its global SQLite store. For a quick
@@ -109,7 +109,7 @@ hand-edit generated catalogue JSON is a signal to raise, not paper over.
   project-reference tests may fail from the worktree; use a proper frozen-lockfile
   install in the worktree (with store access approved) before relying on the full
   `pnpm test` and `pnpm build` results.
-- Use `pnpm --filter @mds/editor dev` only when documenting the command; do not
+- Use `pnpm --filter @joveworks/editor dev` only when documenting the command; do not
   run it as part of agent work.
 - Keep rationale near the code it explains. Avoid adding process or decision
   documents for hypothetical future needs.

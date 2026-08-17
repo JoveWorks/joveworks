@@ -1,5 +1,5 @@
 {
-  "name": "@mds/nodes",
+  "name": "@joveworks/nodes",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -12,7 +12,7 @@
     }
   },
   "dependencies": {
-    "@mds/schema": "workspace:*",
-    "@mds/units": "workspace:*"
+    "@joveworks/schema": "workspace:*",
+    "@joveworks/units": "workspace:*"
   }
 }

@@ -1,4 +1,4 @@
-import { parseExpression } from '@mds/kernel';
+import { parseExpression } from '@joveworks/kernel';
 
 export interface UserEquation {
   readonly id: string;
@@ -8,11 +8,11 @@ export interface UserEquation {
 
 interface UserEquationFile {
   readonly schemaVersion: 1;
-  readonly kind: 'nodebooks-user-equations';
+  readonly kind: 'joveworks-user-equations';
   readonly equations: readonly UserEquation[];
 }
 
-const STORAGE_KEY = 'mds:user-equations';
+const STORAGE_KEY = 'joveworks:user-equations';
 
 function parseEquation(value: unknown, path: string): UserEquation {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) throw new Error(`${path} must be an object`);
@@ -31,7 +31,7 @@ export function parseUserEquations(text: string): readonly UserEquation[] {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) throw new Error('file must be an object');
   const file = value as Record<string, unknown>;
   if (file.schemaVersion !== 1) throw new Error('schemaVersion must be 1');
-  if (file.kind !== 'nodebooks-user-equations') throw new Error("kind must be 'nodebooks-user-equations'");
+  if (file.kind !== 'joveworks-user-equations') throw new Error("kind must be 'joveworks-user-equations'");
   if (!Array.isArray(file.equations)) throw new Error('equations must be an array');
   const equations = file.equations.map((entry, index) => parseEquation(entry, `equations[${index}]`));
   if (new Set(equations.map(({ id }) => id)).size !== equations.length) throw new Error('equation ids must be unique');
@@ -39,7 +39,7 @@ export function parseUserEquations(text: string): readonly UserEquation[] {
 }
 
 export function saveUserEquations(equations: readonly UserEquation[]): string {
-  const file: UserEquationFile = { schemaVersion: 1, kind: 'nodebooks-user-equations', equations };
+  const file: UserEquationFile = { schemaVersion: 1, kind: 'joveworks-user-equations', equations };
   return `${JSON.stringify(file, null, 2)}\n`;
 }
 

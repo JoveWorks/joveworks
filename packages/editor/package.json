@@ -1,5 +1,5 @@
 {
-  "name": "@mds/editor",
+  "name": "@joveworks/editor",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -9,10 +9,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@mds/kernel": "workspace:*",
-    "@mds/nodes": "workspace:*",
-    "@mds/schema": "workspace:*",
-    "@mds/units": "workspace:*",
+    "@joveworks/kernel": "workspace:*",
+    "@joveworks/nodes": "workspace:*",
+    "@joveworks/schema": "workspace:*",
+    "@joveworks/units": "workspace:*",
     "@observablehq/plot": "^0.6.17",
     "@xyflow/react": "^12.11.3",
     "katex": "^0.18.4",

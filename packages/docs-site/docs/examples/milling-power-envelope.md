@@ -7,7 +7,7 @@ condition:
 > power or torque limit?
 
 Open it from **Help → Examples → Pocket milling — power envelope**. It uses the
-public Machining catalogue bundled with NodeBook; no course catalogue is
+public Machining catalogue bundled with JoveWorks; no course catalogue is
 required.
 
 ## Starting point

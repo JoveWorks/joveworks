@@ -7,7 +7,7 @@
  * alignment or layout can never move a node into another notebook section.
  */
 
-import type { GraphDocument, GraphNode } from '@mds/schema';
+import type { GraphDocument, GraphNode } from '@joveworks/schema';
 
 import { GAP, NODE_HEIGHT, NODE_WIDTH } from './layout-constants';
 import { autoArrange } from './layout';

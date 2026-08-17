@@ -10,10 +10,10 @@ const src = (pkg: string) =>
 export default defineConfig({
   resolve: {
     alias: {
-      '@mds/units': src('units'),
-      '@mds/schema': src('schema'),
-      '@mds/kernel': src('kernel'),
-      '@mds/nodes': src('nodes'),
+      '@joveworks/units': src('units'),
+      '@joveworks/schema': src('schema'),
+      '@joveworks/kernel': src('kernel'),
+      '@joveworks/nodes': src('nodes'),
     },
   },
   test: {

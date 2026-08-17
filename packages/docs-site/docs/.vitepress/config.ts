@@ -1,7 +1,7 @@
 import { defineConfig } from "vitepress";
 
 export default defineConfig({
-  title: "NodeBook docs",
+  title: "JoveWorks Docs",
   description: "Docs for the node-editor design tool for dimensioning machine parts.",
   base: "/docs/",
   cleanUrls: true,
@@ -11,7 +11,7 @@ export default defineConfig({
       { text: "Guide", link: "/guide/getting-started" },
       {
         text: "GitHub",
-        link: "https://github.com/ThomasVanRiel/machine-design-studio",
+        link: "https://github.com/ThomasVanRiel/joveworks",
       },
     ],
     sidebar: [
@@ -33,7 +33,7 @@ export default defineConfig({
       },
     ],
     socialLinks: [
-      { icon: "github", link: "https://github.com/ThomasVanRiel/machine-design-studio" },
+      { icon: "github", link: "https://github.com/ThomasVanRiel/joveworks" },
     ],
     search: { provider: "local" },
   },

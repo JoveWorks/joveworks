@@ -7,7 +7,7 @@
  * could quietly diverge from the test's hand-built document.
  *
  * The catalogue is not in this repository and never will be, so this skips
- * without `MDS_CATALOGUE`, exactly as the goldens test does. What is asserted
+ * without `JOVEWORKS_CATALOGUE`, exactly as the goldens test does. What is asserted
  * here is numbers and ids; no expression appears.
  */
 
@@ -15,14 +15,14 @@ import { existsSync, readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
-import { loadCatalogue, type Catalogue } from '@mds/schema';
-import { fromCanonical, parseUnit } from '@mds/units';
+import { loadCatalogue, type Catalogue } from '@joveworks/schema';
+import { fromCanonical, parseUnit } from '@joveworks/units';
 
 import { analyse } from './analysis';
 import { baseCatalogue, bundledCatalogues } from './catalogues';
 import { beltLab, millingPowerEnvelope, padPressure } from './samples';
 
-const path = process.env['MDS_CATALOGUE'];
+const path = process.env['JOVEWORKS_CATALOGUE'];
 const present = path !== undefined && path.length > 0 && existsSync(path);
 
 const PUBLIC_CATALOGUES: readonly Catalogue[] = [baseCatalogue(), ...bundledCatalogues()];

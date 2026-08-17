@@ -29,16 +29,16 @@ importers:
 
   packages/editor:
     dependencies:
-      '@mds/kernel':
+      '@joveworks/kernel':
         specifier: workspace:*
         version: link:../kernel
-      '@mds/nodes':
+      '@joveworks/nodes':
         specifier: workspace:*
         version: link:../nodes
-      '@mds/schema':
+      '@joveworks/schema':
         specifier: workspace:*
         version: link:../schema
-      '@mds/units':
+      '@joveworks/units':
         specifier: workspace:*
         version: link:../units
       '@observablehq/plot':
@@ -69,25 +69,25 @@ importers:
 
   packages/kernel:
     dependencies:
-      '@mds/schema':
+      '@joveworks/schema':
         specifier: workspace:*
         version: link:../schema
-      '@mds/units':
+      '@joveworks/units':
         specifier: workspace:*
         version: link:../units
 
   packages/nodes:
     dependencies:
-      '@mds/schema':
+      '@joveworks/schema':
         specifier: workspace:*
         version: link:../schema
-      '@mds/units':
+      '@joveworks/units':
         specifier: workspace:*
         version: link:../units
 
   packages/schema:
     dependencies:
-      '@mds/units':
+      '@joveworks/units':
         specifier: workspace:*
         version: link:../units
 

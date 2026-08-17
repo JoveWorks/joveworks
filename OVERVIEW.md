@@ -1,4 +1,4 @@
-# machine-design-studio — overview
+# JoveWorks — overview
 
 A node editor for dimensioning machine parts. You wire inputs, equations and
 outputs together on a canvas, and **the graph is the calculation**.
@@ -138,7 +138,7 @@ panels collapse.
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│  ▸ palette   [ belt-drive.mds ]                notebook  ◂   │
+│  ▸ palette   [ belt-drive.jove.json ]                notebook  ◂   │
 ├────────────┬──────────────────────────────┬──────────────────┤
 │ ┌────────┐ │  ┌─ Belt forces ──────────┐  │ ## Belt forces   │
 │ │search  │ │  │  ┌──────────────────┐  │  │ Sizing for the   │

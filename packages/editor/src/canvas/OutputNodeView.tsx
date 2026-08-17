@@ -24,8 +24,8 @@
 import { useState, type MouseEvent, type ReactElement } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 
-import { parseExpression, toLatex } from '@mds/kernel';
-import { parseUnit } from '@mds/units';
+import { parseExpression, toLatex } from '@joveworks/kernel';
+import { parseUnit } from '@joveworks/units';
 import {
   COMPARISONS,
   THRESHOLD_PORT,
@@ -34,7 +34,7 @@ import {
   type Comparison,
   type Output,
   type OutputNode,
-} from '@mds/schema';
+} from '@joveworks/schema';
 
 import { useGraph } from '../graph-context';
 import { useSettings } from '../settings-context';

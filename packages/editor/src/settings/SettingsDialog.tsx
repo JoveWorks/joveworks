@@ -9,7 +9,7 @@
 
 import type { ReactElement } from 'react';
 
-import { formatQuantity, parseUnit } from '@mds/units';
+import { formatQuantity, parseUnit } from '@joveworks/units';
 
 import {
   NOTATION_LABELS,
@@ -18,7 +18,7 @@ import {
   type ThousandsStyle,
   toUnitsFormat,
 } from '../model/numberFormat';
-import type { NumberNotation } from '@mds/units';
+import type { NumberNotation } from '@joveworks/units';
 
 interface Props {
   readonly settings: NumberFormatSettings;

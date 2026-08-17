@@ -2,7 +2,7 @@
  * The contract: the formula record, the graph document, and the boundary that
  * turns untrusted JSON into either of them.
  *
- * It sits on top of `@mds/units` and restates none of it — a port declares a
+ * It sits on top of `@joveworks/units` and restates none of it — a port declares a
  * display unit and its dimension comes from `units`, so there is one place to be
  * wrong about what `N/mm²` means. It knows nothing about evaluation: expressions
  * and predicates are stored as strings for the kernel to parse, and

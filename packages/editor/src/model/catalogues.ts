@@ -9,8 +9,8 @@
  * from.
  */
 
-import { parseCatalogue, loadCatalogue, ports, type Catalogue, type Formula, type JsonValue } from '@mds/schema';
-import { BASE_CATALOGUE_ID, baseCatalogueJson } from '@mds/nodes';
+import { parseCatalogue, loadCatalogue, ports, type Catalogue, type Formula, type JsonValue } from '@joveworks/schema';
+import { BASE_CATALOGUE_ID, baseCatalogueJson } from '@joveworks/nodes';
 import { fuzzySearch } from './fuzzy';
 
 export interface PaletteEntry {

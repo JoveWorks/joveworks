@@ -17,7 +17,7 @@
 
 import type { ReactElement } from 'react';
 
-import { fromCanonical } from '@mds/units';
+import { fromCanonical } from '@joveworks/units';
 
 import type { Reading } from '../model/values';
 

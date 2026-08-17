@@ -16,8 +16,8 @@
 import type { ReactElement } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 
-import { isGenericPort, type Port } from '@mds/schema';
-import type { Unit } from '@mds/units';
+import { isGenericPort, type Port } from '@joveworks/schema';
+import type { Unit } from '@joveworks/units';
 
 import { useGraph } from '../graph-context';
 import { useSettings } from '../settings-context';

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { SCHEMA_VERSION, type ClosureNode, type GraphDocument, type InputNode } from '@mds/schema';
-import { parseUnit } from '@mds/units';
+import { SCHEMA_VERSION, type ClosureNode, type GraphDocument, type InputNode } from '@joveworks/schema';
+import { parseUnit } from '@joveworks/units';
 
 import { alignSelection, arrangeSelection } from './selection-layout';
 

@@ -20,7 +20,7 @@ import {
   toCanonical,
   type GenericDimension,
   type Unit,
-} from '@mds/units';
+} from '@joveworks/units';
 
 import { fail, readNumber, readString, type JsonObject, type JsonValue } from './json.js';
 

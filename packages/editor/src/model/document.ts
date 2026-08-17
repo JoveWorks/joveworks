@@ -13,7 +13,7 @@
  * only how a permitted change is applied.
  */
 
-import { closureFormula, packChannelIndices, waypointChannelIndices } from '@mds/kernel';
+import { closureFormula, packChannelIndices, waypointChannelIndices } from '@joveworks/kernel';
 import {
   VALUE_PORT,
   type ClosureNode,
@@ -25,7 +25,7 @@ import {
   type Output,
   type OutputNode,
   type Position,
-} from '@mds/schema';
+} from '@joveworks/schema';
 
 import { GAP, NODE_HEIGHT, NODE_WIDTH } from './layout-constants';
 

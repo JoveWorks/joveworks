@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { emptyDocument, VALUE_PORT, type Catalogue, type Formula } from '@mds/schema';
-import { parseUnit } from '@mds/units';
+import { emptyDocument, VALUE_PORT, type Catalogue, type Formula } from '@joveworks/schema';
+import { parseUnit } from '@joveworks/units';
 
 import { baseCatalogue } from '../model/catalogues';
 import { addNode } from '../model/document';

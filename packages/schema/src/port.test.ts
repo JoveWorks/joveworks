@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { FORCE, LENGTH, DIMENSIONLESS } from '@mds/units';
+import { FORCE, LENGTH, DIMENSIONLESS } from '@joveworks/units';
 
 import { SchemaError } from './errors.js';
 import {

@@ -5,13 +5,15 @@ import { equationId, parseUserEquations, saveUserEquations } from './userEquatio
 describe('user equation libraries', () => {
   it('round trips student-owned expressions', () => {
     const equations = [{ id: 'load', label: 'Load', expression: 'a*b + c' }];
-    expect(parseUserEquations(saveUserEquations(equations))).toEqual(equations);
+    const saved = saveUserEquations(equations);
+    expect(JSON.parse(saved)).toMatchObject({ schemaVersion: 1, kind: 'joveworks-user-equations' });
+    expect(parseUserEquations(saved)).toEqual(equations);
   });
 
   it('rejects invalid expressions on import', () => {
     const text = JSON.stringify({
       schemaVersion: 1,
-      kind: 'nodebooks-user-equations',
+      kind: 'joveworks-user-equations',
       equations: [{ id: 'bad', label: 'Bad', expression: 'a +' }],
     });
     expect(() => parseUserEquations(text)).toThrow('expected a value');

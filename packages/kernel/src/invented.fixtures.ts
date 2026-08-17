@@ -22,7 +22,7 @@ import {
   type FormulaRef,
   type GraphDocument,
   type JsonObject,
-} from '@mds/schema';
+} from '@joveworks/schema';
 
 export function catalogueOf(formulas: readonly JsonObject[], id = 'test'): Catalogue {
   return parseCatalogue({

@@ -5,7 +5,7 @@
  * rather than failing the app.
  */
 
-const TUTORIAL_SEEN_KEY = 'mds:settings:tutorialSeen';
+const TUTORIAL_SEEN_KEY = 'joveworks:settings:tutorialSeen';
 
 export const DEFAULT_TUTORIAL_SEEN = false;
 

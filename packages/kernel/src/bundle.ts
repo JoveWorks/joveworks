@@ -9,7 +9,7 @@
  * than kept anywhere else.
  */
 
-import type { GraphDocument } from '@mds/schema';
+import type { GraphDocument } from '@joveworks/schema';
 
 const CHANNEL_PATTERN = /^in(\d+)$/u;
 const OUT_CHANNEL_PATTERN = /^out(\d+)$/u;

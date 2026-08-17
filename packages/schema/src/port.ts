@@ -34,7 +34,7 @@ import {
   parseGenericDimension,
   type Dimension,
   type GenericDimension,
-} from '@mds/units';
+} from '@joveworks/units';
 
 import {
   fail,
@@ -52,7 +52,7 @@ import {
   type JsonValue,
 } from './json.js';
 import { parsePortUnitField } from './quantity.js';
-import type { Unit } from '@mds/units';
+import type { Unit } from '@joveworks/units';
 
 /**
  * What a numeric or spectrum port declares: a concrete display unit, or a

@@ -27,7 +27,7 @@
  * There is no implicit multiplication: `2 pi r` is a typo, not a product.
  */
 
-import { COMPARISONS, type Comparison } from '@mds/schema';
+import { COMPARISONS, type Comparison } from '@joveworks/schema';
 
 import type { Expr, Predicate } from './ast.js';
 import { KernelError } from './errors.js';

@@ -18,7 +18,7 @@ import {
   formatPlainNumber,
   stripNumberFormatting,
   type NumberFormat,
-} from '@mds/units';
+} from '@joveworks/units';
 
 import { messageOf } from '../model/quantity';
 

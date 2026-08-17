@@ -10,7 +10,7 @@
 
 import { createContext, useContext } from 'react';
 
-import type { Catalogue, GraphDocument } from '@mds/schema';
+import type { Catalogue, GraphDocument } from '@joveworks/schema';
 
 import type { Analysis } from './model/analysis';
 import type { UserEquation } from './model/userEquations';

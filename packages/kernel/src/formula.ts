@@ -26,8 +26,8 @@ import {
   resolveGeneric,
   type BaseDimension,
   type Dimension,
-} from '@mds/units';
-import { isEvaluable, type Formula, type Port } from '@mds/schema';
+} from '@joveworks/units';
+import { isEvaluable, type Formula, type Port } from '@joveworks/schema';
 
 import {
   checkPredicateDimensions,

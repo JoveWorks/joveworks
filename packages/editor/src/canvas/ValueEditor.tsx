@@ -16,8 +16,8 @@
 
 import type { ReactElement } from 'react';
 
-import { dimensionsEqual, parseUnit, type NumberFormat, type Unit } from '@mds/units';
-import { DEFAULT_SLIDER_FIGURES, RENARD_SERIES, type RenardSeries, type ValueSpec } from '@mds/schema';
+import { dimensionsEqual, parseUnit, type NumberFormat, type Unit } from '@joveworks/units';
+import { DEFAULT_SLIDER_FIGURES, RENARD_SERIES, type RenardSeries, type ValueSpec } from '@joveworks/schema';
 
 import { useSettings } from '../settings-context';
 import { toUnitsFormat } from '../model/numberFormat';

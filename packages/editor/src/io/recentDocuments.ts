@@ -7,9 +7,9 @@
  * re-prompting a file dialog.
  */
 
-import { type GraphDocument, saveDocument } from '@mds/schema';
+import { type GraphDocument, saveDocument } from '@joveworks/schema';
 
-const RECENT_KEY = 'mds:recent';
+const RECENT_KEY = 'joveworks:recent';
 const MAX_RECENT = 8;
 
 export interface RecentDocument {

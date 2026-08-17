@@ -10,7 +10,7 @@ import {
   VELOCITY,
   dimension,
   type Dimension,
-} from '@mds/units';
+} from '@joveworks/units';
 
 import {
   checkPredicateDimensions,

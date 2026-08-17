@@ -445,9 +445,9 @@ aside.right {
  * stylesheet can outrank — frames are excluded, so hovering one's title does
  * not lift it above the nodes it groups.
  */
-.react-flow__node-mds-input:hover,
+.react-flow__node-joveworks-input:hover,
 .react-flow__node-formula:hover,
-.react-flow__node-mds-output:hover,
+.react-flow__node-joveworks-output:hover,
 .react-flow__node-compare:hover {
   z-index: 1000 !important;
 }

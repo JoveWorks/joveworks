@@ -17,7 +17,7 @@
 
 import { useMemo, useState, type ReactElement } from 'react';
 
-import type { Catalogue, Formula } from '@mds/schema';
+import type { Catalogue, Formula } from '@joveworks/schema';
 
 import { entries, search } from '../model/catalogues';
 import { fuzzySearch } from '../model/fuzzy';

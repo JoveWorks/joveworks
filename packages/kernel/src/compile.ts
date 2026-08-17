@@ -25,9 +25,9 @@ import {
   multiplyDimensions,
   powerDimension,
   type Dimension,
-} from '@mds/units';
+} from '@joveworks/units';
 
-import type { Comparison } from '@mds/schema';
+import type { Comparison } from '@joveworks/schema';
 
 import type { Expr, Predicate } from './ast.js';
 import { assertSameDimension } from './dimensions.js';

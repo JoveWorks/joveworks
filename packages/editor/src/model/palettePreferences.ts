@@ -1,6 +1,6 @@
 /** Palette-only preferences. They are local to this browser, never graph data. */
 
-const FAVOURITES_KEY = 'mds:palette:favourites';
+const FAVOURITES_KEY = 'joveworks:palette:favourites';
 
 export function loadFavourites(): ReadonlySet<string> {
   try {

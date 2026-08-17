@@ -23,8 +23,8 @@
  * `$A/$B`, `sqrt` is `$A**(1/2)`.
  */
 
-import type { Formula, NumericPort, OutputPort, Port, SpectrumPort } from '@mds/schema';
-import { parseGenericDimension, parseUnit } from '@mds/units';
+import type { Formula, NumericPort, OutputPort, Port, SpectrumPort } from '@joveworks/schema';
+import { parseGenericDimension, parseUnit } from '@joveworks/units';
 
 /** A port that adopts the dimension of whatever is wired to it. */
 function generic(name: string, variable: string, description: string): NumericPort {

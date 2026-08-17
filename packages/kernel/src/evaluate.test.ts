@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { formatQuantity } from '@mds/units';
+import { formatQuantity } from '@joveworks/units';
 
-import type { JsonObject } from '@mds/schema';
+import type { JsonObject } from '@joveworks/schema';
 import {
   evaluateDocument,
   valueAt,

@@ -2,9 +2,9 @@ import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
-import { compileFormula, checkFormulaDimensions } from '@mds/kernel';
-import { loadCatalogue, type Formula } from '@mds/schema';
-import { fromCanonical, parseUnit, toCanonical } from '@mds/units';
+import { compileFormula, checkFormulaDimensions } from '@joveworks/kernel';
+import { loadCatalogue, type Formula } from '@joveworks/schema';
+import { fromCanonical, parseUnit, toCanonical } from '@joveworks/units';
 
 const catalogue = loadCatalogue(
   readFileSync(

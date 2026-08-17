@@ -46,7 +46,7 @@ import {
 } from './quantity.js';
 import { isRange, parseValueSpec, serializeValueSpec, type ValueSpec } from './value.js';
 import { SCHEMA_VERSION, readSchemaVersion } from './version.js';
-import type { Unit } from '@mds/units';
+import type { Unit } from '@joveworks/units';
 
 /** The single port every input node produces on and every output node consumes on. */
 export const VALUE_PORT = 'value';

@@ -13,7 +13,7 @@
 import type { ReactElement } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 
-import { CLOSURE_RESULT_PORT, type Port } from '@mds/schema';
+import { CLOSURE_RESULT_PORT, type Port } from '@joveworks/schema';
 
 import { useGraph } from '../graph-context';
 import { useSettings } from '../settings-context';

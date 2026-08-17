@@ -3,7 +3,7 @@
 import type { ReactElement } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 
-import { nextPackChannel, waypointChannelIndices } from '@mds/kernel';
+import { nextPackChannel, waypointChannelIndices } from '@joveworks/kernel';
 
 import { useGraph } from '../graph-context';
 import { reframe, removeNodes, renameNode } from '../model/document';

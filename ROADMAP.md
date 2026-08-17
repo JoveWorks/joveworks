@@ -58,22 +58,14 @@ adding one is a decision on the order of the wrap-angle unit question, not a
 backlog line. Left open until it's discussed and decided explicitly; nothing
 below assumes it's happening.
 
-**How bound to machine design is this, actually?** The tool originates from
+**How bound to machine design is this, actually?** JoveWorks originates from
 machine design, but nothing in the kernel is: a catalogue is dimensioned
 formulas with citations, and the editor is a graph over them. Signal
 processing, thermodynamics, anything with units and formulas would fit the
-same machinery. Open question whether to *position* it generically — which
-touches the name, the sample content, the docs, and how the catalogue
-boundary is explained — or keep machine design as the front door and let
-other domains arrive as catalogues. Not a build task; decide before the
-naming question below is settled.
-
-**The full name.** `machine-design-studio` presumes the domain the question
-above puts in doubt. The editor display name is **NodeBook**, leaning on
-the two generic parts of the product (nodes and the notebook); the open
-question is whether the repository, deployed URL, package names, and docs
-should follow it. A full rename touches all of those surfaces, so do it once
-after the scope question is answered, not twice.
+same machinery. The generic name is settled, as is the description of its
+documents as NodeBooks; what remains open is whether to position the product
+generically or keep machine design as the front door and let other domains
+arrive as catalogues.
 
 **Notebook themes, for classroom use.** A course or an instructor should be
 able to put the notebook in their own visual key — school colours, a print-

@@ -2,8 +2,8 @@ import { existsSync, readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
-import { loadCatalogue, isEvaluable, type Catalogue, type Formula } from '@mds/schema';
-import { KernelError, checkFormulaDimensions } from '@mds/kernel';
+import { loadCatalogue, isEvaluable, type Catalogue, type Formula } from '@joveworks/schema';
+import { KernelError, checkFormulaDimensions } from '@joveworks/kernel';
 
 /**
  * The mechanical half of reviewing a migrated catalogue: parse it, then run the
@@ -13,18 +13,18 @@ import { KernelError, checkFormulaDimensions } from '@mds/kernel';
  * built before any extraction ran. It lives here rather than in `kernel`
  * because the catalogue it checks is **not in this repository** and never will
  * be: the R&M content sits in a separate private repo, so this points at
- * a path given in `MDS_CATALOGUE` and skips when there is none. A public
+ * a path given in `JOVEWORKS_CATALOGUE` and skips when there is none. A public
  * checkout has nothing to check, and that is the boundary working rather than
  * a gap in the tests.
  *
- *     MDS_CATALOGUE=~/source/machine-design-catalogue/formulas/c16-belt.json pnpm test
+ *     JOVEWORKS_CATALOGUE=~/source/machine-design-catalogue/formulas/c16-belt.json pnpm test
  *
  * Failures are collected per formula rather than thrown one at a time, because
  * a scripted extraction fails systematically — seeing all of them at once is
  * what tells a parser bug apart from a defect in the source.
  */
 
-const path = process.env['MDS_CATALOGUE'];
+const path = process.env['JOVEWORKS_CATALOGUE'];
 const present = path !== undefined && path.length > 0 && existsSync(path);
 
 let loaded: Catalogue | undefined;

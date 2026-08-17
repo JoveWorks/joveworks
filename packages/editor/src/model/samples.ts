@@ -16,7 +16,7 @@
  * ever goes stale against the catalogue it was built from.
  */
 
-import { parseUnit } from '@mds/units';
+import { parseUnit } from '@joveworks/units';
 import {
   SCHEMA_VERSION,
   formulaRef,
@@ -30,7 +30,7 @@ import {
   type OutputNode,
   type Position,
   type ValueSpec,
-} from '@mds/schema';
+} from '@joveworks/schema';
 
 import { lookup } from './analysis';
 import { edgeId } from './document';

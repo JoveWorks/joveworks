@@ -9,7 +9,7 @@
  * onto a block.
  */
 
-import type { Position } from '@mds/schema';
+import type { Position } from '@joveworks/schema';
 
 import { BOTTOM_ROW_GAP_Y, GAP, LAYER_GAP_X, ROW_GAP_Y } from './layout-constants';
 

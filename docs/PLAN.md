@@ -1,4 +1,4 @@
-# Plan: machine-design-studio
+# Plan: JoveWorks
 
 Historical record — **milestone 1 is done**, every step below completed as of
 2026-08-15. Kept as the build sequence and the reasoning behind it, not as a

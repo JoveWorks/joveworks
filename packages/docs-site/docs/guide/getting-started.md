@@ -1,6 +1,6 @@
 # What this is
 
-machine-design-studio is a node editor for dimensioning machine parts. You
+JoveWorks is a node editor for dimensioning machine parts. You
 wire inputs, equations and outputs together on a canvas, and the graph is
 the calculation.
 

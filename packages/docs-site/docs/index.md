@@ -2,8 +2,8 @@
 layout: home
 
 hero:
-  name: machine-design-studio
-  text: Wire up a calculation. Sweep a design space.
+  name: JoveWorks
+  text: Build engineering NodeBooks.
   tagline: A node editor for dimensioning machine parts, built for the KU Leuven machine-parts course. Formulas come from Roloff & Matek, 6th ed.
   actions:
     - theme: brand
@@ -11,7 +11,7 @@ hero:
       link: /guide/getting-started
     - theme: alt
       text: GitHub
-      link: https://github.com/ThomasVanRiel/machine-design-studio
+      link: https://github.com/ThomasVanRiel/joveworks
 
 features:
   - title: The graph is the calculation

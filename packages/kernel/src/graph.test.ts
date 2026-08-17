@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { ANGLE, AREA, DIMENSIONLESS, FORCE, FREQUENCY, LENGTH, TORQUE, parseUnit } from '@mds/units';
-import type { GraphDocument, JsonObject } from '@mds/schema';
+import { ANGLE, AREA, DIMENSIONLESS, FORCE, FREQUENCY, LENGTH, TORQUE, parseUnit } from '@joveworks/units';
+import type { GraphDocument, JsonObject } from '@joveworks/schema';
 
 import { KernelError } from './errors.js';
 import {

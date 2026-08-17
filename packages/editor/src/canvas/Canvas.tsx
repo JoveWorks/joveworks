@@ -30,8 +30,8 @@ import {
   type NodeChange,
 } from '@xyflow/react';
 
-import { adaptInputUnit, canConnect, resolveGraph, typesConnect } from '@mds/kernel';
-import { parseUnit } from '@mds/units';
+import { adaptInputUnit, canConnect, resolveGraph, typesConnect } from '@joveworks/kernel';
+import { parseUnit } from '@joveworks/units';
 import {
   axes as documentAxes,
   formulaRef,
@@ -44,7 +44,7 @@ import {
   type Formula,
   type GraphDocument,
   type GraphNode,
-} from '@mds/schema';
+} from '@joveworks/schema';
 
 import { useGraph } from '../graph-context';
 import { useSettings } from '../settings-context';
@@ -296,13 +296,13 @@ function sizeOf(measured: Measurements, id: string): { measured?: { width: numbe
 function flowType(
   kind: 'input' | 'formula' | 'output' | 'compare' | 'closure' | 'waypoint' | 'pack' | 'unpack',
 ): string {
-  return kind === 'input' || kind === 'output' ? `mds-${kind}` : kind;
+  return kind === 'input' || kind === 'output' ? `joveworks-${kind}` : kind;
 }
 
 const NODE_TYPES = {
-  'mds-input': InputNodeView,
+  'joveworks-input': InputNodeView,
   formula: FormulaNodeView,
-  'mds-output': OutputNodeView,
+  'joveworks-output': OutputNodeView,
   compare: CompareNodeView,
   closure: ClosureNodeView,
   waypoint: WaypointNodeView,

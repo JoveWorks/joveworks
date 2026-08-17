@@ -10,7 +10,7 @@
  * degrades to the default rather than failing the app.
  */
 
-import { PLAIN_NUMBER_FORMAT, type NumberFormat, type NumberNotation } from '@mds/units';
+import { PLAIN_NUMBER_FORMAT, type NumberFormat, type NumberNotation } from '@joveworks/units';
 
 /**
  * Thousands grouping and the decimal point move together, as one style — a
@@ -56,7 +56,7 @@ export function toUnitsFormat(settings: NumberFormatSettings): NumberFormat {
   return { notation: settings.notation, ...STYLE_PUNCTUATION[settings.style] };
 }
 
-const KEY = 'mds:settings:numberFormat';
+const KEY = 'joveworks:settings:numberFormat';
 
 function isThousandsStyle(value: unknown): value is ThousandsStyle {
   return typeof value === 'string' && value in STYLE_PUNCTUATION;

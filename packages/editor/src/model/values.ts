@@ -7,9 +7,9 @@
  * the same way and only the rendering differs.
  */
 
-import { canonicalUnit, type Series } from '@mds/kernel';
-import { DIMENSIONLESS, PLAIN_NUMBER_FORMAT, type NumberFormat, type Unit } from '@mds/units';
-import { VALUE_PORT, type GraphNode } from '@mds/schema';
+import { canonicalUnit, type Series } from '@joveworks/kernel';
+import { DIMENSIONLESS, PLAIN_NUMBER_FORMAT, type NumberFormat, type Unit } from '@joveworks/units';
+import { VALUE_PORT, type GraphNode } from '@joveworks/schema';
 
 import type { Analysis } from './analysis';
 import { display } from './quantity';

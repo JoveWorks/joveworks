@@ -18,8 +18,8 @@ import {
   type PackNode,
   type UnpackNode,
   type WaypointNode,
-} from '@mds/schema';
-import { parseUnit } from '@mds/units';
+} from '@joveworks/schema';
+import { parseUnit } from '@joveworks/units';
 
 import {
   addNamedColumn,

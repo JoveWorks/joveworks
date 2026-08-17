@@ -17,7 +17,7 @@
 import { useMemo, useState, type ReactElement } from 'react';
 import { useReactFlow } from '@xyflow/react';
 
-import { parseUnit, type Unit } from '@mds/units';
+import { parseUnit, type Unit } from '@joveworks/units';
 import {
   axes as documentAxes,
   formulaRef,
@@ -25,7 +25,7 @@ import {
   type Output,
   type Position,
   type ValueSpec,
-} from '@mds/schema';
+} from '@joveworks/schema';
 
 import { useGraph } from '../graph-context';
 import { addNode, uniqueId } from '../model/document';

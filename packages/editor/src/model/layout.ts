@@ -23,7 +23,7 @@
  * edge-ignoring grid pack instead of throwing or leaving the button inert.
  */
 
-import type { Frame, GraphDocument, GraphNode, Position } from '@mds/schema';
+import type { Frame, GraphDocument, GraphNode, Position } from '@joveworks/schema';
 
 import { GAP, NODE_HEIGHT, NODE_WIDTH } from './layout-constants';
 import { computeLayeredPositions, type LayoutBlock, type LayoutEdge } from './layered-layout';

@@ -23,7 +23,7 @@
  *   x-axis and threshold are schema, the curve is editor.
  *
  * What operations *did* need was a schema change: see
- * `@mds/units/generic`. A port that declares `N` cannot express `add`.
+ * `@joveworks/units/generic`. A port that declares `N` cannot express `add`.
  */
 
 export { OPERATIONS } from './operations.js';

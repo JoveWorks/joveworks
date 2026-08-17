@@ -14,8 +14,8 @@ import {
   type GraphDocument,
   type InputNode,
   type OutputNode,
-} from '@mds/schema';
-import { parseUnit } from '@mds/units';
+} from '@joveworks/schema';
+import { parseUnit } from '@joveworks/units';
 
 import { NODE_HEIGHT, NODE_WIDTH } from './layout-constants';
 import { autoArrange } from './layout';

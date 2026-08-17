@@ -11,7 +11,7 @@
  * does not walk it per point.
  */
 
-import type { Comparison } from '@mds/schema';
+import type { Comparison } from '@joveworks/schema';
 
 export interface NumberExpr {
   readonly kind: 'number';

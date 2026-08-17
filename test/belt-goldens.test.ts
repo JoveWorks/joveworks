@@ -9,10 +9,10 @@
  * recovered from the stored notebook outputs; they are not re-derived here.
  *
  * **The catalogue is not in this repository and never will be**, so this
- * points at `MDS_CATALOGUE` and skips when it is unset, exactly as
+ * points at `JOVEWORKS_CATALOGUE` and skips when it is unset, exactly as
  * `catalogue-check.test.ts` does:
  *
- *     MDS_CATALOGUE=~/source/machine-design-catalogue/formulas/c16-belt.json pnpm test
+ *     JOVEWORKS_CATALOGUE=~/source/machine-design-catalogue/formulas/c16-belt.json pnpm test
  *
  * What lives here is inputs and expected values — numbers, which carry no
  * citation and are safe in a public repo. The expressions they exercise stay in
@@ -46,12 +46,12 @@ import {
   type Formula,
   type GraphDocument,
   type JsonObject,
-} from '@mds/schema';
-import { fromCanonical } from '@mds/units';
-import { baseCatalogueJson } from '@mds/nodes';
-import { evaluateDocument, type Evaluation, type ValueResult } from '@mds/kernel';
+} from '@joveworks/schema';
+import { fromCanonical } from '@joveworks/units';
+import { baseCatalogueJson } from '@joveworks/nodes';
+import { evaluateDocument, type Evaluation, type ValueResult } from '@joveworks/kernel';
 
-const path = process.env['MDS_CATALOGUE'];
+const path = process.env['JOVEWORKS_CATALOGUE'];
 const present = path !== undefined && path.length > 0 && existsSync(path);
 
 const BASE: Catalogue = loadCatalogue(baseCatalogueJson());

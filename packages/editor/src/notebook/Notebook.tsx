@@ -26,10 +26,10 @@ import {
   type TextareaHTMLAttributes,
 } from 'react';
 
-import { parseExpression, toLatex, type OutputResult } from '@mds/kernel';
-import type { Frame, GraphDocument, OutputNode, Position } from '@mds/schema';
+import { parseExpression, toLatex, type OutputResult } from '@joveworks/kernel';
+import type { Frame, GraphDocument, OutputNode, Position } from '@joveworks/schema';
 
-import type { NumberFormat } from '@mds/units';
+import type { NumberFormat } from '@joveworks/units';
 
 import { useGraph } from '../graph-context';
 import { useSettings } from '../settings-context';

@@ -18,7 +18,7 @@
  *   is the economy that was chosen for.
  */
 
-import { DIMENSIONLESS, isDimensionless, toCanonical, type Unit } from '@mds/units';
+import { DIMENSIONLESS, isDimensionless, toCanonical, type Unit } from '@joveworks/units';
 import {
   VALUE_PORT,
   THRESHOLD_PORT,
@@ -35,7 +35,7 @@ import {
   type Formula,
   type Port,
   type SpectrumPort,
-} from '@mds/schema';
+} from '@joveworks/schema';
 
 import { packChannelIndices, waypointChannelIndices } from './bundle.js';
 import { comparator } from './compile.js';

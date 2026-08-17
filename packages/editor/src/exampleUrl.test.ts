@@ -16,12 +16,12 @@ describe('example notebook URLs', () => {
 
   it('retains the static deployment path and unrelated parameters', () => {
     const next = urlForExample(
-      new URL('https://example.test/nodebook/?theme=dark#canvas'),
+      new URL('https://example.test/joveworks/?theme=dark#canvas'),
       'cantilever-hollow-sections',
     );
 
     expect(next.href).toBe(
-      'https://example.test/nodebook/?theme=dark&example=cantilever-hollow-sections#canvas',
+      'https://example.test/joveworks/?theme=dark&example=cantilever-hollow-sections#canvas',
     );
   });
 });

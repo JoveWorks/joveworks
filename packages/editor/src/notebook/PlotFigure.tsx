@@ -33,15 +33,15 @@
 import { useEffect, useMemo, useRef, type ReactElement } from 'react';
 import * as Plot from '@observablehq/plot';
 
-import { gridSize, indexer, unionAxes, type Axis, type PlotAxis, type PlotResult } from '@mds/kernel';
+import { gridSize, indexer, unionAxes, type Axis, type PlotAxis, type PlotResult } from '@joveworks/kernel';
 import {
   fromCanonical,
   prefixableAtomOf,
   siPrefixedUnit,
   type NumberFormat,
   type Unit,
-} from '@mds/units';
-import type { GraphDocument } from '@mds/schema';
+} from '@joveworks/units';
+import type { GraphDocument } from '@joveworks/schema';
 
 import { typesetTitleHtml } from '../canvas/TitleField';
 import { useSettings } from '../settings-context';

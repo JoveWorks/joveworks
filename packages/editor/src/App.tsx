@@ -22,7 +22,7 @@ import {
   saveDocument,
   type Catalogue,
   type GraphDocument,
-} from '@mds/schema';
+} from '@joveworks/schema';
 
 import { Canvas } from './canvas/Canvas';
 import { ContextMenu, type MenuItem } from './canvas/ContextMenu';
@@ -33,7 +33,7 @@ import { GraphContext } from './graph-context';
 import { SettingsContext } from './settings-context';
 import { clearAutosaveSnapshot, loadAutosaveSnapshot, saveAutosaveSnapshot } from './io/autosave';
 import { cacheCatalogue, cachedCatalogueTexts } from './io/catalogueCache';
-import { openTextFile, saveTextFile } from './io/files';
+import { documentFileName, openTextFile, saveTextFile, userEquationsFileName } from './io/files';
 import {
   loadRecentDocuments,
   recordRecentDocument,
@@ -261,7 +261,7 @@ function AppShell(): ReactElement {
   const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
-    window.document.title = `NodeBook | ${document.title}`;
+    window.document.title = `JoveWorks | ${document.title}`;
   }, [document.title]);
   // Only offers itself unprompted on the document it was actually written
   // for: a restored autosave is somebody's own graph, not the pad-pressure
@@ -526,7 +526,7 @@ function AppShell(): ReactElement {
       label: 'Save',
       onClick: () => {
         const text = saveDocument(document);
-        saveTextFile(`${document.id}.mds.json`, text);
+        saveTextFile(documentFileName(document.id), text);
         recordRecentDocument(document);
         clearAutosaveSnapshot();
         setSavedSnapshot(text);
@@ -545,7 +545,7 @@ function AppShell(): ReactElement {
     {
       label: 'Export equations',
       disabled: userEquations.length === 0,
-      onClick: () => saveTextFile('nodebook-equations.json', saveUserEquations(userEquations)),
+      onClick: () => saveTextFile(userEquationsFileName, saveUserEquations(userEquations)),
     },
     { label: 'Settings…', onClick: () => setShowSettings(true) },
   ];
@@ -699,14 +699,14 @@ function AppShell(): ReactElement {
             {menuButton('help', 'Help')}
 
             <div className="menubar-meta">
-              <span className="menubar-product">NodeBook</span>
+              <span className="menubar-product">JoveWorks</span>
 
               {/* v0.x is unstable by semver convention — the badge names that
                   explicitly rather than relying on a reader knowing the
                   convention, and drops away on its own once a 1.0 ships. */}
               <span
                 className={`menubar-version${__APP_VERSION__.startsWith('0.') ? ' alpha' : ''}`}
-                title={`machine-design-studio v${__APP_VERSION__}${localVersionSuffix}`}
+                title={`JoveWorks v${__APP_VERSION__}${localVersionSuffix}`}
               >
                 {__APP_VERSION__.startsWith('0.') ? 'alpha · ' : ''}v{__APP_VERSION__}
                 {localVersionSuffix}
@@ -717,12 +717,12 @@ function AppShell(): ReactElement {
                   option rather than assuming familiarity with issue trackers. */}
               <span className="menubar-feedback">
                 Feedback:{' '}
-                <a href="mailto:thomas.van.riel@gmail.com?subject=machine-design-studio%20feedback">
+                <a href="mailto:thomas.van.riel@gmail.com?subject=JoveWorks%20feedback">
                   email
                 </a>{' '}
                 or{' '}
                 <a
-                  href="https://github.com/ThomasVanRiel/machine-design-studio/issues/new"
+                  href="https://github.com/ThomasVanRiel/joveworks/issues/new"
                   target="_blank"
                   rel="noopener"
                 >
@@ -732,11 +732,11 @@ function AppShell(): ReactElement {
 
               <a
                 className="menubar-github"
-                href="https://github.com/ThomasVanRiel/machine-design-studio"
+                href="https://github.com/ThomasVanRiel/joveworks"
                 target="_blank"
                 rel="noopener"
-                aria-label="NodeBook repository on GitHub"
-                title="View the NodeBook repository on GitHub"
+                aria-label="JoveWorks repository on GitHub"
+                title="View the JoveWorks repository on GitHub"
               >
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <path

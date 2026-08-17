@@ -19,8 +19,8 @@
 import type { ReactElement } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 
-import { canonicalUnit, type PortType } from '@mds/kernel';
-import { isDimensionless, type Unit } from '@mds/units';
+import { canonicalUnit, type PortType } from '@joveworks/kernel';
+import { isDimensionless, type Unit } from '@joveworks/units';
 import {
   COMPARISONS,
   THRESHOLD_PORT,
@@ -28,7 +28,7 @@ import {
   VERDICT_PORT,
   type CompareNode,
   type Comparison,
-} from '@mds/schema';
+} from '@joveworks/schema';
 
 import { useGraph } from '../graph-context';
 import { useSettings } from '../settings-context';

@@ -37,7 +37,7 @@ import {
   type Port,
 } from './port.js';
 import { readSchemaVersion } from './version.js';
-import { genericVariables, isGenericDimension } from '@mds/units';
+import { genericVariables, isGenericDimension } from '@joveworks/units';
 
 /** The dimension variables a port mentions — none, unless it is generic. */
 function portVariables(port: Port): readonly string[] {
