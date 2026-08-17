@@ -26,6 +26,7 @@ describe('boundary conversion', () => {
       expect.arrayContaining(['Pa', 'N/mm²']),
     );
     expect(compatibleDisplayUnits(parseUnit('Pa').dimension).map((unit) => unit.symbol)).not.toContain('mm');
+    expect(compatibleDisplayUnits(parseUnit('Pa').dimension).map((unit) => unit.symbol)).not.toContain('MPa');
   });
 
   it('converts into and out of canonical units', () => {

@@ -176,9 +176,8 @@ export function knownUnitSymbols(): readonly string[] {
  * valid expression), but a picker needs choices a student can recognise.
  */
 const DISPLAY_UNIT_SYMBOLS = [
-  '', '%', 'mm', 'm', 'N', 'kN', 's', 'min', 'h', 'rad', 'deg', 'K',
-  'g', 'kg', 't', 'Pa', 'kPa', 'MPa', 'GPa', 'N/mm²', 'Nm', 'Nmm',
-  'J', 'kJ', 'W', 'kW', 'MW', 'Hz', 'rpm',
+  '', '%', 'm', 'N', 's', 'min', 'h', 'rad', 'deg', 'K', 'g', 't',
+  'Pa', 'N/mm²', 'Nm', 'Nmm', 'J', 'W', 'Hz', 'rpm',
 ] as const;
 
 /** Display-unit picker choices with exactly the requested dimension. */
