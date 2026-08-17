@@ -34,11 +34,19 @@ import type { NumberFormat } from '@joveworks/units';
 import { useGraph } from '../graph-context';
 import { useSettings } from '../settings-context';
 import { ContextMenu, type MenuItem } from '../canvas/ContextMenu';
-import { TitleText, typesetTitle } from '../canvas/TitleField';
+import { TitleField, typesetTitle } from '../canvas/TitleField';
 import { Equation } from '../Equation';
 import { Symbol } from '../Symbol';
 import { ParameterLabel } from '../ParameterLabel';
-import { moveFrame, reframe, removeNodes, reorderFrame, updateFrame, updateNode } from '../model/document';
+import {
+  moveFrame,
+  reframe,
+  removeNodes,
+  renameNode,
+  reorderFrame,
+  updateFrame,
+  updateNode,
+} from '../model/document';
 import { toUnitsFormat } from '../model/numberFormat';
 import { display, displayNumber } from '../model/quantity';
 import { summarise } from '../model/values';
@@ -146,17 +154,29 @@ const COMPARISON_TEXT: Readonly<Record<string, string>> = {
   '!=': '≠',
 };
 
-function Result({ result }: { readonly result: OutputResult }): ReactElement {
+/** An output's title belongs to the graph node, even when it is edited from
+ * the NodeBook.  Use the ordinary rename operation so table columns that
+ * still follow this output's old title follow it here too. */
+function OutputTitle({ node }: { readonly node: OutputNode }): ReactElement {
+  const { edit } = useGraph();
+  return (
+    <TitleField
+      value={node.label ?? node.id}
+      onCommit={(label) => edit((current) => renameNode(current, node.id, label))}
+    />
+  );
+}
+
+function Result({ result, node }: { readonly result: OutputResult; readonly node: OutputNode }): ReactElement {
   const { document } = useGraph();
   const { numberFormat } = useSettings();
   const format: NumberFormat = toUnitsFormat(numberFormat);
-  const label = result.label ?? result.nodeId;
 
   if (result.kind === 'print') {
     return (
       <p className="result print">
         <span className="label">
-          <TitleText value={label} />
+          <OutputTitle node={node} />
         </span>
         <span className="number">{summarise(result, result.figures, format)}</span>
       </p>
@@ -176,7 +196,7 @@ function Result({ result }: { readonly result: OutputResult }): ReactElement {
       <p className={`result check ${result.passed ? 'pass' : 'fail'}`}>
         <span className="mark">{result.passed ? '✓' : '✗'}</span>
         <span className="label">
-          <TitleText value={label} />
+          <OutputTitle node={node} />
         </span>
         {swept && !result.passed ? (
           <span className="count">
@@ -195,7 +215,7 @@ function Result({ result }: { readonly result: OutputResult }): ReactElement {
     return (
       <div className="result equation">
         <span className="label">
-          <TitleText value={label} />
+          <OutputTitle node={node} />
         </span>
         <Equation latex={toLatex(parseExpression(result.expression))} />
       </div>
@@ -207,7 +227,7 @@ function Result({ result }: { readonly result: OutputResult }): ReactElement {
     return (
       <div className="result table">
         <span className="label">
-          <TitleText value={label} />
+          <OutputTitle node={node} />
         </span>
         <table>
           <thead>
@@ -245,7 +265,7 @@ function Result({ result }: { readonly result: OutputResult }): ReactElement {
   return (
     <div className="result plot">
       <span className="label">
-        <TitleText value={label} />
+        <OutputTitle node={node} />
       </span>
       <PlotFigure result={result} document={document} format={format} />
       {result.threshold === undefined ? null : (
@@ -498,14 +518,14 @@ function Section({
                 {result === undefined ? (
                   <p className="result pending">
                     <span className="label">
-                      <TitleText value={node.label ?? node.id} />
+                      <OutputTitle node={node} />
                     </span>
                     <span className="number">
                       {analysis.problems.get(node.id) ?? 'not yet computed'}
                     </span>
                   </p>
                 ) : (
-                  <Result result={result} />
+                  <Result result={result} node={node} />
                 )}
                 <Caption node={node} {...captionProps} />
               </div>

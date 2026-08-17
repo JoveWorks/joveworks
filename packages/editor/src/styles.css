@@ -1824,6 +1824,32 @@ aside.right {
   color: var(--muted);
 }
 
+/* Output titles are editable at their reading location as well as on the
+   canvas.  TitleField normally inherits its compact-node styling, so the
+   NodeBook supplies the equivalent unobtrusive text-field treatment here. */
+.notebook .result .label .field {
+  display: inline;
+}
+
+.notebook .result .label input.title {
+  max-width: 100%;
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+}
+
+.notebook .result .label input.title:hover,
+.notebook .result .label input.title:focus {
+  outline: 1px dashed var(--muted);
+  outline-offset: 2px;
+}
+
+.notebook .result .label .title-math {
+  cursor: text;
+}
+
 .notebook .result .number {
   margin-left: auto;
   min-width: 0;
