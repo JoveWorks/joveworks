@@ -166,6 +166,7 @@ second palette.
 **Persist the remaining settings.** Number format, colour theme, and minimap
 visibility already persist locally. Palette and notebook widths do not; store
 them as local, per-device UI preferences rather than graph-file state.
+I want all logical settings persistent.
 
 **Visualization nodes** — cantilever beams, bending-moment diagrams and the
 like. Generic mechanics content, not R&M-specific, so this lives in the
@@ -204,12 +205,6 @@ unit. This is connection/type resolution, not just an editor display change.
 restoring an autosave, two notifications appear at once. Trace the duplicate
 creation path and retain one clear restore notice.
 
-**Header branding and GitHub link.** The header already has an issue link in
-its feedback text. Add a GitHub repository icon to the right of the NodeBooks
-title and before the version, in the right-hand header group.
-
-**Docs and editor titles.** Nodebooks docs and NodeBooks respectively. Also add a simple favicon.
-
 **Section frame hover accent is too subtle.** Increase border width too.
 
 **Nodes expose preferred display units.** Dimensions do not have one global
@@ -224,18 +219,9 @@ SI normalisation, which would make the right answer unreadable in the wrong
 domain. **First implementation:** generic and derived frequency ports now
 default to `Hz`; fixed catalogue ports already use their declared display unit,
 and the belt sample's frequency output now chooses `Hz` explicitly.
+Largely implemented, but R&M catalogue needs updating.
 
-**Use parentheses around units in labels.** Whenever a parameter and its unit
-form one interface label, render `parameter (unit)`, including input and
-output ports; omit parentheses if no unit is shown. Implement this through
-shared presentation components/styles, not node-by-node patches.
-
-**Typeset mathematical notation in node titles.** KaTeX already renders
-equations. Preserve raw title text in documents and render TeX-like notation
-such as `c_2` or `\\sigma` for display, with a plain-text fallback. Add a
-setting to opt out of title math rendering. Do not silently rewrite or
-normalise titles during validation; ordinary prose must remain safe to enter
-and round-trip unchanged.
+**What about migration to newer versions?** I'm thinking notebooks and catalogues that the user made before.
 
 ## Commit conventions and release tooling
 
