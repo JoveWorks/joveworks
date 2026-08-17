@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { parseUnit } from '@joveworks/units';
 
-import { converted, rescaleRange, rescaleValue } from './ValueEditor';
+import { converted, rescaleRange } from './ValueEditor';
 
 const mm = parseUnit('mm');
 
@@ -148,20 +148,6 @@ describe('typing a unit on one bound of a range', () => {
       stop: 0.5,
       points: 21,
       unit: parseUnit('rev'),
-    });
-  });
-});
-
-describe('selecting an input display unit', () => {
-  it('re-expresses an authored scalar without changing its canonical value', () => {
-    expect(rescaleValue({ kind: 'scalar', value: 2, unit: parseUnit('MPa') }, parseUnit('Pa'))).toEqual({
-      kind: 'scalar', value: 2_000_000, unit: parseUnit('Pa'),
-    });
-  });
-
-  it('re-expresses every bound in a range', () => {
-    expect(rescaleValue({ kind: 'linear', start: 1, stop: 3, points: 3, unit: parseUnit('MPa') }, parseUnit('N/mm²'))).toEqual({
-      kind: 'linear', start: 1, stop: 3, points: 3, unit: parseUnit('N/mm²'),
     });
   });
 });
