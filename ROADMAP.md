@@ -69,17 +69,15 @@ other domains arrive as catalogues. Not a build task; decide before the
 naming question below is settled.
 
 **The full name.** `machine-design-studio` presumes the domain the question
-above puts in doubt. The editor display name is now **NodeBooks**, leaning on
+above puts in doubt. The editor display name is **NodeBook**, leaning on
 the two generic parts of the product (nodes and the notebook); the open
 question is whether the repository, deployed URL, package names, and docs
 should follow it. A full rename touches all of those surfaces, so do it once
 after the scope question is answered, not twice.
 
-**Display name: NodeBooks.** The editor header should call the product
-**NodeBooks** now, in the right-hand header group before its GitHub icon and
-version. This is a product-facing label, not yet a decision to rename the
-repository, package names, or deployed URL; take that larger rename together
-with the scope question above.
+**Product name and tab title.** Use the singular **NodeBook**, not
+**NodeBooks**, on every product-facing surface. The browser tab title should
+be `NodeBook|[title]`, where `[title]` is the current graph title.
 
 **Notebook themes, for classroom use.** A course or an instructor should be
 able to put the notebook in their own visual key — school colours, a print-
@@ -201,10 +199,6 @@ current unit and override the default; once `value` is connected, the two
 ports must agree. Removing the wire restores the authored default and its
 unit. This is connection/type resolution, not just an editor display change.
 
-**Autosave restore notification appears twice.** Reproduced behavior: after
-restoring an autosave, two notifications appear at once. Trace the duplicate
-creation path and retain one clear restore notice.
-
 **Section frame hover accent is too subtle.** Increase border width too.
 
 **Nodes expose preferred display units.** Dimensions do not have one global
@@ -222,39 +216,3 @@ and the belt sample's frequency output now chooses `Hz` explicitly.
 Largely implemented, but R&M catalogue needs updating.
 
 **What about migration to newer versions?** I'm thinking notebooks and catalogues that the user made before.
-
-## Commit conventions and release tooling
-
-Done. `v0.1.0` is cut — first tagged release, marked pre-release on GitHub
-(project is alpha). `.github/workflows/release.yml` is manual-trigger only
-(`workflow_dispatch`, optional patch/minor/major override, defaults to
-pre-release) — no auto-publish on push, a release is still something Thomas
-decides to cut. It builds, tests, then runs `pnpm release`
-(`commit-and-tag-version`, config in `.versionrc.json`), pushes the
-version-bump commit and tag, fast-forwards `production` to that same tagged
-commit, and cuts a GitHub Release from the new `CHANGELOG.md` section. Netlify
-must use `production` as its configured production branch; the action creates
-that branch on the first release. `main` remains the development branch.
-
-`.github/workflows/ci.yml` (build+test on every push/PR to `main`) exists
-but its triggers are disabled — solo work already runs build/test locally,
-and `release.yml` has its own gate before it'll cut a release, so the
-per-push run wasn't catching anything extra. Left as `workflow_dispatch` so
-it can be run by hand or have its triggers restored later.
-
-The running app now shows its build's version in the ribbon
-(`packages/editor/vite.config.ts` injects it from the root `package.json`
-at build time), flagged `alpha ·` while the major version is `0` — the live
-Netlify app therefore identifies the exact version whose tagged commit was
-promoted to `production`.
-
-Commit messages move to Conventional Commits — the rule and its allowed
-types/scopes are codified in CLAUDE.md's Conventions section, not
-duplicated here. History before this point isn't in that format, so the
-first changelog's coverage of older commits will be thin; that's expected,
-not a bug in the tooling.
-
-**No commit-msg hook enforces the format, and none is planned.** A
-misformatted commit doesn't error — it just doesn't get a CHANGELOG section,
-or lands in the wrong one, at release time. Decided: that's an acceptable
-outcome for solo work, not a gap to close with `commitlint`/`husky`.
