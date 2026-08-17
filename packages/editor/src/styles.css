@@ -727,9 +727,12 @@ aside.right {
 /* Hovering the notebook's own view of a node (a result block, a section
    title) highlights its canvas counterpart the same way selection does —
    see `hovered` in graph-context.ts. */
-.node.highlighted,
-.frame.highlighted {
+.node.highlighted {
   border-color: var(--accent);
+}
+
+.frame.highlighted {
+  border: 2px solid var(--accent);
 }
 
 /*
