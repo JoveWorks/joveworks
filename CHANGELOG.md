@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.5.0](https://github.com/ThomasVanRiel/joveworks/compare/v0.4.1...v0.5.0) (2026-08-17)
+
+### ⚠ BREAKING CHANGES
+
+* Alpha-era MDS storage keys, equation libraries, package imports, and file naming are not migrated.
+
+### Features
+
+* rename project to JoveWorks ([857155e](https://github.com/ThomasVanRiel/joveworks/commit/857155e52fe37436ab5dc88738a425861241084f))
 ## [0.4.1](https://github.com/ThomasVanRiel/joveworks/compare/v0.4.0...v0.4.1) (2026-08-17)
 
 ### Fixes
