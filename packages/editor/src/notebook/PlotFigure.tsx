@@ -232,7 +232,11 @@ function seriesLegend(label: string, values: readonly (number | string)[], types
     const entry = document.createElement('span');
     const swatch = document.createElement('i');
     swatch.style.backgroundColor = OBSERVABLE10[index % OBSERVABLE10.length] as string;
-    entry.append(swatch, document.createTextNode(String(value)));
+    const text =
+      typeof value === 'number'
+        ? value.toLocaleString(undefined, { maximumSignificantDigits: 4 })
+        : value;
+    entry.append(swatch, document.createTextNode(text));
     entries.append(entry);
   });
   legend.append(title, entries);

@@ -1915,7 +1915,7 @@ aside.right {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  text-align: right;
+  text-align: center;
 }
 
 .notebook .contour-colorbar-ramp {
@@ -1972,6 +1972,8 @@ aside.right {
   align-items: center;
   display: flex;
   gap: 4px;
+  justify-content: center;
+  text-align: center;
 }
 
 .notebook .series-legend-entries i {
