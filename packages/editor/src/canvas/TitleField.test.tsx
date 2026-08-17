@@ -14,6 +14,13 @@ describe('typesetTitle', () => {
     expect(html).toContain('σ');
   });
 
+  it('typesets a prime on a single-letter symbol without treating prose apostrophes as math', () => {
+    const rendered = typesetTitle("Design power P'");
+    expect(rendered).toBeDefined();
+    expect(renderToStaticMarkup(<>{rendered}</>)).toContain('katex');
+    expect(typesetTitle("student's result")).toBeUndefined();
+  });
+
   it('leaves ordinary prose to the plain-text renderer', () => {
     expect(typesetTitle('Ordinary prose stays ordinary')).toBeUndefined();
   });

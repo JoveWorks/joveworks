@@ -13,7 +13,7 @@ interface Props {
 
 // Deliberately conservative: prose is not LaTeX. Only tokens carrying an
 // unmistakable TeX marker are offered to KaTeX; all other text remains text.
-const MATH_TOKEN = /(?:\\[A-Za-z]+|[_^](?:[A-Za-z0-9]|\{[^{}]+\}))/;
+const MATH_TOKEN = /(?:\\[A-Za-z]+|[_^](?:[A-Za-z0-9]|\{[^{}]+\})|\b[A-Za-z]['′](?![A-Za-z]))/;
 const TOKEN_OR_SPACE = /(\s+)/;
 
 export function typesetTitle(title: string): readonly ReactNode[] | undefined {
@@ -33,6 +33,13 @@ export function typesetTitle(title: string): readonly ReactNode[] | undefined {
     }
   });
   return renderedAny ? rendered : undefined;
+}
+
+/** Read-only counterpart to TitleField, used wherever a stored title is displayed. */
+export function TitleText({ value }: { readonly value: string }): ReactElement {
+  const { titleMathRendering } = useSettings();
+  const typeset = titleMathRendering ? typesetTitle(value) : undefined;
+  return <>{typeset ?? value}</>;
 }
 
 export function TitleField({ value, onCommit }: Props): ReactElement {

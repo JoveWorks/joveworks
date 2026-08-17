@@ -26,6 +26,7 @@ import type { NumberFormat } from '@mds/units';
 import { useGraph } from '../graph-context';
 import { useSettings } from '../settings-context';
 import { ContextMenu, type MenuItem } from '../canvas/ContextMenu';
+import { TitleText } from '../canvas/TitleField';
 import { Equation } from '../Equation';
 import { Symbol } from '../Symbol';
 import { ParameterLabel } from '../ParameterLabel';
@@ -66,7 +67,9 @@ function Result({ result }: { readonly result: OutputResult }): ReactElement {
   if (result.kind === 'print') {
     return (
       <p className="result print">
-        <span className="label">{label}</span>
+        <span className="label">
+          <TitleText value={label} />
+        </span>
         <span className="number">{summarise(result, result.figures, format)}</span>
       </p>
     );
@@ -84,7 +87,9 @@ function Result({ result }: { readonly result: OutputResult }): ReactElement {
     return (
       <p className={`result check ${result.passed ? 'pass' : 'fail'}`}>
         <span className="mark">{result.passed ? '✓' : '✗'}</span>
-        <span className="label">{label}</span>
+        <span className="label">
+          <TitleText value={label} />
+        </span>
         {swept && !result.passed ? (
           <span className="count">
             fails at {failures} of {result.results.length} points
@@ -101,7 +106,9 @@ function Result({ result }: { readonly result: OutputResult }): ReactElement {
   if (result.kind === 'equation') {
     return (
       <div className="result equation">
-        <span className="label">{label}</span>
+        <span className="label">
+          <TitleText value={label} />
+        </span>
         <Equation latex={toLatex(parseExpression(result.expression))} />
       </div>
     );
@@ -111,7 +118,9 @@ function Result({ result }: { readonly result: OutputResult }): ReactElement {
     const rows = Math.max(...result.columns.map((column) => column.series.data.length));
     return (
       <div className="result table">
-        <span className="label">{label}</span>
+        <span className="label">
+          <TitleText value={label} />
+        </span>
         <table>
           <thead>
             <tr>
@@ -147,7 +156,9 @@ function Result({ result }: { readonly result: OutputResult }): ReactElement {
 
   return (
     <div className="result plot">
-      <span className="label">{label}</span>
+      <span className="label">
+        <TitleText value={label} />
+      </span>
       <PlotFigure result={result} document={document} format={format} />
       {result.threshold === undefined ? null : (
         <p className="threshold">
@@ -398,7 +409,9 @@ function Section({
               >
                 {result === undefined ? (
                   <p className="result pending">
-                    <span className="label">{node.label ?? node.id}</span>
+                    <span className="label">
+                      <TitleText value={node.label ?? node.id} />
+                    </span>
                     <span className="number">
                       {analysis.problems.get(node.id) ?? 'not yet computed'}
                     </span>
