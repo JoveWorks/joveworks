@@ -1300,6 +1300,7 @@ aside.right {
   inset: 0;
   z-index: 45;
   background: var(--scrim);
+  animation: tutorial-backdrop-in 180ms ease-out;
 }
 
 .tutorial-cutout {
@@ -1309,10 +1310,10 @@ aside.right {
   /* Dims everything outside the target rect without a four-panel frame. */
   box-shadow: 0 0 0 9999px var(--scrim);
   transition:
-    top 0.2s ease,
-    left 0.2s ease,
-    width 0.2s ease,
-    height 0.2s ease;
+    top 280ms cubic-bezier(0.22, 1, 0.36, 1),
+    left 280ms cubic-bezier(0.22, 1, 0.36, 1),
+    width 280ms cubic-bezier(0.22, 1, 0.36, 1),
+    height 280ms cubic-bezier(0.22, 1, 0.36, 1);
   pointer-events: none;
 }
 
@@ -1329,6 +1330,41 @@ aside.right {
   background: var(--paper);
   box-shadow: var(--shadow-lg);
   font-size: 13px;
+  transition:
+    top 280ms cubic-bezier(0.22, 1, 0.36, 1),
+    left 280ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.tutorial-step {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: tutorial-step-forward 220ms ease-out;
+}
+
+.tutorial-step-backward {
+  animation-name: tutorial-step-backward;
+}
+
+@keyframes tutorial-step-forward {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+}
+
+@keyframes tutorial-step-backward {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+}
+
+@keyframes tutorial-backdrop-in {
+  from {
+    opacity: 0;
+  }
 }
 
 .tutorial-caption h2 {
@@ -1358,6 +1394,18 @@ aside.right {
   border-radius: 4px;
   background: var(--panel);
   cursor: pointer;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tutorial-backdrop,
+  .tutorial-step {
+    animation: none;
+  }
+
+  .tutorial-cutout,
+  .tutorial-caption {
+    transition: none;
+  }
 }
 
 .context-menu {

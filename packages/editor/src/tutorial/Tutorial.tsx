@@ -51,6 +51,7 @@ function preferredStyle(rect: DOMRect | undefined, placement: TutorialStep['plac
 
 export function Tutorial({ active, onClose, pinned, setPinned }: Props): ReactElement | null {
   const [stepIndex, setStepIndex] = useState(0);
+  const [direction, setDirection] = useState<'forward' | 'backward'>('forward');
   const [rect, setRect] = useState<DOMRect | undefined>(undefined);
   const [offset, setOffset] = useState({ dx: 0, dy: 0 });
   const captionRef = useRef<HTMLDivElement>(null);
@@ -131,7 +132,19 @@ export function Tutorial({ active, onClose, pinned, setPinned }: Props): ReactEl
     setStepIndex(0);
   };
   const last = stepIndex === TUTORIAL_STEPS.length - 1;
-  const advance = (): void => (last ? close() : setStepIndex((current) => current + 1));
+  const advance = (): void => {
+    if (last) {
+      close();
+      return;
+    }
+    setDirection('forward');
+    setStepIndex((current) => current + 1);
+  };
+
+  const goBack = (): void => {
+    setDirection('backward');
+    setStepIndex((current) => current - 1);
+  };
 
   const base = preferredStyle(rect, step.placement);
   const nudge = offset.dx !== 0 || offset.dy !== 0 ? `translate(${offset.dx}px, ${offset.dy}px)` : undefined;
@@ -165,23 +178,25 @@ export function Tutorial({ active, onClose, pinned, setPinned }: Props): ReactEl
           if (event.key === 'Escape') close();
         }}
       >
-        <h2>{step.title}</h2>
-        <p>{step.body}</p>
-        <div className="tutorial-progress">
-          {stepIndex + 1} / {TUTORIAL_STEPS.length}
-        </div>
-        <div className="tutorial-actions">
-          <button type="button" onClick={close}>
-            Skip
-          </button>
-          {stepIndex > 0 ? (
-            <button type="button" onClick={() => setStepIndex((current) => current - 1)}>
-              Back
+        <div key={stepIndex} className={`tutorial-step tutorial-step-${direction}`}>
+          <h2>{step.title}</h2>
+          <p>{step.body}</p>
+          <div className="tutorial-progress">
+            {stepIndex + 1} / {TUTORIAL_STEPS.length}
+          </div>
+          <div className="tutorial-actions">
+            <button type="button" onClick={close}>
+              Skip
             </button>
-          ) : null}
-          <button type="button" onClick={advance}>
-            {last ? 'Done' : 'Next'}
-          </button>
+            {stepIndex > 0 ? (
+              <button type="button" onClick={goBack}>
+                Back
+              </button>
+            ) : null}
+            <button type="button" onClick={advance}>
+              {last ? 'Done' : 'Next'}
+            </button>
+          </div>
         </div>
       </div>
     </>
