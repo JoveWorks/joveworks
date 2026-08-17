@@ -46,6 +46,21 @@ const GENERAL = '__general__';
 const USER = '__user__';
 const FAVOURITES = '__favourites__';
 
+interface PaletteAction {
+  /** Stable across translated labels: this is what the local preference stores. */
+  readonly id: string;
+  readonly label: string;
+  readonly summary: string;
+  readonly insert: () => void;
+  readonly disabled?: boolean | undefined;
+  readonly title?: string | undefined;
+}
+
+type PaletteMenu =
+  | { readonly entry: PaletteEntry; readonly x: number; readonly y: number }
+  | { readonly userEquationId: string; readonly x: number; readonly y: number }
+  | { readonly action: PaletteAction; readonly x: number; readonly y: number };
+
 /** An input's starting kind, built off a plain `1`, matching `ValueKindSelect`'s own conversion. */
 function seedValue(kind: 'scalar' | 'linear' | 'list', unit: Unit): ValueSpec {
   return converted({ kind: 'scalar', value: 1, unit }, kind);
@@ -74,11 +89,7 @@ export function Palette(): ReactElement {
   // about what the graph is. Search ignores this and always shows a match.
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
   const [favourites, setFavouritesState] = useState<ReadonlySet<string>>(loadFavourites);
-  const [menu, setMenu] = useState<
-    | { readonly entry: PaletteEntry; readonly x: number; readonly y: number }
-    | { readonly userEquationId: string; readonly x: number; readonly y: number }
-    | undefined
-  >();
+  const [menu, setMenu] = useState<PaletteMenu>();
   const setFavourites = (update: (current: ReadonlySet<string>) => ReadonlySet<string>): void =>
     setFavouritesState((current) => {
       const next = update(current);
@@ -109,9 +120,6 @@ export function Palette(): ReactElement {
     }
     return [...byCatalogue.entries()];
   }, [found]);
-  const favouriteEntries = all.filter(({ formula }) => favourites.has(formula.id));
-  const favouriteUserEquations = userEquations.filter((equation) => favourites.has(`user:${equation.id}`));
-
   const addFormula = (formula: Formula): void =>
     edit((current) =>
       addNode(current, {
@@ -223,6 +231,57 @@ export function Palette(): ReactElement {
       return addNode(current, { kind: 'unpack', id, label: id, position: position() });
     });
 
+  const actions: readonly PaletteAction[] = [
+    { id: 'builtin:input:value', label: copy.value, summary: copy.singleNumber, insert: () => addInput('scalar') },
+    { id: 'builtin:input:range', label: copy.range, summary: copy.rangeSummary, insert: () => addInput('linear') },
+    { id: 'builtin:input:list', label: copy.list, summary: copy.listSummary, insert: () => addInput('list') },
+    { id: 'builtin:general:compare', label: copy.compare, summary: copy.compareSummary, insert: addCompare },
+    { id: 'builtin:general:equation', label: copy.equation, summary: copy.equationSummary, insert: addClosure },
+    { id: 'builtin:general:waypoint', label: copy.waypoint, summary: copy.waypointSummary, insert: addWaypoint },
+    { id: 'builtin:general:pack', label: copy.pack, summary: copy.packSummary, insert: addPack },
+    { id: 'builtin:general:unpack', label: copy.unpack, summary: copy.unpackSummary, insert: addUnpack },
+    { id: 'builtin:output:print', label: copy.print, summary: copy.printSummary, insert: () => addOutput('print') },
+    {
+      id: 'builtin:output:plot', label: copy.plot, summary: copy.plotSummary, insert: () => addOutput('plot'),
+      disabled: ranges.length === 0,
+      title: ranges.length === 0 ? 'Needs a range input somewhere in the graph to plot against' : undefined,
+    },
+    { id: 'builtin:output:table', label: copy.table, summary: copy.tableSummary, insert: () => addOutput('table') },
+    { id: 'builtin:output:check', label: copy.check, summary: copy.checkSummary, insert: () => addOutput('check') },
+  ];
+  const favouriteEntries = all.filter(({ formula }) => favourites.has(formula.id));
+  const favouriteUserEquations = userEquations.filter((equation) => favourites.has(`user:${equation.id}`));
+  const favouriteActions = actions.filter((action) => favourites.has(action.id));
+
+  const actionEntry = (action: PaletteAction, keyPrefix = ''): ReactElement => (
+    <li key={`${keyPrefix}${action.id}`} onContextMenu={(event) => {
+      event.preventDefault();
+      setMenu({ action, x: event.clientX, y: event.clientY });
+    }}>
+      <button type="button" className="entry" disabled={action.disabled} title={action.title} onClick={action.insert}>
+        <span className="entry-id">{action.label}</span>
+        <span className="entry-output">{action.summary}</span>
+      </button>
+    </li>
+  );
+
+  const userEquationEntry = (equation: typeof userEquations[number], keyPrefix = ''): ReactElement => (
+    <li key={`${keyPrefix}${equation.id}`}>
+      <button
+        type="button"
+        className="entry"
+        title={equation.expression}
+        onClick={() => addUserEquation(equation.id)}
+        onContextMenu={(event) => {
+          event.preventDefault();
+          setMenu({ userEquationId: equation.id, x: event.clientX, y: event.clientY });
+        }}
+      >
+        <span className="entry-id">{equation.label}</span><span className="entry-output">saved equation</span>
+      </button>
+    </li>
+  );
+
   return (
     <div className="palette">
       <input
@@ -233,15 +292,16 @@ export function Palette(): ReactElement {
       />
 
       <div className="palette-list">
-        {query.trim().length === 0 && favouriteEntries.length + favouriteUserEquations.length > 0 ? (
+        {query.trim().length === 0 && favouriteEntries.length + favouriteUserEquations.length + favouriteActions.length > 0 ? (
           <section>
             <h3><button type="button" className="section-toggle" onClick={() => toggleCollapsed(FAVOURITES)}>
-              <span className="section-toggle-title">Favourites{collapsed.has(FAVOURITES) ? ` (${favouriteEntries.length + favouriteUserEquations.length})` : ''}</span>
+              <span className="section-toggle-title"><span className="favourites-icon" aria-hidden="true">♥</span>{copy.favourites}{collapsed.has(FAVOURITES) ? ` (${favouriteEntries.length + favouriteUserEquations.length + favouriteActions.length})` : ''}</span>
               <span className="chevron" aria-hidden="true">{collapsed.has(FAVOURITES) ? '▸' : '▾'}</span>
             </button></h3>
             {collapsed.has(FAVOURITES) ? null : <ul>
               {favouriteEntries.map((entry) => formulaEntry(entry, 'fav-'))}
-              {favouriteUserEquations.map((equation) => <li key={`fav-user-${equation.id}`}><button type="button" className="entry" onClick={() => addUserEquation(equation.id)}><span className="entry-id">{equation.label}</span><span className="entry-output">saved equation</span></button></li>)}
+              {favouriteUserEquations.map((equation) => userEquationEntry(equation, 'fav-user-'))}
+              {favouriteActions.map((action) => actionEntry(action, 'fav-'))}
             </ul>}
           </section>
         ) : null}
@@ -266,24 +326,7 @@ export function Palette(): ReactElement {
             </h3>
             {inputCollapsed ? null : (
               <ul>
-                <li>
-                  <button type="button" className="entry" onClick={() => addInput('scalar')}>
-                    <span className="entry-id">{copy.value}</span>
-                    <span className="entry-output">{copy.singleNumber}</span>
-                  </button>
-                </li>
-                <li>
-                  <button type="button" className="entry" onClick={() => addInput('linear')}>
-                    <span className="entry-id">{copy.range}</span>
-                    <span className="entry-output">{copy.rangeSummary}</span>
-                  </button>
-                </li>
-                <li>
-                  <button type="button" className="entry" onClick={() => addInput('list')}>
-                    <span className="entry-id">{copy.list}</span>
-                    <span className="entry-output">{copy.listSummary}</span>
-                  </button>
-                </li>
+                {actions.slice(0, 3).map((action) => actionEntry(action))}
               </ul>
             )}
           </section>
@@ -296,11 +339,7 @@ export function Palette(): ReactElement {
               <span className="chevron" aria-hidden="true">{collapsed.has(GENERAL) ? '▸' : '▾'}</span>
             </button></h3>
             {collapsed.has(GENERAL) ? null : <ul>
-              <li><button type="button" className="entry" onClick={addCompare}><span className="entry-id">{copy.compare}</span><span className="entry-output">{copy.compareSummary}</span></button></li>
-              <li><button type="button" className="entry" onClick={addClosure}><span className="entry-id">{copy.equation}</span><span className="entry-output">{copy.equationSummary}</span></button></li>
-              <li><button type="button" className="entry" onClick={addWaypoint}><span className="entry-id">{copy.waypoint}</span><span className="entry-output">{copy.waypointSummary}</span></button></li>
-              <li><button type="button" className="entry" onClick={addPack}><span className="entry-id">{copy.pack}</span><span className="entry-output">{copy.packSummary}</span></button></li>
-              <li><button type="button" className="entry" onClick={addUnpack}><span className="entry-id">{copy.unpack}</span><span className="entry-output">{copy.unpackSummary}</span></button></li>
+              {actions.slice(3, 8).map((action) => actionEntry(action))}
             </ul>}
           </section>
         ) : null}
@@ -311,11 +350,7 @@ export function Palette(): ReactElement {
               <span className="section-toggle-title">My equations{collapsed.has(USER) ? ` (${userEquations.length})` : ''}</span>
               <span className="chevron" aria-hidden="true">{collapsed.has(USER) ? '▸' : '▾'}</span>
             </button></h3>
-            {collapsed.has(USER) ? null : <ul>{userEquations.map((equation) => <li key={equation.id}>
-              <button type="button" className="entry" title={equation.expression} onClick={() => addUserEquation(equation.id)} onContextMenu={(event) => { event.preventDefault(); setMenu({ userEquationId: equation.id, x: event.clientX, y: event.clientY }); }}>
-                <span className="entry-id">{equation.label}</span><span className="entry-output">saved equation</span>
-              </button>
-            </li>)}</ul>}
+            {collapsed.has(USER) ? null : <ul>{userEquations.map((equation) => userEquationEntry(equation))}</ul>}
           </section>
         ) : null}
 
@@ -334,40 +369,7 @@ export function Palette(): ReactElement {
             </h3>
             {outputCollapsed ? null : (
               <ul>
-                <li>
-                  <button type="button" className="entry" onClick={() => addOutput('print')}>
-                    <span className="entry-id">{copy.print}</span>
-                    <span className="entry-output">{copy.printSummary}</span>
-                  </button>
-                </li>
-                <li>
-                  <button
-                    type="button"
-                    className="entry"
-                    disabled={ranges.length === 0}
-                    title={
-                      ranges.length === 0
-                        ? 'Needs a range input somewhere in the graph to plot against'
-                        : undefined
-                    }
-                    onClick={() => addOutput('plot')}
-                  >
-                    <span className="entry-id">{copy.plot}</span>
-                    <span className="entry-output">{copy.plotSummary}</span>
-                  </button>
-                </li>
-                <li>
-                  <button type="button" className="entry" onClick={() => addOutput('table')}>
-                    <span className="entry-id">{copy.table}</span>
-                    <span className="entry-output">{copy.tableSummary}</span>
-                  </button>
-                </li>
-                <li>
-                  <button type="button" className="entry" onClick={() => addOutput('check')}>
-                    <span className="entry-id">{copy.check}</span>
-                    <span className="entry-output">{copy.checkSummary}</span>
-                  </button>
-                </li>
+                {actions.slice(8).map((action) => actionEntry(action))}
               </ul>
             )}
           </section>
@@ -421,10 +423,13 @@ export function Palette(): ReactElement {
             { label: t('Insert'), onClick: () => addFormula(menu.entry.formula) },
             { label: t('Help'), onClick: () => window.open(`${DOCS_BASE_URL}/guide/node-reference#formula`, '_blank', 'noopener') },
             { label: t(favourites.has(menu.entry.formula.id) ? 'Remove from favourites' : 'Add to favourites'), onClick: () => setFavourites((current) => { const next = new Set(current); if (next.has(menu.entry.formula.id)) next.delete(menu.entry.formula.id); else next.add(menu.entry.formula.id); return next; }) },
-          ] : [
+          ] : 'userEquationId' in menu ? [
             { label: t('Insert'), onClick: () => addUserEquation(menu.userEquationId) },
             { label: t(favourites.has(`user:${menu.userEquationId}`) ? 'Remove from favourites' : 'Add to favourites'), onClick: () => setFavourites((current) => { const key = `user:${menu.userEquationId}`; const next = new Set(current); if (next.has(key)) next.delete(key); else next.add(key); return next; }) },
             { label: t('Remove from palette'), danger: true, onClick: () => removeUserEquation(menu.userEquationId) },
+          ] : [
+            { label: t('Insert'), ...(menu.action.disabled === undefined ? {} : { disabled: menu.action.disabled }), onClick: menu.action.insert },
+            { label: t(favourites.has(menu.action.id) ? 'Remove from favourites' : 'Add to favourites'), onClick: () => setFavourites((current) => { const next = new Set(current); if (next.has(menu.action.id)) next.delete(menu.action.id); else next.add(menu.action.id); return next; }) },
           ]}
         />
       ) : null}
