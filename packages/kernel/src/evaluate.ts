@@ -44,6 +44,7 @@ import { assertEvaluable, compileClosureFormula, compileFormula } from './formul
 import { canonicalUnit, endpointKey, resolveGraph, type PortType, type Resolution } from './graph.js';
 import {
   LARGE_GRID,
+  broadcastSeries,
   gridSize,
   reader,
   scalarSeries,
@@ -678,15 +679,20 @@ function outputResult(
   }
 
   if (output.kind === 'table') {
-    const columns = output.columns.map((name) => {
+    const sources = output.columns.map((name) => {
       const { value, unit } = sourceOf(node, name, resolution, values);
       return { name, series: value, unit };
     });
+    const tableAxes = unionAxes(...sources.map((column) => column.series.axes));
+    const columns = sources.map((column) => ({
+      ...column,
+      series: broadcastSeries(column.series, tableAxes),
+    }));
     return {
       ...base,
       kind: 'table',
       columns,
-      axes: unionAxes(...columns.map((column) => column.series.axes)),
+      axes: tableAxes,
     };
   }
 

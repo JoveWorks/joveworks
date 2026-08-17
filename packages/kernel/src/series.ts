@@ -164,6 +164,38 @@ export function reader(series: NumericSeries, target: readonly Axis[]): (cell: n
 }
 
 /**
+ * Expand a series onto `target`, keeping its values aligned by axis identity.
+ *
+ * This is the materialised form of `indexer`: useful at display boundaries
+ * that need every column to have one value per cell of a shared grid.
+ */
+export function broadcastSeries(series: NumericSeries, target: readonly Axis[]): NumericSeries;
+export function broadcastSeries(series: CategoricalSeries, target: readonly Axis[]): CategoricalSeries;
+export function broadcastSeries(series: Series, target: readonly Axis[]): Series;
+export function broadcastSeries(series: Series, target: readonly Axis[]): Series {
+  if (
+    series.axes.length === target.length &&
+    series.axes.every((axis, index) => axis.id === target[index]?.id)
+  ) {
+    return series;
+  }
+
+  const index = indexer(series, target);
+  if (series.kind === 'numeric') {
+    return {
+      kind: 'numeric',
+      axes: target,
+      data: Array.from({ length: gridSize(target) }, (_unused, cell) => series.data[index(cell)] as number),
+    };
+  }
+  return {
+    kind: 'categorical',
+    axes: target,
+    data: Array.from({ length: gridSize(target) }, (_unused, cell) => series.data[index(cell)] as string),
+  };
+}
+
+/**
  * The guard: warn when a grid grows large enough to be felt.
  *
  * A warning and not a refusal — a 40 000-point study is a legitimate thing to
