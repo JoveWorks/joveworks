@@ -17,6 +17,7 @@ import type { ReactElement } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 
 import { isGenericPort, localize, type Port } from '@joveworks/schema';
+import { phrase } from '../i18n';
 import type { Unit } from '@joveworks/units';
 
 import { useGraph } from '../graph-context';
@@ -61,7 +62,7 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
         onTogglePin={() => togglePin(id)}
         onDelete={() => edit((current) => reframe(removeNodes(current, new Set([id]))))}
         title={node.label ?? node.formula.id}
-        subtitle="formula not loaded"
+        subtitle={phrase(locale, 'formula not loaded')}
       >
         <div className="node-value">
           <span className="reading">—</span>
@@ -126,10 +127,10 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
         <>
           <p className="description">{localize(formula.description, locale)}</p>
           {formula.appliesWhen === undefined ? null : (
-            <p className="applies">applies when {formula.appliesWhen}</p>
+            <p className="applies">{phrase(locale, 'applies when')} {formula.appliesWhen}</p>
           )}
           {formula.variantOf === undefined ? null : (
-            <p className="applies">same relation as {formula.variantOf}</p>
+            <p className="applies">{phrase(locale, 'same relation as')} {formula.variantOf}</p>
           )}
           <p className="provenance">
             {/* Which catalogue this formula came from — the same name the palette
@@ -138,16 +139,16 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
             {source === undefined ? null : (
               <span
                 className={source.restricted ? 'source restricted' : 'source'}
-                title={source.restricted ? 'Restricted content — never exported.' : undefined}
+                title={source.restricted ? phrase(locale, 'Restricted content — never exported.') : undefined}
               >
                 From catalogue: {localize(source.name, locale)}
               </span>
             )}
             {/* Signs off content against R&M formula by formula — see
                 ROADMAP.md. Drop this once the whole catalogue is verified. */}
-            {formula.status === 'verified' ? <span className="status verified">verified</span> : null}
+            {formula.status === 'verified' ? <span className="status verified">{phrase(locale, 'verified')}</span> : null}
             {formula.status === 'unverified' ? (
-              <span className="status unverified" title="No golden value exercises this yet.">
+              <span className="status unverified" title={phrase(locale, 'No golden value exercises this yet.')}>
                 unverified
               </span>
             ) : null}

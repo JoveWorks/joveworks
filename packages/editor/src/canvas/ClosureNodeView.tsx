@@ -11,6 +11,8 @@
  */
 
 import type { ReactElement } from 'react';
+
+import { phrase } from '../i18n';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 
 import { CLOSURE_RESULT_PORT, type Port } from '@joveworks/schema';
@@ -30,7 +32,7 @@ import { TitleField, TitleText } from './TitleField';
 
 export function ClosureNodeView({ id, selected }: NodeProps): ReactElement | null {
   const { document, analysis, edit, pinned, togglePin } = useGraph();
-  const { numberFormat } = useSettings();
+  const { numberFormat, locale } = useSettings();
   const format = toUnitsFormat(numberFormat);
   const node = document.nodes.find((candidate) => candidate.id === id);
   if (node === undefined || node.kind !== 'closure') return null;
@@ -77,7 +79,7 @@ export function ClosureNodeView({ id, selected }: NodeProps): ReactElement | nul
           className="expression"
           value={node.expression}
           placeholder="a + b"
-          title="A student-written equation — its ports are whatever names it mentions."
+          title={phrase(locale, 'A student-written equation — its ports are whatever names it mentions.')}
           onCommit={(expression) =>
             edit((current) => setClosureExpression(current, id, expression))
           }

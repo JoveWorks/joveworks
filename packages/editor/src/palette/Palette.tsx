@@ -30,7 +30,7 @@ import {
 
 import { useGraph } from '../graph-context';
 import { useSettings } from '../settings-context';
-import { ui } from '../i18n';
+import { phrase, ui } from '../i18n';
 import { addNode, uniqueId } from '../model/document';
 import { entries, search, type PaletteEntry } from '../model/catalogues';
 import { loadFavourites, saveFavourites } from '../model/palettePreferences';
@@ -67,6 +67,7 @@ export function Palette(): ReactElement {
   const { document, catalogues, userEquations, removeUserEquation, edit } = useGraph();
   const { locale } = useSettings();
   const copy = ui(locale);
+  const t = (english: string): string => phrase(locale, english);
   const [query, setQuery] = useState('');
   // Session UI state, not a document field — reopens on reload, same
   // precedent as a node's pin state. Which sections are open changes nothing
@@ -386,8 +387,8 @@ export function Palette(): ReactElement {
                   <span className="section-toggle-title">
                     {list[0] === undefined ? catalogueId : localize(list[0].catalogue.name, locale)}
                     {list[0]?.catalogue.restricted === true ? (
-                      <span className="restricted" title="Restricted content — never exported.">
-                        restricted
+                      <span className="restricted" title={t('Restricted content — never exported.')}>
+                        {t('restricted')}
                       </span>
                     ) : null}
                     {isCollapsed ? <span className="section-toggle-count"> ({count})</span> : null}
@@ -405,12 +406,11 @@ export function Palette(): ReactElement {
             </section>
           );
         })}
-        {found.length === 0 ? <p className="empty">Nothing matches “{query}”.</p> : null}
+        {found.length === 0 ? <p className="empty">{t('Nothing matches')} “{query}”.</p> : null}
       </div>
 
       <p className="palette-footer">
-        {document.nodes.length} nodes · {catalogues.length} catalogue
-        {catalogues.length === 1 ? '' : 's'} loaded
+        {document.nodes.length} {t(document.nodes.length === 1 ? 'node' : 'nodes')} · {catalogues.length} {t(catalogues.length === 1 ? 'catalogue' : 'catalogues')} {t('loaded')}
       </p>
       {menu !== undefined ? (
         <ContextMenu
@@ -418,13 +418,13 @@ export function Palette(): ReactElement {
           y={menu.y}
           onClose={() => setMenu(undefined)}
           items={'entry' in menu ? [
-            { label: 'Insert', onClick: () => addFormula(menu.entry.formula) },
-            { label: 'Help', onClick: () => window.open(`${DOCS_BASE_URL}/guide/node-reference#formula`, '_blank', 'noopener') },
-            { label: favourites.has(menu.entry.formula.id) ? 'Remove from favourites' : 'Add to favourites', onClick: () => setFavourites((current) => { const next = new Set(current); if (next.has(menu.entry.formula.id)) next.delete(menu.entry.formula.id); else next.add(menu.entry.formula.id); return next; }) },
+            { label: t('Insert'), onClick: () => addFormula(menu.entry.formula) },
+            { label: t('Help'), onClick: () => window.open(`${DOCS_BASE_URL}/guide/node-reference#formula`, '_blank', 'noopener') },
+            { label: t(favourites.has(menu.entry.formula.id) ? 'Remove from favourites' : 'Add to favourites'), onClick: () => setFavourites((current) => { const next = new Set(current); if (next.has(menu.entry.formula.id)) next.delete(menu.entry.formula.id); else next.add(menu.entry.formula.id); return next; }) },
           ] : [
-            { label: 'Insert', onClick: () => addUserEquation(menu.userEquationId) },
-            { label: favourites.has(`user:${menu.userEquationId}`) ? 'Remove from favourites' : 'Add to favourites', onClick: () => setFavourites((current) => { const key = `user:${menu.userEquationId}`; const next = new Set(current); if (next.has(key)) next.delete(key); else next.add(key); return next; }) },
-            { label: 'Remove from palette', danger: true, onClick: () => removeUserEquation(menu.userEquationId) },
+            { label: t('Insert'), onClick: () => addUserEquation(menu.userEquationId) },
+            { label: t(favourites.has(`user:${menu.userEquationId}`) ? 'Remove from favourites' : 'Add to favourites'), onClick: () => setFavourites((current) => { const key = `user:${menu.userEquationId}`; const next = new Set(current); if (next.has(key)) next.delete(key); else next.add(key); return next; }) },
+            { label: t('Remove from palette'), danger: true, onClick: () => removeUserEquation(menu.userEquationId) },
           ]}
         />
       ) : null}

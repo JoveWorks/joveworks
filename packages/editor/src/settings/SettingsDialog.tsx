@@ -79,7 +79,7 @@ export function SettingsDialog({
         </label>
 
         <label className="dialog-field">
-          thousands / decimal
+          {copy.thousandsDecimal}
           <select
             className="nodrag"
             value={settings.style}
@@ -96,7 +96,7 @@ export function SettingsDialog({
         </label>
 
         <label className="dialog-field">
-          notation
+          {copy.notation}
           <select
             className="nodrag"
             value={settings.notation}
@@ -123,9 +123,7 @@ export function SettingsDialog({
         </div>
 
         <p className="dialog-note">
-          Applies to every value shown or typed in the app. A per-print-node
-          "figures" count still overrides how many significant figures a
-          result shows.
+          {copy.numberFormatNote}
         </p>
 
         <label className="dialog-field dialog-checkbox">
@@ -134,7 +132,7 @@ export function SettingsDialog({
             checked={minimapVisible}
             onChange={(event) => onMinimapVisibleChange(event.target.checked)}
           />
-          show the canvas minimap
+          {copy.showMinimap}
         </label>
 
         <label className="dialog-field dialog-checkbox">
@@ -143,11 +141,11 @@ export function SettingsDialog({
             checked={titleMathRendering}
             onChange={(event) => onTitleMathRenderingChange(event.target.checked)}
           />
-          typeset mathematical notation in titles and notebook text
+          {copy.typesetMath}
         </label>
 
         <label className="dialog-field">
-          contour colour palette
+          {copy.contourPalette}
           <select
             className="nodrag"
             value={contourPalette}

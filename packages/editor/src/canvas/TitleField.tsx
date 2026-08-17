@@ -4,6 +4,7 @@ import katex from 'katex';
 import { useState, type ReactElement, type ReactNode } from 'react';
 
 import { useSettings } from '../settings-context';
+import { phrase } from '../i18n';
 import { TextField } from './fields';
 
 interface Props {
@@ -70,7 +71,7 @@ export function TitleText({ value }: { readonly value: string }): ReactElement {
 }
 
 export function TitleField({ value, onCommit, onChange, onBlur, multiline = false }: Props): ReactElement {
-  const { titleMathRendering } = useSettings();
+  const { titleMathRendering, locale } = useSettings();
   const [editing, setEditing] = useState(false);
   const typeset = titleMathRendering ? typesetTitle(value) : undefined;
 
@@ -97,7 +98,7 @@ export function TitleField({ value, onCommit, onChange, onBlur, multiline = fals
       role="textbox"
       tabIndex={0}
       aria-label={value}
-      title="Click to edit the raw title"
+      title={phrase(locale, 'Click to edit the raw title')}
       onClick={() => setEditing(true)}
       onKeyDown={(event) => {
         if (event.key === 'Enter') setEditing(true);

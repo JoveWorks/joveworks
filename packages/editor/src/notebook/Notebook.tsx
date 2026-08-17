@@ -51,7 +51,7 @@ import { toUnitsFormat } from '../model/numberFormat';
 import { display, displayNumber } from '../model/quantity';
 import { summarise } from '../model/values';
 import { PlotFigure } from './PlotFigure';
-import { ui } from '../i18n';
+import { phrase, ui } from '../i18n';
 
 /**
  * Enter finishes the field (blurs it, same as `fields.tsx`'s `TextField`);
@@ -77,7 +77,7 @@ function NotebookTextField({
   onBlur,
   ...props
 }: NotebookTextFieldProps): ReactElement {
-  const { titleMathRendering } = useSettings();
+  const { locale, titleMathRendering } = useSettings();
   const [editing, setEditing] = useState(false);
   const textarea = useRef<HTMLTextAreaElement>(null);
   const typeset = titleMathRendering ? typesetTitle(value) : undefined;
@@ -120,7 +120,7 @@ function NotebookTextField({
         role="textbox"
         tabIndex={0}
         aria-label={value}
-        title="Click to edit the raw text"
+        title={phrase(locale, 'Click to edit the raw text')}
         onClick={() => setEditing(true)}
         onKeyDown={(event) => {
           if (event.key === 'Enter') setEditing(true);
@@ -174,6 +174,7 @@ function Result({ result, node }: { readonly result: OutputResult; readonly node
   const { document } = useGraph();
   const { numberFormat, locale } = useSettings();
   const notebookLocale = document.notebookLocale ?? locale;
+  const t = (english: string): string => phrase(notebookLocale, english);
   const format: NumberFormat = toUnitsFormat(numberFormat);
 
   if (result.kind === 'print') {
@@ -274,8 +275,7 @@ function Result({ result, node }: { readonly result: OutputResult; readonly node
       <PlotFigure result={result} document={document} format={format} />
       {result.threshold === undefined ? null : (
         <p className="threshold">
-          threshold at {display(result.threshold, result.unit, 4, format)} — where the curve crosses
-          it is the size that works
+          {t('threshold at')} {display(result.threshold, result.unit, 4, format)} {t('— where the curve crosses it is the size that works')}
         </p>
       )}
     </div>
@@ -290,11 +290,12 @@ function Caption({
   readonly defaultCaption?: string;
 }): ReactElement {
   const { editLive, commitEdit } = useGraph();
+  const { locale } = useSettings();
   return (
     <NotebookTextField
       className="caption"
       value={node.caption ?? ''}
-      placeholder={defaultCaption ?? 'caption — what this result says'}
+      placeholder={defaultCaption ?? phrase(locale, 'caption — what this result says')}
       rows={1}
       onKeyDown={commitOnEnter}
       onChange={(event) => {
@@ -353,6 +354,8 @@ function Section({
   readonly onDragEnd: () => void;
 }): ReactElement | null {
   const { document, analysis, edit, editLive, commitEdit, setHovered } = useGraph();
+  const { locale } = useSettings();
+  const t = (english: string): string => phrase(locale, english);
   const [menu, setMenu] = useState<{ x: number; y: number } | undefined>(undefined);
   if (outputs.length === 0) return null;
 
@@ -367,17 +370,17 @@ function Section({
       ? []
       : [
           {
-            label: 'Move up',
+            label: t('Move up'),
             disabled: document.frames[0]?.id === frame.id,
             onClick: () => edit((current) => moveFrame(current, frame.id, 'up')),
           },
           {
-            label: 'Move down',
+            label: t('Move down'),
             disabled: document.frames.at(-1)?.id === frame.id,
             onClick: () => edit((current) => moveFrame(current, frame.id, 'down')),
           },
           {
-            label: 'Delete section',
+            label: t('Delete section'),
             danger: true,
             onClick: () => edit((current) => reframe(removeNodes(current, new Set([frame.id])))),
           },
@@ -428,7 +431,7 @@ function Section({
         )}
         {frame === undefined ? (
           <button type="button" className="section-toggle" onClick={onToggle}>
-            <span className="section-toggle-title">Not in a section</span>
+            <span className="section-toggle-title">{t('Not in a section')}</span>
             <span className="chevron" aria-hidden="true">
               {collapsed ? '▸' : '▾'}
             </span>
@@ -453,7 +456,7 @@ function Section({
               type="button"
               className="section-toggle"
               onClick={onToggle}
-              aria-label={collapsed ? 'Expand section' : 'Collapse section'}
+              aria-label={t(collapsed ? 'Expand section' : 'Collapse section')}
               // The whole flex-filled gap between the title and the chevron is
               // both the toggle click target and the drag-to-reorder handle —
               // a single element can be both, since the browser only starts a
@@ -471,7 +474,7 @@ function Section({
             >
               {collapsed ? (
                 <span className="section-toggle-count">
-                  {outputs.length} result{outputs.length === 1 ? '' : 's'}
+                  {outputs.length} {t(outputs.length === 1 ? 'result' : 'results')}
                 </span>
               ) : null}
               <span className="chevron" aria-hidden="true">
@@ -490,7 +493,7 @@ function Section({
             <NotebookTextField
               className="note"
               value={frame.note ?? ''}
-              placeholder="what this section establishes"
+              placeholder={t('what this section establishes')}
               rows={3}
               onKeyDown={commitOnEnter}
               onChange={(event) => {
@@ -525,7 +528,7 @@ function Section({
                       <OutputTitle node={node} />
                     </span>
                     <span className="number">
-                      {analysis.problems.get(node.id) ?? 'not yet computed'}
+                      {analysis.problems.get(node.id) ?? t('not yet computed')}
                     </span>
                   </p>
                 ) : (
@@ -732,7 +735,7 @@ export function Notebook(): ReactElement {
       )}
       {analysis.warnings.length === 0 ? null : (
         <section className="notebook-warnings">
-          <h2>Worth a look</h2>
+          <h2>{phrase(locale, 'Worth a look')}</h2>
           <ul>
             {analysis.warnings.map((warning) => (
               <li key={`${warning.kind}-${warning.nodeId ?? ''}-${warning.message}`}>

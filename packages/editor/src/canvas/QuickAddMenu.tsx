@@ -23,6 +23,8 @@ import { entries, search } from '../model/catalogues';
 import { fuzzySearch } from '../model/fuzzy';
 import { Symbol } from '../Symbol';
 import { TitleText } from './TitleField';
+import { phrase } from '../i18n';
+import { useSettings } from '../settings-context';
 
 export type QuickAddChoice =
   | { readonly kind: 'formula'; readonly formula: Formula; readonly port: string }
@@ -81,6 +83,8 @@ export function QuickAddMenu({
   onPick,
   onClose,
 }: Props): ReactElement {
+  const { locale } = useSettings();
+  const t = (english: string): string => phrase(locale, english);
   const [query, setQuery] = useState('');
 
   // The catalogue's own `search` reads ports and descriptions too, which a
@@ -104,20 +108,20 @@ export function QuickAddMenu({
     readonly choice: Exclude<QuickAddCandidate, { readonly kind: 'formula' }>;
     readonly disabled?: boolean;
   }[] = [
-      { label: 'input', choice: { kind: 'input' } },
-      { label: 'equation', choice: { kind: 'closure' } },
-      { label: 'waypoint', choice: { kind: 'waypoint' } },
-      { label: 'pack', choice: { kind: 'pack' } },
-      { label: 'unpack', choice: { kind: 'unpack' } },
-      { label: 'compare', choice: { kind: 'compare' } },
-      { label: 'print output', choice: { kind: 'output', outputKind: 'print' } },
-      { label: 'check output', choice: { kind: 'output', outputKind: 'check' } },
+      { label: t('input'), choice: { kind: 'input' } },
+      { label: t('equation'), choice: { kind: 'closure' } },
+      { label: t('waypoint'), choice: { kind: 'waypoint' } },
+      { label: t('pack'), choice: { kind: 'pack' } },
+      { label: t('unpack'), choice: { kind: 'unpack' } },
+      { label: t('compare'), choice: { kind: 'compare' } },
+      { label: t('print output'), choice: { kind: 'output', outputKind: 'print' } },
+      { label: t('check output'), choice: { kind: 'output', outputKind: 'check' } },
       {
-        label: 'plot output',
+        label: t('plot output'),
         choice: { kind: 'output', outputKind: 'plot' },
         disabled: !canPlot,
       },
-      { label: 'table output', choice: { kind: 'output', outputKind: 'table' } },
+      { label: t('table output'), choice: { kind: 'output', outputKind: 'table' } },
   ];
   const specials = possibleSpecials.filter(({ choice }) => compatiblePort(choice) !== undefined);
   const matchingSpecials = fuzzySearch(query, specials, (entry) => entry.label);
@@ -134,7 +138,7 @@ export function QuickAddMenu({
         <input
           className="search"
           autoFocus
-          placeholder="add a node, or find one already on the canvas…"
+          placeholder={t('add a node, or find one already on the canvas…')}
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           onKeyDown={(event) => {
@@ -156,14 +160,14 @@ export function QuickAddMenu({
         <div className="quick-add-list">
           {matchingSpecials.length === 0 && formulas.length === 0 ? null : (
             <>
-              <div className="quick-add-heading">Add new</div>
+              <div className="quick-add-heading">{t('Add new')}</div>
               {matchingSpecials.map(({ label, choice, disabled }) => (
                 <button
                   key={label}
                   type="button"
                   disabled={disabled ?? false}
                   title={
-                    disabled === true ? 'Needs a range input somewhere in the graph to plot against' : undefined
+                    disabled === true ? t('Needs a range input somewhere in the graph to plot against') : undefined
                   }
                   onClick={() => pick(choice)}
                 >
@@ -182,7 +186,7 @@ export function QuickAddMenu({
           )}
           {matchingExisting.length === 0 ? null : (
             <>
-              <div className="quick-add-heading">On this canvas</div>
+              <div className="quick-add-heading">{t('On this canvas')}</div>
               {matchingExisting.slice(0, 20).map((candidate) => (
                 <button
                   key={candidate.nodeId}
@@ -190,7 +194,7 @@ export function QuickAddMenu({
                   title={
                     candidate.replaces === undefined
                       ? undefined
-                      : `Replaces the wire from ${candidate.replaces} — that input takes one connection.`
+                      : t(`Replaces the wire from ${candidate.replaces} — that input takes one connection.`)
                   }
                   onClick={() => pick({ kind: 'existing', nodeId: candidate.nodeId, port: candidate.port })}
                 >
@@ -198,7 +202,7 @@ export function QuickAddMenu({
                   <span className="entry-output">
                     {candidate.subtitle}
                     {candidate.replaces === undefined ? null : (
-                      <span className="replaces"> replaces <TitleText value={candidate.replaces} /></span>
+                      <span className="replaces"> {t('replaces')} <TitleText value={candidate.replaces} /></span>
                     )}
                   </span>
                 </button>
@@ -206,7 +210,7 @@ export function QuickAddMenu({
             </>
           )}
           {matchingSpecials.length === 0 && matchingExisting.length === 0 && formulas.length === 0 ? (
-            <p className="empty">Nothing matches "{query}".</p>
+            <p className="empty">{t(`Nothing matches "${query}".`)}</p>
           ) : null}
         </div>
       </div>

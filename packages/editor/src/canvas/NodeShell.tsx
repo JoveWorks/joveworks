@@ -11,7 +11,7 @@ import { useState, type ReactElement, type ReactNode } from 'react';
 import { NODE_HELP_URLS } from '../help-links';
 import type { NodeState } from '../model/analysis';
 import { useSettings } from '../settings-context';
-import { ui } from '../i18n';
+import { phrase, ui } from '../i18n';
 
 const STATE_LABELS: Readonly<Record<NodeState, string>> = {
   ok: '',
@@ -68,6 +68,7 @@ export function NodeShell({
 }: Props): ReactElement {
   const { locale } = useSettings();
   const copy = ui(locale);
+  const stateLabel = phrase(locale, STATE_LABELS[state]);
   const [hovered, setHovered] = useState(false);
   const open = selected || hovered || pinned;
 
@@ -109,7 +110,7 @@ export function NodeShell({
 
       {state === 'ok' ? null : (
         <div className={`node-state ${state}`}>
-          {STATE_LABELS[state]}
+          {stateLabel}
           {problem === undefined ? null : <span className="reason">{problem}</span>}
         </div>
       )}

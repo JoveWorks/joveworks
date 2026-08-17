@@ -48,6 +48,7 @@ import {
 
 import { useGraph } from '../graph-context';
 import { useSettings } from '../settings-context';
+import { phrase } from '../i18n';
 import {
   addNamedColumn,
   addNode,
@@ -314,7 +315,8 @@ const NODE_TYPES = {
 export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean }): ReactElement {
   const { document, catalogues, analysis, edit, editLive, commitEdit, pinned, togglePin, selected, setSelected, saveUserEquation } =
     useGraph();
-  const { minimapVisible, themePreference } = useSettings();
+  const { locale, minimapVisible, themePreference } = useSettings();
+  const t = (english: string): string => phrase(locale, english);
   const [refusal, setRefusal] = useState<string | undefined>(undefined);
   const [menu, setMenu] = useState<MenuTarget | undefined>(undefined);
   const [quickAdd, setQuickAdd] = useState<QuickAddTarget | undefined>(undefined);
@@ -705,7 +707,7 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
       const selectionActions: readonly MenuItem[] =
         selected.has(id) && selectedNodeCount > 1
           ? [
-              { heading: 'Selection' },
+              { heading: t('Selection') },
               ...([
                 ['Align left', 'left'],
                 ['Align right', 'right'],
@@ -719,30 +721,30 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
                   edit((current) => alignSelection(current, selected, alignment, measured)),
               })),
               {
-                label: 'Arrange selection',
+                label: t('Arrange selection'),
                 onClick: () => edit((current) => arrangeSelection(current, selected)),
               },
-              { heading: 'Node' },
+              { heading: t('Node') },
             ]
           : [];
       return [
         ...selectionActions,
         {
-          label: pinned.has(id) ? 'Unpin' : 'Pin open',
+          label: t(pinned.has(id) ? 'Unpin' : 'Pin open'),
           onClick: () => togglePin(id),
         },
         {
-          label: 'Duplicate',
+          label: t('Duplicate'),
           onClick: () => edit((current) => reframe(duplicateNode(current, id))),
         },
         ...(graphNode?.kind === 'closure' && analysis.formulas.has(id)
           ? [{
-              label: 'Save equation to palette',
+              label: t('Save equation to palette'),
               onClick: () => saveUserEquation(nodeLabel(graphNode), graphNode.expression),
             }]
           : []),
         {
-          label: 'Delete',
+          label: t('Delete'),
           danger: true,
           onClick: () => edit((current) => reframe(removeNodes(current, new Set([id])))),
         },
@@ -752,7 +754,7 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
       const { id } = target;
       return [
         {
-          label: 'Delete wire',
+          label: t('Delete wire'),
           danger: true,
           onClick: () => edit((current) => removeEdges(current, new Set([id]))),
         },
@@ -762,7 +764,7 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
       const { id } = target;
       return [
         {
-          label: 'Delete section',
+          label: t('Delete section'),
           danger: true,
           onClick: () => edit((current) => reframe(removeNodes(current, new Set([id])))),
         },
@@ -771,7 +773,7 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
     const at = flow.screenToFlowPosition({ x: target.x, y: target.y });
     return [
       {
-        label: 'Add input',
+        label: t('Add input'),
         onClick: () =>
           edit((current) => {
             const id = uniqueId(current, 'input');
@@ -785,7 +787,7 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
           }),
       },
       {
-        label: 'Add print output',
+        label: t('Add print output'),
         onClick: () =>
           edit((current) => {
             const id = uniqueId(current, 'result');
@@ -799,7 +801,7 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
           }),
       },
       {
-        label: 'Add check output',
+        label: t('Add check output'),
         onClick: () =>
           edit((current) => {
             const id = uniqueId(current, 'check');
@@ -813,7 +815,7 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
           }),
       },
       {
-        label: 'Add plot output',
+        label: t('Add plot output'),
         disabled: documentAxes(document).length === 0,
         onClick: () =>
           edit((current) => {
@@ -830,11 +832,11 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
           }),
       },
       {
-        label: 'Group into new section',
+        label: t('Group into new section'),
         onClick: () => edit((current) => groupIntoSection(current, selected, at)),
       },
       {
-        label: 'Auto-arrange',
+        label: t('Auto-arrange'),
         onClick: () => edit((current) => autoArrange(current)),
       },
     ];
@@ -1108,13 +1110,13 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
       >
         <Background gap={24} />
         {controlsVisible ? (
-          <Panel position="top-left" className="canvas-controls" aria-label="Canvas controls">
-            <span><kbd>Shift</kbd> drag to select</span>
-            <span><kbd>Ctrl</kbd> click to add to selection</span>
-            <span><kbd>Ctrl</kbd>+<kbd>A</kbd> select all</span>
-            <span><kbd>Ctrl</kbd>+<kbd>Z</kbd>/<kbd>Y</kbd> undo/redo</span>
-            <span><kbd>Ctrl</kbd>+<kbd>C</kbd>/<kbd>V</kbd> copy/paste</span>
-            <span><kbd>Ctrl</kbd>+<kbd>D</kbd> duplicate</span>
+          <Panel position="top-left" className="canvas-controls" aria-label={t('Canvas controls')}>
+            <span><kbd>Shift</kbd> {t('drag to select')}</span>
+            <span><kbd>Ctrl</kbd> {t('click to add to selection')}</span>
+            <span><kbd>Ctrl</kbd>+<kbd>A</kbd> {t('select all')}</span>
+            <span><kbd>Ctrl</kbd>+<kbd>Z</kbd>/<kbd>Y</kbd> {t('undo/redo')}</span>
+            <span><kbd>Ctrl</kbd>+<kbd>C</kbd>/<kbd>V</kbd> {t('copy/paste')}</span>
+            <span><kbd>Ctrl</kbd>+<kbd>D</kbd> {t('duplicate')}</span>
           </Panel>
         ) : null}
         <Controls />

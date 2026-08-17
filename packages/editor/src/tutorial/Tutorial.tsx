@@ -18,6 +18,8 @@ import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactElemen
 
 import type { TutorialStep } from './steps';
 import { saveTutorialSeen } from './tutorialSettings';
+import { phrase } from '../i18n';
+import { useSettings } from '../settings-context';
 
 interface Props {
   readonly active: boolean;
@@ -55,12 +57,14 @@ function preferredStyle(rect: DOMRect | undefined, placement: TutorialStep['plac
 export function Tutorial({
   active,
   steps,
-  closeLabel = 'Skip',
+  closeLabel,
   rememberSeen = false,
   onClose,
   pinned,
   setPinned,
 }: Props): ReactElement | null {
+  const { locale } = useSettings();
+  const t = (english: string): string => phrase(locale, english);
   const [stepIndex, setStepIndex] = useState(0);
   const [direction, setDirection] = useState<'forward' | 'backward'>('forward');
   const [rect, setRect] = useState<DOMRect | undefined>(undefined);
@@ -191,7 +195,7 @@ export function Tutorial({
         className="tutorial-caption"
         style={style}
         role="dialog"
-        aria-label="Tutorial"
+        aria-label={t('Tutorial')}
         onKeyDown={(event) => {
           if (event.key === 'Escape') close();
         }}
@@ -204,15 +208,15 @@ export function Tutorial({
           </div>
           <div className="tutorial-actions">
             <button type="button" onClick={close}>
-              {closeLabel}
+              {closeLabel ?? t('Skip')}
             </button>
             {stepIndex > 0 ? (
               <button type="button" onClick={goBack}>
-                Back
+                {t('Back')}
               </button>
             ) : null}
             <button type="button" onClick={advance}>
-              {last ? 'Done' : 'Next'}
+              {last ? t('Done') : t('Next')}
             </button>
           </div>
         </div>
