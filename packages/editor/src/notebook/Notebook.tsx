@@ -16,7 +16,15 @@
  * expressions leaking out from a global setting.
  */
 
-import { useEffect, useRef, useState, type KeyboardEvent, type ReactElement } from 'react';
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type ReactElement,
+  type TextareaHTMLAttributes,
+} from 'react';
 
 import { parseExpression, toLatex, type OutputResult } from '@mds/kernel';
 import type { Frame, GraphDocument, OutputNode, Position } from '@mds/schema';
@@ -47,6 +55,42 @@ function commitOnEnter(event: KeyboardEvent<HTMLTextAreaElement>): void {
   if (event.key !== 'Enter' || event.shiftKey) return;
   event.preventDefault();
   event.currentTarget.blur();
+}
+
+function AutoSizeTextarea({ value, ...props }: TextareaHTMLAttributes<HTMLTextAreaElement>): ReactElement {
+  const textarea = useRef<HTMLTextAreaElement>(null);
+
+  const resize = (): void => {
+    const element = textarea.current;
+    if (element === null) return;
+
+    // Clear the explicit height first so deleting text can shrink the field as
+    // well as adding text can grow it.
+    element.style.height = 'auto';
+    element.style.height = `${element.scrollHeight}px`;
+  };
+
+  useLayoutEffect(resize, [value]);
+
+  useEffect(() => {
+    const element = textarea.current;
+    if (element === null) return;
+
+    // Resizing the notebook changes line wrapping without changing `value`.
+    // Only react to width changes: our own height update also notifies a
+    // ResizeObserver and must not start an observation loop.
+    let width = element.getBoundingClientRect().width;
+    const observer = new ResizeObserver((entries) => {
+      const nextWidth = entries[0]?.contentRect.width;
+      if (nextWidth === undefined || nextWidth === width) return;
+      width = nextWidth;
+      resize();
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
+  return <textarea {...props} ref={textarea} value={value} />;
 }
 
 const COMPARISON_TEXT: Readonly<Record<string, string>> = {
@@ -179,7 +223,7 @@ function Caption({
 }): ReactElement {
   const { editLive, commitEdit } = useGraph();
   return (
-    <textarea
+    <AutoSizeTextarea
       className="caption"
       value={node.caption ?? ''}
       placeholder={defaultCaption ?? 'caption — what this result says'}
@@ -375,7 +419,7 @@ function Section({
       {collapsed ? null : (
         <>
           {frame === undefined ? null : (
-            <textarea
+            <AutoSizeTextarea
               className="note"
               value={frame.note ?? ''}
               placeholder="what this section establishes"
