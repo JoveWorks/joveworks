@@ -25,6 +25,12 @@ export default defineConfig({
           { text: "Catalogue authoring", link: "/guide/catalogue-authoring" },
         ],
       },
+      {
+        text: "Examples",
+        items: [
+          { text: "Pocket milling — power envelope", link: "/examples/milling-power-envelope" },
+        ],
+      },
     ],
     socialLinks: [
       { icon: "github", link: "https://github.com/ThomasVanRiel/machine-design-studio" },

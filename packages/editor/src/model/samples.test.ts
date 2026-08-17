@@ -16,18 +16,19 @@ import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 import { loadCatalogue, type Catalogue } from '@mds/schema';
-import { fromCanonical } from '@mds/units';
+import { fromCanonical, parseUnit } from '@mds/units';
 
 import { analyse } from './analysis';
-import { baseCatalogue } from './catalogues';
-import { beltLab, padPressure } from './samples';
+import { baseCatalogue, bundledCatalogues } from './catalogues';
+import { beltLab, millingPowerEnvelope, padPressure } from './samples';
 
 const path = process.env['MDS_CATALOGUE'];
 const present = path !== undefined && path.length > 0 && existsSync(path);
 
+const PUBLIC_CATALOGUES: readonly Catalogue[] = [baseCatalogue(), ...bundledCatalogues()];
 const CATALOGUES: readonly Catalogue[] = present
-  ? [baseCatalogue(), loadCatalogue(readFileSync(path as string, 'utf8'))]
-  : [baseCatalogue()];
+  ? [...PUBLIC_CATALOGUES, loadCatalogue(readFileSync(path as string, 'utf8'))]
+  : PUBLIC_CATALOGUES;
 
 describe('the samples the editor opens with', () => {
   it('offers the pad sweep with nothing but the base library loaded', () => {
@@ -36,6 +37,42 @@ describe('the samples the editor opens with', () => {
 
   it('withholds the belt lab until its catalogue is loaded, rather than embedding it', () => {
     expect(beltLab([baseCatalogue()])).toBeUndefined();
+  });
+
+  it('offers the milling power-envelope study from the bundled public catalogue', () => {
+    expect(millingPowerEnvelope(PUBLIC_CATALOGUES)).toBeDefined();
+  });
+});
+
+describe('the milling power-envelope study through the editor', () => {
+  it('evaluates its 5 × 4 grid and crosses both spindle constraints', () => {
+    const document = millingPowerEnvelope(PUBLIC_CATALOGUES);
+    expect(document).toBeDefined();
+    const analysis = analyse(document as NonNullable<typeof document>, PUBLIC_CATALOGUES);
+
+    expect(analysis.message).toBeUndefined();
+    expect([...analysis.states.values()].every((state) => state === 'ok')).toBe(true);
+
+    const removalRate = analysis.evaluation?.values.get('removal_rate.Q');
+    expect(removalRate?.kind).toBe('numeric');
+    expect(removalRate?.kind === 'numeric' && removalRate.data).toHaveLength(20);
+    const rates =
+      removalRate?.kind === 'numeric'
+        ? removalRate.data.map((value) => fromCanonical(value, parseUnit('cm³/min')))
+        : [];
+    expect(Math.max(...rates)).toBeCloseTo(176.013, 3);
+    expect(rates.some((value) => Math.abs(value - 132.009) < 0.01)).toBe(true);
+
+    const outputs = analysis.evaluation?.outputs ?? [];
+    const powerCheck = outputs.find((entry) => entry.nodeId === 'out_P_check');
+    const torqueCheck = outputs.find((entry) => entry.nodeId === 'out_M_check');
+    expect(powerCheck?.kind === 'check' && powerCheck.passed).toBe(false);
+    expect(torqueCheck?.kind === 'check' && torqueCheck.passed).toBe(false);
+
+    const productivity = outputs.find((entry) => entry.nodeId === 'out_Q_plot');
+    expect(productivity?.kind).toBe('plot');
+    expect(productivity?.kind === 'plot' && productivity.x.axis.id).toBe('f_z');
+    expect(productivity?.kind === 'plot' && productivity.series2?.axis.id).toBe('a_e');
   });
 });
 

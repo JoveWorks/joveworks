@@ -5,6 +5,9 @@ import { exampleIdFromUrl, urlForExample } from './exampleUrl';
 describe('example notebook URLs', () => {
   it('recognises a known example', () => {
     expect(exampleIdFromUrl(new URL('https://example.test/app/?example=belt-lab'))).toBe('belt-lab');
+    expect(exampleIdFromUrl(new URL('https://example.test/?example=milling-power-envelope'))).toBe(
+      'milling-power-envelope',
+    );
   });
 
   it('ignores unknown example names', () => {

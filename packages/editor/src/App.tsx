@@ -78,8 +78,10 @@ import {
 import {
   BELT_LAB_FORMULAS,
   CANTILEVER_FORMULAS,
+  MILLING_STUDY_FORMULAS,
   beltLab,
   cantileverHollowSections,
+  millingPowerEnvelope,
   padPressure,
   provides,
 } from './model/samples';
@@ -126,7 +128,8 @@ function exampleDocument(
 ): GraphDocument | undefined {
   if (id === 'pad-pressure') return padPressure(catalogues);
   if (id === 'belt-lab') return beltLab(catalogues);
-  return cantileverHollowSections(catalogues);
+  if (id === 'cantilever-hollow-sections') return cantileverHollowSections(catalogues);
+  return millingPowerEnvelope(catalogues);
 }
 
 function startupDocument(
@@ -437,6 +440,7 @@ function AppShell(): ReactElement {
 
   const beltAvailable = provides(catalogues, BELT_LAB_FORMULAS);
   const cantileverAvailable = provides(catalogues, CANTILEVER_FORMULAS);
+  const millingAvailable = provides(catalogues, MILLING_STUDY_FORMULAS);
 
   const loadCatalogueFile = async (): Promise<void> => {
     const file = await openTextFile();
@@ -614,6 +618,12 @@ function AppShell(): ReactElement {
       disabled: !cantileverAvailable,
       onClick: () =>
         guardDiscard(() => openExample('cantilever-hollow-sections')),
+    },
+    {
+      label: 'Pocket milling — power envelope',
+      disabled: !millingAvailable,
+      onClick: () =>
+        guardDiscard(() => openExample('milling-power-envelope')),
     },
   ];
 

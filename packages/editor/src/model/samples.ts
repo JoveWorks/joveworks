@@ -373,3 +373,198 @@ export function cantileverHollowSections(catalogues: readonly Catalogue[]): Grap
 
   return document('cantilever-hollow-sections', 'Cantilever — hollow sections', withFrames, edges, frames);
 }
+
+// --- milling parameter study, from the public machining catalogue ----------
+
+/** The catalogue records this sample needs, by id. */
+export const MILLING_STUDY_FORMULAS = [
+  'machining.speed.spindle-speed',
+  'machining.milling.table-feed',
+  'machining.milling.removal-rate',
+  'machining.power.from-removal-rate',
+  'machining.power.machine-input',
+  'machining.torque.from-power',
+  'machining.time.in-cut',
+] as const;
+
+/**
+ * Rough-milling a pocket against a small machining centre's spindle envelope.
+ * Chip load and radial engagement form a 5 × 4 grid; productivity rises with
+ * both, while the power and torque contours cut different boundaries through
+ * that grid. The best discrete point that clears both checks is f_z = 0.24 mm
+ * and a_e = 30 mm, at Q = 132 cm³/min.
+ *
+ * This is deliberately an initial parameter study, not a claim that the most
+ * productive surviving point is production-safe. The notebook records the
+ * constant-specific-force assumption and the omitted stability/tool limits.
+ */
+export function millingPowerEnvelope(catalogues: readonly Catalogue[]): GraphDocument | undefined {
+  if (!provides(catalogues, MILLING_STUDY_FORMULAS)) return undefined;
+  const formula = (id: string): Formula => lookup(catalogues, id) as Formula;
+
+  const mm = parseUnit('mm');
+  const kilowatt = parseUnit('kW');
+  const torque = parseUnit('Nm');
+
+  const nodes: GraphNode[] = [
+    input('D', 'Cutter diameter D', { kind: 'scalar', value: 50, unit: mm }, at(0, 0)),
+    input('v_c', 'Target cutting speed v_c', { kind: 'scalar', value: 180, unit: parseUnit('m/min') }, at(0, 140)),
+    formulaNode('spindle_speed', formula('machining.speed.spindle-speed'), at(300, 40)),
+
+    {
+      ...input('f_z', 'Chip load f_z', { kind: 'list', values: [0.08, 0.12, 0.16, 0.2, 0.24], unit: mm }, at(0, 340)),
+      axisLabel: 'chip load f_z (mm/tooth)',
+    },
+    input('z_c', 'Effective teeth z_c', { kind: 'scalar', value: 4, unit: parseUnit('') }, at(0, 500)),
+    formulaNode('table_feed', formula('machining.milling.table-feed'), at(360, 380)),
+
+    {
+      ...input('a_e', 'Radial engagement a_e', { kind: 'list', values: [10, 20, 30, 40], unit: mm }, at(0, 700)),
+      axisLabel: 'radial engagement a_e (mm)',
+    },
+    input('a_p', 'Axial depth a_p', { kind: 'scalar', value: 4, unit: mm }, at(0, 860)),
+    formulaNode('removal_rate', formula('machining.milling.removal-rate'), at(700, 560)),
+
+    input('k_c', 'Specific cutting force k_c', { kind: 'scalar', value: 1800, unit: parseUnit('N/mm²') }, at(360, 780)),
+    formulaNode('cutting_power', formula('machining.power.from-removal-rate'), at(980, 560)),
+    input('eta', 'Machine efficiency eta', { kind: 'scalar', value: 0.85, unit: parseUnit('') }, at(700, 820)),
+    formulaNode('machine_power', formula('machining.power.machine-input'), at(1240, 480)),
+    formulaNode('cutting_torque', formula('machining.torque.from-power'), at(1240, 700)),
+
+    input('L', 'Total toolpath length L', { kind: 'scalar', value: 800, unit: mm }, at(700, 1000)),
+    formulaNode('cutting_time', formula('machining.time.in-cut'), at(980, 940)),
+
+    output('out_n', 'Required spindle speed', { kind: 'print', unit: parseUnit('rpm') }, at(1680, 0)),
+    output(
+      'out_Q_plot',
+      'Material-removal rate',
+      { kind: 'plot', x: 'f_z', series: 'a_e', contour: true, unit: parseUnit('cm³/min') },
+      at(1680, 300),
+    ),
+    output(
+      'out_P_plot',
+      'Machine input power envelope',
+      { kind: 'plot', x: 'f_z', series: 'a_e', contour: true, threshold: { value: 5.5, unit: kilowatt }, unit: kilowatt },
+      at(1680, 680),
+    ),
+    output(
+      'out_P_check',
+      'Within the 5.5 kW spindle limit',
+      { kind: 'check', comparison: '<=', threshold: { value: 5.5, unit: kilowatt } },
+      at(1680, 900),
+    ),
+    output(
+      'out_M_plot',
+      'Cutting torque envelope',
+      { kind: 'plot', x: 'f_z', series: 'a_e', contour: true, threshold: { value: 35, unit: torque }, unit: torque },
+      at(1680, 1080),
+    ),
+    output(
+      'out_M_check',
+      'Within the 35 Nm torque limit',
+      { kind: 'check', comparison: '<=', threshold: { value: 35, unit: torque } },
+      at(1680, 1300),
+    ),
+    output(
+      'out_table',
+      'Candidate cutting parameters',
+      { kind: 'table', columns: ['f_z', 'a_e', 'v_f', 'Q', 'P_m', 'M_c', 't_c'] },
+      at(1680, 1580),
+    ),
+  ];
+
+  const edges = [
+    wire('v_c.value', 'spindle_speed.v_c'),
+    wire('D.value', 'spindle_speed.D'),
+
+    wire('f_z.value', 'table_feed.f_z'),
+    wire('z_c.value', 'table_feed.z_c'),
+    wire('spindle_speed.n', 'table_feed.n'),
+
+    wire('a_p.value', 'removal_rate.a_p'),
+    wire('a_e.value', 'removal_rate.a_e'),
+    wire('table_feed.v_f', 'removal_rate.v_f'),
+
+    wire('k_c.value', 'cutting_power.k_c'),
+    wire('removal_rate.Q', 'cutting_power.Q'),
+    wire('cutting_power.P_c', 'machine_power.P_c'),
+    wire('eta.value', 'machine_power.eta'),
+    wire('cutting_power.P_c', 'cutting_torque.P_c'),
+    wire('spindle_speed.n', 'cutting_torque.n'),
+
+    wire('L.value', 'cutting_time.L'),
+    wire('table_feed.v_f', 'cutting_time.v_f'),
+
+    wire('spindle_speed.n', 'out_n.value'),
+    wire('removal_rate.Q', 'out_Q_plot.value'),
+    wire('machine_power.P_m', 'out_P_plot.value'),
+    wire('machine_power.P_m', 'out_P_check.value'),
+    wire('cutting_torque.M_c', 'out_M_plot.value'),
+    wire('cutting_torque.M_c', 'out_M_check.value'),
+    wire('f_z.value', 'out_table.f_z'),
+    wire('a_e.value', 'out_table.a_e'),
+    wire('table_feed.v_f', 'out_table.v_f'),
+    wire('removal_rate.Q', 'out_table.Q'),
+    wire('machine_power.P_m', 'out_table.P_m'),
+    wire('cutting_torque.M_c', 'out_table.M_c'),
+    wire('cutting_time.t_c', 'out_table.t_c'),
+  ];
+
+  const frames = [
+    {
+      id: 'tool-speed',
+      title: '1. Tool and cutting speed',
+      note:
+        'A 50 mm, four-tooth cutter runs at a target cutting speed of 180 m/min. ' +
+        'The diameter and cutting speed establish one spindle speed for the study.',
+      position: at(1620, -80),
+      size: { width: 440, height: 300 },
+    },
+    {
+      id: 'productivity',
+      title: '2. Productivity study',
+      note:
+        'Chip load and radial engagement are swept together. Axial depth stays at 4 mm; ' +
+        'the removal-rate contour shows the productivity gained by moving across the grid.',
+      position: at(1620, 240),
+      size: { width: 440, height: 360 },
+    },
+    {
+      id: 'constraints',
+      title: '3. Spindle constraints',
+      note:
+        'The 5.5 kW input-power and 35 Nm cutting-torque limits cut different boundaries ' +
+        'through the grid. A failed overall check means some candidates fail, not that every ' +
+        'candidate does; use the contours to find the feasible region.',
+      position: at(1620, 620),
+      size: { width: 440, height: 780 },
+    },
+    {
+      id: 'selection',
+      title: '4. Candidate operating point',
+      note:
+        'The most productive point in this discrete grid that clears both limits is ' +
+        'f_z = 0.24 mm/tooth and a_e = 30 mm, giving Q = 132 cm³/min. This is an initial ' +
+        'power-envelope result with constant k_c—not a production recommendation. Tool ' +
+        'deflection, chatter, chip thinning, workholding, and manufacturer limits remain to check.',
+      position: at(1620, 1420),
+      size: { width: 440, height: 520 },
+    },
+  ];
+
+  const frameForOutput: Readonly<Record<string, string>> = {
+    out_n: 'tool-speed',
+    out_Q_plot: 'productivity',
+    out_P_plot: 'constraints',
+    out_P_check: 'constraints',
+    out_M_plot: 'constraints',
+    out_M_check: 'constraints',
+    out_table: 'selection',
+  };
+  const withFrames = nodes.map((node) => {
+    const frameId = frameForOutput[node.id];
+    return node.kind === 'output' && frameId !== undefined ? { ...node, frameId } : node;
+  });
+
+  return document('milling-power-envelope', 'Pocket milling — power envelope', withFrames, edges, frames);
+}

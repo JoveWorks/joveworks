@@ -2,6 +2,7 @@ export const EXAMPLE_IDS = [
   'pad-pressure',
   'belt-lab',
   'cantilever-hollow-sections',
+  'milling-power-envelope',
 ] as const;
 
 export type ExampleId = (typeof EXAMPLE_IDS)[number];
