@@ -1108,7 +1108,7 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
         isValidConnection={isValidConnection}
         deleteKeyCode={['Backspace', 'Delete']}
         selectionKeyCode="Shift"
-        multiSelectionKeyCode={['Control', 'Meta']}
+        multiSelectionKeyCode={['Control', 'Meta', 'Shift']}
         // React Flow's default lifts a selected node's z-index above every
         // other node's, frame's declared zIndex: -1 included — selecting a
         // frame then buried its own contents underneath it, so a student had
@@ -1202,7 +1202,7 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
         {controlsVisible ? (
           <Panel position="top-left" className="canvas-controls" aria-label={t('Canvas controls')}>
             <span><kbd>Shift</kbd> {t('drag to select')}</span>
-            <span><kbd>Ctrl</kbd> {t('click to add to selection')}</span>
+            <span><kbd>Ctrl</kbd> / <kbd>Shift</kbd> {t('click to add to selection')}</span>
             <span><kbd>Ctrl</kbd>+<kbd>A</kbd> {t('select all')}</span>
             <span><kbd>Ctrl</kbd>+<kbd>Z</kbd>/<kbd>Y</kbd> {t('undo/redo')}</span>
             <span><kbd>Ctrl</kbd>+<kbd>C</kbd>/<kbd>V</kbd> {t('copy/paste')}</span>
