@@ -1894,11 +1894,14 @@ aside.right {
 }
 
 .notebook .contour-colorbar strong {
-  left: 0;
+  left: 63px;
   position: absolute;
-  top: 0;
+  top: 50%;
   font-size: 10px;
   line-height: 1.2;
+  transform: translate(-50%, -50%) rotate(-90deg);
+  transform-origin: center;
+  white-space: nowrap;
 }
 
 .notebook .contour-colorbar-scale {
@@ -1933,6 +1936,48 @@ aside.right {
 
 .notebook .contour-colorbar[data-palette='plasma'] .contour-colorbar-ramp {
   background: linear-gradient(to top, #0d0887, #6a00a8, #b12a90, #e16462, #f0f921);
+}
+
+.notebook .series-figure {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.notebook .series-legend {
+  display: grid;
+  flex: 0 0 110px;
+  grid-template-columns: 18px 1fr;
+  height: 240px;
+  padding: 18px 0 40px;
+  box-sizing: border-box;
+  font-size: 10px;
+}
+
+.notebook .series-legend strong {
+  align-self: center;
+  justify-self: center;
+  transform: rotate(-90deg);
+  white-space: nowrap;
+}
+
+.notebook .series-legend-entries {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  justify-content: center;
+}
+
+.notebook .series-legend-entries span {
+  align-items: center;
+  display: flex;
+  gap: 4px;
+}
+
+.notebook .series-legend-entries i {
+  display: inline-block;
+  flex: 0 0 12px;
+  height: 12px;
 }
 
 .notebook .threshold {

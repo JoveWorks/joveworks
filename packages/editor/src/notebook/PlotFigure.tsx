@@ -201,6 +201,44 @@ function contourColorbar(
   return colorbar;
 }
 
+const OBSERVABLE10 = [
+  '#4269d0',
+  '#efb118',
+  '#ff725c',
+  '#6cc5b0',
+  '#3ca951',
+  '#ff8ab7',
+  '#a463f2',
+  '#97bbf5',
+  '#9c6b4e',
+  '#9498a0',
+];
+
+/** A series axis identifies named curves, so its key is swatches, not a ramp. */
+function seriesLegend(label: string, values: readonly (number | string)[], typeset: boolean): HTMLElement {
+  const legend = document.createElement('aside');
+  legend.className = 'series-legend';
+  const title = document.createElement('strong');
+  if (typeset) {
+    const html = typesetTitleHtml(label);
+    if (html !== undefined) title.innerHTML = html;
+    else title.textContent = label;
+  } else {
+    title.textContent = label;
+  }
+  const entries = document.createElement('div');
+  entries.className = 'series-legend-entries';
+  values.forEach((value, index) => {
+    const entry = document.createElement('span');
+    const swatch = document.createElement('i');
+    swatch.style.backgroundColor = OBSERVABLE10[index % OBSERVABLE10.length] as string;
+    entry.append(swatch, document.createTextNode(String(value)));
+    entries.append(entry);
+  });
+  legend.append(title, entries);
+  return legend;
+}
+
 export function PlotFigure({ result: rawResult, document: graph, format }: Props): ReactElement {
   const host = useRef<HTMLDivElement>(null);
   const { contourPalette, titleMathRendering } = useSettings();
@@ -218,6 +256,10 @@ export function PlotFigure({ result: rawResult, document: graph, format }: Props
     }`;
     const yLabel =
       result.unit.symbol.trim().length === 0 ? (result.label ?? '') : `${result.label ?? ''} (${result.unit.symbol})`;
+    // A second axis makes separate curves. Even when its coordinates are
+    // numeric (for example, one curve per pad length), it is a discrete
+    // selection of lines rather than a continuous value map.
+    const lineSeries = !result.contour ? result.series2 : undefined;
 
     const marks: Plot.Markish[] = [];
     if (result.contour && result.series2 !== undefined) {
@@ -284,7 +326,7 @@ export function PlotFigure({ result: rawResult, document: graph, format }: Props
         ...(isLogAxis(graph, result.x.axis.id) ? { type: 'log' as const } : {}),
       },
       y: { label: yLabel, grid: true },
-      ...(result.contour ? { figure: false } : {}),
+      ...(result.contour || lineSeries !== undefined ? { figure: false } : {}),
       ...(result.contour
         ? {
             color: {
@@ -295,9 +337,8 @@ export function PlotFigure({ result: rawResult, document: graph, format }: Props
           ? {}
           : {
               color: {
-                // A categorical second axis identifies one curve per named
-                // value, so it needs readable swatches rather than a ramp.
-                legend: result.series2.coordinates.kind === 'categorical' ? 'swatches' : true,
+                scheme: 'observable10',
+                legend: false,
                 label: result.series2.axis.label,
               },
             }),
@@ -310,6 +351,18 @@ export function PlotFigure({ result: rawResult, document: graph, format }: Props
       const wrapper = document.createElement('div');
       wrapper.className = 'contour-figure';
       wrapper.append(chart, contourColorbar(result, yLabel, contourPalette, titleMathRendering));
+      rendered = wrapper;
+    } else if (lineSeries !== undefined) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'series-figure';
+      wrapper.append(
+        chart,
+        seriesLegend(
+          lineSeries.axis.label,
+          coordinates(lineSeries),
+          titleMathRendering,
+        ),
+      );
       rendered = wrapper;
     } else {
       rendered = chart;
