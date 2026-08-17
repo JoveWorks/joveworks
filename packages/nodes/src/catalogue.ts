@@ -30,7 +30,7 @@ export const BASE_CATALOGUE_ID = 'base';
 export const BASE_CATALOGUE: Catalogue = {
   schemaVersion: SCHEMA_VERSION,
   id: BASE_CATALOGUE_ID,
-  name: 'Math',
+  name: { en: 'Math', nl: 'Wiskunde' },
   restricted: false,
   formulas: OPERATIONS,
 };

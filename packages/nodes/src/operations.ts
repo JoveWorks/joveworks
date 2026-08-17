@@ -23,12 +23,16 @@
  * `$A/$B`, `sqrt` is `$A**(1/2)`.
  */
 
-import type { Formula, NumericPort, OutputPort, Port, SpectrumPort } from '@joveworks/schema';
+import type { Formula, LocalizedText, NumericPort, OutputPort, Port, SpectrumPort } from '@joveworks/schema';
 import { parseGenericDimension, parseUnit } from '@joveworks/units';
 
 /** A port that adopts the dimension of whatever is wired to it. */
+function text(en: string): LocalizedText {
+  return { en };
+}
+
 function generic(name: string, variable: string, description: string): NumericPort {
-  return { kind: 'numeric', name, unit: parseGenericDimension(`$${variable}`), description };
+  return { kind: 'numeric', name, unit: parseGenericDimension(`$${variable}`), description: text(description) };
 }
 
 /**
@@ -37,12 +41,12 @@ function generic(name: string, variable: string, description: string): NumericPo
  * `minimum`/`maximum` are the two base nodes that need it.
  */
 function genericSpectrum(name: string, variable: string, description: string): SpectrumPort {
-  return { kind: 'spectrum', name, unit: parseGenericDimension(`$${variable}`), description };
+  return { kind: 'spectrum', name, unit: parseGenericDimension(`$${variable}`), description: text(description) };
 }
 
 /** A port with a fixed unit. `''` is dimensionless — declared, not absent. */
 function plain(name: string, unit: string, description: string): NumericPort {
-  return { kind: 'numeric', name, unit: parseUnit(unit), description };
+  return { kind: 'numeric', name, unit: parseUnit(unit), description: text(description) };
 }
 
 interface Draft {
@@ -107,7 +111,7 @@ const DRAFTS: readonly Draft[] = [
       kind: 'numeric',
       name: 'product',
       unit: parseGenericDimension('$A*$B'),
-      description: 'a · b',
+      description: text('a · b'),
     },
     inputs: [generic('a', 'A', 'First factor'), generic('b', 'B', 'Second factor')],
   },
@@ -119,7 +123,7 @@ const DRAFTS: readonly Draft[] = [
       kind: 'numeric',
       name: 'quotient',
       unit: parseGenericDimension('$A/$B'),
-      description: 'a / b',
+      description: text('a / b'),
     },
     inputs: [generic('a', 'A', 'Numerator'), generic('b', 'B', 'Denominator')],
   },
@@ -131,7 +135,7 @@ const DRAFTS: readonly Draft[] = [
       kind: 'numeric',
       name: 'squared',
       unit: parseGenericDimension('$A**2'),
-      description: 'a²',
+      description: text('a²'),
     },
     inputs: [generic('a', 'A', 'Value')],
   },
@@ -143,7 +147,7 @@ const DRAFTS: readonly Draft[] = [
       kind: 'numeric',
       name: 'root',
       unit: parseGenericDimension('$A**(1/2)'),
-      description: '√a',
+      description: text('√a'),
     },
     inputs: [generic('a', 'A', 'Radicand')],
   },
@@ -155,7 +159,7 @@ const DRAFTS: readonly Draft[] = [
       kind: 'numeric',
       name: 'root',
       unit: parseGenericDimension('$A**(1/3)'),
-      description: '∛a',
+      description: text('∛a'),
     },
     inputs: [generic('a', 'A', 'Radicand')],
   },
@@ -291,7 +295,7 @@ const DRAFTS: readonly Draft[] = [
     expression: 'sum(xs)',
     output: generic('total', 'A', 'Σ xᵢ'),
     inputs: [
-      { kind: 'spectrum', name: 'xs', unit: parseGenericDimension('$A'), description: 'Series to total' },
+      { kind: 'spectrum', name: 'xs', unit: parseGenericDimension('$A'), description: text('Series to total') },
     ],
   },
   {
@@ -301,7 +305,7 @@ const DRAFTS: readonly Draft[] = [
       'depends on n, which is a value rather than a type.',
     expression: 'prod(xs)',
     output: plain('total', '', 'Π xᵢ'),
-    inputs: [{ kind: 'spectrum', name: 'xs', unit: parseUnit(''), description: 'Series to multiply' }],
+    inputs: [{ kind: 'spectrum', name: 'xs', unit: parseUnit(''), description: text('Series to multiply') }],
   },
 ];
 
@@ -313,12 +317,29 @@ const DRAFTS: readonly Draft[] = [
  * then "we wrote it, so it is right" is exactly the assumption `unverified` exists to
  * refuse.
  */
+const DUTCH_LABELS: Readonly<Record<string, string>> = {
+  add: 'Optellen', subtract: 'Aftrekken', negate: 'Teken omkeren', absolute: 'Absolute waarde',
+  minimum: 'Minimum', maximum: 'Maximum', multiply: 'Vermenigvuldigen', divide: 'Delen',
+  square: 'Kwadraat', squareRoot: 'Vierkantswortel', cubeRoot: 'Derde machtswortel', power: 'Macht',
+  floor: 'Naar beneden afronden', ceiling: 'Naar boven afronden', round: 'Afronden',
+  sine: 'Sinus', cosine: 'Cosinus', tangent: 'Tangens', arcSine: 'Boogsinus', arcCosine: 'Boogcosinus',
+  arcTangent: 'Boogtangens', hyperbolicSine: 'Hyperbolische sinus', hyperbolicCosine: 'Hyperbolische cosinus',
+  hyperbolicTangent: 'Hyperbolische tangens', logarithm: 'Natuurlijke logaritme', exponential: 'Exponentieel',
+  pi: 'Pi', sum: 'Som', product: 'Product',
+};
+
+function operationLabel(id: string): LocalizedText {
+  const en = id.replace(/([A-Z])/gu, ' $1').replace(/^./u, (letter) => letter.toUpperCase());
+  return { en, nl: DUTCH_LABELS[id] ?? en };
+}
+
 export const OPERATIONS: readonly Formula[] = DRAFTS.map((draft) => ({
   id: draft.id,
   version: 1,
   output: draft.output as Formula['output'],
   inputs: draft.inputs,
   expression: draft.expression,
-  description: draft.description,
+  label: operationLabel(draft.id),
+  description: text(draft.description),
   status: 'unverified' as const,
 }));

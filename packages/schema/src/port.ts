@@ -52,6 +52,11 @@ import {
   type JsonValue,
 } from './json.js';
 import { parsePortUnitField } from './quantity.js';
+import {
+  parseLocalizedText,
+  serializeLocalizedText,
+  type LocalizedText,
+} from './localization.js';
 import type { Unit } from '@joveworks/units';
 
 /**
@@ -86,7 +91,7 @@ export type Monotonicity = (typeof MONOTONICITY)[number];
 interface PortBase {
   /** The symbol as R&M writes it — `F_t`, `d_dg`. Unique within a formula. */
   readonly name: string;
-  readonly description?: string;
+  readonly description?: LocalizedText;
 }
 
 export interface NumericPort extends PortBase {
@@ -176,7 +181,7 @@ function parsePreferredUnit(value: JsonValue, path: string): Unit {
 export function parsePort(value: JsonValue, path: string): Port {
   const object = readObject(value, path);
   const name = readName(required(object, 'name', path), join(path, 'name'));
-  const description = optional(object, 'description', path, readString);
+  const description = optional(object, 'description', path, parseLocalizedText);
   const kind = readEnum(required(object, 'kind', path), join(path, 'kind'), PORT_KINDS);
 
   if (kind === 'categorical') {
@@ -241,7 +246,7 @@ export function serializePort(port: Port): JsonObject {
   const base = {
     kind: port.kind,
     name: port.name,
-    ...put('description', port.description),
+    ...(port.description === undefined ? {} : { description: serializeLocalizedText(port.description) }),
   };
   if (port.kind === 'categorical') {
     return { ...base, domain: [...port.domain], ...put('default', port.default) };

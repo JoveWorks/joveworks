@@ -135,3 +135,5 @@ export type {
 } from './document.js';
 
 export { loadDocument, saveDocument, loadCatalogue, saveCatalogue } from './io.js';
+export { localize, parseLocalizedText, serializeLocalizedText } from './localization.js';
+export type { LocalizedText } from './localization.js';

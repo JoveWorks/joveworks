@@ -29,6 +29,11 @@ import {
 } from './json.js';
 import { hashRecord } from './hash.js';
 import {
+  parseLocalizedText,
+  serializeLocalizedText,
+  type LocalizedText,
+} from './localization.js';
+import {
   asInputPort,
   asOutputPort,
   parsePort,
@@ -64,7 +69,9 @@ export interface Formula {
   readonly inputs: readonly Port[];
   /** Parsed and compiled by the kernel, never here. */
   readonly expression: string;
-  readonly description: string;
+  /** Short display name. Omit when a citation or id is the natural title. */
+  readonly label?: LocalizedText;
+  readonly description: LocalizedText;
   /** `R&M 17.1B`. Absent on the base node library, which cites nothing. */
   readonly citation?: string;
   /** Groups the rearranged forms of one relation. */
@@ -79,7 +86,7 @@ export interface Formula {
   readonly appliesWhen?: string;
   readonly status: FormulaStatus;
   /** Why it is quarantined. Required when it is, so the UI has something to show. */
-  readonly quarantineReason?: string;
+  readonly quarantineReason?: LocalizedText;
 }
 
 /** The quarantine gate: a quarantined formula cannot be evaluated, by anyone, ever. */
@@ -131,7 +138,7 @@ export function parseFormula(value: JsonValue, path: string): Formula {
   if (expression.trim().length === 0) fail(join(path, 'expression'), 'is empty');
 
   const status = readEnum(required(object, 'status', path), join(path, 'status'), FORMULA_STATUSES);
-  const quarantineReason = optional(object, 'quarantineReason', path, readString);
+  const quarantineReason = optional(object, 'quarantineReason', path, parseLocalizedText);
   if (status === 'quarantined' && quarantineReason === undefined) {
     fail(join(path, 'quarantineReason'), 'is required when a formula is quarantined');
   }
@@ -142,7 +149,8 @@ export function parseFormula(value: JsonValue, path: string): Formula {
     output,
     inputs,
     expression,
-    description: readString(required(object, 'description', path), join(path, 'description')),
+    description: parseLocalizedText(required(object, 'description', path), join(path, 'description')),
+    ...put('label', optional(object, 'label', path, parseLocalizedText)),
     ...put('citation', optional(object, 'citation', path, readString)),
     ...put('variantOf', optional(object, 'variantOf', path, readName)),
     ...put('appliesWhen', optional(object, 'appliesWhen', path, readName)),
@@ -158,18 +166,38 @@ export function serializeFormula(formula: Formula): JsonObject {
     output: serializePort(formula.output),
     inputs: formula.inputs.map(serializePort),
     expression: formula.expression,
-    description: formula.description,
+    ...(formula.label === undefined ? {} : { label: serializeLocalizedText(formula.label) }),
+    description: serializeLocalizedText(formula.description),
     ...put('citation', formula.citation),
     ...put('variantOf', formula.variantOf),
     ...put('appliesWhen', formula.appliesWhen),
     status: formula.status,
-    ...put('quarantineReason', formula.quarantineReason),
+    ...(formula.quarantineReason === undefined
+      ? {}
+      : { quarantineReason: serializeLocalizedText(formula.quarantineReason) }),
   };
 }
 
 /** The content hash, taken over the serialized record. */
 export function formulaHash(formula: Formula): string {
-  return hashRecord(serializeFormula(formula));
+  // A graph reference pins calculation semantics, not words shown to a reader.
+  // Catalogue translators must be able to correct text without invalidating
+  // students' saved graphs.
+  const withoutText = (port: Port): JsonObject => {
+    const { description: _description, ...semantic } = serializePort(port);
+    return semantic;
+  };
+  return hashRecord({
+    id: formula.id,
+    version: formula.version,
+    output: withoutText(formula.output),
+    inputs: formula.inputs.map(withoutText),
+    expression: formula.expression,
+    ...put('citation', formula.citation),
+    ...put('variantOf', formula.variantOf),
+    ...put('appliesWhen', formula.appliesWhen),
+    status: formula.status,
+  });
 }
 
 /**
@@ -224,7 +252,7 @@ export function matchRef(ref: FormulaRef, formula: Formula | undefined): RefMatc
 export interface Catalogue {
   readonly schemaVersion: number;
   readonly id: string;
-  readonly name: string;
+  readonly name: LocalizedText;
   readonly restricted: boolean;
   readonly formulas: readonly Formula[];
 }
@@ -247,7 +275,7 @@ export function parseCatalogue(value: JsonValue, path = ''): Catalogue {
   return {
     schemaVersion,
     id: readName(required(object, 'id', path), join(path, 'id')),
-    name: readString(required(object, 'name', path), join(path, 'name')),
+    name: parseLocalizedText(required(object, 'name', path), join(path, 'name')),
     restricted: readBoolean(required(object, 'restricted', path), join(path, 'restricted')),
     formulas,
   };
@@ -257,7 +285,7 @@ export function serializeCatalogue(catalogue: Catalogue): JsonObject {
   return {
     schemaVersion: catalogue.schemaVersion,
     id: catalogue.id,
-    name: catalogue.name,
+    name: serializeLocalizedText(catalogue.name),
     restricted: catalogue.restricted,
     formulas: catalogue.formulas.map(serializeFormula),
   };

@@ -9,7 +9,8 @@
  * from.
  */
 
-import { parseCatalogue, loadCatalogue, ports, type Catalogue, type Formula, type JsonValue } from '@joveworks/schema';
+import { localize, parseCatalogue, loadCatalogue, ports, type Catalogue, type Formula, type JsonValue } from '@joveworks/schema';
+import type { AppLocale } from './editorSettings';
 import { BASE_CATALOGUE_ID, baseCatalogueJson } from '@joveworks/nodes';
 import { fuzzySearch } from './fuzzy';
 
@@ -70,13 +71,13 @@ export function entries(catalogues: readonly Catalogue[]): readonly PaletteEntry
  * Find a formula the way a student looks for one: fuzzy-matched by equation
  * number, symbol, description, citation, or port metadata.
  */
-export function search(list: readonly PaletteEntry[], query: string): readonly PaletteEntry[] {
+export function search(list: readonly PaletteEntry[], query: string, locale: AppLocale = 'en'): readonly PaletteEntry[] {
   return fuzzySearch(query, list, ({ formula }) =>
     [
       formula.id,
       formula.citation ?? '',
-      formula.description,
-      ...ports(formula).map((port) => `${port.name} ${port.description ?? ''}`),
+      localize(formula.description, locale),
+      ...ports(formula).map((port) => `${port.name} ${port.description === undefined ? '' : localize(port.description, locale)}`),
     ]
       .join(' ')
       .toLowerCase(),

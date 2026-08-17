@@ -96,7 +96,7 @@ export function closureFormula(expression: string): Formula {
     output: { kind: 'numeric', name: CLOSURE_RESULT_PORT, unit: parseGenericDimension('$result') },
     inputs,
     expression,
-    description: '',
+    description: { en: '' },
     status: 'unverified',
   };
 }

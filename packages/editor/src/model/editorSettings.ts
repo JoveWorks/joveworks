@@ -7,6 +7,27 @@
  */
 
 const MINIMAP_KEY = 'joveworks:settings:minimapVisible';
+const LANGUAGE_KEY = 'joveworks:settings:language';
+
+export type AppLocale = 'en' | 'nl';
+
+export function loadAppLocale(): AppLocale {
+  try {
+    const raw = window.localStorage.getItem(LANGUAGE_KEY);
+    if (raw === 'en' || raw === 'nl') return raw;
+    return navigator.language.toLowerCase().startsWith('nl') ? 'nl' : 'en';
+  } catch {
+    return 'en';
+  }
+}
+
+export function saveAppLocale(locale: AppLocale): void {
+  try {
+    window.localStorage.setItem(LANGUAGE_KEY, locale);
+  } catch {
+    // A preference must not prevent the editor starting.
+  }
+}
 
 /** Off by default — a small canvas overview is a convenience, not something
  * every graph is big enough to need cluttering the view for. */

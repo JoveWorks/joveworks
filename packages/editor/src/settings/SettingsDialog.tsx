@@ -23,8 +23,12 @@ import {
   toUnitsFormat,
 } from '../model/numberFormat';
 import type { NumberNotation } from '@joveworks/units';
+import type { AppLocale } from '../model/editorSettings';
+import { ui } from '../i18n';
 
 interface Props {
+  readonly locale: AppLocale;
+  readonly onLocaleChange: (locale: AppLocale) => void;
   readonly settings: NumberFormatSettings;
   readonly onChange: (settings: NumberFormatSettings) => void;
   readonly minimapVisible: boolean;
@@ -43,6 +47,8 @@ const SAMPLE_SMALL = 0.0004821;
 const SAMPLE_STRESS = 250;
 
 export function SettingsDialog({
+  locale,
+  onLocaleChange,
   settings,
   onChange,
   minimapVisible,
@@ -53,6 +59,7 @@ export function SettingsDialog({
   onContourPaletteChange,
   onClose,
 }: Props): ReactElement {
+  const copy = ui(locale);
   const format = toUnitsFormat(settings);
   const unit = parseUnit('mm');
   const pa = parseUnit('Pa');
@@ -62,6 +69,14 @@ export function SettingsDialog({
       <div className="dialog-backdrop" onClick={onClose} />
       <div className="dialog" role="dialog" aria-label="Settings">
         <h2>Settings</h2>
+
+        <label className="dialog-field">
+          {copy.language}
+          <select className="nodrag" value={locale} onChange={(event) => onLocaleChange(event.target.value as AppLocale)}>
+            <option value="en">{copy.english}</option>
+            <option value="nl">{copy.dutch}</option>
+          </select>
+        </label>
 
         <label className="dialog-field">
           thousands / decimal
@@ -148,7 +163,7 @@ export function SettingsDialog({
 
         <div className="dialog-actions">
           <button type="button" onClick={onClose}>
-            Close
+            {copy.close}
           </button>
         </div>
       </div>
