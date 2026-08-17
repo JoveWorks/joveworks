@@ -100,6 +100,7 @@ import { Tutorial } from './tutorial/Tutorial';
 import { exampleTutorialSteps, TUTORIAL_STEPS } from './tutorial/steps';
 import { loadTutorialSeen } from './tutorial/tutorialSettings';
 import { useResizableWidth } from './useResizableWidth';
+import { ui } from './i18n';
 
 /**
  * The base catalogue, the bundled public catalogue, and whatever was cached
@@ -124,7 +125,6 @@ function initialCatalogues(): readonly Catalogue[] {
 /** Frequent enough that an accidental close loses little, infrequent enough
  * to stay off the profiler for graphs of the size this app targets. */
 const AUTOSAVE_INTERVAL_MS = 30_000;
-const RESTORED_AUTOSAVE_NOTICE = 'Restored unsaved work from the last session.';
 
 /** A linked example takes priority because opening that URL is an explicit
  * request. Otherwise, an autosave snapshot left over from a session that never
@@ -266,6 +266,7 @@ function AppShell(): ReactElement {
   const [showCanvasControls, setShowCanvasControls] = useState(true);
   const [numberFormat, setNumberFormatState] = useState<NumberFormatSettings>(loadNumberFormatSettings);
   const [locale, setLocaleState] = useState<AppLocale>(loadAppLocale);
+  const copy = ui(locale);
   const [minimapVisible, setMinimapVisibleState] = useState<boolean>(loadMinimapVisible);
   const [titleMathRendering, setTitleMathRenderingState] = useState<boolean>(loadTitleMathRendering);
   const [themePreference, setThemePreferenceState] =
@@ -314,7 +315,7 @@ function AppShell(): ReactElement {
   const [notices, setNotices] = useState<readonly { readonly id: string; readonly message: string }[]>(() =>
     restoredAutosaveNoticeId === undefined
       ? []
-      : [{ id: restoredAutosaveNoticeId, message: RESTORED_AUTOSAVE_NOTICE }],
+      : [{ id: restoredAutosaveNoticeId, message: copy.restoredAutosave }],
   );
   const dismissNotice = (id: string): void =>
     setNotices((current) => current.filter((notice) => notice.id !== id));
@@ -574,7 +575,7 @@ function AppShell(): ReactElement {
       disabled: userEquations.length === 0,
       onClick: () => saveTextFile(userEquationsFileName, saveUserEquations(userEquations)),
     },
-    { label: 'Settings…', onClick: () => setShowSettings(true) },
+    { label: `${copy.settings}…`, onClick: () => setShowSettings(true) },
   ];
 
   const editMenuItems: readonly MenuItem[] = [

@@ -67,8 +67,8 @@ export function SettingsDialog({
   return (
     <>
       <div className="dialog-backdrop" onClick={onClose} />
-      <div className="dialog" role="dialog" aria-label="Settings">
-        <h2>Settings</h2>
+      <div className="dialog" role="dialog" aria-label={copy.settings}>
+        <h2>{copy.settings}</h2>
 
         <label className="dialog-field">
           {copy.language}

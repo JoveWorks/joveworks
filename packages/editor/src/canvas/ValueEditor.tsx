@@ -20,6 +20,7 @@ import { dimensionsEqual, parseUnit, type NumberFormat, type Unit } from '@jovew
 import { DEFAULT_SLIDER_FIGURES, RENARD_SERIES, type RenardSeries, type ValueSpec } from '@joveworks/schema';
 
 import { useSettings } from '../settings-context';
+import { ui } from '../i18n';
 import { toUnitsFormat } from '../model/numberFormat';
 import { NumberField, TextField } from './fields';
 
@@ -34,15 +35,6 @@ type Kind = 'scalar' | 'slider' | 'linear' | 'logarithmic' | 'list' | 'renard';
  * findable rather than looking gone.
  */
 const EMPTY_UNIT = '—';
-
-const KIND_LABELS: Readonly<Record<Kind, string>> = {
-  scalar: 'value',
-  slider: 'slider',
-  linear: 'linear range',
-  logarithmic: 'log range',
-  list: 'list',
-  renard: 'Renard series',
-};
 
 function unitOf(value: ValueSpec): Unit {
   return 'unit' in value ? value.unit : parseUnit('');
@@ -141,6 +133,12 @@ interface Props {
  * re-typing during iteration and belong on the card at all times.
  */
 export function ValueKindSelect({ value, onChange }: Props): ReactElement {
+  const { locale } = useSettings();
+  const copy = ui(locale);
+  const labels: Readonly<Record<Kind, string>> = {
+    scalar: copy.scalar, slider: copy.slider, linear: copy.linear,
+    logarithmic: copy.logarithmic, list: copy.list, renard: copy.renard,
+  };
   const kind = (
     ['scalar', 'slider', 'linear', 'logarithmic', 'list', 'renard'] as const
   ).includes(value.kind as Kind)
@@ -154,7 +152,7 @@ export function ValueKindSelect({ value, onChange }: Props): ReactElement {
       value={kind}
       onChange={(event) => onChange(converted(value, event.target.value as Kind))}
     >
-      {Object.entries(KIND_LABELS).map(([option, label]) => (
+      {Object.entries(labels).map(([option, label]) => (
         <option key={option} value={option}>
           {label}
         </option>

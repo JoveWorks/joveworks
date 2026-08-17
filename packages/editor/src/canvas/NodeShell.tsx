@@ -10,6 +10,8 @@ import { useState, type ReactElement, type ReactNode } from 'react';
 
 import { NODE_HELP_URLS } from '../help-links';
 import type { NodeState } from '../model/analysis';
+import { useSettings } from '../settings-context';
+import { ui } from '../i18n';
 
 const STATE_LABELS: Readonly<Record<NodeState, string>> = {
   ok: '',
@@ -64,6 +66,8 @@ export function NodeShell({
   detail,
   dataTour,
 }: Props): ReactElement {
+  const { locale } = useSettings();
+  const copy = ui(locale);
   const [hovered, setHovered] = useState(false);
   const open = selected || hovered || pinned;
 
@@ -82,7 +86,7 @@ export function NodeShell({
             href={NODE_HELP_URLS[kind]}
             target="_blank"
             rel="noopener"
-            title="Help for this node"
+            title={copy.nodeHelp}
           >
             ?
           </a>
@@ -90,12 +94,12 @@ export function NodeShell({
         <button
           type="button"
           className={`pin${pinned ? ' on' : ''}`}
-          title={pinned ? 'Unpin this node' : 'Keep this node open'}
+          title={pinned ? copy.unpinNode : copy.keepNodeOpen}
           onClick={onTogglePin}
         >
           ▣
         </button>
-        <button type="button" className="delete" title="Delete this node" onClick={onDelete}>
+        <button type="button" className="delete" title={copy.deleteNode} onClick={onDelete}>
           ✕
         </button>
       </header>

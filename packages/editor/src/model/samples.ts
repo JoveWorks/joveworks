@@ -72,7 +72,7 @@ function document(
  * text follows the app language at the moment the template is opened. */
 function localizeExample(value: GraphDocument, locale: AppLocale): GraphDocument {
   if (locale === 'en') return value;
-  const text = (english: string): string => dutchText[english] ?? english;
+  const text = (english: string): string => (dutchText as Readonly<Record<string, string>>)[english] ?? english;
   return {
     ...value,
     title: text(value.title),
