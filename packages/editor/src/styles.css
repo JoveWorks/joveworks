@@ -1707,7 +1707,8 @@ aside.right {
 
 .notebook textarea {
   width: 100%;
-  resize: vertical;
+  resize: none;
+  overflow: hidden;
   background: transparent;
   border: 1px solid transparent;
   padding: 2px 4px;
