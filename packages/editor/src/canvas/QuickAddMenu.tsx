@@ -22,6 +22,7 @@ import type { Catalogue, Formula } from '@mds/schema';
 import { entries, search } from '../model/catalogues';
 import { fuzzySearch } from '../model/fuzzy';
 import { Symbol } from '../Symbol';
+import { TitleText } from './TitleField';
 
 export type QuickAddChoice =
   | { readonly kind: 'formula'; readonly formula: Formula; readonly port: string }
@@ -193,11 +194,11 @@ export function QuickAddMenu({
                   }
                   onClick={() => pick({ kind: 'existing', nodeId: candidate.nodeId, port: candidate.port })}
                 >
-                  <span className="entry-id">{candidate.label}</span>
+                  <span className="entry-id"><TitleText value={candidate.label} /></span>
                   <span className="entry-output">
                     {candidate.subtitle}
                     {candidate.replaces === undefined ? null : (
-                      <span className="replaces"> replaces {candidate.replaces}</span>
+                      <span className="replaces"> replaces <TitleText value={candidate.replaces} /></span>
                     )}
                   </span>
                 </button>

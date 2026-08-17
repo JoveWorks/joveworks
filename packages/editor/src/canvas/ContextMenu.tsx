@@ -8,6 +8,8 @@
 
 import type { ReactElement } from 'react';
 
+import { TitleText } from './TitleField';
+
 export interface ActionItem {
   readonly label: string;
   readonly onClick: () => void;
@@ -74,7 +76,7 @@ export function ContextMenu({ x, y, items, onClose, onMouseEnter, onMouseLeave }
               {item.checked !== undefined && (
                 <span className="menu-check">{item.checked ? '✓' : ''}</span>
               )}
-              {item.label}
+              <TitleText value={item.label} />
             </button>
           ),
         )}

@@ -29,7 +29,7 @@ import { axisLabel, reading, summarise } from '../model/values';
 import { NodeShell } from './NodeShell';
 import { Sparkline } from './Sparkline';
 import { slotHandleId } from './spectrumSlots';
-import { TitleField } from './TitleField';
+import { TitleField, TitleText } from './TitleField';
 
 export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | null {
   const { document, analysis, edit, pinned, togglePin } = useGraph();
@@ -229,7 +229,11 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
       <div className="node-value">
         <span className="reading">{value === undefined ? '—' : summarise(value, 4, format)}</span>
         {value === undefined ? null : <Sparkline reading={value} />}
-        {value === undefined ? null : <span className="axis">{axisLabel(value) ?? ''}</span>}
+        {value === undefined ? null : (
+          <span className="axis">
+            <TitleText value={axisLabel(value) ?? ''} />
+          </span>
+        )}
         <span className="port-out">
           <ParameterLabel name={formula.output.name} unit={outputUnit} unitClassName="port-unit" />
         </span>
