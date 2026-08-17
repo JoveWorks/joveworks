@@ -3,7 +3,7 @@
   "id": "public-basic-mechanics",
   "name": {
     "en": "Basic mechanics",
-    "nl": "Basic mechanics"
+    "nl": "Basismechanica"
   },
   "restricted": false,
   "formulas": [
@@ -39,7 +39,7 @@
       "expression": "F / A",
       "description": {
         "en": "Normal stress under axial load.",
-        "nl": "Normal stress under axial load."
+        "nl": "Normale spanning onder axiale belasting."
       },
       "citation": "Normal stress",
       "status": "unverified"
@@ -76,7 +76,7 @@
       "expression": "F / A",
       "description": {
         "en": "Average shear stress over a loaded cross-section.",
-        "nl": "Average shear stress over a loaded cross-section."
+        "nl": "Gemiddelde schuifspanning over een belaste doorsnede."
       },
       "citation": "Shear stress",
       "status": "unverified"
@@ -110,7 +110,7 @@
       "expression": "E * epsilon",
       "description": {
         "en": "Hooke's law: stress proportional to strain in the elastic range.",
-        "nl": "Hooke's law: stress proportional to strain in the elastic range."
+        "nl": "Wet van Hooke: spanning evenredig met rek in het elastische bereik."
       },
       "citation": "Hooke's law — stress",
       "status": "unverified"
@@ -144,7 +144,7 @@
       "expression": "G * gamma",
       "description": {
         "en": "Hooke's law in shear: shear stress proportional to shear strain.",
-        "nl": "Hooke's law in shear: shear stress proportional to shear strain."
+        "nl": "De wet van Hooke in schuifspanning: schuifspanning evenredig met schuifspanning."
       },
       "citation": "Hooke's law — shear",
       "status": "unverified"
@@ -181,7 +181,7 @@
       "expression": "sigma_yield / sigma_allow",
       "description": {
         "en": "Design factor of safety against yield.",
-        "nl": "Design factor of safety against yield."
+        "nl": "Ontwerpfactor van veiligheid tegen opbrengst."
       },
       "citation": "Factor of safety",
       "status": "unverified"
@@ -212,7 +212,7 @@
       "expression": "alpha * dT",
       "description": {
         "en": "Free thermal strain from a temperature change, unrestrained.",
-        "nl": "Free thermal strain from a temperature change, unrestrained."
+        "nl": "Vrije thermische belasting door temperatuurverandering, ongeremd."
       },
       "citation": "Thermal strain",
       "status": "unverified"
@@ -267,7 +267,7 @@
       "expression": "F * L / (A * E)",
       "description": {
         "en": "Elongation of a prismatic bar under axial load, from Hooke's law.",
-        "nl": "Elongation of a prismatic bar under axial load, from Hooke's law."
+        "nl": "Verlenging van een prismatische staaf onder axiale belasting, volgens de wet van Hooke."
       },
       "citation": "Axial elongation",
       "status": "unverified"
@@ -304,7 +304,7 @@
       "expression": "b * h**3 / 12",
       "description": {
         "en": "Second moment of area of a rectangular cross-section about its centroid.",
-        "nl": "Second moment of area of a rectangular cross-section about its centroid."
+        "nl": "Tweede oppervlaktemoment van een rechthoekige doorsnede rond het zwaartepunt."
       },
       "citation": "Rectangular section — moment of inertia",
       "status": "unverified"
@@ -332,7 +332,7 @@
       "expression": "pi * d**4 / 64",
       "description": {
         "en": "Second moment of area of a solid circular cross-section about its centroid.",
-        "nl": "Second moment of area of a solid circular cross-section about its centroid."
+        "nl": "Tweede oppervlaktemoment van een massieve cirkelvormige dwarsdoorsnede rond zijn zwaartepunt."
       },
       "citation": "Circular section — moment of inertia",
       "status": "unverified"
@@ -369,7 +369,7 @@
       "expression": "pi * (d_o**4 - d_i**4) / 64",
       "description": {
         "en": "Second moment of area of a hollow circular (tube) cross-section about its centroid.",
-        "nl": "Second moment of area of a hollow circular (tube) cross-section about its centroid."
+        "nl": "Tweede oppervlaktemoment van een holle cirkelvormige (buis) dwarsdoorsnede rond zijn zwaartepunt."
       },
       "citation": "Hollow circular section — moment of inertia",
       "status": "unverified"
@@ -412,7 +412,7 @@
       "expression": "M * c / I",
       "description": {
         "en": "Bending stress at distance c from the neutral axis.",
-        "nl": "Bending stress at distance c from the neutral axis."
+        "nl": "Buigspanning op afstand c van de neutrale as."
       },
       "citation": "Bending stress",
       "status": "unverified"
@@ -449,7 +449,7 @@
       "expression": "I / c",
       "description": {
         "en": "Elastic section modulus, so bending stress is simply M / W.",
-        "nl": "Elastic section modulus, so bending stress is simply M / W."
+        "nl": "Elasticiteitsmodulus, dus buigspanning is eenvoudigweg M/W."
       },
       "citation": "Section modulus",
       "status": "unverified"
@@ -504,7 +504,7 @@
       "expression": "F * L**3 / (3 * E * I)",
       "description": {
         "en": "Tip deflection of a cantilever beam under a point load at its free end.",
-        "nl": "Tip deflection of a cantilever beam under a point load at its free end."
+        "nl": "Tipdoorbuiging van een vrijdragende balk onder een puntbelasting aan het vrije uiteinde."
       },
       "citation": "Cantilever beam — tip deflection",
       "status": "unverified"
@@ -559,7 +559,7 @@
       "expression": "F * L**3 / (48 * E * I)",
       "description": {
         "en": "Midspan deflection of a simply supported beam under a central point load.",
-        "nl": "Midspan deflection of a simply supported beam under a central point load."
+        "nl": "Doorbuiging in het midden van een eenvoudig ondersteunde ligger onder een centrale puntbelasting."
       },
       "citation": "Simply supported beam — midspan deflection",
       "status": "unverified"
@@ -596,7 +596,7 @@
       "expression": "F * L / 4",
       "description": {
         "en": "Maximum bending moment of a simply supported beam under a central point load, at midspan.",
-        "nl": "Maximum bending moment of a simply supported beam under a central point load, at midspan."
+        "nl": "Maximaal buigmoment van een eenvoudig ondersteunde ligger onder een centrale puntbelasting, in het midden van de overspanning."
       },
       "citation": "Simply supported beam — max moment",
       "status": "unverified"
@@ -624,7 +624,7 @@
       "expression": "pi * d**4 / 32",
       "description": {
         "en": "Polar moment of area of a solid circular shaft.",
-        "nl": "Polar moment of area of a solid circular shaft."
+        "nl": "Polair oppervlaktemoment van een massieve cirkelvormige as."
       },
       "citation": "Solid shaft — polar moment",
       "status": "unverified"
@@ -661,7 +661,7 @@
       "expression": "pi * (d_o**4 - d_i**4) / 32",
       "description": {
         "en": "Polar moment of area of a hollow circular shaft.",
-        "nl": "Polar moment of area of a hollow circular shaft."
+        "nl": "Polair oppervlaktemoment van een holle cirkelvormige as."
       },
       "citation": "Hollow shaft — polar moment",
       "status": "unverified"
@@ -704,7 +704,7 @@
       "expression": "T * r / J",
       "description": {
         "en": "Torsional shear stress at radius r from the shaft axis.",
-        "nl": "Torsional shear stress at radius r from the shaft axis."
+        "nl": "Torsieschuifspanning bij straal r vanaf de as van de as."
       },
       "citation": "Torsional shear stress",
       "status": "unverified"
@@ -738,7 +738,7 @@
       "expression": "2 * pi * n * T",
       "description": {
         "en": "Transmitted power from torque and rotational speed.",
-        "nl": "Transmitted power from torque and rotational speed."
+        "nl": "Overgedragen vermogen uit koppel en toerental."
       },
       "citation": "Power from torque and speed",
       "variantOf": "basic.rotation.power-torque-relation",
@@ -776,7 +776,7 @@
       "expression": "P / (2 * pi * n)",
       "description": {
         "en": "Torque from transmitted power and rotational speed — same relation, solved for T.",
-        "nl": "Torque from transmitted power and rotational speed — same relation, solved for T."
+        "nl": "Koppel van overgedragen vermogen en rotatiesnelheid - dezelfde relatie, opgelost voor T."
       },
       "citation": "Torque from power and speed",
       "variantOf": "basic.rotation.power-torque-relation",
@@ -814,7 +814,7 @@
       "expression": "pi * d * n",
       "description": {
         "en": "Pitch line (surface) velocity of a rotating wheel, pulley or gear.",
-        "nl": "Pitch line (surface) velocity of a rotating wheel, pulley or gear."
+        "nl": "Hoogtelijnsnelheid (oppervlaktesnelheid) van een roterend wiel, katrol of tandwiel."
       },
       "citation": "Pitch line velocity",
       "status": "unverified"
@@ -860,7 +860,7 @@
       "expression": "pi**2 * E * I / Le**2",
       "description": {
         "en": "Euler critical buckling load of a slender column, effective length Le.",
-        "nl": "Euler critical buckling load of a slender column, effective length Le."
+        "nl": "Euler kritische knikbelasting van een slanke kolom, effectieve lengte Le."
       },
       "citation": "Euler buckling load",
       "status": "unverified"
@@ -897,7 +897,7 @@
       "expression": "sqrt(I / A)",
       "description": {
         "en": "Radius of gyration of a cross-section.",
-        "nl": "Radius of gyration of a cross-section."
+        "nl": "Draaistraal van een doorsnede."
       },
       "citation": "Radius of gyration",
       "status": "unverified"
@@ -934,7 +934,7 @@
       "expression": "Le / r",
       "description": {
         "en": "Slenderness ratio of a column, governing whether Euler buckling applies.",
-        "nl": "Slenderness ratio of a column, governing whether Euler buckling applies."
+        "nl": "Dunheidsverhouding van een kolom, die bepaalt of Euler-knik van toepassing is."
       },
       "citation": "Slenderness ratio",
       "status": "unverified"
@@ -971,7 +971,7 @@
       "expression": "k * x",
       "description": {
         "en": "Linear spring force from stiffness and deflection.",
-        "nl": "Linear spring force from stiffness and deflection."
+        "nl": "Lineaire veerkracht door stijfheid en doorbuiging."
       },
       "citation": "Spring force",
       "status": "unverified"
@@ -1008,7 +1008,7 @@
       "expression": "k * x**2 / 2",
       "description": {
         "en": "Strain energy stored in a linear spring.",
-        "nl": "Strain energy stored in a linear spring."
+        "nl": "Spanningsenergie opgeslagen in een lineaire veer."
       },
       "citation": "Spring strain energy",
       "status": "unverified"
@@ -1063,7 +1063,7 @@
       "expression": "G * d**4 / (8 * D**3 * n)",
       "description": {
         "en": "Spring rate of a helical compression spring, wire diameter d, mean coil diameter D, n active coils.",
-        "nl": "Spring rate of a helical compression spring, wire diameter d, mean coil diameter D, n active coils."
+        "nl": "Veerconstante van een spiraalvormige drukveer, draaddiameter d, gemiddelde spoeldiameter D, n actieve spoelen."
       },
       "citation": "Helical spring rate",
       "status": "unverified"
@@ -1097,7 +1097,7 @@
       "expression": "m * a",
       "description": {
         "en": "Newton's second law: net force from mass and acceleration.",
-        "nl": "Newton's second law: net force from mass and acceleration."
+        "nl": "De tweede wet van Newton: netto kracht uit massa en versnelling."
       },
       "citation": "Newton's second law",
       "status": "unverified"
@@ -1134,7 +1134,7 @@
       "expression": "m * v**2 / 2",
       "description": {
         "en": "Translational kinetic energy of a moving mass.",
-        "nl": "Translational kinetic energy of a moving mass."
+        "nl": "Translationele kinetische energie van een bewegende massa."
       },
       "citation": "Kinetic energy",
       "status": "unverified"
@@ -1168,7 +1168,7 @@
       "expression": "m * v",
       "description": {
         "en": "Linear momentum of a moving mass.",
-        "nl": "Linear momentum of a moving mass."
+        "nl": "Lineair momentum van een bewegende massa."
       },
       "citation": "Linear momentum",
       "status": "unverified"
@@ -1205,7 +1205,7 @@
       "expression": "v**2 / r",
       "description": {
         "en": "Centripetal acceleration of a point moving on a circular path of radius r.",
-        "nl": "Centripetal acceleration of a point moving on a circular path of radius r."
+        "nl": "Centripetale versnelling van een punt dat beweegt op een cirkelvormige baan met straal r."
       },
       "citation": "Centripetal acceleration",
       "status": "unverified"
@@ -1251,7 +1251,7 @@
       "expression": "m * v**2 / r",
       "description": {
         "en": "Centripetal force required to hold a mass on a circular path of radius r.",
-        "nl": "Centripetal force required to hold a mass on a circular path of radius r."
+        "nl": "Middelpuntzoekende kracht die nodig is om een ​​massa op een cirkelvormig pad met straal r te houden."
       },
       "citation": "Centripetal force",
       "status": "unverified"
@@ -1288,7 +1288,7 @@
       "expression": "F * d",
       "description": {
         "en": "Work done by a constant force acting along the direction of motion.",
-        "nl": "Work done by a constant force acting along the direction of motion."
+        "nl": "Arbeid verricht door een constante kracht die in de bewegingsrichting inwerkt."
       },
       "citation": "Work done by a force",
       "status": "unverified"
@@ -1325,7 +1325,7 @@
       "expression": "F * v",
       "description": {
         "en": "Mechanical power delivered by a force moving at velocity v.",
-        "nl": "Mechanical power delivered by a force moving at velocity v."
+        "nl": "Mechanisch vermogen geleverd door een kracht die beweegt met snelheid v."
       },
       "citation": "Power from force and velocity",
       "status": "unverified"
@@ -1362,7 +1362,7 @@
       "expression": "z2 / z1",
       "description": {
         "en": "Gear ratio from tooth counts of the driven (z2) and driving (z1) gear.",
-        "nl": "Gear ratio from tooth counts of the driven (z2) and driving (z1) gear."
+        "nl": "Overbrengingsverhouding op basis van het aantal tanden van het aangedreven (z2) en aandrijftandwiel (z1)."
       },
       "citation": "Gear ratio",
       "status": "unverified"
@@ -1399,7 +1399,7 @@
       "expression": "T1 * i",
       "description": {
         "en": "Output torque from input torque and gear ratio, assuming no losses.",
-        "nl": "Output torque from input torque and gear ratio, assuming no losses."
+        "nl": "Uitgangskoppel uit ingangskoppel en overbrengingsverhouding, ervan uitgaande dat er geen verliezen zijn."
       },
       "citation": "Ideal torque ratio",
       "status": "unverified"
@@ -1436,7 +1436,7 @@
       "expression": "P_out / P_in",
       "description": {
         "en": "Mechanical efficiency: output power over input power.",
-        "nl": "Mechanical efficiency: output power over input power."
+        "nl": "Mechanische efficiëntie: uitgangsvermogen boven ingangsvermogen."
       },
       "citation": "Mechanical efficiency",
       "status": "unverified"
@@ -1473,7 +1473,7 @@
       "expression": "mu * F_N",
       "description": {
         "en": "Coulomb friction force from the coefficient of friction and normal force.",
-        "nl": "Coulomb friction force from the coefficient of friction and normal force."
+        "nl": "Coulomb-wrijvingskracht uit de wrijvingscoëfficiënt en normaalkracht."
       },
       "citation": "Friction force",
       "status": "unverified"

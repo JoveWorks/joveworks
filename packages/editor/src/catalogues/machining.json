@@ -3,7 +3,7 @@
   "id": "public-machining",
   "name": {
     "en": "Machining",
-    "nl": "Machining"
+    "nl": "Bewerking"
   },
   "restricted": false,
   "formulas": [
@@ -39,7 +39,7 @@
       "expression": "pi * D * n",
       "description": {
         "en": "Cutting speed at a rotating tool or workpiece diameter.",
-        "nl": "Cutting speed at a rotating tool or workpiece diameter."
+        "nl": "Snijsnelheid bij roterend gereedschap of werkstukdiameter."
       },
       "citation": "Cutting speed",
       "variantOf": "machining.speed.rotation",
@@ -77,7 +77,7 @@
       "expression": "v_c / (pi * D)",
       "description": {
         "en": "Spindle speed required for a cutting speed at a given diameter.",
-        "nl": "Spindle speed required for a cutting speed at a given diameter."
+        "nl": "Spiltoerental vereist voor een snijsnelheid bij een gegeven diameter."
       },
       "citation": "Spindle speed",
       "variantOf": "machining.speed.rotation",
@@ -115,7 +115,7 @@
       "expression": "f_n * n",
       "description": {
         "en": "Linear feed rate from feed per revolution and spindle speed.",
-        "nl": "Linear feed rate from feed per revolution and spindle speed."
+        "nl": "Lineaire voedingssnelheid van voeding per omwenteling en spiltoerental."
       },
       "citation": "Feed rate",
       "variantOf": "machining.feed.per-revolution",
@@ -153,7 +153,7 @@
       "expression": "v_f / n",
       "description": {
         "en": "Feed per spindle revolution from linear feed rate.",
-        "nl": "Feed per spindle revolution from linear feed rate."
+        "nl": "Voeding per spilomwenteling vanaf lineaire voedingssnelheid."
       },
       "citation": "Feed per revolution",
       "variantOf": "machining.feed.per-revolution",
@@ -178,7 +178,7 @@
           },
           "description": {
             "en": "Feed per effective tooth (chip load).",
-            "nl": "Feed per effective tooth (chip load)."
+            "nl": "Voeding per effectieve tand (spanenbelasting)."
           }
         },
         {
@@ -190,7 +190,7 @@
           },
           "description": {
             "en": "Number of effective teeth.",
-            "nl": "Number of effective teeth."
+            "nl": "Aantal effectieve tanden."
           }
         },
         {
@@ -206,7 +206,7 @@
       "expression": "f_z * z_c * n",
       "description": {
         "en": "Milling table feed from chip load, effective tooth count, and spindle speed.",
-        "nl": "Milling table feed from chip load, effective tooth count, and spindle speed."
+        "nl": "Freestafelvoeding op basis van de spaanbelasting, het effectieve aantal tanden en het spiltoerental."
       },
       "citation": "Milling table feed",
       "variantOf": "machining.milling.chip-load",
@@ -221,7 +221,7 @@
         "unit": "mm",
         "description": {
           "en": "Feed per effective tooth (chip load).",
-          "nl": "Feed per effective tooth (chip load)."
+          "nl": "Voeding per effectieve tand (spanenbelasting)."
         }
       },
       "inputs": [
@@ -243,7 +243,7 @@
           },
           "description": {
             "en": "Number of effective teeth.",
-            "nl": "Number of effective teeth."
+            "nl": "Aantal effectieve tanden."
           }
         },
         {
@@ -259,7 +259,7 @@
       "expression": "v_f / (z_c * n)",
       "description": {
         "en": "Milling chip load, expressed as feed per effective tooth.",
-        "nl": "Milling chip load, expressed as feed per effective tooth."
+        "nl": "Freesspanbelasting, uitgedrukt als voeding per effectieve tand."
       },
       "citation": "Milling feed per tooth",
       "variantOf": "machining.milling.chip-load",
@@ -284,7 +284,7 @@
           },
           "description": {
             "en": "Axial depth of cut.",
-            "nl": "Axial depth of cut."
+            "nl": "Axiale snedediepte."
           }
         },
         {
@@ -296,7 +296,7 @@
           },
           "description": {
             "en": "Radial width of cut.",
-            "nl": "Radial width of cut."
+            "nl": "Radiale snedebreedte."
           }
         },
         {
@@ -312,7 +312,7 @@
       "expression": "a_p * a_e * v_f",
       "description": {
         "en": "Milling material-removal rate from axial depth, radial width, and table feed.",
-        "nl": "Milling material-removal rate from axial depth, radial width, and table feed."
+        "nl": "Freesmateriaalverwijderingssnelheid van axiale diepte, radiale breedte en tafelvoeding."
       },
       "citation": "Milling material-removal rate",
       "status": "verified"
@@ -345,7 +345,7 @@
           },
           "description": {
             "en": "Radial depth of cut.",
-            "nl": "Radial depth of cut."
+            "nl": "Radiale snedediepte."
           }
         },
         {
@@ -361,7 +361,7 @@
       "expression": "v_c * a_p * f_n",
       "description": {
         "en": "Turning material-removal rate from cutting speed, depth of cut, and feed per revolution.",
-        "nl": "Turning material-removal rate from cutting speed, depth of cut, and feed per revolution."
+        "nl": "Draaisnelheid van materiaalafname afhankelijk van snijsnelheid, snedediepte en voeding per omwenteling."
       },
       "citation": "Turning material-removal rate",
       "status": "verified"
@@ -398,7 +398,7 @@
       "expression": "pi * D**2 * v_f / 4",
       "description": {
         "en": "Drilling material-removal rate for a full-diameter cylindrical hole.",
-        "nl": "Drilling material-removal rate for a full-diameter cylindrical hole."
+        "nl": "Boormateriaalverwijderingssnelheid voor een cilindrisch gat met volledige diameter."
       },
       "citation": "Drilling material-removal rate",
       "status": "verified"
@@ -422,7 +422,7 @@
           },
           "description": {
             "en": "Total fed cutting length, including approach and overtravel.",
-            "nl": "Total fed cutting length, including approach and overtravel."
+            "nl": "Totale gevoede snijlengte, inclusief nadering en uitloop."
           }
         },
         {
@@ -438,7 +438,7 @@
       "expression": "L / v_f",
       "description": {
         "en": "Time in cut from total fed length and linear feed rate.",
-        "nl": "Time in cut from total fed length and linear feed rate."
+        "nl": "Tijd in snede vanaf de totale invoerlengte en lineaire voedingssnelheid."
       },
       "citation": "Machining time",
       "status": "verified"
@@ -462,7 +462,7 @@
           },
           "description": {
             "en": "Specific cutting force for the material and cutting conditions.",
-            "nl": "Specific cutting force for the material and cutting conditions."
+            "nl": "Specifieke snijkracht voor het materiaal en de snijomstandigheden."
           }
         },
         {
@@ -474,14 +474,14 @@
           },
           "description": {
             "en": "Uncut chip cross-sectional area.",
-            "nl": "Uncut chip cross-sectional area."
+            "nl": "Ongesneden spaandoorsnede."
           }
         }
       ],
       "expression": "k_c * A_c",
       "description": {
         "en": "Main cutting force estimated from specific cutting force and uncut chip area.",
-        "nl": "Main cutting force estimated from specific cutting force and uncut chip area."
+        "nl": "Hoofdsnijkracht geschat op basis van specifieke snijkracht en ongesneden spaanoppervlak."
       },
       "citation": "Specific cutting-force model",
       "variantOf": "machining.force.specific-cutting-force",
@@ -515,14 +515,14 @@
           },
           "description": {
             "en": "Uncut chip cross-sectional area.",
-            "nl": "Uncut chip cross-sectional area."
+            "nl": "Ongesneden spaandoorsnede."
           }
         }
       ],
       "expression": "F_c / A_c",
       "description": {
         "en": "Effective specific cutting force inferred from cutting force and uncut chip area.",
-        "nl": "Effective specific cutting force inferred from cutting force and uncut chip area."
+        "nl": "Effectieve specifieke snijkracht afgeleid van de snijkracht en het ongesneden spaanoppervlak."
       },
       "citation": "Specific cutting-force model",
       "variantOf": "machining.force.specific-cutting-force",
@@ -560,7 +560,7 @@
       "expression": "F_c * v_c",
       "description": {
         "en": "Net cutting power from the main cutting force and cutting speed.",
-        "nl": "Net cutting power from the main cutting force and cutting speed."
+        "nl": "Netto snijvermogen op basis van de hoofdsnijkracht en snijsnelheid."
       },
       "citation": "Machining power from cutting force",
       "variantOf": "machining.power.net-cutting-power",
@@ -585,7 +585,7 @@
           },
           "description": {
             "en": "Specific cutting force for the material and cutting conditions.",
-            "nl": "Specific cutting force for the material and cutting conditions."
+            "nl": "Specifieke snijkracht voor het materiaal en de snijomstandigheden."
           }
         },
         {
@@ -597,14 +597,14 @@
           },
           "description": {
             "en": "Material-removal rate.",
-            "nl": "Material-removal rate."
+            "nl": "Materiaalverwijderingspercentage."
           }
         }
       ],
       "expression": "k_c * Q",
       "description": {
         "en": "Net cutting power estimated from specific cutting force and material-removal rate.",
-        "nl": "Net cutting power estimated from specific cutting force and material-removal rate."
+        "nl": "Netto snijvermogen geschat op basis van specifieke snijkracht en materiaalverwijderingssnelheid."
       },
       "citation": "Machining power from removal rate",
       "variantOf": "machining.power.net-cutting-power",
@@ -639,14 +639,14 @@
           },
           "description": {
             "en": "Machine drivetrain efficiency as a fraction.",
-            "nl": "Machine drivetrain efficiency as a fraction."
+            "nl": "De efficiëntie van de machine-aandrijflijn als een fractie."
           }
         }
       ],
       "expression": "P_c / eta",
       "description": {
         "en": "Machine input power required to supply the net cutting power at a given efficiency.",
-        "nl": "Machine input power required to supply the net cutting power at a given efficiency."
+        "nl": "Het ingangsvermogen van de machine is vereist om het netto snijvermogen met een bepaald rendement te leveren."
       },
       "citation": "Machine power allowance",
       "status": "verified"
@@ -683,7 +683,7 @@
       "expression": "F_c * D / 2",
       "description": {
         "en": "Cutting torque from tangential cutting force at the cutting diameter.",
-        "nl": "Cutting torque from tangential cutting force at the cutting diameter."
+        "nl": "Snijkoppel uit tangentiële snijkracht bij de snijdiameter."
       },
       "citation": "Cutting torque from force",
       "variantOf": "machining.torque.cutting-torque",
@@ -721,7 +721,7 @@
       "expression": "P_c / (2 * pi * n)",
       "description": {
         "en": "Cutting torque from net cutting power and spindle speed.",
-        "nl": "Cutting torque from net cutting power and spindle speed."
+        "nl": "Snijkoppel uit netto snijvermogen en spiltoerental."
       },
       "citation": "Cutting torque from power",
       "variantOf": "machining.torque.cutting-torque",
