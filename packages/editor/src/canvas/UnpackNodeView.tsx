@@ -13,6 +13,7 @@ import { useGraph } from '../graph-context';
 import { reframe, removeNodes, renameNode } from '../model/document';
 import { ParameterLabel } from '../ParameterLabel';
 import { NodeShell } from './NodeShell';
+import { unpackChannelLabels } from './bundleLabels';
 import { slotHandleId } from './spectrumSlots';
 import { TitleField } from './TitleField';
 
@@ -25,6 +26,7 @@ export function UnpackNodeView({ id, selected }: NodeProps): ReactElement | null
   const problem = analysis.problems.get(id);
   const bundleType = analysis.resolution?.targets.get(`${id}.bundle`);
   const count = bundleType?.channels?.length ?? 0;
+  const labels = unpackChannelLabels(document, id);
 
   return (
     <NodeShell
@@ -58,7 +60,7 @@ export function UnpackNodeView({ id, selected }: NodeProps): ReactElement | null
         {Array.from({ length: count }, (_unused, i) => (
           <li key={`out${i}`} className="port">
             <ParameterLabel
-              name={`out${i}`}
+              name={labels[i] ?? `out${i}`}
               unit={analysis.resolution?.sources.get(`${id}.out${i}`)?.unit}
               nameClassName="port-name"
               unitClassName="port-unit"

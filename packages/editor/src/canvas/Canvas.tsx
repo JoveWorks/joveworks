@@ -69,6 +69,7 @@ import {
 } from '../model/document';
 import { autoArrange } from '../model/layout';
 import { alignSelection, arrangeSelection } from '../model/selection-layout';
+import { BundleEdge } from './BundleEdge';
 import { ClosureNodeView } from './ClosureNodeView';
 import { CompareNodeView } from './CompareNodeView';
 import { ContextMenu, type MenuItem } from './ContextMenu';
@@ -312,6 +313,8 @@ const NODE_TYPES = {
   frame: FrameView,
 };
 
+const EDGE_TYPES = { bundle: BundleEdge };
+
 export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean }): ReactElement {
   const { document, catalogues, analysis, edit, editLive, commitEdit, pinned, togglePin, selected, setSelected, saveUserEquation } =
     useGraph();
@@ -430,6 +433,9 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
         sourceHandle: edge.from.port,
         target: edge.to.node,
         targetHandle: slotHandleId(edge.to.port, slot),
+        ...(document.nodes.find((node) => node.id === edge.from.node)?.kind === 'pack' && edge.from.port === 'bundle'
+          ? { type: 'bundle' }
+          : {}),
         selected: selected.has(edge.id),
         ...(edge.id === hoveredEdgeId ? { className: 'edge-hovered' } : {}),
       };
@@ -1019,6 +1025,7 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
         nodes={nodes}
         edges={edges}
         nodeTypes={NODE_TYPES}
+        edgeTypes={EDGE_TYPES}
         colorMode={themePreference}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}

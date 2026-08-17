@@ -17,6 +17,7 @@ import { useGraph } from '../graph-context';
 import { reframe, removeNodes, renameNode } from '../model/document';
 import { ParameterLabel } from '../ParameterLabel';
 import { NodeShell } from './NodeShell';
+import { packChannelLabels } from './bundleLabels';
 import { slotHandleId } from './spectrumSlots';
 import { TitleField } from './TitleField';
 
@@ -28,6 +29,7 @@ export function PackNodeView({ id, selected }: NodeProps): ReactElement | null {
   const state = analysis.states.get(id) ?? 'ok';
   const problem = analysis.problems.get(id);
   const indices = packChannelIndices(document, id);
+  const labels = packChannelLabels(document, id);
   const nextChannel = nextPackChannel(indices);
 
   return (
@@ -51,7 +53,7 @@ export function PackNodeView({ id, selected }: NodeProps): ReactElement | null {
           <li key={`in${channel}`} className="port">
             <Handle type="target" position={Position.Left} id={slotHandleId(`in${channel}`, 0)} />
             <ParameterLabel
-              name={`in${position}`}
+              name={labels[position] ?? `in${channel}`}
               unit={analysis.resolution?.targets.get(`${id}.in${channel}`)?.unit}
               nameClassName="port-name"
               unitClassName="port-unit"

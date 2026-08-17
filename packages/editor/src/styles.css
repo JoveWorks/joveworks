@@ -636,6 +636,21 @@ aside.right {
   padding-left: 14px;
 }
 
+/* An unpack's resolved channels are outputs, but still use port rows rather
+   than the single-value footer. Override the input-row docking above so their
+   source handles stay on the node's output side. */
+.node .ports-out .port {
+  padding-left: 0;
+  padding-right: 14px;
+}
+
+.node .ports-out .port .react-flow__handle {
+  left: auto;
+  right: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
 .node .port-name {
   font-variant-numeric: tabular-nums;
 }
@@ -764,6 +779,29 @@ aside.right {
 .react-flow__edge.edge-hovered .react-flow__edge-path {
   stroke: var(--accent);
   stroke-width: 3;
+}
+
+/* A packed bundle transports several independently typed values. The pale
+   centre separates two dark rails, making that compound edge distinct from a
+   scalar wire without assigning it a meaning-bearing colour. */
+.react-flow__edge .bundle-edge-outer {
+  stroke: var(--muted);
+  stroke-width: 5;
+}
+
+.react-flow__edge .bundle-edge-inner {
+  stroke: var(--paper);
+  stroke-width: 2;
+}
+
+.react-flow__edge.edge-hovered .bundle-edge-outer {
+  stroke: var(--accent);
+  stroke-width: 5;
+}
+
+.react-flow__edge.edge-hovered .bundle-edge-inner {
+  stroke: var(--paper);
+  stroke-width: 2;
 }
 
 .frame.highlighted {
