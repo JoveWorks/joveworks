@@ -447,6 +447,15 @@ aside.right {
 
 /* --- nodes -------------------------------------------------------------- */
 
+/* React Flow keeps a hit area around a completed multi-node selection so it
+   can be moved or right-clicked. The nodes' own selected borders are enough
+   feedback here; leaving the hit area visibly outlined makes it look like the
+   temporary marquee is stuck on the canvas. */
+.react-flow__nodesselection-rect {
+  background: transparent;
+  border: none;
+}
+
 /*
  * Hovering a node brings it above overlapping neighbours. React Flow sets
  * z-index inline per node (selection, drag), which only `!important` in a
