@@ -67,6 +67,7 @@ import {
   updateFrame,
 } from '../model/document';
 import { autoArrange } from '../model/layout';
+import { alignSelection, arrangeSelection } from '../model/selection-layout';
 import { ClosureNodeView } from './ClosureNodeView';
 import { CompareNodeView } from './CompareNodeView';
 import { ContextMenu, type MenuItem } from './ContextMenu';
@@ -689,7 +690,32 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
     if (target.kind === 'node') {
       const { id } = target;
       const graphNode = document.nodes.find((node) => node.id === id);
+      const selectedNodeCount = document.nodes.filter((node) => selected.has(node.id)).length;
+      const selectionActions: readonly MenuItem[] =
+        selected.has(id) && selectedNodeCount > 1
+          ? [
+              { heading: 'Selection' },
+              ...([
+                ['Align left', 'left'],
+                ['Align right', 'right'],
+                ['Align top', 'top'],
+                ['Align bottom', 'bottom'],
+                ['Align horizontal centres', 'horizontal-centre'],
+                ['Align vertical centres', 'vertical-centre'],
+              ] as const).map(([label, alignment]) => ({
+                label,
+                onClick: () =>
+                  edit((current) => alignSelection(current, selected, alignment, measured)),
+              })),
+              {
+                label: 'Arrange selection',
+                onClick: () => edit((current) => arrangeSelection(current, selected)),
+              },
+              { heading: 'Node' },
+            ]
+          : [];
       return [
+        ...selectionActions,
         {
           label: pinned.has(id) ? 'Unpin' : 'Pin open',
           onClick: () => togglePin(id),
