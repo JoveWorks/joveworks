@@ -637,6 +637,7 @@ aside.right {
   align-items: center;
   flex-basis: 100%;
   gap: 4px;
+  justify-content: flex-end;
   margin-left: 0;
 }
 
