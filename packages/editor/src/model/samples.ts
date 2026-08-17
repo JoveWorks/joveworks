@@ -147,6 +147,75 @@ export function padPressure(catalogues: readonly Catalogue[]): GraphDocument | u
   return document('pad-pressure', 'Pad pressure sweep', withFrames, edges, frames);
 }
 
+// --- a plain-language decision example, for demonstrations ------------------
+
+/**
+ * A deliberately familiar version of the pad-pressure study. It gives a
+ * sponsor, partner, or first-time visitor one question to follow: how wide
+ * must a temporary platform be before it stays within the agreed floor-load
+ * limit? The graph uses only public base nodes, so it is always available and
+ * does not expose catalogue or textbook content.
+ */
+export function platformFootprint(catalogues: readonly Catalogue[]): GraphDocument | undefined {
+  const multiply = lookup(catalogues, 'multiply');
+  const divide = lookup(catalogues, 'divide');
+  if (multiply === undefined || divide === undefined) return undefined;
+
+  const mm = parseUnit('mm');
+  const stress = parseUnit('N/mm²');
+  const nodes: GraphNode[] = [
+    input('load', 'Equipment load', { kind: 'scalar', value: 12, unit: parseUnit('kN') }, at(0, 0)),
+    input('length', 'Platform length', { kind: 'scalar', value: 1000, unit: mm }, at(0, 150)),
+    {
+      ...input('width', 'Platform width to compare', { kind: 'linear', start: 200, stop: 1200, points: 26, unit: mm }, at(0, 300)),
+      axisLabel: 'platform width (mm)',
+    },
+
+    formulaNode('footprint', multiply, at(340, 220)),
+    formulaNode('floor_pressure', divide, at(680, 90)),
+
+    output('pressure', 'Pressure on the floor', { kind: 'print', unit: stress }, at(1020, 0)),
+    output(
+      'safe',
+      'Within the agreed floor-load limit',
+      { kind: 'check', comparison: '<=', threshold: { value: 0.02, unit: stress } },
+      at(1020, 170),
+    ),
+    output(
+      'decision_plot',
+      'How width changes the floor pressure',
+      { kind: 'plot', x: 'width', threshold: { value: 0.02, unit: stress }, unit: stress },
+      at(1020, 340),
+    ),
+  ];
+  const edges = [
+    wire('width.value', 'footprint.b'),
+    wire('length.value', 'footprint.a'),
+    wire('load.value', 'floor_pressure.a'),
+    wire('footprint.product', 'floor_pressure.b'),
+    wire('floor_pressure.quotient', 'pressure.value'),
+    wire('floor_pressure.quotient', 'safe.value'),
+    wire('floor_pressure.quotient', 'decision_plot.value'),
+  ];
+  const frames = [
+    {
+      id: 'decision',
+      title: 'A decision at a glance',
+      note:
+        'We compare platform widths for a fixed 12 kN equipment load. The line shows the ' +
+        'pressure on the floor; the threshold marks the widths that meet the agreed limit. ' +
+        'The same live graph supplies the value, the check, and the chart in this report.',
+      position: at(960, -80),
+      size: { width: 430, height: 620 },
+    },
+  ];
+  const withFrames = nodes.map((node) =>
+    node.kind === 'output' ? { ...node, frameId: 'decision' } : node,
+  );
+
+  return document('platform-footprint', 'Choose a safe platform size', withFrames, edges, frames);
+}
+
 // --- the belt lab, which needs its catalogue ---------------------------------
 
 /**

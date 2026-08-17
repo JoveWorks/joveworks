@@ -20,7 +20,7 @@ function text(node: ReactNode): string {
   return renderToStaticMarkup(<>{node}</>);
 }
 import { baseCatalogue } from './catalogues';
-import { padPressure } from './samples';
+import { padPressure, platformFootprint } from './samples';
 
 const INVENTED: Catalogue = loadCatalogue(
   JSON.stringify({
@@ -382,5 +382,19 @@ describe('the pad-pressure sample', () => {
     const plot = outputs.find((entry) => entry.nodeId === 'p_plot');
     expect(plot?.kind === 'plot' && plot.x.axis.id).toBe('w');
     expect(plot?.kind === 'plot' && plot.threshold).toBeCloseTo(2, 9);
+  });
+});
+
+describe('the platform-footprint example', () => {
+  it('evaluates without a specialist catalogue', () => {
+    const document = platformFootprint(CATALOGUES) as GraphDocument;
+    const analysis = analyse(document, CATALOGUES);
+
+    expect(analysis.message).toBeUndefined();
+    expect([...analysis.states.values()].every((state) => state === 'ok')).toBe(true);
+    expect(analysis.evaluation?.outputs.find((entry) => entry.nodeId === 'safe')).toMatchObject({
+      kind: 'check',
+      passed: false,
+    });
   });
 });

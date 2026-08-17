@@ -69,6 +69,16 @@ interface ExampleTutorialCopy {
 }
 
 const EXAMPLE_COPY = {
+  'platform-footprint': {
+    title: 'Choose a safe platform size',
+    opening: 'A short, plain-language example: compare platform widths and see which ones keep a fixed equipment load within an agreed floor limit.',
+    inputTarget: '[data-tour="input-width"]',
+    inputTitle: 'One decision, many options',
+    inputBody: 'Platform width is the choice being compared. The graph tests 26 options automatically, from a narrow platform to a wider one.',
+    studyTitle: 'The impact is visible, not hidden in a spreadsheet',
+    studyBody: 'The fixed load and platform dimensions feed one live calculation. Every width produces a corresponding floor-pressure result.',
+    resultBody: 'The threshold turns the chart into a decision: widths after the crossing meet the agreed limit. The value, pass/fail check and chart all come from the same graph.',
+  },
   'pad-pressure': {
     title: 'Pad pressure sweep',
     opening: 'This example sizes a rectangular pad by sweeping its width under a fixed load and bearing-pressure limit.',

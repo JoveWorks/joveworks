@@ -1,4 +1,5 @@
 export const EXAMPLE_IDS = [
+  'platform-footprint',
   'pad-pressure',
   'belt-lab',
   'cantilever-hollow-sections',

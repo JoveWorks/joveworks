@@ -83,6 +83,7 @@ import {
   cantileverHollowSections,
   millingPowerEnvelope,
   padPressure,
+  platformFootprint,
   provides,
 } from './model/samples';
 import { Notebook } from './notebook/Notebook';
@@ -128,6 +129,7 @@ function exampleDocument(
   catalogues: readonly Catalogue[],
 ): GraphDocument | undefined {
   if (id === 'pad-pressure') return padPressure(catalogues);
+  if (id === 'platform-footprint') return platformFootprint(catalogues);
   if (id === 'belt-lab') return beltLab(catalogues);
   if (id === 'cantilever-hollow-sections') return cantileverHollowSections(catalogues);
   return millingPowerEnvelope(catalogues);
@@ -607,6 +609,15 @@ function AppShell(): ReactElement {
       onClick: () => setShowCanvasControls((visible) => !visible),
     },
     { heading: 'Examples' },
+    {
+      label: 'Choose a safe platform size',
+      onClick: () =>
+        guardDiscard(() => {
+          openExample('platform-footprint');
+          setShowNotebook(true);
+          setTutorial({ kind: 'example', id: 'platform-footprint' });
+        }),
+    },
     {
       label: 'Pad pressure sweep',
       onClick: () =>

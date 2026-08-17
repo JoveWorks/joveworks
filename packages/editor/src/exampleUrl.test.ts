@@ -8,6 +8,9 @@ describe('example notebook URLs', () => {
     expect(exampleIdFromUrl(new URL('https://example.test/?example=milling-power-envelope'))).toBe(
       'milling-power-envelope',
     );
+    expect(exampleIdFromUrl(new URL('https://example.test/?example=platform-footprint'))).toBe(
+      'platform-footprint',
+    );
   });
 
   it('ignores unknown example names', () => {
