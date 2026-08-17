@@ -2,6 +2,39 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.6.0](https://github.com/ThomasVanRiel/joveworks/compare/v0.5.0...v0.6.0) (2026-08-17)
+
+### Features
+
+* **editor:** add contour palette preference ([691e253](https://github.com/ThomasVanRiel/joveworks/commit/691e2533c834ff092ea291377fe0ac8626f56d2a))
+* **editor:** add English and Dutch localization ([6704a73](https://github.com/ThomasVanRiel/joveworks/commit/6704a73246349161079270f95d47c2a9436b9fdf))
+* **editor:** add stakeholder platform example ([880bd4a](https://github.com/ThomasVanRiel/joveworks/commit/880bd4a9b7dc9bb588397815ae7f77808e362283))
+* **editor:** edit output titles in notebook ([263dbdb](https://github.com/ThomasVanRiel/joveworks/commit/263dbdb9860329bc081c5e42d7c0c6b82c2b672e))
+* **editor:** localize example documents ([418b56c](https://github.com/ThomasVanRiel/joveworks/commit/418b56c3486d97f60543ad389fcc6eb0112590a9))
+* **editor:** localize remaining UX copy ([f53e52a](https://github.com/ThomasVanRiel/joveworks/commit/f53e52ab659795fd7078549decfe16154657bb84))
+
+### Fixes
+
+* **editor:** align contour colorbar beside plot ([0a3ff23](https://github.com/ThomasVanRiel/joveworks/commit/0a3ff23a4d6d3d63247b34031f4fa29f7c5f8455))
+* **editor:** align contour colorbar with axes ([cfefd8d](https://github.com/ThomasVanRiel/joveworks/commit/cfefd8d876fd35fe9d7d745989518004599170b9))
+* **editor:** align plot legend swatches ([180437d](https://github.com/ThomasVanRiel/joveworks/commit/180437de707b344e2c60cf95d27898b59e95c620))
+* **editor:** compact contour colorbar ([0cad3e2](https://github.com/ThomasVanRiel/joveworks/commit/0cad3e23050f1c92524d30c36aa7151e83e8b0b2))
+* **editor:** format plot series legends ([7a5c365](https://github.com/ThomasVanRiel/joveworks/commit/7a5c36546c7207bb57810ffb1c7389a25f245911))
+* **editor:** localize application menus ([54cc6a6](https://github.com/ThomasVanRiel/joveworks/commit/54cc6a603b5d6dfb18133b71a146ae8239bc6770))
+* **editor:** localize editor controls and hints ([60b0a87](https://github.com/ThomasVanRiel/joveworks/commit/60b0a87982af0f20abe798b97ccc7e1b885f8f87))
+* **editor:** localize palette formula titles ([4a2ec13](https://github.com/ThomasVanRiel/joveworks/commit/4a2ec1338f682d9a60ed52503a44f7b363d99ae4))
+* **editor:** localize palette node entries ([063db98](https://github.com/ThomasVanRiel/joveworks/commit/063db98f921d26fd8c1eb35ca70acfb18070e428))
+* **editor:** place contour colorbar beside plot ([adf422a](https://github.com/ThomasVanRiel/joveworks/commit/adf422af5a37f0ba864dc43848363e7719ed1142))
+* **editor:** update notebook output titles live ([e807d4a](https://github.com/ThomasVanRiel/joveworks/commit/e807d4aab68a5d91b6e808b19d3bf8a617fedfb7))
+* **editor:** use swatches for plot series ([b8e003f](https://github.com/ThomasVanRiel/joveworks/commit/b8e003fa974a17121333c7c70358334cbd002ef3))
+
+### Refactoring
+
+* **editor:** iconify notebook actions ([09c70fb](https://github.com/ThomasVanRiel/joveworks/commit/09c70fbeb5718575e639256b2e57248f94d9a21f))
+
+### Documentation
+
+* **editor:** translate bundled catalogues to Dutch ([effe800](https://github.com/ThomasVanRiel/joveworks/commit/effe8004ded94f333fbdde018f09e77c4a20b5f1))
 ## [0.5.0](https://github.com/ThomasVanRiel/joveworks/compare/v0.4.1...v0.5.0) (2026-08-17)
 
 ### ⚠ BREAKING CHANGES
