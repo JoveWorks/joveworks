@@ -632,6 +632,15 @@ aside.right {
   margin-left: auto;
 }
 
+.node .port-out {
+  display: flex;
+  align-items: center;
+  flex-basis: 100%;
+  gap: 4px;
+  justify-content: flex-end;
+  margin-left: 0;
+}
+
 .node .sparkline path {
   stroke: var(--accent);
 }
@@ -680,13 +689,15 @@ aside.right {
 .node .port-unit-picker {
   width: auto;
   max-width: 7.5em;
-  margin-left: auto;
+  margin: 0;
   padding: 0;
   border: 0;
   color: var(--muted);
   background: transparent;
   font: inherit;
   font-size: 11px;
+  text-align: right;
+  text-align-last: right;
 }
 
 
