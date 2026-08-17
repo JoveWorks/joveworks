@@ -8,7 +8,7 @@
 
 import { createContext, useContext } from 'react';
 
-import type { ThemePreference } from './model/editorSettings';
+import type { ContourPalette, ThemePreference } from './model/editorSettings';
 import type { NumberFormatSettings } from './model/numberFormat';
 
 export interface SettingsContextValue {
@@ -20,6 +20,8 @@ export interface SettingsContextValue {
   readonly setTitleMathRendering: (enabled: boolean) => void;
   readonly themePreference: ThemePreference;
   readonly setThemePreference: (preference: ThemePreference) => void;
+  readonly contourPalette: ContourPalette;
+  readonly setContourPalette: (palette: ContourPalette) => void;
 }
 
 export const SettingsContext = createContext<SettingsContextValue | undefined>(undefined);

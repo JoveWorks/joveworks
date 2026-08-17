@@ -12,6 +12,10 @@ import type { ReactElement } from 'react';
 import { formatQuantity, parseUnit } from '@joveworks/units';
 
 import {
+  CONTOUR_PALETTES,
+  type ContourPalette,
+} from '../model/editorSettings';
+import {
   NOTATION_LABELS,
   STYLE_LABELS,
   type NumberFormatSettings,
@@ -27,6 +31,8 @@ interface Props {
   readonly onMinimapVisibleChange: (visible: boolean) => void;
   readonly titleMathRendering: boolean;
   readonly onTitleMathRenderingChange: (enabled: boolean) => void;
+  readonly contourPalette: ContourPalette;
+  readonly onContourPaletteChange: (palette: ContourPalette) => void;
   readonly onClose: () => void;
 }
 
@@ -43,6 +49,8 @@ export function SettingsDialog({
   onMinimapVisibleChange,
   titleMathRendering,
   onTitleMathRenderingChange,
+  contourPalette,
+  onContourPaletteChange,
   onClose,
 }: Props): ReactElement {
   const format = toUnitsFormat(settings);
@@ -121,6 +129,21 @@ export function SettingsDialog({
             onChange={(event) => onTitleMathRenderingChange(event.target.checked)}
           />
           typeset mathematical notation in titles and notebook text
+        </label>
+
+        <label className="dialog-field">
+          contour colour palette
+          <select
+            className="nodrag"
+            value={contourPalette}
+            onChange={(event) => onContourPaletteChange(event.target.value as ContourPalette)}
+          >
+            {(Object.entries(CONTOUR_PALETTES) as [ContourPalette, string][]).map(([palette, label]) => (
+              <option key={palette} value={palette}>
+                {label}
+              </option>
+            ))}
+          </select>
         </label>
 
         <div className="dialog-actions">

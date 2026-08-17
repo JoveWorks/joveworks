@@ -75,3 +75,41 @@ export function saveThemePreference(preference: ThemePreference): void {
     // Same convenience-not-requirement stance as catalogueCache.ts.
   }
 }
+
+const CONTOUR_PALETTE_KEY = 'joveworks:settings:contourPalette';
+
+/** Sequential schemes make an ordered surface legible without the false
+ * boundaries of a rainbow scale. Viridis is also robust for colour-vision
+ * differences and in greyscale printouts. */
+export const CONTOUR_PALETTES = {
+  viridis: 'Viridis',
+  cividis: 'Cividis',
+  inferno: 'Inferno',
+  magma: 'Magma',
+  plasma: 'Plasma',
+} as const;
+
+export type ContourPalette = keyof typeof CONTOUR_PALETTES;
+
+export const DEFAULT_CONTOUR_PALETTE: ContourPalette = 'viridis';
+
+function isContourPalette(value: string | null): value is ContourPalette {
+  return value !== null && value in CONTOUR_PALETTES;
+}
+
+export function loadContourPalette(): ContourPalette {
+  try {
+    const raw = window.localStorage.getItem(CONTOUR_PALETTE_KEY);
+    return isContourPalette(raw) ? raw : DEFAULT_CONTOUR_PALETTE;
+  } catch {
+    return DEFAULT_CONTOUR_PALETTE;
+  }
+}
+
+export function saveContourPalette(palette: ContourPalette): void {
+  try {
+    window.localStorage.setItem(CONTOUR_PALETTE_KEY, palette);
+  } catch {
+    // A preference must not prevent the editor starting.
+  }
+}

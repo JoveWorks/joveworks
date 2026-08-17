@@ -163,7 +163,7 @@ function typesetChartLabels(chart: SVGSVGElement, labels: readonly string[]): vo
 
 export function PlotFigure({ result: rawResult, document: graph, format }: Props): ReactElement {
   const host = useRef<HTMLDivElement>(null);
-  const { titleMathRendering } = useSettings();
+  const { contourPalette, titleMathRendering } = useSettings();
   const result = useMemo(() => siResult(rawResult, format), [rawResult, format]);
 
   useEffect(() => {
@@ -244,9 +244,11 @@ export function PlotFigure({ result: rawResult, document: graph, format }: Props
         ...(isLogAxis(graph, result.x.axis.id) ? { type: 'log' as const } : {}),
       },
       y: { label: yLabel, grid: true },
-      ...(result.series2 === undefined || result.contour
-        ? {}
-        : { color: { legend: true, label: result.series2.axis.label } }),
+      ...(result.contour
+        ? { color: { scheme: contourPalette, legend: true, label: yLabel } }
+        : result.series2 === undefined
+          ? {}
+          : { color: { legend: true, label: result.series2.axis.label } }),
       ...(result.facet === undefined ? {} : { fx: { label: result.facet.axis.label } }),
       marks,
     });
@@ -255,7 +257,8 @@ export function PlotFigure({ result: rawResult, document: graph, format }: Props
     if (titleMathRendering && chart instanceof SVGSVGElement) {
       typesetChartLabels(chart, [
         xLabel,
-        ...(result.series2 === undefined || result.contour ? [] : [result.series2.axis.label]),
+        yLabel,
+        ...(result.contour || result.series2 === undefined ? [] : [result.series2.axis.label]),
         ...(result.facet === undefined ? [] : [result.facet.axis.label]),
       ]);
     }

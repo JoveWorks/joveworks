@@ -44,12 +44,15 @@ import { bundledCatalogues, baseCatalogue, withCatalogue } from './model/catalog
 import { groupIntoSection } from './model/document';
 import { autoArrange } from './model/layout';
 import {
+  loadContourPalette,
   loadMinimapVisible,
   loadTitleMathRendering,
   loadThemePreference,
+  saveContourPalette,
   saveMinimapVisible,
   saveTitleMathRendering,
   saveThemePreference,
+  type ContourPalette,
   type ThemePreference,
 } from './model/editorSettings';
 import {
@@ -260,6 +263,7 @@ function AppShell(): ReactElement {
   const [titleMathRendering, setTitleMathRenderingState] = useState<boolean>(loadTitleMathRendering);
   const [themePreference, setThemePreferenceState] =
     useState<ThemePreference>(loadThemePreference);
+  const [contourPalette, setContourPaletteState] = useState<ContourPalette>(loadContourPalette);
   const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
@@ -362,6 +366,11 @@ function AppShell(): ReactElement {
     saveThemePreference(next);
   };
 
+  const setContourPalette = (next: ContourPalette): void => {
+    setContourPaletteState(next);
+    saveContourPalette(next);
+  };
+
   // `system` defers entirely to the OS via the CSS media query in
   // styles.css; an explicit choice is the only thing that needs a DOM hook,
   // so `data-theme` is absent rather than set to 'system'.
@@ -380,8 +389,10 @@ function AppShell(): ReactElement {
       setTitleMathRendering,
       themePreference,
       setThemePreference,
+      contourPalette,
+      setContourPalette,
     }),
-    [numberFormat, minimapVisible, titleMathRendering, themePreference],
+    [numberFormat, minimapVisible, titleMathRendering, themePreference, contourPalette],
   );
 
   const analysis = useMemo(() => analyse(document, catalogues), [document, catalogues]);
@@ -820,6 +831,8 @@ function AppShell(): ReactElement {
               onMinimapVisibleChange={setMinimapVisible}
               titleMathRendering={titleMathRendering}
               onTitleMathRenderingChange={setTitleMathRendering}
+              contourPalette={contourPalette}
+              onContourPaletteChange={setContourPalette}
               onClose={() => setShowSettings(false)}
             />
           ) : null}
