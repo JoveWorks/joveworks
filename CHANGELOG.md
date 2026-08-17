@@ -2,6 +2,41 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.4.0](https://github.com/ThomasVanRiel/machine-design-studio/compare/v0.3.2...v0.4.0) (2026-08-17)
+
+### Features
+
+* add public machining catalogue ([f7d86b3](https://github.com/ThomasVanRiel/machine-design-studio/commit/f7d86b3e77d2bb386f02f3133bc4b66b99a6bcdf))
+* complete catalogue and routing roadmap items ([17d11a7](https://github.com/ThomasVanRiel/machine-design-studio/commit/17d11a7630e182edc4cf5eca4e30de5b3fc7f49c))
+* **editor:** add milling power-envelope example ([59dc90b](https://github.com/ThomasVanRiel/machine-design-studio/commit/59dc90b2cb8ffcdbff1f4eb93cb4cd0806048009))
+* **editor:** add selection alignment and arrange actions ([51a1ee0](https://github.com/ThomasVanRiel/machine-design-studio/commit/51a1ee0df16adaa0efe4e9a1818799ef4c11f441))
+* **editor:** add tutorials to examples ([2b43e58](https://github.com/ThomasVanRiel/machine-design-studio/commit/2b43e58c28376d4d31e01eeeedca051c72af867f))
+* **editor:** animate tutorial steps ([bee9e91](https://github.com/ThomasVanRiel/machine-design-studio/commit/bee9e911f496d4ea71d8fe8a77e6629a8678b8fa))
+* **editor:** clarify edge and frame hover ([9aa4309](https://github.com/ThomasVanRiel/machine-design-studio/commit/9aa4309e33b6bd43cc0a471edd7f3604399afad0))
+* **editor:** link directly to example notebooks ([b31ee40](https://github.com/ThomasVanRiel/machine-design-studio/commit/b31ee40d5982976f03a9c9c833a33fbe14ba9af8))
+* **editor:** offer all compatible quick-add nodes ([b600b7f](https://github.com/ThomasVanRiel/machine-design-studio/commit/b600b7fc9a312405f04bc420b8e7a55cd31d44a4))
+* **editor:** typeset notebook prose ([38aa007](https://github.com/ThomasVanRiel/machine-design-studio/commit/38aa007c07c392bdf2967efabd372ace24f3f0f2))
+
+### Fixes
+
+* **editor:** align header metadata spacing ([fa4b455](https://github.com/ThomasVanRiel/machine-design-studio/commit/fa4b4558e926c59b516452bb92f7f29519fe65e1))
+* **editor:** align notebook values and mark local builds ([fb5e2d3](https://github.com/ThomasVanRiel/machine-design-studio/commit/fb5e2d3e0e264549046580a70a9b7a6028c18fd5))
+* **editor:** align wrapped notebook values ([13fa6b8](https://github.com/ThomasVanRiel/machine-design-studio/commit/13fa6b881e290672374e137fdfea5ffee45ce254))
+* **editor:** auto-size notebook text fields ([82309f9](https://github.com/ThomasVanRiel/machine-design-studio/commit/82309f97182c65b2d2a9b66166a7011d89b402f0))
+* **editor:** make edge endpoints visible ([701b565](https://github.com/ThomasVanRiel/machine-design-studio/commit/701b5653149e668b0755f97b9f58456b055d8152))
+* **editor:** smooth tutorial transitions ([b598183](https://github.com/ThomasVanRiel/machine-design-studio/commit/b598183329911b4eb11dc9d024e56fa7f22d5b88))
+* **editor:** space document title separator ([0338eda](https://github.com/ThomasVanRiel/machine-design-studio/commit/0338eda961ffde583921f5aa133ec90b9e40a995))
+* **editor:** strengthen edge endpoint hover ([222b2ba](https://github.com/ThomasVanRiel/machine-design-studio/commit/222b2bab515ff287648b3ca2c63d0596eca38095))
+* **editor:** strengthen section frame accent ([93b2fb1](https://github.com/ThomasVanRiel/machine-design-studio/commit/93b2fb1be93560e0a68a5f03ecbc502109789a90))
+* **editor:** use singular NodeBook branding ([499316b](https://github.com/ThomasVanRiel/machine-design-studio/commit/499316b0379d3d0d5c5e08a8ca95b02728713729))
+
+### Documentation
+
+* document worktree dependency setup ([d2590e0](https://github.com/ThomasVanRiel/machine-design-studio/commit/d2590e032e14ea93b47ecbb380bb2e03b7efcf7e))
+* refresh roadmap backlog ([9543956](https://github.com/ThomasVanRiel/machine-design-studio/commit/9543956c83adcfbe132017bc105e52d751a862df))
+* remove completed quick-add backlog item ([67a8766](https://github.com/ThomasVanRiel/machine-design-studio/commit/67a8766022714abecfef1466c0144659f22360b7))
+* **roadmap:** update completed and naming items ([5d20096](https://github.com/ThomasVanRiel/machine-design-studio/commit/5d200968d19e0d3b7c0679c29dc3d4379b77f9d7))
+* update roadmap status and follow-ups ([a9d4d91](https://github.com/ThomasVanRiel/machine-design-studio/commit/a9d4d914e3f46e2b9fabc6f980e56b0b407f8007))
 ## [0.3.2](https://github.com/ThomasVanRiel/machine-design-studio/compare/v0.3.1...v0.3.2) (2026-08-17)
 
 ### Features
