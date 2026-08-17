@@ -179,6 +179,9 @@ export function Palette(): ReactElement {
 
   const formulaEntry = (entry: PaletteEntry, keyPrefix = ''): ReactElement => {
     const { formula } = entry;
+    const title = formula.label === undefined
+      ? formula.citation ?? formula.id
+      : localize(formula.label, locale);
     return (
       <li key={`${keyPrefix}${formula.id}`}>
         <button
@@ -191,8 +194,8 @@ export function Palette(): ReactElement {
             setMenu({ entry, x: event.clientX, y: event.clientY });
           }}
         >
-          <span className="entry-id">{formula.citation ?? formula.id}</span>
-          <span className="entry-output">{formula.label === undefined ? <Symbol name={formula.output.name} /> : localize(formula.label, locale)}</span>
+          <span className="entry-id">{title}</span>
+          <span className="entry-output"><Symbol name={formula.output.name} /></span>
           {formula.status === 'quarantined' ? <span className="entry-status">quarantined</span> : null}
         </button>
       </li>
