@@ -227,6 +227,10 @@ function AppShell(): ReactElement {
   const [themePreference, setThemePreferenceState] =
     useState<ThemePreference>(loadThemePreference);
   const [showSettings, setShowSettings] = useState(false);
+
+  useEffect(() => {
+    window.document.title = `NodeBook|${document.title}`;
+  }, [document.title]);
   // Only offers itself unprompted on the document it was actually written
   // for: a restored autosave is somebody's own graph, not the pad-pressure
   // sample the script's steps assume. Launching it from the Help menu still
@@ -504,7 +508,7 @@ function AppShell(): ReactElement {
     {
       label: 'Export equations',
       disabled: userEquations.length === 0,
-      onClick: () => saveTextFile('nodebooks-equations.json', saveUserEquations(userEquations)),
+      onClick: () => saveTextFile('nodebook-equations.json', saveUserEquations(userEquations)),
     },
     { label: 'Settings…', onClick: () => setShowSettings(true) },
   ];
@@ -643,7 +647,7 @@ function AppShell(): ReactElement {
             {menuButton('view', 'View')}
             {menuButton('help', 'Help')}
 
-            <span className="menubar-product">NodeBooks</span>
+            <span className="menubar-product">NodeBook</span>
 
             {/* v0.x is unstable by semver convention — the badge names that
                 explicitly rather than relying on a reader knowing the
@@ -678,8 +682,8 @@ function AppShell(): ReactElement {
               href="https://github.com/ThomasVanRiel/machine-design-studio"
               target="_blank"
               rel="noopener"
-              aria-label="NodeBooks repository on GitHub"
-              title="View the NodeBooks repository on GitHub"
+              aria-label="NodeBook repository on GitHub"
+              title="View the NodeBook repository on GitHub"
             >
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path

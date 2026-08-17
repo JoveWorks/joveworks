@@ -75,10 +75,6 @@ question is whether the repository, deployed URL, package names, and docs
 should follow it. A full rename touches all of those surfaces, so do it once
 after the scope question is answered, not twice.
 
-**Product name and tab title.** Use the singular **NodeBook**, not
-**NodeBooks**, on every product-facing surface. The browser tab title should
-be `NodeBook|[title]`, where `[title]` is the current graph title.
-
 **Notebook themes, for classroom use.** A course or an instructor should be
 able to put the notebook in their own visual key — school colours, a print-
 friendly variant for handouts, a high-contrast variant for a projector.
@@ -216,3 +212,5 @@ and the belt sample's frequency output now chooses `Hz` explicitly.
 Largely implemented, but R&M catalogue needs updating.
 
 **What about migration to newer versions?** I'm thinking notebooks and catalogues that the user made before.
+
+**The tutorial window should be animated.** Now it just instantly moves to the next step, I want it to flow more clearly.

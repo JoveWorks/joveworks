@@ -1,6 +1,6 @@
 # Catalogue authoring for teachers
 
-NodeBooks loads formula catalogues as data. Public, textbook-independent
+NodeBook loads formula catalogues as data. Public, textbook-independent
 catalogues may ship with the editor; restricted course content belongs in a
 separate private repository and should be distributed through the course LMS.
 Never use the `restricted` flag as a substitute for that repository boundary.

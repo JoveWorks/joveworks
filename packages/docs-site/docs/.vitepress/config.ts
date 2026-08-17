@@ -1,7 +1,7 @@
 import { defineConfig } from "vitepress";
 
 export default defineConfig({
-  title: "Nodebooks docs",
+  title: "NodeBook docs",
   description: "Docs for the node-editor design tool for dimensioning machine parts.",
   base: "/docs/",
   cleanUrls: true,
