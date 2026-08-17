@@ -30,6 +30,7 @@ import {
 
 import { useGraph } from '../graph-context';
 import { useSettings } from '../settings-context';
+import { ui } from '../i18n';
 import { addNode, uniqueId } from '../model/document';
 import { entries, search, type PaletteEntry } from '../model/catalogues';
 import { loadFavourites, saveFavourites } from '../model/palettePreferences';
@@ -65,6 +66,7 @@ function useDropPosition(): () => Position {
 export function Palette(): ReactElement {
   const { document, catalogues, userEquations, removeUserEquation, edit } = useGraph();
   const { locale } = useSettings();
+  const copy = ui(locale);
   const [query, setQuery] = useState('');
   // Session UI state, not a document field — reopens on reload, same
   // precedent as a node's pin state. Which sections are open changes nothing
@@ -225,7 +227,7 @@ export function Palette(): ReactElement {
       <input
         className="search"
         value={query}
-        placeholder="equation number, symbol, or what it computes"
+        placeholder={copy.searchPalette}
         onChange={(event) => setQuery(event.target.value)}
       />
 
@@ -253,7 +255,7 @@ export function Palette(): ReactElement {
             <h3>
               <button type="button" className="section-toggle" onClick={() => toggleCollapsed(INPUT)}>
                 <span className="section-toggle-title">
-                  Input
+                  {copy.input}
                   {inputCollapsed ? <span className="section-toggle-count"> (3)</span> : null}
                 </span>
                 <span className="chevron" aria-hidden="true">
@@ -265,20 +267,20 @@ export function Palette(): ReactElement {
               <ul>
                 <li>
                   <button type="button" className="entry" onClick={() => addInput('scalar')}>
-                    <span className="entry-id">value</span>
-                    <span className="entry-output">a single number</span>
+                    <span className="entry-id">{copy.value}</span>
+                    <span className="entry-output">{copy.singleNumber}</span>
                   </button>
                 </li>
                 <li>
                   <button type="button" className="entry" onClick={() => addInput('linear')}>
-                    <span className="entry-id">range</span>
-                    <span className="entry-output">swept from a start to a stop</span>
+                    <span className="entry-id">{copy.range}</span>
+                    <span className="entry-output">{copy.rangeSummary}</span>
                   </button>
                 </li>
                 <li>
                   <button type="button" className="entry" onClick={() => addInput('list')}>
-                    <span className="entry-id">list</span>
-                    <span className="entry-output">swept over hand-typed values</span>
+                    <span className="entry-id">{copy.list}</span>
+                    <span className="entry-output">{copy.listSummary}</span>
                   </button>
                 </li>
               </ul>
@@ -289,15 +291,15 @@ export function Palette(): ReactElement {
         {query.trim().length === 0 ? (
           <section>
             <h3><button type="button" className="section-toggle" onClick={() => toggleCollapsed(GENERAL)}>
-              <span className="section-toggle-title">General{collapsed.has(GENERAL) ? ' (5)' : ''}</span>
+              <span className="section-toggle-title">{copy.general}{collapsed.has(GENERAL) ? ' (5)' : ''}</span>
               <span className="chevron" aria-hidden="true">{collapsed.has(GENERAL) ? '▸' : '▾'}</span>
             </button></h3>
             {collapsed.has(GENERAL) ? null : <ul>
-              <li><button type="button" className="entry" onClick={addCompare}><span className="entry-id">compare</span><span className="entry-output">a wireable pass/fail verdict</span></button></li>
-              <li><button type="button" className="entry" onClick={addClosure}><span className="entry-id">equation</span><span className="entry-output">type one — its ports follow from what it uses</span></button></li>
-              <li><button type="button" className="entry" onClick={addWaypoint}><span className="entry-id">waypoint</span><span className="entry-output">route independent wires through one stop</span></button></li>
-              <li><button type="button" className="entry" onClick={addPack}><span className="entry-id">pack</span><span className="entry-output">bundle several wires into one</span></button></li>
-              <li><button type="button" className="entry" onClick={addUnpack}><span className="entry-id">unpack</span><span className="entry-output">split a bundle back into its wires</span></button></li>
+              <li><button type="button" className="entry" onClick={addCompare}><span className="entry-id">{copy.compare}</span><span className="entry-output">{copy.compareSummary}</span></button></li>
+              <li><button type="button" className="entry" onClick={addClosure}><span className="entry-id">{copy.equation}</span><span className="entry-output">{copy.equationSummary}</span></button></li>
+              <li><button type="button" className="entry" onClick={addWaypoint}><span className="entry-id">{copy.waypoint}</span><span className="entry-output">{copy.waypointSummary}</span></button></li>
+              <li><button type="button" className="entry" onClick={addPack}><span className="entry-id">{copy.pack}</span><span className="entry-output">{copy.packSummary}</span></button></li>
+              <li><button type="button" className="entry" onClick={addUnpack}><span className="entry-id">{copy.unpack}</span><span className="entry-output">{copy.unpackSummary}</span></button></li>
             </ul>}
           </section>
         ) : null}
@@ -321,7 +323,7 @@ export function Palette(): ReactElement {
             <h3>
               <button type="button" className="section-toggle" onClick={() => toggleCollapsed(OUTPUT)}>
                 <span className="section-toggle-title">
-                  Output
+                  {copy.output}
                   {outputCollapsed ? <span className="section-toggle-count"> (4)</span> : null}
                 </span>
                 <span className="chevron" aria-hidden="true">
@@ -333,8 +335,8 @@ export function Palette(): ReactElement {
               <ul>
                 <li>
                   <button type="button" className="entry" onClick={() => addOutput('print')}>
-                    <span className="entry-id">print</span>
-                    <span className="entry-output">a value, as text</span>
+                    <span className="entry-id">{copy.print}</span>
+                    <span className="entry-output">{copy.printSummary}</span>
                   </button>
                 </li>
                 <li>
@@ -349,20 +351,20 @@ export function Palette(): ReactElement {
                     }
                     onClick={() => addOutput('plot')}
                   >
-                    <span className="entry-id">plot</span>
-                    <span className="entry-output">a value over a swept range</span>
+                    <span className="entry-id">{copy.plot}</span>
+                    <span className="entry-output">{copy.plotSummary}</span>
                   </button>
                 </li>
                 <li>
                   <button type="button" className="entry" onClick={() => addOutput('table')}>
-                    <span className="entry-id">table</span>
-                    <span className="entry-output">several series as rows, one per column</span>
+                    <span className="entry-id">{copy.table}</span>
+                    <span className="entry-output">{copy.tableSummary}</span>
                   </button>
                 </li>
                 <li>
                   <button type="button" className="entry" onClick={() => addOutput('check')}>
-                    <span className="entry-id">check</span>
-                    <span className="entry-output">pass or fail against a threshold</span>
+                    <span className="entry-id">{copy.check}</span>
+                    <span className="entry-output">{copy.checkSummary}</span>
                   </button>
                 </li>
               </ul>
