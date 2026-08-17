@@ -23,7 +23,7 @@ import type { Unit } from '@joveworks/units';
 import { useGraph } from '../graph-context';
 import { useSettings } from '../settings-context';
 import { toUnitsFormat } from '../model/numberFormat';
-import { reframe, removeNodes, renameNode } from '../model/document';
+import { reframe, removeNodes, renameNode, updateNode } from '../model/document';
 import { Symbol } from '../Symbol';
 import { ParameterLabel, UnitInLabel } from '../ParameterLabel';
 import { axisLabel, reading, summarise } from '../model/values';
@@ -31,6 +31,7 @@ import { NodeShell } from './NodeShell';
 import { Sparkline } from './Sparkline';
 import { slotHandleId } from './spectrumSlots';
 import { TitleField, TitleText } from './TitleField';
+import { DisplayUnitPicker } from './DisplayUnitPicker';
 
 export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | null {
   const { document, analysis, edit, pinned, togglePin } = useGraph();
@@ -95,6 +96,13 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
     !(port.kind === 'categorical' && port.default !== undefined);
 
   const outputUnit = analysis.resolution?.sources.get(`${id}.${formula.output.name}`)?.unit;
+  const setDisplayUnit = (port: string, unit: Unit): void =>
+    edit((current) =>
+      updateNode(current, id, (entry) => ({
+        ...entry,
+        displayUnits: { ...entry.displayUnits, [port]: unit },
+      })),
+    );
 
   // The title is the friendly name: a student's own label, else the catalogue's
   // citation, else the bare id. The subtitle is the provenance line underneath
@@ -179,6 +187,12 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
                   nameClassName="port-name"
                   unitClassName="port-unit"
                 />
+                {portUnit(port) === undefined ? null : (
+                  <DisplayUnitPicker
+                    unit={portUnit(port) as Unit}
+                    onChange={(unit) => setDisplayUnit(port.name, unit)}
+                  />
+                )}
                 {port.kind === 'categorical' ? (
                   <span className="port-unit">{port.domain.join(' | ')}</span>
                 ) : null}
@@ -199,6 +213,12 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
                     nameClassName="port-name"
                     unitClassName="port-unit"
                   />
+                  {portUnit(port) === undefined ? null : (
+                    <DisplayUnitPicker
+                      unit={portUnit(port) as Unit}
+                      onChange={(unit) => setDisplayUnit(port.name, unit)}
+                    />
+                  )}
                 </>
               ) : (
                 <UnitInLabel unit={portUnit(port)} className="port-unit" />
@@ -237,6 +257,9 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
         )}
         <span className="port-out">
           <ParameterLabel name={formula.output.name} unit={outputUnit} unitClassName="port-unit" />
+          {outputUnit === undefined ? null : (
+            <DisplayUnitPicker unit={outputUnit} onChange={(unit) => setDisplayUnit(formula.output.name, unit)} />
+          )}
         </span>
         <Handle type="source" position={Position.Right} id={formula.output.name} />
       </div>

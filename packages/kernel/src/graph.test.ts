@@ -131,6 +131,28 @@ describe('generic display units', () => {
     expect(type?.dimension).toEqual(FREQUENCY);
     expect(type?.unit?.symbol).toBe('Hz');
   });
+
+  it('uses a graph-local port override for presentation without changing its dimension', () => {
+    const base = areaGraph();
+    const document = {
+      ...base,
+      nodes: base.nodes.map((node) =>
+        node.id === 'area' ? { ...node, displayUnits: { A: parseUnit('m²') } } : node,
+      ),
+    };
+    const type = resolveGraph(document, catalogues).sources.get(endpointKey('area', 'A'));
+    expect(type?.dimension).toEqual(AREA);
+    expect(type?.unit?.symbol).toBe('m²');
+  });
+
+  it('rejects an imported display override with the wrong dimension', () => {
+    const base = documentOf([input('w', scalar(20, 'mm'))], []);
+    const document = {
+      ...base,
+      nodes: base.nodes.map((node) => ({ ...node, displayUnits: { value: parseUnit('N') } })),
+    };
+    expect(() => resolveGraph(document, catalogues)).toThrow(/display unit 'N' is incompatible/u);
+  });
 });
 
 describe('connections', () => {

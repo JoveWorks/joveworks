@@ -180,15 +180,33 @@ function inputValueType(node: InputNode): PortType {
     case 'categoricalList':
       return { kind: 'categorical' };
     case 'spectrum':
-      return { kind: 'spectrum', dimension: spec.unit.dimension, unit: spec.unit };
+      return displayOverride(node, VALUE_PORT, {
+        kind: 'spectrum',
+        dimension: spec.unit.dimension,
+        unit: spec.unit,
+      });
     case 'tableColumn':
       throw new KernelError(
         'a table column needs a table, and tables arrive with the second slice',
         node.id,
       );
     default:
-      return { kind: 'numeric', dimension: spec.unit.dimension, unit: spec.unit };
+      return displayOverride(node, VALUE_PORT, {
+        kind: 'numeric',
+        dimension: spec.unit.dimension,
+        unit: spec.unit,
+      });
   }
+}
+
+/** Apply a graph-local presentation choice without changing the port's type. */
+function displayOverride(node: GraphNode, port: string, type: PortType): PortType {
+  const unit = node.displayUnits?.[port];
+  if (unit === undefined) return type;
+  if (type.dimension === undefined || !dimensionsEqual(unit.dimension, type.dimension)) {
+    throw new KernelError(`display unit '${unit.symbol}' is incompatible with this port`, endpointKey(node.id, port));
+  }
+  return { ...type, unit };
 }
 
 /**
@@ -435,9 +453,15 @@ export function resolveGraph(
       const bound = bindInputs(node.id, formula);
       bindings.set(node.id, bound);
       for (const port of formula.inputs) {
-        targets.set(endpointKey(node.id, port.name), portType(port, bound));
+        targets.set(
+          endpointKey(node.id, port.name),
+          displayOverride(node, port.name, portType(port, bound)),
+        );
       }
-      sources.set(endpointKey(node.id, formula.output.name), portType(formula.output, bound));
+      sources.set(
+        endpointKey(node.id, formula.output.name),
+        displayOverride(node, formula.output.name, portType(formula.output, bound)),
+      );
       continue;
     }
 
@@ -457,7 +481,10 @@ export function resolveGraph(
       const bound = bindInputs(node.id, formula);
       bindings.set(node.id, bound);
       for (const port of formula.inputs) {
-        targets.set(endpointKey(node.id, port.name), portType(port, bound));
+        targets.set(
+          endpointKey(node.id, port.name),
+          displayOverride(node, port.name, portType(port, bound)),
+        );
       }
 
       // No reusable template to resolve the output against (see closure.ts):
@@ -474,7 +501,14 @@ export function resolveGraph(
           ),
         };
         const dimension = expressionDimension(parseExpression(node.expression), scope, node.id);
-        sources.set(outputKey, { kind: 'numeric', dimension, unit: canonicalUnit(dimension) });
+        sources.set(
+          outputKey,
+          displayOverride(node, formula.output.name, {
+            kind: 'numeric',
+            dimension,
+            unit: canonicalUnit(dimension),
+          }),
+        );
       } else {
         sources.set(outputKey, { kind: 'numeric' });
       }
