@@ -44,6 +44,8 @@ interface TextFieldProps {
    */
   readonly disabled?: boolean;
   readonly autoFocus?: boolean;
+  /** Mirrors each keystroke for fields whose document state saves live. */
+  readonly onChange?: (text: string) => void;
   readonly onBlur?: () => void;
   /** A content-height textarea, for fields such as canvas frame titles. */
   readonly multiline?: boolean;
@@ -62,6 +64,7 @@ export function TextField({
   autoSize,
   disabled,
   autoFocus,
+  onChange,
   onBlur,
   multiline = false,
 }: TextFieldProps): ReactElement {
@@ -105,7 +108,11 @@ export function TextField({
           disabled={disabled}
           autoFocus={autoFocus}
           rows={1}
-          onChange={(event) => setText(event.target.value)}
+          onChange={(event) => {
+            const next = event.target.value;
+            setText(next);
+            onChange?.(next);
+          }}
           onBlur={() => {
             commit();
             onBlur?.();
@@ -128,7 +135,11 @@ export function TextField({
           aria-invalid={error !== undefined}
           disabled={disabled}
           {...(autoSize === undefined ? {} : { size: Math.max(autoSize, text.length, 1) })}
-          onChange={(event) => setText(event.target.value)}
+          onChange={(event) => {
+            const next = event.target.value;
+            setText(next);
+            onChange?.(next);
+          }}
           autoFocus={autoFocus}
           onBlur={() => {
             commit();

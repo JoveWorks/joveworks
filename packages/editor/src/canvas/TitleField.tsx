@@ -9,6 +9,9 @@ import { TextField } from './fields';
 interface Props {
   readonly value: string;
   readonly onCommit: (text: string) => void;
+  /** Optional live counterpart to `onCommit`, for document text fields. */
+  readonly onChange?: (text: string) => void;
+  readonly onBlur?: () => void;
   /** Frames have room for titles to wrap; compact node titles deliberately do not. */
   readonly multiline?: boolean;
 }
@@ -66,7 +69,7 @@ export function TitleText({ value }: { readonly value: string }): ReactElement {
   return <>{typeset ?? value}</>;
 }
 
-export function TitleField({ value, onCommit, multiline = false }: Props): ReactElement {
+export function TitleField({ value, onCommit, onChange, onBlur, multiline = false }: Props): ReactElement {
   const { titleMathRendering } = useSettings();
   const [editing, setEditing] = useState(false);
   const typeset = titleMathRendering ? typesetTitle(value) : undefined;
@@ -77,7 +80,11 @@ export function TitleField({ value, onCommit, multiline = false }: Props): React
         className="title"
         value={value}
         onCommit={onCommit}
-        onBlur={() => setEditing(false)}
+        {...(onChange === undefined ? {} : { onChange })}
+        onBlur={() => {
+          setEditing(false);
+          onBlur?.();
+        }}
         autoFocus={editing}
         multiline={multiline}
       />

@@ -158,11 +158,13 @@ const COMPARISON_TEXT: Readonly<Record<string, string>> = {
  * the NodeBook.  Use the ordinary rename operation so table columns that
  * still follow this output's old title follow it here too. */
 function OutputTitle({ node }: { readonly node: OutputNode }): ReactElement {
-  const { edit } = useGraph();
+  const { edit, editLive, commitEdit } = useGraph();
   return (
     <TitleField
       value={node.label ?? node.id}
       onCommit={(label) => edit((current) => renameNode(current, node.id, label))}
+      onChange={(label) => editLive((current) => renameNode(current, node.id, label))}
+      onBlur={() => commitEdit()}
     />
   );
 }
