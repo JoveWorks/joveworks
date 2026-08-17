@@ -561,6 +561,43 @@ describe('output nodes', () => {
     expect(table.axes.map((axis) => axis.id)).toEqual(['F']);
   });
 
+  it('broadcasts every table column across the union of its axes', () => {
+    const swept = documentOf(
+      [
+        // Both inputs intentionally have four values: axis identity, rather
+        // than a coincidental data length, determines how each one expands.
+        input('outer', list([1, 2, 3, 4], '')),
+        input('inner', list([10, 20, 30, 40], '')),
+        formulaNode('product', refTo('multiplyTwo')),
+        input('constant', scalar(7, '')),
+        outputNode('table', { kind: 'table', columns: ['outer', 'inner', 'product', 'constant'] }),
+      ],
+      [
+        wire('outer.value', 'product.a'),
+        wire('inner.value', 'product.b'),
+        wire('outer.value', 'table.outer'),
+        wire('inner.value', 'table.inner'),
+        wire('product.product', 'table.product'),
+        wire('constant.value', 'table.constant'),
+      ],
+    );
+
+    const table = evaluateDocument(swept, catalogues).outputs[0] as TableResult;
+    expect(table.axes.map((axis) => axis.id)).toEqual(['outer', 'inner']);
+    expect(table.columns.map((column) => column.series.axes.map((axis) => axis.id))).toEqual([
+      ['outer', 'inner'],
+      ['outer', 'inner'],
+      ['outer', 'inner'],
+      ['outer', 'inner'],
+    ]);
+    expect(table.columns.map((column) => column.series.data)).toEqual([
+      [1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4],
+      [10, 20, 30, 40, 10, 20, 30, 40, 10, 20, 30, 40, 10, 20, 30, 40],
+      [10, 20, 30, 40, 20, 40, 60, 80, 30, 60, 90, 120, 40, 80, 120, 160],
+      [7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7],
+    ]);
+  });
+
   it('keeps a notebook section with its output', () => {
     const framed = documentOf(
       [

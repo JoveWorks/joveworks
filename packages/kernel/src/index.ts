@@ -68,6 +68,7 @@ export type { CompiledExpression, CompiledPredicate, DimensionScope, Env } from 
 
 export {
   LARGE_GRID,
+  broadcastSeries,
   categoricalScalar,
   gridSize,
   indexer,
