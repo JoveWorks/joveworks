@@ -120,7 +120,7 @@ export function SettingsDialog({
             checked={titleMathRendering}
             onChange={(event) => onTitleMathRenderingChange(event.target.checked)}
           />
-          typeset mathematical notation in node titles
+          typeset mathematical notation in titles and notebook text
         </label>
 
         <div className="dialog-actions">

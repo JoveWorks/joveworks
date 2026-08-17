@@ -34,7 +34,7 @@ import type { NumberFormat } from '@mds/units';
 import { useGraph } from '../graph-context';
 import { useSettings } from '../settings-context';
 import { ContextMenu, type MenuItem } from '../canvas/ContextMenu';
-import { TitleText } from '../canvas/TitleField';
+import { TitleText, typesetTitle } from '../canvas/TitleField';
 import { Equation } from '../Equation';
 import { Symbol } from '../Symbol';
 import { ParameterLabel } from '../ParameterLabel';
@@ -57,8 +57,22 @@ function commitOnEnter(event: KeyboardEvent<HTMLTextAreaElement>): void {
   event.currentTarget.blur();
 }
 
-function AutoSizeTextarea({ value, ...props }: TextareaHTMLAttributes<HTMLTextAreaElement>): ReactElement {
+interface NotebookTextFieldProps
+  extends Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, 'value'> {
+  readonly value: string;
+}
+
+function NotebookTextField({
+  value,
+  className,
+  onBlur,
+  ...props
+}: NotebookTextFieldProps): ReactElement {
+  const { titleMathRendering } = useSettings();
+  const [editing, setEditing] = useState(false);
   const textarea = useRef<HTMLTextAreaElement>(null);
+  const typeset = titleMathRendering ? typesetTitle(value) : undefined;
+  const showingTypeset = !editing && typeset !== undefined;
 
   const resize = (): void => {
     const element = textarea.current;
@@ -70,7 +84,7 @@ function AutoSizeTextarea({ value, ...props }: TextareaHTMLAttributes<HTMLTextAr
     element.style.height = `${element.scrollHeight}px`;
   };
 
-  useLayoutEffect(resize, [value]);
+  useLayoutEffect(resize, [value, showingTypeset]);
 
   useEffect(() => {
     const element = textarea.current;
@@ -88,9 +102,39 @@ function AutoSizeTextarea({ value, ...props }: TextareaHTMLAttributes<HTMLTextAr
     });
     observer.observe(element);
     return () => observer.disconnect();
-  }, []);
+  }, [showingTypeset]);
 
-  return <textarea {...props} ref={textarea} value={value} />;
+  if (showingTypeset) {
+    return (
+      <div
+        className={`notebook-text-display${className === undefined ? '' : ` ${className}`}`}
+        role="textbox"
+        tabIndex={0}
+        aria-label={value}
+        title="Click to edit the raw text"
+        onClick={() => setEditing(true)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') setEditing(true);
+        }}
+      >
+        {typeset}
+      </div>
+    );
+  }
+
+  return (
+    <textarea
+      {...props}
+      ref={textarea}
+      className={className}
+      value={value}
+      autoFocus={editing}
+      onBlur={(event) => {
+        setEditing(false);
+        onBlur?.(event);
+      }}
+    />
+  );
 }
 
 const COMPARISON_TEXT: Readonly<Record<string, string>> = {
@@ -223,7 +267,7 @@ function Caption({
 }): ReactElement {
   const { editLive, commitEdit } = useGraph();
   return (
-    <AutoSizeTextarea
+    <NotebookTextField
       className="caption"
       value={node.caption ?? ''}
       placeholder={defaultCaption ?? 'caption — what this result says'}
@@ -419,7 +463,7 @@ function Section({
       {collapsed ? null : (
         <>
           {frame === undefined ? null : (
-            <AutoSizeTextarea
+            <NotebookTextField
               className="note"
               value={frame.note ?? ''}
               placeholder="what this section establishes"

@@ -1705,17 +1705,29 @@ aside.right {
   bottom: -3px;
 }
 
-.notebook textarea {
+.notebook textarea,
+.notebook-text-display {
   width: 100%;
-  resize: none;
-  overflow: hidden;
   background: transparent;
   border: 1px solid transparent;
   padding: 2px 4px;
 }
 
+.notebook textarea {
+  resize: none;
+  overflow: hidden;
+}
+
+.notebook-text-display {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  cursor: text;
+}
+
 .notebook textarea:hover,
-.notebook textarea:focus {
+.notebook textarea:focus,
+.notebook-text-display:hover,
+.notebook-text-display:focus {
   border-color: var(--line);
   background: var(--paper);
 }
@@ -1893,7 +1905,8 @@ aside.right {
     padding: 0;
   }
 
-  .notebook textarea {
+  .notebook textarea,
+  .notebook-text-display {
     border: none;
     resize: none;
     overflow: visible;
