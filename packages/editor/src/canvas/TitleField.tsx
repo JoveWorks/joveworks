@@ -18,23 +18,45 @@ interface Props {
 const MATH_TOKEN = /(?:\\[A-Za-z]+|[_^](?:[A-Za-z0-9]|\{[^{}]+\})|\b[A-Za-z]['′](?![A-Za-z]))/;
 const TOKEN_OR_SPACE = /(\s+)/;
 
+function typesetPart(part: string): string | undefined {
+  if (!MATH_TOKEN.test(part)) return undefined;
+  try {
+    return katex.renderToString(part, { throwOnError: true, displayMode: false });
+  } catch {
+    return undefined;
+  }
+}
+
 export function typesetTitle(title: string): readonly ReactNode[] | undefined {
   if (!MATH_TOKEN.test(title)) return undefined;
 
   let renderedAny = false;
   const rendered = title.split(TOKEN_OR_SPACE).map((part, index) => {
-    if (part === '' || /^\s+$/.test(part) || !MATH_TOKEN.test(part)) return part;
-    try {
-      const html = katex.renderToString(part, { throwOnError: true, displayMode: false });
+    const html = typesetPart(part);
+    if (html !== undefined) {
       renderedAny = true;
       return <span key={index} dangerouslySetInnerHTML={{ __html: html }} />;
-    } catch {
-      // A title is user text, not a formula contract. Invalid TeX is shown
-      // verbatim so it remains readable and editable.
-      return part;
     }
+    // A title is user text, not a formula contract. Invalid TeX is shown
+    // verbatim so it remains readable and editable.
+    return part;
   });
   return renderedAny ? rendered : undefined;
+}
+
+/** KaTeX fragment for an SVG/HTML label, or no fragment when it is plain text. */
+export function typesetTitleHtml(title: string): string | undefined {
+  if (!MATH_TOKEN.test(title)) return undefined;
+  let renderedAny = false;
+  const html = title.split(TOKEN_OR_SPACE).map((part) => {
+    const rendered = typesetPart(part);
+    if (rendered !== undefined) {
+      renderedAny = true;
+      return rendered;
+    }
+    return part.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+  });
+  return renderedAny ? html.join('') : undefined;
 }
 
 /** Read-only counterpart to TitleField, used wherever a stored title is displayed. */

@@ -1073,6 +1073,54 @@ aside.right {
   width: 100%;
 }
 
+.axis-picker {
+  position: relative;
+  width: 100%;
+  color: var(--ink);
+}
+
+.axis-picker summary {
+  width: 100%;
+  min-height: 1.8em;
+  box-sizing: border-box;
+  padding: 2px 5px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--paper);
+  cursor: pointer;
+}
+
+.axis-picker-options {
+  position: absolute;
+  z-index: 21;
+  top: calc(100% + 2px);
+  left: 0;
+  width: max-content;
+  min-width: 100%;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--paper);
+  box-shadow: var(--shadow-md);
+}
+
+.axis-picker-options button {
+  display: block;
+  width: 100%;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  padding: 3px 5px;
+  color: inherit;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.axis-picker-options button:hover {
+  background: var(--panel);
+}
+
 .table-columns {
   display: flex;
   flex-direction: column;

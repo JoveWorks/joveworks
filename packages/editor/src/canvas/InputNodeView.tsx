@@ -16,7 +16,7 @@ import { nodeLabel, reframe, removeNodes, syncColumnLabels, updateNode } from '.
 import { axisLabel, reading } from '../model/values';
 import { NodeShell } from './NodeShell';
 import { Sparkline } from './Sparkline';
-import { TitleField } from './TitleField';
+import { TitleField, TitleText } from './TitleField';
 import { ValueFields, ValueKindSelect, ValuePointsField, ValueSliderBoundsFields } from './ValueEditor';
 
 export function InputNodeView({ id, selected }: NodeProps): ReactElement | null {
@@ -84,7 +84,11 @@ export function InputNodeView({ id, selected }: NodeProps): ReactElement | null 
         // sparkline's shape and the axis label.
         <div className="node-value">
           {value === undefined ? null : <Sparkline reading={value} />}
-          {value === undefined ? null : <span className="axis">{axisLabel(value) ?? ''}</span>}
+          {value === undefined ? null : (
+            <span className="axis">
+              <TitleText value={axisLabel(value) ?? ''} />
+            </span>
+          )}
           <Handle type="source" position={Position.Right} id={VALUE_PORT} />
         </div>
       ) : null}

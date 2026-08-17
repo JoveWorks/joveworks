@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
-import { typesetTitle } from './TitleField';
+import { typesetTitle, typesetTitleHtml } from './TitleField';
 
 describe('typesetTitle', () => {
   it('typesets subscript and TeX command tokens without changing surrounding prose', () => {
@@ -27,5 +27,10 @@ describe('typesetTitle', () => {
 
   it('falls back to raw text when no marked token is valid TeX', () => {
     expect(typesetTitle('unknown \\definitelynotacommand')).toBeUndefined();
+  });
+
+  it('provides the same KaTeX treatment as HTML for plot labels', () => {
+    expect(typesetTitleHtml('chip load f_z (mm/tooth)')).toContain('katex');
+    expect(typesetTitleHtml('ordinary prose')).toBeUndefined();
   });
 });

@@ -21,7 +21,7 @@
  * numbers, and it is the scalar counterpart of the plot's threshold line.
  */
 
-import { useState, type ReactElement } from 'react';
+import { useState, type MouseEvent, type ReactElement } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 
 import { parseExpression, toLatex } from '@mds/kernel';
@@ -59,7 +59,57 @@ import { NodeShell } from './NodeShell';
 import { Sparkline } from './Sparkline';
 import { slotHandleId } from './spectrumSlots';
 import { NumberField, TextField } from './fields';
-import { TitleField } from './TitleField';
+import { TitleField, TitleText } from './TitleField';
+
+type Range = ReturnType<typeof documentAxes>[number];
+
+function rangeLabel(range: Range): string {
+  return range.axisLabel ?? range.label ?? range.id;
+}
+
+/** Native option elements cannot contain KaTeX markup, so axis choices use a small HTML menu. */
+function AxisPicker({
+  name,
+  value,
+  automatic,
+  ranges,
+  excluded,
+  onChange,
+}: {
+  readonly name: string;
+  readonly value: string | undefined;
+  readonly automatic: string;
+  readonly ranges: readonly Range[];
+  readonly excluded: readonly (string | undefined)[];
+  readonly onChange: (axis: string | undefined) => void;
+}): ReactElement {
+  const selected = ranges.find((range) => range.id === value);
+  const chosen = value === undefined ? automatic : (selected === undefined ? value : rangeLabel(selected));
+  const pick = (axis: string | undefined, event: MouseEvent<HTMLButtonElement>): void => {
+    onChange(axis);
+    event.currentTarget.closest('details')?.removeAttribute('open');
+  };
+  return (
+    <label>
+      {name}
+      <details className="axis-picker nodrag">
+        <summary>
+          <TitleText value={chosen} />
+        </summary>
+        <div className="axis-picker-options">
+          <button type="button" onClick={(event) => pick(undefined, event)}>
+            <TitleText value={automatic} />
+          </button>
+          {ranges.filter((range) => !excluded.includes(range.id)).map((range) => (
+            <button key={range.id} type="button" onClick={(event) => pick(range.id, event)}>
+              <TitleText value={rangeLabel(range)} />
+            </button>
+          ))}
+        </div>
+      </details>
+    </label>
+  );
+}
 
 /** What the node shows when the kernel has an answer for it. */
 function Verdict({ nodeId }: { readonly nodeId: string }): ReactElement | null {
@@ -248,73 +298,39 @@ export function OutputNodeView({ id, selected }: NodeProps): ReactElement | null
                   that resolved to, so leaving a slot alone is a legible choice,
                   not a silent one. A slot the student does pick is pinned and
                   the kernel never touches it. */}
-              <label>
-                x axis
-                <select
-                  className="nodrag"
-                  value={output.x ?? ''}
-                  onChange={(event) => {
-                    const chosen = event.target.value;
-                    const { x: _dropped, ...rest } = output;
-                    setOutput(chosen === '' ? rest : { ...rest, x: chosen });
-                  }}
-                >
-                  <option value="">auto{plotResult === undefined ? '' : ` (${plotResult.x.axis.label})`}</option>
-                  {ranges
-                    .filter((range) => range.id !== output.series && range.id !== output.facet)
-                    .map((range) => (
-                      <option key={range.id} value={range.id}>
-                        {range.axisLabel ?? range.label ?? range.id}
-                      </option>
-                    ))}
-                </select>
-              </label>
-              <label>
-                series
-                <select
-                  className="nodrag"
-                  value={output.series ?? ''}
-                  onChange={(event) => {
-                    const chosen = event.target.value;
-                    const { series: _dropped, ...rest } = output;
-                    setOutput(chosen === '' ? rest : { ...rest, series: chosen });
-                  }}
-                >
-                  <option value="">
-                    auto{plotResult?.series2 === undefined ? ' (none)' : ` (${plotResult.series2.axis.label})`}
-                  </option>
-                  {ranges
-                    .filter((range) => range.id !== output.x && range.id !== output.facet)
-                    .map((range) => (
-                      <option key={range.id} value={range.id}>
-                        {range.axisLabel ?? range.label ?? range.id}
-                      </option>
-                    ))}
-                </select>
-              </label>
-              <label>
-                facet
-                <select
-                  className="nodrag"
-                  value={output.facet ?? ''}
-                  onChange={(event) => {
-                    const chosen = event.target.value;
-                    const { facet: _dropped, ...rest } = output;
-                    setOutput(chosen === '' ? rest : { ...rest, facet: chosen });
-                  }}
-                >
-                  <option value="">
-                    auto{plotResult?.facet === undefined ? ' (none)' : ` (${plotResult.facet.axis.label})`}
-                  </option>
-                  {ranges
-                    .filter((range) => range.id !== output.x && range.id !== output.series)
-                    .map((range) => (
-                      <option key={range.id} value={range.id}>
-                        {range.axisLabel ?? range.label ?? range.id}
-                      </option>
-                    ))}
-                </select>
-              </label>
+              <AxisPicker
+                name="x axis"
+                value={output.x}
+                automatic={`auto${plotResult === undefined ? '' : ` (${plotResult.x.axis.label})`}`}
+                ranges={ranges}
+                excluded={[output.series, output.facet]}
+                onChange={(chosen) => {
+                  const { x: _dropped, ...rest } = output;
+                  setOutput(chosen === undefined ? rest : { ...rest, x: chosen });
+                }}
+              />
+              <AxisPicker
+                name="series"
+                value={output.series}
+                automatic={`auto${plotResult?.series2 === undefined ? ' (none)' : ` (${plotResult.series2.axis.label})`}`}
+                ranges={ranges}
+                excluded={[output.x, output.facet]}
+                onChange={(chosen) => {
+                  const { series: _dropped, ...rest } = output;
+                  setOutput(chosen === undefined ? rest : { ...rest, series: chosen });
+                }}
+              />
+              <AxisPicker
+                name="facet"
+                value={output.facet}
+                automatic={`auto${plotResult?.facet === undefined ? ' (none)' : ` (${plotResult.facet.axis.label})`}`}
+                ranges={ranges}
+                excluded={[output.x, output.series]}
+                onChange={(chosen) => {
+                  const { facet: _dropped, ...rest } = output;
+                  setOutput(chosen === undefined ? rest : { ...rest, facet: chosen });
+                }}
+              />
               {/* threshold now lives on the port row below, always visible —
                   a typed default with a wire that can override it (the same
                   reasoning CompareNodeView's threshold field states) rather

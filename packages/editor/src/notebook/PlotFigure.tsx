@@ -43,6 +43,9 @@ import {
 } from '@mds/units';
 import type { GraphDocument } from '@mds/schema';
 
+import { typesetTitleHtml } from '../canvas/TitleField';
+import { useSettings } from '../settings-context';
+
 export interface Row {
   readonly x: number | string;
   readonly y: number;
@@ -133,8 +136,34 @@ interface Props {
   readonly format: NumberFormat;
 }
 
+/** Replace Observable's plain SVG text with KaTeX where an axis label needs it. */
+function typesetChartLabels(chart: SVGSVGElement, labels: readonly string[]): void {
+  for (const text of chart.querySelectorAll('text')) {
+    const label = text.textContent;
+    if (label === null || !labels.includes(label)) continue;
+    const html = typesetTitleHtml(label);
+    if (html === undefined) continue;
+    const bounds = text.getBBox();
+    const foreign = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
+    foreign.setAttribute('x', `${bounds.x}`);
+    foreign.setAttribute('y', `${bounds.y}`);
+    foreign.setAttribute('width', `${bounds.width + 4}`);
+    foreign.setAttribute('height', `${bounds.height + 4}`);
+    const transform = text.getAttribute('transform');
+    if (transform !== null) foreign.setAttribute('transform', transform);
+    const content = document.createElement('div');
+    content.style.whiteSpace = 'nowrap';
+    content.style.fontSize = text.getAttribute('font-size') ?? '10px';
+    content.style.lineHeight = '1';
+    content.innerHTML = html;
+    foreign.append(content);
+    text.replaceWith(foreign);
+  }
+}
+
 export function PlotFigure({ result: rawResult, document: graph, format }: Props): ReactElement {
   const host = useRef<HTMLDivElement>(null);
+  const { titleMathRendering } = useSettings();
   const result = useMemo(() => siResult(rawResult, format), [rawResult, format]);
 
   useEffect(() => {
@@ -223,8 +252,15 @@ export function PlotFigure({ result: rawResult, document: graph, format }: Props
     });
 
     container.append(chart);
+    if (titleMathRendering && chart instanceof SVGSVGElement) {
+      typesetChartLabels(chart, [
+        xLabel,
+        ...(result.series2 === undefined || result.contour ? [] : [result.series2.axis.label]),
+        ...(result.facet === undefined ? [] : [result.facet.axis.label]),
+      ]);
+    }
     return () => chart.remove();
-  }, [graph, result]);
+  }, [graph, result, titleMathRendering]);
 
   return <div className="figure" ref={host} />;
 }
