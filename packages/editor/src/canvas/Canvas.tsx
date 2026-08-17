@@ -321,6 +321,10 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
   const { locale, minimapVisible, themePreference } = useSettings();
   const t = (english: string): string => phrase(locale, english);
   const [refusal, setRefusal] = useState<string | undefined>(undefined);
+  // A rejected unit connection is a momentary interaction state, never part of
+  // the graph. Keeping its endpoints here lets the canvas identify *which* two
+  // nodes the message describes without turning dimensions into a colour scheme.
+  const [rejectedUnitConnection, setRejectedUnitConnection] = useState<Edge | undefined>(undefined);
   const [menu, setMenu] = useState<MenuTarget | undefined>(undefined);
   const [quickAdd, setQuickAdd] = useState<QuickAddTarget | undefined>(undefined);
   // Edge hover is a view concern, like selection. Keeping its id here lets the
@@ -390,6 +394,58 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
     return edge === undefined ? new Set<string>() : new Set([edge.from.node, edge.to.node]);
   }, [document.edges, hoveredEdgeId]);
 
+  const rejectedEndpointIds = useMemo(() => {
+    if (rejectedUnitConnection === undefined) return new Set<string>();
+    return new Set([rejectedUnitConnection.from.node, rejectedUnitConnection.to.node]);
+  }, [rejectedUnitConnection]);
+
+  useEffect(() => {
+    if (rejectedUnitConnection === undefined) return undefined;
+    const timeout = window.setTimeout(() => setRejectedUnitConnection(undefined), 4_000);
+    return () => window.clearTimeout(timeout);
+  }, [rejectedUnitConnection]);
+
+  /** A connection error phrased for the two ports a student just tried to join. */
+  const refuseConnection = useCallback(
+    (candidate: Edge, reason: string): void => {
+      // The kernel distinguishes a dimension failure from a kind failure with
+      // "cannot connect <dimension> ..." (rather than "cannot connect a
+      // numeric value ..."). Generic-variable binding uses its own wording.
+      const unitMismatch =
+        (/^cannot connect (?!a )/u.test(reason) || reason.includes('different dimensions')) &&
+        !reason.includes('would close a cycle');
+      if (!unitMismatch) {
+        setRejectedUnitConnection(undefined);
+        setRefusal(reason);
+        return;
+      }
+
+      const source = analysis.resolution?.sources.get(`${candidate.from.node}.${candidate.from.port}`);
+      const target = analysis.resolution?.targets.get(`${candidate.to.node}.${candidate.to.port}`);
+      const sourceNode = document.nodes.find((node) => node.id === candidate.from.node);
+      const targetNode = document.nodes.find((node) => node.id === candidate.to.node);
+      const unit = (symbol: string | undefined): string => {
+        if (symbol === undefined) return 'an unresolved dimension';
+        return symbol === '' ? 'dimensionless' : symbol;
+      };
+      const fromLabel = sourceNode === undefined ? candidate.from.node : nodeLabel(sourceNode);
+      const toLabel = targetNode === undefined ? candidate.to.node : nodeLabel(targetNode);
+      const sourceUnit = unit(source?.unit?.symbol);
+      const targetUnit = unit(target?.unit?.symbol);
+
+      setRejectedUnitConnection(candidate);
+      setRefusal(
+        `Can't connect ${fromLabel}'s ${candidate.from.port} output (${sourceUnit}) to ${toLabel}'s ${candidate.to.port} input (${targetUnit}): the units are incompatible.`,
+      );
+    },
+    [analysis.resolution, document.nodes],
+  );
+
+  const clearRefusal = useCallback((): void => {
+    setRefusal(undefined);
+    setRejectedUnitConnection(undefined);
+  }, []);
+
   const nodes = useMemo<FlowNode[]>(
     () => [
       ...document.frames.map((frame) => ({
@@ -411,10 +467,11 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
         data: {},
         selected: selected.has(node.id),
         ...(edgeEndpointIds.has(node.id) ? { className: 'edge-connected' } : {}),
+        ...(rejectedEndpointIds.has(node.id) ? { className: 'connection-refused' } : {}),
         ...sizeOf(measured, node.id),
       })),
     ],
-    [document, edgeEndpointIds, measured, selected],
+    [document, edgeEndpointIds, measured, rejectedEndpointIds, selected],
   );
 
   const edges = useMemo<FlowEdge[]>(() => {
@@ -661,10 +718,10 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
         const checked = resolveTarget(document);
         const verdict = canConnect(checked.document, catalogues, { ...candidate, to: checked.to });
         if (!verdict.ok) {
-          setRefusal(verdict.reason);
+          refuseConnection({ ...candidate, to: checked.to }, verdict.reason);
           return;
         }
-        setRefusal(undefined);
+        clearRefusal();
         edit((current) => {
           const resolved = resolveTarget(current);
           return connect(resolved.document, candidate.from, resolved.to);
@@ -674,7 +731,7 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
 
       const verdict = canConnect(document, catalogues, candidate);
       if (verdict.ok) {
-        setRefusal(undefined);
+        clearRefusal();
         edit((current) => connect(current, candidate.from, candidate.to, isSpectrumTarget(candidate.to)));
         return;
       }
@@ -691,7 +748,7 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
       const adapted = targetUnit === undefined ? undefined : adaptInputUnit(document, candidate, targetUnit);
       const adaptedVerdict = adapted === undefined ? undefined : canConnect(adapted, catalogues, candidate);
       if (targetUnit !== undefined && adaptedVerdict?.ok === true) {
-        setRefusal(undefined);
+        clearRefusal();
         edit((current) => {
           const relabelled = adaptInputUnit(current, candidate, targetUnit) ?? current;
           return connect(relabelled, candidate.from, candidate.to, isSpectrumTarget(candidate.to));
@@ -699,9 +756,9 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
         return;
       }
 
-      setRefusal(verdict.reason);
+      refuseConnection(candidate, verdict.reason);
     },
-    [analysis.resolution, catalogues, document, edit],
+    [analysis.resolution, catalogues, clearRefusal, document, edit, refuseConnection],
   );
 
   /** What a right click offers, worked out from what was clicked. */
@@ -870,20 +927,20 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
         const candidate: Edge = { id: edgeId(from, resolvedTo), from, to: resolvedTo };
         const verdict = canConnect(named.document, catalogues, candidate);
         if (!verdict.ok) {
-          setRefusal(verdict.reason);
+          refuseConnection(candidate, verdict.reason);
           return current;
         }
-        setRefusal(undefined);
+        clearRefusal();
         return connect(named.document, from, resolvedTo);
       }
 
       const candidate: Edge = { id: edgeId(from, to), from, to };
       const verdict = canConnect(current, catalogues, candidate);
       if (!verdict.ok) {
-        setRefusal(verdict.reason);
+        refuseConnection(candidate, verdict.reason);
         return current;
       }
-      setRefusal(undefined);
+      clearRefusal();
       return connect(current, candidate.from, candidate.to, isSpectrumTarget(candidate.to));
     });
   };
@@ -996,10 +1053,10 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
         const candidate: Edge = { id: edgeId(from, resolvedTo), from, to: resolvedTo };
         const verdict = canConnect(named.document, catalogues, candidate);
         if (!verdict.ok) {
-          setRefusal(verdict.reason);
+          refuseConnection(candidate, verdict.reason);
           return named.document;
         }
-        setRefusal(undefined);
+        clearRefusal();
         return connect(named.document, from, resolvedTo);
       }
 
@@ -1010,10 +1067,10 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
       }
       const verdict = canConnect(next, catalogues, candidate);
       if (verdict.ok) {
-        setRefusal(undefined);
+        clearRefusal();
         next = connect(next, candidate.from, candidate.to, isSpectrumTarget(candidate.to));
       } else {
-        setRefusal(verdict.reason);
+        refuseConnection(candidate, verdict.reason);
       }
       return next;
     });
@@ -1045,7 +1102,7 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
           commitEdit();
         }}
         onPaneClick={() => {
-          setRefusal(undefined);
+          clearRefusal();
           setMenu(undefined);
         }}
         onNodeContextMenu={(event, node) => {
@@ -1084,12 +1141,12 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
               const candidate: Edge = { id: edgeId(from, to), from, to };
               const verdict = canConnect(document, catalogues, candidate);
               if (verdict.ok) {
-                setRefusal(undefined);
+                clearRefusal();
                 edit((current) =>
                   connect(current, candidate.from, candidate.to, isSpectrumTarget(candidate.to)),
                 );
               } else {
-                setRefusal(verdict.reason);
+                refuseConnection(candidate, verdict.reason);
               }
             }
             return;
@@ -1152,7 +1209,7 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
           <Panel position="top-center">
             <div className="refusal" role="status">
               {refusal}
-              <button type="button" onClick={() => setRefusal(undefined)}>
+              <button type="button" onClick={clearRefusal}>
                 ✕
               </button>
             </div>

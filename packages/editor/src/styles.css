@@ -776,6 +776,14 @@ aside.right {
   box-shadow: 0 0 0 3px var(--hover-bg), var(--shadow-sm);
 }
 
+/* A rejected unit connection needs to point back to both ends of the attempted
+   wire. This class exists only for Canvas.tsx's four-second interaction state;
+   it deliberately does not assign colours to any dimension or port at rest. */
+.react-flow__node.connection-refused .node {
+  border-color: var(--state-error);
+  box-shadow: 0 0 0 3px var(--badge-fail-bg), var(--shadow-sm);
+}
+
 .react-flow__edge.edge-hovered .react-flow__edge-path {
   stroke: var(--accent);
   stroke-width: 3;
