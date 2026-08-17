@@ -633,6 +633,8 @@ function AppShell(): ReactElement {
     </button>
   );
 
+  const localVersionSuffix = window.location.hostname === 'localhost' ? ' (local)' : '';
+
   return (
     <SettingsContext.Provider value={settingsContext}>
       <GraphContext.Provider value={context}>
@@ -655,9 +657,10 @@ function AppShell(): ReactElement {
                   convention, and drops away on its own once a 1.0 ships. */}
               <span
                 className={`menubar-version${__APP_VERSION__.startsWith('0.') ? ' alpha' : ''}`}
-                title={`machine-design-studio v${__APP_VERSION__}`}
+                title={`machine-design-studio v${__APP_VERSION__}${localVersionSuffix}`}
               >
                 {__APP_VERSION__.startsWith('0.') ? 'alpha · ' : ''}v{__APP_VERSION__}
+                {localVersionSuffix}
               </span>
 
               {/* Students are the target audience and mostly don't know what a

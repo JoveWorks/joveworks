@@ -1745,6 +1745,16 @@ aside.right {
   font-weight: 600;
 }
 
+.notebook .result.print {
+  justify-content: space-between;
+  width: 100%;
+}
+
+.notebook .result.print .number {
+  flex-shrink: 0;
+  text-align: right;
+}
+
 .notebook .result .count {
   color: var(--muted);
   font-size: 11px;
