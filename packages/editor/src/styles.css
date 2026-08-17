@@ -641,10 +641,6 @@ aside.right {
   margin-left: 0;
 }
 
-.node .port-out .port-unit-picker {
-  margin-left: auto;
-}
-
 .node .sparkline path {
   stroke: var(--accent);
 }
