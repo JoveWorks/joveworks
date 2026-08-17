@@ -104,6 +104,7 @@ function initialCatalogues(): readonly Catalogue[] {
 /** Frequent enough that an accidental close loses little, infrequent enough
  * to stay off the profiler for graphs of the size this app targets. */
 const AUTOSAVE_INTERVAL_MS = 30_000;
+const RESTORED_AUTOSAVE_NOTICE = 'Restored unsaved work from the last session.';
 
 /** An autosave snapshot left over from a session that never hit explicit
  * Save takes priority over the usual startup document — recovery from an
@@ -238,12 +239,16 @@ function AppShell(): ReactElement {
   useEffect(() => cancelMenuClose, []);
   const [paletteWidth, resizePalette] = useResizableWidth(360, 200, 480, 1);
   const [notebookWidth, resizeNotebook] = useResizableWidth(540, 240, 800, -1);
-  const [notices, setNotices] = useState<readonly { readonly id: string; readonly message: string }[]>(
-    [],
+  const [restoredAutosaveNoticeId] = useState(() =>
+    restoredAutosave ? crypto.randomUUID() : undefined,
+  );
+  const [notices, setNotices] = useState<readonly { readonly id: string; readonly message: string }[]>(() =>
+    restoredAutosaveNoticeId === undefined
+      ? []
+      : [{ id: restoredAutosaveNoticeId, message: RESTORED_AUTOSAVE_NOTICE }],
   );
   const dismissNotice = (id: string): void =>
     setNotices((current) => current.filter((notice) => notice.id !== id));
-  const restoredAutosaveNoticeShown = useRef(false);
 
   /** A notice joins the stack rather than replacing it, and clears itself. */
   const pushNotice = (message: string): void => {
@@ -269,15 +274,15 @@ function AppShell(): ReactElement {
     };
   }, []);
 
-  // Runs once: a notice, not a blocking prompt, so it doesn't stand between
-  // the student and the graph autosave already restored onto the canvas.
-  // React StrictMode replays mount effects in development, so keep this
-  // append-only notification idempotent across that replay.
+  // The restore notice is seeded into state above rather than appended here:
+  // StrictMode may remount the component in development, and an append-only
+  // mount effect can otherwise create the same notice twice. This effect only
+  // owns its auto-dismiss timer and cleans up StrictMode's first pass.
   useEffect(() => {
-    if (!restoredAutosave || restoredAutosaveNoticeShown.current) return;
-    restoredAutosaveNoticeShown.current = true;
-    pushNotice('Restored unsaved work from the last session.');
-  }, []);
+    if (restoredAutosaveNoticeId === undefined) return;
+    const timeout = window.setTimeout(() => dismissNotice(restoredAutosaveNoticeId), 6000);
+    return () => window.clearTimeout(timeout);
+  }, [restoredAutosaveNoticeId]);
 
   const setNumberFormat = (next: NumberFormatSettings): void => {
     setNumberFormatState(next);
