@@ -171,10 +171,6 @@ citations and values by default, expressions only behind the explicit
 toggle. Gate it behind a hidden console command for now rather than a UI
 button — personal-use export, not a student-facing feature yet.
 
-**PDF export needs page margins.** The exported notebook currently reaches the
-page edges; define print margins so the result is readable and suitable for
-hand-in or binding.
-
 **Plausible analytics during alpha.** A thin adapter — mirrors the existing
 file-I/O adapter pattern — with a no-op and a Plausible-backed
 implementation behind one flag, so removing it before public launch is

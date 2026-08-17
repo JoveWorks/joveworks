@@ -1871,7 +1871,10 @@ aside.right {
 /* Print-to-PDF renders the notebook alone — everything else on screen is
    editing chrome with no place in a submittable document. */
 @page {
-  margin: 2.5cm;
+  /* Hand-in pages need a readable, symmetric writing area. Browsers apply
+     this page box when their print dialog uses Default or Custom margins. */
+  size: A4 portrait;
+  margin: 20mm;
 }
 
 @media print {
@@ -1921,16 +1924,19 @@ aside.right {
 
   main {
     display: block;
+    width: 100%;
   }
 
   aside.right {
-    width: auto !important;
-    flex-basis: auto !important;
+    display: block;
+    width: 100% !important;
+    flex-basis: 100% !important;
     overflow: visible;
     border-left: none;
   }
 
   .notebook {
+    width: 100%;
     padding: 0;
   }
 
