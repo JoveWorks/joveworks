@@ -150,13 +150,6 @@ which complicate calculations via the combination of normal and bending
 loads. Catalogue content, for when that chapter is designed — not an editor
 question.
 
-**Quick Add should offer every compatible node kind.** Today it offers
-catalogue formulas, Input, Compare, and output nodes, but not Closure or the
-routing nodes. The rule: when a wire is dropped onto empty canvas, offer every
-node kind that can validly complete that wire and hide kinds with no compatible
-port. This is an extension of the existing connection-aware filter, not a
-second palette.
-
 **Persist the remaining settings.** Number format, colour theme, and minimap
 visibility already persist locally. Palette and notebook widths do not; store
 them as local, per-device UI preferences rather than graph-file state.
