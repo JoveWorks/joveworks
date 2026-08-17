@@ -626,7 +626,13 @@ aside.right {
 .node .port-out {
   display: flex;
   align-items: center;
+  flex-basis: 100%;
   gap: 4px;
+  margin-left: 0;
+}
+
+.node .port-out .port-unit-picker {
+  margin-left: auto;
 }
 
 .node .sparkline path {
