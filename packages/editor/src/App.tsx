@@ -28,6 +28,8 @@ import {
 import { Canvas } from './canvas/Canvas';
 import { ContextMenu, type MenuItem } from './canvas/ContextMenu';
 import { ConfirmDialog } from './ConfirmDialog';
+import { analytics } from './analytics/analytics';
+import { documentEvents } from './analytics/documentEvents';
 import { exampleIdFromUrl, urlForExample, type ExampleId } from './exampleUrl';
 import { DOCS_BASE_URL } from './help-links';
 import { GraphContext } from './graph-context';
@@ -196,6 +198,10 @@ function AppShell(): ReactElement {
   );
   const [history, setHistory] = useState<History<GraphDocument>>(() => initHistory(initialDocument));
   const document = history.present;
+  // Resetting a document opens existing content; it must not look like the
+  // user hand-added every node in it. This ref makes the post-render edit
+  // classifier compare only actual editor transactions.
+  const lastInstrumentedDocument = useRef(document);
   const canUndo = history.past.length > 0;
   const canRedo = history.future.length > 0;
   const edit = (change: (current: GraphDocument) => GraphDocument): void =>
@@ -226,6 +232,7 @@ function AppShell(): ReactElement {
   // zoomed-in viewport can land on an empty patch of canvas with nothing
   // visible.
   const resetDocument = (next: GraphDocument): void => {
+    lastInstrumentedDocument.current = next;
     setHistory(initHistory(next));
     setSavedSnapshot(saveDocument(next));
     setFitRequest((current) => current + 1);
@@ -234,11 +241,17 @@ function AppShell(): ReactElement {
     const sample = exampleDocument(id, catalogues, locale);
     if (sample === undefined) return;
     resetDocument(sample);
+    analytics.track({ name: 'example_opened' });
     // This describes the document currently open; replacing avoids creating
     // browser-history entries whose URL changes on Back while the canvas does
     // not (the editor deliberately has no general-purpose router yet).
     window.history.replaceState({}, '', urlForExample(new URL(window.location.href), id));
   };
+  useEffect(() => {
+    const previous = lastInstrumentedDocument.current;
+    lastInstrumentedDocument.current = document;
+    for (const event of documentEvents(previous, document)) analytics.track(event);
+  }, [document]);
   const [fitRequest, setFitRequest] = useState(0);
   useEffect(() => {
     // 0 is the initial value, already covered by `<ReactFlow fitView>`'s own
@@ -483,8 +496,10 @@ function AppShell(): ReactElement {
       const loaded = loadCatalogue(file.text);
       setCatalogues((current) => withCatalogue(current, loaded));
       cacheCatalogue(loaded.id, file.text);
+      analytics.track({ name: 'catalogue_loaded' });
       pushNotice(`Loaded ${localize(loaded.name, locale)} — ${loaded.formulas.length} formulas.`);
     } catch (error) {
+      analytics.track({ name: 'catalogue_load_failed', props: { reason: 'invalid_file' } });
       pushNotice(`That file is not a catalogue: ${messageOf(error)}`);
     }
   };
@@ -513,6 +528,7 @@ function AppShell(): ReactElement {
       recordRecentDocument(loaded);
       clearAutosaveSnapshot();
     } catch (error) {
+      analytics.track({ name: 'document_load_failed', props: { reason: 'invalid_file' } });
       pushNotice(`That file is not a graph: ${messageOf(error)}`);
     }
   };
@@ -520,6 +536,7 @@ function AppShell(): ReactElement {
   const newDocument = (): void => {
     resetDocument(emptyDocument('untitled', 'Untitled'));
     clearAutosaveSnapshot();
+    analytics.track({ name: 'graph_created' });
   };
 
   const openRecentDocument = (recent: RecentDocument): void => {
@@ -528,6 +545,7 @@ function AppShell(): ReactElement {
       resetDocument(loaded);
       recordRecentDocument(loaded);
     } catch (error) {
+      analytics.track({ name: 'document_load_failed', props: { reason: 'invalid_file' } });
       pushNotice(`Could not reopen "${recent.title}": ${messageOf(error)}`);
     }
   };
@@ -559,6 +577,7 @@ function AppShell(): ReactElement {
         recordRecentDocument(document);
         clearAutosaveSnapshot();
         setSavedSnapshot(text);
+        analytics.track({ name: 'document_saved' });
       },
     },
     { heading: t('Recent') },

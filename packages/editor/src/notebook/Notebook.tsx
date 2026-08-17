@@ -32,6 +32,7 @@ import type { Frame, GraphDocument, OutputNode, Position } from '@joveworks/sche
 import type { NumberFormat } from '@joveworks/units';
 
 import { useGraph } from '../graph-context';
+import { analytics } from '../analytics/analytics';
 import { useSettings } from '../settings-context';
 import { ContextMenu, type MenuItem } from '../canvas/ContextMenu';
 import { TitleField, typesetTitle } from '../canvas/TitleField';
@@ -679,7 +680,10 @@ export function Notebook(): ReactElement {
           disabled={printing}
           aria-label={copy.exportPdf}
           title={copy.exportPdf}
-          onClick={() => setPrinting(true)}
+          onClick={() => {
+            setPrinting(true);
+            analytics.track({ name: 'notebook_exported' });
+          }}
         >
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path fill="currentColor" d="M18 3H6a3 3 0 0 0-3 3v9h4v6h10v-6h4V6a3 3 0 0 0-3-3Zm-3 16H9v-5h6v5Zm3-8H6V6h12v5Zm-3-4H9V5h6v2Z" />
