@@ -1633,16 +1633,24 @@ aside.right {
   outline-offset: 2px;
 }
 
-.notebook-export-button {
+.notebook-icon-button {
   flex-shrink: 0;
   border: 1px solid var(--line);
   border-radius: 4px;
   background: var(--panel);
-  padding: 3px 8px;
-  font-size: 12px;
+  display: grid;
+  place-items: center;
+  width: 27px;
+  height: 27px;
+  padding: 4px;
 }
 
-.notebook-export-button:hover {
+.notebook-icon-button svg {
+  width: 16px;
+  height: 16px;
+}
+
+.notebook-icon-button:hover {
   background: var(--line);
 }
 
@@ -2109,7 +2117,7 @@ aside.right {
   aside.left,
   .resize-handle,
   .canvas,
-  .notebook-export-button,
+  .notebook-icon-button,
   .notebook-section .grip,
   .notebook-section .chevron {
     display: none !important;

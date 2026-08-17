@@ -641,11 +641,15 @@ export function Notebook(): ReactElement {
         />
         <button
           type="button"
-          className="notebook-export-button"
+          className="notebook-icon-button"
           aria-expanded={showSettings}
+          aria-label={copy.nodeBookSettings}
+          title={copy.nodeBookSettings}
           onClick={() => setShowSettings((visible) => !visible)}
         >
-          {copy.nodeBookSettings}
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="currentColor" d="M19.14 12.94a7.1 7.1 0 0 0 .05-.94 7.1 7.1 0 0 0-.05-.94l2.03-1.58-1.92-3.32-2.39.96a7.05 7.05 0 0 0-1.63-.94L14.87 3h-3.84l-.36 3.08c-.58.24-1.12.55-1.63.94l-2.39-.96-1.92 3.32 2.03 1.58a7.1 7.1 0 0 0-.05.94c0 .32.02.63.05.94l-2.03 1.58 1.92 3.32 2.39-.96c.51.39 1.05.7 1.63.94l.36 3.08h3.84l.36-3.08c.58-.24 1.12-.55 1.63-.94l2.39.96 1.92-3.32-2.03-1.58ZM12.95 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z" />
+          </svg>
         </button>
         {showSettings ? (
           <label className="notebook-language">
@@ -668,11 +672,15 @@ export function Notebook(): ReactElement {
         ) : null}
         <button
           type="button"
-          className="notebook-export-button"
+          className="notebook-icon-button"
           disabled={printing}
+          aria-label={copy.exportPdf}
+          title={copy.exportPdf}
           onClick={() => setPrinting(true)}
         >
-          {copy.exportPdf}
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="currentColor" d="M18 3H6a3 3 0 0 0-3 3v9h4v6h10v-6h4V6a3 3 0 0 0-3-3Zm-3 16H9v-5h6v5Zm3-8H6V6h12v5Zm-3-4H9V5h6v2Z" />
+          </svg>
         </button>
       </div>
 
