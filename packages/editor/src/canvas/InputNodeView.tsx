@@ -9,7 +9,7 @@
 import type { ReactElement } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 
-import { VALUE_PORT, hasUnit, isRange, type InputNode } from '@joveworks/schema';
+import { VALUE_PORT, isRange, type InputNode } from '@joveworks/schema';
 
 import { useGraph } from '../graph-context';
 import { nodeLabel, reframe, removeNodes, syncColumnLabels, updateNode } from '../model/document';
@@ -18,8 +18,6 @@ import { NodeShell } from './NodeShell';
 import { Sparkline } from './Sparkline';
 import { TitleField, TitleText } from './TitleField';
 import { ValueFields, ValueKindSelect, ValuePointsField, ValueSliderBoundsFields } from './ValueEditor';
-import { DisplayUnitPicker } from './DisplayUnitPicker';
-import { rescaleValue } from './ValueEditor';
 
 export function InputNodeView({ id, selected }: NodeProps): ReactElement | null {
   const { document, analysis, edit, pinned, togglePin } = useGraph();
@@ -29,18 +27,7 @@ export function InputNodeView({ id, selected }: NodeProps): ReactElement | null 
   const value = reading(analysis, id, VALUE_PORT);
   const swept = isRange(node.value);
   const setValue = (next: InputNode['value']): void =>
-    edit((current) =>
-      updateNode<InputNode>(current, id, (input) => ({
-        ...input,
-        value: next,
-        ...(hasUnit(next)
-          ? { displayUnits: { ...input.displayUnits, [VALUE_PORT]: next.unit } }
-          : {}),
-      })),
-    );
-  const displayUnit = hasUnit(node.value) ? (node.displayUnits?.[VALUE_PORT] ?? node.value.unit) : undefined;
-  const setDisplayUnit = (unit: NonNullable<typeof displayUnit>): void =>
-    setValue(rescaleValue(node.value, unit));
+    edit((current) => updateNode<InputNode>(current, id, (input) => ({ ...input, value: next })));
 
   return (
     <NodeShell
@@ -81,7 +68,6 @@ export function InputNodeView({ id, selected }: NodeProps): ReactElement | null 
           <ValueKindSelect value={node.value} onChange={setValue} />
           <ValuePointsField value={node.value} onChange={setValue} />
           <ValueSliderBoundsFields value={node.value} onChange={setValue} />
-          {displayUnit === undefined ? null : <DisplayUnitPicker unit={displayUnit} onChange={setDisplayUnit} />}
         </>
       }
     >

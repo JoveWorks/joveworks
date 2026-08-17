@@ -680,9 +680,6 @@ aside.right {
   font-size: 11px;
 }
 
-.node .port-unit + .port-unit-picker {
-  margin-left: 0;
-}
 
 /* `ParameterLabel` owns the punctuation; this class covers labels outside
    port rows that do not already provide their own contextual unit styling. */

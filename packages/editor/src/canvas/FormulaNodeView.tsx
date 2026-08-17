@@ -96,11 +96,11 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
     !(port.kind === 'categorical' && port.default !== undefined);
 
   const outputUnit = analysis.resolution?.sources.get(`${id}.${formula.output.name}`)?.unit;
-  const setDisplayUnit = (port: string, unit: Unit): void =>
+  const setOutputDisplayUnit = (unit: Unit): void =>
     edit((current) =>
       updateNode(current, id, (entry) => ({
         ...entry,
-        displayUnits: { ...entry.displayUnits, [port]: unit },
+        displayUnits: { ...entry.displayUnits, [formula.output.name]: unit },
       })),
     );
 
@@ -187,12 +187,6 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
                   nameClassName="port-name"
                   unitClassName="port-unit"
                 />
-                {portUnit(port) === undefined ? null : (
-                  <DisplayUnitPicker
-                    unit={portUnit(port) as Unit}
-                    onChange={(unit) => setDisplayUnit(port.name, unit)}
-                  />
-                )}
                 {port.kind === 'categorical' ? (
                   <span className="port-unit">{port.domain.join(' | ')}</span>
                 ) : null}
@@ -213,12 +207,6 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
                     nameClassName="port-name"
                     unitClassName="port-unit"
                   />
-                  {portUnit(port) === undefined ? null : (
-                    <DisplayUnitPicker
-                      unit={portUnit(port) as Unit}
-                      onChange={(unit) => setDisplayUnit(port.name, unit)}
-                    />
-                  )}
                 </>
               ) : (
                 <UnitInLabel unit={portUnit(port)} className="port-unit" />
@@ -256,9 +244,9 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
           </span>
         )}
         <span className="port-out">
-          <ParameterLabel name={formula.output.name} unit={outputUnit} unitClassName="port-unit" />
+          <ParameterLabel name={formula.output.name} />
           {outputUnit === undefined ? null : (
-            <DisplayUnitPicker unit={outputUnit} onChange={(unit) => setDisplayUnit(formula.output.name, unit)} />
+            <DisplayUnitPicker unit={outputUnit} onChange={setOutputDisplayUnit} />
           )}
         </span>
         <Handle type="source" position={Position.Right} id={formula.output.name} />
