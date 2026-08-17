@@ -132,18 +132,25 @@ export function Tutorial({ active, onClose, pinned, setPinned }: Props): ReactEl
     setStepIndex(0);
   };
   const last = stepIndex === TUTORIAL_STEPS.length - 1;
+  const goToStep = (nextIndex: number, nextDirection: 'forward' | 'backward'): void => {
+    // Update the target rectangle in the same render as the step. Otherwise
+    // the new placement is briefly applied to the previous target's rectangle,
+    // producing a jump before the CSS transition gets its real destination.
+    setRect(measure(TUTORIAL_STEPS[nextIndex]?.target));
+    setDirection(nextDirection);
+    setStepIndex(nextIndex);
+  };
+
   const advance = (): void => {
     if (last) {
       close();
       return;
     }
-    setDirection('forward');
-    setStepIndex((current) => current + 1);
+    goToStep(stepIndex + 1, 'forward');
   };
 
   const goBack = (): void => {
-    setDirection('backward');
-    setStepIndex((current) => current - 1);
+    goToStep(stepIndex - 1, 'backward');
   };
 
   const base = preferredStyle(rect, step.placement);
