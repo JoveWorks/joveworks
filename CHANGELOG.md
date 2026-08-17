@@ -2,6 +2,35 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.7.0](https://github.com/ThomasVanRiel/joveworks/compare/v0.6.0...v0.7.0) (2026-08-17)
+
+### Features
+
+* **editor:** add alpha analytics adapter ([4f695a8](https://github.com/ThomasVanRiel/joveworks/commit/4f695a89de9afb08ac21fc7519a5dab763004192))
+* **editor:** add per-port display unit overrides ([8821d5e](https://github.com/ThomasVanRiel/joveworks/commit/8821d5e3b2a6e9cf9e235f7f439acfd0b6c14f5e))
+* **editor:** favourite every palette node ([08ea1e6](https://github.com/ThomasVanRiel/joveworks/commit/08ea1e6e1095cc777e3de782be3178c36cd442f5))
+
+### Fixes
+
+* **editor:** align output unit picker ([12fabd6](https://github.com/ThomasVanRiel/joveworks/commit/12fabd6280ff01b61dabb21e2790bdff995c4c6c))
+* **editor:** apply output unit row alignment ([f3f6b03](https://github.com/ThomasVanRiel/joveworks/commit/f3f6b038c007eb8f4b6475238ea59c5c07280ed0))
+* **editor:** clarify pack and unpack channels ([8bcf234](https://github.com/ThomasVanRiel/joveworks/commit/8bcf23479f5c89e3762de273f586a41990ccc463))
+* **editor:** clarify rejected unit connections ([e271ace](https://github.com/ThomasVanRiel/joveworks/commit/e271acea27c752edf78300954919c8d9f98656b7))
+* **editor:** contextualize section menu ([26c5bd9](https://github.com/ThomasVanRiel/joveworks/commit/26c5bd93c7e171ccf22f34858be98f9a27076326))
+* **editor:** hide persistent selection bounds ([86b560c](https://github.com/ThomasVanRiel/joveworks/commit/86b560c33b14ce874ce823b00c11cd5fc9176069))
+* **editor:** limit display unit overrides to outputs ([a69d4a4](https://github.com/ThomasVanRiel/joveworks/commit/a69d4a43f4f3955b233bf81641c546b057b07ea5))
+* **editor:** open menu from selection overlay ([a6803f2](https://github.com/ThomasVanRiel/joveworks/commit/a6803f276a98e4fc38f76967bde953f7c2f9ff81))
+* **editor:** open selection menu on Shift-click ([ae223cf](https://github.com/ThomasVanRiel/joveworks/commit/ae223cf2bc3a9a25711f11faecdea1def918cdf1))
+* **editor:** retain node menu for single marquee selection ([28c04dc](https://github.com/ThomasVanRiel/joveworks/commit/28c04dc8c1e1ce8c9d938491d331987b60e94f2e))
+* **editor:** right-align output unit picker ([de3a88a](https://github.com/ThomasVanRiel/joveworks/commit/de3a88a7b3ac9e856cfff4868a537974270413dc))
+* **editor:** right-align output unit row ([385d5fa](https://github.com/ThomasVanRiel/joveworks/commit/385d5faf18d8adf3efe9e960581aab49ff1d5b08))
+* **editor:** right-align selected display unit ([c193c3d](https://github.com/ThomasVanRiel/joveworks/commit/c193c3dc2f3ac1133f733f6db3f885e6522b1c8d))
+* **editor:** toggle selection with Shift-click ([5495b4e](https://github.com/ThomasVanRiel/joveworks/commit/5495b4ec0407475b8b2693fd2c752a96927a3c25))
+* **units:** omit prefixed display unit choices ([0d45b1d](https://github.com/ThomasVanRiel/joveworks/commit/0d45b1dc9131d1144a1e6a22f2528bd26c43944f))
+
+### Documentation
+
+* update roadmap ([3a6d2d2](https://github.com/ThomasVanRiel/joveworks/commit/3a6d2d25603d8697bb07b521260d69d4626b0e36))
 ## [0.6.0](https://github.com/ThomasVanRiel/joveworks/compare/v0.5.0...v0.6.0) (2026-08-17)
 
 ### Features
