@@ -1886,12 +1886,17 @@ aside.right {
   display: flex;
   flex: 0 0 92px;
   flex-direction: column;
-  gap: 5px;
-  min-height: 190px;
+  box-sizing: border-box;
+  height: 240px;
+  padding: 18px 0 40px;
+  position: relative;
   font-size: 10px;
 }
 
 .notebook .contour-colorbar strong {
+  left: 0;
+  position: absolute;
+  top: 0;
   font-size: 10px;
   line-height: 1.2;
 }
