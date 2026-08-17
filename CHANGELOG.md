@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.3.2](https://github.com/ThomasVanRiel/machine-design-studio/compare/v0.3.1...v0.3.2) (2026-08-17)
+
+### Features
+
+* **editor:** add canvas control reference ([ec7ddcc](https://github.com/ThomasVanRiel/machine-design-studio/commit/ec7ddcc7aec10b4d3537e723690a2e0a9cd4f4e1))
+
+### Fixes
+
+* **editor:** move canvas controls to help menu ([06394d1](https://github.com/ThomasVanRiel/machine-design-studio/commit/06394d1af14f4ed48b89383b400806fa3a869cee))
+* **editor:** show autosave restore notice once ([694f779](https://github.com/ThomasVanRiel/machine-design-studio/commit/694f779370845b238b4f5ef7d8637d788730c2ff))
+* **editor:** strengthen section frame hover accent ([ffbcb72](https://github.com/ThomasVanRiel/machine-design-studio/commit/ffbcb7205a2427ca17ceeef8a50a7a8b50c745dd))
+* **editor:** typeset notebook result titles ([c723c40](https://github.com/ThomasVanRiel/machine-design-studio/commit/c723c40b2dac9e08da03955f6c4b1b0e932c28da))
 ## [0.3.1](https://github.com/ThomasVanRiel/machine-design-studio/compare/v0.3.0...v0.3.1) (2026-08-17)
 
 ### Features
