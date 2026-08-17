@@ -73,6 +73,21 @@ describe('the milling power-envelope study through the editor', () => {
     expect(productivity?.kind).toBe('plot');
     expect(productivity?.kind === 'plot' && productivity.x.axis.id).toBe('f_z');
     expect(productivity?.kind === 'plot' && productivity.series2?.axis.id).toBe('a_e');
+
+    const table = outputs.find((entry) => entry.nodeId === 'out_table');
+    expect(table?.kind).toBe('table');
+    if (table?.kind !== 'table') throw new Error('missing machining table');
+    expect(table.axes.map((axis) => axis.id)).toEqual(['f_z', 'a_e']);
+    expect(table.columns.map((column) => column.series.data)).toEqual([
+      [0.08, 0.08, 0.08, 0.08, 0.12, 0.12, 0.12, 0.12, 0.16, 0.16, 0.16, 0.16, 0.2, 0.2, 0.2, 0.2, 0.24, 0.24, 0.24, 0.24],
+      [10, 20, 30, 40, 10, 20, 30, 40, 10, 20, 30, 40, 10, 20, 30, 40, 10, 20, 30, 40],
+      expect.any(Array),
+      expect.any(Array),
+      expect.any(Array),
+      expect.any(Array),
+      expect.any(Array),
+    ]);
+    expect(table.columns.every((column) => column.series.data.length === 20)).toBe(true);
   });
 });
 
