@@ -35,6 +35,12 @@ describe('the samples the editor opens with', () => {
     expect(padPressure([baseCatalogue()])).toBeDefined();
   });
 
+  it('renders example-owned text in the selected app language', () => {
+    const example = padPressure([baseCatalogue()], 'nl');
+    expect(example?.title).toBe('Pad druk vegen');
+    expect(example?.nodes.find((node) => node.id === 'F')?.label).toBe('Padbelasting F');
+  });
+
   it('withholds the belt lab until its catalogue is loaded, rather than embedding it', () => {
     expect(beltLab([baseCatalogue()])).toBeUndefined();
   });

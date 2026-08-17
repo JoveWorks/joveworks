@@ -134,20 +134,22 @@ const RESTORED_AUTOSAVE_NOTICE = 'Restored unsaved work from the last session.';
 function exampleDocument(
   id: ExampleId,
   catalogues: readonly Catalogue[],
+  locale: AppLocale,
 ): GraphDocument | undefined {
-  if (id === 'pad-pressure') return padPressure(catalogues);
-  if (id === 'platform-footprint') return platformFootprint(catalogues);
-  if (id === 'belt-lab') return beltLab(catalogues);
-  if (id === 'cantilever-hollow-sections') return cantileverHollowSections(catalogues);
-  return millingPowerEnvelope(catalogues);
+  if (id === 'pad-pressure') return padPressure(catalogues, locale);
+  if (id === 'platform-footprint') return platformFootprint(catalogues, locale);
+  if (id === 'belt-lab') return beltLab(catalogues, locale);
+  if (id === 'cantilever-hollow-sections') return cantileverHollowSections(catalogues, locale);
+  return millingPowerEnvelope(catalogues, locale);
 }
 
 function startupDocument(
   catalogues: readonly Catalogue[],
+  locale: AppLocale,
 ): { readonly document: GraphDocument; readonly restored: boolean; readonly example?: ExampleId } {
   const linkedExample = exampleIdFromUrl(new URL(window.location.href));
   if (linkedExample !== undefined) {
-    const linkedDocument = exampleDocument(linkedExample, catalogues);
+    const linkedDocument = exampleDocument(linkedExample, catalogues, locale);
     if (linkedDocument !== undefined) return { document: linkedDocument, restored: false, example: linkedExample };
   }
 
@@ -160,7 +162,7 @@ function startupDocument(
     }
   }
   return {
-    document: padPressure([baseCatalogue()]) ?? emptyDocument('untitled', 'Untitled'),
+    document: padPressure([baseCatalogue()], locale) ?? emptyDocument('untitled', 'Untitled'),
     restored: false,
   };
 }
@@ -190,7 +192,7 @@ function AppShell(): ReactElement {
       return next;
     });
   const [{ document: initialDocument, restored: restoredAutosave, example: linkedExample }] = useState(() =>
-    startupDocument(catalogues),
+    startupDocument(catalogues, loadAppLocale()),
   );
   const [history, setHistory] = useState<History<GraphDocument>>(() => initHistory(initialDocument));
   const document = history.present;
@@ -229,7 +231,7 @@ function AppShell(): ReactElement {
     setFitRequest((current) => current + 1);
   };
   const openExample = (id: ExampleId): void => {
-    const sample = exampleDocument(id, catalogues);
+    const sample = exampleDocument(id, catalogues, locale);
     if (sample === undefined) return;
     resetDocument(sample);
     // This describes the document currently open; replacing avoids creating

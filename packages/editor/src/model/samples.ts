@@ -34,6 +34,8 @@ import {
 
 import { lookup } from './analysis';
 import { edgeId } from './document';
+import { type AppLocale } from '../i18n';
+import dutchText from './sample-translations.json';
 
 const at = (x: number, y: number): Position => ({ x, y });
 
@@ -66,6 +68,28 @@ function document(
   return { schemaVersion: SCHEMA_VERSION, id, title, nodes, edges, frames };
 }
 
+/** Examples are templates, not student-authored content, so their visible
+ * text follows the app language at the moment the template is opened. */
+function localizeExample(value: GraphDocument, locale: AppLocale): GraphDocument {
+  if (locale === 'en') return value;
+  const text = (english: string): string => dutchText[english] ?? english;
+  return {
+    ...value,
+    title: text(value.title),
+    nodes: value.nodes.map((node) => ({
+      ...node,
+      ...(node.label === undefined ? {} : { label: text(node.label) }),
+      ...(node.kind === 'input' && node.axisLabel !== undefined ? { axisLabel: text(node.axisLabel) } : {}),
+      ...(node.kind === 'output' && node.caption !== undefined ? { caption: text(node.caption) } : {}),
+    })),
+    frames: value.frames.map((frame) => ({
+      ...frame,
+      title: text(frame.title),
+      ...(frame.note === undefined ? {} : { note: text(frame.note) }),
+    })),
+  };
+}
+
 /** Every id present in the loaded catalogues? A sample needs all of its own. */
 export function provides(catalogues: readonly Catalogue[], ids: readonly string[]): boolean {
   return ids.every((id) => lookup(catalogues, id) !== undefined);
@@ -84,7 +108,7 @@ const PAD = ['multiply', 'divide'] as const;
  * canvas anyway. What it demonstrates is one range input, and everything
  * downstream of it is a series with no rewiring.
  */
-export function padPressure(catalogues: readonly Catalogue[]): GraphDocument | undefined {
+export function padPressure(catalogues: readonly Catalogue[], locale: AppLocale = 'en'): GraphDocument | undefined {
   const multiply = lookup(catalogues, 'multiply');
   const divide = lookup(catalogues, 'divide');
   if (multiply === undefined || divide === undefined) return undefined;
@@ -144,7 +168,7 @@ export function padPressure(catalogues: readonly Catalogue[]): GraphDocument | u
     node.kind === 'output' ? { ...node, frameId: 'sizing' } : node,
   );
 
-  return document('pad-pressure', 'Pad pressure sweep', withFrames, edges, frames);
+  return localizeExample(document('pad-pressure', 'Pad pressure sweep', withFrames, edges, frames), locale);
 }
 
 // --- a plain-language decision example, for demonstrations ------------------
@@ -156,7 +180,7 @@ export function padPressure(catalogues: readonly Catalogue[]): GraphDocument | u
  * limit? The graph uses only public base nodes, so it is always available and
  * does not expose catalogue or textbook content.
  */
-export function platformFootprint(catalogues: readonly Catalogue[]): GraphDocument | undefined {
+export function platformFootprint(catalogues: readonly Catalogue[], locale: AppLocale = 'en'): GraphDocument | undefined {
   const multiply = lookup(catalogues, 'multiply');
   const divide = lookup(catalogues, 'divide');
   if (multiply === undefined || divide === undefined) return undefined;
@@ -213,7 +237,7 @@ export function platformFootprint(catalogues: readonly Catalogue[]): GraphDocume
     node.kind === 'output' ? { ...node, frameId: 'decision' } : node,
   );
 
-  return document('platform-footprint', 'Choose a safe platform size', withFrames, edges, frames);
+  return localizeExample(document('platform-footprint', 'Choose a safe platform size', withFrames, edges, frames), locale);
 }
 
 // --- the belt lab, which needs its catalogue ---------------------------------
@@ -258,7 +282,7 @@ export const BELT_LAB_FORMULAS = [
  * quarantined until its wrap-angle unit tag is confirmed. Drag it in from
  * the palette and the node says so; that is the quarantine gate, visible.
  */
-export function beltLab(catalogues: readonly Catalogue[]): GraphDocument | undefined {
+export function beltLab(catalogues: readonly Catalogue[], locale: AppLocale = 'en'): GraphDocument | undefined {
   if (!provides(catalogues, BELT_LAB_FORMULAS)) return undefined;
   const formula = (id: string): Formula => lookup(catalogues, id) as Formula;
 
@@ -339,7 +363,7 @@ export function beltLab(catalogues: readonly Catalogue[]): GraphDocument | undef
     node.kind === 'output' ? { ...node, frameId: 'results' } : node,
   );
 
-  return document('belt-lab', 'Belt lab', withFrames, edges, frames);
+  return localizeExample(document('belt-lab', 'Belt lab', withFrames, edges, frames), locale);
 }
 
 // --- cantilever deflection across hollow sections, from the public catalogue -
@@ -364,7 +388,7 @@ export const CANTILEVER_FORMULAS = [
  * swept value. Only the 80 mm section clears the L/300 serviceability limit —
  * a genuine "sweep and read off" result, not a uniformly green one.
  */
-export function cantileverHollowSections(catalogues: readonly Catalogue[]): GraphDocument | undefined {
+export function cantileverHollowSections(catalogues: readonly Catalogue[], locale: AppLocale = 'en'): GraphDocument | undefined {
   if (!provides(catalogues, CANTILEVER_FORMULAS)) return undefined;
   const formula = (id: string): Formula => lookup(catalogues, id) as Formula;
 
@@ -440,7 +464,7 @@ export function cantileverHollowSections(catalogues: readonly Catalogue[]): Grap
     node.kind === 'output' ? { ...node, frameId: 'sections' } : node,
   );
 
-  return document('cantilever-hollow-sections', 'Cantilever — hollow sections', withFrames, edges, frames);
+  return localizeExample(document('cantilever-hollow-sections', 'Cantilever — hollow sections', withFrames, edges, frames), locale);
 }
 
 // --- milling parameter study, from the public machining catalogue ----------
@@ -467,7 +491,7 @@ export const MILLING_STUDY_FORMULAS = [
  * productive surviving point is production-safe. The notebook records the
  * constant-specific-force assumption and the omitted stability/tool limits.
  */
-export function millingPowerEnvelope(catalogues: readonly Catalogue[]): GraphDocument | undefined {
+export function millingPowerEnvelope(catalogues: readonly Catalogue[], locale: AppLocale = 'en'): GraphDocument | undefined {
   if (!provides(catalogues, MILLING_STUDY_FORMULAS)) return undefined;
   const formula = (id: string): Formula => lookup(catalogues, id) as Formula;
 
@@ -635,5 +659,5 @@ export function millingPowerEnvelope(catalogues: readonly Catalogue[]): GraphDoc
     return node.kind === 'output' && frameId !== undefined ? { ...node, frameId } : node;
   });
 
-  return document('milling-power-envelope', 'Pocket milling — power envelope', withFrames, edges, frames);
+  return localizeExample(document('milling-power-envelope', 'Pocket milling — power envelope', withFrames, edges, frames), locale);
 }
