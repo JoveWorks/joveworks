@@ -199,7 +199,7 @@ input[aria-invalid='true'] {
 }
 
 .menubar-feedback {
-  margin-left: auto;
+  padding-left: 10px;
   font-size: 11px;
   color: var(--muted);
   white-space: nowrap;
@@ -214,8 +214,16 @@ input[aria-invalid='true'] {
   color: inherit;
 }
 
-.menubar-version {
+.menubar-product {
+  margin-left: auto;
   padding-left: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.menubar-version {
+  padding-left: 6px;
   padding-right: 4px;
   font-size: 11px;
   color: var(--muted);
@@ -224,6 +232,26 @@ input[aria-invalid='true'] {
 
 .menubar-version.alpha {
   color: var(--state-quarantined);
+}
+
+.menubar-github {
+  display: flex;
+  width: 20px;
+  height: 20px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  color: var(--muted);
+}
+
+.menubar-github:hover {
+  color: inherit;
+  background: var(--line);
+}
+
+.menubar-github svg {
+  width: 15px;
+  height: 15px;
 }
 
 .notices {
