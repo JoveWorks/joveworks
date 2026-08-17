@@ -161,6 +161,46 @@ function typesetChartLabels(chart: SVGSVGElement, labels: readonly string[]): vo
   }
 }
 
+/** A compact vertical key keeps the contour itself large enough to read. */
+function contourColorbar(
+  result: PlotResult,
+  label: string,
+  palette: string,
+  typeset: boolean,
+): HTMLElement {
+  const colorbar = document.createElement('aside');
+  colorbar.className = 'contour-colorbar';
+  colorbar.dataset.palette = palette;
+
+  const title = document.createElement('strong');
+  if (typeset) {
+    const html = typesetTitleHtml(label);
+    if (html !== undefined) title.innerHTML = html;
+    else title.textContent = label;
+  } else {
+    title.textContent = label;
+  }
+
+  const displayed = result.series.data
+    .map((value) => fromCanonical(value, result.unit))
+    .filter(Number.isFinite);
+  const minimum = Math.min(...displayed);
+  const maximum = Math.max(...displayed);
+  const format = (value: number): string => value.toLocaleString(undefined, { maximumSignificantDigits: 3 });
+
+  const scale = document.createElement('div');
+  scale.className = 'contour-colorbar-scale';
+  const values = document.createElement('div');
+  values.className = 'contour-colorbar-values';
+  values.append(Object.assign(document.createElement('span'), { textContent: format(maximum) }));
+  values.append(Object.assign(document.createElement('span'), { textContent: format(minimum) }));
+  const ramp = document.createElement('i');
+  ramp.className = 'contour-colorbar-ramp';
+  scale.append(values, ramp);
+  colorbar.append(title, scale);
+  return colorbar;
+}
+
 export function PlotFigure({ result: rawResult, document: graph, format }: Props): ReactElement {
   const host = useRef<HTMLDivElement>(null);
   const { contourPalette, titleMathRendering } = useSettings();
@@ -235,9 +275,7 @@ export function PlotFigure({ result: rawResult, document: graph, format }: Props
     }
 
     const chart = Plot.plot({
-      // A contour's ramp lives beside the chart; reserve enough notebook
-      // width for it instead of forcing a horizontal scrollbar.
-      width: result.contour ? 280 : result.facet === undefined ? 360 : Math.min(180 * result.facet.axis.length, 1080),
+      width: result.facet === undefined ? 360 : Math.min(180 * result.facet.axis.length, 1080),
       height: 240,
       marginLeft: 56,
       marginBottom: 40,
@@ -246,13 +284,11 @@ export function PlotFigure({ result: rawResult, document: graph, format }: Props
         ...(isLogAxis(graph, result.x.axis.id) ? { type: 'log' as const } : {}),
       },
       y: { label: yLabel, grid: true },
-      ...(result.contour ? { className: 'contour-colorbar' } : {}),
+      ...(result.contour ? { figure: false } : {}),
       ...(result.contour
         ? {
             color: {
               scheme: contourPalette,
-              legend: true,
-              label: yLabel,
             },
           }
         : result.series2 === undefined
@@ -269,7 +305,16 @@ export function PlotFigure({ result: rawResult, document: graph, format }: Props
       marks,
     });
 
-    container.append(chart);
+    let rendered: Element;
+    if (result.contour) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'contour-figure';
+      wrapper.append(chart, contourColorbar(result, yLabel, contourPalette, titleMathRendering));
+      rendered = wrapper;
+    } else {
+      rendered = chart;
+    }
+    container.append(rendered);
     if (titleMathRendering && chart instanceof SVGSVGElement) {
       typesetChartLabels(chart, [
         xLabel,
@@ -278,7 +323,7 @@ export function PlotFigure({ result: rawResult, document: graph, format }: Props
         ...(result.facet === undefined ? [] : [result.facet.axis.label]),
       ]);
     }
-    return () => chart.remove();
+    return () => rendered.remove();
   }, [graph, result, titleMathRendering]);
 
   return <div className="figure" ref={host} />;

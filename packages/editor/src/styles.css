@@ -1874,17 +1874,60 @@ aside.right {
   margin: 4px 0;
 }
 
-/* Observable puts a legend before the SVG. Keep a continuous contour scale
- * alongside its plot, where it can be read against the y axis; ordinary
- * categorical swatches retain Observable's usual above-the-chart layout. */
-.notebook .figure > figure:has(.contour-colorbar-ramp) {
+/* Contours have a compact vertical scale; categorical series continue to use
+ * Observable's ordinary swatch legend above their chart. */
+.notebook .contour-figure {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.notebook .contour-colorbar {
+  display: flex;
+  flex: 0 0 92px;
+  flex-direction: column;
+  gap: 5px;
+  min-height: 190px;
+  font-size: 10px;
+}
+
+.notebook .contour-colorbar strong {
+  font-size: 10px;
+  line-height: 1.2;
+}
+
+.notebook .contour-colorbar-scale {
+  display: grid;
+  flex: 1;
+  grid-template-columns: 30px 14px;
+  gap: 4px;
+}
+
+.notebook .contour-colorbar-values {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  text-align: right;
 }
 
 .notebook .contour-colorbar-ramp {
-  flex: 0 0 240px;
+  background: linear-gradient(to top, #440154, #3b528b, #21918c, #5ec962, #fde725);
+}
+
+.notebook .contour-colorbar[data-palette='cividis'] .contour-colorbar-ramp {
+  background: linear-gradient(to top, #00204c, #344b70, #7a7c78, #bcae70, #fee838);
+}
+
+.notebook .contour-colorbar[data-palette='inferno'] .contour-colorbar-ramp {
+  background: linear-gradient(to top, #000004, #420a68, #932667, #dd513a, #fcffa4);
+}
+
+.notebook .contour-colorbar[data-palette='magma'] .contour-colorbar-ramp {
+  background: linear-gradient(to top, #000004, #3b0f70, #8c2981, #de4968, #fcfdbf);
+}
+
+.notebook .contour-colorbar[data-palette='plasma'] .contour-colorbar-ramp {
+  background: linear-gradient(to top, #0d0887, #6a00a8, #b12a90, #e16462, #f0f921);
 }
 
 .notebook .threshold {
