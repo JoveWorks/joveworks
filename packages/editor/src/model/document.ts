@@ -73,6 +73,49 @@ export function duplicateNode(document: GraphDocument, id: string): GraphDocumen
   return addNode(document, copy);
 }
 
+export interface DuplicatedSelection {
+  readonly document: GraphDocument;
+  readonly ids: ReadonlySet<string>;
+}
+
+/**
+ * Copy selected nodes from one document into another, including only wires
+ * whose two endpoints are in the selection. Frames are deliberately not
+ * copied: a pasted cluster is free-standing until its new position puts it
+ * into a section again.
+ */
+export function duplicateSelection(
+  document: GraphDocument,
+  source: GraphDocument,
+  selected: ReadonlySet<string>,
+): DuplicatedSelection {
+  const sources = source.nodes.filter((node) => selected.has(node.id));
+  if (sources.length === 0) return { document, ids: new Set() };
+
+  let next = document;
+  const ids = new Map<string, string>();
+  for (const node of sources) {
+    const id = uniqueId(next, node.id);
+    ids.set(node.id, id);
+    next = addNode(next, {
+      ...withoutAxisLabel(withoutFrame(node)),
+      id,
+      position: { x: node.position.x + 32, y: node.position.y + 32 },
+    });
+  }
+
+  for (const edge of source.edges) {
+    const fromNode = ids.get(edge.from.node);
+    const toNode = ids.get(edge.to.node);
+    if (fromNode === undefined || toNode === undefined) continue;
+    const from = { ...edge.from, node: fromNode };
+    const to = { ...edge.to, node: toNode };
+    next = addSplicedEdge(next, from, to);
+  }
+
+  return { document: reframe(next), ids: new Set(ids.values()) };
+}
+
 /** Replace one node, leaving everything else — and its identity — alone. */
 export function updateNode<T extends GraphNode>(
   document: GraphDocument,

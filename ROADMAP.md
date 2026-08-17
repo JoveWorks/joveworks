@@ -215,14 +215,6 @@ not let an automatic layout unexpectedly rewrite a carefully placed notebook.
 This extends the existing selection behavior (move and delete together) rather
 than introducing another selection model.
 
-**Viewport controls and keyboard-reference overlay.** Add a faint control
-overlay at the top left of the viewport that teaches the canvas's direct
-manipulation: Shift-drag marquee selection and Ctrl-click selection, plus the
-core shortcuts. The expected set is Ctrl+A, Z, Y, C, V, and D; audit each
-against the current editor before promising it in the overlay, then implement
-or intentionally omit the gaps. The existing Ctrl+A backlog item folds into
-this rather than standing alone.
-
 **Minimap visibility.** Put a Show/Hide minimap toggle in the ribbon's
 **View** menu and let a right-click on the minimap close it. Persisting that
 choice is already implemented locally; the broader settings-persistence item

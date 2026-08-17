@@ -205,6 +205,7 @@ function AppShell(): ReactElement {
   const [hovered, setHovered] = useState<ReadonlySet<string>>(new Set());
   const [showPalette, setShowPalette] = useState(true);
   const [showNotebook, setShowNotebook] = useState(true);
+  const [showCanvasControls, setShowCanvasControls] = useState(true);
   const [numberFormat, setNumberFormatState] = useState<NumberFormatSettings>(loadNumberFormatSettings);
   const [minimapVisible, setMinimapVisibleState] = useState<boolean>(loadMinimapVisible);
   const [titleMathRendering, setTitleMathRenderingState] = useState<boolean>(loadTitleMathRendering);
@@ -470,6 +471,10 @@ function AppShell(): ReactElement {
   const viewMenuItems: readonly MenuItem[] = [
     { label: showPalette ? 'Hide palette' : 'Show palette', onClick: () => setShowPalette((s) => !s) },
     { label: showNotebook ? 'Hide notebook' : 'Show notebook', onClick: () => setShowNotebook((s) => !s) },
+    {
+      label: showCanvasControls ? 'Hide canvas controls' : 'Show canvas controls',
+      onClick: () => setShowCanvasControls((visible) => !visible),
+    },
     { heading: 'Theme' },
     {
       label: 'Light',
@@ -674,7 +679,7 @@ function AppShell(): ReactElement {
               </>
             ) : null}
 
-            <Canvas />
+            <Canvas controlsVisible={showCanvasControls} />
 
             {showNotebook ? (
               <>

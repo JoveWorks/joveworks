@@ -27,6 +27,7 @@ import {
   changeOutputKind,
   connect,
   duplicateNode,
+  duplicateSelection,
   frameAround,
   groupIntoSection,
   nodeLabel,
@@ -122,6 +123,25 @@ describe('document edits', () => {
     const copy = duplicated.nodes.find((node) => node.id !== 'w') as InputNode;
     expect(copy.axisLabel).toBeUndefined();
     expect(copy.label).toBe('Pad width w');
+  });
+
+  it('duplicates selected nodes with their internal wires and selects the copies', () => {
+    const wired = connect(base, { node: 'a', port: 'value' }, { node: 'b', port: 'x' });
+    const duplicated = duplicateSelection(wired, wired, new Set(['a', 'b']));
+
+    expect([...duplicated.ids]).toEqual(['a2', 'b2']);
+    expect(duplicated.document.nodes.map((node) => node.id)).toEqual(['a', 'b', 'a2', 'b2']);
+    expect(duplicated.document.edges.at(-1)).toEqual({
+      id: 'a2.value->b2.x',
+      from: { node: 'a2', port: 'value' },
+      to: { node: 'b2', port: 'x' },
+    });
+  });
+
+  it('copies only wires wholly inside the selection', () => {
+    const wired = connect(base, { node: 'a', port: 'value' }, { node: 'b', port: 'x' });
+    const duplicated = duplicateSelection(wired, wired, new Set(['a']));
+    expect(duplicated.document.edges).toEqual(wired.edges);
   });
 
   it('drops the edges of a node it removes', () => {

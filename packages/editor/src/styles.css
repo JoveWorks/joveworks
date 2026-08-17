@@ -333,6 +333,26 @@ aside.right {
   min-width: 0;
 }
 
+.canvas-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  max-width: min(620px, calc(100% - 30px));
+  color: var(--muted);
+  font-size: 11px;
+  opacity: 0.62;
+  pointer-events: none;
+}
+
+.canvas-controls span {
+  white-space: nowrap;
+}
+
+.canvas-controls kbd {
+  font: inherit;
+  font-weight: 600;
+}
+
 /* --- palette ------------------------------------------------------------ */
 
 .palette {

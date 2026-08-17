@@ -15,7 +15,7 @@
  * the one exception — it is a property of looking at a graph, not of the graph.
  */
 
-import { useCallback, useMemo, useState, type ReactElement } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import {
   Background,
   Controls,
@@ -51,6 +51,7 @@ import {
   addNode,
   connect,
   duplicateNode,
+  duplicateSelection,
   edgeId,
   groupIntoSection,
   moveNode,
@@ -235,7 +236,7 @@ const NODE_TYPES = {
   frame: FrameView,
 };
 
-export function Canvas(): ReactElement {
+export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean }): ReactElement {
   const { document, catalogues, analysis, edit, editLive, commitEdit, pinned, togglePin, selected, setSelected } =
     useGraph();
   const { minimapVisible, themePreference } = useSettings();
@@ -243,6 +244,46 @@ export function Canvas(): ReactElement {
   const [menu, setMenu] = useState<MenuTarget | undefined>(undefined);
   const [quickAdd, setQuickAdd] = useState<QuickAddTarget | undefined>(undefined);
   const flow = useReactFlow();
+  const clipboard = useRef<{ document: GraphDocument; selected: ReadonlySet<string> } | undefined>(
+    undefined,
+  );
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (!(event.ctrlKey || event.metaKey)) return;
+      const target = event.target as HTMLElement | null;
+      if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable) {
+        return;
+      }
+
+      const key = event.key.toLowerCase();
+      if (key === 'a') {
+        event.preventDefault();
+        setSelected(() => new Set(document.nodes.map((node) => node.id)));
+        return;
+      }
+      if (key === 'c') {
+        if (!document.nodes.some((node) => selected.has(node.id))) return;
+        event.preventDefault();
+        clipboard.current = { document, selected: new Set(selected) };
+        return;
+      }
+      if (key !== 'v' && key !== 'd') return;
+
+      const source = key === 'v' ? clipboard.current : { document, selected };
+      if (source === undefined) return;
+      const duplicated = duplicateSelection(document, source.document, source.selected);
+      if (duplicated.ids.size === 0) return;
+      event.preventDefault();
+      edit(() => duplicated.document);
+      setSelected(() => duplicated.ids);
+      if (key === 'v') {
+        clipboard.current = { document: duplicated.document, selected: duplicated.ids };
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [document, edit, selected, setSelected]);
 
   /**
    * How big each node turned out to be, once drawn.
@@ -846,6 +887,8 @@ export function Canvas(): ReactElement {
         onConnect={onConnect}
         isValidConnection={isValidConnection}
         deleteKeyCode={['Backspace', 'Delete']}
+        selectionKeyCode="Shift"
+        multiSelectionKeyCode={['Control', 'Meta']}
         // React Flow's default lifts a selected node's z-index above every
         // other node's, frame's declared zIndex: -1 included — selecting a
         // frame then buried its own contents underneath it, so a student had
@@ -926,6 +969,16 @@ export function Canvas(): ReactElement {
         fitView
       >
         <Background gap={24} />
+        {controlsVisible ? (
+          <Panel position="top-left" className="canvas-controls" aria-label="Canvas controls">
+            <span><kbd>Shift</kbd> drag to select</span>
+            <span><kbd>Ctrl</kbd> click to add to selection</span>
+            <span><kbd>Ctrl</kbd>+<kbd>A</kbd> select all</span>
+            <span><kbd>Ctrl</kbd>+<kbd>Z</kbd>/<kbd>Y</kbd> undo/redo</span>
+            <span><kbd>Ctrl</kbd>+<kbd>C</kbd>/<kbd>V</kbd> copy/paste</span>
+            <span><kbd>Ctrl</kbd>+<kbd>D</kbd> duplicate</span>
+          </Panel>
+        ) : null}
         <Controls />
         {minimapVisible ? <MiniMap pannable zoomable /> : null}
         {menu === undefined ? null : (
