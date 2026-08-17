@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
-import { baseCatalogue, entries, search } from './catalogues';
+import { baseCatalogue, bundledCatalogues, entries, search } from './catalogues';
+
+describe('bundled public catalogues', () => {
+  it('ships the basic-mechanics and machining sets', () => {
+    expect(bundledCatalogues().map(({ id }) => id).sort()).toEqual([
+      'public-basic-mechanics',
+      'public-machining',
+    ]);
+  });
+});
 
 describe('catalogue search', () => {
   const list = entries([baseCatalogue()]);
