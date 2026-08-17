@@ -1,18 +1,14 @@
 /**
  * Dropping a dragged wire on empty canvas offers a node to finish it with: a
- * search bar over the catalogue, the non-formula kinds that fit the
- * direction being dragged, and — since a graph of any size has nodes a
+ * search bar over the catalogue, every non-formula kind with a compatible
+ * port for the wire being dragged, and — since a graph of any size has nodes a
  * student has simply forgotten they already placed — every existing node on
  * the canvas that has a port fitting the drag, found by typing its name.
  *
- * A dragged **output** needs a node with an input to receive it — a formula,
- * an existing node with a free-enough input, a `compare` (its `value` port),
- * or a `print`/`check`/`plot` output — a non-formula sink for a value. A dragged
- * **input** needs a node with an output to fill it — a formula, an existing
- * node's own output, a `compare` (its `verdict` port), or a plain `input`.
- * `compare` offers in both directions, like a formula; `input` and the
- * output kinds each have only the one port a dragged wire could be
- * finishing, so they offer in one direction only.
+ * A dragged **output** needs a node with an input to receive it; a dragged
+ * **input** needs a node with an output to fill it. Canvas asks the kernel
+ * about each prospective edge, so this menu has no parallel list of which
+ * formula, computation, routing, and output kinds happen to work.
  *
  * All three lists are ranked by `fuzzySearch` (model/fuzzy.ts) — a
  * subsequence match, so "pdwd" finds "Pad width d" without needing the exact
@@ -28,11 +24,19 @@ import { fuzzySearch } from '../model/fuzzy';
 import { Symbol } from '../Symbol';
 
 export type QuickAddChoice =
-  | { readonly kind: 'formula'; readonly formula: Formula }
+  | { readonly kind: 'formula'; readonly formula: Formula; readonly port: string }
   | { readonly kind: 'input' }
   | { readonly kind: 'output'; readonly outputKind: 'print' | 'check' | 'plot' | 'table' }
   | { readonly kind: 'compare' }
+  | { readonly kind: 'closure' }
+  | { readonly kind: 'waypoint' }
+  | { readonly kind: 'pack' }
+  | { readonly kind: 'unpack' }
   | { readonly kind: 'existing'; readonly nodeId: string; readonly port: string };
+
+export type QuickAddCandidate =
+  | { readonly kind: 'formula'; readonly formula: Formula }
+  | Exclude<QuickAddChoice, { readonly kind: 'formula' | 'existing' }>;
 
 /** An already-placed node the menu can offer, worked out by Canvas.tsx from the drag's direction. */
 export interface ExistingCandidate {
@@ -56,11 +60,12 @@ export interface ExistingCandidate {
 interface Props {
   readonly x: number;
   readonly y: number;
-  readonly direction: 'source' | 'target';
   readonly catalogues: readonly Catalogue[];
   readonly existing: readonly ExistingCandidate[];
   /** Whether a plot has a range to plot against (Canvas already knows). */
   readonly canPlot: boolean;
+  /** Returns the fresh node port that can complete this drag, or no port when it cannot. */
+  readonly compatiblePort: (choice: QuickAddCandidate) => string | undefined;
   readonly onPick: (choice: QuickAddChoice) => void;
   readonly onClose: () => void;
 }
@@ -68,10 +73,10 @@ interface Props {
 export function QuickAddMenu({
   x,
   y,
-  direction,
   catalogues,
   existing,
   canPlot,
+  compatiblePort,
   onPick,
   onClose,
 }: Props): ReactElement {
@@ -80,30 +85,40 @@ export function QuickAddMenu({
   // The catalogue's own `search` reads ports and descriptions too, which a
   // name-only fuzzy match would not replicate — kept as the formula list's
   // first pass, with fuzzy ranking only re-ordering what it already found.
-  const formulas = useMemo(() => search(entries(catalogues), query), [catalogues, query]);
+  const formulas = useMemo(
+    () =>
+      search(entries(catalogues), query).flatMap(({ formula, ...match }) => {
+        const port = compatiblePort({ kind: 'formula', formula });
+        return port === undefined ? [] : [{ formula, ...match, port }];
+      }),
+    [catalogues, compatiblePort, query],
+  );
   const matchingExisting = useMemo(
     () => fuzzySearch(query, existing, (candidate) => candidate.label),
     [existing, query],
   );
 
-  // `compare` fits either direction — like a formula, it has both a target
-  // port (`value`) and a source port (`verdict`) — unlike `input` and the
-  // output kinds below, which each have only the one port a dragged wire
-  // could be finishing.
-  const specials: readonly { readonly label: string; readonly choice: QuickAddChoice; readonly disabled?: boolean }[] =
-    direction === 'target'
-      ? [{ label: 'input', choice: { kind: 'input' } }, { label: 'compare', choice: { kind: 'compare' } }]
-      : [
-          { label: 'print output', choice: { kind: 'output', outputKind: 'print' } },
-          { label: 'check output', choice: { kind: 'output', outputKind: 'check' } },
-          {
-            label: 'plot output',
-            choice: { kind: 'output', outputKind: 'plot' },
-            disabled: !canPlot,
-          },
-          { label: 'table output', choice: { kind: 'output', outputKind: 'table' } },
-          { label: 'compare', choice: { kind: 'compare' } },
-        ];
+  const possibleSpecials: readonly {
+    readonly label: string;
+    readonly choice: Exclude<QuickAddCandidate, { readonly kind: 'formula' }>;
+    readonly disabled?: boolean;
+  }[] = [
+      { label: 'input', choice: { kind: 'input' } },
+      { label: 'equation', choice: { kind: 'closure' } },
+      { label: 'waypoint', choice: { kind: 'waypoint' } },
+      { label: 'pack', choice: { kind: 'pack' } },
+      { label: 'unpack', choice: { kind: 'unpack' } },
+      { label: 'compare', choice: { kind: 'compare' } },
+      { label: 'print output', choice: { kind: 'output', outputKind: 'print' } },
+      { label: 'check output', choice: { kind: 'output', outputKind: 'check' } },
+      {
+        label: 'plot output',
+        choice: { kind: 'output', outputKind: 'plot' },
+        disabled: !canPlot,
+      },
+      { label: 'table output', choice: { kind: 'output', outputKind: 'table' } },
+  ];
+  const specials = possibleSpecials.filter(({ choice }) => compatiblePort(choice) !== undefined);
   const matchingSpecials = fuzzySearch(query, specials, (entry) => entry.label);
 
   const pick = (choice: QuickAddChoice) => {
@@ -130,7 +145,7 @@ export function QuickAddMenu({
               const special = matchingSpecials.find((entry) => entry.disabled !== true)?.choice;
               const existingMatch = matchingExisting[0];
               if (special !== undefined) pick(special);
-              else if (formulas[0] !== undefined) pick({ kind: 'formula', formula: formulas[0].formula });
+              else if (formulas[0] !== undefined) pick({ kind: 'formula', formula: formulas[0].formula, port: formulas[0].port });
               else if (existingMatch !== undefined) {
                 pick({ kind: 'existing', nodeId: existingMatch.nodeId, port: existingMatch.port });
               }
@@ -154,8 +169,8 @@ export function QuickAddMenu({
                   {label}
                 </button>
               ))}
-              {formulas.slice(0, 30).map(({ formula }) => (
-                <button key={formula.id} type="button" onClick={() => pick({ kind: 'formula', formula })}>
+              {formulas.slice(0, 30).map(({ formula, port }) => (
+                <button key={formula.id} type="button" onClick={() => pick({ kind: 'formula', formula, port })}>
                   <span className="entry-id">{formula.citation ?? formula.id}</span>
                   <span className="entry-output">
                     <Symbol name={formula.output.name} />

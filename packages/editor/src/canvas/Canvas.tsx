@@ -30,15 +30,17 @@ import {
   type NodeChange,
 } from '@xyflow/react';
 
-import { adaptInputUnit, canConnect, typesConnect } from '@mds/kernel';
+import { adaptInputUnit, canConnect, resolveGraph, typesConnect } from '@mds/kernel';
 import { parseUnit } from '@mds/units';
 import {
   axes as documentAxes,
   formulaRef,
+  CLOSURE_RESULT_PORT,
   hasUnit,
   VALUE_PORT,
   VERDICT_PORT,
   type Edge,
+  type Catalogue,
   type Formula,
   type GraphDocument,
   type GraphNode,
@@ -73,7 +75,7 @@ import { FrameView } from './FrameView';
 import { InputNodeView } from './InputNodeView';
 import { OutputNodeView } from './OutputNodeView';
 import { PackNodeView } from './PackNodeView';
-import { QuickAddMenu, type ExistingCandidate, type QuickAddChoice } from './QuickAddMenu';
+import { QuickAddMenu, type ExistingCandidate, type QuickAddCandidate, type QuickAddChoice } from './QuickAddMenu';
 import { UnpackNodeView } from './UnpackNodeView';
 import { WaypointNodeView } from './WaypointNodeView';
 import { basePortName, slotHandleId } from './spectrumSlots';
@@ -193,6 +195,78 @@ interface QuickAddTarget {
   readonly x: number;
   readonly y: number;
   readonly from: { readonly nodeId: string; readonly port: string; readonly type: 'source' | 'target' };
+}
+
+/**
+ * Resolve a prospective Quick Add node through the kernel and return the port
+ * that makes the dragged edge valid. Dynamic routing ports are deliberately
+ * tested as real edges: their existence and type come from the edge itself.
+ */
+export function compatibleQuickAddPort(
+  document: GraphDocument,
+  catalogues: readonly Catalogue[],
+  target: QuickAddTarget,
+  choice: QuickAddCandidate,
+): string | undefined {
+  const id = uniqueId(document, '__quick_add__');
+  const position = { x: 0, y: 0 };
+  const node: GraphNode =
+    choice.kind === 'formula'
+      ? { kind: 'formula', id, formula: formulaRef(choice.formula), position }
+      : choice.kind === 'input'
+        ? { kind: 'input', id, value: { kind: 'scalar', value: 1, unit: parseUnit('') }, position }
+        : choice.kind === 'compare'
+          ? { kind: 'compare', id, comparison: '>=', threshold: { value: 1, unit: parseUnit('') }, position }
+          : choice.kind === 'closure'
+            ? { kind: 'closure', id, expression: 'value', position }
+            : choice.kind === 'waypoint' || choice.kind === 'pack' || choice.kind === 'unpack'
+              ? { kind: choice.kind, id, position }
+              : {
+                  kind: 'output', id, position,
+                  output: choice.outputKind === 'check'
+                    ? { kind: 'check', comparison: '>=', threshold: { value: 1, unit: parseUnit('') } }
+                    : choice.outputKind === 'plot' ? { kind: 'plot' }
+                    : choice.outputKind === 'table' ? { kind: 'table', columns: [] }
+                    : { kind: 'print' },
+                };
+
+  if (target.from.type === 'source' && choice.kind === 'input') return undefined;
+  if (target.from.type === 'target' && choice.kind === 'output') return undefined;
+
+  const ports = choice.kind === 'formula'
+    ? target.from.type === 'source' ? choice.formula.inputs.map((port) => port.name) : [choice.formula.output.name]
+    : choice.kind === 'compare' ? [target.from.type === 'source' ? VALUE_PORT : VERDICT_PORT]
+    : choice.kind === 'closure' ? [target.from.type === 'source' ? 'value' : CLOSURE_RESULT_PORT]
+    : choice.kind === 'waypoint' ? [target.from.type === 'source' ? 'in0' : 'out0']
+    : choice.kind === 'pack' ? [target.from.type === 'source' ? 'in0' : 'bundle']
+    : choice.kind === 'unpack' ? [target.from.type === 'source' ? 'bundle' : 'out0']
+    : choice.kind === 'output' ? [choice.outputKind === 'table' ? NEW_COLUMN : VALUE_PORT]
+    : [VALUE_PORT];
+
+  for (const port of ports) {
+    let next = addNode(document, node);
+    const dragEndpoint = { node: target.from.nodeId, port: target.from.port };
+    let freshEndpoint = { node: id, port };
+    if (port === NEW_COLUMN) {
+      const named = addNamedColumn(next, id, target.from.port);
+      next = named.document;
+      freshEndpoint = { node: id, port: named.column };
+    }
+    const [from, to] = target.from.type === 'source'
+      ? [dragEndpoint, freshEndpoint]
+      : [freshEndpoint, dragEndpoint];
+    const candidate: Edge = { id: edgeId(from, to), from, to };
+
+    // A fresh Input adopts the unit of the port it is being created for, as
+    // it does on an ordinary direct connection.
+    if (choice.kind === 'input') {
+      const targetUnit = resolveGraph(next, catalogues).targets.get(`${to.node}.${to.port}`)?.unit;
+      const adapted = targetUnit === undefined ? undefined : adaptInputUnit(next, candidate, targetUnit);
+      if (adapted !== undefined && canConnect(adapted, catalogues, candidate).ok) return port;
+    }
+    if (canConnect(next, catalogues, candidate).ok) return port;
+  }
+  return undefined;
 }
 
 type Measurements = ReadonlyMap<string, { width: number; height: number }>;
@@ -791,6 +865,10 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
             ? 'input'
             : choice.kind === 'compare'
               ? 'compare'
+              : choice.kind === 'closure'
+                ? 'equation'
+                : choice.kind === 'waypoint' || choice.kind === 'pack' || choice.kind === 'unpack'
+                  ? choice.kind
               : choice.outputKind === 'print'
                 ? 'result'
                 : choice.outputKind,
@@ -815,6 +893,10 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
                   threshold: { value: 1, unit: parseUnit('') },
                   position,
                 }
+              : choice.kind === 'closure'
+                ? { kind: 'closure', id, label: id, expression: 'value', position }
+                : choice.kind === 'waypoint' || choice.kind === 'pack' || choice.kind === 'unpack'
+                  ? { kind: choice.kind, id, label: id, position }
               : {
                   kind: 'output',
                   id,
@@ -832,15 +914,21 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
 
       const port =
         choice.kind === 'formula'
-          ? target.from.type === 'source'
-            ? choice.formula.inputs[0]?.name
-            : choice.formula.output.name
+          ? choice.port
           : choice.kind === 'compare'
             ? target.from.type === 'source'
               ? VALUE_PORT
               : VERDICT_PORT
             : choice.kind === 'output' && choice.outputKind === 'table'
               ? NEW_COLUMN
+              : choice.kind === 'closure'
+                ? target.from.type === 'source' ? 'value' : CLOSURE_RESULT_PORT
+                : choice.kind === 'waypoint'
+                  ? target.from.type === 'source' ? 'in0' : 'out0'
+                  : choice.kind === 'pack'
+                    ? target.from.type === 'source' ? 'in0' : 'bundle'
+                    : choice.kind === 'unpack'
+                      ? target.from.type === 'source' ? 'bundle' : 'out0'
               : VALUE_PORT;
 
       let next = addNode(current, node);
@@ -871,6 +959,10 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
       }
 
       const candidate: Edge = { id: edgeId(from, to), from, to };
+      if (choice.kind === 'input') {
+        const targetUnit = resolveGraph(next, catalogues).targets.get(`${to.node}.${to.port}`)?.unit;
+        next = targetUnit === undefined ? next : adaptInputUnit(next, candidate, targetUnit) ?? next;
+      }
       const verdict = canConnect(next, catalogues, candidate);
       if (verdict.ok) {
         setRefusal(undefined);
@@ -1000,10 +1092,10 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
           <QuickAddMenu
             x={quickAdd.x}
             y={quickAdd.y}
-            direction={quickAdd.from.type}
             catalogues={catalogues}
             existing={existingCandidates(document, analysis.formulas, quickAdd.from)}
             canPlot={documentAxes(document).length > 0}
+            compatiblePort={(choice) => compatibleQuickAddPort(document, catalogues, quickAdd, choice)}
             onPick={(choice) => pickQuickAdd(quickAdd, choice)}
             onClose={() => setQuickAdd(undefined)}
           />
