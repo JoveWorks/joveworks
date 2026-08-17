@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.4.1](https://github.com/ThomasVanRiel/machine-design-studio/compare/v0.4.0...v0.4.1) (2026-08-17)
+
+### Fixes
+
+* **editor:** add PDF export margins ([f3659bf](https://github.com/ThomasVanRiel/machine-design-studio/commit/f3659bf717c1dd5f870635e30c9062e7321f400d))
+* **editor:** typeset axis labels consistently ([4d9e4bc](https://github.com/ThomasVanRiel/machine-design-studio/commit/4d9e4bc61f0084fb622d3f5b24e82dda81c4cbed))
+* **kernel:** broadcast table columns across sweep axes ([93cd302](https://github.com/ThomasVanRiel/machine-design-studio/commit/93cd302ff131d493c866a7b9861928c23dd5785f))
+
+### Documentation
+
+* add contour palette backlog item ([b011cdb](https://github.com/ThomasVanRiel/machine-design-studio/commit/b011cdb192a987e6e4db1a59a95ffe395557d639))
+* note axis label math rendering ([2946f9a](https://github.com/ThomasVanRiel/machine-design-studio/commit/2946f9a6519366cd504a632ed30ca78aa37a8b7d))
 ## [0.4.0](https://github.com/ThomasVanRiel/machine-design-studio/compare/v0.3.2...v0.4.0) (2026-08-17)
 
 ### Features
