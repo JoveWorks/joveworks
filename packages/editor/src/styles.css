@@ -687,6 +687,8 @@ aside.right {
   background: transparent;
   font: inherit;
   font-size: 11px;
+  text-align: right;
+  text-align-last: right;
 }
 
 
