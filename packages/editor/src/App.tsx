@@ -100,7 +100,7 @@ import { Tutorial } from './tutorial/Tutorial';
 import { exampleTutorialSteps, TUTORIAL_STEPS } from './tutorial/steps';
 import { loadTutorialSeen } from './tutorial/tutorialSettings';
 import { useResizableWidth } from './useResizableWidth';
-import { ui } from './i18n';
+import { phrase, ui } from './i18n';
 
 /**
  * The base catalogue, the bundled public catalogue, and whatever was cached
@@ -267,6 +267,7 @@ function AppShell(): ReactElement {
   const [numberFormat, setNumberFormatState] = useState<NumberFormatSettings>(loadNumberFormatSettings);
   const [locale, setLocaleState] = useState<AppLocale>(loadAppLocale);
   const copy = ui(locale);
+  const t = (english: string): string => phrase(locale, english);
   const [minimapVisible, setMinimapVisibleState] = useState<boolean>(loadMinimapVisible);
   const [titleMathRendering, setTitleMathRenderingState] = useState<boolean>(loadTitleMathRendering);
   const [themePreference, setThemePreferenceState] =
@@ -548,10 +549,10 @@ function AppShell(): ReactElement {
   // extra state variable would keep in sync that a plain read doesn't.
   const recentDocuments = loadRecentDocuments();
   const fileMenuItems: readonly MenuItem[] = [
-    { label: 'New', onClick: () => guardDiscard(newDocument) },
-    { label: 'Open…', onClick: () => guardDiscard(() => void openDocumentFile()) },
+    { label: t('New'), onClick: () => guardDiscard(newDocument) },
+    { label: t('Open…'), onClick: () => guardDiscard(() => void openDocumentFile()) },
     {
-      label: 'Save',
+      label: t('Save'),
       onClick: () => {
         const text = saveDocument(document);
         saveTextFile(documentFileName(document.id), text);
@@ -560,18 +561,18 @@ function AppShell(): ReactElement {
         setSavedSnapshot(text);
       },
     },
-    { heading: 'Recent' },
+    { heading: t('Recent') },
     ...(recentDocuments.length === 0
-      ? [{ label: 'No recent documents', disabled: true, onClick: () => undefined }]
+      ? [{ label: t('No recent documents'), disabled: true, onClick: () => undefined }]
       : recentDocuments.map((recent) => ({
           label: recent.title,
           onClick: () => guardDiscard(() => openRecentDocument(recent)),
         }))),
-    { label: 'Load catalogue…', onClick: () => void loadCatalogueFile() },
-    { heading: 'User equations' },
-    { label: 'Import equations…', onClick: () => void importUserEquationFile() },
+    { label: t('Load catalogue…'), onClick: () => void loadCatalogueFile() },
+    { heading: t('User equations') },
+    { label: t('Import equations…'), onClick: () => void importUserEquationFile() },
     {
-      label: 'Export equations',
+      label: t('Export equations'),
       disabled: userEquations.length === 0,
       onClick: () => saveTextFile(userEquationsFileName, saveUserEquations(userEquations)),
     },
@@ -579,28 +580,28 @@ function AppShell(): ReactElement {
   ];
 
   const editMenuItems: readonly MenuItem[] = [
-    { label: 'Group into new section', onClick: addSection },
-    { label: 'Auto-arrange', onClick: arrangeGraph },
-    { label: 'Undo', disabled: !canUndo, onClick: undo },
-    { label: 'Redo', disabled: !canRedo, onClick: redo },
+    { label: t('Group into new section'), onClick: addSection },
+    { label: t('Auto-arrange'), onClick: arrangeGraph },
+    { label: t('Undo'), disabled: !canUndo, onClick: undo },
+    { label: t('Redo'), disabled: !canRedo, onClick: redo },
   ];
 
   const viewMenuItems: readonly MenuItem[] = [
     { label: showPalette ? 'Hide palette' : 'Show palette', onClick: () => setShowPalette((s) => !s) },
     { label: showNotebook ? 'Hide notebook' : 'Show notebook', onClick: () => setShowNotebook((s) => !s) },
-    { heading: 'Theme' },
+    { heading: t('Theme') },
     {
-      label: 'Light',
+      label: t('Light'),
       checked: themePreference === 'light',
       onClick: () => setThemePreference('light'),
     },
     {
-      label: 'Dark',
+      label: t('Dark'),
       checked: themePreference === 'dark',
       onClick: () => setThemePreference('dark'),
     },
     {
-      label: 'System',
+      label: t('System'),
       checked: themePreference === 'system',
       onClick: () => setThemePreference('system'),
     },
@@ -611,13 +612,13 @@ function AppShell(): ReactElement {
   // something that already works".
   const helpMenuItems: readonly MenuItem[] = [
     {
-      label: 'Documentation',
+      label: t('Documentation'),
       onClick: () => {
         window.open(DOCS_BASE_URL, '_blank', 'noopener');
       },
     },
     {
-      label: 'Take the tour',
+      label: t('Take the tour'),
       onClick: () =>
         guardDiscard(() => {
           // The script's steps are written against the pad-pressure sample
@@ -631,12 +632,12 @@ function AppShell(): ReactElement {
         }),
     },
     {
-      label: showCanvasControls ? 'Hide canvas controls' : 'Show canvas controls',
+      label: t(showCanvasControls ? 'Hide canvas controls' : 'Show canvas controls'),
       onClick: () => setShowCanvasControls((visible) => !visible),
     },
-    { heading: 'Examples' },
+    { heading: t('Examples') },
     {
-      label: 'Choose a safe platform size',
+      label: t('Choose a safe platform size'),
       onClick: () =>
         guardDiscard(() => {
           openExample('platform-footprint');
@@ -645,7 +646,7 @@ function AppShell(): ReactElement {
         }),
     },
     {
-      label: 'Pad pressure sweep',
+      label: t('Pad pressure sweep'),
       onClick: () =>
         guardDiscard(() => {
           openExample('pad-pressure');
@@ -654,7 +655,7 @@ function AppShell(): ReactElement {
         }),
     },
     {
-      label: 'Belt lab',
+      label: t('Belt lab'),
       disabled: !beltAvailable,
       onClick: () =>
         guardDiscard(() => {
@@ -664,7 +665,7 @@ function AppShell(): ReactElement {
         }),
     },
     {
-      label: 'Cantilever — hollow sections',
+      label: t('Cantilever — hollow sections'),
       disabled: !cantileverAvailable,
       onClick: () =>
         guardDiscard(() => {
@@ -674,7 +675,7 @@ function AppShell(): ReactElement {
         }),
     },
     {
-      label: 'Pocket milling — power envelope',
+      label: t('Pocket milling — power envelope'),
       disabled: !millingAvailable,
       onClick: () =>
         guardDiscard(() => {

@@ -20,3 +20,28 @@ export const UI = {
 export function ui(locale: AppLocale): typeof UI.en {
   return UI[locale] as typeof UI.en;
 }
+
+/** Transitional shared copy for editor surfaces that do not need interpolation. */
+const DUTCH_PHRASES: Readonly<Record<string, string>> = {
+  'New': 'Nieuw', 'Open…': 'Openen…', 'Save': 'Opslaan', 'Recent': 'Recent',
+  'No recent documents': 'Geen recente documenten', 'Load catalogue…': 'Catalogus laden…',
+  'User equations': 'Gebruikersvergelijkingen', 'Import equations…': 'Vergelijkingen importeren…',
+  'Export equations': 'Vergelijkingen exporteren', 'Group into new section': 'Groepeer in nieuwe sectie',
+  'Auto-arrange': 'Automatisch schikken', 'Undo': 'Ongedaan maken', 'Redo': 'Opnieuw uitvoeren',
+  'Theme': 'Thema', 'Light': 'Licht', 'Dark': 'Donker', 'System': 'Systeem',
+  'Documentation': 'Documentatie', 'Take the tour': 'Volg de rondleiding', 'Examples': 'Voorbeelden',
+  'Choose a safe platform size': 'Kies een veilige platformgrootte', 'Pad pressure sweep': 'Pad druk vegen',
+  'Belt lab': 'Riemlaboratorium', 'Cantilever — hollow sections': 'Uitkraging — holle profielen',
+  'Pocket milling — power envelope': 'Pockets frezen — vermogensbereik',
+  'Hide canvas controls': 'Canvasknoppen verbergen', 'Show canvas controls': 'Canvasknoppen tonen',
+  'Move up': 'Omhoog verplaatsen', 'Move down': 'Omlaag verplaatsen', 'Delete section': 'Sectie verwijderen',
+  'Not in a section': 'Niet in een sectie', 'Worth a look': 'Even nakijken',
+  'Click to edit the raw text': 'Klik om de onbewerkte tekst te bewerken',
+  'what this section establishes': 'wat deze sectie vastlegt',
+  'Add new': 'Nieuw toevoegen', 'On this canvas': 'Op dit canvas',
+  'add a node, or find one already on the canvas…': 'voeg een knooppunt toe, of zoek er een op het canvas…',
+};
+
+export function phrase(locale: AppLocale, english: string): string {
+  return locale === 'nl' ? DUTCH_PHRASES[english] ?? english : english;
+}
