@@ -44,25 +44,6 @@ a dimensionless argument (`packages/kernel/src/dimensions.ts`) would also
 need loosening for `acos`'s *return* — two other belt formulas consume the
 same angle as a pure number. Worth taking both together, and worth a golden.
 
-## Milestone 2 — breadth
-
-Milestone 1 was a vertical slice, one chapter end to end. Milestone 2 is
-breadth:
-
-1. **DEFECTS.md** across the whole corpus. Runs alongside migration, not
-   ahead of it — flagged formulas are quarantined by `status`, not blocked
-   on being found first.
-2. **Extract the remaining chapters.** Generalise the per-chapter script only
-   if their number justifies it. A second slice should be chosen to exercise
-   tables and categorical ports, which belt does not touch — `C2_Tolerance`
-   or the press-fit material in `C12` are the candidates. The kernel raises
-   on both today rather than half-supporting them.
-3. **Full notebook view.** Group frames already carry its section structure,
-   reserved in the schema since the schema package was built.
-
-Ask Thomas which chunk to start before picking one; nothing here decides it
-for you.
-
 ## Open product questions
 
 Not editor features — decisions that shape scope before any building starts.
@@ -76,6 +57,38 @@ no backend" is a stated architecture convention here, not an oversight —
 adding one is a decision on the order of the wrap-angle unit question, not a
 backlog line. Left open until it's discussed and decided explicitly; nothing
 below assumes it's happening.
+
+**How bound to machine design is this, actually?** The tool originates from
+machine design, but nothing in the kernel is: a catalogue is dimensioned
+formulas with citations, and the editor is a graph over them. Signal
+processing, thermodynamics, anything with units and formulas would fit the
+same machinery. Open question whether to *position* it generically — which
+touches the name, the sample content, the docs, and how the catalogue
+boundary is explained — or keep machine design as the front door and let
+other domains arrive as catalogues. Not a build task; decide before the
+naming question below is settled.
+
+**The full name.** `machine-design-studio` presumes the domain the question
+above puts in doubt. The editor display name is now **NodeBooks**, leaning on
+the two generic parts of the product (nodes and the notebook); the open
+question is whether the repository, deployed URL, package names, and docs
+should follow it. A full rename touches all of those surfaces, so do it once
+after the scope question is answered, not twice.
+
+**Display name: NodeBooks.** The editor header should call the product
+**NodeBooks** now, in the right-hand header group before its GitHub icon and
+version. This is a product-facing label, not yet a decision to rename the
+repository, package names, or deployed URL; take that larger rename together
+with the scope question above.
+
+**Notebook themes, for classroom use.** A course or an instructor should be
+able to put the notebook in their own visual key — school colours, a print-
+friendly variant for handouts, a high-contrast variant for a projector.
+Open beyond the styling itself: where a theme comes from. A file the student
+imports alongside the catalogue works with no backend; auto-loading a
+course's theme (so every student in a class gets it without a manual step)
+does not, and so folds into the backend decision above. Ships fine as
+importable-only if the backend never happens.
 
 ## Editor backlog
 
@@ -141,6 +154,80 @@ docs for hand-writing JSON, a schema validator with useful errors, a
 scaffold CLI, or eventually the authoring UI itself. Revisit later; keep in
 mind rather than build toward yet.
 
+**Why is the Math catalogue a JSON file?** Checked before writing this down:
+it isn't hand-written JSON. `packages/nodes/src/operations.ts` authors the
+operations as TypeScript `Formula` records, `catalogue.ts` serializes them
+(`baseCatalogueJson`), and `packages/editor/src/model/catalogues.ts` loads
+that string through the ordinary `loadCatalogue` path — deliberately, so a
+base node and a belt formula are the same kind of object to the palette, the
+graph and the kernel. The open part is whether that round trip is still
+worth its cost now that the palette special-cases the base catalogue by id
+anyway (`Palette.tsx`'s `isMath`), or whether the operations should just be
+a library the kernel knows about directly.
+
+**General nodes need a general catalogue.** `compare` and `closure` (the
+student-authored equation node) are node kinds in the schema
+(`packages/schema/src/document.ts`), not catalogue entries — so they arrive
+in the palette by a different route than every other node, and there's no
+place to put the next one. They belong in a general catalogue alongside
+Math: domain-free, unrestricted, citation-free. Decide together with the
+question above, since both are really "what is the base library, and how
+does it reach the palette".
+
+**A machining catalogue** — machining power, chip load, and the rest of the
+cutting-parameter set. Content, not editor work; the nearest existing model
+is `basic-mechanics.json`, unrestricted and public, since none of this is
+R&M material.
+
+**User-authored equations should be saveable to the palette.** Today a
+`closure` node's expression lives in the graph that contains it — write the
+same equation in the next notebook and you type it again. The want: save it
+as a reusable node, have it appear in the palette, and remove it from the
+palette again when it stops being useful. Design questions before building:
+where saved nodes live (a user catalogue, or a distinct store), how they're
+identified and versioned given a catalogue formula carries id/version/hash,
+and what happens to a graph referencing a node the user later deletes —
+which is the quarantine question again, not a new one.
+
+**Export and import user-authored nodes**, one node or the whole list, so a
+set can be handed to a colleague or a class. Same rule as any other export:
+the never-embed boundary makes this straightforward — user-authored content
+is the student's own, so its expression travels with it, unlike an R&M
+formula. Naturally follows the palette-saving item above and shares its
+storage decision.
+
+**Catalogue-item context menu and favourites.** Right-clicking an item in a
+catalogue should open a small menu with **Insert**, **Help**, and **Add to
+favourites**. Favourites form a catalogue section at the top of the palette;
+favouriting duplicates the entry there and leaves it in its original catalogue.
+Open details: whether favourites persist locally (the likely expectation), and
+what **Help** resolves to — formula metadata in the app, documentation, or
+both. This belongs with user catalogues, rather than being a palette-only
+preference, because user-authored nodes should be favouritable in exactly the
+same way.
+
+**Selection actions and a selection context menu.** A multi-node selection
+needs right-click actions, initially **align** and **arrange**. Alignment is a
+well-bounded set of canvas commands (left/right/top/bottom/centre); arrange
+needs its own small design before implementation: preserve the user's graph
+reading order and group frames, avoid crossing wires where possible, and do
+not let an automatic layout unexpectedly rewrite a carefully placed notebook.
+This extends the existing selection behavior (move and delete together) rather
+than introducing another selection model.
+
+**Viewport controls and keyboard-reference overlay.** Add a faint control
+overlay at the top left of the viewport that teaches the canvas's direct
+manipulation: Shift-drag marquee selection and Ctrl-click selection, plus the
+core shortcuts. The expected set is Ctrl+A, Z, Y, C, V, and D; audit each
+against the current editor before promising it in the overlay, then implement
+or intentionally omit the gaps. The existing Ctrl+A backlog item folds into
+this rather than standing alone.
+
+**Minimap visibility.** Put a Show/Hide minimap toggle in the ribbon's
+**View** menu and let a right-click on the minimap close it. Persisting that
+choice is already implemented locally; the broader settings-persistence item
+below is specifically about panel widths and other remaining preferences.
+
 **Extensive worked examples**, beyond the one belt lab sample. Waits on
 breadth — more chapters, or more graphs within belt — rather than being an
 editor feature on its own. Revisit once the second slice is in.
@@ -156,7 +243,8 @@ frames only the current selection, or spawns an empty section at an open
 location with none selected (`groupIntoSection`, `model/document.ts`). Open
 beyond that: what else, if anything, should a selection enable — move
 together (already true, independent React Flow nodes), delete together
-(already true, Backspace/Delete), anything else?
+(already true, Backspace/Delete), anything else? The first additional actions
+are now defined above: right-click offers alignment and arrange.
 
 **Spectrum-editing UI.** A load spectrum (a hand-typed collection consumed
 whole by an aggregation, not swept) exists in the schema, but nothing in the
@@ -174,9 +262,16 @@ which complicate calculations via the combination of normal and bending
 loads. Catalogue content, for when that chapter is designed — not an editor
 question.
 
-**Are all nodes addable in the quick add?**
+**Quick Add should offer every compatible node kind.** Today it offers
+catalogue formulas, Input, Compare, and output nodes, but not Closure or the
+routing nodes. The rule: when a wire is dropped onto empty canvas, offer every
+node kind that can validly complete that wire and hide kinds with no compatible
+port. This is an extension of the existing connection-aware filter, not a
+second palette.
 
-**Settings should be persistent.** Panel widths are not stored.
+**Persist the remaining settings.** Number format, colour theme, and minimap
+visibility already persist locally. Palette and notebook widths do not; store
+them as local, per-device UI preferences rather than graph-file state.
 
 **Visualization nodes** — cantilever beams, bending-moment diagrams and the
 like. Generic mechanics content, not R&M-specific, so this lives in the
@@ -204,25 +299,57 @@ e.g. feature-usage events like "sweep run" or "plot created" — is still
 open; whatever set gets chosen should be documented in one place so "what
 does this log" has a single answer.
 
-**Fuzzy find in the catalogue palette too!** There is precedent in the quick add menu.
+**Fuzzy find in the catalogue palette.** The reusable fuzzy-search helper
+already powers Quick Add. Add palette search over node/formula name, symbol,
+description, and citation; with an empty query the palette retains its normal
+catalogue grouping. This is UI state and rendering work, not a new search
+mechanism.
 
-**Optional ports should change the unit when it is connected with a port.** Now it blocks connections.
+**A wired optional/default port overrides its typed default.** A threshold
+with a typed default currently blocks a wire of another unit even while its
+main `value` port is unconnected. A connected wire must establish the port's
+current unit and override the default; once `value` is connected, the two
+ports must agree. Removing the wire restores the authored default and its
+unit. This is connection/type resolution, not just an editor display change.
 
-**Ctrl+A does not select all nodes.** It follows browser default. Maybe we need more shortcut overrides?
+**Autosave restore notification appears twice.** Reproduced behavior: after
+restoring an autosave, two notifications appear at once. Trace the duplicate
+creation path and retain one clear restore notice.
 
-**Restore notification pops up twice**
+**Header branding and GitHub link.** The header already has an issue link in
+its feedback text. Add a GitHub repository icon to the right of the NodeBooks
+title and before the version, in the right-hand header group.
 
-**Add Github link to app header.**
+**Docs and editor titles.** Keep the repository/docs identity unchanged until
+the broader rename is decided; the editor itself can use the NodeBooks display
+name now.
 
-**Docs title and editor are the same.** Both `machine-design-studio`
+**Nodes declare preferred display units.** Dimensions do not have one global
+presentation unit: values evaluate canonically, while a node port declares the
+unit it prefers to show and display boundaries convert to it. A frequency port
+can therefore prefer `Hz` over bare `s⁻¹`; a machine-design stress port can
+prefer `N/mm²`, while another catalogue may legitimately prefer `Pa`. Generic
+nodes should propagate a connected unit unless they have a deliberate
+preference of their own, and outputs retain the user's existing ability to
+choose a display unit. This replaces a global SI-normalisation rule, which
+would make the right answer unreadable in the wrong domain.
 
-**s^-1 unit should be Hz when it is bare**
+**Use parentheses around units in labels.** Whenever a parameter and its unit
+form one interface label, render `parameter (unit)`, including input and
+output ports; omit parentheses if no unit is shown. Implement this through
+shared presentation components/styles, not node-by-node patches.
 
-**Unit on output port should be in parentheses.** Like in all other parts of the UX, e.g. tables. Now it is just besides the parameter, and is confusing. This should be the case for all combinations of [parameter] [unit], explore and discuss.
+**Development branch workflow.** Decided: continue working directly on
+`main` for the solo alpha, accepting that each push triggers a Netlify deploy.
+Revisit branch deploy previews only if direct deployment begins to obstruct
+review or testing; no `dev` branch is needed now.
 
-**Should we work in dev and main branch?** As deploy rebuilds on every new commit in main. How do other projects handle this?
-
-**node titles might have latex type variables.** Input nodes can be titled e.g. c_2. SHould we resolve these kind of notations on validation?
+**Typeset mathematical notation in node titles.** KaTeX already renders
+equations. Preserve raw title text in documents and render TeX-like notation
+such as `c_2` or `\\sigma` for display, with a plain-text fallback. Add a
+setting to opt out of title math rendering. Do not silently rewrite or
+normalise titles during validation; ordinary prose must remain safe to enter
+and round-trip unchanged.
 
 ## Commit conventions and release tooling
 
