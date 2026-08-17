@@ -757,7 +757,7 @@ aside.right {
    Its endpoints get a quiet ring while the edge itself receives the primary
    accent below. */
 .react-flow__node.edge-connected .node {
-  box-shadow: 0 0 0 2px var(--accent-wash), var(--shadow-sm);
+  box-shadow: 0 0 0 2px var(--hover-bg), var(--shadow-sm);
 }
 
 .react-flow__edge.edge-hovered .react-flow__edge-path {
