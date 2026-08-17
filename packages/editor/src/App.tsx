@@ -240,6 +240,7 @@ function AppShell(): ReactElement {
   );
   const dismissNotice = (id: string): void =>
     setNotices((current) => current.filter((notice) => notice.id !== id));
+  const restoredAutosaveNoticeShown = useRef(false);
 
   /** A notice joins the stack rather than replacing it, and clears itself. */
   const pushNotice = (message: string): void => {
@@ -267,8 +268,12 @@ function AppShell(): ReactElement {
 
   // Runs once: a notice, not a blocking prompt, so it doesn't stand between
   // the student and the graph autosave already restored onto the canvas.
+  // React StrictMode replays mount effects in development, so keep this
+  // append-only notification idempotent across that replay.
   useEffect(() => {
-    if (restoredAutosave) pushNotice('Restored unsaved work from the last session.');
+    if (!restoredAutosave || restoredAutosaveNoticeShown.current) return;
+    restoredAutosaveNoticeShown.current = true;
+    pushNotice('Restored unsaved work from the last session.');
   }, []);
 
   const setNumberFormat = (next: NumberFormatSettings): void => {
