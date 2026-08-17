@@ -1877,7 +1877,7 @@ aside.right {
 /* Observable puts a legend before the SVG. Keep a continuous contour scale
  * alongside its plot, where it can be read against the y axis; ordinary
  * categorical swatches retain Observable's usual above-the-chart layout. */
-.notebook .figure:has(.contour-colorbar-ramp) {
+.notebook .figure > figure:has(.contour-colorbar-ramp) {
   display: flex;
   align-items: center;
   gap: 8px;
