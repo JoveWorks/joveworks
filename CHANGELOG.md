@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.3.1](https://github.com/ThomasVanRiel/machine-design-studio/compare/v0.3.0...v0.3.1) (2026-08-17)
+
+### Features
+
+* **editor:** add NodeBooks header branding ([09ef5aa](https://github.com/ThomasVanRiel/machine-design-studio/commit/09ef5aa5643235804a87a6aef6630a64d482ba8d))
+* **editor:** typeset mathematical node titles ([1c2a489](https://github.com/ThomasVanRiel/machine-design-studio/commit/1c2a489b66243e01b02f203a348bc983b8c08c44))
+* let ports declare a preferred display unit ([c0f7df8](https://github.com/ThomasVanRiel/machine-design-studio/commit/c0f7df882bf0f33e2f169edffd774c42689d213c))
+
+### Fixes
+
+* **editor:** deduplicate autosave restore notice ([e20f4f0](https://github.com/ThomasVanRiel/machine-design-studio/commit/e20f4f088169df6f741c71f683cace82f144de38))
+* **editor:** parenthesize units in interface labels ([003bf0a](https://github.com/ThomasVanRiel/machine-design-studio/commit/003bf0a59a54fb7389bb940af8816dadd07d6546))
+
+### Documentation
+
+* consolidate agent guidance and expand roadmap ([128fce5](https://github.com/ThomasVanRiel/machine-design-studio/commit/128fce54a709e0d515878e09ccb0fe1b0f0fbcd0))
+* Roadmap items. ([d1e55ba](https://github.com/ThomasVanRiel/machine-design-studio/commit/d1e55ba76ab2cfd3d1730aa42fb0b0a824dba03e))
+* Roadmap items. ([f3e78e5](https://github.com/ThomasVanRiel/machine-design-studio/commit/f3e78e5fbcb7f55c1566b20f06b36c479dc2764a))
+* Roadmap items. ([ad24bda](https://github.com/ThomasVanRiel/machine-design-studio/commit/ad24bdaac56900a8062c47c173cfbdd8fe7e5649))
+* Roadmap items. ([8dfde7a](https://github.com/ThomasVanRiel/machine-design-studio/commit/8dfde7a5929aff4766f8cf9e0a11d070d1b323ee))
+* trim stale milestone-1 status blurbs from OVERVIEW and README ([e3eb85a](https://github.com/ThomasVanRiel/machine-design-studio/commit/e3eb85adbff540eb383813901643de42777e8c01))
 ## [0.3.0](https://github.com/ThomasVanRiel/machine-design-studio/compare/v0.2.0...v0.3.0) (2026-08-16)
 
 ### Features
