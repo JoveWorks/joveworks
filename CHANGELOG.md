@@ -2,6 +2,39 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.9.0](https://github.com/ThomasVanRiel/joveworks/compare/v0.8.0...v0.9.0) (2026-08-18)
+
+### Features
+
+* add Monte Carlo node catalogue ([#27](https://github.com/ThomasVanRiel/joveworks/issues/27)) ([5c89fb8](https://github.com/ThomasVanRiel/joveworks/commit/5c89fb89fefd6945cab2a31ca83e20c21bb12ad1))
+* **editor:** add canvas fuzzy find ([091d77f](https://github.com/ThomasVanRiel/joveworks/commit/091d77fd4fe3122dc6694d81cf03f36f8872a92a))
+* **editor:** highlight ports from edge hovers ([7e26681](https://github.com/ThomasVanRiel/joveworks/commit/7e266814242d2eb72dd34be0a6ccf281fe3f1b38))
+
+### Fixes
+
+* **editor:** align the canvas grid with node bounds ([63fd28b](https://github.com/ThomasVanRiel/joveworks/commit/63fd28b2952238c616fe88882e2bf643c7c4dec6))
+* **editor:** center Monte Carlo playback controls and size the notebook histogram ([cc0adbb](https://github.com/ThomasVanRiel/joveworks/commit/cc0adbbea55c4da48086bf916651e2be493c7d54))
+* **editor:** consolidate edge-hover highlight styling ([cea7f6e](https://github.com/ThomasVanRiel/joveworks/commit/cea7f6ebd94d5ada0f93a686781b4c52c6424617))
+* **editor:** grid-snap frame resize, fix catalogue grouping, restore print width ([e6fa2e2](https://github.com/ThomasVanRiel/joveworks/commit/e6fa2e2143a65bdf9c5a5f94e20f080ea95217c6))
+* **editor:** highlight Monte Carlo nodes/ports on edge hover ([491a990](https://github.com/ThomasVanRiel/joveworks/commit/491a9902f873867f0aff551eb10f776e9bf00e8d))
+* **editor:** stop dragging through text fields ([677d2f2](https://github.com/ThomasVanRiel/joveworks/commit/677d2f24b8f591b4e51e11fa888b859e27e065ea))
+* **editor:** stop the Monte Carlo mean label distorting at fluid width ([91bf838](https://github.com/ThomasVanRiel/joveworks/commit/91bf838d90e054f125584cd1ca0636082a036b05))
+* **editor:** tighten Monte Carlo layout and playback control legibility ([ac2961e](https://github.com/ThomasVanRiel/joveworks/commit/ac2961e71d89de646bdc4e3eb205c7c92b5fa50e))
+* **editor:** use measured node sizes in auto-arrange ([1aba4d4](https://github.com/ThomasVanRiel/joveworks/commit/1aba4d4c91cc60e4c9f04326aa5375c3cf65d7d0))
+* **editor:** wrap node and notebook titles ([ed53801](https://github.com/ThomasVanRiel/joveworks/commit/ed53801e6e564a77a855265ba5b969b146ea8d51))
+* **nodes:** rename built-in nodes to base nodes ([394a8bf](https://github.com/ThomasVanRiel/joveworks/commit/394a8bf17757fd895445000cbff3af8614f37a32))
+
+### Documentation
+
+* mark roadmap group C items as implemented ([5d1aedc](https://github.com/ThomasVanRiel/joveworks/commit/5d1aedcb813f9317ffb2506d0a3f7ba5516b99a4)), references [#10](https://github.com/ThomasVanRiel/joveworks/issues/10) [#14](https://github.com/ThomasVanRiel/joveworks/issues/14) [#15](https://github.com/ThomasVanRiel/joveworks/issues/15) [#18](https://github.com/ThomasVanRiel/joveworks/issues/18) [#19](https://github.com/ThomasVanRiel/joveworks/issues/19) [#26](https://github.com/ThomasVanRiel/joveworks/issues/26) [#28](https://github.com/ThomasVanRiel/joveworks/issues/28)
+* number backlog, add session groupings, and clarify no-CAS stance ([f073b46](https://github.com/ThomasVanRiel/joveworks/commit/f073b46182a5bc0fa0f376707a4f492ad96b3c92))
+* resolve Monte Carlo catalogue open questions ([#27](https://github.com/ThomasVanRiel/joveworks/issues/27)) ([f6daeff](https://github.com/ThomasVanRiel/joveworks/commit/f6daeffef45daad3dcb9cbb694a7638fa8c9c006))
+* Roadmap items. ([8858628](https://github.com/ThomasVanRiel/joveworks/commit/885862869c529ce2913f45a290f238db3b129378))
+* Roadmap items. ([5220621](https://github.com/ThomasVanRiel/joveworks/commit/5220621d6cbebdda11add7c6d59a3bd1a634d7ec))
+* **roadmap:** trim landed items, add review feedback notes ([501b0fa](https://github.com/ThomasVanRiel/joveworks/commit/501b0faa281be23ca305a8a687517df90f42ffa3))
+* update roadmap ([e8edb3b](https://github.com/ThomasVanRiel/joveworks/commit/e8edb3b19922f3e03797f0b2a9268adb140351eb))
+* update roadmap ([5e237d4](https://github.com/ThomasVanRiel/joveworks/commit/5e237d4bf3cdea9332f090a7b3f6b733bbcd3526))
+* update roadmap ([1545057](https://github.com/ThomasVanRiel/joveworks/commit/1545057d6514532987fd54e7efa1ce2c3adcf0dc))
 ## [0.8.0](https://github.com/ThomasVanRiel/joveworks/compare/v0.7.2...v0.8.0) (2026-08-18)
 
 ### Features
