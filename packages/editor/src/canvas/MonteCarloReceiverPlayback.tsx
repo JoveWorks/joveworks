@@ -120,11 +120,20 @@ function Histogram({
   // Fixed pixel rows, in real CSS pixels via the wrapper below — not a
   // fraction of `height` or anything inside the (possibly stretched)
   // viewBox — so the label always has exactly enough clearance regardless
-  // of chart size.
-  const labelHeight = showLabel ? 18 : 0;
+  // of chart size. The notebook's larger label (`.notebook .mc-mean-label`
+  // in styles.css) needs a taller reservation than the compact node's.
+  const labelHeight = showLabel ? (fluid ? 26 : 18) : 0;
 
   return (
-    <div className="mc-histogram-wrap" style={{ paddingTop: labelHeight }}>
+    <div
+      className={`mc-histogram-wrap${fluid ? ' large' : ''}`}
+      // Sized to match the SVG's own rendered width exactly — a bare block
+      // `<div>` otherwise fills its whole container (the node card, wider
+      // than a compact-size chart), so the label's `left: X%` below would
+      // land at X% of the *card*, not X% of the chart, and drift off the
+      // line it's meant to sit above.
+      style={{ paddingTop: labelHeight, width: fluid ? '100%' : width }}
+    >
       {showLabel ? (
         <span
           className="mc-mean-label"
@@ -240,20 +249,23 @@ export function MonteCarloReceiverPlayback({
         />
       )}
 
-      <div className="mc-transport nodrag">
-        <button
-          type="button"
-          disabled={!canPlay && !playing}
-          onClick={() => toggleMonteCarloPlayback(receiverId)}
-        >
-          {playing ? '⏸' : '▶'}
-        </button>
-        <button type="button" disabled={!canPlay} onClick={() => stepMonteCarloPlayback(receiverId)}>
-          ⏭
-        </button>
-        <button type="button" onClick={() => resetMonteCarloPlayback(receiverId)}>
-          ↺
-        </button>
+      <div className={`mc-transport nodrag${size === 'large' ? ' large' : ''}`}>
+        <div className="mc-transport-buttons">
+          <button
+            type="button"
+            className="primary"
+            disabled={!canPlay && !playing}
+            onClick={() => toggleMonteCarloPlayback(receiverId)}
+          >
+            {playing ? '⏸' : '▶'}
+          </button>
+          <button type="button" disabled={!canPlay} onClick={() => stepMonteCarloPlayback(receiverId)}>
+            ⏭
+          </button>
+          <button type="button" onClick={() => resetMonteCarloPlayback(receiverId)}>
+            ↺
+          </button>
+        </div>
         <span className="mc-progress">
           {values.length} / {sampleLimit}
         </span>

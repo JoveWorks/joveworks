@@ -1002,12 +1002,28 @@ aside.right {
   pointer-events: none;
 }
 
+/* The notebook's histogram is sized like a plot (`.large` — see
+   MonteCarloReceiverPlayback.tsx); its label reads better a size up from
+   the compact node's own 11px. */
+.mc-histogram-wrap.large .mc-mean-label {
+  font-size: 15px;
+}
+
+/* Buttons pinned left, the count pinned right, each as its own group — so
+   neither shifts when the count's own digit-width changes (a centred
+   single row would otherwise nudge the buttons sideways every batch). */
 .mc-transport {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
   gap: 4px;
   margin-top: 4px;
+}
+
+.mc-transport-buttons {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .mc-transport button {
@@ -1015,11 +1031,46 @@ aside.right {
   padding: 2px 6px;
 }
 
+/* Bigger everywhere in the notebook's larger widget (`size="large"`) — the
+   controls otherwise read as an afterthought next to a chart sized like a
+   plot. */
+.mc-transport.large {
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.mc-transport.large .mc-transport-buttons {
+  gap: 8px;
+}
+
+.mc-transport.large button {
+  font-size: 15px;
+  padding: 5px 12px;
+}
+
+/* Play/pause is the primary action — accented so it reads as the obvious
+   next click, clearly distinct from step/reset — but still falls back to
+   the ordinary muted `:disabled` look (a higher-specificity rule below)
+   once there's nothing left to play, rather than staying accented and
+   inert. */
+.mc-transport button.primary {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.mc-transport button.primary:disabled {
+  border-color: var(--line);
+  color: var(--muted);
+}
+
 .mc-progress {
   color: var(--muted);
   font-size: 11px;
-  margin-left: 4px;
   font-variant-numeric: tabular-nums;
+}
+
+.mc-transport.large .mc-progress {
+  font-size: 14px;
 }
 
 /* The no-data fallback only — once there is a histogram to draw, its own

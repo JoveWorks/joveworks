@@ -304,7 +304,7 @@ export function monteCarloClearance(_catalogues: readonly Catalogue[], locale: A
       at(400, 170),
     ),
 
-    receiver('watch', 'Clearance distribution', 1000, at(400, 400)),
+    receiver('watch', 'Clearance distribution', 1000, at(400, 330)),
   ];
 
   const edges = [
@@ -316,7 +316,9 @@ export function monteCarloClearance(_catalogues: readonly Catalogue[], locale: A
   // Two sections: the stack-up's numbers, and — separately — the receiver
   // that watches them accumulate. Different content, different note, so a
   // student can read "what the calculation says" and "what playback shows"
-  // as two distinct claims rather than one frame doing both jobs.
+  // as two distinct claims rather than one frame doing both jobs. Sized
+  // to the single-column node stack each actually holds, not the wider
+  // multi-column allowance a plot-bearing frame (padPressure) needs.
   const frames = [
     {
       id: 'stack-up',
@@ -324,15 +326,15 @@ export function monteCarloClearance(_catalogues: readonly Catalogue[], locale: A
       note:
         'A hole bored to Ø20.02 mm and a shaft ground to Ø19.98 mm each vary from part to part. Their independent tolerances combine (root-sum-square) into a clearance that draws from a normal distribution — the value and interference check below both read that same generator.',
       position: at(340, -80),
-      size: { width: 460, height: 330 },
+      size: { width: 320, height: 290 },
     },
     {
       id: 'distribution',
       title: 'Watch it converge',
       note:
         'Press play and watch the samples accumulate and the mean converge — a single worst-case subtraction would miss how rarely the extremes actually coincide.',
-      position: at(340, 320),
-      size: { width: 460, height: 260 },
+      position: at(340, 250),
+      size: { width: 320, height: 220 },
     },
   ];
 
