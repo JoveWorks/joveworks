@@ -283,6 +283,12 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
     { id: 'builtin:output:check', label: copy.check, summary: copy.checkSummary, insert: () => addOutput('check') },
   ];
 
+  // Grouped by id prefix, not array position — a positional slice silently
+  // reshuffles category membership whenever an entry is inserted or removed.
+  const inputActions = actions.filter((action) => action.id.startsWith('builtin:input:'));
+  const generalActions = actions.filter((action) => action.id.startsWith('builtin:general:'));
+  const outputActions = actions.filter((action) => action.id.startsWith('builtin:output:'));
+
   // A separate catalogue-styled section, not part of General — Monte Carlo
   // generator/receiver are their own node kinds with their own concerns
   // (playback, distributions), distinct enough from routing nodes like
@@ -424,7 +430,7 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
               <button type="button" className="section-toggle" onClick={() => toggleCollapsed(INPUT)}>
                 <span className="section-toggle-title">
                   {copy.input}
-                  {inputCollapsed ? <span className="section-toggle-count"> (3)</span> : null}
+                  {inputCollapsed ? <span className="section-toggle-count"> ({inputActions.length})</span> : null}
                 </span>
                 <span className="chevron" aria-hidden="true">
                   {inputCollapsed ? '▸' : '▾'}
@@ -433,7 +439,28 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
             </h3>
             {inputCollapsed ? null : (
               <ul>
-                {actions.slice(0, 3).map((action) => actionEntry(action))}
+                {inputActions.map((action) => actionEntry(action))}
+              </ul>
+            )}
+          </section>
+        ) : null}
+
+        {query.trim().length === 0 ? (
+          <section>
+            <h3>
+              <button type="button" className="section-toggle" onClick={() => toggleCollapsed(OUTPUT)}>
+                <span className="section-toggle-title">
+                  {copy.output}
+                  {outputCollapsed ? <span className="section-toggle-count"> ({outputActions.length})</span> : null}
+                </span>
+                <span className="chevron" aria-hidden="true">
+                  {outputCollapsed ? '▸' : '▾'}
+                </span>
+              </button>
+            </h3>
+            {outputCollapsed ? null : (
+              <ul>
+                {outputActions.map((action) => actionEntry(action))}
               </ul>
             )}
           </section>
@@ -442,11 +469,11 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
         {query.trim().length === 0 ? (
           <section>
             <h3><button type="button" className="section-toggle" onClick={() => toggleCollapsed(GENERAL)}>
-              <span className="section-toggle-title">{copy.general}{collapsed.has(GENERAL) ? ' (5)' : ''}</span>
+              <span className="section-toggle-title">{copy.general}{collapsed.has(GENERAL) ? ` (${generalActions.length})` : ''}</span>
               <span className="chevron" aria-hidden="true">{collapsed.has(GENERAL) ? '▸' : '▾'}</span>
             </button></h3>
             {collapsed.has(GENERAL) ? null : <ul>
-              {actions.slice(3, 8).map((action) => actionEntry(action))}
+              {generalActions.map((action) => actionEntry(action))}
             </ul>}
           </section>
         ) : null}
@@ -458,27 +485,6 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
               <span className="chevron" aria-hidden="true">{collapsed.has(USER) ? '▸' : '▾'}</span>
             </button></h3>
             {collapsed.has(USER) ? null : <ul>{userEquations.map((equation) => userEquationEntry(equation))}</ul>}
-          </section>
-        ) : null}
-
-        {query.trim().length === 0 ? (
-          <section>
-            <h3>
-              <button type="button" className="section-toggle" onClick={() => toggleCollapsed(OUTPUT)}>
-                <span className="section-toggle-title">
-                  {copy.output}
-                  {outputCollapsed ? <span className="section-toggle-count"> (4)</span> : null}
-                </span>
-                <span className="chevron" aria-hidden="true">
-                  {outputCollapsed ? '▸' : '▾'}
-                </span>
-              </button>
-            </h3>
-            {outputCollapsed ? null : (
-              <ul>
-                {actions.slice(8).map((action) => actionEntry(action))}
-              </ul>
-            )}
           </section>
         ) : null}
 

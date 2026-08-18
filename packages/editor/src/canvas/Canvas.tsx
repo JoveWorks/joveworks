@@ -723,11 +723,20 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
           .filter((change) => frames.has(change.id))
           .map((change) => change.id),
       );
+      // NodeResizer only snaps the pointer driving the dragged corner
+      // (@xyflow/react's own snapGrid/snapToGrid), not the resulting box —
+      // the stationary corner is wherever it already was, so width/height
+      // land in grid-size increments without the edges actually landing on
+      // grid lines. Round the frame's reported box to the grid ourselves.
+      const gridSnap = (value: number): number => Math.round(value / CANVAS_GRID_SIZE) * CANVAS_GRID_SIZE;
       editLive((current) => {
         let next = current;
         for (const change of changes) {
           if (change.type === 'position' && change.position !== undefined) {
-            const position = change.position;
+            const position =
+              frames.has(change.id) && resizing.has(change.id) && snapToGrid
+                ? { x: gridSnap(change.position.x), y: gridSnap(change.position.y) }
+                : change.position;
             if (frames.has(change.id)) {
               // A frame is passive — nothing about membership changes
               // here, only every member's own position, by the same delta the
@@ -757,9 +766,12 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
           // same way a drag reports position, live change by live change, so
           // this is the only way the resize preview is not frozen until drop.
           if (change.type === 'dimensions' && change.dimensions !== undefined && frames.has(change.id)) {
+            const dimensions = snapToGrid
+              ? { width: gridSnap(change.dimensions.width), height: gridSnap(change.dimensions.height) }
+              : change.dimensions;
             next = updateFrame(next, change.id, (frame) => ({
               ...frame,
-              size: change.dimensions as { width: number; height: number },
+              size: dimensions as { width: number; height: number },
             }));
           }
         }
@@ -772,7 +784,7 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
       // `onEdgesChange`'s, for the same keypress) has fully landed.
       if (removed.size > 0) queueMicrotask(() => commitEdit());
     },
-    [document.frames, editLive, commitEdit],
+    [document.frames, editLive, commitEdit, snapToGrid],
   );
 
   const onEdgesChange = useCallback(
