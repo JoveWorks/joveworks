@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.8.0](https://github.com/ThomasVanRiel/joveworks/compare/v0.7.2...v0.8.0) (2026-08-18)
+
+### Features
+
+* **catalogue:** add press-fit extraction ([efd6fce](https://github.com/ThomasVanRiel/joveworks/commit/efd6fce68701907a71d572cf704a0c7b776d1269))
+* **editor:** add equal spacing and grid snapping ([ed5bd2a](https://github.com/ThomasVanRiel/joveworks/commit/ed5bd2aeb8cb8037ce3e014e77b270e9848b8e93))
+* **editor:** add panel close buttons ([38b3998](https://github.com/ThomasVanRiel/joveworks/commit/38b3998ff2b44655ea8f3db3eaf57b6f97f6f0bd))
+* **editor:** expose grid snapping on canvas ([fd6a8c8](https://github.com/ThomasVanRiel/joveworks/commit/fd6a8c8bf8ed3bfab740de992642d982ddaae21a))
+* **nodes:** add ISO 286 tolerance lookups ([d0c0e70](https://github.com/ThomasVanRiel/joveworks/commit/d0c0e701950648ee5c6e72967d0bc2decb5d0acc))
+
+### Fixes
+
+* **editor:** align panel header controls ([14f8b50](https://github.com/ThomasVanRiel/joveworks/commit/14f8b50b8bfd47ddf291b8d60c2691fec0c7b20f))
+* **editor:** clarify node keep-open control ([1cd8231](https://github.com/ThomasVanRiel/joveworks/commit/1cd823123cd9f98d4b98158199b650827819fac2))
+* **editor:** link version badge to release ([ed0e3d8](https://github.com/ThomasVanRiel/joveworks/commit/ed0e3d803439cfda66eb095fefd767411390e3fa))
+* **editor:** remove canvas grid button ([5983bee](https://github.com/ThomasVanRiel/joveworks/commit/5983bee655adbe5897f53d7c9eb6d7377fe563d6))
+* **editor:** separate settings menu category ([fc84f69](https://github.com/ThomasVanRiel/joveworks/commit/fc84f6963fad2b130683f541aa10b3f68c5849d9))
+* **editor:** show native shortcut modifier ([a2bcdee](https://github.com/ThomasVanRiel/joveworks/commit/a2bcdeef8e3afc2bf2e63fa2b34d40ba65aec40b))
+* **editor:** simplify favourites heading ([c6fd7e4](https://github.com/ThomasVanRiel/joveworks/commit/c6fd7e4b133fd1bf145098ac774942d277cc6698))
+
+### Documentation
+
+* update editor backlog ([be381a2](https://github.com/ThomasVanRiel/joveworks/commit/be381a2f273c5eaefd1121efbf14c4ed34d02bce))
 ## [0.7.2](https://github.com/ThomasVanRiel/joveworks/compare/v0.7.1...v0.7.2) (2026-08-18)
 
 ### Features
