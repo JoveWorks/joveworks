@@ -16,14 +16,16 @@ import { nodeLabel, reframe, removeNodes, syncColumnLabels, updateNode } from '.
 import { axisLabel, reading } from '../model/values';
 import { NodeShell } from './NodeShell';
 import { Sparkline } from './Sparkline';
+import type { CanvasFlowNode } from './node-data';
 import { TitleField, TitleText } from './TitleField';
 import { ValueFields, ValueKindSelect, ValuePointsField, ValueSliderBoundsFields } from './ValueEditor';
 
-export function InputNodeView({ id, selected }: NodeProps): ReactElement | null {
-  const { document, analysis, edit, expanded, toggleExpanded } = useGraph();
+export function InputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>): ReactElement | null {
+  const { document, analysis, edit, expanded, toggleExpanded, hovered } = useGraph();
   const node = document.nodes.find((candidate) => candidate.id === id);
   if (node === undefined || node.kind !== 'input') return null;
 
+  const highlightedPorts = new Set(data?.highlightedPorts ?? []);
   const value = reading(analysis, id, VALUE_PORT);
   const swept = isRange(node.value);
   const setValue = (next: InputNode['value']): void =>
@@ -34,6 +36,7 @@ export function InputNodeView({ id, selected }: NodeProps): ReactElement | null 
       kind="input"
       state={analysis.states.get(id) ?? 'ok'}
       selected={selected ?? false}
+      highlighted={data?.highlighted === true || hovered.has(id)}
       {...(analysis.problems.has(id) ? { problem: analysis.problems.get(id) } : {})}
       expanded={expanded.has(id)}
       onToggleExpanded={() => toggleExpanded(id)}
@@ -76,7 +79,16 @@ export function InputNodeView({ id, selected }: NodeProps): ReactElement | null 
           when it's a range — never both, and never neither. */}
       <div className="node-value-editor">
         <ValueFields value={node.value} onChange={setValue} />
-        {swept ? null : <Handle type="source" position={Position.Right} id={VALUE_PORT} />}
+        {swept ? null : (
+          <Handle
+            type="source"
+            position={Position.Right}
+            id={VALUE_PORT}
+            className={highlightedPorts.has(VALUE_PORT) ? 'port-highlighted' : ''}
+            onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: VALUE_PORT })}
+            onMouseLeave={() => data?.onPortHover?.()}
+          />
+        )}
       </div>
       {swept ? (
         // The extent is already the two bounds above, presented once — this
@@ -89,7 +101,14 @@ export function InputNodeView({ id, selected }: NodeProps): ReactElement | null 
               <TitleText value={axisLabel(value) ?? ''} />
             </span>
           )}
-          <Handle type="source" position={Position.Right} id={VALUE_PORT} />
+          <Handle
+            type="source"
+            position={Position.Right}
+            id={VALUE_PORT}
+            className={highlightedPorts.has(VALUE_PORT) ? 'port-highlighted' : ''}
+            onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: VALUE_PORT })}
+            onMouseLeave={() => data?.onPortHover?.()}
+          />
         </div>
       ) : null}
     </NodeShell>

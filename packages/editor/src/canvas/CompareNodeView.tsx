@@ -42,6 +42,7 @@ import { NodeShell } from './NodeShell';
 import { Sparkline } from './Sparkline';
 import { slotHandleId } from './spectrumSlots';
 import { TextField } from './fields';
+import type { CanvasFlowNode } from './node-data';
 import { TitleField } from './TitleField';
 
 /**
@@ -71,13 +72,14 @@ function Verdict({ nodeId }: { readonly nodeId: string }): ReactElement | null {
   );
 }
 
-export function CompareNodeView({ id, selected }: NodeProps): ReactElement | null {
-  const { document, analysis, edit, expanded, toggleExpanded } = useGraph();
+export function CompareNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>): ReactElement | null {
+  const { document, analysis, edit, expanded, toggleExpanded, hovered } = useGraph();
   const { numberFormat } = useSettings();
   const format = toUnitsFormat(numberFormat);
   const node = document.nodes.find((candidate) => candidate.id === id);
   if (node === undefined || node.kind !== 'compare') return null;
 
+  const highlightedPorts = new Set(data?.highlightedPorts ?? []);
   const state = analysis.states.get(id) ?? 'ok';
   const problem = analysis.problems.get(id);
   const verdict = reading(analysis, id, VERDICT_PORT);
@@ -101,6 +103,7 @@ export function CompareNodeView({ id, selected }: NodeProps): ReactElement | nul
       state={state}
       {...(problem === undefined ? {} : { problem })}
       selected={selected ?? false}
+      highlighted={data?.highlighted === true || hovered.has(id)}
       expanded={expanded.has(id)}
       onToggleExpanded={() => toggleExpanded(id)}
       onDelete={() => edit((current) => reframe(removeNodes(current, new Set([id]))))}
@@ -135,12 +138,16 @@ export function CompareNodeView({ id, selected }: NodeProps): ReactElement | nul
       }
     >
       <ul className="ports">
-        <li className={valueMissing ? 'port missing' : 'port'}>
+        <li
+          className={`${valueMissing ? 'port missing' : 'port'}${highlightedPorts.has(VALUE_PORT) ? ' port-highlighted' : ''}`}
+          onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: VALUE_PORT })}
+          onMouseLeave={() => data?.onPortHover?.()}
+        >
           <Handle
             type="target"
             position={Position.Left}
             id={slotHandleId(VALUE_PORT, 0)}
-            className={valueMissing ? 'missing' : ''}
+            className={`${valueMissing ? 'missing' : ''}${highlightedPorts.has(VALUE_PORT) ? ' port-highlighted' : ''}`}
           />
           <ParameterLabel
             name={VALUE_PORT}
@@ -149,8 +156,17 @@ export function CompareNodeView({ id, selected }: NodeProps): ReactElement | nul
             unitClassName="port-unit"
           />
         </li>
-        <li className="port">
-          <Handle type="target" position={Position.Left} id={slotHandleId(THRESHOLD_PORT, 0)} />
+        <li
+          className={`port${highlightedPorts.has(THRESHOLD_PORT) ? ' port-highlighted' : ''}`}
+          onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: THRESHOLD_PORT })}
+          onMouseLeave={() => data?.onPortHover?.()}
+        >
+          <Handle
+            type="target"
+            position={Position.Left}
+            id={slotHandleId(THRESHOLD_PORT, 0)}
+            className={highlightedPorts.has(THRESHOLD_PORT) ? 'port-highlighted' : ''}
+          />
           <ParameterLabel
             name={THRESHOLD_PORT}
             unit={thresholdUnit}
@@ -192,10 +208,21 @@ export function CompareNodeView({ id, selected }: NodeProps): ReactElement | nul
         <span className="reading">{verdict === undefined ? '—' : summarise(verdict, 4, format)}</span>
         {verdict === undefined ? null : <Sparkline reading={verdict} />}
         <Verdict nodeId={id} />
-        <span className="port-out">
+        <span
+          className={`port-out${highlightedPorts.has(VERDICT_PORT) ? ' port-highlighted' : ''}`}
+          onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: VERDICT_PORT })}
+          onMouseLeave={() => data?.onPortHover?.()}
+        >
           <Symbol name={VERDICT_PORT} />
         </span>
-        <Handle type="source" position={Position.Right} id={VERDICT_PORT} />
+        <Handle
+          type="source"
+          position={Position.Right}
+          id={VERDICT_PORT}
+          className={highlightedPorts.has(VERDICT_PORT) ? 'port-highlighted' : ''}
+          onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: VERDICT_PORT })}
+          onMouseLeave={() => data?.onPortHover?.()}
+        />
       </div>
     </NodeShell>
   );

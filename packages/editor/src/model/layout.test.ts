@@ -17,8 +17,9 @@ import {
 } from '@joveworks/schema';
 import { parseUnit } from '@joveworks/units';
 
-import { NODE_HEIGHT, NODE_WIDTH } from './layout-constants';
+import { BOTTOM_ROW_GAP_Y, GAP, NODE_HEIGHT, NODE_WIDTH } from './layout-constants';
 import { autoArrange } from './layout';
+import type { NodeSizes } from './node-sizes';
 
 const input = (id: string, x: number, y: number, frameId?: string): InputNode => ({
   kind: 'input',
@@ -90,6 +91,34 @@ function nodeY(document: GraphDocument, id: string): number {
 }
 
 describe('autoArrange', () => {
+  it('uses measured block sizes when stacking a column', () => {
+    const document: GraphDocument = {
+      ...base,
+      nodes: [input('inA', 0, 0), input('inB', 20, 20), closure('a', 0, 0), closure('b', 0, 10)],
+      edges: [edge('e1', 'inA', 'a'), edge('e2', 'inB', 'b')],
+    };
+    const sizes: NodeSizes = new Map([
+      ['a', { width: NODE_WIDTH, height: 120 }],
+      ['b', { width: NODE_WIDTH, height: 260 }],
+    ]);
+
+    const arranged = autoArrange(document, sizes);
+    expect(nodeX(arranged, 'a')).toBe(nodeX(arranged, 'b'));
+    expect(nodeY(arranged, 'b') - nodeY(arranged, 'a')).toBe(120 + GAP);
+  });
+
+  it('places the bottom output row below the tallest measured block', () => {
+    const document: GraphDocument = {
+      ...base,
+      nodes: [input('in', 0, 0), closure('mid', 0, 0), output('out', 0, 0)],
+      edges: [edge('e1', 'in', 'mid'), edge('e2', 'mid', 'out')],
+    };
+    const sizes: NodeSizes = new Map([['mid', { width: NODE_WIDTH, height: 280 }]]);
+
+    const arranged = autoArrange(document, sizes);
+    expect(nodeY(arranged, 'out')).toBe(nodeY(arranged, 'mid') + 280 + BOTTOM_ROW_GAP_Y);
+  });
+
   it('spreads overlapping loose nodes apart', () => {
     const document: GraphDocument = { ...base, nodes: [input('a', 0, 0), input('b', 5, 5)] };
     const arranged = autoArrange(document);

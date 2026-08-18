@@ -794,7 +794,7 @@ aside.right {
 
 .node header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 4px;
 }
 
@@ -802,20 +802,31 @@ aside.right {
   flex: 1;
   min-width: 0;
   font-weight: 600;
+  overflow-wrap: anywhere;
 }
 
-.node input.title {
+.node input.title,
+.node textarea.title {
   width: 100%;
   border: none;
   padding: 0;
   font-weight: 600;
   background: transparent;
+  font: inherit;
+}
+
+.node textarea.title {
+  min-height: 1.4em;
+  resize: none;
+  overflow: hidden;
+  line-height: inherit;
 }
 
 .node .title-math {
   display: block;
   width: 100%;
   cursor: text;
+  overflow-wrap: anywhere;
 }
 
 .title-math .katex {
@@ -1104,6 +1115,16 @@ aside.right {
   padding-left: 14px;
 }
 
+.node .port.port-highlighted,
+.node .port-out.port-highlighted {
+  color: var(--accent);
+}
+
+.node .port.port-highlighted .port-unit,
+.node .port-out.port-highlighted .port-unit {
+  color: inherit;
+}
+
 /* An unpack's resolved channels are outputs, but still use port rows rather
    than the single-value footer. Override the input-row docking above so their
    source handles stay on the node's output side. */
@@ -1264,16 +1285,16 @@ aside.right {
 }
 
 /* Hovering the notebook's own view of a node (a result block, a section
-   title) highlights its canvas counterpart the same way selection does —
-   see `hovered` in graph-context.ts. */
+   title), hovering a wire, or hovering a port highlights its canvas
+   counterpart the same way — see `hovered` in graph-context.ts and
+   `data.highlighted`/`connectedNodeIds` in Canvas.tsx. A quiet ring marks
+   the node while the edge or port itself receives the primary accent. */
 .node.highlighted {
   border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--hover-bg), var(--shadow-sm);
 }
 
-/* Hovering a wire identifies the relationship, not just the thin SVG path.
-   Its endpoints get a quiet ring while the edge itself receives the primary
-   accent below. */
-.react-flow__node.edge-connected .node {
+.react-flow__node.node-search-match .node {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--hover-bg), var(--shadow-sm);
 }
@@ -1376,6 +1397,16 @@ aside.right {
 .react-flow__handle.missing::after {
   border-color: var(--state-waiting);
   background: var(--state-waiting);
+}
+
+.react-flow__handle.port-highlighted::after,
+.port-highlighted .react-flow__handle::after {
+  border-color: var(--accent);
+}
+
+.react-flow__handle.source.port-highlighted::after,
+.port-highlighted .react-flow__handle.source::after {
+  background: var(--accent);
 }
 
 .node .port .react-flow__handle {
@@ -1642,6 +1673,7 @@ aside.right {
 
 .range-fields input,
 .output-editor input,
+.output-editor textarea,
 .output-editor select,
 .generator-editor input,
 .generator-editor select,
@@ -2195,6 +2227,43 @@ aside.right {
   color: var(--muted);
 }
 
+.canvas-find {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 360px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--paper);
+  box-shadow: var(--shadow-md);
+}
+
+.canvas-find .search {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  padding: 0;
+}
+
+.canvas-find .search:focus {
+  outline: none;
+}
+
+.canvas-find-count {
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.canvas-find-close {
+  border: none;
+  padding: 0;
+  background: transparent;
+  color: var(--muted);
+  line-height: 1;
+}
+
 /* --- notebook ----------------------------------------------------------- */
 
 .notebook {
@@ -2443,11 +2512,18 @@ aside.right {
 /* Output titles are editable at their reading location as well as on the
    canvas.  TitleField normally inherits its compact-node styling, so the
    NodeBook supplies the equivalent unobtrusive text-field treatment here. */
-.notebook .result .label .field {
-  display: inline;
+.notebook .result .label {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
-.notebook .result .label input.title {
+.notebook .result .label .field {
+  display: block;
+  max-width: 100%;
+}
+
+.notebook .result .label input.title,
+.notebook .result .label textarea.title {
   max-width: 100%;
   border: none;
   background: transparent;
@@ -2456,8 +2532,18 @@ aside.right {
   font: inherit;
 }
 
+.notebook .result .label textarea.title {
+  width: 100%;
+  min-height: 1.4em;
+  resize: none;
+  overflow: hidden;
+  line-height: inherit;
+}
+
 .notebook .result .label input.title:hover,
-.notebook .result .label input.title:focus {
+.notebook .result .label input.title:focus,
+.notebook .result .label textarea.title:hover,
+.notebook .result .label textarea.title:focus {
   outline: 1px dashed var(--muted);
   outline-offset: 2px;
 }

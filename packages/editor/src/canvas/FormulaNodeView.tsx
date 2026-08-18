@@ -29,19 +29,21 @@ import { ParameterLabel, UnitInLabel } from '../ParameterLabel';
 import { axisLabel, reading, summarise } from '../model/values';
 import { NodeShell } from './NodeShell';
 import { Sparkline } from './Sparkline';
+import type { CanvasFlowNode } from './node-data';
 import { slotHandleId } from './spectrumSlots';
 import { TitleField, TitleText } from './TitleField';
 import { DisplayUnitPicker } from './DisplayUnitPicker';
 import { TextField } from './fields';
 import { formatAuthored, parseAuthored } from '../model/quantity';
 
-export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | null {
-  const { document, analysis, edit, expanded, toggleExpanded } = useGraph();
+export function FormulaNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>): ReactElement | null {
+  const { document, analysis, edit, expanded, toggleExpanded, hovered } = useGraph();
   const { numberFormat, locale } = useSettings();
   const format = toUnitsFormat(numberFormat);
   const node = document.nodes.find((candidate) => candidate.id === id);
   if (node === undefined || node.kind !== 'formula') return null;
 
+  const highlightedPorts = new Set(data?.highlightedPorts ?? []);
   const formula = analysis.formulas.get(id);
   const source = analysis.sources.get(id);
   const state = analysis.states.get(id) ?? 'ok';
@@ -61,6 +63,7 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
         state="error"
         {...(problem === undefined ? {} : { problem })}
         selected={selected ?? false}
+        highlighted={data?.highlighted === true || hovered.has(id)}
         expanded={expanded.has(id)}
         onToggleExpanded={() => toggleExpanded(id)}
         onDelete={() => edit((current) => reframe(removeNodes(current, new Set([id]))))}
@@ -128,6 +131,7 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
       {...(problem === undefined ? {} : { problem })}
       {...(warning.length === 0 ? {} : { warning })}
       selected={selected ?? false}
+      highlighted={data?.highlighted === true || hovered.has(id)}
       expanded={expanded.has(id)}
       onToggleExpanded={() => toggleExpanded(id)}
       onDelete={() => edit((current) => reframe(removeNodes(current, new Set([id]))))}
@@ -183,12 +187,17 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
           // re-rendering from the edge list *is* the shift.
           if (port.kind !== 'spectrum') {
             return (
-              <li key={port.name} className={missing(port) ? 'port missing' : 'port'}>
+              <li
+                key={port.name}
+                className={`${missing(port) ? 'port missing' : 'port'}${highlightedPorts.has(port.name) ? ' port-highlighted' : ''}`}
+                onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: port.name })}
+                onMouseLeave={() => data?.onPortHover?.()}
+              >
                 <Handle
                   type="target"
                   position={Position.Left}
                   id={slotHandleId(port.name, 0)}
-                  className={missing(port) ? 'missing' : ''}
+                  className={`${missing(port) ? 'missing' : ''}${highlightedPorts.has(port.name) ? ' port-highlighted' : ''}`}
                 />
                 <ParameterLabel
                   name={port.name}
@@ -235,8 +244,18 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
 
           const count = edgesAt(port.name);
           const filled = Array.from({ length: count }, (_unused, i) => (
-            <li key={`${port.name}-${i}`} className="port">
-              <Handle type="target" position={Position.Left} id={slotHandleId(port.name, i)} />
+            <li
+              key={`${port.name}-${i}`}
+              className={`port${highlightedPorts.has(port.name) ? ' port-highlighted' : ''}`}
+              onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: port.name })}
+              onMouseLeave={() => data?.onPortHover?.()}
+            >
+              <Handle
+                type="target"
+                position={Position.Left}
+                id={slotHandleId(port.name, i)}
+                className={highlightedPorts.has(port.name) ? 'port-highlighted' : ''}
+              />
               {i === 0 ? (
                 <>
                   <ParameterLabel
@@ -256,13 +275,15 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
             ...filled,
             <li
               key={`${port.name}-open`}
-              className={count === 0 ? 'port missing' : 'port port-open'}
+              className={`${count === 0 ? 'port missing' : 'port port-open'}${highlightedPorts.has(port.name) ? ' port-highlighted' : ''}`}
+              onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: port.name })}
+              onMouseLeave={() => data?.onPortHover?.()}
             >
               <Handle
                 type="target"
                 position={Position.Left}
                 id={slotHandleId(port.name, 'open')}
-                className={count === 0 ? 'missing' : ''}
+                className={`${count === 0 ? 'missing' : ''}${highlightedPorts.has(port.name) ? ' port-highlighted' : ''}`}
               />
               {count === 0 ? (
                 <span className="port-name" title={port.description === undefined ? '' : localize(port.description, locale)}>
@@ -282,13 +303,24 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
             <TitleText value={axisLabel(value) ?? ''} />
           </span>
         )}
-        <span className="port-out">
+        <span
+          className={`port-out${highlightedPorts.has(formula.output.name) ? ' port-highlighted' : ''}`}
+          onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: formula.output.name })}
+          onMouseLeave={() => data?.onPortHover?.()}
+        >
           <ParameterLabel name={formula.output.name} />
           {outputUnit === undefined ? null : (
             <DisplayUnitPicker unit={outputUnit} onChange={setOutputDisplayUnit} />
           )}
         </span>
-        <Handle type="source" position={Position.Right} id={formula.output.name} />
+        <Handle
+          type="source"
+          position={Position.Right}
+          id={formula.output.name}
+          className={highlightedPorts.has(formula.output.name) ? 'port-highlighted' : ''}
+          onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: formula.output.name })}
+          onMouseLeave={() => data?.onPortHover?.()}
+        />
       </div>
     </NodeShell>
   );

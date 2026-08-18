@@ -18,14 +18,16 @@ import { reframe, removeNodes, renameNode } from '../model/document';
 import { ParameterLabel } from '../ParameterLabel';
 import { NodeShell } from './NodeShell';
 import { packChannelLabels } from './bundleLabels';
+import type { CanvasFlowNode } from './node-data';
 import { slotHandleId } from './spectrumSlots';
 import { TitleField } from './TitleField';
 
-export function PackNodeView({ id }: NodeProps): ReactElement | null {
-  const { document, analysis, edit } = useGraph();
+export function PackNodeView({ id, data }: NodeProps<CanvasFlowNode>): ReactElement | null {
+  const { document, analysis, edit, hovered } = useGraph();
   const node = document.nodes.find((candidate) => candidate.id === id);
   if (node === undefined || node.kind !== 'pack') return null;
 
+  const highlightedPorts = new Set(data?.highlightedPorts ?? []);
   const state = analysis.states.get(id) ?? 'ok';
   const problem = analysis.problems.get(id);
   const indices = packChannelIndices(document, id);
@@ -37,6 +39,7 @@ export function PackNodeView({ id }: NodeProps): ReactElement | null {
       kind="pack"
       state={state}
       {...(problem === undefined ? {} : { problem })}
+      highlighted={data?.highlighted === true || hovered.has(id)}
       onDelete={() => edit((current) => reframe(removeNodes(current, new Set([id]))))}
       title={
         <TitleField
@@ -47,8 +50,18 @@ export function PackNodeView({ id }: NodeProps): ReactElement | null {
     >
       <ul className="ports">
         {indices.map((channel, position) => (
-          <li key={`in${channel}`} className="port">
-            <Handle type="target" position={Position.Left} id={slotHandleId(`in${channel}`, 0)} />
+          <li
+            key={`in${channel}`}
+            className={`port${highlightedPorts.has(`in${channel}`) ? ' port-highlighted' : ''}`}
+            onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: `in${channel}` })}
+            onMouseLeave={() => data?.onPortHover?.()}
+          >
+            <Handle
+              type="target"
+              position={Position.Left}
+              id={slotHandleId(`in${channel}`, 0)}
+              className={highlightedPorts.has(`in${channel}`) ? 'port-highlighted' : ''}
+            />
             <ParameterLabel
               name={labels[position] ?? `in${channel}`}
               unit={analysis.resolution?.targets.get(`${id}.in${channel}`)?.unit}
@@ -57,22 +70,37 @@ export function PackNodeView({ id }: NodeProps): ReactElement | null {
             />
           </li>
         ))}
-        <li className={indices.length === 0 ? 'port missing' : 'port port-open'}>
+        <li
+          className={`${indices.length === 0 ? 'port missing' : 'port port-open'}${highlightedPorts.has(`in${nextChannel}`) ? ' port-highlighted' : ''}`}
+          onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: `in${nextChannel}` })}
+          onMouseLeave={() => data?.onPortHover?.()}
+        >
           <Handle
             type="target"
             position={Position.Left}
             id={slotHandleId(`in${nextChannel}`, 0)}
-            className={indices.length === 0 ? 'missing' : ''}
+            className={`${indices.length === 0 ? 'missing' : ''}${highlightedPorts.has(`in${nextChannel}`) ? ' port-highlighted' : ''}`}
           />
           {indices.length === 0 ? <span className="port-name">in0</span> : null}
         </li>
       </ul>
 
       <div className="node-value">
-        <span className="port-out">
+        <span
+          className={`port-out${highlightedPorts.has('bundle') ? ' port-highlighted' : ''}`}
+          onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: 'bundle' })}
+          onMouseLeave={() => data?.onPortHover?.()}
+        >
           bundle <span className="port-unit">({indices.length})</span>
         </span>
-        <Handle type="source" position={Position.Right} id="bundle" />
+        <Handle
+          type="source"
+          position={Position.Right}
+          id="bundle"
+          className={highlightedPorts.has('bundle') ? 'port-highlighted' : ''}
+          onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: 'bundle' })}
+          onMouseLeave={() => data?.onPortHover?.()}
+        />
       </div>
     </NodeShell>
   );
