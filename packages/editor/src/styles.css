@@ -1149,6 +1149,11 @@ aside.right {
   box-shadow: 0 0 0 3px var(--hover-bg), var(--shadow-sm);
 }
 
+.react-flow__node.node-search-match .node {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--hover-bg), var(--shadow-sm);
+}
+
 /* A rejected unit connection needs to point back to both ends of the attempted
    wire. This class exists only for Canvas.tsx's four-second interaction state;
    it deliberately does not assign colours to any dimension or port at rest. */
@@ -2054,6 +2059,43 @@ aside.right {
 .quick-add-list .empty {
   margin: 4px 8px;
   color: var(--muted);
+}
+
+.canvas-find {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 360px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--paper);
+  box-shadow: var(--shadow-md);
+}
+
+.canvas-find .search {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  padding: 0;
+}
+
+.canvas-find .search:focus {
+  outline: none;
+}
+
+.canvas-find-count {
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.canvas-find-close {
+  border: none;
+  padding: 0;
+  background: transparent;
+  color: var(--muted);
+  line-height: 1;
 }
 
 /* --- notebook ----------------------------------------------------------- */
