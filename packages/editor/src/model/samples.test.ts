@@ -20,7 +20,7 @@ import { fromCanonical, parseUnit } from '@joveworks/units';
 
 import { analyse } from './analysis';
 import { baseCatalogue, bundledCatalogues } from './catalogues';
-import { beltLab, millingPowerEnvelope, padPressure } from './samples';
+import { beltLab, millingPowerEnvelope, padPressure, pressfitLab } from './samples';
 
 const path = process.env['JOVEWORKS_CATALOGUE'];
 const present = path !== undefined && path.length > 0 && existsSync(path);
@@ -29,6 +29,9 @@ const PUBLIC_CATALOGUES: readonly Catalogue[] = [baseCatalogue(), ...bundledCata
 const CATALOGUES: readonly Catalogue[] = present
   ? [...PUBLIC_CATALOGUES, loadCatalogue(readFileSync(path as string, 'utf8'))]
   : PUBLIC_CATALOGUES;
+const catalogueFormulaIds = new Set(CATALOGUES.flatMap((catalogue) => catalogue.formulas.map((formula) => formula.id)));
+const beltPresent = catalogueFormulaIds.has('rm.16.19A');
+const pressfitPresent = catalogueFormulaIds.has('rm.12.8');
 
 describe('the samples the editor opens with', () => {
   it('offers the pad sweep with nothing but the base library loaded', () => {
@@ -97,7 +100,7 @@ describe('the milling power-envelope study through the editor', () => {
   });
 });
 
-describe.runIf(present)('the belt lab through the editor', () => {
+describe.runIf(beltPresent)('the belt lab through the editor', () => {
   it('reproduces the golden values of Lab_belt.ipynb', () => {
     const document = beltLab(CATALOGUES);
     expect(document).toBeDefined();
@@ -122,6 +125,31 @@ describe.runIf(present)('the belt lab through the editor', () => {
       ['out_z', 1.132],
       ['out_v', 7.069],
       ['out_f_B', 6.464],
+    ];
+    for (const [nodeId, expected] of golden) {
+      expect(Math.abs(shown(nodeId) - expected) / expected, nodeId).toBeLessThan(1e-3);
+    }
+  });
+});
+
+describe.runIf(pressfitPresent)('the press-fit lab through the editor', () => {
+  it('reproduces the values recorded by PressFit1_TD.ipynb', () => {
+    const document = pressfitLab(CATALOGUES);
+    expect(document).toBeDefined();
+    const analysis = analyse(document as NonNullable<typeof document>, CATALOGUES);
+    expect(analysis.message).toBeUndefined();
+    expect([...analysis.states.values()].every((state) => state === 'ok')).toBe(true);
+
+    const shown = (nodeId: string): number => {
+      const result = analysis.evaluation?.outputs.find((entry) => entry.nodeId === nodeId);
+      if (result === undefined || result.kind !== 'print' || result.series.kind !== 'numeric') {
+        throw new Error(`no numeric output '${nodeId}'`);
+      }
+      return fromCanonical(result.series.data[0] as number, result.unit);
+    };
+    const golden: readonly (readonly [string, number])[] = [
+      ['out_F_S', 17500], ['out_p_Fmin', 15.92], ['out_S_nmin', 41.64],
+      ['out_p_FmaxU', 67.58], ['out_S_nmax', 150.1], ['out_P_T', 108.4], ['out_T_B', 65.05],
     ];
     for (const [nodeId, expected] of golden) {
       expect(Math.abs(shown(nodeId) - expected) / expected, nodeId).toBeLessThan(1e-3);

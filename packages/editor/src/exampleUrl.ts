@@ -2,6 +2,7 @@ export const EXAMPLE_IDS = [
   'platform-footprint',
   'pad-pressure',
   'belt-lab',
+  'pressfit-lab',
   'cantilever-hollow-sections',
   'milling-power-envelope',
 ] as const;

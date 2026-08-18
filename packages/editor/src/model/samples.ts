@@ -366,6 +366,86 @@ export function beltLab(catalogues: readonly Catalogue[], locale: AppLocale = 'e
   return localizeExample(document('belt-lab', 'Belt lab', withFrames, edges, frames), locale);
 }
 
+// --- cylindrical press fit, from PressFit1_TD.ipynb -------------------------
+
+/** The restricted records used by the first press-fit notebook. */
+export const PRESSFIT_LAB_FORMULAS = [
+  'rm.12.5.helper-a', 'rm.12.5.helper-b', 'rm.12.8.helper-a', 'rm.12.8',
+  'rm.12.9', 'rm.12.9.helper-a', 'rm.12.12', 'rm.12.13', 'rm.12.14',
+  'rm.12.15', 'rm.12.16A', 'rm.12.16B.hollow', 'rm.12.17', 'rm.12.18',
+  'rm.12.19', 'rm.12.20.helper-a',
+] as const;
+
+/**
+ * The worked cylindrical press-fit calculation from `PressFit1_TD.ipynb`.
+ * Inputs use the stated dimensions and material data; the result is a fit and
+ * tolerance window, not a formula embedded in this public editor package.
+ */
+export function pressfitLab(catalogues: readonly Catalogue[], locale: AppLocale = 'en'): GraphDocument | undefined {
+  if (!provides(catalogues, PRESSFIT_LAB_FORMULAS)) return undefined;
+  const formula = (id: string): Formula => lookup(catalogues, id) as Formula;
+  const stress = parseUnit('N/mm²');
+  const um = parseUnit('µm');
+
+  const values: readonly (readonly [string, string, number, string])[] = [
+    ['D_Ii', 'Hub bore D_Ii', 60, 'mm'], ['D_F', 'Fit diameter D_F', 100, 'mm'],
+    ['D_Uu', 'Hub outside diameter D_Uu', 160, 'mm'], ['l_F', 'Fit length l_F', 50, 'mm'],
+    ['F_t', 'Tangential load F_t', 0, 'N'], ['F_l', 'Longitudinal load F_l', 5000, 'N'],
+    ['K_A', 'Load factor K_A', 2, ''], ['S_S', 'Slip safety S_S', 1.75, ''],
+    ['mu', 'Friction coefficient μ', 0.07, ''], ['E_U', "Hub Young's modulus E_U", 210000, 'N/mm²'],
+    ['E_I', "Shaft Young's modulus E_I", 210000, 'N/mm²'], ['nu_U', "Hub Poisson ratio ν_U", 0.3, ''],
+    ['nu_I', "Shaft Poisson ratio ν_I", 0.3, ''], ['Rz_UI', 'Hub roughness Rz_UI', 6.3, 'µm'],
+    ['Rz_Iu', 'Shaft roughness Rz_Iu', 4, 'µm'], ['R_eU', 'Hub yield strength R_eU', 220.9, 'N/mm²'],
+    ['R_eI', 'Shaft yield strength R_eI', 328.3, 'N/mm²'], ['S_pU', 'Hub plastic safety S_pU', 1.15, ''],
+    ['S_pI', 'Shaft plastic safety S_pI', 1.15, ''],
+  ];
+
+  const nodes: GraphNode[] = [
+    ...values.map(([id, label, value, unit], index) => input(id, label, { kind: 'scalar', value, unit: parseUnit(unit) }, at(0, index * 82))),
+    formulaNode('F_res', formula('rm.12.8.helper-a'), at(310, 360)),
+    formulaNode('F_S', formula('rm.12.8'), at(570, 360)),
+    formulaNode('A_F', formula('rm.12.9.helper-a'), at(310, 80)),
+    formulaNode('p_Fmin', formula('rm.12.9'), at(830, 250)),
+    formulaNode('Q_U', formula('rm.12.5.helper-a'), at(310, 680)),
+    formulaNode('Q_I', formula('rm.12.5.helper-b'), at(310, 820)),
+    formulaNode('K', formula('rm.12.12'), at(570, 760)),
+    formulaNode('Z_min', formula('rm.12.13'), at(1090, 250)),
+    formulaNode('G', formula('rm.12.14'), at(570, 1050)),
+    formulaNode('S_nmin', formula('rm.12.15'), at(1350, 250)),
+    formulaNode('p_FmaxU', formula('rm.12.16A'), at(830, 620)),
+    formulaNode('p_FmaxI', formula('rm.12.16B.hollow'), at(830, 780)),
+    formulaNode('Z_max', formula('rm.12.17'), at(1090, 620)),
+    formulaNode('S_nmax', formula('rm.12.18'), at(1350, 620)),
+    formulaNode('P_T', formula('rm.12.19'), at(1610, 440)),
+    formulaNode('T_B', formula('rm.12.20.helper-a'), at(1870, 440)),
+    output('out_F_S', 'Resulting design force F_S', { kind: 'print', unit: parseUnit('N') }, at(1610, 80)),
+    output('out_p_Fmin', 'Minimum contact pressure p_Fmin', { kind: 'print', unit: stress }, at(1610, 180)),
+    output('out_S_nmin', 'Minimum interference S_nmin', { kind: 'print', unit: um }, at(2130, 80)),
+    output('out_p_FmaxU', 'Maximum hub pressure p_Fmax', { kind: 'print', unit: stress }, at(1610, 620)),
+    output('out_S_nmax', 'Maximum interference S_nmax', { kind: 'print', unit: um }, at(2130, 620)),
+    output('out_P_T', 'Permissible fit tolerance P_T', { kind: 'print', unit: um }, at(2130, 440)),
+    output('out_T_B', 'Hub tolerance share T_B', { kind: 'print', unit: um }, at(2130, 540)),
+  ];
+
+  const wires: readonly (readonly [string, string])[] = [
+    ['F_t.value', 'F_res.F_t'], ['F_l.value', 'F_res.F_l'], ['S_S.value', 'F_S.S_S'], ['K_A.value', 'F_S.K_A'], ['F_res.F_res', 'F_S.F_res'],
+    ['D_F.value', 'A_F.D_F'], ['l_F.value', 'A_F.l_F'], ['F_S.F_S', 'p_Fmin.F_S'], ['A_F.A_F', 'p_Fmin.A_F'], ['mu.value', 'p_Fmin.mu'],
+    ['D_F.value', 'Q_U.D_F'], ['D_Uu.value', 'Q_U.D_Uu'], ['D_Ii.value', 'Q_I.D_Ii'], ['D_F.value', 'Q_I.D_F'],
+    ['E_U.value', 'K.E_U'], ['E_I.value', 'K.E_I'], ['Q_I.Q_I', 'K.Q_I'], ['nu_I.value', 'K.nu_I'], ['Q_U.Q_U', 'K.Q_U'], ['nu_U.value', 'K.nu_U'],
+    ['p_Fmin.p_Fmin', 'Z_min.p_Fmin'], ['D_F.value', 'Z_min.D_F'], ['E_U.value', 'Z_min.E_U'], ['K.K', 'Z_min.K'],
+    ['Rz_UI.value', 'G.Rz_UI'], ['Rz_Iu.value', 'G.Rz_Iu'], ['Z_min.Z_min', 'S_nmin.Z_min'], ['G.G', 'S_nmin.G'],
+    ['R_eU.value', 'p_FmaxU.R_eU'], ['S_pU.value', 'p_FmaxU.S_pU'], ['Q_U.Q_U', 'p_FmaxU.Q_U'],
+    ['R_eI.value', 'p_FmaxI.R_eI'], ['S_pI.value', 'p_FmaxI.S_pI'], ['Q_I.Q_I', 'p_FmaxI.Q_I'],
+    ['p_FmaxU.p_Fmax', 'Z_max.p_Fmax'], ['D_F.value', 'Z_max.D_F'], ['E_U.value', 'Z_max.E_U'], ['K.K', 'Z_max.K'],
+    ['Z_max.Z_max', 'S_nmax.Z_max'], ['G.G', 'S_nmax.G'], ['S_nmax.S_nmax', 'P_T.S_nmax'], ['S_nmin.S_nmin', 'P_T.S_nmin'], ['P_T.P_T', 'T_B.P_T'],
+    ['F_S.F_S', 'out_F_S.value'], ['p_Fmin.p_Fmin', 'out_p_Fmin.value'], ['S_nmin.S_nmin', 'out_S_nmin.value'], ['p_FmaxU.p_Fmax', 'out_p_FmaxU.value'], ['S_nmax.S_nmax', 'out_S_nmax.value'], ['P_T.P_T', 'out_P_T.value'], ['T_B.T_B', 'out_T_B.value'],
+  ];
+  const edges = wires.map(([from, to]) => wire(from, to));
+  const frames = [{ id: 'pressfit-results', title: 'Cylindrical press-fit results', note: 'The PressFit1 lab derives the required interference and permissible tolerance window for a 100 mm fit. The source omits F_res’s tag; R&M sign-off declares it a force in N.', position: at(1560, -60), size: { width: 860, height: 800 } }];
+  const withFrames = nodes.map((node) => node.kind === 'output' ? { ...node, frameId: 'pressfit-results' } : node);
+  return localizeExample(document('pressfit-lab', 'Cylindrical press-fit lab', withFrames, edges, frames), locale);
+}
+
 // --- cantilever deflection across hollow sections, from the public catalogue -
 
 /** The catalogue records this sample needs, by id. */

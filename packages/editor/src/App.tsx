@@ -96,9 +96,11 @@ import {
 } from './model/userEquations';
 import {
   BELT_LAB_FORMULAS,
+  PRESSFIT_LAB_FORMULAS,
   CANTILEVER_FORMULAS,
   MILLING_STUDY_FORMULAS,
   beltLab,
+  pressfitLab,
   cantileverHollowSections,
   millingPowerEnvelope,
   padPressure,
@@ -152,6 +154,7 @@ function exampleDocument(
   if (id === 'pad-pressure') return padPressure(catalogues, locale);
   if (id === 'platform-footprint') return platformFootprint(catalogues, locale);
   if (id === 'belt-lab') return beltLab(catalogues, locale);
+  if (id === 'pressfit-lab') return pressfitLab(catalogues, locale);
   if (id === 'cantilever-hollow-sections') return cantileverHollowSections(catalogues, locale);
   return millingPowerEnvelope(catalogues, locale);
 }
@@ -560,6 +563,7 @@ function AppShell(): ReactElement {
   );
 
   const beltAvailable = provides(catalogues, BELT_LAB_FORMULAS);
+  const pressfitAvailable = provides(catalogues, PRESSFIT_LAB_FORMULAS);
   const cantileverAvailable = provides(catalogues, CANTILEVER_FORMULAS);
   const millingAvailable = provides(catalogues, MILLING_STUDY_FORMULAS);
 
@@ -755,6 +759,16 @@ function AppShell(): ReactElement {
           openExample('belt-lab');
           setShowNotebook(true);
           setTutorial({ kind: 'example', id: 'belt-lab' });
+        }),
+    },
+    {
+      label: t('Cylindrical press-fit lab'),
+      disabled: !pressfitAvailable,
+      onClick: () =>
+        guardDiscard(() => {
+          openExample('pressfit-lab');
+          setShowNotebook(true);
+          setTutorial({ kind: 'example', id: 'pressfit-lab' });
         }),
     },
     {

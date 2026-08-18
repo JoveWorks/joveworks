@@ -99,6 +99,16 @@ const EXAMPLE_COPY = {
     studyBody: 'Formula nodes calculate design power, ratio, belt length, shaft distance, belt count, speed and bending frequency from left to right.',
     resultBody: 'The output nodes collect the quantities worth reporting. They do not recalculate anything: each is a presentation boundary fed by the graph.',
   },
+  'pressfit-lab': {
+    title: 'Cylindrical press-fit lab',
+    opening: 'This worked example turns the PressFit1 assignment into a typed calculation of interference and fit tolerance.',
+    inputTarget: '[data-tour="input-D_F"]',
+    inputTitle: 'Fit geometry starts the calculation',
+    inputBody: 'The input nodes state the fit diameter, wall geometry, loads, material data and surface roughness. Each unit stays visible at its boundary.',
+    studyTitle: 'Required and permissible interference meet',
+    studyBody: 'The graph derives contact pressure and compliance, then compares the minimum required fit against the maximum the hub permits.',
+    resultBody: 'The notebook gathers the design force, contact pressure, interference limits and tolerance split into the values needed to select a fit.',
+  },
   'cantilever-hollow-sections': {
     title: 'Cantilever — hollow sections',
     opening: 'This example compares five standard hollow-section diameters for the deflection of a loaded steel cantilever.',
