@@ -308,7 +308,7 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
         {query.trim().length === 0 && favouriteEntries.length + favouriteUserEquations.length + favouriteActions.length > 0 ? (
           <section>
             <h3><button type="button" className="section-toggle" onClick={() => toggleCollapsed(FAVOURITES)}>
-              <span className="section-toggle-title"><span className="favourites-icon" aria-hidden="true">♥</span>{copy.favourites}{collapsed.has(FAVOURITES) ? ` (${favouriteEntries.length + favouriteUserEquations.length + favouriteActions.length})` : ''}</span>
+              <span className="section-toggle-title">{copy.favourites}{collapsed.has(FAVOURITES) ? ` (${favouriteEntries.length + favouriteUserEquations.length + favouriteActions.length})` : ''}</span>
               <span className="chevron" aria-hidden="true">{collapsed.has(FAVOURITES) ? '▸' : '▾'}</span>
             </button></h3>
             {collapsed.has(FAVOURITES) ? null : <ul>

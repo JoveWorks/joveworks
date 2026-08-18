@@ -680,14 +680,6 @@ aside.right {
   letter-spacing: 0;
 }
 
-.palette .favourites-icon {
-  display: inline-block;
-  margin-right: 4px;
-  color: var(--accent);
-  font-size: 13px;
-  line-height: 0;
-}
-
 .palette ul {
   list-style: none;
   margin: 0;
