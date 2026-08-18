@@ -69,7 +69,7 @@ import {
 } from '../model/document';
 import { autoArrange } from '../model/layout';
 import { primaryModifierLabel } from '../model/platform';
-import { alignSelection, arrangeSelection } from '../model/selection-layout';
+import { alignSelection, arrangeSelection, spaceSelectionEvenly } from '../model/selection-layout';
 import { BundleEdge } from './BundleEdge';
 import { ClosureNodeView } from './ClosureNodeView';
 import { CompareNodeView } from './CompareNodeView';
@@ -334,11 +334,13 @@ const NODE_TYPES = {
 };
 
 const EDGE_TYPES = { bundle: BundleEdge };
+const CANVAS_GRID_SIZE = 24;
+const SNAP_GRID: [number, number] = [CANVAS_GRID_SIZE, CANVAS_GRID_SIZE];
 
 export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean }): ReactElement {
   const { document, catalogues, analysis, edit, editLive, commitEdit, expanded, toggleExpanded, selected, setSelected, saveUserEquation } =
     useGraph();
-  const { locale, minimapVisible, themePreference } = useSettings();
+  const { locale, minimapVisible, snapToGrid, themePreference } = useSettings();
   const t = (english: string): string => phrase(locale, english);
   const modifierKey = primaryModifierLabel();
   const [refusal, setRefusal] = useState<string | undefined>(undefined);
@@ -798,7 +800,15 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
         onClick: () => edit((current) => alignSelection(current, selected, alignment, measured)),
       })),
       {
-        label: t('Arrange selection'),
+        label: t('Space evenly horizontally'),
+        onClick: () => edit((current) => spaceSelectionEvenly(current, selected, 'horizontal', measured)),
+      },
+      {
+        label: t('Space evenly vertically'),
+        onClick: () => edit((current) => spaceSelectionEvenly(current, selected, 'vertical', measured)),
+      },
+      {
+        label: t('Auto-arrange selection'),
         onClick: () => edit((current) => arrangeSelection(current, selected)),
       },
       {
@@ -1105,6 +1115,8 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
         nodeTypes={NODE_TYPES}
         edgeTypes={EDGE_TYPES}
         colorMode={themePreference}
+        snapToGrid={snapToGrid}
+        snapGrid={SNAP_GRID}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
@@ -1211,7 +1223,7 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
         minZoom={0.15}
         fitView
       >
-        <Background gap={24} />
+        <Background gap={CANVAS_GRID_SIZE} />
         {controlsVisible ? (
           <Panel position="top-left" className="canvas-controls" aria-label={t('Canvas controls')}>
             <span><kbd>Shift</kbd> {t('drag to select')}</span>

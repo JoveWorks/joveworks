@@ -5,14 +5,17 @@ import {
   DEFAULT_CONTOUR_PALETTE,
   DEFAULT_NOTEBOOK_WIDTH,
   DEFAULT_PALETTE_WIDTH,
+  DEFAULT_SNAP_TO_GRID,
   loadCanvasControlsVisible,
   loadContourPalette,
   loadNotebookWidth,
   loadPaletteWidth,
+  loadSnapToGrid,
   saveCanvasControlsVisible,
   saveContourPalette,
   saveNotebookWidth,
   savePaletteWidth,
+  saveSnapToGrid,
 } from './editorSettings';
 
 describe('contour palette preference', () => {
@@ -48,6 +51,14 @@ describe('contour palette preference', () => {
     saveCanvasControlsVisible(false);
 
     expect(loadCanvasControlsVisible()).toBe(false);
+  });
+
+  it('persists magnetic-grid snapping independently of a graph file', () => {
+    expect(loadSnapToGrid()).toBe(DEFAULT_SNAP_TO_GRID);
+
+    saveSnapToGrid(true);
+
+    expect(loadSnapToGrid()).toBe(true);
   });
 
   it('restores panel widths and rejects stale values outside their usable ranges', () => {

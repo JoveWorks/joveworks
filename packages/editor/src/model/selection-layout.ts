@@ -20,6 +20,8 @@ export type Alignment =
   | 'horizontal-centre'
   | 'vertical-centre';
 
+export type SpacingAxis = 'horizontal' | 'vertical';
+
 export interface NodeSize {
   readonly width: number;
   readonly height: number;
@@ -78,6 +80,57 @@ export function alignSelection(
               ? centreY - size.height / 2
               : node.position.y;
       positions.set(node.id, { x, y });
+    }
+  }
+  return positions.size === 0
+    ? document
+    : {
+        ...document,
+        nodes: document.nodes.map((node) => {
+          const position = positions.get(node.id);
+          return position === undefined ? node : { ...node, position };
+        }),
+      };
+}
+
+/**
+ * Give selected nodes equal edge-to-edge gaps while keeping the two visual
+ * extremes fixed. Node sizes matter here: equal centre distances make a row
+ * of differently sized nodes look uneven even when the arithmetic is not.
+ */
+export function spaceSelectionEvenly(
+  document: GraphDocument,
+  selected: ReadonlySet<string>,
+  axis: SpacingAxis,
+  sizes: NodeSizes = new Map(),
+): GraphDocument {
+  const positions = new Map<string, GraphNode['position']>();
+  for (const group of selectedGroups(document, selected)) {
+    if (group.length < 3) continue;
+    const coordinate = (node: GraphNode): number =>
+      axis === 'horizontal' ? node.position.x : node.position.y;
+    const extent = (node: GraphNode): number => {
+      const size = sizeOf(node, sizes);
+      return axis === 'horizontal' ? size.width : size.height;
+    };
+    const ordered = group.slice().sort((a, b) => coordinate(a) - coordinate(b));
+    const first = ordered[0];
+    const last = ordered.at(-1);
+    if (first === undefined || last === undefined) continue;
+    const start = coordinate(first);
+    const end = coordinate(last) + extent(last);
+    const occupied = ordered.reduce((total, node) => total + extent(node), 0);
+    const gap = (end - start - occupied) / (ordered.length - 1);
+    let cursor = start;
+
+    for (const node of ordered) {
+      positions.set(
+        node.id,
+        axis === 'horizontal'
+          ? { x: cursor, y: node.position.y }
+          : { x: node.position.x, y: cursor },
+      );
+      cursor += extent(node) + gap;
     }
   }
   return positions.size === 0

@@ -153,6 +153,8 @@ export function CourseMaterialViewer(): ReactElement {
     setNumberFormat: () => {},
     minimapVisible: false,
     setMinimapVisible: () => {},
+    snapToGrid: false,
+    setSnapToGrid: () => {},
     titleMathRendering: true,
     setTitleMathRendering: () => {},
     themePreference: 'system',

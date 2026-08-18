@@ -53,6 +53,7 @@ import {
   loadMinimapVisible,
   loadNotebookWidth,
   loadPaletteWidth,
+  loadSnapToGrid,
   loadTitleMathRendering,
   loadThemePreference,
   saveCanvasControlsVisible,
@@ -61,6 +62,7 @@ import {
   saveMinimapVisible,
   saveNotebookWidth,
   savePaletteWidth,
+  saveSnapToGrid,
   saveTitleMathRendering,
   saveThemePreference,
   type ContourPalette,
@@ -342,6 +344,7 @@ function AppShell(): ReactElement {
   const copy = ui(locale);
   const t = (english: string): string => phrase(locale, english);
   const [minimapVisible, setMinimapVisibleState] = useState<boolean>(loadMinimapVisible);
+  const [snapToGrid, setSnapToGridState] = useState<boolean>(loadSnapToGrid);
   const [titleMathRendering, setTitleMathRenderingState] = useState<boolean>(loadTitleMathRendering);
   const [themePreference, setThemePreferenceState] =
     useState<ThemePreference>(loadThemePreference);
@@ -443,6 +446,11 @@ function AppShell(): ReactElement {
     saveMinimapVisible(next);
   };
 
+  const setSnapToGrid = (next: boolean): void => {
+    setSnapToGridState(next);
+    saveSnapToGrid(next);
+  };
+
   const setTitleMathRendering = (next: boolean): void => {
     setTitleMathRenderingState(next);
     saveTitleMathRendering(next);
@@ -479,6 +487,8 @@ function AppShell(): ReactElement {
       setNumberFormat,
       minimapVisible,
       setMinimapVisible,
+      snapToGrid,
+      setSnapToGrid,
       titleMathRendering,
       setTitleMathRendering,
       themePreference,
@@ -486,7 +496,7 @@ function AppShell(): ReactElement {
       contourPalette,
       setContourPalette,
     }),
-    [locale, numberFormat, minimapVisible, titleMathRendering, themePreference, contourPalette],
+    [locale, numberFormat, minimapVisible, snapToGrid, titleMathRendering, themePreference, contourPalette],
   );
 
   const analysis = useMemo(() => analyse(document, catalogues), [document, catalogues]);
@@ -674,6 +684,11 @@ function AppShell(): ReactElement {
   const viewMenuItems: readonly MenuItem[] = [
     { label: showPalette ? 'Hide palette' : 'Show palette', onClick: () => setShowPalette(!showPalette) },
     { label: showNotebook ? 'Hide notebook' : 'Show notebook', onClick: () => setShowNotebook(!showNotebook) },
+    {
+      label: t('Snap nodes to grid'),
+      checked: snapToGrid,
+      onClick: () => setSnapToGrid(!snapToGrid),
+    },
     { heading: t('Theme') },
     {
       label: t('Light'),

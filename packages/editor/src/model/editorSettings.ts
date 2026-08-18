@@ -9,6 +9,7 @@
 const MINIMAP_KEY = 'joveworks:settings:minimapVisible';
 const LANGUAGE_KEY = 'joveworks:settings:language';
 const CANVAS_CONTROLS_VISIBLE_KEY = 'joveworks:settings:canvasControlsVisible';
+const SNAP_TO_GRID_KEY = 'joveworks:settings:snapToGrid';
 const PALETTE_WIDTH_KEY = 'joveworks:settings:paletteWidth';
 const NOTEBOOK_WIDTH_KEY = 'joveworks:settings:notebookWidth';
 
@@ -79,6 +80,17 @@ export function loadCanvasControlsVisible(): boolean {
 
 export function saveCanvasControlsVisible(visible: boolean): void {
   saveBoolean(CANVAS_CONTROLS_VISIBLE_KEY, visible);
+}
+
+/** Free placement remains the default; snapping is a local editing aid. */
+export const DEFAULT_SNAP_TO_GRID = false;
+
+export function loadSnapToGrid(): boolean {
+  return loadBoolean(SNAP_TO_GRID_KEY, DEFAULT_SNAP_TO_GRID);
+}
+
+export function saveSnapToGrid(enabled: boolean): void {
+  saveBoolean(SNAP_TO_GRID_KEY, enabled);
 }
 
 export const DEFAULT_PALETTE_WIDTH = 360;
