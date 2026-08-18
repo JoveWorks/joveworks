@@ -1156,16 +1156,11 @@ aside.right {
 }
 
 /* Hovering the notebook's own view of a node (a result block, a section
-   title) highlights its canvas counterpart the same way selection does —
-   see `hovered` in graph-context.ts. */
+   title), hovering a wire, or hovering a port highlights its canvas
+   counterpart the same way — see `hovered` in graph-context.ts and
+   `data.highlighted`/`connectedNodeIds` in Canvas.tsx. A quiet ring marks
+   the node while the edge or port itself receives the primary accent. */
 .node.highlighted {
-  border-color: var(--accent);
-}
-
-/* Hovering a wire identifies the relationship, not just the thin SVG path.
-   Its endpoints get a quiet ring while the edge itself receives the primary
-   accent below. */
-.react-flow__node.edge-connected .node {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--hover-bg), var(--shadow-sm);
 }
