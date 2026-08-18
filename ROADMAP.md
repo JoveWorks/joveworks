@@ -145,6 +145,9 @@ slice is designed; there is no node for it today.
 **10. Vertical spacing does not take actual node height into account**
 Widths are constant, but heights vary per node. The spacing should add same width space between bottom and top of each node, based on the total height from top of top node to bottom of bottom node. Also spacing should take into account rows of nodes and collumns of nodes for vertical and horizontal spacing respectively. There should be some error margin where nodes are considered aligned, and they will be aligned exactly.
 Question: How should we integrate this spacing in grid-snap mode?
+Implemented on `feat/canvas-layout-interaction-polish` — auto-arrange now uses
+each node's real measured height instead of a nominal constant. Awaiting
+review before merge.
 
 **11. Notebook export to Markdown**, for pasting a finished graph into an
 external site. Checked against `~/source/website`'s Astro content
@@ -160,8 +163,10 @@ button — personal-use export, not a student-facing feature yet.
 **13. Press fit example** Update it to use ISO fit LUT based on categorical input. I also want to have a new section that showcases plotting and sweep functionality.
 
 **14. We need CTRL+F** In the graph, the view is fitted and all matching nodes are highlighted, let's use fuzzy find based on the node label, ID, and input and output ports.
+Implemented on `feat/canvas-layout-interaction-polish`. Awaiting review before merge.
 
 **15. Highlighted edges should also highlight the relevant ports** Not just the nodes. Also hovering a port should highlight the edge and connected node(s)
+Implemented on `feat/canvas-layout-interaction-polish`. Awaiting review before merge.
 
 **16. Nodes expose preferred display units.** Dimensions do not have one global
 presentation unit: values evaluate canonically, while each exposed node port
@@ -182,10 +187,12 @@ catalogues that the user made before.
 
 **18. Change: Dragging in text boxes should select text as per convention in
 other applications** Now, the node is dragged. The notebook is fine.
+Implemented on `feat/canvas-layout-interaction-polish`. Awaiting review before merge.
 
 **19. Bug: Text can be clipped when the textbox is full** Text should be
 wrapped so it is always fully visible. Occurs in node titles (in node and in
 notebook). Captions in nodes (not in notebooks)
+Implemented on `feat/canvas-layout-interaction-polish`. Awaiting review before merge.
 
 **20. Change: Range input shows `range` as node id** instead of `input`.
 
@@ -207,6 +214,9 @@ explicitly added** e.g. when changing the threshold value
 the dots (looks exactly centered) but are 4.5 units wide. Let's adapt the grid
 to make it 4 units wide and make sure the top corners align with the dots.
 Also, the examples should start aligned to the grid.
+Implemented on `feat/canvas-layout-interaction-polish` — grid gap is now 55px
+(node width 220px = 4 units), and bundled examples were re-snapped to it.
+Awaiting review before merge.
 
 **27. Major Feature: Monte Carlo node catalogue.** A catalogue with Monte Carlo
 generators and receivers to have a running simulation of stochastic processes.
@@ -260,6 +270,9 @@ open decision. Moved out of bucket F.
 
 **28. Change: `Built in` nodes is a horrible name** and should be renamed `Math
 nodes` or something similar.
+Implemented on `feat/canvas-layout-interaction-polish` — renamed to "Base
+nodes" (the catalogue also holds compare/pack/unpack/waypoint/inputs/outputs,
+not just math), with a matching Dutch translation. Awaiting review before merge.
 
 ## Suggested backlog session groupings
 
@@ -275,7 +288,8 @@ and UI; settle the `list`/`spectrum` naming (#6) before building the
 spectrum editor (#5).
 
 **C. Canvas layout & interaction polish.** #10, #26, #14, #15, #18, #19, #28 —
-graph-canvas rendering and interaction, no schema changes.
+graph-canvas rendering and interaction, no schema changes. Implemented on
+`feat/canvas-layout-interaction-polish`; awaiting review and merge.
 
 **D. Plot/Table node output config.** #1, #21 — #1 explicitly covers both
 Plot and Table output settings, and #21's lookup-table bug is likely the

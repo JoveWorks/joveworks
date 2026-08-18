@@ -27,6 +27,7 @@ import type { Frame, GraphDocument, GraphNode, Position } from '@joveworks/schem
 
 import { GAP, NODE_HEIGHT, NODE_WIDTH } from './layout-constants';
 import { computeLayeredPositions, type LayoutBlock, type LayoutEdge } from './layered-layout';
+import type { NodeSize, NodeSizes } from './node-sizes';
 
 const BLOCKS_PER_ROW = 4;
 
@@ -37,8 +38,13 @@ interface Block {
   readonly height: number;
 }
 
-function nodeBlock(node: GraphNode): Block {
-  return { key: `node:${node.id}`, origin: node.position, width: NODE_WIDTH, height: NODE_HEIGHT };
+function measuredSizeOf(node: GraphNode, sizes: NodeSizes): NodeSize {
+  return sizes.get(node.id) ?? { width: NODE_WIDTH, height: NODE_HEIGHT };
+}
+
+function nodeBlock(node: GraphNode, sizes: NodeSizes): Block {
+  const size = measuredSizeOf(node, sizes);
+  return { key: `node:${node.id}`, origin: node.position, width: size.width, height: size.height };
 }
 
 function frameBlock(frame: Frame): Block {
@@ -63,9 +69,9 @@ function applyDeltas(document: GraphDocument, deltaByKey: ReadonlyMap<string, Po
 }
 
 /** The old edge-ignoring row packer — the fallback for a document that can't be ranked. */
-function packGrid(document: GraphDocument): GraphDocument {
+function packGrid(document: GraphDocument, sizes: NodeSizes): GraphDocument {
   const loose = document.nodes.filter((node) => node.frameId === undefined);
-  const blocks = [...document.frames.map(frameBlock), ...loose.map(nodeBlock)].sort(
+  const blocks = [...document.frames.map(frameBlock), ...loose.map((node) => nodeBlock(node, sizes))].sort(
     (a, b) => a.origin.y - b.origin.y || a.origin.x - b.origin.x,
   );
 
@@ -94,7 +100,7 @@ function blockKeyOf(node: GraphNode): string {
   return node.frameId !== undefined ? `frame:${node.frameId}` : `node:${node.id}`;
 }
 
-function buildLayoutBlocks(document: GraphDocument): readonly LayoutBlock[] {
+function buildLayoutBlocks(document: GraphDocument, sizes: NodeSizes): readonly LayoutBlock[] {
   const membersByFrame = new Map<string, GraphNode[]>();
   for (const node of document.nodes) {
     if (node.frameId === undefined) continue;
@@ -120,8 +126,7 @@ function buildLayoutBlocks(document: GraphDocument): readonly LayoutBlock[] {
     .filter((node) => node.frameId === undefined)
     .map((node) => ({
       key: `node:${node.id}`,
-      width: NODE_WIDTH,
-      height: NODE_HEIGHT,
+      ...measuredSizeOf(node, sizes),
       origin: node.position,
       hasInput: node.kind === 'input',
       hasOutput: node.kind === 'output',
@@ -146,11 +151,11 @@ function buildLayoutEdges(document: GraphDocument): readonly LayoutEdge[] {
   return edges;
 }
 
-export function autoArrange(document: GraphDocument): GraphDocument {
-  const blocks = buildLayoutBlocks(document);
+export function autoArrange(document: GraphDocument, sizes: NodeSizes = new Map()): GraphDocument {
+  const blocks = buildLayoutBlocks(document, sizes);
   const edges = buildLayoutEdges(document);
   const result = computeLayeredPositions(blocks, edges);
-  if (result.cyclic) return packGrid(document);
+  if (result.cyclic) return packGrid(document, sizes);
 
   const blockByKey = new Map(blocks.map((block) => [block.key, block] as const));
   const deltaByKey = new Map<string, Position>();

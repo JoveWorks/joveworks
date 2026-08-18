@@ -48,4 +48,9 @@ describe('fuzzySearch', () => {
   it('excludes anything that does not match at all', () => {
     expect(fuzzySearch('xyz', items, (item) => item)).toEqual([]);
   });
+
+  it('matches across a combined label-id-port search string', () => {
+    const combined = ['Pressure against pad width p_plot value threshold'];
+    expect(fuzzySearch('pthr', combined, (item) => item)).toEqual(combined);
+  });
 });

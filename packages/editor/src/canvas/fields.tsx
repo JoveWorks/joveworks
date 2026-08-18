@@ -95,12 +95,14 @@ export function TextField({
     }
   };
 
+  const interactiveClassName = className === undefined ? 'nodrag' : `${className} nodrag`;
+
   return (
     <span className="field">
       {multiline ? (
         <textarea
           ref={textarea}
-          className={className}
+          className={interactiveClassName}
           value={text}
           placeholder={placeholder}
           title={error ?? title}
@@ -117,6 +119,7 @@ export function TextField({
             commit();
             onBlur?.();
           }}
+          onPointerDown={(event) => event.stopPropagation()}
           onKeyDown={(event) => {
             if (event.key === 'Escape') {
               setText(value);
@@ -128,7 +131,7 @@ export function TextField({
         />
       ) : (
         <input
-          className={className}
+          className={interactiveClassName}
           value={text}
           placeholder={placeholder}
           title={error ?? title}
@@ -145,6 +148,7 @@ export function TextField({
             commit();
             onBlur?.();
           }}
+          onPointerDown={(event) => event.stopPropagation()}
           onKeyDown={(event) => {
             if (event.key === 'Enter') event.currentTarget.blur();
             if (event.key === 'Escape') {

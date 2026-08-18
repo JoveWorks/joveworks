@@ -26,17 +26,19 @@ import { ParameterLabel, UnitInLabel } from '../ParameterLabel';
 import { axisLabel, reading, summarise } from '../model/values';
 import { NodeShell } from './NodeShell';
 import { Sparkline } from './Sparkline';
+import type { CanvasFlowNode } from './node-data';
 import { slotHandleId } from './spectrumSlots';
 import { TextField } from './fields';
 import { TitleField, TitleText } from './TitleField';
 
-export function ClosureNodeView({ id, selected }: NodeProps): ReactElement | null {
-  const { document, analysis, edit, expanded, toggleExpanded } = useGraph();
+export function ClosureNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>): ReactElement | null {
+  const { document, analysis, edit, expanded, toggleExpanded, hovered } = useGraph();
   const { numberFormat, locale } = useSettings();
   const format = toUnitsFormat(numberFormat);
   const node = document.nodes.find((candidate) => candidate.id === id);
   if (node === undefined || node.kind !== 'closure') return null;
 
+  const highlightedPorts = new Set(data?.highlightedPorts ?? []);
   // Undefined exactly when the expression does not currently parse — a
   // freshly dropped, not-yet-written node included. `analysis.tsx`'s own
   // pre-pass already recorded why in `states`/`problems`; this view's job
@@ -65,6 +67,7 @@ export function ClosureNodeView({ id, selected }: NodeProps): ReactElement | nul
       state={state}
       {...(problem === undefined ? {} : { problem })}
       selected={selected ?? false}
+      highlighted={data?.highlighted === true || hovered.has(id)}
       expanded={expanded.has(id)}
       onToggleExpanded={() => toggleExpanded(id)}
       onDelete={() => edit((current) => reframe(removeNodes(current, new Set([id]))))}
@@ -93,12 +96,17 @@ export function ClosureNodeView({ id, selected }: NodeProps): ReactElement | nul
           if (port.kind !== 'spectrum') {
             const missing = !wired.has(port.name);
             return (
-              <li key={port.name} className={missing ? 'port missing' : 'port'}>
+              <li
+                key={port.name}
+                className={`${missing ? 'port missing' : 'port'}${highlightedPorts.has(port.name) ? ' port-highlighted' : ''}`}
+                onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: port.name })}
+                onMouseLeave={() => data?.onPortHover?.()}
+              >
                 <Handle
                   type="target"
                   position={Position.Left}
                   id={slotHandleId(port.name, 0)}
-                  className={missing ? 'missing' : ''}
+                  className={`${missing ? 'missing' : ''}${highlightedPorts.has(port.name) ? ' port-highlighted' : ''}`}
                 />
                 <ParameterLabel
                   name={port.name}
@@ -112,8 +120,18 @@ export function ClosureNodeView({ id, selected }: NodeProps): ReactElement | nul
 
           const count = edgesAt(port.name);
           const filled = Array.from({ length: count }, (_unused, i) => (
-            <li key={`${port.name}-${i}`} className="port">
-              <Handle type="target" position={Position.Left} id={slotHandleId(port.name, i)} />
+            <li
+              key={`${port.name}-${i}`}
+              className={`port${highlightedPorts.has(port.name) ? ' port-highlighted' : ''}`}
+              onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: port.name })}
+              onMouseLeave={() => data?.onPortHover?.()}
+            >
+              <Handle
+                type="target"
+                position={Position.Left}
+                id={slotHandleId(port.name, i)}
+                className={highlightedPorts.has(port.name) ? 'port-highlighted' : ''}
+              />
               {i === 0 ? (
                 <>
                   <ParameterLabel
@@ -132,13 +150,15 @@ export function ClosureNodeView({ id, selected }: NodeProps): ReactElement | nul
             ...filled,
             <li
               key={`${port.name}-open`}
-              className={count === 0 ? 'port missing' : 'port port-open'}
+              className={`${count === 0 ? 'port missing' : 'port port-open'}${highlightedPorts.has(port.name) ? ' port-highlighted' : ''}`}
+              onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: port.name })}
+              onMouseLeave={() => data?.onPortHover?.()}
             >
               <Handle
                 type="target"
                 position={Position.Left}
                 id={slotHandleId(port.name, 'open')}
-                className={count === 0 ? 'missing' : ''}
+                className={`${count === 0 ? 'missing' : ''}${highlightedPorts.has(port.name) ? ' port-highlighted' : ''}`}
               />
               {count === 0 ? (
                 <span className="port-name">
@@ -158,13 +178,24 @@ export function ClosureNodeView({ id, selected }: NodeProps): ReactElement | nul
             <TitleText value={axisLabel(value) ?? ''} />
           </span>
         )}
-        <span className="port-out">
+        <span
+          className={`port-out${highlightedPorts.has(CLOSURE_RESULT_PORT) ? ' port-highlighted' : ''}`}
+          onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: CLOSURE_RESULT_PORT })}
+          onMouseLeave={() => data?.onPortHover?.()}
+        >
           <ParameterLabel name={CLOSURE_RESULT_PORT} unit={outputUnit} unitClassName="port-unit" />
         </span>
         {/* The output's name is fixed regardless of whether the expression
             currently parses, so a downstream wire never looks disconnected
             over what may be a momentary typo. */}
-        <Handle type="source" position={Position.Right} id={CLOSURE_RESULT_PORT} />
+        <Handle
+          type="source"
+          position={Position.Right}
+          id={CLOSURE_RESULT_PORT}
+          className={highlightedPorts.has(CLOSURE_RESULT_PORT) ? 'port-highlighted' : ''}
+          onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: CLOSURE_RESULT_PORT })}
+          onMouseLeave={() => data?.onPortHover?.()}
+        />
       </div>
     </NodeShell>
   );

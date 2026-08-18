@@ -13,7 +13,7 @@ interface Props {
   /** Optional live counterpart to `onCommit`, for document text fields. */
   readonly onChange?: (text: string) => void;
   readonly onBlur?: () => void;
-  /** Frames have room for titles to wrap; compact node titles deliberately do not. */
+  /** Titles wrap by default; compact nodes rely on measured height for layout now. */
   readonly multiline?: boolean;
 }
 
@@ -70,7 +70,7 @@ export function TitleText({ value }: { readonly value: string }): ReactElement {
   return <>{typeset ?? value}</>;
 }
 
-export function TitleField({ value, onCommit, onChange, onBlur, multiline = false }: Props): ReactElement {
+export function TitleField({ value, onCommit, onChange, onBlur, multiline = true }: Props): ReactElement {
   const { titleMathRendering, locale } = useSettings();
   const [editing, setEditing] = useState(false);
   const typeset = titleMathRendering ? typesetTitle(value) : undefined;

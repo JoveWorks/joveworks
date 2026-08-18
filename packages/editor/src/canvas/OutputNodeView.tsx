@@ -57,6 +57,7 @@ import { display, formatAuthored, parseAuthored, unitLabel } from '../model/quan
 import { reading, summarise } from '../model/values';
 import { NodeShell } from './NodeShell';
 import { Sparkline } from './Sparkline';
+import type { CanvasFlowNode } from './node-data';
 import { slotHandleId } from './spectrumSlots';
 import { NumberField, TextField } from './fields';
 import { TitleField, TitleText } from './TitleField';
@@ -145,7 +146,7 @@ function Verdict({ nodeId }: { readonly nodeId: string }): ReactElement | null {
   return null;
 }
 
-export function OutputNodeView({ id, selected }: NodeProps): ReactElement | null {
+export function OutputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>): ReactElement | null {
   const { document, analysis, edit, expanded, toggleExpanded, hovered } = useGraph();
   const { numberFormat } = useSettings();
   const format = toUnitsFormat(numberFormat);
@@ -155,6 +156,7 @@ export function OutputNodeView({ id, selected }: NodeProps): ReactElement | null
   const node = document.nodes.find((candidate) => candidate.id === id);
   if (node === undefined || node.kind !== 'output') return null;
 
+  const highlightedPorts = new Set(data?.highlightedPorts ?? []);
   const output = node.output;
   // An output node produces nothing of its own — it renders what is wired to it
   // — so the value it shows is the source port's, in the unit this node
@@ -194,7 +196,7 @@ export function OutputNodeView({ id, selected }: NodeProps): ReactElement | null
       state={analysis.states.get(id) ?? 'ok'}
       {...(analysis.problems.has(id) ? { problem: analysis.problems.get(id) } : {})}
       selected={selected ?? false}
-      highlighted={hovered.has(id)}
+      highlighted={data?.highlighted === true || hovered.has(id)}
       expanded={expanded.has(id)}
       onToggleExpanded={() => toggleExpanded(id)}
       onDelete={() => edit((current) => reframe(removeNodes(current, new Set([id]))))}
@@ -421,6 +423,7 @@ export function OutputNodeView({ id, selected }: NodeProps): ReactElement | null
               className="caption"
               value={node.caption ?? ''}
               placeholder={captionPlaceholder}
+              multiline
               onCommit={(caption) =>
                 edit((current) =>
                   updateNode<OutputNode>(current, id, (entry) => {
@@ -436,11 +439,21 @@ export function OutputNodeView({ id, selected }: NodeProps): ReactElement | null
     >
       <ul className="ports">
         {ports.map((name) => (
-          <li key={name} className="port">
+          <li
+            key={name}
+            className={`port${highlightedPorts.has(name) ? ' port-highlighted' : ''}`}
+            onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: name })}
+            onMouseLeave={() => data?.onPortHover?.()}
+          >
             {/* Every target handle is slot-suffixed now (spectrumSlots.ts),
                 even a single-occupancy one, since Canvas's edge projection
                 does not know port kinds and suffixes uniformly. */}
-            <Handle type="target" position={Position.Left} id={slotHandleId(name, 0)} />
+            <Handle
+              type="target"
+              position={Position.Left}
+              id={slotHandleId(name, 0)}
+              className={highlightedPorts.has(name) ? 'port-highlighted' : ''}
+            />
             <ParameterLabel
               name={name}
               unit={analysis.resolution?.targets.get(`${id}.${name}`)?.unit}
@@ -450,13 +463,32 @@ export function OutputNodeView({ id, selected }: NodeProps): ReactElement | null
           </li>
         ))}
         {output.kind === 'table' ? (
-          <li className="port port-open" title="Wire something here to add a column named after it.">
-            <Handle type="target" position={Position.Left} id={slotHandleId(NEW_COLUMN, 'open')} />
+          <li
+            className={`port port-open${highlightedPorts.has(NEW_COLUMN) ? ' port-highlighted' : ''}`}
+            title="Wire something here to add a column named after it."
+            onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: NEW_COLUMN })}
+            onMouseLeave={() => data?.onPortHover?.()}
+          >
+            <Handle
+              type="target"
+              position={Position.Left}
+              id={slotHandleId(NEW_COLUMN, 'open')}
+              className={highlightedPorts.has(NEW_COLUMN) ? 'port-highlighted' : ''}
+            />
           </li>
         ) : null}
         {output.kind === 'plot' ? (
-          <li className="port">
-            <Handle type="target" position={Position.Left} id={slotHandleId(THRESHOLD_PORT, 0)} />
+          <li
+            className={`port${highlightedPorts.has(THRESHOLD_PORT) ? ' port-highlighted' : ''}`}
+            onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: THRESHOLD_PORT })}
+            onMouseLeave={() => data?.onPortHover?.()}
+          >
+            <Handle
+              type="target"
+              position={Position.Left}
+              id={slotHandleId(THRESHOLD_PORT, 0)}
+              className={highlightedPorts.has(THRESHOLD_PORT) ? 'port-highlighted' : ''}
+            />
             <ParameterLabel
               name={THRESHOLD_PORT}
               unit={analysis.resolution?.targets.get(`${id}.${THRESHOLD_PORT}`)?.unit}
@@ -497,8 +529,17 @@ export function OutputNodeView({ id, selected }: NodeProps): ReactElement | null
           </li>
         ) : null}
         {output.kind === 'check' ? (
-          <li className="port">
-            <Handle type="target" position={Position.Left} id={slotHandleId(THRESHOLD_PORT, 0)} />
+          <li
+            className={`port${highlightedPorts.has(THRESHOLD_PORT) ? ' port-highlighted' : ''}`}
+            onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: THRESHOLD_PORT })}
+            onMouseLeave={() => data?.onPortHover?.()}
+          >
+            <Handle
+              type="target"
+              position={Position.Left}
+              id={slotHandleId(THRESHOLD_PORT, 0)}
+              className={highlightedPorts.has(THRESHOLD_PORT) ? 'port-highlighted' : ''}
+            />
             <ParameterLabel
               name={THRESHOLD_PORT}
               unit={analysis.resolution?.targets.get(`${id}.${THRESHOLD_PORT}`)?.unit}
