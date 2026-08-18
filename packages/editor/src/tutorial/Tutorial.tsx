@@ -1,9 +1,8 @@
 /**
  * The first-load walkthrough: a spotlight over one real UI element at a
- * time, plus a caption. Reads/writes `pinned` because a step that points
+ * time, plus a caption. Reads/writes `expanded` because a step that points
  * inside a node (its detail, its value-kind select) needs that node open —
- * open is `selected || hovered || pinned` (`NodeShell.tsx`), and a scripted
- * step controls none of the first two.
+ * inside a node needs its detail mounted before it can be spotlighted.
  *
  * A step's target can be off-screen, unmounted (the notebook panel closed)
  * or moving under React Flow's pan/zoom. Rather than chase that, a target
@@ -27,8 +26,8 @@ interface Props {
   readonly closeLabel?: string;
   readonly rememberSeen?: boolean;
   readonly onClose: () => void;
-  readonly pinned: ReadonlySet<string>;
-  readonly setPinned: (update: (current: ReadonlySet<string>) => ReadonlySet<string>) => void;
+  readonly expanded: ReadonlySet<string>;
+  readonly setExpanded: (update: (current: ReadonlySet<string>) => ReadonlySet<string>) => void;
 }
 
 const MARGIN = 12;
@@ -60,8 +59,8 @@ export function Tutorial({
   closeLabel,
   rememberSeen = false,
   onClose,
-  pinned,
-  setPinned,
+  expanded,
+  setExpanded,
 }: Props): ReactElement | null {
   const { locale } = useSettings();
   const t = (english: string): string => phrase(locale, english);
@@ -70,7 +69,7 @@ export function Tutorial({
   const [rect, setRect] = useState<DOMRect | undefined>(undefined);
   const [offset, setOffset] = useState({ dx: 0, dy: 0 });
   const captionRef = useRef<HTMLDivElement>(null);
-  const originalPinned = useRef<ReadonlySet<string> | undefined>(undefined);
+  const originalExpanded = useRef<ReadonlySet<string> | undefined>(undefined);
   const step = steps[stepIndex];
 
   useLayoutEffect(() => {
@@ -91,22 +90,22 @@ export function Tutorial({
   }, [active, step?.target]);
 
   // A step that points inside a node needs it open; restores whatever was
-  // pinned before the tour started once it closes, rather than leaving its
-  // own pins behind.
+  // expanded before the tour started once it closes, rather than leaving its
+  // own expansions behind.
   useLayoutEffect(() => {
     if (!active) return;
-    if (originalPinned.current === undefined) originalPinned.current = pinned;
-    const base = originalPinned.current;
-    setPinned(() => new Set([...base, ...(step?.pinIds ?? [])]));
+    if (originalExpanded.current === undefined) originalExpanded.current = expanded;
+    const base = originalExpanded.current;
+    setExpanded(() => new Set([...base, ...(step?.expandIds ?? [])]));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, stepIndex]);
 
   useLayoutEffect(() => {
-    if (!active && originalPinned.current !== undefined) {
-      setPinned(() => originalPinned.current ?? new Set());
-      originalPinned.current = undefined;
+    if (!active && originalExpanded.current !== undefined) {
+      setExpanded(() => originalExpanded.current ?? new Set());
+      originalExpanded.current = undefined;
     }
-  }, [active, setPinned]);
+  }, [active, setExpanded]);
 
   // Resets before measuring the new step's natural position, so a large
   // correction from a previous step doesn't linger into this one.

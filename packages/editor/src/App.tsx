@@ -329,7 +329,7 @@ function AppShell(): ReactElement {
     if (isDirty) setPendingDiscard(() => action);
     else action();
   };
-  const [pinned, setPinned] = useState<ReadonlySet<string>>(new Set());
+  const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [hovered, setHovered] = useState<ReadonlySet<string>>(new Set());
   // Panel visibility is session-only: both panels start open on every load,
@@ -534,9 +534,9 @@ function AppShell(): ReactElement {
       edit,
       editLive,
       commitEdit,
-      pinned,
-      togglePin: (id: string) =>
-        setPinned((current) => {
+      expanded,
+      toggleExpanded: (id: string) =>
+        setExpanded((current) => {
           const next = new Set(current);
           if (next.has(id)) next.delete(id);
           else next.add(id);
@@ -547,7 +547,7 @@ function AppShell(): ReactElement {
       hovered,
       setHovered,
     }),
-    [analysis, catalogues, document, userEquations, pinned, selected, hovered],
+    [analysis, catalogues, document, userEquations, expanded, selected, hovered],
   );
 
   const beltAvailable = provides(catalogues, BELT_LAB_FORMULAS);
@@ -959,8 +959,8 @@ function AppShell(): ReactElement {
             closeLabel={tutorial?.kind === 'example' ? 'Close tutorial' : 'Skip'}
             rememberSeen={tutorial?.kind === 'introduction'}
             onClose={() => setTutorial(undefined)}
-            pinned={pinned}
-            setPinned={setPinned}
+            expanded={expanded}
+            setExpanded={setExpanded}
           />
 
           {pendingDiscard === undefined ? null : (

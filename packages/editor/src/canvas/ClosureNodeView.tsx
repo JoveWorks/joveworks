@@ -31,7 +31,7 @@ import { TextField } from './fields';
 import { TitleField, TitleText } from './TitleField';
 
 export function ClosureNodeView({ id, selected }: NodeProps): ReactElement | null {
-  const { document, analysis, edit, pinned, togglePin } = useGraph();
+  const { document, analysis, edit, expanded, toggleExpanded } = useGraph();
   const { numberFormat, locale } = useSettings();
   const format = toUnitsFormat(numberFormat);
   const node = document.nodes.find((candidate) => candidate.id === id);
@@ -65,8 +65,8 @@ export function ClosureNodeView({ id, selected }: NodeProps): ReactElement | nul
       state={state}
       {...(problem === undefined ? {} : { problem })}
       selected={selected ?? false}
-      pinned={pinned.has(id)}
-      onTogglePin={() => togglePin(id)}
+      expanded={expanded.has(id)}
+      onToggleExpanded={() => toggleExpanded(id)}
       onDelete={() => edit((current) => reframe(removeNodes(current, new Set([id]))))}
       title={
         <TitleField

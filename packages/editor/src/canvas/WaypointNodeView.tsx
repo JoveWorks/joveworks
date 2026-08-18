@@ -12,8 +12,8 @@ import { NodeShell } from './NodeShell';
 import { slotHandleId } from './spectrumSlots';
 import { TitleField } from './TitleField';
 
-export function WaypointNodeView({ id, selected }: NodeProps): ReactElement | null {
-  const { document, analysis, edit, pinned, togglePin } = useGraph();
+export function WaypointNodeView({ id }: NodeProps): ReactElement | null {
+  const { document, analysis, edit } = useGraph();
   const node = document.nodes.find((candidate) => candidate.id === id);
   if (node === undefined || node.kind !== 'waypoint') return null;
 
@@ -27,9 +27,6 @@ export function WaypointNodeView({ id, selected }: NodeProps): ReactElement | nu
       kind="waypoint"
       state={state}
       {...(problem === undefined ? {} : { problem })}
-      selected={selected ?? false}
-      pinned={pinned.has(id)}
-      onTogglePin={() => togglePin(id)}
       onDelete={() => edit((current) => reframe(removeNodes(current, new Set([id]))))}
       title={<TitleField value={node.label ?? id} onCommit={(label) => edit((current) => renameNode(current, id, label))} />}
     >

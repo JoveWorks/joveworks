@@ -21,8 +21,8 @@ import { packChannelLabels } from './bundleLabels';
 import { slotHandleId } from './spectrumSlots';
 import { TitleField } from './TitleField';
 
-export function PackNodeView({ id, selected }: NodeProps): ReactElement | null {
-  const { document, analysis, edit, pinned, togglePin } = useGraph();
+export function PackNodeView({ id }: NodeProps): ReactElement | null {
+  const { document, analysis, edit } = useGraph();
   const node = document.nodes.find((candidate) => candidate.id === id);
   if (node === undefined || node.kind !== 'pack') return null;
 
@@ -37,9 +37,6 @@ export function PackNodeView({ id, selected }: NodeProps): ReactElement | null {
       kind="pack"
       state={state}
       {...(problem === undefined ? {} : { problem })}
-      selected={selected ?? false}
-      pinned={pinned.has(id)}
-      onTogglePin={() => togglePin(id)}
       onDelete={() => edit((current) => reframe(removeNodes(current, new Set([id]))))}
       title={
         <TitleField

@@ -1,8 +1,8 @@
 /**
  * The chrome every node shares: a title, a state, and a body that opens.
  *
- * Nodes are compact by default and open on selection or hover, and can be pinned
- * open while working elsewhere. Colour means state and nothing else:
+ * Nodes are compact by default, preview their detail on selection or hover,
+ * and can be kept open while working elsewhere. Colour means state and nothing else:
  * quarantined, blocked, incomplete, error, failing check. Units are text.
  */
 
@@ -37,10 +37,10 @@ interface Props {
   /** Why the node is not `ok`, in the kernel's words. */
   readonly problem?: ReactNode;
   readonly warning?: string;
-  readonly selected: boolean;
+  readonly selected?: boolean;
   readonly highlighted?: boolean;
-  readonly pinned: boolean;
-  readonly onTogglePin: () => void;
+  readonly expanded?: boolean;
+  readonly onToggleExpanded?: () => void;
   readonly onDelete: () => void;
   /** Always drawn — the value, and the handles a wire attaches to. */
   readonly children: ReactNode;
@@ -57,10 +57,10 @@ export function NodeShell({
   subtitle,
   problem,
   warning,
-  selected,
+  selected = false,
   highlighted,
-  pinned,
-  onTogglePin,
+  expanded = false,
+  onToggleExpanded,
   onDelete,
   children,
   detail,
@@ -70,8 +70,7 @@ export function NodeShell({
   const copy = ui(locale);
   const stateLabel = phrase(locale, STATE_LABELS[state]);
   const [hovered, setHovered] = useState(false);
-  const open = selected || hovered || pinned;
-
+  const open = selected || hovered || expanded;
   return (
     <div
       className={`node node-${kind} state-${state}${open ? ' open' : ''}${highlighted ? ' highlighted' : ''}`}
@@ -92,14 +91,21 @@ export function NodeShell({
             ?
           </a>
         )}
-        <button
-          type="button"
-          className={`pin${pinned ? ' on' : ''}`}
-          title={pinned ? copy.unpinNode : copy.keepNodeOpen}
-          onClick={onTogglePin}
-        >
-          ▣
-        </button>
+        {detail === undefined ? null : (
+          <button
+            type="button"
+            className={`node-pin${expanded ? ' on' : ''}`}
+            title={expanded ? copy.unpinNode : copy.keepNodeOpen}
+            aria-label={expanded ? copy.unpinNode : copy.keepNodeOpen}
+            aria-pressed={expanded}
+            onClick={onToggleExpanded}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M7 3h10v2l-2 2v4l3 3v1H6v-1l3-3V7L7 5V3Z" />
+              <path d="M12 15v6" />
+            </svg>
+          </button>
+        )}
         <button type="button" className="delete" title={copy.deleteNode} onClick={onDelete}>
           ✕
         </button>

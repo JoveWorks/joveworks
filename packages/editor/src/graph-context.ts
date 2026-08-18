@@ -31,9 +31,9 @@ export interface GraphContextValue {
    */
   readonly editLive: (change: (document: GraphDocument) => GraphDocument) => void;
   readonly commitEdit: () => void;
-  /** Nodes held open while working elsewhere. */
-  readonly pinned: ReadonlySet<string>;
-  readonly togglePin: (id: string) => void;
+  /** Nodes whose detail is explicitly expanded. */
+  readonly expanded: ReadonlySet<string>;
+  readonly toggleExpanded: (id: string) => void;
   /**
    * What's currently selected on the canvas — nodes, frames and edges alike,
    * by id. Lives here rather than in `Canvas.tsx` alone (despite being

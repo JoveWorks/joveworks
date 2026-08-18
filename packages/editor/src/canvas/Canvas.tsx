@@ -336,7 +336,7 @@ const NODE_TYPES = {
 const EDGE_TYPES = { bundle: BundleEdge };
 
 export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean }): ReactElement {
-  const { document, catalogues, analysis, edit, editLive, commitEdit, pinned, togglePin, selected, setSelected, saveUserEquation } =
+  const { document, catalogues, analysis, edit, editLive, commitEdit, expanded, toggleExpanded, selected, setSelected, saveUserEquation } =
     useGraph();
   const { locale, minimapVisible, themePreference } = useSettings();
   const t = (english: string): string => phrase(locale, english);
@@ -811,11 +811,12 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
     if (target.kind === 'node') {
       const { id } = target;
       const graphNode = document.nodes.find((node) => node.id === id);
+      const hasDetails = graphNode !== undefined && ['input', 'formula', 'output', 'compare', 'closure'].includes(graphNode.kind);
       return [
-        {
-          label: t(pinned.has(id) ? 'Unpin' : 'Pin open'),
-          onClick: () => togglePin(id),
-        },
+        ...(hasDetails ? [{
+          label: t(expanded.has(id) ? 'Allow auto-collapse' : 'Keep open'),
+          onClick: () => toggleExpanded(id),
+        }] : []),
         {
           label: t('Duplicate'),
           onClick: () => edit((current) => reframe(duplicateNode(current, id))),

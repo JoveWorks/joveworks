@@ -36,7 +36,7 @@ import { TextField } from './fields';
 import { formatAuthored, parseAuthored } from '../model/quantity';
 
 export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | null {
-  const { document, analysis, edit, pinned, togglePin } = useGraph();
+  const { document, analysis, edit, expanded, toggleExpanded } = useGraph();
   const { numberFormat, locale } = useSettings();
   const format = toUnitsFormat(numberFormat);
   const node = document.nodes.find((candidate) => candidate.id === id);
@@ -61,8 +61,8 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
         state="error"
         {...(problem === undefined ? {} : { problem })}
         selected={selected ?? false}
-        pinned={pinned.has(id)}
-        onTogglePin={() => togglePin(id)}
+        expanded={expanded.has(id)}
+        onToggleExpanded={() => toggleExpanded(id)}
         onDelete={() => edit((current) => reframe(removeNodes(current, new Set([id]))))}
         title={node.label ?? node.formula.id}
         subtitle={phrase(locale, 'formula not loaded')}
@@ -128,8 +128,8 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
       {...(problem === undefined ? {} : { problem })}
       {...(warning.length === 0 ? {} : { warning })}
       selected={selected ?? false}
-      pinned={pinned.has(id)}
-      onTogglePin={() => togglePin(id)}
+      expanded={expanded.has(id)}
+      onToggleExpanded={() => toggleExpanded(id)}
       onDelete={() => edit((current) => reframe(removeNodes(current, new Set([id]))))}
       title={
         <TitleField

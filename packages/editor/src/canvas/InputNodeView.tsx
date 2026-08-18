@@ -20,7 +20,7 @@ import { TitleField, TitleText } from './TitleField';
 import { ValueFields, ValueKindSelect, ValuePointsField, ValueSliderBoundsFields } from './ValueEditor';
 
 export function InputNodeView({ id, selected }: NodeProps): ReactElement | null {
-  const { document, analysis, edit, pinned, togglePin } = useGraph();
+  const { document, analysis, edit, expanded, toggleExpanded } = useGraph();
   const node = document.nodes.find((candidate) => candidate.id === id);
   if (node === undefined || node.kind !== 'input') return null;
 
@@ -33,10 +33,10 @@ export function InputNodeView({ id, selected }: NodeProps): ReactElement | null 
     <NodeShell
       kind="input"
       state={analysis.states.get(id) ?? 'ok'}
-      {...(analysis.problems.has(id) ? { problem: analysis.problems.get(id) } : {})}
       selected={selected ?? false}
-      pinned={pinned.has(id)}
-      onTogglePin={() => togglePin(id)}
+      {...(analysis.problems.has(id) ? { problem: analysis.problems.get(id) } : {})}
+      expanded={expanded.has(id)}
+      onToggleExpanded={() => toggleExpanded(id)}
       onDelete={() => edit((current) => reframe(removeNodes(current, new Set([id]))))}
       dataTour={`input-${id}`}
       title={

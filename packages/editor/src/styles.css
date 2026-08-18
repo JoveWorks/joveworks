@@ -828,9 +828,21 @@ aside.right {
   font-size: 1em;
 }
 
+.node .help,
+.node .node-pin,
+.node .delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  line-height: 1;
+}
+
 .node .help {
   border: none;
-  padding: 0 2px;
   color: var(--line);
   background: transparent;
   text-decoration: none;
@@ -841,20 +853,34 @@ aside.right {
   color: var(--accent);
 }
 
-.node .pin {
+.node .node-pin {
   border: none;
-  padding: 0 2px;
   color: var(--line);
   background: transparent;
 }
 
-.node .pin.on {
+.node .node-pin svg {
+  display: block;
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.node .node-pin:hover,
+.node .node-pin.on {
   color: var(--accent);
+}
+
+.node .node-pin.on svg {
+  fill: currentColor;
 }
 
 .node .delete {
   border: none;
-  padding: 0 2px;
   color: var(--line);
   background: transparent;
 }
