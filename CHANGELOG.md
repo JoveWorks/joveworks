@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.7.1](https://github.com/ThomasVanRiel/joveworks/compare/v0.7.0...v0.7.1) (2026-08-18)
+
+### Features
+
+* **editor:** add mobile documentation landing ([e2e28f7](https://github.com/ThomasVanRiel/joveworks/commit/e2e28f7a2f0819466331d1c1539f60ddc57a80e1))
+* **editor:** persist workspace preferences ([caab5be](https://github.com/ThomasVanRiel/joveworks/commit/caab5be26e1b85ec13b9c3dc58cf8753b163a6e6))
+* **editor:** prototype NodeBook course viewer ([6a6e075](https://github.com/ThomasVanRiel/joveworks/commit/6a6e075e71b984fc79e99f0f0783cd35f81b2f8c))
+
+### Fixes
+
+* **editor:** align unpack output ports ([b78a573](https://github.com/ThomasVanRiel/joveworks/commit/b78a5735fba6961a1505e8f79a38656a29f4da2c))
+* **editor:** enlarge port hitboxes ([d9e797c](https://github.com/ThomasVanRiel/joveworks/commit/d9e797c6f5f1e8b961dfd5927d913769c92f5d88))
+* **editor:** stack course viewer content ([d6cfdeb](https://github.com/ThomasVanRiel/joveworks/commit/d6cfdeb7041aff388cbf060afed95b121041b75a))
 ## [0.7.0](https://github.com/ThomasVanRiel/joveworks/compare/v0.6.0...v0.7.0) (2026-08-17)
 
 ### Features
