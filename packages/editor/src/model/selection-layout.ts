@@ -11,6 +11,7 @@ import type { GraphDocument, GraphNode } from '@joveworks/schema';
 
 import { GAP, NODE_HEIGHT, NODE_WIDTH } from './layout-constants';
 import { autoArrange } from './layout';
+import type { NodeSize, NodeSizes } from './node-sizes';
 
 export type Alignment =
   | 'left'
@@ -21,13 +22,6 @@ export type Alignment =
   | 'vertical-centre';
 
 export type SpacingAxis = 'horizontal' | 'vertical';
-
-export interface NodeSize {
-  readonly width: number;
-  readonly height: number;
-}
-
-export type NodeSizes = ReadonlyMap<string, NodeSize>;
 
 function selectedGroups(document: GraphDocument, selected: ReadonlySet<string>): GraphNode[][] {
   const groups = new Map<string, GraphNode[]>();

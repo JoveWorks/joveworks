@@ -46,6 +46,7 @@ import { analyse } from './model/analysis';
 import { bundledCatalogues, baseCatalogue, withCatalogue } from './model/catalogues';
 import { groupIntoSection } from './model/document';
 import { autoArrange } from './model/layout';
+import type { NodeSizes } from './model/node-sizes';
 import {
   loadCanvasControlsVisible,
   loadContourPalette,
@@ -179,6 +180,18 @@ function startupDocument(
     document: padPressure([baseCatalogue()], locale) ?? emptyDocument('untitled', 'Untitled'),
     restored: false,
   };
+}
+
+function measuredNodeSizes(flow: ReturnType<typeof useReactFlow>): NodeSizes {
+  return new Map(
+    flow
+      .getNodes()
+      .flatMap((node) => {
+        const width = node.measured?.width ?? node.width;
+        const height = node.measured?.height ?? node.height;
+        return width === undefined || height === undefined ? [] : [[node.id, { width, height }] as const];
+      }),
+  );
 }
 
 /**
@@ -632,7 +645,7 @@ function AppShell(): ReactElement {
   };
 
   const arrangeGraph = (): void => {
-    edit((current) => autoArrange(current));
+    edit((current) => autoArrange(current, measuredNodeSizes(flow)));
   };
 
   // Open/save belong in a conventional File/Edit/View/Help ribbon, top-left

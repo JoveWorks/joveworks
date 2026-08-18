@@ -68,6 +68,7 @@ import {
   updateFrame,
 } from '../model/document';
 import { autoArrange } from '../model/layout';
+import type { NodeSizes } from '../model/node-sizes';
 import { primaryModifierLabel } from '../model/platform';
 import { alignSelection, arrangeSelection, spaceSelectionEvenly } from '../model/selection-layout';
 import { BundleEdge } from './BundleEdge';
@@ -292,7 +293,7 @@ export function compatibleQuickAddPort(
   return undefined;
 }
 
-type Measurements = ReadonlyMap<string, { width: number; height: number }>;
+type Measurements = NodeSizes;
 
 /**
  * A node's measured size, as a property to spread — absent rather than
@@ -931,7 +932,7 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
       },
       {
         label: t('Auto-arrange'),
-        onClick: () => edit((current) => autoArrange(current)),
+        onClick: () => edit((current) => autoArrange(current, measured)),
       },
       { heading: t('Canvas') },
       {

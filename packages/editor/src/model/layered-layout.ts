@@ -40,6 +40,7 @@ export type LayeredLayoutResult =
   | { readonly cyclic: true; readonly positions: undefined };
 
 const MAX_ORDERING_PASSES = 8;
+const ROW_ALIGNMENT_TOLERANCE = 12;
 
 /** Longest-path-from-sources rank via Kahn's algorithm. `undefined` on a cycle. */
 function assignRanks(
@@ -112,6 +113,44 @@ function barycenterPass(
     withBarycenter.sort((a, b) => a.barycenter - b.barycenter || a.key.localeCompare(b.key));
     order.set(r, withBarycenter.map((entry) => entry.key));
   }
+}
+
+function alignNearbyRows(
+  positions: Map<string, Position>,
+  keys: readonly string[],
+): void {
+  const sorted = keys
+    .map((key) => ({ key, y: positions.get(key)?.y }))
+    .filter((entry): entry is { readonly key: string; readonly y: number } => entry.y !== undefined)
+    .sort((a, b) => a.y - b.y || a.key.localeCompare(b.key));
+
+  let row: string[] = [];
+  let sum = 0;
+  let previousY: number | undefined;
+  const flush = (): void => {
+    if (row.length < 2) {
+      row = [];
+      sum = 0;
+      previousY = undefined;
+      return;
+    }
+    const alignedY = Math.round(sum / row.length);
+    for (const key of row) {
+      const position = positions.get(key);
+      if (position !== undefined) positions.set(key, { ...position, y: alignedY });
+    }
+    row = [];
+    sum = 0;
+    previousY = undefined;
+  };
+
+  for (const entry of sorted) {
+    if (previousY !== undefined && entry.y - previousY > ROW_ALIGNMENT_TOLERANCE) flush();
+    row.push(entry.key);
+    sum += entry.y;
+    previousY = entry.y;
+  }
+  flush();
 }
 
 export function computeLayeredPositions(
@@ -197,6 +236,11 @@ export function computeLayeredPositions(
       cursorY += block.height + ROW_GAP_Y;
     }
   }
+  // Measured heights can leave two independently stacked columns visually
+  // "almost" in the same row. Collapse only those near misses: it keeps the
+  // equal measured-height gaps inside each column, instead of quantizing the
+  // whole stack onto the grid and reintroducing uneven spacing.
+  alignNearbyRows(positions, mainBlocks.map((block) => block.key));
 
   let mainBottom = 0;
   for (const [key, position] of positions) {
