@@ -105,6 +105,68 @@ describe('a scalar graph', () => {
   });
 });
 
+describe('table-backed formulas', () => {
+  const lookupCatalogue = catalogueOf([
+    {
+      id: 'lookup', version: 1,
+      output: { kind: 'numeric', name: 'result', unit: 'mm' },
+      inputs: [
+        { kind: 'numeric', name: 'size', unit: 'mm', default: 1 },
+        { kind: 'categorical', name: 'class', domain: ['A', 'B'], default: 'A' },
+      ],
+      expression: '0 * size',
+      lookup: {
+        axes: [
+          { input: 'size', kind: 'numeric', values: [10, 20] },
+          { input: 'class', kind: 'categorical', values: ['A', 'B'] },
+        ],
+        values: [1, 2, 3, null],
+      },
+      description: 'Invented lookup table.', status: 'unverified',
+    },
+  ]);
+  const lookupRef = refTo('lookup', lookupCatalogue);
+
+  it('uses catalogue defaults and node-local unwired overrides', () => {
+    const defaults = documentOf([formulaNode('table', lookupRef)], []);
+    expect(numeric(valueAt(evaluateDocument(defaults, [lookupCatalogue]), 'table', 'result')).data).toEqual([1]);
+
+    const overridden = documentOf([
+      formulaNode('table', lookupRef, {
+        inputValues: {
+          size: { kind: 'scalar', value: 15, unit: 'mm' },
+          class: { kind: 'categorical', value: 'A' },
+        },
+      }),
+    ], []);
+    expect(numeric(valueAt(evaluateDocument(overridden, [lookupCatalogue]), 'table', 'result')).data).toEqual([3]);
+  });
+
+  it('reports an explicitly undefined table cell', () => {
+    const document = documentOf([
+      formulaNode('table', lookupRef, {
+        inputValues: {
+          size: { kind: 'scalar', value: 15, unit: 'mm' },
+          class: { kind: 'categorical', value: 'B' },
+        },
+      }),
+    ], []);
+    expect(() => evaluateDocument(document, [lookupCatalogue])).toThrow(/not defined/u);
+  });
+
+  it('uses lookup axes as numeric or categorical table-column sweeps', () => {
+    const document = documentOf([
+      input('sizes', { kind: 'tableColumn', table: 'lookup', column: 'size' }),
+      input('classes', { kind: 'tableColumn', table: 'lookup', column: 'class' }),
+    ], []);
+    const evaluation = evaluateDocument(document, [lookupCatalogue]);
+    expect(numeric(valueAt(evaluation, 'sizes', 'value')).data).toEqual([10, 20]);
+    const classes = valueAt(evaluation, 'classes', 'value');
+    expect(classes?.kind).toBe('categorical');
+    if (classes?.kind === 'categorical') expect(classes.data).toEqual(['A', 'B']);
+  });
+});
+
 describe('closure nodes', () => {
   it('computes a student-typed expression, ports and all', () => {
     const document = documentOf(

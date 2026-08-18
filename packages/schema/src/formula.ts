@@ -21,6 +21,7 @@ import {
   readEnum,
   readInteger,
   readName,
+  readNumber,
   readObject,
   readString,
   required,
@@ -60,6 +61,25 @@ function portVariables(port: Port): readonly string[] {
 export const FORMULA_STATUSES = ['verified', 'unverified', 'quarantined'] as const;
 export type FormulaStatus = (typeof FORMULA_STATUSES)[number];
 
+/**
+ * A dense, typed lookup table. Axes are ordered; values are row-major with the
+ * last axis contiguous. Numeric axes select the first upper bound greater than
+ * or equal to the input, while categorical axes require an exact match.
+ */
+export interface LookupAxis {
+  readonly input: string;
+  readonly kind: 'numeric' | 'categorical';
+  readonly values: readonly (number | string)[];
+  /** Numeric axes may exclude everything at or below this lower table bound. */
+  readonly lowerExclusive?: number;
+}
+
+export interface FormulaLookup {
+  readonly axes: readonly LookupAxis[];
+  /** Values in the formula output's declared unit. `null` means undefined. */
+  readonly values: readonly (number | null)[];
+}
+
 export interface Formula {
   /** Stable within its catalogue — the migration writes it from the method name. */
   readonly id: string;
@@ -69,6 +89,8 @@ export interface Formula {
   readonly inputs: readonly Port[];
   /** Parsed and compiled by the kernel, never here. */
   readonly expression: string;
+  /** Optional table-backed evaluator. The expression still declares/checks dimensions. */
+  readonly lookup?: FormulaLookup;
   /** Short display name. Omit when a citation or id is the natural title. */
   readonly label?: LocalizedText;
   readonly description: LocalizedText;
@@ -87,6 +109,47 @@ export interface Formula {
   readonly status: FormulaStatus;
   /** Why it is quarantined. Required when it is, so the UI has something to show. */
   readonly quarantineReason?: LocalizedText;
+}
+
+function parseLookup(value: JsonValue, path: string): FormulaLookup {
+  const object = readObject(value, path);
+  const axes = readArray(required(object, 'axes', path), join(path, 'axes')).map((entry, i) => {
+    const axisPath = `${join(path, 'axes')}[${i}]`;
+    const axis = readObject(entry, axisPath);
+    const kind = readEnum(required(axis, 'kind', axisPath), join(axisPath, 'kind'), ['numeric', 'categorical'] as const);
+    const values = readArray(required(axis, 'values', axisPath), join(axisPath, 'values')).map((cell, j) => {
+      const cellPath = `${join(axisPath, 'values')}[${j}]`;
+      return kind === 'numeric' ? readNumber(cell, cellPath) : readString(cell, cellPath);
+    });
+    if (values.length === 0) fail(join(axisPath, 'values'), 'is empty');
+    const lowerExclusive = optional(axis, 'lowerExclusive', axisPath, readNumber);
+    if (kind === 'categorical' && lowerExclusive !== undefined) fail(join(axisPath, 'lowerExclusive'), 'only belongs on numeric axes');
+    return {
+      input: readName(required(axis, 'input', axisPath), join(axisPath, 'input')),
+      kind,
+      values,
+      ...put('lowerExclusive', lowerExclusive),
+    };
+  });
+  if (axes.length === 0) fail(join(path, 'axes'), 'is empty');
+  const values = readArray(required(object, 'values', path), join(path, 'values')).map((cell, i) =>
+    cell === null ? null : readNumber(cell, `${join(path, 'values')}[${i}]`),
+  );
+  const expected = axes.reduce((size, axis) => size * axis.values.length, 1);
+  if (values.length !== expected) fail(join(path, 'values'), `has ${values.length} entries; axes require ${expected}`);
+  return { axes, values };
+}
+
+function serializeLookup(lookup: FormulaLookup): JsonObject {
+  return {
+    axes: lookup.axes.map((axis) => ({
+      input: axis.input,
+      kind: axis.kind,
+      values: [...axis.values],
+      ...put('lowerExclusive', axis.lowerExclusive),
+    })),
+    values: [...lookup.values],
+  };
 }
 
 /** The quarantine gate: a quarantined formula cannot be evaluated, by anyone, ever. */
@@ -136,6 +199,34 @@ export function parseFormula(value: JsonValue, path: string): Formula {
 
   const expression = readString(required(object, 'expression', path), join(path, 'expression'));
   if (expression.trim().length === 0) fail(join(path, 'expression'), 'is empty');
+  const lookup = optional(object, 'lookup', path, parseLookup);
+  if (lookup !== undefined) {
+    if (output.kind !== 'numeric' || isGenericDimension(output.unit)) {
+      fail(join(path, 'output'), 'a lookup needs a concrete numeric output');
+    }
+    const seenAxes = new Set<string>();
+    for (const [i, axis] of lookup.axes.entries()) {
+      const axisPath = `${join(path, 'lookup.axes')}[${i}]`;
+      if (seenAxes.has(axis.input)) fail(join(axisPath, 'input'), `'${axis.input}' is listed twice`);
+      seenAxes.add(axis.input);
+      const port = inputs.find((candidate) => candidate.name === axis.input);
+      if (port === undefined) fail(join(axisPath, 'input'), `'${axis.input}' is not a declared input`);
+      if (axis.kind === 'numeric') {
+        if (port.kind !== 'numeric' || isGenericDimension(port.unit)) {
+          fail(axisPath, 'a numeric lookup axis needs a concrete numeric input');
+        }
+        for (let j = 1; j < axis.values.length; j += 1) {
+          if ((axis.values[j] as number) <= (axis.values[j - 1] as number)) {
+            fail(join(axisPath, 'values'), 'must be strictly increasing');
+          }
+        }
+      } else {
+        if (port.kind !== 'categorical') fail(axisPath, 'a categorical lookup axis needs a categorical input');
+        const outside = axis.values.find((entry) => !port.domain.includes(entry as string));
+        if (outside !== undefined) fail(join(axisPath, 'values'), `'${outside}' is outside the input domain`);
+      }
+    }
+  }
 
   const status = readEnum(required(object, 'status', path), join(path, 'status'), FORMULA_STATUSES);
   const quarantineReason = optional(object, 'quarantineReason', path, parseLocalizedText);
@@ -149,6 +240,7 @@ export function parseFormula(value: JsonValue, path: string): Formula {
     output,
     inputs,
     expression,
+    ...put('lookup', lookup),
     description: parseLocalizedText(required(object, 'description', path), join(path, 'description')),
     ...put('label', optional(object, 'label', path, parseLocalizedText)),
     ...put('citation', optional(object, 'citation', path, readString)),
@@ -166,6 +258,7 @@ export function serializeFormula(formula: Formula): JsonObject {
     output: serializePort(formula.output),
     inputs: formula.inputs.map(serializePort),
     expression: formula.expression,
+    ...put('lookup', formula.lookup === undefined ? undefined : serializeLookup(formula.lookup)),
     ...(formula.label === undefined ? {} : { label: serializeLocalizedText(formula.label) }),
     description: serializeLocalizedText(formula.description),
     ...put('citation', formula.citation),
@@ -193,6 +286,7 @@ export function formulaHash(formula: Formula): string {
     output: withoutText(formula.output),
     inputs: formula.inputs.map(withoutText),
     expression: formula.expression,
+    ...put('lookup', formula.lookup === undefined ? undefined : serializeLookup(formula.lookup)),
     ...put('citation', formula.citation),
     ...put('variantOf', formula.variantOf),
     ...put('appliesWhen', formula.appliesWhen),

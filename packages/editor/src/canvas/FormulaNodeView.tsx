@@ -16,7 +16,7 @@
 import type { ReactElement } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 
-import { isGenericPort, localize, type Port } from '@joveworks/schema';
+import { isGenericPort, localize, type FormulaNode, type Port, type ValueSpec } from '@joveworks/schema';
 import { phrase } from '../i18n';
 import type { Unit } from '@joveworks/units';
 
@@ -32,6 +32,8 @@ import { Sparkline } from './Sparkline';
 import { slotHandleId } from './spectrumSlots';
 import { TitleField, TitleText } from './TitleField';
 import { DisplayUnitPicker } from './DisplayUnitPicker';
+import { TextField } from './fields';
+import { formatAuthored, parseAuthored } from '../model/quantity';
 
 export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | null {
   const { document, analysis, edit, pinned, togglePin } = useGraph();
@@ -103,6 +105,13 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
         displayUnits: { ...entry.displayUnits, [formula.output.name]: unit },
       })),
     );
+  const setInputValue = (name: string, value: ValueSpec): void =>
+    edit((current) =>
+      updateNode<FormulaNode>(current, id, (entry) => ({
+        ...entry,
+        inputValues: { ...entry.inputValues, [name]: value },
+      })),
+    );
 
   // The title is the friendly name: a student's own label, else the catalogue's
   // citation, else the bare id. The subtitle is the provenance line underneath
@@ -166,6 +175,7 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
     >
       <ul className="ports">
         {formula.inputs.flatMap((port) => {
+          const authored = node.inputValues?.[port.name];
           // An ordinary port is exactly one slot. A spectrum port is one
           // slot per edge already joined to it, plus a trailing open one —
           // there is no numbered "a1, a2" identity to keep in step, since
@@ -188,7 +198,36 @@ export function FormulaNodeView({ id, selected }: NodeProps): ReactElement | nul
                   unitClassName="port-unit"
                 />
                 {port.kind === 'categorical' ? (
-                  <span className="port-unit">{port.domain.join(' | ')}</span>
+                  wired.has(port.name) ? (
+                    <span className="port-unit">{port.domain.join(' | ')}</span>
+                  ) : (
+                    <select
+                      className="nodrag port-default"
+                      value={
+                        authored?.kind === 'categorical'
+                          ? authored.value
+                          : port.default ?? port.domain[0]
+                      }
+                      onChange={(event) => setInputValue(port.name, { kind: 'categorical', value: event.target.value })}
+                    >
+                      {port.domain.map((choice) => <option key={choice} value={choice}>{choice}</option>)}
+                    </select>
+                  )
+                ) : null}
+                {port.kind === 'numeric' && !wired.has(port.name) && port.default !== undefined && !isGenericPort(port) ? (
+                  <TextField
+                    className="quantity port-default"
+                    autoSize={5}
+                    value={
+                      authored?.kind === 'scalar'
+                        ? formatAuthored(authored, format)
+                        : formatAuthored({ value: port.default, unit: port.unit as Unit }, format)
+                    }
+                    onCommit={(text) => {
+                      const quantity = parseAuthored(text, format);
+                      setInputValue(port.name, { kind: 'scalar', ...quantity });
+                    }}
+                  />
                 ) : null}
               </li>
             );

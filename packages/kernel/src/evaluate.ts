@@ -18,7 +18,7 @@
  *   is the economy that was chosen for.
  */
 
-import { DIMENSIONLESS, isDimensionless, toCanonical, type Unit } from '@joveworks/units';
+import { DIMENSIONLESS, isDimensionless, isGenericDimension, toCanonical, type Unit } from '@joveworks/units';
 import {
   VALUE_PORT,
   THRESHOLD_PORT,
@@ -33,6 +33,7 @@ import {
   type OutputNode,
   type Comparison,
   type Formula,
+  type FormulaNode,
   type Port,
   type SpectrumPort,
 } from '@joveworks/schema';
@@ -46,6 +47,7 @@ import {
   LARGE_GRID,
   broadcastSeries,
   gridSize,
+  indexer,
   reader,
   scalarSeries,
   categoricalScalar,
@@ -166,12 +168,12 @@ export function evaluateDocument(
   for (const node of resolution.order) {
     switch (node.kind) {
       case 'input':
-        values.set(endpointKey(node.id, VALUE_PORT), inputValue(node, axisById));
+        values.set(endpointKey(node.id, VALUE_PORT), inputValue(node, axisById, resolution));
         break;
 
       case 'formula': {
         const formula = resolution.formulas.get(node.id) as Formula;
-        const output = evaluateFormula(node.id, formula, resolution, values, warnings, largeGrid);
+        const output = evaluateFormula(node, formula, resolution, values, warnings, largeGrid);
         values.set(endpointKey(node.id, formula.output.name), output);
         break;
       }
@@ -179,7 +181,7 @@ export function evaluateDocument(
       case 'closure': {
         const formula = resolution.formulas.get(node.id) as Formula;
         const output = evaluateFormula(
-          node.id,
+          node,
           formula,
           resolution,
           values,
@@ -222,7 +224,7 @@ export function evaluateDocument(
  * A literal, a categorical choice, a spectrum or a range, converted into
  * canonical units on the way in. This is the boundary.
  */
-function inputValue(node: InputNode, axes: ReadonlyMap<string, Axis>): PortValue {
+function inputValue(node: InputNode, axes: ReadonlyMap<string, Axis>, resolution: Resolution): PortValue {
   const spec = node.value;
   const axis = isRange(spec) ? axes.get(node.id) : undefined;
   if (isRange(spec) && axis === undefined) {
@@ -291,10 +293,17 @@ function inputValue(node: InputNode, axes: ReadonlyMap<string, Axis>): PortValue
       };
 
     case 'tableColumn':
-      throw new KernelError(
-        'a table column needs a table, and tables arrive with the second slice',
-        node.id,
-      );
+      {
+        const column = resolution.tableColumns.get(node.id);
+        if (column === undefined) throw new KernelError('this table column could not be resolved', node.id);
+        return column.kind === 'categorical'
+          ? { kind: 'categorical', axes: [axis as Axis], data: [...column.values] }
+          : {
+              kind: 'numeric',
+              axes: [axis as Axis],
+              data: column.values.map((value) => toCanonical(value, column.unit)),
+            };
+      }
   }
 }
 
@@ -310,14 +319,26 @@ function valueAtEdge(edge: Edge, key: string, values: ReadonlyMap<string, PortVa
 
 /** A non-spectrum port takes exactly one edge (`oneEdge` in graph.ts already refused a second). */
 function inputPortValue(
-  nodeId: string,
+  node: FormulaNode | { readonly id: string },
   port: Port,
   resolution: Resolution,
   values: ReadonlyMap<string, PortValue>,
 ): PortValue {
+  const nodeId = node.id;
   const key = endpointKey(nodeId, port.name);
   const edge = resolution.incoming.get(key)?.[0];
   if (edge !== undefined) return valueAtEdge(edge, key, values);
+
+  if ('inputValues' in node) {
+    const authored = node.inputValues?.[port.name];
+    if (authored?.kind === 'scalar' || authored?.kind === 'slider') {
+      return scalarSeries(toCanonical(authored.value, authored.unit));
+    }
+    if (authored?.kind === 'categorical') return categoricalScalar(authored.value);
+    if (authored !== undefined) {
+      throw new KernelError(`an inline fallback for '${port.name}' must be a scalar or categorical value`, key);
+    }
+  }
 
   // Not wired: a declared default stands in, in the unit it was declared in.
   // Anything else is an incomplete graph, which the editor marks on the
@@ -367,7 +388,7 @@ function spectrumEdgeValues(
 }
 
 function evaluateFormula(
-  nodeId: string,
+  node: FormulaNode | { readonly id: string },
   formula: Formula,
   resolution: Resolution,
   values: ReadonlyMap<string, PortValue>,
@@ -375,6 +396,7 @@ function evaluateFormula(
   largeGrid: number,
   closure = false,
 ): NumericSeries {
+  const nodeId = node.id;
   assertEvaluable(formula, nodeId);
   if (formula.output.kind === 'categorical') {
     throw new KernelError(
@@ -393,7 +415,7 @@ function evaluateFormula(
 
   const regularPorts = formula.inputs.filter((port) => port.kind !== 'spectrum');
   const regularInputs = regularPorts.map((port) => {
-    const value = inputPortValue(nodeId, port, resolution, values);
+    const value = inputPortValue(node, port, resolution, values);
     // An ordinary port's own source is never spectrum- or bundle-kind — a
     // formula cannot produce either — so this is a defensive check, not a
     // real case, but it is what lets everything below see NumericSeries |
@@ -430,6 +452,45 @@ function evaluateFormula(
           .map((axis) => `${axis.label}: ${axis.length}`)
           .join(' × ')}) — a sweep that large takes a moment`,
     });
+  }
+
+  if (formula.lookup !== undefined) {
+    if (isGenericDimension(formula.output.unit)) {
+      throw new KernelError('a lookup output must declare a concrete unit', nodeId);
+    }
+    const byName = new Map(regularInputs.map((entry) => [entry.port.name, entry] as const));
+    const strides = formula.lookup.axes.map((_axis, i) =>
+      formula.lookup!.axes.slice(i + 1).reduce((size, axis) => size * axis.values.length, 1),
+    );
+    const data = new Array<number>(cells);
+    for (let cell = 0; cell < cells; cell += 1) {
+      let flat = 0;
+      for (const [axisIndex, lookupAxis] of formula.lookup.axes.entries()) {
+        const entry = byName.get(lookupAxis.input);
+        if (entry === undefined) throw new KernelError(`lookup input '${lookupAxis.input}' is not declared`, nodeId);
+        const valueIndex = indexer(entry.value, axes)(cell);
+        let selected = -1;
+        if (lookupAxis.kind === 'categorical') {
+          if (entry.value.kind !== 'categorical') throw new KernelError(`lookup input '${lookupAxis.input}' must be categorical`, nodeId);
+          selected = lookupAxis.values.indexOf(entry.value.data[valueIndex] as string);
+        } else {
+          if (entry.value.kind !== 'numeric' || entry.port.kind !== 'numeric' || isGenericDimension(entry.port.unit)) {
+            throw new KernelError(`lookup input '${lookupAxis.input}' must have a concrete numeric unit`, nodeId);
+          }
+          const inputUnit = entry.port.unit;
+          const coordinate = entry.value.data[valueIndex] as number;
+          const below = lookupAxis.lowerExclusive !== undefined &&
+            coordinate <= toCanonical(lookupAxis.lowerExclusive, inputUnit);
+          selected = below ? -1 : lookupAxis.values.findIndex((bound) => coordinate <= toCanonical(bound as number, inputUnit));
+        }
+        if (selected < 0) throw new KernelError(`no lookup entry for '${lookupAxis.input}'`, endpointKey(nodeId, lookupAxis.input));
+        flat += selected * (strides[axisIndex] as number);
+      }
+      const lookedUp = formula.lookup.values[flat];
+      if (lookedUp === null || lookedUp === undefined) throw new KernelError('this ISO tolerance combination is not defined', nodeId);
+      data[cell] = toCanonical(lookedUp, formula.output.unit);
+    }
+    return { kind: 'numeric', axes, data };
   }
 
   const env: Record<string, number | readonly number[]> = {};

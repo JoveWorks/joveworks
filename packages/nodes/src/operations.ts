@@ -25,6 +25,7 @@
 
 import type { Formula, LocalizedText, NumericPort, OutputPort, Port, SpectrumPort } from '@joveworks/schema';
 import { parseGenericDimension, parseUnit } from '@joveworks/units';
+import { ISO286_FORMULAS } from './iso286.js';
 
 /** A port that adopts the dimension of whatever is wired to it. */
 function text(en: string): LocalizedText {
@@ -333,7 +334,7 @@ function operationLabel(id: string): LocalizedText {
   return { en, nl: DUTCH_LABELS[id] ?? en };
 }
 
-export const OPERATIONS: readonly Formula[] = DRAFTS.map((draft) => ({
+export const OPERATIONS: readonly Formula[] = [...DRAFTS.map((draft) => ({
   id: draft.id,
   version: 1,
   output: draft.output as Formula['output'],
@@ -342,4 +343,4 @@ export const OPERATIONS: readonly Formula[] = DRAFTS.map((draft) => ({
   label: operationLabel(draft.id),
   description: text(draft.description),
   status: 'unverified' as const,
-}));
+})), ...ISO286_FORMULAS];

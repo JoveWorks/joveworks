@@ -168,6 +168,8 @@ export interface InputNode extends NodeBase {
 export interface FormulaNode extends NodeBase {
   readonly kind: 'formula';
   readonly formula: FormulaRef;
+  /** Per-port fallbacks used only while that input is unwired. */
+  readonly inputValues?: Readonly<Record<string, ValueSpec>>;
 }
 
 export interface OutputNode extends NodeBase {
@@ -436,6 +438,18 @@ function parseNode(value: JsonValue, path: string): GraphNode {
         ...base,
         kind,
         formula: parseFormulaRef(required(object, 'formula', path), join(path, 'formula')),
+        ...put(
+          'inputValues',
+          optional(object, 'inputValues', path, (entry, entryPath) => {
+            const values = readObject(entry, entryPath);
+            return Object.fromEntries(
+              Object.entries(values).map(([name, spec]) => [
+                readName(name, entryPath),
+                parseValueSpec(spec, join(entryPath, name)),
+              ]),
+            );
+          }),
+        ),
       };
     case 'output':
       return {
@@ -487,7 +501,18 @@ function serializeNode(node: GraphNode): JsonObject {
         ...put('axisLabel', node.axisLabel),
       };
     case 'formula':
-      return { ...base, formula: serializeFormulaRef(node.formula) };
+      return {
+        ...base,
+        formula: serializeFormulaRef(node.formula),
+        ...put(
+          'inputValues',
+          node.inputValues === undefined
+            ? undefined
+            : Object.fromEntries(
+                Object.entries(node.inputValues).map(([name, spec]) => [name, serializeValueSpec(spec)]),
+              ),
+        ),
+      };
     case 'output':
       return { ...base, output: serializeOutput(node.output), ...put('caption', node.caption) };
     case 'compare':

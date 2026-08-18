@@ -28,3 +28,10 @@
 
 export { OPERATIONS } from './operations.js';
 export { BASE_CATALOGUE, BASE_CATALOGUE_ID, baseCatalogueJson } from './catalogue.js';
+export {
+  ISO286_FORMULAS,
+  ISO286_GRADES,
+  ISO286_HOLE_LETTERS,
+  ISO286_SHAFT_LETTERS,
+  iso286Limits,
+} from './iso286.js';

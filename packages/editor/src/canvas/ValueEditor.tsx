@@ -6,12 +6,8 @@
  * into a design study. Nothing downstream is rewired, because a scalar is a
  * series with no axes.
  *
- * Five kinds are offered. `tableColumn` is absent because tables arrive with the
- * second slice and the kernel says so rather than half-working, and the
- * categorical kinds are absent because nothing in milestone 1 has a categorical
- * port to receive one — an accepted gap, since belt uses neither tables nor
- * categoricals — offering them would be a field whose every value is refused
- * at the next connection.
+ * Numeric and categorical scalar/list inputs are editable here, as are lookup
+ * table axes used as catalogue-backed sweeps.
  */
 
 import type { ReactElement } from 'react';
@@ -20,11 +16,12 @@ import { dimensionsEqual, parseUnit, type NumberFormat, type Unit } from '@jovew
 import { DEFAULT_SLIDER_FIGURES, RENARD_SERIES, type RenardSeries, type ValueSpec } from '@joveworks/schema';
 
 import { useSettings } from '../settings-context';
+import { useGraph } from '../graph-context';
 import { ui } from '../i18n';
 import { toUnitsFormat } from '../model/numberFormat';
 import { NumberField, TextField } from './fields';
 
-type Kind = 'scalar' | 'slider' | 'linear' | 'logarithmic' | 'list' | 'renard';
+type Kind = 'scalar' | 'slider' | 'linear' | 'logarithmic' | 'list' | 'renard' | 'categorical' | 'categoricalList' | 'tableColumn';
 
 /**
  * A unit field's placeholder when empty — matching `unitLabel`'s own
@@ -57,6 +54,12 @@ function smallest(value: ValueSpec): number {
     return Math.min(value.start, value.stop);
   }
   return 1;
+}
+
+function firstCategory(value: ValueSpec): string {
+  if (value.kind === 'categorical') return value.value;
+  if (value.kind === 'categoricalList') return value.values[0] ?? 'value';
+  return 'value';
 }
 
 /**
@@ -93,6 +96,14 @@ export function converted(value: ValueSpec, kind: Kind): ValueSpec {
       const start = sample <= 0 ? 1 : sample;
       return { kind, series: 'R20', start, stop: start * 2, unit };
     }
+    case 'categorical':
+      return { kind, value: firstCategory(value) };
+    case 'categoricalList': {
+      const category = firstCategory(value);
+      return { kind, values: [category] };
+    }
+    case 'tableColumn':
+      return { kind, table: 'iso286-hole-deviation', column: 'diameter' };
   }
 }
 
@@ -138,9 +149,11 @@ export function ValueKindSelect({ value, onChange }: Props): ReactElement {
   const labels: Readonly<Record<Kind, string>> = {
     scalar: copy.scalar, slider: copy.slider, linear: copy.linear,
     logarithmic: copy.logarithmic, list: copy.list, renard: copy.renard,
+    categorical: 'category', categoricalList: 'category list',
+    tableColumn: 'table column',
   };
   const kind = (
-    ['scalar', 'slider', 'linear', 'logarithmic', 'list', 'renard'] as const
+    ['scalar', 'slider', 'linear', 'logarithmic', 'list', 'renard', 'categorical', 'categoricalList', 'tableColumn'] as const
   ).includes(value.kind as Kind)
     ? (value.kind as Kind)
     : 'scalar';
@@ -230,6 +243,10 @@ function useValueFormat(): NumberFormat {
 export function ValueFields({ value, onChange }: Props): ReactElement {
   const unit = unitOf(value);
   const format = useValueFormat();
+  const { catalogues } = useGraph();
+  const lookupFormulas = catalogues.flatMap((catalogue) =>
+    catalogue.formulas.filter((formula) => formula.lookup !== undefined),
+  );
 
   const setUnit = (text: string): void => {
     const parsed = parseUnit(text); // throws, and the field shows why
@@ -271,6 +288,64 @@ export function ValueFields({ value, onChange }: Props): ReactElement {
             title="Blank is dimensionless — that is a value, not a gap to fill in."
             onCommit={setUnit}
           />
+        </div>
+      ) : null}
+
+      {value.kind === 'categorical' ? (
+        <TextField
+          className="category"
+          value={value.value}
+          placeholder="H"
+          title="A categorical value, such as a tolerance letter or grade."
+          onCommit={(text) => {
+            const category = text.trim();
+            if (category.length === 0) throw new Error('a categorical value cannot be empty');
+            onChange({ ...value, value: category });
+          }}
+        />
+      ) : null}
+
+      {value.kind === 'categoricalList' ? (
+        <TextField
+          className="category-list"
+          value={value.values.join(', ')}
+          placeholder="H, K, M"
+          title="Comma-separated categorical values; each becomes one sweep point."
+          onCommit={(text) => {
+            const values = text.split(',').map((entry) => entry.trim()).filter(Boolean);
+            if (values.length === 0) throw new Error('a categorical list cannot be empty');
+            onChange({ ...value, values });
+          }}
+        />
+      ) : null}
+
+      {value.kind === 'tableColumn' ? (
+        <div className="table-column-source">
+          <select
+            className="nodrag"
+            value={value.table}
+            title="The global id of a table-backed catalogue node."
+            onChange={(event) => {
+              const table = lookupFormulas.find((formula) => formula.id === event.target.value);
+              onChange({
+                ...value,
+                table: event.target.value,
+                column: table?.lookup?.axes[0]?.input ?? value.column,
+              });
+            }}
+          >
+            {lookupFormulas.map((formula) => <option key={formula.id} value={formula.id}>{formula.id}</option>)}
+          </select>
+          <select
+            className="nodrag"
+            value={value.column}
+            title="The lookup axis to sweep."
+            onChange={(event) => onChange({ ...value, column: event.target.value })}
+          >
+            {(lookupFormulas.find((formula) => formula.id === value.table)?.lookup?.axes ?? []).map((axis) => (
+              <option key={axis.input} value={axis.input}>{axis.input}</option>
+            ))}
+          </select>
         </div>
       ) : null}
 

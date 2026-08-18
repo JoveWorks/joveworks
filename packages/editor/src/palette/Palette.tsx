@@ -62,7 +62,8 @@ type PaletteMenu =
   | { readonly action: PaletteAction; readonly x: number; readonly y: number };
 
 /** An input's starting kind, built off a plain `1`, matching `ValueKindSelect`'s own conversion. */
-function seedValue(kind: 'scalar' | 'linear' | 'list', unit: Unit): ValueSpec {
+function seedValue(kind: 'scalar' | 'linear' | 'list' | 'categorical', unit: Unit): ValueSpec {
+  if (kind === 'categorical') return { kind, value: 'H' };
   return converted({ kind: 'scalar', value: 1, unit }, kind);
 }
 
@@ -130,7 +131,7 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
       }),
     );
 
-  const addInput = (kind: 'scalar' | 'linear' | 'list'): void =>
+  const addInput = (kind: 'scalar' | 'linear' | 'list' | 'categorical'): void =>
     edit((current) => {
       const id = uniqueId(current, 'input');
       return addNode(current, {
@@ -235,6 +236,7 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
     { id: 'builtin:input:value', label: copy.value, summary: copy.singleNumber, insert: () => addInput('scalar') },
     { id: 'builtin:input:range', label: copy.range, summary: copy.rangeSummary, insert: () => addInput('linear') },
     { id: 'builtin:input:list', label: copy.list, summary: copy.listSummary, insert: () => addInput('list') },
+    { id: 'builtin:input:category', label: 'category', summary: 'a named choice such as H or 7', insert: () => addInput('categorical') },
     { id: 'builtin:general:compare', label: copy.compare, summary: copy.compareSummary, insert: addCompare },
     { id: 'builtin:general:equation', label: copy.equation, summary: copy.equationSummary, insert: addClosure },
     { id: 'builtin:general:waypoint', label: copy.waypoint, summary: copy.waypointSummary, insert: addWaypoint },

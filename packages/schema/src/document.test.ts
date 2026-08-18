@@ -52,6 +52,10 @@ const study: JsonObject = {
       position: { x: 260, y: 0 },
       frameId: 'sizing',
       formula: { id: 'demo.product', version: 1, hash: '0123456789abcdef' },
+      inputValues: {
+        b: { kind: 'scalar', value: 2, unit: '' },
+        grade: { kind: 'categorical', value: 'H7' },
+      },
       displayUnits: { y: 'N/mm²' },
     },
     {

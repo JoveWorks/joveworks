@@ -79,6 +79,14 @@ describe('switching an input value between kinds', () => {
     const value = { kind: 'slider' as const, value: 35, min: 20, max: 80, unit: mm };
     expect(converted(value, 'scalar')).toEqual({ kind: 'scalar', value: 35, unit: mm });
   });
+
+  it('preserves a category when switching between one value and a categorical sweep', () => {
+    const value = { kind: 'categorical' as const, value: 'H' };
+    expect(converted(value, 'categoricalList')).toEqual({ kind: 'categoricalList', values: ['H'] });
+    expect(converted({ kind: 'categoricalList', values: ['K', 'M'] }, 'categorical')).toEqual({
+      kind: 'categorical', value: 'K',
+    });
+  });
 });
 
 describe('typing a unit on one bound of a range', () => {

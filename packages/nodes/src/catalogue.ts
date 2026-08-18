@@ -30,7 +30,7 @@ export const BASE_CATALOGUE_ID = 'base';
 export const BASE_CATALOGUE: Catalogue = {
   schemaVersion: SCHEMA_VERSION,
   id: BASE_CATALOGUE_ID,
-  name: { en: 'Math', nl: 'Wiskunde' },
+  name: { en: 'Built-in nodes', nl: 'Ingebouwde knooppunten' },
   restricted: false,
   formulas: OPERATIONS,
 };

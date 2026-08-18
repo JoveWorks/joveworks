@@ -34,7 +34,25 @@ import {
   type Port,
 } from '@joveworks/schema';
 
-import { BASE_CATALOGUE, OPERATIONS, baseCatalogueJson } from './index.js';
+import { BASE_CATALOGUE, OPERATIONS, baseCatalogueJson, iso286Limits } from './index.js';
+
+describe('ISO 286 tolerance lookups', () => {
+  it('returns lower and upper deviations for common hole and shaft classes', () => {
+    expect(iso286Limits('hole', 100, 'H', '7')).toEqual([0, 35]);
+    expect(iso286Limits('shaft', 100, 'h', '6')).toEqual([-22, 0]);
+    expect(iso286Limits('hole', 100, 'M', '6')).toEqual([-35, -13]);
+    expect(iso286Limits('shaft', 100, 'p', '6')).toEqual([37, 59]);
+  });
+
+  it('keeps grade-specific positions strict', () => {
+    expect(iso286Limits('hole', 100, 'J', '5')).toBeUndefined();
+    expect(iso286Limits('shaft', 100, 'k', '9')).toBeUndefined();
+  });
+
+  it('quarantines the non-monotonic IT16 source cell instead of guessing a correction', () => {
+    expect(iso286Limits('hole', 2400, 'H', '16')).toBeUndefined();
+  });
+});
 
 const byId = (id: string): Formula => {
   const found = OPERATIONS.find((formula) => formula.id === id);
@@ -123,6 +141,7 @@ describe('what the library carries', () => {
 
   it('names every port used by its expression, and uses every port it names', () => {
     for (const formula of OPERATIONS) {
+      if (formula.lookup !== undefined) continue;
       for (const port of formula.inputs) {
         expect(formula.expression, formula.id).toContain(port.name);
       }

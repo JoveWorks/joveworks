@@ -149,6 +149,7 @@ function checkRecord(formula: Formula, bindings: Bindings, where: string): Dimen
   for (const port of formula.inputs) {
     const dimension = portDimensionUnder(port, bindings, where);
     if (dimension === undefined) {
+      if (formula.lookup !== undefined) continue;
       throw new KernelError(
         `'${port.name}' is categorical, and using one in an expression needs a table`,
         where,

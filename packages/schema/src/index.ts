@@ -92,7 +92,15 @@ export {
   parseCatalogue,
   serializeCatalogue,
 } from './formula.js';
-export type { Formula, FormulaStatus, FormulaRef, RefMatch, Catalogue } from './formula.js';
+export type {
+  Formula,
+  FormulaStatus,
+  FormulaRef,
+  RefMatch,
+  Catalogue,
+  FormulaLookup,
+  LookupAxis,
+} from './formula.js';
 
 export { fnv1a64, hashRecord } from './hash.js';
 

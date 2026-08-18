@@ -120,8 +120,13 @@ export interface Resolution {
   readonly bindings: ReadonlyMap<string, ReadonlyMap<string, Dimension>>;
   /** One per range input node, in document order. */
   readonly axes: readonly Axis[];
+  readonly tableColumns: ReadonlyMap<string, ResolvedTableColumn>;
   readonly warnings: readonly Warning[];
 }
+
+export type ResolvedTableColumn =
+  | { readonly kind: 'numeric'; readonly values: readonly number[]; readonly unit: Unit }
+  | { readonly kind: 'categorical'; readonly values: readonly string[] };
 
 // --- catalogue lookup -------------------------------------------------------
 
@@ -173,7 +178,7 @@ function lookupFormula(
 
 // --- port inventories -------------------------------------------------------
 
-function inputValueType(node: InputNode): PortType {
+function inputValueType(node: InputNode, tableColumn?: ResolvedTableColumn): PortType {
   const spec = node.value;
   switch (spec.kind) {
     case 'categorical':
@@ -186,10 +191,10 @@ function inputValueType(node: InputNode): PortType {
         unit: spec.unit,
       });
     case 'tableColumn':
-      throw new KernelError(
-        'a table column needs a table, and tables arrive with the second slice',
-        node.id,
-      );
+      if (tableColumn === undefined) throw new KernelError('this table column could not be resolved', node.id);
+      return tableColumn.kind === 'categorical'
+        ? { kind: 'categorical' }
+        : { kind: 'numeric', dimension: tableColumn.unit.dimension, unit: tableColumn.unit };
     default:
       return displayOverride(node, VALUE_PORT, {
         kind: 'numeric',
@@ -310,12 +315,12 @@ export function wouldCycle(document: GraphDocument, candidate: Edge): boolean {
 
 // --- resolution -------------------------------------------------------------
 
-function axisOf(node: InputNode, order: number): Axis {
+function axisOf(node: InputNode, order: number, tableColumn?: ResolvedTableColumn): Axis {
   if (!isRange(node.value)) throw new KernelError('not a range node', node.id);
-  const length = axisLength(node.value);
+  const length = node.value.kind === 'tableColumn' ? tableColumn?.values.length : axisLength(node.value);
   if (length === undefined) {
     throw new KernelError(
-      'a table column needs a table, and tables arrive with the second slice',
+      'this table column could not be resolved',
       node.id,
     );
   }
@@ -333,8 +338,27 @@ export function resolveGraph(
   const warnings: Warning[] = [];
   const index = indexFormulas(catalogues);
   const order = topologicalOrder(document);
+  const tableColumns = new Map<string, ResolvedTableColumn>();
+  for (const node of documentAxes(document)) {
+    if (node.value.kind !== 'tableColumn') continue;
+    const spec = node.value;
+    const candidates = index.get(spec.table) ?? [];
+    const formula = candidates[0];
+    const axis = formula?.lookup?.axes.find((candidate) => candidate.input === spec.column);
+    const port = formula?.inputs.find((candidate) => candidate.name === spec.column);
+    if (formula === undefined || axis === undefined || port === undefined) {
+      throw new KernelError(`no lookup table '${spec.table}.${spec.column}'`, node.id);
+    }
+    if (axis.kind === 'categorical' && port.kind === 'categorical') {
+      tableColumns.set(node.id, { kind: 'categorical', values: axis.values as readonly string[] });
+    } else if (axis.kind === 'numeric' && port.kind === 'numeric' && !isGenericDimension(port.unit)) {
+      tableColumns.set(node.id, { kind: 'numeric', values: axis.values as readonly number[], unit: port.unit });
+    } else {
+      throw new KernelError(`lookup table column '${spec.column}' has inconsistent types`, node.id);
+    }
+  }
 
-  const axes = documentAxes(document).map((node, i) => axisOf(node, i));
+  const axes = documentAxes(document).map((node, i) => axisOf(node, i, tableColumns.get(node.id)));
   const formulas = new Map<string, Formula>();
   const sources = new Map<string, PortType>();
   const targets = new Map<string, PortType>();
@@ -443,13 +467,29 @@ export function resolveGraph(
 
   for (const node of order) {
     if (node.kind === 'input') {
-      sources.set(endpointKey(node.id, VALUE_PORT), inputValueType(node));
+      sources.set(endpointKey(node.id, VALUE_PORT), inputValueType(node, tableColumns.get(node.id)));
       continue;
     }
 
     if (node.kind === 'formula') {
       const formula = lookupFormula(index, node.formula, node.id, warnings);
       formulas.set(node.id, formula);
+      for (const [name, authored] of Object.entries(node.inputValues ?? {})) {
+        const port = formula.inputs.find((candidate) => candidate.name === name);
+        const key = endpointKey(node.id, name);
+        if (port === undefined) throw new KernelError(`'${name}' is not an input of '${formula.id}'`, key);
+        if (port.kind === 'categorical') {
+          if (authored.kind !== 'categorical') throw new KernelError(`'${name}' needs a categorical fallback`, key);
+          if (!port.domain.includes(authored.value)) {
+            throw new KernelError(`'${authored.value}' is not in '${name}'s declared domain`, key);
+          }
+          continue;
+        }
+        if (port.kind !== 'numeric' || (authored.kind !== 'scalar' && authored.kind !== 'slider')) {
+          throw new KernelError(`'${name}' needs a scalar numeric fallback`, key);
+        }
+        if (!isGenericDimension(port.unit)) assertConnectable(authored.unit.dimension, port.unit.dimension, key);
+      }
       const bound = bindInputs(node.id, formula);
       bindings.set(node.id, bound);
       for (const port of formula.inputs) {
@@ -739,7 +779,7 @@ export function resolveGraph(
     sourceType(edge);
   }
 
-  return { document, order, formulas, sources, targets, incoming, bindings, axes, warnings };
+  return { document, order, formulas, sources, targets, incoming, bindings, axes, tableColumns, warnings };
 }
 
 /**
