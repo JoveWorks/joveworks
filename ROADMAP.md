@@ -194,3 +194,5 @@ Largely implemented, but R&M catalogue needs updating.
 **Bug: Switching from m to mm is not possible after switching from mm to m.** In the output port unit dropdown in the multiply node. Maybe in others too.
 
 **Change: When the unit is implied on data entry, the unit should be explicitely added** e.g. when changing the threshold value
+
+**Change: The dot grid does not align with the nodes** Nodes are in between the dots (looks exactly centered) but are 4.5 units wide. Let's adapt the grid to make it 4 units wide and make sure the top corners align with the dots. Also, the examples should start aligned to the grid.
