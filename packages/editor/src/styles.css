@@ -621,34 +621,6 @@ aside.right {
   font-weight: 600;
 }
 
-.grid-snap-control {
-  margin-bottom: 24px;
-}
-
-.grid-snap-control.with-minimap {
-  margin-bottom: 175px;
-}
-
-.grid-snap-control button {
-  display: flex;
-  gap: 5px;
-  align-items: center;
-  padding: 5px 8px;
-  background: var(--paper);
-  box-shadow: var(--shadow-sm);
-}
-
-.grid-snap-control button.active {
-  border-color: var(--accent);
-  color: var(--accent);
-  background: var(--accent-wash);
-}
-
-.grid-snap-control button span {
-  font-size: 16px;
-  line-height: 1;
-}
-
 /* --- palette ------------------------------------------------------------ */
 
 .palette {

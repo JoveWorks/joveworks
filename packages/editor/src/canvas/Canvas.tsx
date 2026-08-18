@@ -1241,21 +1241,6 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
           </Panel>
         ) : null}
         <Controls />
-        <Panel
-          position="bottom-right"
-          className={`grid-snap-control${minimapVisible ? ' with-minimap' : ''}`}
-        >
-          <button
-            type="button"
-            className={snapToGrid ? 'active' : ''}
-            aria-pressed={snapToGrid}
-            title={t(snapToGrid ? 'Disable snap to grid' : 'Enable snap to grid')}
-            onClick={() => setSnapToGrid(!snapToGrid)}
-          >
-            <span aria-hidden="true">⌗</span>
-            {t('Snap to grid')}
-          </button>
-        </Panel>
         {minimapVisible ? <MiniMap pannable zoomable /> : null}
         {menu === undefined ? null : (
           <ContextMenu
