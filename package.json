@@ -12,6 +12,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "dev": "pnpm --filter @joveworks/editor dev",
+    "dev:all": "pnpm run --parallel '/^(dev|docs:dev)$/'",
     "docs:dev": "pnpm --filter @joveworks/docs-site dev",
     "docs:build": "pnpm --filter @joveworks/docs-site build",
     "release": "commit-and-tag-version"
