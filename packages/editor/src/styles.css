@@ -882,29 +882,45 @@ aside.right {
 /* --- handles ------------------------------------------------------------ */
 
 .react-flow__handle {
-  width: 9px;
-  height: 9px;
-  background: var(--paper);
+  /* The dot stays compact, but its 18px box is the actual pointer target.
+     That gives trackpad users room to start or finish a wire without letting
+     neighbouring 18px port rows overlap. */
+  width: 18px;
+  height: 18px;
+  border: 0;
+  background: transparent;
+}
+
+.react-flow__handle::after {
+  content: '';
+  position: absolute;
+  inset: 4.5px;
+  box-sizing: border-box;
   border: 1.5px solid var(--muted);
+  border-radius: 50%;
+  background: var(--paper);
+  pointer-events: none;
 }
 
 /* Direction reads by fill, not colour — colour already means kind (on the
    card stripe) and state (on the card border and .missing below). */
-.react-flow__handle.target {
+.react-flow__handle.target::after {
   background: var(--paper);
 }
 
-.react-flow__handle.source {
+.react-flow__handle.source::after {
   background: var(--muted);
 }
 
-.react-flow__handle.missing {
+.react-flow__handle.missing::after {
   border-color: var(--state-waiting);
   background: var(--state-waiting);
 }
 
 .node .port .react-flow__handle {
-  left: 2px;
+  /* Keep the 9px marker's centre at its former location while its hitbox
+     expands equally in every direction. */
+  left: -2.5px;
   top: 50%;
   transform: translateY(-50%);
 }
@@ -921,13 +937,17 @@ aside.right {
 }
 
 .node .port-open .react-flow__handle {
+  background: transparent;
+}
+
+.node .port-open .react-flow__handle::after {
   border-style: dashed;
   background: transparent;
 }
 
 .node .node-value .react-flow__handle,
 .node .node-value-editor .react-flow__handle {
-  right: 2px;
+  right: -2.5px;
   top: 50%;
   transform: translateY(-50%);
 }
