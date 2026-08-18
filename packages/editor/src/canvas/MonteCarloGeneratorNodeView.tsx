@@ -24,6 +24,7 @@ import { nodeLabel, reframe, removeNodes, syncColumnLabels, updateNode } from '.
 import { axisLabel, reading } from '../model/values';
 import { NodeShell } from './NodeShell';
 import { NumberField, TextField } from './fields';
+import type { CanvasFlowNode } from './node-data';
 import { Sparkline } from './Sparkline';
 import { TitleField, TitleText } from './TitleField';
 
@@ -45,11 +46,12 @@ function toNormal(node: MonteCarloGeneratorNode): NormalMonteCarloGeneratorNode 
   return { ...rest, distribution: 'normal', mean: (min + max) / 2, stddev: Math.max((max - min) / 4, 1e-6) };
 }
 
-export function MonteCarloGeneratorNodeView({ id, selected }: NodeProps): ReactElement | null {
-  const { document, analysis, edit, expanded, toggleExpanded } = useGraph();
+export function MonteCarloGeneratorNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>): ReactElement | null {
+  const { document, analysis, edit, expanded, toggleExpanded, hovered } = useGraph();
   const node = document.nodes.find((candidate) => candidate.id === id);
   if (node === undefined || node.kind !== 'monteCarloGenerator') return null;
 
+  const highlightedPorts = new Set(data?.highlightedPorts ?? []);
   const value = reading(analysis, id, VALUE_PORT);
   const setNode = (change: (current: MonteCarloGeneratorNode) => MonteCarloGeneratorNode): void =>
     edit((current) => updateNode<MonteCarloGeneratorNode>(current, id, change));
@@ -68,6 +70,7 @@ export function MonteCarloGeneratorNodeView({ id, selected }: NodeProps): ReactE
       kind="monteCarloGenerator"
       state={analysis.states.get(id) ?? 'ok'}
       selected={selected ?? false}
+      highlighted={data?.highlighted === true || hovered.has(id)}
       {...(analysis.problems.has(id) ? { problem: analysis.problems.get(id) } : {})}
       expanded={expanded.has(id)}
       onToggleExpanded={() => toggleExpanded(id)}
@@ -161,7 +164,14 @@ export function MonteCarloGeneratorNodeView({ id, selected }: NodeProps): ReactE
             <TitleText value={axisLabel(value) ?? ''} />
           </span>
         )}
-        <Handle type="source" position={Position.Right} id={VALUE_PORT} />
+        <Handle
+          type="source"
+          position={Position.Right}
+          id={VALUE_PORT}
+          className={highlightedPorts.has(VALUE_PORT) ? 'port-highlighted' : ''}
+          onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: VALUE_PORT })}
+          onMouseLeave={() => data?.onPortHover?.()}
+        />
       </div>
     </NodeShell>
   );

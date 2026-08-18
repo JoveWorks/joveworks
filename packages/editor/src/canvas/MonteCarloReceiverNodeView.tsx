@@ -21,15 +21,17 @@ import { reframe, removeNodes, renameNode, updateNode } from '../model/document'
 import { ParameterLabel } from '../ParameterLabel';
 import { MonteCarloReceiverPlayback } from './MonteCarloReceiverPlayback';
 import { NodeShell } from './NodeShell';
+import type { CanvasFlowNode } from './node-data';
 import { slotHandleId } from './spectrumSlots';
 import { NumberField } from './fields';
 import { TitleField } from './TitleField';
 
-export function MonteCarloReceiverNodeView({ id, selected }: NodeProps): ReactElement | null {
-  const { document, analysis, edit, expanded, toggleExpanded } = useGraph();
+export function MonteCarloReceiverNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>): ReactElement | null {
+  const { document, analysis, edit, expanded, toggleExpanded, hovered } = useGraph();
   const node = document.nodes.find((candidate) => candidate.id === id);
   if (node === undefined || node.kind !== 'monteCarloReceiver') return null;
 
+  const highlightedPorts = new Set(data?.highlightedPorts ?? []);
   const sampleLimit = node.sampleLimit;
   const rampUp = node.rampUp;
   const showMeanBand = node.showMeanBand ?? true;
@@ -44,6 +46,7 @@ export function MonteCarloReceiverNodeView({ id, selected }: NodeProps): ReactEl
       kind="monteCarloReceiver"
       state={analysis.states.get(id) ?? 'ok'}
       selected={selected ?? false}
+      highlighted={data?.highlighted === true || hovered.has(id)}
       {...(analysis.problems.has(id) ? { problem: analysis.problems.get(id) } : {})}
       expanded={expanded.has(id)}
       onToggleExpanded={() => toggleExpanded(id)}
@@ -102,8 +105,19 @@ export function MonteCarloReceiverNodeView({ id, selected }: NodeProps): ReactEl
       }
     >
       <ul className="ports">
-        <li className="port">
-          <Handle type="target" position={Position.Left} id={slotHandleId(MONTE_CARLO_SAMPLE_PORT, 0)} />
+        <li
+          className={`port${highlightedPorts.has(MONTE_CARLO_SAMPLE_PORT) ? ' port-highlighted' : ''}`}
+          onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: MONTE_CARLO_SAMPLE_PORT })}
+          onMouseLeave={() => data?.onPortHover?.()}
+        >
+          <Handle
+            type="target"
+            position={Position.Left}
+            id={slotHandleId(MONTE_CARLO_SAMPLE_PORT, 0)}
+            className={highlightedPorts.has(MONTE_CARLO_SAMPLE_PORT) ? 'port-highlighted' : ''}
+            onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: MONTE_CARLO_SAMPLE_PORT })}
+            onMouseLeave={() => data?.onPortHover?.()}
+          />
           <ParameterLabel
             name={MONTE_CARLO_SAMPLE_PORT}
             unit={targetType?.unit}
