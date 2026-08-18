@@ -140,6 +140,10 @@ deviation that underlies a tolerance. Add it as a public base node, with its
 input shape and its relationship to spectra settled when the ISO fit/table
 slice is designed; there is no node for it today.
 
+**Vertical spacing does not take actual node height into account**
+Widths are constant, but heights vary per node. The spacing should add same width space between bottom and top of each node, based on the total height from top of top node to bottom of bottom node. Also spacing should take into account rows of nodes and collumns of nodes for vertical and horizontal spacing respectively. There should be some error margin where nodes are considered aligned, and they will be aligned exactly.
+Question: How should we integrate this spacing in grid-snap mode?
+
 **Notebook export to Markdown**, for pasting a finished graph into an
 external site. Checked against `~/source/website`'s Astro content
 collections: entries are Markdown/MDX with frontmatter (`title`, `subtitle`,
