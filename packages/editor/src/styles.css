@@ -975,6 +975,16 @@ aside.right {
   padding-left: 14px;
 }
 
+.node .port.port-highlighted,
+.node .port-out.port-highlighted {
+  color: var(--accent);
+}
+
+.node .port.port-highlighted .port-unit,
+.node .port-out.port-highlighted .port-unit {
+  color: inherit;
+}
+
 /* An unpack's resolved channels are outputs, but still use port rows rather
    than the single-value footer. Override the input-row docking above so their
    source handles stay on the node's output side. */
@@ -1252,6 +1262,16 @@ aside.right {
 .react-flow__handle.missing::after {
   border-color: var(--state-waiting);
   background: var(--state-waiting);
+}
+
+.react-flow__handle.port-highlighted::after,
+.port-highlighted .react-flow__handle::after {
+  border-color: var(--accent);
+}
+
+.react-flow__handle.source.port-highlighted::after,
+.port-highlighted .react-flow__handle.source::after {
+  background: var(--accent);
 }
 
 .node .port .react-flow__handle {

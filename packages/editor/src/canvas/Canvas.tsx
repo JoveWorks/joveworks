@@ -83,6 +83,7 @@ import { ContextMenu, type MenuItem } from './ContextMenu';
 import { FormulaNodeView } from './FormulaNodeView';
 import { FrameView } from './FrameView';
 import { InputNodeView } from './InputNodeView';
+import type { CanvasNodeData, HoveredCanvasPort } from './node-data';
 import { OutputNodeView } from './OutputNodeView';
 import { PackNodeView } from './PackNodeView';
 import { QuickAddMenu, type ExistingCandidate, type QuickAddCandidate, type QuickAddChoice } from './QuickAddMenu';
@@ -410,6 +411,7 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
   // projection accent both the wire and precisely its two endpoint nodes
   // without recording anything in the graph document.
   const [hoveredEdgeId, setHoveredEdgeId] = useState<string | undefined>(undefined);
+  const [hoveredPort, setHoveredPort] = useState<HoveredCanvasPort | undefined>(undefined);
   const [findQuery, setFindQuery] = useState<string | undefined>(undefined);
   const flow = useReactFlow();
   const clipboard = useRef<{ document: GraphDocument; selected: ReadonlySet<string> } | undefined>(
@@ -484,6 +486,18 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
     return new Set([rejectedUnitConnection.from.node, rejectedUnitConnection.to.node]);
   }, [rejectedUnitConnection]);
 
+  const hoveredPortEdges = useMemo(
+    () =>
+      hoveredPort === undefined
+        ? []
+        : document.edges.filter(
+            (edge) =>
+              (edge.from.node === hoveredPort.nodeId && edge.from.port === hoveredPort.port) ||
+              (edge.to.node === hoveredPort.nodeId && edge.to.port === hoveredPort.port),
+          ),
+    [document.edges, hoveredPort],
+  );
+
   const matchedNodeIds = useMemo(() => {
     if (findQuery === undefined || findQuery.trim().length === 0) return new Set<string>();
     const searchable = document.nodes.map((node) => ({
@@ -501,6 +515,35 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
       duration: 200,
     });
   }, [findQuery, flow, matchedNodeIds]);
+
+  const connectedNodeIds = useMemo(() => {
+    const ids = new Set(edgeEndpointIds);
+    for (const edge of hoveredPortEdges) {
+      ids.add(edge.from.node);
+      ids.add(edge.to.node);
+    }
+    return ids;
+  }, [edgeEndpointIds, hoveredPortEdges]);
+
+  const highlightedPorts = useMemo(() => {
+    const ports = new Map<string, Set<string>>();
+    const add = (nodeId: string, port: string): void => {
+      const current = ports.get(nodeId);
+      if (current === undefined) ports.set(nodeId, new Set([port]));
+      else current.add(port);
+    };
+    const hoveredEdge = document.edges.find((candidate) => candidate.id === hoveredEdgeId);
+    if (hoveredEdge !== undefined) {
+      add(hoveredEdge.from.node, hoveredEdge.from.port);
+      add(hoveredEdge.to.node, hoveredEdge.to.port);
+    }
+    if (hoveredPort !== undefined) add(hoveredPort.nodeId, hoveredPort.port);
+    for (const edge of hoveredPortEdges) {
+      add(edge.from.node, edge.from.port);
+      add(edge.to.node, edge.to.port);
+    }
+    return new Map([...ports.entries()].map(([nodeId, set]) => [nodeId, [...set]] as const));
+  }, [document.edges, hoveredEdgeId, hoveredPort, hoveredPortEdges]);
 
   useEffect(() => {
     if (rejectedUnitConnection === undefined) return undefined;
@@ -549,7 +592,7 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
     setRejectedUnitConnection(undefined);
   }, []);
 
-  const nodes = useMemo<FlowNode[]>(
+  const nodes = useMemo<FlowNode<CanvasNodeData>[]>(
     () => [
       ...document.frames.map((frame) => ({
         id: frame.id,
@@ -565,22 +608,26 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
       })),
       ...document.nodes.map((node) => {
         const className = nodeClasses([
-          edgeEndpointIds.has(node.id) ? 'edge-connected' : undefined,
           rejectedEndpointIds.has(node.id) ? 'connection-refused' : undefined,
           matchedNodeIds.has(node.id) ? 'node-search-match' : undefined,
         ]);
+        const data: CanvasNodeData = {
+          highlighted: connectedNodeIds.has(node.id),
+          highlightedPorts: highlightedPorts.get(node.id) ?? [],
+          onPortHover: setHoveredPort,
+        };
         return {
           id: node.id,
           type: flowType(node.kind),
           position: node.position,
-          data: {},
+          data,
           selected: selected.has(node.id),
           ...(className === undefined ? {} : { className }),
           ...sizeOf(measured, node.id),
         };
       }),
     ],
-    [document, edgeEndpointIds, matchedNodeIds, measured, rejectedEndpointIds, selected],
+    [connectedNodeIds, document, highlightedPorts, matchedNodeIds, measured, rejectedEndpointIds, selected],
   );
 
   const edges = useMemo<FlowEdge[]>(() => {
@@ -603,10 +650,12 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
           ? { type: 'bundle' }
           : {}),
         selected: selected.has(edge.id),
-        ...(edge.id === hoveredEdgeId ? { className: 'edge-hovered' } : {}),
+        ...(edge.id === hoveredEdgeId || hoveredPortEdges.some((candidate) => candidate.id === edge.id)
+          ? { className: 'edge-hovered' }
+          : {}),
       };
     });
-  }, [document, hoveredEdgeId, selected]);
+  }, [document, hoveredEdgeId, hoveredPortEdges, selected]);
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
@@ -1229,6 +1278,7 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
         onPaneClick={() => {
           clearRefusal();
           setMenu(undefined);
+          setHoveredPort(undefined);
         }}
         onNodeContextMenu={(event, node) => {
           event.preventDefault();
@@ -1311,6 +1361,7 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
         onMove={() => {
           setMenu(undefined);
           setQuickAdd(undefined);
+          setHoveredPort(undefined);
         }}
         minZoom={0.15}
         fitView
