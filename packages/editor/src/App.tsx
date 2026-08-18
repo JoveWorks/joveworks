@@ -671,6 +671,7 @@ function AppShell(): ReactElement {
       disabled: userEquations.length === 0,
       onClick: () => saveTextFile(userEquationsFileName, saveUserEquations(userEquations)),
     },
+    { heading: t('Application') },
     { label: `${copy.settings}…`, onClick: () => setShowSettings(true) },
   ];
 

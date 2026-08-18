@@ -1970,11 +1970,19 @@ aside.right {
 }
 
 .context-menu .menu-heading {
-  padding: 5px 8px 2px;
+  margin-top: 4px;
+  padding: 7px 8px 2px;
+  border-top: 1px solid var(--line);
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--muted);
+}
+
+.context-menu .menu-heading:first-child {
+  margin-top: 0;
+  padding-top: 5px;
+  border-top: none;
 }
 
 .quick-add {
