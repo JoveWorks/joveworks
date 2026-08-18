@@ -304,7 +304,7 @@ export function monteCarloClearance(_catalogues: readonly Catalogue[], locale: A
       at(400, 170),
     ),
 
-    receiver('watch', 'Clearance distribution', 1000, at(0, 340)),
+    receiver('watch', 'Clearance distribution', 1000, at(400, 400)),
   ];
 
   const edges = [
@@ -313,20 +313,34 @@ export function monteCarloClearance(_catalogues: readonly Catalogue[], locale: A
     wire('clearance.value', 'watch.sample'),
   ];
 
+  // Two sections: the stack-up's numbers, and — separately — the receiver
+  // that watches them accumulate. Different content, different note, so a
+  // student can read "what the calculation says" and "what playback shows"
+  // as two distinct claims rather than one frame doing both jobs.
   const frames = [
     {
       id: 'stack-up',
       title: 'Clearance-fit stack-up',
       note:
-        'A hole bored to Ø20.02 mm and a shaft ground to Ø19.98 mm each vary from part to part. Their independent tolerances combine (root-sum-square) into a clearance that draws from a normal distribution. Press play on the receiver below and watch the samples accumulate and the mean converge — a single worst-case subtraction would miss how rarely the extremes actually coincide.',
+        'A hole bored to Ø20.02 mm and a shaft ground to Ø19.98 mm each vary from part to part. Their independent tolerances combine (root-sum-square) into a clearance that draws from a normal distribution — the value and interference check below both read that same generator.',
       position: at(340, -80),
-      size: { width: 460, height: 560 },
+      size: { width: 460, height: 330 },
+    },
+    {
+      id: 'distribution',
+      title: 'Watch it converge',
+      note:
+        'Press play and watch the samples accumulate and the mean converge — a single worst-case subtraction would miss how rarely the extremes actually coincide.',
+      position: at(340, 320),
+      size: { width: 460, height: 260 },
     },
   ];
 
-  const withFrames = nodes.map((node) =>
-    node.kind === 'output' || node.kind === 'monteCarloReceiver' ? { ...node, frameId: 'stack-up' } : node,
-  );
+  const withFrames = nodes.map((node) => {
+    if (node.kind === 'output') return { ...node, frameId: 'stack-up' };
+    if (node.kind === 'monteCarloReceiver') return { ...node, frameId: 'distribution' };
+    return node;
+  });
 
   return localizeExample(
     document('monte-carlo-clearance', 'Clearance-fit stack-up', withFrames, edges, frames),

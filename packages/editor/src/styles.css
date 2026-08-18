@@ -967,7 +967,6 @@ aside.right {
 .mc-histogram {
   display: block;
   max-width: 100%;
-  height: auto;
 }
 
 .mc-histogram rect {
@@ -990,6 +989,7 @@ aside.right {
 .mc-transport {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 4px;
   margin-top: 4px;
 }
@@ -1002,7 +1002,7 @@ aside.right {
 .mc-progress {
   color: var(--muted);
   font-size: 11px;
-  margin-left: auto;
+  margin-left: 4px;
   font-variant-numeric: tabular-nums;
 }
 

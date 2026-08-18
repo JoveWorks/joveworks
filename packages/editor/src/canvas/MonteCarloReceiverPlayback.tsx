@@ -75,6 +75,7 @@ function Histogram({
   showMeanBand,
   width,
   height,
+  fluid,
 }: {
   readonly values: readonly number[];
   readonly meanLabel: string | undefined;
@@ -83,6 +84,10 @@ function Histogram({
   readonly showMeanBand: boolean;
   readonly width: number;
   readonly height: number;
+  /** Stretches to fill its container's width instead of rendering at a
+   * fixed pixel width — `width` still drives the internal geometry (bin
+   * count, viewBox), only the rendered size becomes fluid. */
+  readonly fluid: boolean;
 }): ReactElement | null {
   if (values.length === 0 || (!showHistogram && !showMeanBand)) return null;
 
@@ -103,12 +108,22 @@ function Histogram({
   const barWidth = width / bins;
 
   const showLabel = showMeanBand && mean !== undefined && meanLabel !== undefined;
-  // Room at the top for the mean's own label, so a tall bar never runs under it.
-  const labelHeight = showLabel ? Math.round(height * 0.18) : 0;
+  // A fixed pixel allowance, not a fraction of `height` — the label's own
+  // font-size (`.mc-mean-label` in styles.css) doesn't scale with the
+  // chart, so a percentage-based reservation left too little room at the
+  // compact size for the glyphs to clear the SVG's own top edge before the
+  // node card's overflow clipped them.
+  const labelHeight = showLabel ? 16 : 0;
   const chartHeight = height - labelHeight;
 
   return (
-    <svg className="mc-histogram" width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
+    <svg
+      className="mc-histogram"
+      width={fluid ? '100%' : width}
+      height={height}
+      viewBox={`0 0 ${width} ${height}`}
+      preserveAspectRatio="none"
+    >
       {showHistogram
         ? counts.map((count, index) => {
             const barHeight = (count / maxCount) * (chartHeight - 2);
@@ -216,6 +231,7 @@ export function MonteCarloReceiverPlayback({
           showMeanBand={showMeanBand}
           width={width}
           height={height}
+          fluid={size === 'large'}
         />
       )}
 
