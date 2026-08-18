@@ -148,6 +148,7 @@ Question: How should we integrate this spacing in grid-snap mode?
 Implemented on `feat/canvas-layout-interaction-polish` — auto-arrange now uses
 each node's real measured height instead of a nominal constant. Awaiting
 review before merge.
+Feedback: Does this follow collapsed or expanded height? It should be collapsed (unless pinned)
 
 **11. Notebook export to Markdown**, for pasting a finished graph into an
 external site. Checked against `~/source/website`'s Astro content
@@ -161,12 +162,6 @@ button — personal-use export, not a student-facing feature yet.
 **12. Tutorial guides** The tutorial seems to break when the viewport was moved/zoomed. It should check in each step if the target is visible, and adapt the viewport. Actually, maybe zooming and moving should just be part of the steps to clarify the nodes and controls?
 
 **13. Press fit example** Update it to use ISO fit LUT based on categorical input. I also want to have a new section that showcases plotting and sweep functionality.
-
-**14. We need CTRL+F** In the graph, the view is fitted and all matching nodes are highlighted, let's use fuzzy find based on the node label, ID, and input and output ports.
-Implemented on `feat/canvas-layout-interaction-polish`. Awaiting review before merge.
-
-**15. Highlighted edges should also highlight the relevant ports** Not just the nodes. Also hovering a port should highlight the edge and connected node(s)
-Implemented on `feat/canvas-layout-interaction-polish`. Awaiting review before merge.
 
 **16. Nodes expose preferred display units.** Dimensions do not have one global
 presentation unit: values evaluate canonically, while each exposed node port
@@ -185,14 +180,11 @@ Largely implemented, but R&M catalogue needs updating.
 **17. What about migration to newer versions?** I'm thinking notebooks and
 catalogues that the user made before.
 
-**18. Change: Dragging in text boxes should select text as per convention in
-other applications** Now, the node is dragged. The notebook is fine.
-Implemented on `feat/canvas-layout-interaction-polish`. Awaiting review before merge.
-
 **19. Bug: Text can be clipped when the textbox is full** Text should be
 wrapped so it is always fully visible. Occurs in node titles (in node and in
 notebook). Captions in nodes (not in notebooks)
 Implemented on `feat/canvas-layout-interaction-polish`. Awaiting review before merge.
+Feedback: Now the alignment of the check node is not correct. Check label sticks out above the line. Rest seems ok.
 
 **20. Change: Range input shows `range` as node id** instead of `input`.
 
@@ -210,70 +202,6 @@ In the output port unit dropdown in the multiply node. Maybe in others too.
 **25. Change: When the unit is implied on data entry, the unit should be
 explicitly added** e.g. when changing the threshold value
 
-**26. Change: The dot grid does not align with the nodes** Nodes are in between
-the dots (looks exactly centered) but are 4.5 units wide. Let's adapt the grid
-to make it 4 units wide and make sure the top corners align with the dots.
-Also, the examples should start aligned to the grid.
-Implemented on `feat/canvas-layout-interaction-polish` — grid gap is now 55px
-(node width 220px = 4 units), and bundled examples were re-snapped to it.
-Awaiting review before merge.
-
-**27. Major Feature: Monte Carlo node catalogue.** A catalogue with Monte Carlo
-generators and receivers to have a running simulation of stochastic processes.
-Standard math nodes should still be useable in these simulations. Both a
-computational feature and a didactic one — students should be able to watch
-values populate and an aggregate converge, not just see a final number.
-
-Revised shape: the receiver's playback state (how many samples have been
-revealed so far) determines how many samples the generator produces, rather
-than a fixed N (or a padded cap) decided up front. Considered and rejected: a
-genuinely incremental/append-only kernel evaluation path, where a batch's
-result is appended to a prior partial evaluation instead of recomputed. That
-would have required carving an exception into `unionAxes`'s invariant that an
-axis's length is fixed once evaluated (`series.ts`), constraining Monte Carlo
-sample axes to always sort outermost so growing one doesn't reshuffle the
-whole row-major layout (`graph.ts`'s axis ordering), and threading
-previous-batch state through every node-kind evaluator in `evaluate.ts` (not
-just the Monte Carlo nodes) — too invasive for what it buys, since the
-formulas involved are cheap arithmetic, not expensive solves.
-
-Settled instead: no kernel changes at all. Each playback batch just calls
-the existing `evaluateDocument` again with the generator's sample count
-bumped up — the same one-shot, forward-only, whole-document recompute every
-other output already uses. The kernel never learns playback exists; it only
-ever sees "a document with a range of length N," same as any other sweep.
-All batching/orchestration (deciding the next batch size, calling
-`evaluateDocument`, diffing the new samples into the receiver's running
-aggregate) lives entirely in the editor, not the kernel.
-
-Open questions resolved:
-
-- **Seed/reproducibility:** fixed seed per NodeBook — deterministic and
-  reproducible, no student-facing reshuffle.
-- **Receiver visual:** a dedicated node type with its own inline
-  plot/aggregate visual, not just a value fed into an existing Plot node.
-- **Playback transport:** per-receiver controls — each receiver plays,
-  pauses, and steps independently, not one global document-wide transport.
-- **Trial count / evaluation model:** no fixed N entered up front and no
-  padded cap precomputed eagerly. The receiver's playback drives the
-  generator's sample count directly, up to a sample limit, by re-running the
-  existing eager kernel evaluation per batch (no new kernel evaluation mode
-  — see above). A settings icon next to the playback controls holds the
-  advanced knobs — the sample limit, and an optional slow-start/speed-ramp
-  for teaching that a "real" notebook can turn off.
-
-This is now session-ready on the product and evaluation-model questions.
-Remaining work before scheduling a build session is ordinary implementation
-design (batch-size/tick cadence, how the editor diffs new samples into a
-receiver's running aggregate, the receiver node's inline visual), not an
-open decision. Moved out of bucket F.
-
-**28. Change: `Built in` nodes is a horrible name** and should be renamed `Math
-nodes` or something similar.
-Implemented on `feat/canvas-layout-interaction-polish` — renamed to "Base
-nodes" (the catalogue also holds compare/pack/unpack/waypoint/inputs/outputs,
-not just math), with a matching Dutch translation. Awaiting review before merge.
-
 ## Suggested backlog session groupings
 
 Numbers refer to the Editor backlog list above. Grouped by shared code area,
@@ -287,10 +215,6 @@ kernel's unit/dimension conversion and the port-unit dropdown UI.
 and UI; settle the `list`/`spectrum` naming (#6) before building the
 spectrum editor (#5).
 
-**C. Canvas layout & interaction polish.** #10, #26, #14, #15, #18, #19, #28 —
-graph-canvas rendering and interaction, no schema changes. Implemented on
-`feat/canvas-layout-interaction-polish`; awaiting review and merge.
-
 **D. Plot/Table node output config.** #1, #21 — #1 explicitly covers both
 Plot and Table output settings, and #21's lookup-table bug is likely the
 same table code.
@@ -298,9 +222,7 @@ same table code.
 **E. Examples & tutorial content.** #12, #13, with #4 riding along if there's
 room — #13 depends on the ISO fit LUT work, so schedule after B lands.
 
-**F. Needs a product/design decision first — don't bundle.** #7, #8, #9, #11,
-# 17. Each waits on a decision (catalogue design, node-viz approach, ISO
-fit/table slice, export scope, or migration strategy) before it's
+**F. Needs a product/design decision first — don't bundle.** #7, #8, #9, #11, #17. Each waits on a decision (catalogue design, node-viz approach, ISO fit/table slice, export scope, or migration strategy) before it's
 session-ready. #27's product questions (seed story, receiver visual,
 playback transport, trial-count control) are now settled — see #27 — but it
 still needs a short design pass on how the sample cap interacts with the
