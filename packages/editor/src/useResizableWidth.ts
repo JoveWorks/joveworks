@@ -14,8 +14,10 @@ export function useResizableWidth(
   min: number,
   max: number,
   sign: 1 | -1,
+  onCommit?: (width: number) => void,
 ): readonly [number, (event: ReactMouseEvent) => void] {
   const [width, setWidth] = useState(initial);
+  const widthRef = useRef(width);
   const start = useRef<{ readonly x: number; readonly width: number } | null>(null);
 
   const onPointerDown = (event: ReactMouseEvent): void => {
@@ -25,9 +27,12 @@ export function useResizableWidth(
     const onMove = (moveEvent: MouseEvent): void => {
       if (start.current === null) return;
       const delta = (moveEvent.clientX - start.current.x) * sign;
-      setWidth(Math.min(max, Math.max(min, start.current.width + delta)));
+      const next = Math.min(max, Math.max(min, start.current.width + delta));
+      widthRef.current = next;
+      setWidth(next);
     };
     const onUp = (): void => {
+      if (start.current !== null) onCommit?.(widthRef.current);
       start.current = null;
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);

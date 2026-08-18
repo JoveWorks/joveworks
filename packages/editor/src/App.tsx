@@ -47,14 +47,24 @@ import { bundledCatalogues, baseCatalogue, withCatalogue } from './model/catalog
 import { groupIntoSection } from './model/document';
 import { autoArrange } from './model/layout';
 import {
+  loadCanvasControlsVisible,
   loadContourPalette,
   loadAppLocale,
   loadMinimapVisible,
+  loadNotebookVisible,
+  loadNotebookWidth,
+  loadPaletteVisible,
+  loadPaletteWidth,
   loadTitleMathRendering,
   loadThemePreference,
+  saveCanvasControlsVisible,
   saveContourPalette,
   saveAppLocale,
   saveMinimapVisible,
+  saveNotebookVisible,
+  saveNotebookWidth,
+  savePaletteVisible,
+  savePaletteWidth,
   saveTitleMathRendering,
   saveThemePreference,
   type ContourPalette,
@@ -295,9 +305,9 @@ function AppShell(): ReactElement {
   const [pinned, setPinned] = useState<ReadonlySet<string>>(new Set());
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [hovered, setHovered] = useState<ReadonlySet<string>>(new Set());
-  const [showPalette, setShowPalette] = useState(true);
-  const [showNotebook, setShowNotebook] = useState(true);
-  const [showCanvasControls, setShowCanvasControls] = useState(true);
+  const [showPalette, setShowPaletteState] = useState(loadPaletteVisible);
+  const [showNotebook, setShowNotebookState] = useState(loadNotebookVisible);
+  const [showCanvasControls, setShowCanvasControlsState] = useState(loadCanvasControlsVisible);
   const [numberFormat, setNumberFormatState] = useState<NumberFormatSettings>(loadNumberFormatSettings);
   const [locale, setLocaleState] = useState<AppLocale>(loadAppLocale);
   const copy = ui(locale);
@@ -342,8 +352,8 @@ function AppShell(): ReactElement {
     closeMenuTimeout.current = window.setTimeout(() => setOpenMenu(undefined), 300);
   };
   useEffect(() => cancelMenuClose, []);
-  const [paletteWidth, resizePalette] = useResizableWidth(360, 200, 480, 1);
-  const [notebookWidth, resizeNotebook] = useResizableWidth(540, 240, 800, -1);
+  const [paletteWidth, resizePalette] = useResizableWidth(loadPaletteWidth(), 200, 480, 1, savePaletteWidth);
+  const [notebookWidth, resizeNotebook] = useResizableWidth(loadNotebookWidth(), 240, 800, -1, saveNotebookWidth);
   const [restoredAutosaveNoticeId] = useState(() =>
     restoredAutosave ? crypto.randomUUID() : undefined,
   );
@@ -417,6 +427,21 @@ function AppShell(): ReactElement {
   const setContourPalette = (next: ContourPalette): void => {
     setContourPaletteState(next);
     saveContourPalette(next);
+  };
+
+  const setShowPalette = (next: boolean): void => {
+    setShowPaletteState(next);
+    savePaletteVisible(next);
+  };
+
+  const setShowNotebook = (next: boolean): void => {
+    setShowNotebookState(next);
+    saveNotebookVisible(next);
+  };
+
+  const setShowCanvasControls = (next: boolean): void => {
+    setShowCanvasControlsState(next);
+    saveCanvasControlsVisible(next);
   };
 
   // `system` defers entirely to the OS via the CSS media query in
@@ -627,8 +652,8 @@ function AppShell(): ReactElement {
   ];
 
   const viewMenuItems: readonly MenuItem[] = [
-    { label: showPalette ? 'Hide palette' : 'Show palette', onClick: () => setShowPalette((s) => !s) },
-    { label: showNotebook ? 'Hide notebook' : 'Show notebook', onClick: () => setShowNotebook((s) => !s) },
+    { label: showPalette ? 'Hide palette' : 'Show palette', onClick: () => setShowPalette(!showPalette) },
+    { label: showNotebook ? 'Hide notebook' : 'Show notebook', onClick: () => setShowNotebook(!showNotebook) },
     { heading: t('Theme') },
     {
       label: t('Light'),
@@ -673,7 +698,7 @@ function AppShell(): ReactElement {
     },
     {
       label: t(showCanvasControls ? 'Hide canvas controls' : 'Show canvas controls'),
-      onClick: () => setShowCanvasControls((visible) => !visible),
+      onClick: () => setShowCanvasControls(!showCanvasControls),
     },
     { heading: t('Examples') },
     {

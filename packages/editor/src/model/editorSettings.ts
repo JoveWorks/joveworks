@@ -8,6 +8,11 @@
 
 const MINIMAP_KEY = 'joveworks:settings:minimapVisible';
 const LANGUAGE_KEY = 'joveworks:settings:language';
+const PALETTE_VISIBLE_KEY = 'joveworks:settings:paletteVisible';
+const NOTEBOOK_VISIBLE_KEY = 'joveworks:settings:notebookVisible';
+const CANVAS_CONTROLS_VISIBLE_KEY = 'joveworks:settings:canvasControlsVisible';
+const PALETTE_WIDTH_KEY = 'joveworks:settings:paletteWidth';
+const NOTEBOOK_WIDTH_KEY = 'joveworks:settings:notebookWidth';
 
 export type AppLocale = 'en' | 'nl';
 
@@ -48,6 +53,90 @@ export function saveMinimapVisible(visible: boolean): void {
   } catch {
     // Same convenience-not-requirement stance as catalogueCache.ts.
   }
+}
+
+function loadBoolean(key: string, defaultValue: boolean): boolean {
+  try {
+    const raw = window.localStorage.getItem(key);
+    return raw === null ? defaultValue : raw === 'true';
+  } catch {
+    return defaultValue;
+  }
+}
+
+function saveBoolean(key: string, value: boolean): void {
+  try {
+    window.localStorage.setItem(key, String(value));
+  } catch {
+    // A preference must not prevent the editor starting.
+  }
+}
+
+/** Workspace chrome is local to this device, never part of a graph file. */
+export const DEFAULT_PALETTE_VISIBLE = true;
+export const DEFAULT_NOTEBOOK_VISIBLE = true;
+export const DEFAULT_CANVAS_CONTROLS_VISIBLE = true;
+
+export function loadPaletteVisible(): boolean {
+  return loadBoolean(PALETTE_VISIBLE_KEY, DEFAULT_PALETTE_VISIBLE);
+}
+
+export function savePaletteVisible(visible: boolean): void {
+  saveBoolean(PALETTE_VISIBLE_KEY, visible);
+}
+
+export function loadNotebookVisible(): boolean {
+  return loadBoolean(NOTEBOOK_VISIBLE_KEY, DEFAULT_NOTEBOOK_VISIBLE);
+}
+
+export function saveNotebookVisible(visible: boolean): void {
+  saveBoolean(NOTEBOOK_VISIBLE_KEY, visible);
+}
+
+export function loadCanvasControlsVisible(): boolean {
+  return loadBoolean(CANVAS_CONTROLS_VISIBLE_KEY, DEFAULT_CANVAS_CONTROLS_VISIBLE);
+}
+
+export function saveCanvasControlsVisible(visible: boolean): void {
+  saveBoolean(CANVAS_CONTROLS_VISIBLE_KEY, visible);
+}
+
+export const DEFAULT_PALETTE_WIDTH = 360;
+export const DEFAULT_NOTEBOOK_WIDTH = 540;
+
+function loadWidth(key: string, defaultValue: number, min: number, max: number): number {
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (raw === null) return defaultValue;
+    const value = Number(raw);
+    return Number.isFinite(value) && value >= min && value <= max ? value : defaultValue;
+  } catch {
+    return defaultValue;
+  }
+}
+
+function saveWidth(key: string, width: number): void {
+  try {
+    window.localStorage.setItem(key, String(width));
+  } catch {
+    // A preference must not prevent the editor starting.
+  }
+}
+
+export function loadPaletteWidth(): number {
+  return loadWidth(PALETTE_WIDTH_KEY, DEFAULT_PALETTE_WIDTH, 200, 480);
+}
+
+export function savePaletteWidth(width: number): void {
+  saveWidth(PALETTE_WIDTH_KEY, width);
+}
+
+export function loadNotebookWidth(): number {
+  return loadWidth(NOTEBOOK_WIDTH_KEY, DEFAULT_NOTEBOOK_WIDTH, 240, 800);
+}
+
+export function saveNotebookWidth(width: number): void {
+  saveWidth(NOTEBOOK_WIDTH_KEY, width);
 }
 
 const TITLE_MATH_KEY = 'joveworks:settings:titleMathRendering';
