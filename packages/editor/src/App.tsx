@@ -849,13 +849,16 @@ function AppShell(): ReactElement {
               {/* v0.x is unstable by semver convention — the badge names that
                   explicitly rather than relying on a reader knowing the
                   convention, and drops away on its own once a 1.0 ships. */}
-              <span
+              <a
                 className={`menubar-version${__APP_VERSION__.startsWith('0.') ? ' alpha' : ''}`}
-                title={`JoveWorks v${__APP_VERSION__}${localVersionSuffix}`}
+                href={`https://github.com/ThomasVanRiel/joveworks/releases/tag/v${__APP_VERSION__}`}
+                target="_blank"
+                rel="noopener"
+                title={`View the JoveWorks v${__APP_VERSION__} release on GitHub${localVersionSuffix}`}
               >
                 {__APP_VERSION__.startsWith('0.') ? 'alpha · ' : ''}v{__APP_VERSION__}
                 {localVersionSuffix}
-              </span>
+              </a>
 
               {/* Students are the target audience and mostly don't know what a
                   GitHub issue is, so the guidance spells out email as the first
