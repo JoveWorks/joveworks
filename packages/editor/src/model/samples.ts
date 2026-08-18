@@ -16,7 +16,7 @@
  * ever goes stale against the catalogue it was built from.
  */
 
-import { parseUnit } from '@joveworks/units';
+import { parseUnit, type Unit } from '@joveworks/units';
 import {
   SCHEMA_VERSION,
   formulaRef,
@@ -26,6 +26,8 @@ import {
   type GraphDocument,
   type GraphNode,
   type InputNode,
+  type MonteCarloGeneratorNode,
+  type MonteCarloReceiverNode,
   type Output,
   type OutputNode,
   type Position,
@@ -49,6 +51,22 @@ function formulaNode(id: string, formula: Formula, position: Position): FormulaN
 
 function output(id: string, label: string, spec: Output, position: Position): OutputNode {
   return { kind: 'output', id, label, output: spec, position };
+}
+
+function normalGenerator(
+  id: string,
+  label: string,
+  mean: number,
+  stddev: number,
+  count: number,
+  unit: Unit,
+  position: Position,
+): MonteCarloGeneratorNode {
+  return { kind: 'monteCarloGenerator', id, label, distribution: 'normal', mean, stddev, count, unit, position };
+}
+
+function receiver(id: string, label: string, sampleLimit: number, position: Position): MonteCarloReceiverNode {
+  return { kind: 'monteCarloReceiver', id, label, sampleLimit, position };
 }
 
 function wire(from: string, to: string) {
@@ -238,6 +256,82 @@ export function platformFootprint(catalogues: readonly Catalogue[], locale: AppL
   );
 
   return localizeExample(document('platform-footprint', 'Choose a safe platform size', withFrames, edges, frames), locale);
+}
+
+// --- Monte Carlo: a clearance-fit stack-up (ROADMAP.md #27) -----------------
+
+/**
+ * The classic tolerance stack-up. A hole and a shaft are each toleranced
+ * independently, so their clearance is a distribution rather than one
+ * worst-case subtraction — but wiring two *independent* generators into a
+ * formula is not how this graph gets that distribution: each Monte Carlo
+ * generator introduces its own axis (like any range input), and the kernel
+ * broadcasts distinct axes into their cross-product grid the same way it
+ * would two ordinary independent sweeps (`series.ts`'s `unionAxes`). Two
+ * 2,000-sample generators combined that way is a 4,000,000-cell grid, and
+ * playback re-evaluates it every tick — which is what actually happened
+ * when this example first shipped with `hole` and `shaft` as separate
+ * generators feeding one `subtract` node: the browser hung.
+ *
+ * A receiver fed by more than one independent generator stays an open,
+ * unsupported combinatorial case (`ROADMAP.md` #27, `model/monteCarlo.ts`'s
+ * own doc comment). So this graph draws the *already-combined* clearance
+ * directly from a single generator, with the two tolerances folded into one
+ * mean and one root-sum-square spread ahead of time — one axis, one
+ * receiver, no grid, and still exactly the feature this example exists to
+ * show: samples accumulating and a mean converging.
+ */
+export function monteCarloClearance(_catalogues: readonly Catalogue[], locale: AppLocale = 'en'): GraphDocument | undefined {
+  const mm = parseUnit('mm');
+
+  // Hole Ø20.02 mm ± 0.005 mm, shaft Ø19.98 mm ± 0.004 mm: independent
+  // tolerances combine by root-sum-square, not by adding the spreads.
+  // Rounded to 6 decimal places — floating-point subtraction/hypot leave
+  // long tails (0.03999999999999915) that are meaningless past the source
+  // data's own precision and, left alone, blow out the node's number fields.
+  const round = (value: number): number => Math.round(value * 1e6) / 1e6;
+  const meanClearance = round(20.02 - 19.98);
+  const stddevClearance = round(Math.hypot(0.005, 0.004));
+
+  const nodes: GraphNode[] = [
+    normalGenerator('clearance', 'Hole–shaft clearance', meanClearance, stddevClearance, 1000, mm, at(0, 0)),
+
+    output('out_clearance', 'Clearance', { kind: 'print', unit: mm, figures: 4 }, at(400, 0)),
+    output(
+      'out_positive',
+      'Clearance stays positive (no interference)',
+      { kind: 'check', comparison: '>=', threshold: { value: 0, unit: mm } },
+      at(400, 170),
+    ),
+
+    receiver('watch', 'Clearance distribution', 1000, at(0, 340)),
+  ];
+
+  const edges = [
+    wire('clearance.value', 'out_clearance.value'),
+    wire('clearance.value', 'out_positive.value'),
+    wire('clearance.value', 'watch.sample'),
+  ];
+
+  const frames = [
+    {
+      id: 'stack-up',
+      title: 'Clearance-fit stack-up',
+      note:
+        'A hole bored to Ø20.02 mm and a shaft ground to Ø19.98 mm each vary from part to part. Their independent tolerances combine (root-sum-square) into a clearance that draws from a normal distribution. Press play on the receiver below and watch the samples accumulate and the mean converge — a single worst-case subtraction would miss how rarely the extremes actually coincide.',
+      position: at(340, -80),
+      size: { width: 460, height: 560 },
+    },
+  ];
+
+  const withFrames = nodes.map((node) =>
+    node.kind === 'output' || node.kind === 'monteCarloReceiver' ? { ...node, frameId: 'stack-up' } : node,
+  );
+
+  return localizeExample(
+    document('monte-carlo-clearance', 'Clearance-fit stack-up', withFrames, edges, frames),
+    locale,
+  );
 }
 
 // --- the belt lab, which needs its catalogue ---------------------------------

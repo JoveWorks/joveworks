@@ -21,8 +21,8 @@ export interface Reading {
 
 /** The output port a node produces on: its formula's output, or `value`. */
 export function outputPort(analysis: Analysis, node: GraphNode): string | undefined {
-  if (node.kind === 'input') return VALUE_PORT;
-  if (node.kind === 'output') return undefined;
+  if (node.kind === 'input' || node.kind === 'monteCarloGenerator') return VALUE_PORT;
+  if (node.kind === 'output' || node.kind === 'monteCarloReceiver') return undefined;
   return analysis.formulas.get(node.id)?.output.name;
 }
 

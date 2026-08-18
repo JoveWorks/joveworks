@@ -77,6 +77,8 @@ import { ContextMenu, type MenuItem } from './ContextMenu';
 import { FormulaNodeView } from './FormulaNodeView';
 import { FrameView } from './FrameView';
 import { InputNodeView } from './InputNodeView';
+import { MonteCarloGeneratorNodeView } from './MonteCarloGeneratorNodeView';
+import { MonteCarloReceiverNodeView } from './MonteCarloReceiverNodeView';
 import { OutputNodeView } from './OutputNodeView';
 import { PackNodeView } from './PackNodeView';
 import { QuickAddMenu, type ExistingCandidate, type QuickAddCandidate, type QuickAddChoice } from './QuickAddMenu';
@@ -316,7 +318,17 @@ function sizeOf(measured: Measurements, id: string): { measured?: { width: numbe
  * so the type string is ours alone; `node.kind` in the document is untouched.
  */
 function flowType(
-  kind: 'input' | 'formula' | 'output' | 'compare' | 'closure' | 'waypoint' | 'pack' | 'unpack',
+  kind:
+    | 'input'
+    | 'formula'
+    | 'output'
+    | 'compare'
+    | 'closure'
+    | 'waypoint'
+    | 'pack'
+    | 'unpack'
+    | 'monteCarloGenerator'
+    | 'monteCarloReceiver',
 ): string {
   return kind === 'input' || kind === 'output' ? `joveworks-${kind}` : kind;
 }
@@ -330,6 +342,8 @@ const NODE_TYPES = {
   waypoint: WaypointNodeView,
   pack: PackNodeView,
   unpack: UnpackNodeView,
+  monteCarloGenerator: MonteCarloGeneratorNodeView,
+  monteCarloReceiver: MonteCarloReceiverNodeView,
   frame: FrameView,
 };
 

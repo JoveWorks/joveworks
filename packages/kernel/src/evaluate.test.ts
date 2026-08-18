@@ -4,6 +4,7 @@ import { formatQuantity } from '@joveworks/units';
 import type { JsonObject } from '@joveworks/schema';
 import {
   evaluateDocument,
+  receiverSampleValue,
   valueAt,
   type CheckResult,
   type EquationResult,
@@ -22,11 +23,15 @@ import {
   input,
   linear,
   list,
+  monteCarloGeneratorNode,
+  monteCarloReceiverNode,
+  normalDraw,
   outputNode,
   refTo,
   renard,
   scalar,
   slider,
+  uniformDraw,
   wire,
 } from './invented.fixtures.js';
 import type { CategoricalSeries, NumericSeries } from './series.js';
@@ -286,6 +291,84 @@ describe('sweeps', () => {
     const evaluation = evaluateDocument(document, catalogues, { largeGrid: 5000 });
     expect(evaluation.warnings.map((warning) => warning.kind)).toContain('largeGrid');
     expect(numeric(valueAt(evaluation, 'area', 'A')).data).toHaveLength(10_000);
+  });
+});
+
+describe('the Monte Carlo generator and receiver (roadmap #27)', () => {
+  it('behaves like any other range: an axis, one value per draw, a formula wired downstream', () => {
+    const document = documentOf(
+      [
+        monteCarloGeneratorNode('draw', uniformDraw(10, 20), 25, 'mm'),
+        input('h', scalar(2, 'mm')),
+        formulaNode('area', refTo('area')),
+      ],
+      [wire('draw.value', 'area.w'), wire('h.value', 'area.h')],
+    );
+    const series = numeric(valueAt(evaluateDocument(document, catalogues), 'area', 'A'));
+    expect(series.axes.map((axis) => axis.id)).toEqual(['draw']);
+    expect(series.data).toHaveLength(25);
+    expect(series.data.every((value) => value >= 20 && value <= 40)).toBe(true);
+  });
+
+  it('converts a normal generator’s parameters into canonical units at the boundary', () => {
+    const document = documentOf([monteCarloGeneratorNode('draw', normalDraw(1, 0.1), 500, 'cm')], []);
+    const series = numeric(valueAt(evaluateDocument(document, catalogues), 'draw', 'value'));
+    // 1 cm mean, 0.1 cm stddev — comfortably inside ±5 canonical-mm sigma.
+    expect(series.data.every((value) => value > -40 && value < 60)).toBe(true);
+  });
+
+  it('names its axis from `axisLabel`, like an input range does', () => {
+    const document = documentOf(
+      [monteCarloGeneratorNode('draw', uniformDraw(0, 1), 10, '', { axisLabel: 'trial' })],
+      [],
+    );
+    const series = numeric(valueAt(evaluateDocument(document, catalogues), 'draw', 'value'));
+    expect(series.axes[0]?.label).toBe('trial');
+  });
+
+  it('reproduces the same prefix as `count` grows — the property playback depends on', () => {
+    const documentAt = (count: number) => documentOf([monteCarloGeneratorNode('draw', uniformDraw(0, 1), count, '')], []);
+    const short = numeric(valueAt(evaluateDocument(documentAt(10), catalogues), 'draw', 'value'));
+    const long = numeric(valueAt(evaluateDocument(documentAt(25), catalogues), 'draw', 'value'));
+    expect(long.data.slice(0, 10)).toEqual(short.data);
+  });
+
+  it('gives two generators in the same document independent draws', () => {
+    const document = documentOf(
+      [
+        monteCarloGeneratorNode('a', uniformDraw(0, 1), 25, ''),
+        monteCarloGeneratorNode('b', uniformDraw(0, 1), 25, ''),
+      ],
+      [],
+    );
+    const evaluation = evaluateDocument(document, catalogues);
+    expect(numeric(valueAt(evaluation, 'a', 'value')).data).not.toEqual(
+      numeric(valueAt(evaluation, 'b', 'value')).data,
+    );
+  });
+
+  it('lets a receiver read through to whatever is wired to its sample port', () => {
+    const document = documentOf(
+      [monteCarloGeneratorNode('draw', uniformDraw(0, 1), 25, ''), monteCarloReceiverNode('watch', 10_000)],
+      [wire('draw.value', 'watch.sample')],
+    );
+    const evaluation = evaluateDocument(document, catalogues);
+    const receiver = document.nodes.find(
+      (node): node is Extract<typeof node, { kind: 'monteCarloReceiver' }> => node.id === 'watch',
+    );
+    if (receiver === undefined) throw new Error('fixture missing its receiver node');
+    const sample = numeric(receiverSampleValue(receiver, evaluation.resolution, evaluation.values));
+    expect(sample.data).toEqual(numeric(valueAt(evaluation, 'draw', 'value')).data);
+  });
+
+  it('gives an unwired receiver’s sample port no value at all', () => {
+    const document = documentOf([monteCarloReceiverNode('watch', 10_000)], []);
+    const evaluation = evaluateDocument(document, catalogues);
+    const receiver = document.nodes.find(
+      (node): node is Extract<typeof node, { kind: 'monteCarloReceiver' }> => node.id === 'watch',
+    );
+    if (receiver === undefined) throw new Error('fixture missing its receiver node');
+    expect(receiverSampleValue(receiver, evaluation.resolution, evaluation.values)).toBeUndefined();
   });
 });
 

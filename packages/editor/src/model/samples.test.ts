@@ -15,12 +15,12 @@ import { existsSync, readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
-import { loadCatalogue, type Catalogue } from '@joveworks/schema';
+import { loadCatalogue, type Catalogue, type GraphDocument } from '@joveworks/schema';
 import { fromCanonical, parseUnit } from '@joveworks/units';
 
 import { analyse } from './analysis';
 import { baseCatalogue, bundledCatalogues } from './catalogues';
-import { beltLab, millingPowerEnvelope, padPressure, pressfitLab } from './samples';
+import { beltLab, millingPowerEnvelope, monteCarloClearance, padPressure, pressfitLab } from './samples';
 
 const path = process.env['JOVEWORKS_CATALOGUE'];
 const present = path !== undefined && path.length > 0 && existsSync(path);
@@ -46,6 +46,25 @@ describe('the samples the editor opens with', () => {
 
   it('withholds the belt lab until its catalogue is loaded, rather than embedding it', () => {
     expect(beltLab([baseCatalogue()])).toBeUndefined();
+  });
+
+  it('offers the Monte Carlo clearance stack-up with nothing but the base library loaded', () => {
+    const example = monteCarloClearance([baseCatalogue()]);
+    expect(example).toBeDefined();
+    // Exactly one generator: two independent generators feeding one receiver
+    // broadcast into their cross-product grid (`unionAxes`), not a paired
+    // sample-by-sample sequence — an open, unsupported case (`ROADMAP.md`
+    // #27), so this example folds both tolerances into one generator ahead
+    // of time instead.
+    expect(example?.nodes.filter((node) => node.kind === 'monteCarloGenerator')).toHaveLength(1);
+    expect(example?.nodes.some((node) => node.kind === 'monteCarloReceiver')).toBe(true);
+  });
+
+  it('wires the clearance example so the kernel evaluates it end to end', () => {
+    const example = monteCarloClearance([baseCatalogue()]) as GraphDocument;
+    const analysis = analyse(example, [baseCatalogue()]);
+    expect(analysis.states.get('out_clearance') ?? 'ok').toBe('ok');
+    expect(analysis.states.get('watch') ?? 'ok').toBe('ok');
   });
 
   it('offers the milling power-envelope study from the bundled public catalogue', () => {

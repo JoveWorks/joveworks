@@ -30,7 +30,9 @@ interface Props {
     | 'closure'
     | 'waypoint'
     | 'pack'
-    | 'unpack';
+    | 'unpack'
+    | 'monteCarloGenerator'
+    | 'monteCarloReceiver';
   readonly state: NodeState;
   readonly title: ReactNode;
   readonly subtitle?: ReactNode;

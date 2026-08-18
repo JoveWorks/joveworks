@@ -83,6 +83,28 @@ export function unpackNode(id: string, extra: JsonObject = {}): JsonObject {
   return { kind: 'unpack', id, position: { x: 0, y: 0 }, ...extra };
 }
 
+export function monteCarloGeneratorNode(
+  id: string,
+  distribution: JsonObject,
+  count: number,
+  unit: string,
+  extra: JsonObject = {},
+): JsonObject {
+  return { kind: 'monteCarloGenerator', id, position: { x: 0, y: 0 }, ...distribution, count, unit, ...extra };
+}
+
+export const uniformDraw = (min: number, max: number): JsonObject => ({ distribution: 'uniform', min, max });
+
+export const normalDraw = (mean: number, stddev: number): JsonObject => ({
+  distribution: 'normal',
+  mean,
+  stddev,
+});
+
+export function monteCarloReceiverNode(id: string, sampleLimit: number, extra: JsonObject = {}): JsonObject {
+  return { kind: 'monteCarloReceiver', id, position: { x: 0, y: 0 }, sampleLimit, ...extra };
+}
+
 export function compareNode(
   id: string,
   comparison: string,

@@ -181,6 +181,121 @@ describe('round-tripping (the verification docs/PLAN.md asks for)', () => {
     expect(serializeDocument(document)).toEqual(routed);
   });
 
+  it('round-trips a uniform Monte Carlo generator', () => {
+    const withGenerator = {
+      ...study,
+      nodes: [
+        {
+          kind: 'monteCarloGenerator',
+          id: 'draw',
+          position: { x: 0, y: 0 },
+          distribution: 'uniform',
+          min: 10,
+          max: 20,
+          count: 25,
+          unit: 'mm',
+          axisLabel: 'trial diameter',
+        },
+      ],
+      edges: [],
+    };
+    const document = parseDocument(withGenerator);
+    expect(serializeDocument(document)).toEqual(withGenerator);
+  });
+
+  it('round-trips a normal Monte Carlo generator', () => {
+    const withGenerator = {
+      ...study,
+      nodes: [
+        {
+          kind: 'monteCarloGenerator',
+          id: 'draw',
+          position: { x: 0, y: 0 },
+          distribution: 'normal',
+          mean: 15,
+          stddev: 2,
+          count: 25,
+          unit: 'mm',
+        },
+      ],
+      edges: [],
+    };
+    const document = parseDocument(withGenerator);
+    expect(serializeDocument(document)).toEqual(withGenerator);
+  });
+
+  it('rejects a uniform generator whose low end is not below its high end', () => {
+    const broken = {
+      ...study,
+      nodes: [
+        {
+          kind: 'monteCarloGenerator',
+          id: 'draw',
+          position: { x: 0, y: 0 },
+          distribution: 'uniform',
+          min: 20,
+          max: 10,
+          count: 25,
+          unit: 'mm',
+        },
+      ],
+      edges: [],
+    };
+    expect(() => parseDocument(broken)).toThrow(/low end below its high end/);
+  });
+
+  it('rejects a normal generator with a non-positive standard deviation', () => {
+    const broken = {
+      ...study,
+      nodes: [
+        {
+          kind: 'monteCarloGenerator',
+          id: 'draw',
+          position: { x: 0, y: 0 },
+          distribution: 'normal',
+          mean: 15,
+          stddev: 0,
+          count: 25,
+          unit: 'mm',
+        },
+      ],
+      edges: [],
+    };
+    expect(() => parseDocument(broken)).toThrow(/stddev.*above zero/);
+  });
+
+  it('round-trips a Monte Carlo receiver with its full settings', () => {
+    const withReceiver = {
+      ...study,
+      nodes: [
+        {
+          kind: 'monteCarloReceiver',
+          id: 'watch',
+          position: { x: 0, y: 0 },
+          sampleLimit: 5000,
+          rampUp: true,
+          showMeanBand: true,
+          showHistogram: false,
+        },
+      ],
+      edges: [],
+    };
+    const document = parseDocument(withReceiver);
+    expect(serializeDocument(document)).toEqual(withReceiver);
+  });
+
+  it('defaults a Monte Carlo receiver’s optional fields to absent', () => {
+    const minimal = {
+      ...study,
+      nodes: [
+        { kind: 'monteCarloReceiver', id: 'watch', position: { x: 0, y: 0 }, sampleLimit: 10_000 },
+      ],
+      edges: [],
+    };
+    const document = parseDocument(minimal);
+    expect(serializeDocument(document)).toEqual(minimal);
+  });
+
   it('stamps an empty document with the version this build writes', () => {
     const document = emptyDocument('study-2', 'Untitled');
     expect(document.schemaVersion).toBe(SCHEMA_VERSION);
@@ -195,6 +310,26 @@ describe('round-tripping (the verification docs/PLAN.md asks for)', () => {
 describe('labelled axes', () => {
   it('counts one axis per range input node, and no others', () => {
     expect(axes(parseDocument(study)).map((node) => node.id)).toEqual(['d', 'fit']);
+  });
+
+  it('counts a Monte Carlo generator as an axis too', () => {
+    const withGenerator = {
+      ...study,
+      nodes: [
+        ...(study['nodes'] as JsonObject[]),
+        {
+          kind: 'monteCarloGenerator',
+          id: 'draw',
+          position: { x: 0, y: 360 },
+          distribution: 'uniform',
+          min: 0,
+          max: 1,
+          count: 25,
+          unit: '',
+        },
+      ],
+    };
+    expect(axes(parseDocument(withGenerator)).map((node) => node.id)).toEqual(['d', 'fit', 'draw']);
   });
 
   it('rejects a plot pointing at a node that introduces no axis', () => {

@@ -21,9 +21,12 @@ import {
   documentOf,
   formulaNode,
   input,
+  monteCarloGeneratorNode,
+  monteCarloReceiverNode,
   outputNode,
   refTo,
   scalar,
+  uniformDraw,
   wire,
 } from './invented.fixtures.js';
 
@@ -101,6 +104,59 @@ describe('resolution', () => {
     const { warnings } = resolveGraph(stale, catalogues);
     expect(warnings).toHaveLength(1);
     expect(warnings[0]?.kind).toBe('formulaChanged');
+  });
+});
+
+describe('the Monte Carlo generator and receiver', () => {
+  it('types a generator’s value port numerically, in its own declared unit', () => {
+    const document = documentOf([monteCarloGeneratorNode('draw', uniformDraw(0, 1), 25, 'mm')], []);
+    const resolution = resolveGraph(document, catalogues);
+    expect(resolution.sources.get(endpointKey('draw', 'value'))?.dimension).toEqual(LENGTH);
+  });
+
+  it('introduces an axis of `count` length, the same way a `linear` range’s `points` does', () => {
+    const document = documentOf([monteCarloGeneratorNode('draw', uniformDraw(0, 1), 25, '')], []);
+    const resolution = resolveGraph(document, catalogues);
+    expect(resolution.axes).toEqual([{ id: 'draw', label: 'draw', length: 25, order: 0 }]);
+  });
+
+  it('lets a formula wire straight into a generator’s output, same as any range', () => {
+    const document = documentOf(
+      [
+        monteCarloGeneratorNode('draw', uniformDraw(0, 1), 25, 'mm'),
+        input('h', scalar(2, 'mm')),
+        formulaNode('area', refTo('area')),
+      ],
+      [wire('draw.value', 'area.w'), wire('h.value', 'area.h')],
+    );
+    expect(() => resolveGraph(document, catalogues)).not.toThrow();
+  });
+
+  it('leaves a receiver’s sample port unbound until something is wired to it', () => {
+    const document = documentOf([monteCarloReceiverNode('watch', 10_000)], []);
+    const resolution = resolveGraph(document, catalogues);
+    expect(resolution.targets.get(endpointKey('watch', 'sample'))).toEqual({ kind: 'numeric' });
+  });
+
+  it('types a receiver’s sample port from whatever is wired to it', () => {
+    const document = documentOf(
+      [monteCarloGeneratorNode('draw', uniformDraw(0, 1), 25, 'mm'), monteCarloReceiverNode('watch', 10_000)],
+      [wire('draw.value', 'watch.sample')],
+    );
+    const resolution = resolveGraph(document, catalogues);
+    expect(resolution.targets.get(endpointKey('watch', 'sample'))?.dimension).toEqual(LENGTH);
+  });
+
+  it('refuses two edges into one receiver’s sample port, same as any other input', () => {
+    const document = documentOf(
+      [
+        monteCarloGeneratorNode('a', uniformDraw(0, 1), 25, 'mm'),
+        monteCarloGeneratorNode('b', uniformDraw(0, 1), 25, 'mm'),
+        monteCarloReceiverNode('watch', 10_000),
+      ],
+      [wire('a.value', 'watch.sample'), wire('b.value', 'watch.sample')],
+    );
+    expect(() => resolveGraph(document, catalogues)).toThrow(/one connection/u);
   });
 });
 

@@ -12,7 +12,16 @@ export const DOCS_BASE_URL = import.meta.env.DEV
 
 export const NODE_HELP_URLS: Readonly<
   Record<
-    'input' | 'formula' | 'output' | 'compare' | 'closure' | 'waypoint' | 'pack' | 'unpack',
+    | 'input'
+    | 'formula'
+    | 'output'
+    | 'compare'
+    | 'closure'
+    | 'waypoint'
+    | 'pack'
+    | 'unpack'
+    | 'monteCarloGenerator'
+    | 'monteCarloReceiver',
     string
   >
 > = {
@@ -24,4 +33,6 @@ export const NODE_HELP_URLS: Readonly<
   waypoint: `${DOCS_BASE_URL}/guide/node-reference#waypoint`,
   pack: `${DOCS_BASE_URL}/guide/node-reference#pack`,
   unpack: `${DOCS_BASE_URL}/guide/node-reference#unpack`,
+  monteCarloGenerator: `${DOCS_BASE_URL}/guide/node-reference#monte-carlo-generator`,
+  monteCarloReceiver: `${DOCS_BASE_URL}/guide/node-reference#monte-carlo-receiver`,
 };

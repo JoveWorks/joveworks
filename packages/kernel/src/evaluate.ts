@@ -23,6 +23,7 @@ import {
   VALUE_PORT,
   THRESHOLD_PORT,
   VERDICT_PORT,
+  MONTE_CARLO_SAMPLE_PORT,
   isRange,
   renardValues,
   type Catalogue,
@@ -30,6 +31,8 @@ import {
   type Edge,
   type GraphDocument,
   type InputNode,
+  type MonteCarloGeneratorNode,
+  type MonteCarloReceiverNode,
   type OutputNode,
   type Comparison,
   type Formula,
@@ -37,6 +40,7 @@ import {
   type Port,
   type SpectrumPort,
 } from '@joveworks/schema';
+import { monteCarloSamples } from './random.js';
 
 import { packChannelIndices, waypointChannelIndices } from './bundle.js';
 import { comparator } from './compile.js';
@@ -171,6 +175,21 @@ export function evaluateDocument(
         values.set(endpointKey(node.id, VALUE_PORT), inputValue(node, axisById, resolution));
         break;
 
+      case 'monteCarloGenerator':
+        values.set(
+          endpointKey(node.id, VALUE_PORT),
+          generatorValue(node, axisById, resolution.document.id),
+        );
+        break;
+
+      case 'monteCarloReceiver':
+        // A sink, not a source: nothing to store under its own id. Whatever
+        // is wired to its `sample` port stays exactly where it already is in
+        // `values`, under the wire's own node — `receiverSampleValue` below
+        // is how a caller (the editor's playback, the notebook export) reads
+        // it back out.
+        break;
+
       case 'formula': {
         const formula = resolution.formulas.get(node.id) as Formula;
         const output = evaluateFormula(node, formula, resolution, values, warnings, largeGrid);
@@ -218,7 +237,58 @@ export function evaluateDocument(
   return { document, resolution, values, outputs, warnings };
 }
 
+/**
+ * The value wired into a Monte Carlo receiver's `sample` port — a sink has
+ * nothing of its own in `values`, so a caller (the editor's playback loop,
+ * the notebook's export) reads through to whatever is wired in, the same way
+ * `valueAt` reads any other node's output. `undefined` when nothing is
+ * wired, which the editor treats as "incomplete", the same as any other
+ * unwired required input.
+ */
+export function receiverSampleValue(
+  node: MonteCarloReceiverNode,
+  resolution: Resolution,
+  values: ReadonlyMap<string, PortValue>,
+): PortValue | undefined {
+  const edge = resolution.incoming.get(endpointKey(node.id, MONTE_CARLO_SAMPLE_PORT))?.[0];
+  if (edge === undefined) return undefined;
+  return values.get(endpointKey(edge.from.node, edge.from.port));
+}
+
 // --- input nodes ------------------------------------------------------------
+
+/** A generator's draws, converted into canonical units — the same boundary `inputValue` crosses. */
+function generatorValue(
+  node: MonteCarloGeneratorNode,
+  axes: ReadonlyMap<string, Axis>,
+  documentId: string,
+): NumericSeries {
+  const axis = axes.get(node.id);
+  if (axis === undefined) {
+    throw new KernelError('a generator node introduces an axis, and this one has none', node.id);
+  }
+  const draw =
+    node.distribution === 'uniform'
+      ? {
+          distribution: 'uniform' as const,
+          min: toCanonical(node.min, node.unit),
+          max: toCanonical(node.max, node.unit),
+        }
+      : {
+          distribution: 'normal' as const,
+          mean: toCanonical(node.mean, node.unit),
+          // `toCanonical` is a pure scale factor (`convert.ts`) — every
+          // internal unit is a plain multiple, never an offset scale — so
+          // converting the spread this way is exactly as valid as
+          // converting the mean.
+          stddev: toCanonical(node.stddev, node.unit),
+        };
+  return {
+    kind: 'numeric',
+    axes: [axis],
+    data: monteCarloSamples(documentId, node.id, draw, axis.length),
+  };
+}
 
 /**
  * A literal, a categorical choice, a spectrum or a range, converted into

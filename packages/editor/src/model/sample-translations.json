@@ -125,5 +125,11 @@
   ",\n    out_M_check: ": ",\n    out_M_check:",
   ",\n    out_table: ": ",\n    uit_tabel:",
   ",\n  };\n  const withFrames = nodes.map((node) => {\n    const frameId = frameForOutput[node.id];\n    return node.kind === ": ",\n  };\n  const withFrames = knooppunten.map((knooppunt) => {\n    const frameId = frameForOutput[node.id];\n    return node.kind ===",
-  " && frameId !== undefined ? { ...node, frameId } : node;\n  });\n\n  return document(": "&& frameId !== ongedefinieerd ? { ...knooppunt, frameId }: knooppunt;\n  });\n\n  retourdocument("
+  " && frameId !== undefined ? { ...node, frameId } : node;\n  });\n\n  return document(": "&& frameId !== ongedefinieerd ? { ...knooppunt, frameId }: knooppunt;\n  });\n\n  retourdocument(",
+  "Clearance-fit stack-up": "Speling-stapeling",
+  "Hole–shaft clearance": "Speling gat–as",
+  "Clearance": "Speling",
+  "Clearance stays positive (no interference)": "Speling blijft positief (geen overmaat)",
+  "Clearance distribution": "Spelingverdeling",
+  "A hole bored to Ø20.02 mm and a shaft ground to Ø19.98 mm each vary from part to part. Their independent tolerances combine (root-sum-square) into a clearance that draws from a normal distribution. Press play on the receiver below and watch the samples accumulate and the mean converge — a single worst-case subtraction would miss how rarely the extremes actually coincide.": "Een gat geboord op Ø20.02 mm en een as geslepen op Ø19.98 mm variëren allebei van onderdeel tot onderdeel. Hun onafhankelijke toleranties combineren (kwadratische som) tot een speling die getrokken wordt uit een normale verdeling. Druk op afspelen bij de ontvanger hieronder en kijk hoe de steekproeven zich opstapelen en het gemiddelde convergeert — één worstcase-aftrekking zou missen hoe zelden de uitersten elkaar echt treffen."
 }

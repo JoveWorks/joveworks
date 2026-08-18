@@ -13,6 +13,7 @@ import { createContext, useContext } from 'react';
 import type { Catalogue, GraphDocument } from '@joveworks/schema';
 
 import type { Analysis } from './model/analysis';
+import type { MonteCarloPlaybackState } from './model/monteCarloPlayback';
 import type { UserEquation } from './model/userEquations';
 
 export interface GraphContextValue {
@@ -52,6 +53,16 @@ export interface GraphContextValue {
    */
   readonly hovered: ReadonlySet<string>;
   readonly setHovered: (update: (current: ReadonlySet<string>) => ReadonlySet<string>) => void;
+  /**
+   * Monte Carlo receiver playback, by receiver id (`ROADMAP.md` #27) — held
+   * here, one level above any single view, so the canvas node and the
+   * notebook entry for the same receiver (`MonteCarloReceiverPlayback.tsx`)
+   * read and drive the same position rather than two independent ones.
+   */
+  readonly monteCarloPlayback: ReadonlyMap<string, MonteCarloPlaybackState>;
+  readonly toggleMonteCarloPlayback: (id: string) => void;
+  readonly stepMonteCarloPlayback: (id: string) => void;
+  readonly resetMonteCarloPlayback: (id: string) => void;
 }
 
 export const GraphContext = createContext<GraphContextValue | undefined>(undefined);

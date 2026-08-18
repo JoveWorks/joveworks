@@ -89,6 +89,16 @@ const EXAMPLE_COPY = {
     studyBody: 'Load divided by pad area produces pressure. The same result feeds a printed value, a limit check and a plot.',
     resultBody: 'Use the threshold on the pressure plot to see where the design first clears 2 N/mm², rather than treating the sweep as a list of unrelated answers.',
   },
+  'monte-carlo-clearance': {
+    title: 'Clearance-fit stack-up',
+    opening: 'A Monte Carlo example: an independently toleranced hole and shaft combine into a clearance that varies sample to sample, instead of one worst-case subtraction.',
+    inputTarget: '[data-tour="monteCarloGenerator-clearance"]',
+    inputTitle: 'A generator is a range, drawn rather than swept',
+    inputBody: 'Clearance draws from a normal distribution instead of stepping between a start and a stop — the same axis role a range input plays, but each sample is random rather than evenly spaced.',
+    studyTitle: 'Watch the aggregate converge',
+    studyBody: 'The receiver plays the clearance back sample by sample and accumulates a running mean and histogram — press play and watch it settle rather than reading one final number.',
+    resultBody: 'The printed clearance and the interference check both read the same wired generator the receiver is watching — nothing about the calculation itself depends on playback.',
+  },
   'belt-lab': {
     title: 'Belt lab',
     opening: 'This worked example turns the belt-drive assignment into a forward calculation from the given motor, pulley and belt data.',

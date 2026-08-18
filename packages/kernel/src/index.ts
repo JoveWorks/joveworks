@@ -115,7 +115,7 @@ export {
 } from './graph.js';
 export type { ConnectionCheck, PortType, Resolution } from './graph.js';
 
-export { evaluateDocument, valueAt } from './evaluate.js';
+export { evaluateDocument, receiverSampleValue, valueAt } from './evaluate.js';
 export type {
   CheckResult,
   EquationResult,
@@ -128,6 +128,9 @@ export type {
   TableResult,
   PrintResult,
 } from './evaluate.js';
+
+export { monteCarloSamples } from './random.js';
+export type { MonteCarloDraw, NormalDraw, UniformDraw } from './random.js';
 
 export { toLatex } from './toLatex.js';
 

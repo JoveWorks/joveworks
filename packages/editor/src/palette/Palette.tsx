@@ -18,7 +18,9 @@ import { useMemo, useState, type ReactElement } from 'react';
 import { useReactFlow } from '@xyflow/react';
 
 import { parseUnit, type Unit } from '@joveworks/units';
+import { BASE_CATALOGUE_ID } from '@joveworks/nodes';
 import {
+  DEFAULT_MONTE_CARLO_SAMPLE_LIMIT,
   localize,
   axes as documentAxes,
   formulaRef,
@@ -45,6 +47,7 @@ const OUTPUT = '__output__';
 const GENERAL = '__general__';
 const USER = '__user__';
 const FAVOURITES = '__favourites__';
+const MONTE_CARLO = '__montecarlo__';
 
 interface PaletteAction {
   /** Stable across translated labels: this is what the local preference stores. */
@@ -232,6 +235,34 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
       return addNode(current, { kind: 'unpack', id, label: id, position: position() });
     });
 
+  const addMonteCarloGenerator = (): void =>
+    edit((current) => {
+      const id = uniqueId(current, 'draw');
+      return addNode(current, {
+        kind: 'monteCarloGenerator',
+        id,
+        label: id,
+        distribution: 'uniform',
+        min: 0,
+        max: 1,
+        count: 25,
+        unit: parseUnit(''),
+        position: position(),
+      });
+    });
+
+  const addMonteCarloReceiver = (): void =>
+    edit((current) => {
+      const id = uniqueId(current, 'watch');
+      return addNode(current, {
+        kind: 'monteCarloReceiver',
+        id,
+        label: id,
+        sampleLimit: DEFAULT_MONTE_CARLO_SAMPLE_LIMIT,
+        position: position(),
+      });
+    });
+
   const actions: readonly PaletteAction[] = [
     { id: 'builtin:input:value', label: copy.value, summary: copy.singleNumber, insert: () => addInput('scalar') },
     { id: 'builtin:input:range', label: copy.range, summary: copy.rangeSummary, insert: () => addInput('linear') },
@@ -251,9 +282,30 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
     { id: 'builtin:output:table', label: copy.table, summary: copy.tableSummary, insert: () => addOutput('table') },
     { id: 'builtin:output:check', label: copy.check, summary: copy.checkSummary, insert: () => addOutput('check') },
   ];
+
+  // A separate catalogue-styled section, not part of General — Monte Carlo
+  // generator/receiver are their own node kinds with their own concerns
+  // (playback, distributions), distinct enough from routing nodes like
+  // waypoint/pack that they earn their own heading, placed right after the
+  // built-in node library rather than folded into it.
+  const monteCarloActions: readonly PaletteAction[] = [
+    {
+      id: 'builtin:montecarlo:generator',
+      label: copy.monteCarloGenerator,
+      summary: copy.monteCarloGeneratorSummary,
+      insert: addMonteCarloGenerator,
+    },
+    {
+      id: 'builtin:montecarlo:receiver',
+      label: copy.monteCarloReceiver,
+      summary: copy.monteCarloReceiverSummary,
+      insert: addMonteCarloReceiver,
+    },
+  ];
+
   const favouriteEntries = all.filter(({ formula }) => favourites.has(formula.id));
   const favouriteUserEquations = userEquations.filter((equation) => favourites.has(`user:${equation.id}`));
-  const favouriteActions = actions.filter((action) => favourites.has(action.id));
+  const favouriteActions = [...actions, ...monteCarloActions].filter((action) => favourites.has(action.id));
 
   const actionEntry = (action: PaletteAction, keyPrefix = ''): ReactElement => (
     <li key={`${keyPrefix}${action.id}`} onContextMenu={(event) => {
@@ -266,6 +318,48 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
       </button>
     </li>
   );
+
+  const catalogueSection = ([catalogueId, list]: (typeof grouped)[number]): ReactElement => {
+    const isCollapsed = query.trim().length === 0 && collapsed.has(catalogueId);
+    const count = list.length;
+    return (
+      <section key={catalogueId}>
+        <h3>
+          <button
+            type="button"
+            className="section-toggle"
+            onClick={() => toggleCollapsed(catalogueId)}
+          >
+            <span className="section-toggle-title">
+              {list[0] === undefined ? catalogueId : localize(list[0].catalogue.name, locale)}
+              {list[0]?.catalogue.restricted === true ? (
+                <span className="restricted" title={t('Restricted content — never exported.')}>
+                  {t('restricted')}
+                </span>
+              ) : null}
+              {isCollapsed ? <span className="section-toggle-count"> ({count})</span> : null}
+            </span>
+            <span className="chevron" aria-hidden="true">
+              {isCollapsed ? '▸' : '▾'}
+            </span>
+          </button>
+        </h3>
+        {isCollapsed ? null : (
+          <ul>
+            {list.map((entry) => formulaEntry(entry))}
+          </ul>
+        )}
+      </section>
+    );
+  };
+  // The built-in library renders in its usual catalogue slot; Monte Carlo
+  // is not a formula catalogue at all (its two entries are node kinds, like
+  // waypoint/pack), so it gets its own fixed section rather than a spot in
+  // `grouped` — placed right after the built-in section it conceptually
+  // extends, ahead of whatever real catalogues (restricted or bundled) come
+  // next.
+  const builtInGroup = grouped.find(([catalogueId]) => catalogueId === BASE_CATALOGUE_ID);
+  const otherGroups = grouped.filter(([catalogueId]) => catalogueId !== BASE_CATALOGUE_ID);
 
   const userEquationEntry = (equation: typeof userEquations[number], keyPrefix = ''): ReactElement => (
     <li key={`${keyPrefix}${equation.id}`}>
@@ -388,39 +482,21 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
           </section>
         ) : null}
 
-        {grouped.map(([catalogueId, list]) => {
-          const isCollapsed = query.trim().length === 0 && collapsed.has(catalogueId);
-          const count = list.length;
-          return (
-            <section key={catalogueId}>
-              <h3>
-                <button
-                  type="button"
-                  className="section-toggle"
-                  onClick={() => toggleCollapsed(catalogueId)}
-                >
-                  <span className="section-toggle-title">
-                    {list[0] === undefined ? catalogueId : localize(list[0].catalogue.name, locale)}
-                    {list[0]?.catalogue.restricted === true ? (
-                      <span className="restricted" title={t('Restricted content — never exported.')}>
-                        {t('restricted')}
-                      </span>
-                    ) : null}
-                    {isCollapsed ? <span className="section-toggle-count"> ({count})</span> : null}
-                  </span>
-                  <span className="chevron" aria-hidden="true">
-                    {isCollapsed ? '▸' : '▾'}
-                  </span>
-                </button>
-              </h3>
-              {isCollapsed ? null : (
-                <ul>
-                  {list.map((entry) => formulaEntry(entry))}
-                </ul>
-              )}
-            </section>
-          );
-        })}
+        {builtInGroup === undefined ? null : catalogueSection(builtInGroup)}
+
+        {query.trim().length === 0 ? (
+          <section>
+            <h3><button type="button" className="section-toggle" onClick={() => toggleCollapsed(MONTE_CARLO)}>
+              <span className="section-toggle-title">{copy.monteCarlo}{collapsed.has(MONTE_CARLO) ? ' (2)' : ''}</span>
+              <span className="chevron" aria-hidden="true">{collapsed.has(MONTE_CARLO) ? '▸' : '▾'}</span>
+            </button></h3>
+            {collapsed.has(MONTE_CARLO) ? null : <ul>
+              {monteCarloActions.map((action) => actionEntry(action))}
+            </ul>}
+          </section>
+        ) : null}
+
+        {otherGroups.map((group) => catalogueSection(group))}
         {found.length === 0 ? <p className="empty">{t('Nothing matches')} “{query}”.</p> : null}
       </div>
 

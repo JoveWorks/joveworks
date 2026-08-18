@@ -101,10 +101,12 @@ import {
   pressfitLab,
   cantileverHollowSections,
   millingPowerEnvelope,
+  monteCarloClearance,
   padPressure,
   platformFootprint,
   provides,
 } from './model/samples';
+import { useMonteCarloPlayback } from './model/monteCarloPlayback';
 import { Notebook } from './notebook/Notebook';
 import { Palette } from './palette/Palette';
 import { SettingsDialog } from './settings/SettingsDialog';
@@ -151,6 +153,7 @@ function exampleDocument(
 ): GraphDocument | undefined {
   if (id === 'pad-pressure') return padPressure(catalogues, locale);
   if (id === 'platform-footprint') return platformFootprint(catalogues, locale);
+  if (id === 'monte-carlo-clearance') return monteCarloClearance(catalogues, locale);
   if (id === 'belt-lab') return beltLab(catalogues, locale);
   if (id === 'pressfit-lab') return pressfitLab(catalogues, locale);
   if (id === 'cantilever-hollow-sections') return cantileverHollowSections(catalogues, locale);
@@ -525,6 +528,9 @@ function AppShell(): ReactElement {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [undo, redo]);
 
+  const { playback: monteCarloPlayback, togglePlayback, stepPlayback, resetPlayback } =
+    useMonteCarloPlayback(document);
+
   const context = useMemo(
     () => ({
       document,
@@ -556,8 +562,24 @@ function AppShell(): ReactElement {
       setSelected,
       hovered,
       setHovered,
+      monteCarloPlayback,
+      toggleMonteCarloPlayback: togglePlayback,
+      stepMonteCarloPlayback: stepPlayback,
+      resetMonteCarloPlayback: resetPlayback,
     }),
-    [analysis, catalogues, document, userEquations, expanded, selected, hovered],
+    [
+      analysis,
+      catalogues,
+      document,
+      userEquations,
+      expanded,
+      selected,
+      hovered,
+      monteCarloPlayback,
+      togglePlayback,
+      stepPlayback,
+      resetPlayback,
+    ],
   );
 
   const beltAvailable = provides(catalogues, BELT_LAB_FORMULAS);
@@ -753,6 +775,15 @@ function AppShell(): ReactElement {
           openExample('pad-pressure');
           setShowNotebook(true);
           setTutorial({ kind: 'example', id: 'pad-pressure' });
+        }),
+    },
+    {
+      label: t('Clearance-fit stack-up'),
+      onClick: () =>
+        guardDiscard(() => {
+          openExample('monte-carlo-clearance');
+          setShowNotebook(true);
+          setTutorial({ kind: 'example', id: 'monte-carlo-clearance' });
         }),
     },
     {

@@ -27,7 +27,7 @@ import {
 } from 'react';
 
 import { parseExpression, toLatex, type OutputResult } from '@joveworks/kernel';
-import type { Frame, GraphDocument, OutputNode, Position } from '@joveworks/schema';
+import type { Frame, GraphDocument, MonteCarloReceiverNode, OutputNode, Position } from '@joveworks/schema';
 
 import type { NumberFormat } from '@joveworks/units';
 
@@ -51,6 +51,7 @@ import {
 import { toUnitsFormat } from '../model/numberFormat';
 import { display, displayNumber } from '../model/quantity';
 import { summarise } from '../model/values';
+import { MonteCarloReceiverPlayback } from '../canvas/MonteCarloReceiverPlayback';
 import { PlotFigure } from './PlotFigure';
 import { phrase, ui } from '../i18n';
 
@@ -159,7 +160,7 @@ const COMPARISON_TEXT: Readonly<Record<string, string>> = {
 /** An output's title belongs to the graph node, even when it is edited from
  * the NodeBook.  Use the ordinary rename operation so table columns that
  * still follow this output's old title follow it here too. */
-function OutputTitle({ node }: { readonly node: OutputNode }): ReactElement {
+function OutputTitle({ node }: { readonly node: OutputNode | MonteCarloReceiverNode }): ReactElement {
   const { edit, editLive, commitEdit } = useGraph();
   return (
     <TitleField
@@ -319,6 +320,7 @@ const UNGROUPED = '__ungrouped__';
 function Section({
   frame,
   outputs,
+  receivers,
   collapsed,
   onToggle,
   dragOver,
@@ -329,6 +331,10 @@ function Section({
 }: {
   readonly frame?: Frame;
   readonly outputs: readonly OutputNode[];
+  /** Monte Carlo receivers in this frame — not outputs (a receiver is a
+   * sink with its own node kind, not `output.kind`), but presentable in a
+   * notebook section the same way: watched live, not a second document. */
+  readonly receivers: readonly MonteCarloReceiverNode[];
   readonly collapsed: boolean;
   readonly onToggle: () => void;
   /** Set by the notebook (a single, shared value — see its own comment) rather than owned locally. */
@@ -358,7 +364,7 @@ function Section({
   const { locale } = useSettings();
   const t = (english: string): string => phrase(locale, english);
   const [menu, setMenu] = useState<{ x: number; y: number } | undefined>(undefined);
-  if (outputs.length === 0) return null;
+  if (outputs.length === 0 && receivers.length === 0) return null;
 
   const clearHover = (): void => setHovered(() => new Set());
 
@@ -475,7 +481,8 @@ function Section({
             >
               {collapsed ? (
                 <span className="section-toggle-count">
-                  {outputs.length} {t(outputs.length === 1 ? 'result' : 'results')}
+                  {outputs.length + receivers.length}{' '}
+                  {t(outputs.length + receivers.length === 1 ? 'result' : 'results')}
                 </span>
               ) : null}
               <span className="chevron" aria-hidden="true">
@@ -539,6 +546,22 @@ function Section({
               </div>
             );
           })}
+
+          {receivers.map((node) => (
+            <div
+              key={node.id}
+              className="entry"
+              onMouseEnter={() => setHovered(() => new Set([node.id]))}
+              onMouseLeave={clearHover}
+            >
+              <div className="result monte-carlo">
+                <span className="label">
+                  <OutputTitle node={node} />
+                </span>
+                <MonteCarloReceiverPlayback receiverId={node.id} size="large" />
+              </div>
+            </div>
+          ))}
         </>
       )}
     </section>
@@ -562,6 +585,13 @@ export function readingOrder(a: { readonly position: Position }, b: { readonly p
 function outputsOf(document: GraphDocument, frameId: string | undefined): readonly OutputNode[] {
   return document.nodes
     .filter((node): node is OutputNode => node.kind === 'output' && node.frameId === frameId)
+    .slice()
+    .sort(readingOrder);
+}
+
+function receiversOf(document: GraphDocument, frameId: string | undefined): readonly MonteCarloReceiverNode[] {
+  return document.nodes
+    .filter((node): node is MonteCarloReceiverNode => node.kind === 'monteCarloReceiver' && node.frameId === frameId)
     .slice()
     .sort(readingOrder);
 }
@@ -706,6 +736,7 @@ export function Notebook({ onClose }: { readonly onClose: () => void }): ReactEl
           key={frame.id}
           frame={frame}
           outputs={outputsOf(document, frame.id)}
+          receivers={receiversOf(document, frame.id)}
           collapsed={printing ? false : collapsed.has(frame.id)}
           onToggle={() => toggle(frame.id)}
           dragOver={dragOver?.frameId === frame.id ? dragOver.position : undefined}
@@ -735,6 +766,7 @@ export function Notebook({ onClose }: { readonly onClose: () => void }): ReactEl
       ))}
       <Section
         outputs={outputsOf(document, undefined)}
+        receivers={receiversOf(document, undefined)}
         collapsed={printing ? false : collapsed.has(UNGROUPED)}
         onToggle={() => toggle(UNGROUPED)}
         dragOver={undefined}

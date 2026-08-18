@@ -15,7 +15,9 @@ export type NodeKind =
   | 'frame'
   | 'waypoint'
   | 'pack'
-  | 'unpack';
+  | 'unpack'
+  | 'monteCarloGenerator'
+  | 'monteCarloReceiver';
 
 export type SweepKind =
   | 'slider'

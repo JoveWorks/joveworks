@@ -40,6 +40,7 @@ import {
   isEvaluable,
   isGenericPort,
   localize,
+  MONTE_CARLO_SAMPLE_PORT,
   THRESHOLD_PORT,
   VALUE_PORT,
   type Catalogue,
@@ -190,7 +191,21 @@ function readiness(
   };
 
   for (const node of order) {
-    if (node.kind === 'input') {
+    if (node.kind === 'input' || node.kind === 'monteCarloGenerator') {
+      ready.add(node.id);
+      continue;
+    }
+
+    if (node.kind === 'monteCarloReceiver') {
+      if (!isWired(node.id, MONTE_CARLO_SAMPLE_PORT)) {
+        states.set(node.id, 'incomplete');
+        problems.set(node.id, notConnected([MONTE_CARLO_SAMPLE_PORT]));
+        continue;
+      }
+      if (!upstreamReady(node.id, MONTE_CARLO_SAMPLE_PORT)) {
+        states.set(node.id, 'blocked');
+        continue;
+      }
       ready.add(node.id);
       continue;
     }

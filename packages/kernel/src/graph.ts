@@ -42,11 +42,13 @@ import {
   VALUE_PORT,
   THRESHOLD_PORT,
   VERDICT_PORT,
+  MONTE_CARLO_SAMPLE_PORT,
   axes as documentAxes,
   hasUnit,
   isRange,
   matchRef,
   axisLength,
+  type AxisNode,
   type Catalogue,
   type CompareNode,
   type Edge,
@@ -55,6 +57,7 @@ import {
   type GraphDocument,
   type GraphNode,
   type InputNode,
+  type MonteCarloGeneratorNode,
   type Port,
   type PortKind,
 } from '@joveworks/schema';
@@ -204,6 +207,15 @@ function inputValueType(node: InputNode, tableColumn?: ResolvedTableColumn): Por
   }
 }
 
+/** A generator's `value` output — numeric, typed by its own declared unit, same as any numeric range's. */
+function generatorValueType(node: MonteCarloGeneratorNode): PortType {
+  return displayOverride(node, VALUE_PORT, {
+    kind: 'numeric',
+    dimension: node.unit.dimension,
+    unit: node.unit,
+  });
+}
+
 /** Apply a graph-local presentation choice without changing the port's type. */
 function displayOverride(node: GraphNode, port: string, type: PortType): PortType {
   const unit = node.displayUnits?.[port];
@@ -315,7 +327,10 @@ export function wouldCycle(document: GraphDocument, candidate: Edge): boolean {
 
 // --- resolution -------------------------------------------------------------
 
-function axisOf(node: InputNode, order: number, tableColumn?: ResolvedTableColumn): Axis {
+function axisOf(node: AxisNode, order: number, tableColumn?: ResolvedTableColumn): Axis {
+  if (node.kind === 'monteCarloGenerator') {
+    return { id: node.id, label: node.axisLabel ?? node.label ?? node.id, length: node.count, order };
+  }
   if (!isRange(node.value)) throw new KernelError('not a range node', node.id);
   const length = node.value.kind === 'tableColumn' ? tableColumn?.values.length : axisLength(node.value);
   if (length === undefined) {
@@ -340,7 +355,7 @@ export function resolveGraph(
   const order = topologicalOrder(document);
   const tableColumns = new Map<string, ResolvedTableColumn>();
   for (const node of documentAxes(document)) {
-    if (node.value.kind !== 'tableColumn') continue;
+    if (node.kind !== 'input' || node.value.kind !== 'tableColumn') continue;
     const spec = node.value;
     const candidates = index.get(spec.table) ?? [];
     const formula = candidates[0];
@@ -468,6 +483,21 @@ export function resolveGraph(
   for (const node of order) {
     if (node.kind === 'input') {
       sources.set(endpointKey(node.id, VALUE_PORT), inputValueType(node, tableColumns.get(node.id)));
+      continue;
+    }
+
+    if (node.kind === 'monteCarloGenerator') {
+      sources.set(endpointKey(node.id, VALUE_PORT), generatorValueType(node));
+      continue;
+    }
+
+    if (node.kind === 'monteCarloReceiver') {
+      // The one input a receiver takes: unbound until something is wired,
+      // the same state `compare`'s `value` port sits in before it has a
+      // source (there is nothing sensible to accumulate otherwise).
+      const key = endpointKey(node.id, MONTE_CARLO_SAMPLE_PORT);
+      const edge = oneEdge(key);
+      targets.set(key, edge === undefined ? { kind: 'numeric' } : sourceType(edge));
       continue;
     }
 

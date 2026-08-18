@@ -250,6 +250,87 @@ export interface UnpackNode extends NodeBase {
   readonly kind: 'unpack';
 }
 
+/** The value port every generator produces and every receiver consumes from — reuses `VALUE_PORT`. */
+export const MONTE_CARLO_DISTRIBUTIONS = ['uniform', 'normal'] as const;
+export type MonteCarloDistribution = (typeof MONTE_CARLO_DISTRIBUTIONS)[number];
+
+interface MonteCarloGeneratorBase extends NodeBase {
+  readonly kind: 'monteCarloGenerator';
+  /** The current sample count — this *is* the axis length, exactly the way a
+   *  `linear`/`logarithmic` range's `points` is. Playback (an editor concern,
+   *  see `ROADMAP.md` #27) advances a study by bumping this and
+   *  re-evaluating, not by anything the kernel needs to know is happening. */
+  readonly count: number;
+  readonly unit: Unit;
+  /** What the axis is called. Defaults to `label`, like `InputNode`'s. */
+  readonly axisLabel?: string;
+}
+
+/** Draws uniformly over `[min, max]`. */
+export interface UniformMonteCarloGeneratorNode extends MonteCarloGeneratorBase {
+  readonly distribution: 'uniform';
+  readonly min: number;
+  readonly max: number;
+}
+
+/** Draws from a normal distribution with the given mean and standard deviation. */
+export interface NormalMonteCarloGeneratorNode extends MonteCarloGeneratorBase {
+  readonly distribution: 'normal';
+  readonly mean: number;
+  readonly stddev: number;
+}
+
+/**
+ * A Monte Carlo generator: an axis-introducing node like `InputNode` holding
+ * a range, except its values are drawn from a distribution instead of
+ * computed from `start`/`stop`/`points` — and it is deliberately its own
+ * node kind rather than another `RangeSpec` on `InputNode`, so the input
+ * node's value-kind switch does not have to grow distribution parameters
+ * alongside every other range shape.
+ *
+ * Sampling is deterministic given the document
+ * (`packages/kernel/src/random.ts`): a fixed seed per NodeBook, so
+ * re-evaluating with a larger `count` only ever appends samples, never
+ * reshuffles ones already drawn — the property the receiver's playback
+ * depends on.
+ */
+export type MonteCarloGeneratorNode = UniformMonteCarloGeneratorNode | NormalMonteCarloGeneratorNode;
+
+/** The one input port a Monte Carlo receiver consumes — a wired series to accumulate. */
+export const MONTE_CARLO_SAMPLE_PORT = 'sample';
+
+/** The sample limit a freshly dropped receiver starts with (settled in `ROADMAP.md` #27). */
+export const DEFAULT_MONTE_CARLO_SAMPLE_LIMIT = 10_000;
+
+/**
+ * A Monte Carlo receiver: consumes a wired numeric series (typically a
+ * generator's output, or anything downstream of one) and holds its own
+ * playback transport and inline aggregate visual — the didactic half of
+ * #27, watching values populate and an aggregate converge rather than only
+ * seeing a final number.
+ *
+ * It is not a range and introduces no axis; it is a sink, the same shape as
+ * an output node's single `value` port, just under its own port name so a
+ * receiver is never mistaken for an ordinary output in the notebook.
+ *
+ * Playback position (how many samples are currently revealed) is
+ * deliberately **not** a field here — it is ephemeral editor/session state,
+ * not part of the saved document, so reopening a NodeBook always resets
+ * playback to the start. `sampleLimit` and the visual toggles are the only
+ * receiver state that is authored and saved; the notebook export always
+ * renders the aggregate at `sampleLimit`, independent of any in-progress
+ * playback on the canvas.
+ */
+export interface MonteCarloReceiverNode extends NodeBase {
+  readonly kind: 'monteCarloReceiver';
+  readonly sampleLimit: number;
+  /** A gentle slow start before playback reaches full speed — off by default. */
+  readonly rampUp?: boolean;
+  /** Both default to shown; a student may hide either from the settings icon. */
+  readonly showMeanBand?: boolean;
+  readonly showHistogram?: boolean;
+}
+
 export type GraphNode =
   | InputNode
   | FormulaNode
@@ -258,7 +339,10 @@ export type GraphNode =
   | ClosureNode
   | WaypointNode
   | PackNode
-  | UnpackNode;
+  | UnpackNode
+  | MonteCarloGeneratorNode
+  | MonteCarloReceiverNode;
+
 
 export interface Endpoint {
   readonly node: string;
@@ -292,9 +376,12 @@ export interface GraphDocument {
 }
 
 /** Every axis in the document, in node order: one per range input node. */
-export function axes(document: GraphDocument): readonly InputNode[] {
+export type AxisNode = InputNode | MonteCarloGeneratorNode;
+
+export function axes(document: GraphDocument): readonly AxisNode[] {
   return document.nodes.filter(
-    (node): node is InputNode => node.kind === 'input' && isRange(node.value),
+    (node): node is AxisNode =>
+      (node.kind === 'input' && isRange(node.value)) || node.kind === 'monteCarloGenerator',
   );
 }
 
@@ -412,6 +499,8 @@ const NODE_KINDS = [
   'waypoint',
   'pack',
   'unpack',
+  'monteCarloGenerator',
+  'monteCarloReceiver',
 ] as const;
 
 function parseNode(value: JsonValue, path: string): GraphNode {
@@ -481,6 +570,41 @@ function parseNode(value: JsonValue, path: string): GraphNode {
       return { ...base, kind };
     case 'unpack':
       return { ...base, kind };
+    case 'monteCarloGenerator': {
+      const distribution = readEnum(
+        required(object, 'distribution', path),
+        join(path, 'distribution'),
+        MONTE_CARLO_DISTRIBUTIONS,
+      );
+      const count = readInteger(required(object, 'count', path), join(path, 'count'), 1);
+      const unit = parseUnitField(required(object, 'unit', path), join(path, 'unit'));
+      const axisLabel = put('axisLabel', optional(object, 'axisLabel', path, readString));
+      if (distribution === 'uniform') {
+        const min = readNumber(required(object, 'min', path), join(path, 'min'));
+        const max = readNumber(required(object, 'max', path), join(path, 'max'));
+        if (min >= max) fail(path, 'a uniform generator needs its low end below its high end');
+        return { ...base, kind, distribution, min, max, count, unit, ...axisLabel };
+      }
+      const mean = readNumber(required(object, 'mean', path), join(path, 'mean'));
+      const stddev = readNumber(required(object, 'stddev', path), join(path, 'stddev'));
+      if (stddev <= 0) fail(join(path, 'stddev'), 'must be above zero');
+      return { ...base, kind, distribution, mean, stddev, count, unit, ...axisLabel };
+    }
+    case 'monteCarloReceiver': {
+      const sampleLimit = readInteger(
+        required(object, 'sampleLimit', path),
+        join(path, 'sampleLimit'),
+        1,
+      );
+      return {
+        ...base,
+        kind,
+        sampleLimit,
+        ...put('rampUp', optional(object, 'rampUp', path, readBoolean)),
+        ...put('showMeanBand', optional(object, 'showMeanBand', path, readBoolean)),
+        ...put('showHistogram', optional(object, 'showHistogram', path, readBoolean)),
+      };
+    }
   }
 }
 
@@ -527,6 +651,34 @@ function serializeNode(node: GraphNode): JsonObject {
     case 'pack':
     case 'unpack':
       return base;
+    case 'monteCarloGenerator':
+      return node.distribution === 'uniform'
+        ? {
+            ...base,
+            distribution: node.distribution,
+            min: node.min,
+            max: node.max,
+            count: node.count,
+            unit: node.unit.symbol,
+            ...put('axisLabel', node.axisLabel),
+          }
+        : {
+            ...base,
+            distribution: node.distribution,
+            mean: node.mean,
+            stddev: node.stddev,
+            count: node.count,
+            unit: node.unit.symbol,
+            ...put('axisLabel', node.axisLabel),
+          };
+    case 'monteCarloReceiver':
+      return {
+        ...base,
+        sampleLimit: node.sampleLimit,
+        ...put('rampUp', node.rampUp),
+        ...put('showMeanBand', node.showMeanBand),
+        ...put('showHistogram', node.showHistogram),
+      };
   }
 }
 
