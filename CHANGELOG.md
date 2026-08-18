@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.7.2](https://github.com/ThomasVanRiel/joveworks/compare/v0.7.1...v0.7.2) (2026-08-18)
+
+### Features
+
+* **editor:** track mobile course viewer use ([56d3123](https://github.com/ThomasVanRiel/joveworks/commit/56d31235833a85fa3f0e29e3f90bee390653c2c1))
 ## [0.7.1](https://github.com/ThomasVanRiel/joveworks/compare/v0.7.0...v0.7.1) (2026-08-18)
 
 ### Features
