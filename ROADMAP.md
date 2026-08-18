@@ -204,17 +204,19 @@ explicitly added** e.g. when changing the threshold value
 
 **26. Feature: We need more array nodes.** Sum and product are in. We need length, mean, median, sdev, etc. Combine them in a catalogue, what should we name this?
 
-**27. Feature: Can we share private catalogues with a password?** Maybe encrypt them and share public key?
+**27. Not all nodes are fuzzy findable in the palette** At leaste Monte carlo nodes are missing. The finder in the canvas also does not list the monte carlo nodes, is the list not dynamic and build on all nodes?
 
-**28. Bug: Opening an example link on mobile does not redirect to the mobile landing page**. It just shows a blank screen.
+**28. Feature: Can we share private catalogues with a password?** Maybe encrypt them and share public key?
 
-**29. Change: Should we use compiled notebooks to share in the notebook viewer?** To save mobile processing power, they can't edit anyway.
+**29. Bug: Opening an example link on mobile does not redirect to the mobile landing page**. It just shows a blank screen.
 
-**30. Change: MC Generators should be able to be combined.** Normally a grid forms when sweeps are combined, but that should not be the case with MC.
+**30. Change: Should we use compiled notebooks to share in the notebook viewer?** To save mobile processing power, they can't edit anyway.
 
-**31. Feature: We need a tool to quickly author catalogues and/or formulas** Import and export to json catalogue. It should be as straightforward as possible for authors. It can be a separate app like the /docs app.
+**31. Change: MC Generators should be able to be combined.** Normally a grid forms when sweeps are combined, but that should not be the case with MC.
 
-**32. Change: What is the {table XX} notation in RM catalogue?** E.g. in eq 16.1
+**32. Feature: We need a tool to quickly author catalogues and/or formulas** Import and export to json catalogue. It should be as straightforward as possible for authors. It can be a separate app like the /docs app.
 
-**33. Bug: Port tooltip only appears on the label.** Not on the whole port row and port itself.
+**33. Change: What is the {table XX} notation in RM catalogue?** E.g. in eq 16.1
+
+**34. Bug: Port tooltip only appears on the label.** Not on the whole port row and port itself.
 
