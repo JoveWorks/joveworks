@@ -20,6 +20,7 @@ import { fromCanonical, parseUnit } from '@joveworks/units';
 
 import { analyse } from './analysis';
 import { baseCatalogue, bundledCatalogues } from './catalogues';
+import { GAP } from './layout-constants';
 import { beltLab, millingPowerEnvelope, padPressure, pressfitLab } from './samples';
 
 const path = process.env['JOVEWORKS_CATALOGUE'];
@@ -50,6 +51,20 @@ describe('the samples the editor opens with', () => {
 
   it('offers the milling power-envelope study from the bundled public catalogue', () => {
     expect(millingPowerEnvelope(PUBLIC_CATALOGUES)).toBeDefined();
+  });
+
+  it('snaps example nodes and sections to the canvas grid', () => {
+    const example = millingPowerEnvelope(PUBLIC_CATALOGUES);
+    expect(example).toBeDefined();
+    const aligned = (value: number): boolean => Number.isInteger(value / GAP);
+    for (const node of example?.nodes ?? []) {
+      expect(aligned(node.position.x)).toBe(true);
+      expect(aligned(node.position.y)).toBe(true);
+    }
+    for (const frame of example?.frames ?? []) {
+      expect(aligned(frame.position.x)).toBe(true);
+      expect(aligned(frame.position.y)).toBe(true);
+    }
   });
 });
 

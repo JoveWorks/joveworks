@@ -7,9 +7,9 @@
  * spacing computed by another.
  */
 
-export const NODE_WIDTH = 260;
+export const NODE_WIDTH = 220;
 export const NODE_HEIGHT = 180;
-export const GAP = 48;
+export const GAP = 55;
 
 // Layered-layout only: horizontal gap between rank columns, vertical gap
 // between stacked blocks within a column, and the gap separating the loose-

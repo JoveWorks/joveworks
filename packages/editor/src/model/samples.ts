@@ -34,10 +34,17 @@ import {
 
 import { lookup } from './analysis';
 import { edgeId } from './document';
+import { GAP as CANVAS_GRID_SIZE } from './layout-constants';
 import { type AppLocale } from '../i18n';
 import dutchText from './sample-translations.json';
 
-const at = (x: number, y: number): Position => ({ x, y });
+const snapExampleCoordinate = (value: number): number =>
+  Math.round(value / CANVAS_GRID_SIZE) * CANVAS_GRID_SIZE;
+
+const at = (x: number, y: number): Position => ({
+  x: snapExampleCoordinate(x),
+  y: snapExampleCoordinate(y),
+});
 
 function input(id: string, label: string, value: ValueSpec, position: Position): InputNode {
   return { kind: 'input', id, label, value, position };

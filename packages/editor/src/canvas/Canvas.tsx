@@ -67,6 +67,7 @@ import {
   uniqueId,
   updateFrame,
 } from '../model/document';
+import { GAP as CANVAS_GRID_SIZE } from '../model/layout-constants';
 import { autoArrange } from '../model/layout';
 import type { NodeSizes } from '../model/node-sizes';
 import { primaryModifierLabel } from '../model/platform';
@@ -335,7 +336,6 @@ const NODE_TYPES = {
 };
 
 const EDGE_TYPES = { bundle: BundleEdge };
-const CANVAS_GRID_SIZE = 48;
 const SNAP_GRID: [number, number] = [CANVAS_GRID_SIZE, CANVAS_GRID_SIZE];
 
 export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean }): ReactElement {
