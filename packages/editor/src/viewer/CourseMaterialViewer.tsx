@@ -8,7 +8,7 @@
  * shared between devices.
  */
 
-import { useMemo, useState, type ReactElement } from 'react';
+import { useEffect, useMemo, useState, type ReactElement } from 'react';
 
 import type { OutputResult } from '@joveworks/kernel';
 import type { GraphDocument, OutputNode } from '@joveworks/schema';
@@ -26,9 +26,10 @@ import { display, displayNumber } from '../model/quantity';
 import { summarise } from '../model/values';
 import { PlotFigure } from '../notebook/PlotFigure';
 import { SettingsContext, type SettingsContextValue } from '../settings-context';
+import { analytics, type CourseMaterial } from '../analytics/analytics';
 
 interface CourseExample {
-  readonly id: string;
+  readonly id: CourseMaterial;
   readonly title: string;
   readonly summary: string;
   readonly document: GraphDocument;
@@ -174,6 +175,18 @@ export function CourseMaterialViewer(): ReactElement {
   }, []);
   const [selectedId, setSelectedId] = useState(examples[0]?.id);
   const selected = examples.find((example) => example.id === selectedId) ?? examples[0];
+
+  useEffect(() => {
+    analytics.track({
+      name: 'course_viewer_opened',
+      props: { viewport: window.matchMedia('(max-width: 899px)').matches ? 'narrow' : 'wide' },
+    });
+  }, []);
+
+  useEffect(() => {
+    if (selected === undefined) return;
+    analytics.track({ name: 'course_material_selected', props: { material: selected.id } });
+  }, [selected]);
 
   if (selected === undefined) return <main className="course-viewer"><p>No course material is available.</p></main>;
 

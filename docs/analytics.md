@@ -50,13 +50,17 @@ Plausible's default pageview, plus these custom events:
 | `check_created` | A check output is added or changed to a check | None |
 | `document_saved` | The graph download was requested | None |
 | `notebook_exported` | The notebook print/PDF export was requested | None |
+| `mobile_landing_viewed` | The narrow-viewport, desktop-only landing is shown | None |
+| `course_viewer_opened` | The read-only course-material viewer opens | `viewport=narrow` or `wide` |
+| `course_material_selected` | A bundled course example is shown in the viewer | `material=platform`, `pad`, `cantilever`, or `milling` |
 
 ## What it never logs
 
 The tracker never receives catalogue or formula IDs, graph/node IDs, node or
 document titles, notes, formula expressions, input/output values, units,
 filenames, raw URLs with user data, exception messages, stack traces, or any
-free-form text. It does not use custom properties outside the finite list above.
+free-form text. It does not use custom properties outside the finite list above;
+the course-material value identifies only one of four bundled public examples.
 
 The events are intentionally directional: content blockers, disabled JavaScript,
 and network failures can prevent them from being counted.

@@ -193,32 +193,52 @@ export function App(): ReactElement {
 
   return (
     <>
-      {/* The editor needs enough horizontal room for direct node editing and
-          wiring. On a narrow viewport, make the useful mobile destination
-          explicit instead of presenting a canvas that cannot be operated. */}
-      <section className="mobile-landing" aria-labelledby="mobile-landing-title">
-        <div className="mobile-landing-content">
-          <span className="mobile-landing-product">JoveWorks</span>
-          <h1 id="mobile-landing-title">A desktop workspace for engineering calculations.</h1>
-          <p>
-            Build and export NodeBooks on a computer. The guide is designed to be useful from any
-            screen.
-          </p>
-          <a className="mobile-landing-docs" href={DOCS_BASE_URL}>
-            Read the documentation
-          </a>
-          <a className="mobile-landing-course" href="?view=course">
-            Browse course material
-          </a>
-          <p className="mobile-landing-note">Open JoveWorks on a larger screen to edit a graph.</p>
-        </div>
-      </section>
+      <MobileLanding />
       <div className="desktop-editor">
         <ReactFlowProvider>
           <AppShell />
         </ReactFlowProvider>
       </div>
     </>
+  );
+}
+
+function MobileLanding(): ReactElement {
+  const tracked = useRef(false);
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 899px)');
+    const trackIfNarrow = (): void => {
+      if (!tracked.current && media.matches) {
+        tracked.current = true;
+        analytics.track({ name: 'mobile_landing_viewed' });
+      }
+    };
+    trackIfNarrow();
+    media.addEventListener('change', trackIfNarrow);
+    return () => media.removeEventListener('change', trackIfNarrow);
+  }, []);
+
+  return (
+    /* The editor needs enough horizontal room for direct node editing and
+        wiring. On a narrow viewport, make the useful mobile destination
+        explicit instead of presenting a canvas that cannot be operated. */
+    <section className="mobile-landing" aria-labelledby="mobile-landing-title">
+      <div className="mobile-landing-content">
+        <span className="mobile-landing-product">JoveWorks</span>
+        <h1 id="mobile-landing-title">A desktop workspace for engineering calculations.</h1>
+        <p>
+          Build and export NodeBooks on a computer. The guide is designed to be useful from any
+          screen.
+        </p>
+        <a className="mobile-landing-docs" href={DOCS_BASE_URL}>
+          Read the documentation
+        </a>
+        <a className="mobile-landing-course" href="?view=course">
+          Browse course material
+        </a>
+        <p className="mobile-landing-note">Open JoveWorks on a larger screen to edit a graph.</p>
+      </div>
+    </section>
   );
 }
 
