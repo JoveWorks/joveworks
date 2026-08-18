@@ -38,13 +38,18 @@ calculation is built from connected nodes.
   reading order. That report is what gets handed in.
 - **Formulas are data**, not code. The editor is both the product and the
   authoring tool for the formula catalogue.
-- **No computer algebra.** Forward evaluation over a directed acyclic graph.
-  The predecessor project carried a full symbolic layer that measurement showed
-  was never used.
 - **Units are canonical internally** — mm, N, s, rad, K — converted at the
   boundary. An undeclared unit is a hard error.
 - **Dimensions are port types.** A force output will not connect to a length
   input, and neither will a connection that would close a cycle.
+
+## What it isn't
+
+- **Not a computer algebra system.** Forward evaluation over a directed
+  acyclic graph — the kernel never rearranges a formula to solve for an
+  unknown input. A rearranged form is authored as catalogue
+  content instead, or answered by sweeping and reading off a threshold
+  crossing — see [OVERVIEW.md](OVERVIEW.md) for the reasoning.
 
 ## Licence
 

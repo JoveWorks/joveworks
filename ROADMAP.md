@@ -89,14 +89,14 @@ begins.
 
 ## Editor backlog
 
-**Plot node's remaining options.** A first slice landed: three axis slots
+**1. Plot node's remaining options.** A first slice landed: three axis slots
 (`x`, `series`, `facet`), auto-assigned from whatever axes the wired value
 varies along. Still open: marking specific values on a curve, and a fourth
 axis (facet-row × facet-col) if that turns out to be needed.
 Instead of setting options on the node, we can set them in the notebook and
 store it in the node. The same goes for the table output. More complex settings should be set in the notebook. Number of decimal digits per column, highlighted values, drag and drop columns to reorder (and remove that option from the node)
 
-**A range's two bounds showing different units** — `10 mm ... 1 m`, each
+**2. A range's two bounds showing different units** — `10 mm ... 1 m`, each
 bound keeping its own unit rather than both sharing one. Two ways to build
 it were weighed: editor-only display state (doesn't survive save/reload) or
 a schema change to carry a unit per bound (persists properly, but widens
@@ -104,32 +104,32 @@ a schema change to carry a unit per bound (persists properly, but widens
 range has one unit). Neither was picked; parked here rather than decided
 under scope pressure.
 
-**Minimap visibility.** Put a Show/Hide minimap toggle in the ribbon's
+**3. Minimap visibility.** Put a Show/Hide minimap toggle in the ribbon's
 **View** menu and let a right-click on the minimap close it. Persisting that
 choice is already implemented locally; the broader settings-persistence item
 below is specifically about panel widths and other remaining preferences.
 
-**Extensive worked examples**, beyond the one belt lab sample. Waits on
+**4. Extensive worked examples**, beyond the one belt lab sample. Waits on
 breadth — more chapters, or more graphs within belt — rather than being an
 editor feature on its own. Revisit once the second slice is in.
 
-**Spectrum-editing UI.** A load spectrum (a hand-typed collection consumed
+**5. Spectrum-editing UI.** A load spectrum (a hand-typed collection consumed
 whole by an aggregation, not swept) exists in the schema, but nothing in the
 editor can create or edit one yet. Surfaced while adding the palette's Input
 shortcuts — left out of that pass on purpose.
 
-**`list` vs `spectrum` naming.** Both are a hand-typed collection of values,
+**6. `list` vs `spectrum` naming.** Both are a hand-typed collection of values,
 but `list` sweeps (one point per value) and `spectrum` is consumed whole,
 never swept — the names don't say which is which. Leaning toward renaming
 `spectrum` instead of `list`, since `spectrum` is the outlier in the
 `ValueSpec` family (every other kind sweeps) — but not urgent.
 
-**Gear calculations and their effect on shafts.** Especially angled gears,
+**7. Gear calculations and their effect on shafts.** Especially angled gears,
 which complicate calculations via the combination of normal and bending
 loads. Catalogue content, for when that chapter is designed — not an editor
 question.
 
-**Visualization nodes** — cantilever beams, bending-moment diagrams and the
+**8. Visualization nodes** — cantilever beams, bending-moment diagrams and the
 like. Generic mechanics content, not R&M-specific, so this lives in the
 public repo's node library, not the private catalogue — and should be
 referenceable from the notebook the way Plot nodes already are. A bigger
@@ -137,16 +137,16 @@ design question than most items here: how it's parametrized, what rendering
 approach draws the diagram from port values, and which diagram to build
 first. Needs its own discussion before building.
 
-**Standard-deviation node.** Fits and tolerance calculations need the standard
+**9. Standard-deviation node.** Fits and tolerance calculations need the standard
 deviation that underlies a tolerance. Add it as a public base node, with its
 input shape and its relationship to spectra settled when the ISO fit/table
 slice is designed; there is no node for it today.
 
-**Vertical spacing does not take actual node height into account**
+**10. Vertical spacing does not take actual node height into account**
 Widths are constant, but heights vary per node. The spacing should add same width space between bottom and top of each node, based on the total height from top of top node to bottom of bottom node. Also spacing should take into account rows of nodes and collumns of nodes for vertical and horizontal spacing respectively. There should be some error margin where nodes are considered aligned, and they will be aligned exactly.
 Question: How should we integrate this spacing in grid-snap mode?
 
-**Notebook export to Markdown**, for pasting a finished graph into an
+**11. Notebook export to Markdown**, for pasting a finished graph into an
 external site. Checked against `~/source/website`'s Astro content
 collections: entries are Markdown/MDX with frontmatter (`title`, `subtitle`,
 `summary`, `date`, `tags`) under `src/content/{articles,projects,...}` — an
@@ -155,15 +155,15 @@ citations and values by default, expressions only behind the explicit
 toggle. Gate it behind a hidden console command for now rather than a UI
 button — personal-use export, not a student-facing feature yet.
 
-**Tutorial guides** The tutorial seems to break when the viewport was moved/zoomed. It should check in each step if the target is visible, and adapt the viewport. Actually, maybe zooming and moving should just be part of the steps to clarify the nodes and controls?
+**12. Tutorial guides** The tutorial seems to break when the viewport was moved/zoomed. It should check in each step if the target is visible, and adapt the viewport. Actually, maybe zooming and moving should just be part of the steps to clarify the nodes and controls?
 
-**Press fit example** Update it to use ISO fit LUT based on categorical input. I also want to have a new section that showcases plotting and sweep functionality.
+**13. Press fit example** Update it to use ISO fit LUT based on categorical input. I also want to have a new section that showcases plotting and sweep functionality.
 
-**We need CTRL+F** In the graph, the view is fitted and all matching nodes are highlighted, let's use fuzzy find based on the node label, ID, and input and output ports.
+**14. We need CTRL+F** In the graph, the view is fitted and all matching nodes are highlighted, let's use fuzzy find based on the node label, ID, and input and output ports.
 
-**Highlighted edges should also highlight the relevant ports** Not just the nodes. Also hovering a port should highlight the edge and connected node(s)
+**15. Highlighted edges should also highlight the relevant ports** Not just the nodes. Also hovering a port should highlight the edge and connected node(s)
 
-**Nodes expose preferred display units.** Dimensions do not have one global
+**16. Nodes expose preferred display units.** Dimensions do not have one global
 presentation unit: values evaluate canonically, while each exposed node port
 can state the unit it prefers to show and display boundaries convert to it. A
 frequency port should prefer `Hz` over bare `s⁻¹`; a general pressure port can
@@ -177,22 +177,57 @@ default to `Hz`; fixed catalogue ports already use their declared display unit,
 and the belt sample's frequency output now chooses `Hz` explicitly.
 Largely implemented, but R&M catalogue needs updating.
 
-**What about migration to newer versions?** I'm thinking notebooks and catalogues that the user made before.
+**17. What about migration to newer versions?** I'm thinking notebooks and catalogues that the user made before.
 
-**Change: Dragging in text boxes should select text as per convention in other applications** Now, the node is dragged. The notebook is fine.
+**18. Change: Dragging in text boxes should select text as per convention in other applications** Now, the node is dragged. The notebook is fine.
 
-**Bug: Text can be clipped when the textbox is full** Text should be wrapped so it is always fully visible. Occurs in node titles (in node and in notebook). Captions in nodes (not in notebooks)
+**19. Bug: Text can be clipped when the textbox is full** Text should be wrapped so it is always fully visible. Occurs in node titles (in node and in notebook). Captions in nodes (not in notebooks)
 
-**Change: Range input shows `range` as node id** instead of `input`.
+**20. Change: Range input shows `range` as node id** instead of `input`.
 
-**Bug: Table column** Input has no entries. Is this the look up table being not finished?
+**21. Bug: Table column** Input has no entries. Is this the look up table being not finished?
 
-**Bug: Units are enforced too soon when dragging an input port with quick add** Input nodes are not addable because they do not have a unit yet. We can enforce their unit though, so they should be addable.
+**22. Bug: Units are enforced too soon when dragging an input port with quick add** Input nodes are not addable because they do not have a unit yet. We can enforce their unit though, so they should be addable.
 
-**Change: Switching from list to range input should take min and max as bounds**.
+**23. Change: Switching from list to range input should take min and max as bounds**.
 
-**Bug: Switching from m to mm is not possible after switching from mm to m.** In the output port unit dropdown in the multiply node. Maybe in others too.
+**24. Bug: Switching from m to mm is not possible after switching from mm to m.** In the output port unit dropdown in the multiply node. Maybe in others too.
 
-**Change: When the unit is implied on data entry, the unit should be explicitely added** e.g. when changing the threshold value
+**25. Change: When the unit is implied on data entry, the unit should be explicitely added** e.g. when changing the threshold value
 
-**Change: The dot grid does not align with the nodes** Nodes are in between the dots (looks exactly centered) but are 4.5 units wide. Let's adapt the grid to make it 4 units wide and make sure the top corners align with the dots. Also, the examples should start aligned to the grid.
+**26. Change: The dot grid does not align with the nodes** Nodes are in between the dots (looks exactly centered) but are 4.5 units wide. Let's adapt the grid to make it 4 units wide and make sure the top corners align with the dots. Also, the examples should start aligned to the grid.
+
+**27. Design: Did we implement bottom up or top down design?** How dan we implement the other direction? Do we need to reverse all nodes? Is it even worth it to implement it?
+
+## Suggested backlog session groupings
+
+Numbers refer to the Editor backlog list above. Grouped by shared code area,
+so one Claude/Codex session can work a cluster without two sessions
+colliding on the same files.
+
+**A. Unit handling & display units.** #2, #16, #24, #25, #22 — all sit in the
+kernel's unit/dimension conversion and the port-unit dropdown UI.
+
+**B. Input-node behaviour & naming.** #23, #20, #6, #5 — input-node schema
+and UI; settle the `list`/`spectrum` naming (#6) before building the
+spectrum editor (#5).
+
+**C. Canvas layout & interaction polish.** #10, #26, #14, #15, #18, #19 —
+graph-canvas rendering and interaction, no schema changes.
+
+**D. Plot/Table node output config.** #1, #21 — #1 explicitly covers both
+Plot and Table output settings, and #21's lookup-table bug is likely the
+same table code.
+
+**E. Examples & tutorial content.** #12, #13, with #4 riding along if there's
+room — #13 depends on the ISO fit LUT work, so schedule after B lands.
+
+**F. Needs a product/design decision first — don't bundle.** #7, #8, #9,
+#11, #17, #27. Each waits on a decision (catalogue design, node-viz
+approach, ISO fit/table slice, export scope, migration strategy, or whether
+top-down is worth building) before it's session-ready.
+
+Suggested order: A and B first (independent of each other, could run as
+parallel sessions), then C and D (also independent of A/B and each other),
+then E once B has landed. Pull an item from F only after deciding its open
+question with Thomas.

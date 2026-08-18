@@ -115,8 +115,14 @@ get one curve per fit class on a shared numeric axis.
 ### Why this replaces solving for an input
 
 The kernel only evaluates **forwards**; it never rearranges a formula to solve
-for an unknown. That sounds like a limitation and mostly is not, for two
-reasons:
+for an unknown. This isn't a gap left by scope pressure — it was measured. The
+old course notebooks' SymPy-based equation reordering, the one function doing
+genuine symbolic algebra, had **zero calls** across all 23 notebooks, and
+the function itself was broken: it raised on every invocation and nobody had
+noticed (see `docs/PLAN.md`). The CAS was inherited habit, not a requirement
+anyone was exercising.
+
+That sounds like a limitation and mostly is not, for two reasons:
 
 - R&M already numbers its own rearranged forms (`17.1A`/`B`/`C` are one relation
   in three arrangements), so the "solved for" versions are catalogue content.
@@ -247,7 +253,7 @@ boundary. Angles are radians inside, degrees on screen. Dimensions are enforced
 as port types at connection time, so an error is caught when you wire it, not
 when you read a wrong answer.
 
-**Quarantine is how correctness is protected.** The predecessor library silently
+**Quarantine is how correctness is protected.** The old formula library silently
 computed wrong answers — around 12 confirmed defective formulas, and no tests at
 all. Here, a formula whose correctness is not signed off, or whose unit tag
 could not be resolved, is marked and **cannot be evaluated**. It is visible, it
