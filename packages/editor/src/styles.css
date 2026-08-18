@@ -217,6 +217,7 @@ body {
 /* --- course material viewer -------------------------------------------- */
 
 .course-viewer {
+  display: block;
   min-height: 100vh;
   background: var(--panel);
 }
