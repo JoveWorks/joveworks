@@ -127,11 +127,6 @@ which complicate calculations via the combination of normal and bending
 loads. Catalogue content, for when that chapter is designed — not an editor
 question.
 
-**Persist the remaining settings.** Number format, colour theme, and minimap
-visibility already persist locally. Palette and notebook widths do not; store
-them as local, per-device UI preferences rather than graph-file state.
-I want all logical settings persistent.
-
 **Visualization nodes** — cantilever beams, bending-moment diagrams and the
 like. Generic mechanics content, not R&M-specific, so this lives in the
 public repo's node library, not the private catalogue — and should be
@@ -139,6 +134,11 @@ referenceable from the notebook the way Plot nodes already are. A bigger
 design question than most items here: how it's parametrized, what rendering
 approach draws the diagram from port values, and which diagram to build
 first. Needs its own discussion before building.
+
+**Standard-deviation node.** Fits and tolerance calculations need the standard
+deviation that underlies a tolerance. Add it as a public base node, with its
+input shape and its relationship to spectra settled when the ISO fit/table
+slice is designed; there is no node for it today.
 
 **Notebook export to Markdown**, for pasting a finished graph into an
 external site. Checked against `~/source/website`'s Astro content
