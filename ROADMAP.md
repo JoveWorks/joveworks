@@ -153,6 +153,14 @@ citations and values by default, expressions only behind the explicit
 toggle. Gate it behind a hidden console command for now rather than a UI
 button — personal-use export, not a student-facing feature yet.
 
+**Tutorial guides** The tutorial seems to break when the viewport was moved/zoomed. It should check in each step if the target is visible, and adapt the viewport. Actually, maybe zooming and moving should just be part of the steps to clarify the nodes and controls?
+
+**Press fit example** Update it to use ISO fit LUT based on categorical input. I also want to have a new section that showcases plotting and sweep functionality.
+
+**We need CTRL+F** In the graph, the view is fitted and all matching nodes are highlighted, let's use fuzzy find based on the node label, ID, and input and output ports.
+
+**Highlighted edges should also highlight the relevant ports** Not just the nodes. Also hovering a port should highlight the edge and connected node(s)
+
 **Nodes expose preferred display units.** Dimensions do not have one global
 presentation unit: values evaluate canonically, while each exposed node port
 can state the unit it prefers to show and display boundaries convert to it. A
