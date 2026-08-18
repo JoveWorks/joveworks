@@ -178,3 +178,19 @@ and the belt sample's frequency output now chooses `Hz` explicitly.
 Largely implemented, but R&M catalogue needs updating.
 
 **What about migration to newer versions?** I'm thinking notebooks and catalogues that the user made before.
+
+**Change: Dragging in text boxes should select text as per convention in other applications** Now, the node is dragged. The notebook is fine.
+
+**Bug: Text can be clipped when the textbox is full** Text should be wrapped so it is always fully visible. Occurs in node titles (in node and in notebook). Captions in nodes (not in notebooks)
+
+**Change: Range input shows `range` as node id** instead of `input`.
+
+**Bug: Table column** Input has no entries. Is this the look up table being not finished?
+
+**Bug: Units are enforced too soon when dragging an input port with quick add** Input nodes are not addable because they do not have a unit yet. We can enforce their unit though, so they should be addable.
+
+**Change: Switching from list to range input should take min and max as bounds**.
+
+**Bug: Switching from m to mm is not possible after switching from mm to m.** In the output port unit dropdown in the multiply node. Maybe in others too.
+
+**Change: When the unit is implied on data entry, the unit should be explicitely added** e.g. when changing the threshold value
