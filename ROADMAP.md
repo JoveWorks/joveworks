@@ -177,27 +177,89 @@ default to `Hz`; fixed catalogue ports already use their declared display unit,
 and the belt sample's frequency output now chooses `Hz` explicitly.
 Largely implemented, but R&M catalogue needs updating.
 
-**17. What about migration to newer versions?** I'm thinking notebooks and catalogues that the user made before.
+**17. What about migration to newer versions?** I'm thinking notebooks and
+catalogues that the user made before.
 
-**18. Change: Dragging in text boxes should select text as per convention in other applications** Now, the node is dragged. The notebook is fine.
+**18. Change: Dragging in text boxes should select text as per convention in
+other applications** Now, the node is dragged. The notebook is fine.
 
-**19. Bug: Text can be clipped when the textbox is full** Text should be wrapped so it is always fully visible. Occurs in node titles (in node and in notebook). Captions in nodes (not in notebooks)
+**19. Bug: Text can be clipped when the textbox is full** Text should be
+wrapped so it is always fully visible. Occurs in node titles (in node and in
+notebook). Captions in nodes (not in notebooks)
 
 **20. Change: Range input shows `range` as node id** instead of `input`.
 
 **21. Bug: Table column** Input has no entries. Is this the look up table being not finished?
 
-**22. Bug: Units are enforced too soon when dragging an input port with quick add** Input nodes are not addable because they do not have a unit yet. We can enforce their unit though, so they should be addable.
+**22. Bug: Units are enforced too soon when dragging an input port with quick
+add** Input nodes are not addable because they do not have a unit yet. We can
+enforce their unit though, so they should be addable.
 
 **23. Change: Switching from list to range input should take min and max as bounds**.
 
-**24. Bug: Switching from m to mm is not possible after switching from mm to m.** In the output port unit dropdown in the multiply node. Maybe in others too.
+**24. Bug: Switching from m to mm is not possible after switching from mm to m.**
+In the output port unit dropdown in the multiply node. Maybe in others too.
 
-**25. Change: When the unit is implied on data entry, the unit should be explicitely added** e.g. when changing the threshold value
+**25. Change: When the unit is implied on data entry, the unit should be
+explicitly added** e.g. when changing the threshold value
 
-**26. Change: The dot grid does not align with the nodes** Nodes are in between the dots (looks exactly centered) but are 4.5 units wide. Let's adapt the grid to make it 4 units wide and make sure the top corners align with the dots. Also, the examples should start aligned to the grid.
+**26. Change: The dot grid does not align with the nodes** Nodes are in between
+the dots (looks exactly centered) but are 4.5 units wide. Let's adapt the grid
+to make it 4 units wide and make sure the top corners align with the dots.
+Also, the examples should start aligned to the grid.
 
-**27. Design: Did we implement bottom up or top down design?** How dan we implement the other direction? Do we need to reverse all nodes? Is it even worth it to implement it?
+**27. Major Feature: Monte Carlo node catalogue.** A catalogue with Monte Carlo
+generators and receivers to have a running simulation of stochastic processes.
+Standard math nodes should still be useable in these simulations. Both a
+computational feature and a didactic one — students should be able to watch
+values populate and an aggregate converge, not just see a final number.
+
+Revised shape: the receiver's playback state (how many samples have been
+revealed so far) determines how many samples the generator produces, rather
+than a fixed N (or a padded cap) decided up front. Considered and rejected: a
+genuinely incremental/append-only kernel evaluation path, where a batch's
+result is appended to a prior partial evaluation instead of recomputed. That
+would have required carving an exception into `unionAxes`'s invariant that an
+axis's length is fixed once evaluated (`series.ts`), constraining Monte Carlo
+sample axes to always sort outermost so growing one doesn't reshuffle the
+whole row-major layout (`graph.ts`'s axis ordering), and threading
+previous-batch state through every node-kind evaluator in `evaluate.ts` (not
+just the Monte Carlo nodes) — too invasive for what it buys, since the
+formulas involved are cheap arithmetic, not expensive solves.
+
+Settled instead: no kernel changes at all. Each playback batch just calls
+the existing `evaluateDocument` again with the generator's sample count
+bumped up — the same one-shot, forward-only, whole-document recompute every
+other output already uses. The kernel never learns playback exists; it only
+ever sees "a document with a range of length N," same as any other sweep.
+All batching/orchestration (deciding the next batch size, calling
+`evaluateDocument`, diffing the new samples into the receiver's running
+aggregate) lives entirely in the editor, not the kernel.
+
+Open questions resolved:
+
+- **Seed/reproducibility:** fixed seed per NodeBook — deterministic and
+  reproducible, no student-facing reshuffle.
+- **Receiver visual:** a dedicated node type with its own inline
+  plot/aggregate visual, not just a value fed into an existing Plot node.
+- **Playback transport:** per-receiver controls — each receiver plays,
+  pauses, and steps independently, not one global document-wide transport.
+- **Trial count / evaluation model:** no fixed N entered up front and no
+  padded cap precomputed eagerly. The receiver's playback drives the
+  generator's sample count directly, up to a sample limit, by re-running the
+  existing eager kernel evaluation per batch (no new kernel evaluation mode
+  — see above). A settings icon next to the playback controls holds the
+  advanced knobs — the sample limit, and an optional slow-start/speed-ramp
+  for teaching that a "real" notebook can turn off.
+
+This is now session-ready on the product and evaluation-model questions.
+Remaining work before scheduling a build session is ordinary implementation
+design (batch-size/tick cadence, how the editor diffs new samples into a
+receiver's running aggregate, the receiver node's inline visual), not an
+open decision. Moved out of bucket F.
+
+**28. Change: `Built in` nodes is a horrible name** and should be renamed `Math
+nodes` or something similar.
 
 ## Suggested backlog session groupings
 
@@ -212,7 +274,7 @@ kernel's unit/dimension conversion and the port-unit dropdown UI.
 and UI; settle the `list`/`spectrum` naming (#6) before building the
 spectrum editor (#5).
 
-**C. Canvas layout & interaction polish.** #10, #26, #14, #15, #18, #19 —
+**C. Canvas layout & interaction polish.** #10, #26, #14, #15, #18, #19, #28 —
 graph-canvas rendering and interaction, no schema changes.
 
 **D. Plot/Table node output config.** #1, #21 — #1 explicitly covers both
@@ -222,10 +284,14 @@ same table code.
 **E. Examples & tutorial content.** #12, #13, with #4 riding along if there's
 room — #13 depends on the ISO fit LUT work, so schedule after B lands.
 
-**F. Needs a product/design decision first — don't bundle.** #7, #8, #9,
-#11, #17, #27. Each waits on a decision (catalogue design, node-viz
-approach, ISO fit/table slice, export scope, migration strategy, or whether
-top-down is worth building) before it's session-ready.
+**F. Needs a product/design decision first — don't bundle.** #7, #8, #9, #11,
+# 17. Each waits on a decision (catalogue design, node-viz approach, ISO
+fit/table slice, export scope, or migration strategy) before it's
+session-ready. #27's product questions (seed story, receiver visual,
+playback transport, trial-count control) are now settled — see #27 — but it
+still needs a short design pass on how the sample cap interacts with the
+generator's eager evaluation model before it's session-ready, so it isn't
+folded into A–E yet either.
 
 Suggested order: A and B first (independent of each other, could run as
 parallel sessions), then C and D (also independent of A/B and each other),
