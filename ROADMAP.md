@@ -76,6 +76,17 @@ course's theme (so every student in a class gets it without a manual step)
 does not, and so folds into the backend decision above. Ships fine as
 importable-only if the backend never happens.
 
+**A read-only NodeBook viewer.** Mobile is an intentional documentation
+destination, not a reduced graph editor: wiring, direct node editing, and the
+three-column workspace require a desktop-sized viewport. A later viewer could
+make a finished NodeBook pleasant to read on a phone — sections, prose,
+values, checks, tables, and plots — without exposing graph editing controls or
+formula expressions. Start with published examples and a portable, safe
+report artefact rather than trying to open another device's browser storage.
+Its source format, sharing route, and whether it remains file-based or needs
+the separately undecided backend are product decisions to make before work
+begins.
+
 ## Editor backlog
 
 **Plot node's remaining options.** A first slice landed: three axis slots

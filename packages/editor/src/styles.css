@@ -127,6 +127,85 @@ body {
   background: var(--paper);
 }
 
+.desktop-editor {
+  height: 100vh;
+}
+
+/* Editing is intentionally desktop-only. This is a layout-width boundary,
+ * not device detection: a narrow desktop window has the same unusable canvas
+ * as a phone, while a sufficiently wide touch device can use the editor. */
+.mobile-landing {
+  display: none;
+}
+
+@media (max-width: 899px) {
+  .desktop-editor {
+    display: none;
+  }
+
+  .mobile-landing {
+    display: grid;
+    min-height: 100vh;
+    place-items: center;
+    padding: 24px;
+    background: var(--panel);
+  }
+
+  .mobile-landing-content {
+    width: min(100%, 32rem);
+    padding: 28px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--paper);
+    box-shadow: var(--shadow-md);
+  }
+
+  .mobile-landing-product {
+    color: var(--accent);
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .mobile-landing h1 {
+    margin: 10px 0;
+    font-size: clamp(24px, 8vw, 34px);
+    line-height: 1.15;
+  }
+
+  .mobile-landing p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 16px;
+  }
+
+  .mobile-landing-docs {
+    display: block;
+    width: 100%;
+    margin: 24px 0 14px;
+    padding: 12px 16px;
+    border-radius: 6px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 16px;
+    font-weight: 700;
+    text-align: center;
+    text-decoration: none;
+  }
+
+  .mobile-landing-docs:hover {
+    filter: brightness(0.92);
+  }
+
+  .mobile-landing-docs:focus-visible {
+    outline: 3px solid var(--accent);
+    outline-offset: 3px;
+  }
+
+  .mobile-landing-note {
+    font-size: 13px !important;
+  }
+}
+
 button {
   font: inherit;
   color: inherit;
