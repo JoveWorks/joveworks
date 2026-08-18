@@ -51,9 +51,7 @@ import {
   loadContourPalette,
   loadAppLocale,
   loadMinimapVisible,
-  loadNotebookVisible,
   loadNotebookWidth,
-  loadPaletteVisible,
   loadPaletteWidth,
   loadTitleMathRendering,
   loadThemePreference,
@@ -61,9 +59,7 @@ import {
   saveContourPalette,
   saveAppLocale,
   saveMinimapVisible,
-  saveNotebookVisible,
   saveNotebookWidth,
-  savePaletteVisible,
   savePaletteWidth,
   saveTitleMathRendering,
   saveThemePreference,
@@ -336,8 +332,10 @@ function AppShell(): ReactElement {
   const [pinned, setPinned] = useState<ReadonlySet<string>>(new Set());
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [hovered, setHovered] = useState<ReadonlySet<string>>(new Set());
-  const [showPalette, setShowPaletteState] = useState(loadPaletteVisible);
-  const [showNotebook, setShowNotebookState] = useState(loadNotebookVisible);
+  // Panel visibility is session-only: both panels start open on every load,
+  // while their close buttons and the View menu make hiding them deliberate.
+  const [showPalette, setShowPalette] = useState(true);
+  const [showNotebook, setShowNotebook] = useState(true);
   const [showCanvasControls, setShowCanvasControlsState] = useState(loadCanvasControlsVisible);
   const [numberFormat, setNumberFormatState] = useState<NumberFormatSettings>(loadNumberFormatSettings);
   const [locale, setLocaleState] = useState<AppLocale>(loadAppLocale);
@@ -458,16 +456,6 @@ function AppShell(): ReactElement {
   const setContourPalette = (next: ContourPalette): void => {
     setContourPaletteState(next);
     saveContourPalette(next);
-  };
-
-  const setShowPalette = (next: boolean): void => {
-    setShowPaletteState(next);
-    savePaletteVisible(next);
-  };
-
-  const setShowNotebook = (next: boolean): void => {
-    setShowNotebookState(next);
-    saveNotebookVisible(next);
   };
 
   const setShowCanvasControls = (next: boolean): void => {
@@ -927,7 +915,7 @@ function AppShell(): ReactElement {
             {showPalette ? (
               <>
                 <aside className="left" style={{ width: paletteWidth, flexBasis: paletteWidth }}>
-                  <Palette />
+                  <Palette onClose={() => setShowPalette(false)} />
                 </aside>
                 <div className="resize-handle" onMouseDown={resizePalette} />
               </>
@@ -943,7 +931,7 @@ function AppShell(): ReactElement {
                   data-tour="notebook"
                   style={{ width: notebookWidth, flexBasis: notebookWidth }}
                 >
-                  <Notebook />
+                  <Notebook onClose={() => setShowNotebook(false)} />
                 </aside>
               </>
             ) : null}

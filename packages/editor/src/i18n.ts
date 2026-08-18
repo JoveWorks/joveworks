@@ -29,6 +29,8 @@ const DUTCH_PHRASES: Readonly<Record<string, string>> = {
   'Export equations': 'Vergelijkingen exporteren', 'Add new section': 'Nieuwe sectie toevoegen', 'Group into new section': 'Groepeer in nieuwe sectie',
   'Auto-arrange': 'Automatisch schikken', 'Undo': 'Ongedaan maken', 'Redo': 'Opnieuw uitvoeren',
   'Theme': 'Thema', 'Light': 'Licht', 'Dark': 'Donker', 'System': 'Systeem',
+  'Close palette': 'Palet sluiten', 'Close palette — reopen it from the View menu': 'Palet sluiten — opnieuw openen via het menu View',
+  'Close notebook': 'NodeBook sluiten', 'Close notebook — reopen it from the View menu': 'NodeBook sluiten — opnieuw openen via het menu View',
   'Documentation': 'Documentatie', 'Take the tour': 'Volg de rondleiding', 'Examples': 'Voorbeelden',
   'Choose a safe platform size': 'Kies een veilige platformgrootte', 'Pad pressure sweep': 'Pad druk vegen',
   'Belt lab': 'Riemlaboratorium', 'Cantilever — hollow sections': 'Uitkraging — holle profielen',

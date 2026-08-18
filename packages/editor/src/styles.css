@@ -631,7 +631,35 @@ aside.right {
 }
 
 .palette .search {
+  flex: 1 1 auto;
+  min-width: 0;
   width: 100%;
+}
+
+.palette-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.panel-close-button {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 27px;
+  height: 27px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 19px;
+  line-height: 1;
+}
+
+.panel-close-button:hover {
+  background: var(--line);
+  color: var(--ink);
 }
 
 .palette h3 {

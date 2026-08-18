@@ -8,8 +8,6 @@
 
 const MINIMAP_KEY = 'joveworks:settings:minimapVisible';
 const LANGUAGE_KEY = 'joveworks:settings:language';
-const PALETTE_VISIBLE_KEY = 'joveworks:settings:paletteVisible';
-const NOTEBOOK_VISIBLE_KEY = 'joveworks:settings:notebookVisible';
 const CANVAS_CONTROLS_VISIBLE_KEY = 'joveworks:settings:canvasControlsVisible';
 const PALETTE_WIDTH_KEY = 'joveworks:settings:paletteWidth';
 const NOTEBOOK_WIDTH_KEY = 'joveworks:settings:notebookWidth';
@@ -73,25 +71,7 @@ function saveBoolean(key: string, value: boolean): void {
 }
 
 /** Workspace chrome is local to this device, never part of a graph file. */
-export const DEFAULT_PALETTE_VISIBLE = true;
-export const DEFAULT_NOTEBOOK_VISIBLE = true;
 export const DEFAULT_CANVAS_CONTROLS_VISIBLE = true;
-
-export function loadPaletteVisible(): boolean {
-  return loadBoolean(PALETTE_VISIBLE_KEY, DEFAULT_PALETTE_VISIBLE);
-}
-
-export function savePaletteVisible(visible: boolean): void {
-  saveBoolean(PALETTE_VISIBLE_KEY, visible);
-}
-
-export function loadNotebookVisible(): boolean {
-  return loadBoolean(NOTEBOOK_VISIBLE_KEY, DEFAULT_NOTEBOOK_VISIBLE);
-}
-
-export function saveNotebookVisible(visible: boolean): void {
-  saveBoolean(NOTEBOOK_VISIBLE_KEY, visible);
-}
 
 export function loadCanvasControlsVisible(): boolean {
   return loadBoolean(CANVAS_CONTROLS_VISIBLE_KEY, DEFAULT_CANVAS_CONTROLS_VISIBLE);

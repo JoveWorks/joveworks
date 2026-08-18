@@ -566,10 +566,11 @@ function outputsOf(document: GraphDocument, frameId: string | undefined): readon
     .sort(readingOrder);
 }
 
-export function Notebook(): ReactElement {
+export function Notebook({ onClose }: { readonly onClose: () => void }): ReactElement {
   const { document, analysis, edit, editLive, commitEdit } = useGraph();
   const { locale } = useSettings();
   const copy = ui(locale);
+  const t = (english: string): string => phrase(locale, english);
   // Session UI state, not a document field (same call as Palette.tsx) —
   // a section's collapse reopens on reload, same as a pinned node.
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
@@ -688,6 +689,15 @@ export function Notebook(): ReactElement {
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path fill="currentColor" d="M18 3H6a3 3 0 0 0-3 3v9h4v6h10v-6h4V6a3 3 0 0 0-3-3Zm-3 16H9v-5h6v5Zm3-8H6V6h12v5Zm-3-4H9V5h6v2Z" />
           </svg>
+        </button>
+        <button
+          type="button"
+          className="panel-close-button"
+          aria-label={t('Close notebook')}
+          title={t('Close notebook — reopen it from the View menu')}
+          onClick={onClose}
+        >
+          <span aria-hidden="true">×</span>
         </button>
       </div>
 

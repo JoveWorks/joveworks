@@ -3,21 +3,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   DEFAULT_CANVAS_CONTROLS_VISIBLE,
   DEFAULT_CONTOUR_PALETTE,
-  DEFAULT_NOTEBOOK_VISIBLE,
   DEFAULT_NOTEBOOK_WIDTH,
-  DEFAULT_PALETTE_VISIBLE,
   DEFAULT_PALETTE_WIDTH,
   loadCanvasControlsVisible,
   loadContourPalette,
-  loadNotebookVisible,
   loadNotebookWidth,
-  loadPaletteVisible,
   loadPaletteWidth,
   saveCanvasControlsVisible,
   saveContourPalette,
-  saveNotebookVisible,
   saveNotebookWidth,
-  savePaletteVisible,
   savePaletteWidth,
 } from './editorSettings';
 
@@ -48,17 +42,11 @@ describe('contour palette preference', () => {
     expect(loadContourPalette()).toBe(DEFAULT_CONTOUR_PALETTE);
   });
 
-  it('restores workspace visibility independently of a graph file', () => {
-    expect(loadPaletteVisible()).toBe(DEFAULT_PALETTE_VISIBLE);
-    expect(loadNotebookVisible()).toBe(DEFAULT_NOTEBOOK_VISIBLE);
+  it('restores canvas-control visibility independently of a graph file', () => {
     expect(loadCanvasControlsVisible()).toBe(DEFAULT_CANVAS_CONTROLS_VISIBLE);
 
-    savePaletteVisible(false);
-    saveNotebookVisible(false);
     saveCanvasControlsVisible(false);
 
-    expect(loadPaletteVisible()).toBe(false);
-    expect(loadNotebookVisible()).toBe(false);
     expect(loadCanvasControlsVisible()).toBe(false);
   });
 

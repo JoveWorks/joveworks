@@ -78,7 +78,7 @@ function useDropPosition(): () => Position {
   };
 }
 
-export function Palette(): ReactElement {
+export function Palette({ onClose }: { readonly onClose: () => void }): ReactElement {
   const { document, catalogues, userEquations, removeUserEquation, edit } = useGraph();
   const { locale } = useSettings();
   const copy = ui(locale);
@@ -284,12 +284,23 @@ export function Palette(): ReactElement {
 
   return (
     <div className="palette">
-      <input
-        className="search"
-        value={query}
-        placeholder={copy.searchPalette}
-        onChange={(event) => setQuery(event.target.value)}
-      />
+      <div className="palette-header">
+        <input
+          className="search"
+          value={query}
+          placeholder={copy.searchPalette}
+          onChange={(event) => setQuery(event.target.value)}
+        />
+        <button
+          type="button"
+          className="panel-close-button"
+          aria-label={t('Close palette')}
+          title={t('Close palette — reopen it from the View menu')}
+          onClick={onClose}
+        >
+          <span aria-hidden="true">×</span>
+        </button>
+      </div>
 
       <div className="palette-list">
         {query.trim().length === 0 && favouriteEntries.length + favouriteUserEquations.length + favouriteActions.length > 0 ? (
