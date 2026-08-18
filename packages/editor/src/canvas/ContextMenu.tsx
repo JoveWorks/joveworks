@@ -15,9 +15,8 @@ export interface ActionItem {
   readonly onClick: () => void;
   readonly danger?: boolean;
   readonly disabled?: boolean;
-  /** Renders a checkmark and reserves its space, for a group of mutually
-   * exclusive choices (e.g. the view menu's Light/Dark/System). Omit for an
-   * ordinary action item — its label stays flush left, unaffected. */
+  /** Renders a trailing checkmark for a selected toggle or choice. Omit for
+   * an ordinary action item. Labels stay aligned in either case. */
   readonly checked?: boolean;
 }
 
@@ -67,7 +66,7 @@ export function ContextMenu({ x, y, items, onClose, onMouseEnter, onMouseLeave }
               key={item.label}
               type="button"
               disabled={item.disabled ?? false}
-              className={item.danger === true ? 'danger' : ''}
+              className={`${item.danger === true ? 'danger' : ''}${item.checked !== undefined ? ' checkable' : ''}`.trim()}
               onClick={() => {
                 item.onClick();
                 onClose();

@@ -334,13 +334,13 @@ const NODE_TYPES = {
 };
 
 const EDGE_TYPES = { bundle: BundleEdge };
-const CANVAS_GRID_SIZE = 24;
+const CANVAS_GRID_SIZE = 48;
 const SNAP_GRID: [number, number] = [CANVAS_GRID_SIZE, CANVAS_GRID_SIZE];
 
 export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean }): ReactElement {
   const { document, catalogues, analysis, edit, editLive, commitEdit, expanded, toggleExpanded, selected, setSelected, saveUserEquation } =
     useGraph();
-  const { locale, minimapVisible, snapToGrid, themePreference } = useSettings();
+  const { locale, minimapVisible, snapToGrid, setSnapToGrid, themePreference } = useSettings();
   const t = (english: string): string => phrase(locale, english);
   const modifierKey = primaryModifierLabel();
   const [refusal, setRefusal] = useState<string | undefined>(undefined);
@@ -933,6 +933,12 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
         label: t('Auto-arrange'),
         onClick: () => edit((current) => autoArrange(current)),
       },
+      { heading: t('Canvas') },
+      {
+        label: t('Snap nodes to grid'),
+        checked: snapToGrid,
+        onClick: () => setSnapToGrid(!snapToGrid),
+      },
     ];
   };
 
@@ -1235,6 +1241,21 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
           </Panel>
         ) : null}
         <Controls />
+        <Panel
+          position="bottom-right"
+          className={`grid-snap-control${minimapVisible ? ' with-minimap' : ''}`}
+        >
+          <button
+            type="button"
+            className={snapToGrid ? 'active' : ''}
+            aria-pressed={snapToGrid}
+            title={t(snapToGrid ? 'Disable snap to grid' : 'Enable snap to grid')}
+            onClick={() => setSnapToGrid(!snapToGrid)}
+          >
+            <span aria-hidden="true">⌗</span>
+            {t('Snap to grid')}
+          </button>
+        </Panel>
         {minimapVisible ? <MiniMap pannable zoomable /> : null}
         {menu === undefined ? null : (
           <ContextMenu
