@@ -68,6 +68,7 @@ import {
   updateFrame,
 } from '../model/document';
 import { autoArrange } from '../model/layout';
+import { primaryModifierLabel } from '../model/platform';
 import { alignSelection, arrangeSelection } from '../model/selection-layout';
 import { BundleEdge } from './BundleEdge';
 import { ClosureNodeView } from './ClosureNodeView';
@@ -339,6 +340,7 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
     useGraph();
   const { locale, minimapVisible, themePreference } = useSettings();
   const t = (english: string): string => phrase(locale, english);
+  const modifierKey = primaryModifierLabel();
   const [refusal, setRefusal] = useState<string | undefined>(undefined);
   // A rejected unit connection is a momentary interaction state, never part of
   // the graph. Keeping its endpoints here lets the canvas identify *which* two
@@ -1212,11 +1214,11 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
         {controlsVisible ? (
           <Panel position="top-left" className="canvas-controls" aria-label={t('Canvas controls')}>
             <span><kbd>Shift</kbd> {t('drag to select')}</span>
-            <span><kbd>Ctrl</kbd> / <kbd>Shift</kbd> {t('click to add to selection')}</span>
-            <span><kbd>Ctrl</kbd>+<kbd>A</kbd> {t('select all')}</span>
-            <span><kbd>Ctrl</kbd>+<kbd>Z</kbd>/<kbd>Y</kbd> {t('undo/redo')}</span>
-            <span><kbd>Ctrl</kbd>+<kbd>C</kbd>/<kbd>V</kbd> {t('copy/paste')}</span>
-            <span><kbd>Ctrl</kbd>+<kbd>D</kbd> {t('duplicate')}</span>
+            <span><kbd>{modifierKey}</kbd> / <kbd>Shift</kbd> {t('click to add to selection')}</span>
+            <span><kbd>{modifierKey}</kbd>+<kbd>A</kbd> {t('select all')}</span>
+            <span><kbd>{modifierKey}</kbd>+<kbd>Z</kbd>/<kbd>Y</kbd> {t('undo/redo')}</span>
+            <span><kbd>{modifierKey}</kbd>+<kbd>C</kbd>/<kbd>V</kbd> {t('copy/paste')}</span>
+            <span><kbd>{modifierKey}</kbd>+<kbd>D</kbd> {t('duplicate')}</span>
           </Panel>
         ) : null}
         <Controls />
