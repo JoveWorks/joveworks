@@ -93,6 +93,8 @@ begins.
 (`x`, `series`, `facet`), auto-assigned from whatever axes the wired value
 varies along. Still open: marking specific values on a curve, and a fourth
 axis (facet-row × facet-col) if that turns out to be needed.
+Instead of setting options on the node, we can set them in the notebook and
+store it in the node. The same goes for the table output. More complex settings should be set in the notebook. Number of decimal digits per column, highlighted values, drag and drop columns to reorder (and remove that option from the node)
 
 **A range's two bounds showing different units** — `10 mm ... 1 m`, each
 bound keeping its own unit rather than both sharing one. Two ways to build
