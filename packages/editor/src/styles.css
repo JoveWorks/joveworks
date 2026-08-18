@@ -792,7 +792,7 @@ aside.right {
 
 .node header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 4px;
 }
 
@@ -800,20 +800,31 @@ aside.right {
   flex: 1;
   min-width: 0;
   font-weight: 600;
+  overflow-wrap: anywhere;
 }
 
-.node input.title {
+.node input.title,
+.node textarea.title {
   width: 100%;
   border: none;
   padding: 0;
   font-weight: 600;
   background: transparent;
+  font: inherit;
+}
+
+.node textarea.title {
+  min-height: 1.4em;
+  resize: none;
+  overflow: hidden;
+  line-height: inherit;
 }
 
 .node .title-math {
   display: block;
   width: 100%;
   cursor: text;
+  overflow-wrap: anywhere;
 }
 
 .title-math .katex {
@@ -1533,6 +1544,7 @@ aside.right {
 
 .range-fields input,
 .output-editor input,
+.output-editor textarea,
 .output-editor select {
   width: 100%;
 }
@@ -2366,11 +2378,18 @@ aside.right {
 /* Output titles are editable at their reading location as well as on the
    canvas.  TitleField normally inherits its compact-node styling, so the
    NodeBook supplies the equivalent unobtrusive text-field treatment here. */
-.notebook .result .label .field {
-  display: inline;
+.notebook .result .label {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
-.notebook .result .label input.title {
+.notebook .result .label .field {
+  display: block;
+  max-width: 100%;
+}
+
+.notebook .result .label input.title,
+.notebook .result .label textarea.title {
   max-width: 100%;
   border: none;
   background: transparent;
@@ -2379,8 +2398,18 @@ aside.right {
   font: inherit;
 }
 
+.notebook .result .label textarea.title {
+  width: 100%;
+  min-height: 1.4em;
+  resize: none;
+  overflow: hidden;
+  line-height: inherit;
+}
+
 .notebook .result .label input.title:hover,
-.notebook .result .label input.title:focus {
+.notebook .result .label input.title:focus,
+.notebook .result .label textarea.title:hover,
+.notebook .result .label textarea.title:focus {
   outline: 1px dashed var(--muted);
   outline-offset: 2px;
 }

@@ -423,6 +423,7 @@ export function OutputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>
               className="caption"
               value={node.caption ?? ''}
               placeholder={captionPlaceholder}
+              multiline
               onCommit={(caption) =>
                 edit((current) =>
                   updateNode<OutputNode>(current, id, (entry) => {
