@@ -964,6 +964,10 @@ aside.right {
    inline on its canvas node (MonteCarloReceiverNodeView.tsx, compact) and
    again, larger, as a notebook result (Notebook.tsx, like a plot) — so
    these are plain classes rather than `.node`-scoped ones. */
+.mc-histogram-wrap {
+  position: relative;
+}
+
 .mc-histogram {
   display: block;
   max-width: 100%;
@@ -977,13 +981,25 @@ aside.right {
 .mc-histogram .mc-mean-line {
   stroke: var(--accent);
   stroke-width: 1.5;
+  /* The chart's own viewBox stretches non-uniformly at the fluid ("large")
+     size (`preserveAspectRatio="none"`) — without this the line's stroke
+     would stretch along with it instead of staying a crisp 1.5px. */
+  vector-effect: non-scaling-stroke;
 }
 
-.mc-histogram .mc-mean-label {
-  fill: var(--accent);
+/* A plain HTML label, not SVG text — positioned by percentage so it tracks
+   the mean line's x position without inheriting the chart's own
+   non-uniform stretch (see `MonteCarloReceiverPlayback.tsx`'s own comment). */
+.mc-mean-label {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  color: var(--accent);
   font-size: 11px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 .mc-transport {

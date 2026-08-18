@@ -67,6 +67,15 @@ function clamp(value: number, low: number, high: number): number {
   return Math.min(high, Math.max(low, value));
 }
 
+/**
+ * The mean's label is a plain HTML element positioned by percentage, not
+ * SVG `<text>` inside the chart's viewBox — the fluid ("large"/notebook)
+ * size stretches that viewBox non-uniformly to fill the panel's width
+ * (`preserveAspectRatio="none"` below), which is fine for bars and lines
+ * but visibly distorts glyphs, since text scales with the same transform.
+ * A CSS-positioned label keeps its own font-size in real pixels regardless
+ * of how the chart underneath it stretches.
+ */
 function Histogram({
   values,
   meanLabel,
@@ -108,52 +117,48 @@ function Histogram({
   const barWidth = width / bins;
 
   const showLabel = showMeanBand && mean !== undefined && meanLabel !== undefined;
-  // A fixed pixel allowance, not a fraction of `height` — the label's own
-  // font-size (`.mc-mean-label` in styles.css) doesn't scale with the
-  // chart, so a percentage-based reservation left too little room at the
-  // compact size for the glyphs to clear the SVG's own top edge before the
-  // node card's overflow clipped them.
-  const labelHeight = showLabel ? 16 : 0;
-  const chartHeight = height - labelHeight;
+  // Fixed pixel rows, in real CSS pixels via the wrapper below — not a
+  // fraction of `height` or anything inside the (possibly stretched)
+  // viewBox — so the label always has exactly enough clearance regardless
+  // of chart size.
+  const labelHeight = showLabel ? 18 : 0;
 
   return (
-    <svg
-      className="mc-histogram"
-      width={fluid ? '100%' : width}
-      height={height}
-      viewBox={`0 0 ${width} ${height}`}
-      preserveAspectRatio="none"
-    >
-      {showHistogram
-        ? counts.map((count, index) => {
-            const barHeight = (count / maxCount) * (chartHeight - 2);
-            return (
-              <rect
-                key={index}
-                x={index * barWidth}
-                y={height - barHeight}
-                width={Math.max(barWidth - 1, 0.5)}
-                height={barHeight}
-              />
-            );
-          })
-        : null}
-      {showMeanBand && mean !== undefined ? (
-        <>
-          <line className="mc-mean-line" x1={x(mean)} x2={x(mean)} y1={labelHeight} y2={height} />
-          {showLabel ? (
-            <text
-              className="mc-mean-label"
-              x={clamp(x(mean), width * 0.12, width * 0.88)}
-              y={labelHeight - 4}
-              textAnchor="middle"
-            >
-              {meanLabel}
-            </text>
-          ) : null}
-        </>
+    <div className="mc-histogram-wrap" style={{ paddingTop: labelHeight }}>
+      {showLabel ? (
+        <span
+          className="mc-mean-label"
+          style={{ left: `${clamp((x(mean as number) / width) * 100, 12, 88)}%` }}
+        >
+          {meanLabel}
+        </span>
       ) : null}
-    </svg>
+      <svg
+        className="mc-histogram"
+        width={fluid ? '100%' : width}
+        height={height}
+        viewBox={`0 0 ${width} ${height}`}
+        preserveAspectRatio="none"
+      >
+        {showHistogram
+          ? counts.map((count, index) => {
+              const barHeight = (count / maxCount) * (height - 2);
+              return (
+                <rect
+                  key={index}
+                  x={index * barWidth}
+                  y={height - barHeight}
+                  width={Math.max(barWidth - 1, 0.5)}
+                  height={barHeight}
+                />
+              );
+            })
+          : null}
+        {showMeanBand && mean !== undefined ? (
+          <line className="mc-mean-line" x1={x(mean)} x2={x(mean)} y1={0} y2={height} />
+        ) : null}
+      </svg>
+    </div>
   );
 }
 
