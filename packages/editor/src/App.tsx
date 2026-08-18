@@ -113,6 +113,7 @@ import { exampleTutorialSteps, TUTORIAL_STEPS } from './tutorial/steps';
 import { loadTutorialSeen } from './tutorial/tutorialSettings';
 import { useResizableWidth } from './useResizableWidth';
 import { phrase, ui } from './i18n';
+import { CourseMaterialViewer } from './viewer/CourseMaterialViewer';
 
 /**
  * The base catalogue, the bundled public catalogue, and whatever was cached
@@ -186,6 +187,10 @@ function startupDocument(
  * renders one around it.
  */
 export function App(): ReactElement {
+  if (new URL(window.location.href).searchParams.get('view') === 'course') {
+    return <CourseMaterialViewer />;
+  }
+
   return (
     <>
       {/* The editor needs enough horizontal room for direct node editing and
@@ -201,6 +206,9 @@ export function App(): ReactElement {
           </p>
           <a className="mobile-landing-docs" href={DOCS_BASE_URL}>
             Read the documentation
+          </a>
+          <a className="mobile-landing-course" href="?view=course">
+            Browse course material
           </a>
           <p className="mobile-landing-note">Open JoveWorks on a larger screen to edit a graph.</p>
         </div>
