@@ -202,6 +202,14 @@ In the output port unit dropdown in the multiply node. Maybe in others too.
 **25. Change: When the unit is implied on data entry, the unit should be
 explicitly added** e.g. when changing the threshold value
 
+**26. Feature: We need more array nodes.** Sum and product are in. We need length, mean, median, sdev, etc. Combine them in a catalogue, what should we name this?
+
+**27. Feature: Can we share private catalogues with a password?** Maybe encrypt them and share public key?
+
+**28. Bug: Opening an example link on mobile does not redirect to the mobile landing page**. It just shows a blank screen.
+
+**29. Change: Should we use compiled notebooks to share in the notebook viewer?** To save mobile processing power, they can't edit anyway.
+
 ## Suggested backlog session groupings
 
 Numbers refer to the Editor backlog list above. Grouped by shared code area,
