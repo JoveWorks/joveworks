@@ -212,34 +212,9 @@ explicitly added** e.g. when changing the threshold value
 
 **30. Change: MC Generators should be able to be combined.** Normally a grid forms when sweeps are combined, but that should not be the case with MC.
 
-## Suggested backlog session groupings
+**31. Feature: We need a tool to quickly author catalogues and/or formulas** Import and export to json catalogue. It should be as straightforward as possible for authors. It can be a separate app like the /docs app.
 
-Numbers refer to the Editor backlog list above. Grouped by shared code area,
-so one Claude/Codex session can work a cluster without two sessions
-colliding on the same files.
+**32. Change: What is the {table XX} notation in RM catalogue?** E.g. in eq 16.1
 
-**A. Unit handling & display units.** #2, #16, #24, #25, #22 — all sit in the
-kernel's unit/dimension conversion and the port-unit dropdown UI.
+**33. Bug: Port tooltip only appears on the label.** Not on the whole port row and port itself.
 
-**B. Input-node behaviour & naming.** #23, #20, #6, #5 — input-node schema
-and UI; settle the `list`/`spectrum` naming (#6) before building the
-spectrum editor (#5).
-
-**D. Plot/Table node output config.** #1, #21 — #1 explicitly covers both
-Plot and Table output settings, and #21's lookup-table bug is likely the
-same table code.
-
-**E. Examples & tutorial content.** #12, #13, with #4 riding along if there's
-room — #13 depends on the ISO fit LUT work, so schedule after B lands.
-
-**F. Needs a product/design decision first — don't bundle.** #7, #8, #9, #11, #17. Each waits on a decision (catalogue design, node-viz approach, ISO fit/table slice, export scope, or migration strategy) before it's
-session-ready. #27's product questions (seed story, receiver visual,
-playback transport, trial-count control) are now settled — see #27 — but it
-still needs a short design pass on how the sample cap interacts with the
-generator's eager evaluation model before it's session-ready, so it isn't
-folded into A–E yet either.
-
-Suggested order: A and B first (independent of each other, could run as
-parallel sessions), then C and D (also independent of A/B and each other),
-then E once B has landed. Pull an item from F only after deciding its open
-question with Thomas.
