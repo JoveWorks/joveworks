@@ -210,6 +210,8 @@ explicitly added** e.g. when changing the threshold value
 
 **29. Change: Should we use compiled notebooks to share in the notebook viewer?** To save mobile processing power, they can't edit anyway.
 
+**30. Change: MC Generators should be able to be combined.** Normally a grid forms when sweeps are combined, but that should not be the case with MC.
+
 ## Suggested backlog session groupings
 
 Numbers refer to the Editor backlog list above. Grouped by shared code area,
