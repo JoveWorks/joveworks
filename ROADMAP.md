@@ -220,8 +220,10 @@ explicitly added** e.g. when changing the threshold value
 
 **34. Bug: Port tooltip only appears on the label.** Not on the whole port row and port itself.
 
-**35. Change: equation R&M 16.3 uses betahat_1** The hat is currently not present
+**35. Change: equation R&M 16.3 uses betahat_1** The hat is currently not present as a caret on the letter
 
 **36. Change: Unit recognition is too strict.** I want casing to be inferred to a certain degree. Mpa can only refer to MPa. If the 'mistake' is unambiguous, we can correct it for the user.
 
 **37. Change: The check nodes must clarify what points fail/pass.** In a sweep, the failing value can be added to the output as e.g. 5 MPa ... 13 MPa ... 30 MPa, with the first part in green, middle in orange, failing part in red?
+
+**38. Change: Bearing pad and platform size should use the Pa unit instead of N/mm²**
