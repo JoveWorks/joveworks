@@ -216,7 +216,8 @@ explicitly added** e.g. when changing the threshold value
 
 **32. Feature: We need a tool to quickly author catalogues and/or formulas** Import and export to json catalogue. It should be as straightforward as possible for authors. It can be a separate app like the /docs app.
 
-**33. Change: What is the {table XX} notation in RM catalogue?** E.g. in eq 16.1
+**33. Change: What is the {table XX} notation in RM catalogue?** E.g. in eq 16.1. There must be a better way to integrate the tables in the catalogue. Actually, since we will have a LUT node, can we just have the table as catalogue items?
 
 **34. Bug: Port tooltip only appears on the label.** Not on the whole port row and port itself.
 
+**35. Change: equation R&M 16.3 uses betahat_1** The hat is currently not present
