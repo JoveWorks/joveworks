@@ -2,6 +2,34 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.9.2](https://github.com/ThomasVanRiel/joveworks/compare/v0.9.1...v0.9.2) (2026-08-21)
+
+### Features
+
+* **catalogue:** add public Photography formula catalogue ([76e1b42](https://github.com/ThomasVanRiel/joveworks/commit/76e1b42af39c9d38ce01e11fbcb1281eec6b8b1d))
+* **editor:** add depth-of-field example from the Photography catalogue ([a9c6206](https://github.com/ThomasVanRiel/joveworks/commit/a9c6206c8bac2129d300ee7a2fdf057e98ed73dc))
+* **editor:** highlight a Feasibility node's referenced Checks on hover ([7760b86](https://github.com/ThomasVanRiel/joveworks/commit/7760b86f76e5339e70f39c210d4bd62494285872))
+* **editor:** render formula node equations on expand too ([04efea5](https://github.com/ThomasVanRiel/joveworks/commit/04efea59221e351617e8e05d4ca56c0692dde0e2))
+* **editor:** render the equation node's expression as LaTeX when expanded ([beb1bd7](https://github.com/ThomasVanRiel/joveworks/commit/beb1bd7eabd28b933e5e480dad33bf4eeb263aec))
+* **editor:** select full value on focus for numeric fields ([60e677f](https://github.com/ThomasVanRiel/joveworks/commit/60e677f0a188713481dd62da4ac1c2379537b22d))
+* Feasibility and Sensitivity analysis output nodes ([f3afb45](https://github.com/ThomasVanRiel/joveworks/commit/f3afb45bb2472d2dec572e969ff9ea6c12f89ed3))
+* password-shared restricted catalogues (roadmap [#28](https://github.com/ThomasVanRiel/joveworks/issues/28)) ([16e8582](https://github.com/ThomasVanRiel/joveworks/commit/16e8582fe14a94966e95b31da56377bceda941a1))
+
+### Fixes
+
+* **editor:** checkbox claiming the row, and KaTeX skipping the legend wrapper ([564a773](https://github.com/ThomasVanRiel/joveworks/commit/564a773a62af20b62f7d9779a14818293f8209c9))
+* **editor:** checklist alignment, KaTeX axis labels, doc pass for Analysis nodes ([752bd8f](https://github.com/ThomasVanRiel/joveworks/commit/752bd8f780f0bd23e4c6215e7fb362738ccd755f))
+* **editor:** defer Feasibility readiness to a second pass — same ordering bug as the kernel ([83c1f3e](https://github.com/ThomasVanRiel/joveworks/commit/83c1f3e21b0d6ffd3a43876c021d0b219ddc171c))
+* **editor:** disabled context-menu items looked identical to enabled ones ([275c9f0](https://github.com/ThomasVanRiel/joveworks/commit/275c9f09bb06e094e1ab44134b7a9c7d3cbbcdcc))
+* **editor:** roadmap items 38-41 — Pa units, check mark position, table decimals, quick-add speed ([713422f](https://github.com/ThomasVanRiel/joveworks/commit/713422f194803d95668fcdb2949a205a670accf0)), references [#38](https://github.com/ThomasVanRiel/joveworks/issues/38) [#39](https://github.com/ThomasVanRiel/joveworks/issues/39) [#40](https://github.com/ThomasVanRiel/joveworks/issues/40) [#41](https://github.com/ThomasVanRiel/joveworks/issues/41) [#42](https://github.com/ThomasVanRiel/joveworks/issues/42)
+* **editor:** size a Feasibility facet panel to fit its own x-axis ticks ([897e2f6](https://github.com/ThomasVanRiel/joveworks/commit/897e2f60b6e04fe2b723335f6f3bf071b52669e0))
+* **editor:** track locked-catalogue unlock state by its own id ([ca1d3ee](https://github.com/ThomasVanRiel/joveworks/commit/ca1d3ee51f1f7c0d3779092b2103fe46d8e4145d))
+
+### Documentation
+
+* Add analysis node plan ([80ea818](https://github.com/ThomasVanRiel/joveworks/commit/80ea8187aafc91b4673ca0d298b40e5538dc61cb))
+* add repo file guide ([16aeea2](https://github.com/ThomasVanRiel/joveworks/commit/16aeea22fc5206cbdc912ff1807043040d335879))
+* roadmap items ([67c46c3](https://github.com/ThomasVanRiel/joveworks/commit/67c46c386acd9273ef02d46449b89ee4a00e7a43))
 ## [0.9.1](https://github.com/ThomasVanRiel/joveworks/compare/v0.9.0...v0.9.1) (2026-08-21)
 
 ### Features
