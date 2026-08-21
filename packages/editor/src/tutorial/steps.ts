@@ -92,12 +92,12 @@ const EXAMPLE_COPY = {
   'monte-carlo-clearance': {
     title: 'Clearance-fit stack-up',
     opening: 'A Monte Carlo example: an independently toleranced hole and shaft combine into a clearance that varies sample to sample, instead of one worst-case subtraction.',
-    inputTarget: '[data-tour="monteCarloGenerator-clearance"]',
+    inputTarget: '[data-tour="monteCarloGenerator-hole"]',
     inputTitle: 'A generator is a range, drawn rather than swept',
-    inputBody: 'Clearance draws from a normal distribution instead of stepping between a start and a stop — the same axis role a range input plays, but each sample is random rather than evenly spaced.',
+    inputBody: 'Hole and shaft each draw from their own normal distribution instead of stepping between a start and a stop — the same axis role a range input plays, but each sample is random rather than evenly spaced. Combined generators draw one trial each, paired sample by sample.',
     studyTitle: 'Watch the aggregate converge',
     studyBody: 'The receiver plays the clearance back sample by sample and accumulates a running mean and histogram — press play and watch it settle rather than reading one final number.',
-    resultBody: 'The printed clearance and the interference check both read the same wired generator the receiver is watching — nothing about the calculation itself depends on playback.',
+    resultBody: 'The printed clearance and the interference check both read the same wired difference the receiver is watching — nothing about the calculation itself depends on playback.',
   },
   'belt-lab': {
     title: 'Belt lab',

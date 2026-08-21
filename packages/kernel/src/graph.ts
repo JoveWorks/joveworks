@@ -121,8 +121,17 @@ export interface Resolution {
   readonly incoming: ReadonlyMap<string, readonly Edge[]>;
   /** node id → its generic variable bindings. */
   readonly bindings: ReadonlyMap<string, ReadonlyMap<string, Dimension>>;
-  /** One per range input node, in document order. */
-  readonly axes: readonly Axis[];
+  /**
+   * node id → the axis it introduces, one per range/generator node. Every
+   * Monte Carlo generator's `Axis.id` is the *first* generator's own id
+   * (`axisOf`'s `mcTrialId`) rather than its own — so two generators
+   * combined in a formula pair sample-for-sample (`series.ts`'s union rule:
+   * same id, same axis) instead of forming their cross-product grid, the
+   * same way two formulas both reading one ordinary range already do. A
+   * lone generator is unaffected: it is its own "first", so its axis id is
+   * still just its own node id.
+   */
+  readonly axes: ReadonlyMap<string, Axis>;
   readonly tableColumns: ReadonlyMap<string, ResolvedTableColumn>;
   readonly warnings: readonly Warning[];
 }
@@ -327,9 +336,14 @@ export function wouldCycle(document: GraphDocument, candidate: Edge): boolean {
 
 // --- resolution -------------------------------------------------------------
 
-function axisOf(node: AxisNode, order: number, tableColumn?: ResolvedTableColumn): Axis {
+/**
+ * `mcTrialId` is the id every Monte Carlo generator's axis shares
+ * (`Resolution.axes`'s own doc comment) — undefined only when the document
+ * has no generator at all, in which case this branch never runs.
+ */
+function axisOf(node: AxisNode, order: number, tableColumn: ResolvedTableColumn | undefined, mcTrialId: string | undefined): Axis {
   if (node.kind === 'monteCarloGenerator') {
-    return { id: node.id, label: node.axisLabel ?? node.label ?? node.id, length: node.count, order };
+    return { id: mcTrialId ?? node.id, label: node.axisLabel ?? node.label ?? node.id, length: node.count, order };
   }
   if (!isRange(node.value)) throw new KernelError('not a range node', node.id);
   const length = node.value.kind === 'tableColumn' ? tableColumn?.values.length : axisLength(node.value);
@@ -373,7 +387,11 @@ export function resolveGraph(
     }
   }
 
-  const axes = documentAxes(document).map((node, i) => axisOf(node, i, tableColumns.get(node.id)));
+  const axisNodes = documentAxes(document);
+  const mcTrialId = axisNodes.find((node) => node.kind === 'monteCarloGenerator')?.id;
+  const axes = new Map(
+    axisNodes.map((node, i) => [node.id, axisOf(node, i, tableColumns.get(node.id), mcTrialId)] as const),
+  );
   const formulas = new Map<string, Formula>();
   const sources = new Map<string, PortType>();
   const targets = new Map<string, PortType>();

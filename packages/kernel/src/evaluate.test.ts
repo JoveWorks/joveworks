@@ -347,6 +347,36 @@ describe('the Monte Carlo generator and receiver (roadmap #27)', () => {
     );
   });
 
+  it('combines two generators sample-for-sample, not into their cross-product grid (ROADMAP.md #31)', () => {
+    const document = documentOf(
+      [
+        monteCarloGeneratorNode('a', uniformDraw(0, 1), 25, ''),
+        monteCarloGeneratorNode('b', uniformDraw(0, 1), 25, ''),
+        formulaNode('sum', refTo('addTwo')),
+      ],
+      [wire('a.value', 'sum.a'), wire('b.value', 'sum.b')],
+    );
+    const evaluation = evaluateDocument(document, catalogues);
+    const a = numeric(valueAt(evaluation, 'a', 'value'));
+    const b = numeric(valueAt(evaluation, 'b', 'value'));
+    const sum = numeric(valueAt(evaluation, 'sum', 'sum'));
+    // 625 cells would mean it gridded instead of pairing.
+    expect(sum.data).toHaveLength(25);
+    expect(sum.data).toEqual(a.data.map((value, i) => value + (b.data[i] as number)));
+  });
+
+  it('refuses to combine two generators whose sample counts disagree', () => {
+    const document = documentOf(
+      [
+        monteCarloGeneratorNode('a', uniformDraw(0, 1), 25, ''),
+        monteCarloGeneratorNode('b', uniformDraw(0, 1), 30, ''),
+        formulaNode('sum', refTo('addTwo')),
+      ],
+      [wire('a.value', 'sum.a'), wire('b.value', 'sum.b')],
+    );
+    expect(() => evaluateDocument(document, catalogues)).toThrow(/appears with lengths 25 and 30/u);
+  });
+
   it('lets a receiver read through to whatever is wired to its sample port', () => {
     const document = documentOf(
       [monteCarloGeneratorNode('draw', uniformDraw(0, 1), 25, ''), monteCarloReceiverNode('watch', 10_000)],

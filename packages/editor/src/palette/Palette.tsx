@@ -35,6 +35,7 @@ import { useSettings } from '../settings-context';
 import { phrase, ui } from '../i18n';
 import { addNode, uniqueId } from '../model/document';
 import { entries, search, type PaletteEntry } from '../model/catalogues';
+import { monteCarloSampleCount } from '../model/monteCarlo';
 import { loadFavourites, saveFavourites } from '../model/palettePreferences';
 import { converted } from '../canvas/ValueEditor';
 import { ContextMenu } from '../canvas/ContextMenu';
@@ -245,7 +246,10 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
         distribution: 'uniform',
         min: 0,
         max: 1,
-        count: 25,
+        // Matches whatever count is already in use (ROADMAP.md #31) so a
+        // freshly dropped generator never disagrees with one already on the
+        // canvas.
+        count: monteCarloSampleCount(current),
         unit: parseUnit(''),
         position: position(),
       });

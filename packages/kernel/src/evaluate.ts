@@ -166,19 +166,19 @@ export function evaluateDocument(
   const warnings: Warning[] = [...resolution.warnings];
   const values = new Map<string, PortValue>();
   const outputs: OutputResult[] = [];
-  const axisById = new Map(resolution.axes.map((axis) => [axis.id, axis] as const));
+  const axisByNode = resolution.axes;
   const largeGrid = options.largeGrid ?? LARGE_GRID;
 
   for (const node of resolution.order) {
     switch (node.kind) {
       case 'input':
-        values.set(endpointKey(node.id, VALUE_PORT), inputValue(node, axisById, resolution));
+        values.set(endpointKey(node.id, VALUE_PORT), inputValue(node, axisByNode, resolution));
         break;
 
       case 'monteCarloGenerator':
         values.set(
           endpointKey(node.id, VALUE_PORT),
-          generatorValue(node, axisById, resolution.document.id),
+          generatorValue(node, axisByNode, resolution.document.id),
         );
         break;
 
@@ -229,7 +229,7 @@ export function evaluateDocument(
         break;
 
       case 'output':
-        outputs.push(outputResult(node, resolution, values, axisById, warnings));
+        outputs.push(outputResult(node, resolution, values, axisByNode, warnings));
         break;
     }
   }
@@ -906,7 +906,12 @@ function outputResult(
     if (coordinates === undefined || coordinates.kind === 'spectrum' || coordinates.kind === 'bundle') {
       throw new KernelError(`'${id}' produced no coordinates to plot against`, node.id);
     }
-    if (!value.axes.some((own) => own.id === id)) {
+    // Compared against the resolved axis's own `id`, not the node id passed
+    // in: for an ordinary range they are the same thing, but two Monte Carlo
+    // generators combined together share one axis id that is neither node's
+    // own (`graph.ts`'s `Resolution.axes` doc comment), so matching against
+    // the raw `id` would misfire "flat" for a value that does vary.
+    if (!value.axes.some((own) => own.id === axis.id)) {
       warnings.push({
         kind: 'plotAxis',
         nodeId: node.id,

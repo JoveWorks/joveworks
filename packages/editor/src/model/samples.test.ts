@@ -52,12 +52,10 @@ describe('the samples the editor opens with', () => {
   it('offers the Monte Carlo clearance stack-up with nothing but the base library loaded', () => {
     const example = monteCarloClearance([baseCatalogue()]);
     expect(example).toBeDefined();
-    // Exactly one generator: two independent generators feeding one receiver
-    // broadcast into their cross-product grid (`unionAxes`), not a paired
-    // sample-by-sample sequence — an open, unsupported case (`ROADMAP.md`
-    // #27), so this example folds both tolerances into one generator ahead
-    // of time instead.
-    expect(example?.nodes.filter((node) => node.kind === 'monteCarloGenerator')).toHaveLength(1);
+    // Two independent generators — hole and shaft — feeding one `subtract`
+    // node: they pair sample-by-sample rather than gridding (`ROADMAP.md`
+    // #31), which is what makes wiring both straight in safe now.
+    expect(example?.nodes.filter((node) => node.kind === 'monteCarloGenerator')).toHaveLength(2);
     expect(example?.nodes.some((node) => node.kind === 'monteCarloReceiver')).toBe(true);
   });
 

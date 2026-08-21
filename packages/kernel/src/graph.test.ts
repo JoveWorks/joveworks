@@ -117,7 +117,7 @@ describe('the Monte Carlo generator and receiver', () => {
   it('introduces an axis of `count` length, the same way a `linear` range’s `points` does', () => {
     const document = documentOf([monteCarloGeneratorNode('draw', uniformDraw(0, 1), 25, '')], []);
     const resolution = resolveGraph(document, catalogues);
-    expect(resolution.axes).toEqual([{ id: 'draw', label: 'draw', length: 25, order: 0 }]);
+    expect(resolution.axes.get('draw')).toEqual({ id: 'draw', label: 'draw', length: 25, order: 0 });
   });
 
   it('lets a formula wire straight into a generator’s output, same as any range', () => {

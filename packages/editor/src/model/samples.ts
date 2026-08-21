@@ -265,75 +265,66 @@ export function platformFootprint(catalogues: readonly Catalogue[], locale: AppL
   return localizeExample(document('platform-footprint', 'Choose a safe platform size', withFrames, edges, frames), locale);
 }
 
-// --- Monte Carlo: a clearance-fit stack-up (ROADMAP.md #27) -----------------
+// --- Monte Carlo: a clearance-fit stack-up (ROADMAP.md #27, #31) ------------
 
 /**
  * The classic tolerance stack-up. A hole and a shaft are each toleranced
  * independently, so their clearance is a distribution rather than one
- * worst-case subtraction — but wiring two *independent* generators into a
- * formula is not how this graph gets that distribution: each Monte Carlo
- * generator introduces its own axis (like any range input), and the kernel
- * broadcasts distinct axes into their cross-product grid the same way it
- * would two ordinary independent sweeps (`series.ts`'s `unionAxes`). Two
- * 2,000-sample generators combined that way is a 4,000,000-cell grid, and
- * playback re-evaluates it every tick — which is what actually happened
- * when this example first shipped with `hole` and `shaft` as separate
- * generators feeding one `subtract` node: the browser hung.
- *
- * A receiver fed by more than one independent generator stays an open,
- * unsupported combinatorial case (`ROADMAP.md` #27, `model/monteCarlo.ts`'s
- * own doc comment). So this graph draws the *already-combined* clearance
- * directly from a single generator, with the two tolerances folded into one
- * mean and one root-sum-square spread ahead of time — one axis, one
- * receiver, no grid, and still exactly the feature this example exists to
- * show: samples accumulating and a mean converging.
+ * worst-case subtraction — and that is now exactly how this graph builds it:
+ * two independent generators, `hole` and `shaft`, feed a `subtract` node
+ * directly. Every Monte Carlo generator's axis shares one trial identity
+ * (`packages/kernel/src/graph.ts`'s `Resolution.axes` doc comment), so the
+ * two combine sample-for-sample rather than broadcasting into their
+ * cross-product grid the way two ordinary independent sweeps would
+ * (`series.ts`'s `unionAxes`) — a 1,000-sample pairing, not a 1,000,000-cell
+ * grid. Before that fix, this example folded both tolerances into one
+ * generator by hand (root-sum-square) to sidestep the grid; wiring the two
+ * sources straight into `subtract` is the more legible version, and doubles
+ * as this fix's regression case.
  */
-export function monteCarloClearance(_catalogues: readonly Catalogue[], locale: AppLocale = 'en'): GraphDocument | undefined {
+export function monteCarloClearance(catalogues: readonly Catalogue[], locale: AppLocale = 'en'): GraphDocument | undefined {
+  const subtract = lookup(catalogues, 'subtract');
+  if (subtract === undefined) return undefined;
+
   const mm = parseUnit('mm');
 
-  // Hole Ø20.02 mm ± 0.005 mm, shaft Ø19.98 mm ± 0.004 mm: independent
-  // tolerances combine by root-sum-square, not by adding the spreads.
-  // Rounded to 6 decimal places — floating-point subtraction/hypot leave
-  // long tails (0.03999999999999915) that are meaningless past the source
-  // data's own precision and, left alone, blow out the node's number fields.
-  const round = (value: number): number => Math.round(value * 1e6) / 1e6;
-  const meanClearance = round(20.02 - 19.98);
-  const stddevClearance = round(Math.hypot(0.005, 0.004));
-
   const nodes: GraphNode[] = [
-    normalGenerator('clearance', 'Hole–shaft clearance', meanClearance, stddevClearance, 1000, mm, at(0, 0)),
+    normalGenerator('hole', 'Hole diameter', 20.02, 0.005, 1000, mm, at(0, -80)),
+    normalGenerator('shaft', 'Shaft diameter', 19.98, 0.004, 1000, mm, at(0, 100)),
 
-    output('out_clearance', 'Clearance', { kind: 'print', unit: mm, figures: 4 }, at(400, 0)),
+    formulaNode('clearance', subtract, at(340, 10)),
+
+    output('out_clearance', 'Clearance', { kind: 'print', unit: mm, figures: 4 }, at(680, -80)),
     output(
       'out_positive',
       'Clearance stays positive (no interference)',
       { kind: 'check', comparison: '>=', threshold: { value: 0, unit: mm } },
-      at(400, 170),
+      at(680, 90),
     ),
 
-    receiver('watch', 'Clearance distribution', 1000, at(400, 330)),
+    receiver('watch', 'Clearance distribution', 1000, at(680, 260)),
   ];
 
   const edges = [
-    wire('clearance.value', 'out_clearance.value'),
-    wire('clearance.value', 'out_positive.value'),
-    wire('clearance.value', 'watch.sample'),
+    wire('hole.value', 'clearance.a'),
+    wire('shaft.value', 'clearance.b'),
+    wire('clearance.difference', 'out_clearance.value'),
+    wire('clearance.difference', 'out_positive.value'),
+    wire('clearance.difference', 'watch.sample'),
   ];
 
   // Two sections: the stack-up's numbers, and — separately — the receiver
   // that watches them accumulate. Different content, different note, so a
   // student can read "what the calculation says" and "what playback shows"
-  // as two distinct claims rather than one frame doing both jobs. Sized
-  // to the single-column node stack each actually holds, not the wider
-  // multi-column allowance a plot-bearing frame (padPressure) needs.
+  // as two distinct claims rather than one frame doing both jobs.
   const frames = [
     {
       id: 'stack-up',
       title: 'Clearance-fit stack-up',
       note:
-        'A hole bored to Ø20.02 mm and a shaft ground to Ø19.98 mm each vary from part to part. Their independent tolerances combine (root-sum-square) into a clearance that draws from a normal distribution — the value and interference check below both read that same generator.',
-      position: at(340, -80),
-      size: { width: 320, height: 290 },
+        'A hole bored to Ø20.02 mm ± 0.005 mm and a shaft ground to Ø19.98 mm ± 0.004 mm each vary from part to part. Their clearance is the two draws subtracted trial by trial, not one worst-case subtraction — the value and interference check below both read that same difference.',
+      position: at(340, -160),
+      size: { width: 660, height: 380 },
     },
     {
       id: 'distribution',
@@ -346,7 +337,7 @@ export function monteCarloClearance(_catalogues: readonly Catalogue[], locale: A
   ];
 
   const withFrames = nodes.map((node) => {
-    if (node.kind === 'output') return { ...node, frameId: 'stack-up' };
+    if (node.kind === 'formula' || node.kind === 'output') return { ...node, frameId: 'stack-up' };
     if (node.kind === 'monteCarloReceiver') return { ...node, frameId: 'distribution' };
     return node;
   });

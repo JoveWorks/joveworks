@@ -190,8 +190,6 @@ catalogues that the user made before.
 
 **30. Change: Should we use compiled notebooks to share in the notebook viewer?** To save mobile processing power, they can't edit anyway.
 
-**31. Change: MC Generators should be able to be combined.** Normally a grid forms when sweeps are combined, but that should not be the case with MC.
-
 **32. Feature: We need a tool to quickly author catalogues and/or formulas** Import and export to json catalogue. It should be as straightforward as possible for authors. It can be a separate app like the /docs app.
 
 **33. Change: What is the {table XX} notation in RM catalogue?** E.g. in eq 16.1. There must be a better way to integrate the tables in the catalogue. Actually, since we will have a LUT node, can we just have the table as catalogue items?

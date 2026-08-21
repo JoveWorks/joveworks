@@ -21,6 +21,7 @@ import {
 
 import { useGraph } from '../graph-context';
 import { nodeLabel, reframe, removeNodes, syncColumnLabels, updateNode } from '../model/document';
+import { setMonteCarloSampleCount } from '../model/monteCarlo';
 import { axisLabel, reading } from '../model/values';
 import { NodeShell } from './NodeShell';
 import { NumberField, TextField } from './fields';
@@ -117,7 +118,10 @@ export function MonteCarloGeneratorNodeView({ id, selected, data }: NodeProps<Ca
               value={node.count}
               integer
               minimum={1}
-              onCommit={(count) => setNode((current) => ({ ...current, count }))}
+              // Shared across every generator in the document, not just this
+              // node (`ROADMAP.md` #31) — combining generators only makes
+              // sense when they draw the same number of trials.
+              onCommit={(count) => edit((current) => setMonteCarloSampleCount(current, count))}
             />
           </label>
         </div>

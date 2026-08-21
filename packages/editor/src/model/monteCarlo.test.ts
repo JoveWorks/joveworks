@@ -15,7 +15,15 @@ import {
 } from '@joveworks/schema';
 import { parseUnit } from '@joveworks/units';
 
-import { batchSizeAt, isReceiverWired, upstreamGenerators, withGeneratorCounts } from './monteCarlo';
+import {
+  batchSizeAt,
+  DEFAULT_MONTE_CARLO_COUNT,
+  isReceiverWired,
+  monteCarloSampleCount,
+  setMonteCarloSampleCount,
+  upstreamGenerators,
+  withGeneratorCounts,
+} from './monteCarlo';
 
 const generator = (id: string, count: number): MonteCarloGeneratorNode => ({
   kind: 'monteCarloGenerator',
@@ -130,6 +138,27 @@ describe('batchSizeAt', () => {
     expect(batchSizeAt(0, true)).toBeGreaterThanOrEqual(1);
     expect(batchSizeAt(7, true)).toBe(25);
     expect(batchSizeAt(20, true)).toBe(25);
+  });
+});
+
+describe('monteCarloSampleCount (ROADMAP.md #31)', () => {
+  it('reads the count off the first generator in document order', () => {
+    const document = doc([generator('g1', 100), generator('g2', 50)], []);
+    expect(monteCarloSampleCount(document)).toBe(100);
+  });
+
+  it('falls back to the default with no generator yet', () => {
+    expect(monteCarloSampleCount(doc([], []))).toBe(DEFAULT_MONTE_CARLO_COUNT);
+  });
+});
+
+describe('setMonteCarloSampleCount (ROADMAP.md #31)', () => {
+  it('sets every generator to the same count, leaving other nodes alone', () => {
+    const document = doc([generator('g1', 100), generator('g2', 50), receiver('r')], []);
+    const next = setMonteCarloSampleCount(document, 40);
+    expect((next.nodes[0] as MonteCarloGeneratorNode).count).toBe(40);
+    expect((next.nodes[1] as MonteCarloGeneratorNode).count).toBe(40);
+    expect(next.nodes[2]).toEqual(document.nodes[2]);
   });
 });
 
