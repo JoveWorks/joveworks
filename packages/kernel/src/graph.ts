@@ -241,10 +241,13 @@ function displayOverride(node: GraphNode, port: string, type: PortType): PortTyp
  * typed line (mirrors `CompareNode.threshold`, the first port with both a
  * typed default and an overriding wire).
  */
-function outputPortNames(node: GraphNode): readonly string[] {
+export function outputPortNames(node: GraphNode): readonly string[] {
   if (node.kind !== 'output') return [];
   if (node.output.kind === 'table') return node.output.columns;
   if (node.output.kind === 'plot' || node.output.kind === 'check') return [VALUE_PORT, THRESHOLD_PORT];
+  // A Feasibility output references existing Check nodes by id rather than
+  // taking a wire — it is the one output kind with zero ports.
+  if (node.output.kind === 'feasibility') return [];
   return [VALUE_PORT];
 }
 

@@ -224,6 +224,50 @@ describe('round-tripping (the verification docs/PLAN.md asks for)', () => {
     expect(serializeDocument(document)).toEqual(withGenerator);
   });
 
+  it('round-trips a Feasibility output, including an empty `checks` list — a freshly-dropped node has none yet', () => {
+    const withFeasibility = {
+      ...study,
+      nodes: [
+        ...(study['nodes'] as JsonObject[]),
+        { kind: 'output', id: 'o-feas', position: { x: 0, y: 0 }, output: { kind: 'feasibility', checks: [] } },
+        {
+          kind: 'output',
+          id: 'o-feas-2',
+          position: { x: 0, y: 120 },
+          output: { kind: 'feasibility', checks: ['o-check'], x: 'd' },
+        },
+      ],
+    };
+    const document = parseDocument(withFeasibility);
+    expect(serializeDocument(document)).toEqual(withFeasibility);
+  });
+
+  it('round-trips a Sensitivity output, which declares no fields of its own', () => {
+    const withSensitivity = {
+      ...study,
+      nodes: [{ kind: 'output', id: 'o-sens', position: { x: 0, y: 0 }, output: { kind: 'sensitivity' } }],
+      edges: [],
+    };
+    const document = parseDocument(withSensitivity);
+    expect(serializeDocument(document)).toEqual(withSensitivity);
+  });
+
+  it("refuses a Feasibility output whose axis names a node that introduces no axis — same as a plot's", () => {
+    const broken = {
+      ...study,
+      nodes: [
+        ...(study['nodes'] as JsonObject[]),
+        {
+          kind: 'output',
+          id: 'o-feas',
+          position: { x: 0, y: 0 },
+          output: { kind: 'feasibility', checks: [], x: 'load' },
+        },
+      ],
+    };
+    expect(() => parseDocument(broken)).toThrow(/not a range input node/u);
+  });
+
   it('rejects a uniform generator whose low end is not below its high end', () => {
     const broken = {
       ...study,

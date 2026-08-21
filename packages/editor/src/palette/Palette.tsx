@@ -32,7 +32,7 @@ import {
 import { useGraph } from '../graph-context';
 import { useSettings } from '../settings-context';
 import { phrase, ui } from '../i18n';
-import { addNode, uniqueId } from '../model/document';
+import { addNode, defaultOutput, uniqueId } from '../model/document';
 import { entries, search, type PaletteEntry } from '../model/catalogues';
 import { monteCarloSampleCount, monteCarloSampleLimit } from '../model/monteCarlo';
 import { loadFavourites, saveFavourites } from '../model/palettePreferences';
@@ -47,7 +47,7 @@ const OUTPUT = '__output__';
 const GENERAL = '__general__';
 const USER = '__user__';
 const FAVOURITES = '__favourites__';
-const MONTE_CARLO = '__montecarlo__';
+const ANALYSIS = '__analysis__';
 
 interface PaletteAction {
   /** Stable across translated labels: this is what the local preference stores. */
@@ -151,15 +151,7 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
   const addOutput = (kind: Output['kind']): void =>
     edit((current) => {
       const id = uniqueId(current, kind === 'print' ? 'result' : kind);
-      const output: Output =
-        kind === 'check'
-          ? { kind, comparison: '>=', threshold: { value: 1, unit: parseUnit('') } }
-          : kind === 'plot'
-            ? { kind }
-            : kind === 'table'
-              ? { kind, columns: [] }
-              : { kind: 'print' };
-      return addNode(current, { kind: 'output', id, label: id, output, position: position() });
+      return addNode(current, { kind: 'output', id, label: id, output: defaultOutput(kind), position: position() });
     });
 
   const addCompare = (): void =>
@@ -294,12 +286,14 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
   const generalActions = actions.filter((action) => action.id.startsWith('builtin:general:'));
   const outputActions = actions.filter((action) => action.id.startsWith('builtin:output:'));
 
-  // A separate catalogue-styled section, not part of General — Monte Carlo
-  // generator/receiver are their own node kinds with their own concerns
-  // (playback, distributions), distinct enough from routing nodes like
-  // waypoint/pack that they earn their own heading, placed right after the
-  // built-in node library rather than folded into it.
-  const monteCarloActions: readonly PaletteAction[] = [
+  // A separate catalogue-styled section, not part of General — the
+  // umbrella for graph-level analysis tools generally, not just per-node
+  // results: Monte Carlo generator/receiver (their own node kinds with
+  // their own concerns — playback, distributions — distinct enough from
+  // routing nodes like waypoint/pack to earn their own heading) alongside
+  // Feasibility and Sensitivity, placed right after the built-in node
+  // library rather than folded into it or into the general Output section.
+  const analysisActions: readonly PaletteAction[] = [
     {
       id: 'builtin:montecarlo:generator',
       label: copy.monteCarloGenerator,
@@ -312,11 +306,23 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
       summary: copy.monteCarloReceiverSummary,
       insert: addMonteCarloReceiver,
     },
+    {
+      id: 'builtin:output:feasibility',
+      label: copy.feasibility,
+      summary: copy.feasibilitySummary,
+      insert: () => addOutput('feasibility'),
+    },
+    {
+      id: 'builtin:output:sensitivity',
+      label: copy.sensitivity,
+      summary: copy.sensitivitySummary,
+      insert: () => addOutput('sensitivity'),
+    },
   ];
 
   const favouriteEntries = all.filter(({ formula }) => favourites.has(formula.id));
   const favouriteUserEquations = userEquations.filter((equation) => favourites.has(`user:${equation.id}`));
-  const favouriteActions = [...actions, ...monteCarloActions].filter((action) => favourites.has(action.id));
+  const favouriteActions = [...actions, ...analysisActions].filter((action) => favourites.has(action.id));
 
   const actionEntry = (action: PaletteAction, keyPrefix = ''): ReactElement => (
     <li key={`${keyPrefix}${action.id}`} onContextMenu={(event) => {
@@ -497,12 +503,12 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
 
         {query.trim().length === 0 ? (
           <section>
-            <h3><button type="button" className="section-toggle" onClick={() => toggleCollapsed(MONTE_CARLO)}>
-              <span className="section-toggle-title">{copy.monteCarlo}{collapsed.has(MONTE_CARLO) ? ' (2)' : ''}</span>
-              <span className="chevron" aria-hidden="true">{collapsed.has(MONTE_CARLO) ? '▸' : '▾'}</span>
+            <h3><button type="button" className="section-toggle" onClick={() => toggleCollapsed(ANALYSIS)}>
+              <span className="section-toggle-title">{copy.analysis}{collapsed.has(ANALYSIS) ? ` (${analysisActions.length})` : ''}</span>
+              <span className="chevron" aria-hidden="true">{collapsed.has(ANALYSIS) ? '▸' : '▾'}</span>
             </button></h3>
-            {collapsed.has(MONTE_CARLO) ? null : <ul>
-              {monteCarloActions.map((action) => actionEntry(action))}
+            {collapsed.has(ANALYSIS) ? null : <ul>
+              {analysisActions.map((action) => actionEntry(action))}
             </ul>}
           </section>
         ) : null}

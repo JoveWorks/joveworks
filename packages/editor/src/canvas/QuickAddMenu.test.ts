@@ -60,6 +60,19 @@ describe('compatibleQuickAddPort', () => {
     expect(compatibleQuickAddPort(document, catalogues, target, { kind: 'compare' })).toBeUndefined();
   });
 
+  it('offers a sensitivity output for a dragged numeric output — it has a VALUE_PORT like print/check/plot', () => {
+    const document = addNode(emptyDocument('study', 'Study'), {
+      kind: 'input',
+      id: 'source',
+      value: { kind: 'scalar', value: 1, unit: parseUnit('mm') },
+      position: { x: 0, y: 0 },
+    });
+    const target = { x: 0, y: 0, from: { nodeId: 'source', port: VALUE_PORT, type: 'source' as const } };
+
+    expect(compatibleQuickAddPort(document, catalogues, target, { kind: 'output', outputKind: 'sensitivity' }))
+      .toBe(VALUE_PORT);
+  });
+
   it('uses a compatible formula input instead of assuming the first one', () => {
     const formula: Formula = {
       id: 'choose-compatible-input', version: 1,

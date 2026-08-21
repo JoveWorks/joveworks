@@ -68,6 +68,7 @@ export type { CompiledExpression, CompiledPredicate, DimensionScope, Env } from 
 
 export {
   LARGE_GRID,
+  broadcastBoolean,
   broadcastSeries,
   categoricalScalar,
   gridSize,
@@ -108,6 +109,7 @@ export {
   canConnect,
   canonicalUnit,
   endpointKey,
+  outputPortNames,
   resolveGraph,
   topologicalOrder,
   typesConnect,
@@ -121,13 +123,18 @@ export type {
   EquationResult,
   Evaluation,
   EvaluationOptions,
+  FeasibilityResult,
   OutputResult,
   PlotAxis,
   PlotResult,
+  SensitivityResult,
   TableColumnResult,
   TableResult,
   PrintResult,
 } from './evaluate.js';
+
+export { evaluateSensitivity, sensitivityCandidates } from './sensitivity.js';
+export type { SensitivityCandidate, SensitivityRankingResult } from './sensitivity.js';
 
 export { monteCarloSamples } from './random.js';
 export type { MonteCarloDraw, NormalDraw, UniformDraw } from './random.js';

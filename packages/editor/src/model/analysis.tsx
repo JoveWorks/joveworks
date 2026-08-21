@@ -28,6 +28,7 @@ import {
   KernelError,
   closureFormula,
   evaluateDocument,
+  outputPortNames,
   packChannelIndices,
   resolveGraph,
   waypointChannelIndices,
@@ -316,7 +317,29 @@ function readiness(
       continue;
     }
 
-    const names = node.output.kind === 'table' ? node.output.columns : ['value'];
+    // A Feasibility node has no wired ports of its own (`outputPortNames`
+    // returns none for it) — it references existing Check nodes by id, so
+    // its readiness is inherited from theirs directly rather than from any
+    // wire.
+    if (node.output.kind === 'feasibility') {
+      if (node.output.checks.length === 0) {
+        states.set(node.id, 'incomplete');
+        problems.set(node.id, 'choose at least one check');
+        continue;
+      }
+      if (!node.output.checks.every((id) => ready.has(id))) {
+        states.set(node.id, 'blocked');
+        continue;
+      }
+      ready.add(node.id);
+      continue;
+    }
+
+    // `THRESHOLD_PORT` is excluded: unlike `VALUE_PORT` (or a table's named
+    // columns), it is never mandatory — a plot's is optional and a check's
+    // always has a typed default — so its own readiness is handled by the
+    // "wired but not ready" check below instead of the "unwired" one here.
+    const names = outputPortNames(node).filter((name) => name !== THRESHOLD_PORT);
     const unwired = names.filter((name) => !isWired(node.id, name));
     if (unwired.length > 0) {
       states.set(node.id, 'incomplete');

@@ -25,7 +25,9 @@ import {
 import { display, displayNumber } from '../model/quantity';
 import { checkVerdict, summarise, summariseCheck } from '../model/values';
 import { CheckReading } from '../CheckReading';
+import { FeasibilityFigure } from '../notebook/FeasibilityFigure';
 import { PlotFigure } from '../notebook/PlotFigure';
+import { SensitivityFigure } from '../notebook/SensitivityFigure';
 import { SettingsContext, type SettingsContextValue } from '../settings-context';
 import { analytics, type CourseMaterial } from '../analytics/analytics';
 
@@ -108,6 +110,24 @@ function Result({ result, node, document }: { readonly result: OutputResult; rea
   // Equation outputs are deliberately absent: a public course viewer should
   // show the conclusion and citation, never expose a catalogue expression.
   if (result.kind === 'equation') return null;
+
+  if (result.kind === 'feasibility') {
+    return (
+      <div className="viewer-result viewer-plot">
+        <strong>{title}</strong>
+        <FeasibilityFigure result={result} />
+      </div>
+    );
+  }
+
+  if (result.kind === 'sensitivity') {
+    return (
+      <div className="viewer-result viewer-plot">
+        <strong>{title}</strong>
+        <SensitivityFigure result={result} />
+      </div>
+    );
+  }
 
   return (
     <div className="viewer-result viewer-plot">

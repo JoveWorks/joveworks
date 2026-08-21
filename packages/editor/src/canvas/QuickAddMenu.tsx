@@ -29,7 +29,7 @@ import { useSettings } from '../settings-context';
 export type QuickAddChoice =
   | { readonly kind: 'formula'; readonly formula: Formula; readonly port: string }
   | { readonly kind: 'input' }
-  | { readonly kind: 'output'; readonly outputKind: 'print' | 'check' | 'plot' | 'table' }
+  | { readonly kind: 'output'; readonly outputKind: 'print' | 'check' | 'plot' | 'table' | 'sensitivity' }
   | { readonly kind: 'compare' }
   | { readonly kind: 'closure' }
   | { readonly kind: 'waypoint' }
@@ -152,6 +152,11 @@ export function QuickAddMenu({
       },
       { label: t('table output'), choice: { kind: 'output', outputKind: 'table' } },
       { label: t('Monte Carlo receiver'), choice: { kind: 'monteCarloReceiver' } },
+      // `feasibility` is deliberately excluded — it has no port for a
+      // dragged wire to complete (it references existing Check nodes by
+      // id, never by wire), unlike `sensitivity`, which has a `VALUE_PORT`
+      // like print/check/plot.
+      { label: t('sensitivity output'), choice: { kind: 'output', outputKind: 'sensitivity' } },
   ];
   const specials = possibleSpecials.filter(({ choice }) => compatiblePort(choice) !== undefined);
   const matchingSpecials = fuzzySearch(query, specials, (entry) => entry.label);

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { KernelError } from './errors.js';
 import {
+  broadcastBoolean,
   gridSize,
   indexer,
   reader,
@@ -70,5 +71,16 @@ describe('broadcasting', () => {
 
   it('refuses a series carrying an axis the grid does not have', () => {
     expect(() => indexer(along(t, [1, 2]), [d])).toThrow(KernelError);
+  });
+
+  it('broadcasts a boolean mask onto a shared grid, the same way a numeric series does', () => {
+    const mask = broadcastBoolean([false, true, true], [d], grid);
+    // Row-major over [d, T]: each of d's three verdicts repeats across T's two cells.
+    expect(mask).toEqual([false, false, true, true, true, true]);
+  });
+
+  it('returns the same array when the mask already matches the target exactly', () => {
+    const data = [true, false, true];
+    expect(broadcastBoolean(data, [d], [d])).toBe(data);
   });
 });

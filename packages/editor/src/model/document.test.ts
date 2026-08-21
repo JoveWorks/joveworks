@@ -26,6 +26,7 @@ import {
   addNode,
   changeOutputKind,
   connect,
+  defaultOutput,
   duplicateNode,
   duplicateSelection,
   frameAround,
@@ -397,6 +398,30 @@ describe('changeOutputKind — adapting existing wiring across a kind switch', (
     const switched = changeOutputKind(doc, 'result', { kind: 'table', columns: [] });
     const node = switched.nodes.find((entry) => entry.id === 'result') as OutputNode;
     expect(node.output).toEqual({ kind: 'table', columns: [] });
+  });
+
+  it('prunes the stale value edge entering `feasibility` — the one kind that goes to zero ports', () => {
+    const doc: GraphDocument = { ...base, nodes: [...base.nodes, areaFormula, printOutput('result', 400, 0)] };
+    const wired = connect(doc, { node: 'area', port: 'product' }, { node: 'result', port: 'value' });
+    const switched = changeOutputKind(wired, 'result', { kind: 'feasibility', checks: [] });
+    const node = switched.nodes.find((entry) => entry.id === 'result') as OutputNode;
+    expect(node.output).toEqual({ kind: 'feasibility', checks: [] });
+    expect(switched.edges).toEqual([]);
+  });
+});
+
+describe('defaultOutput — the shared default per output kind', () => {
+  it('gives a feasibility output an empty checks list', () => {
+    expect(defaultOutput('feasibility')).toEqual({ kind: 'feasibility', checks: [] });
+  });
+
+  it('gives a sensitivity output no fields at all', () => {
+    expect(defaultOutput('sensitivity')).toEqual({ kind: 'sensitivity' });
+  });
+
+  it("uses the context unit for a check's typed threshold, when one is given", () => {
+    const output = defaultOutput('check', parseUnit('N/mm²'));
+    expect(output.kind === 'check' && output.threshold.unit.symbol).toBe('N/mm²');
   });
 });
 

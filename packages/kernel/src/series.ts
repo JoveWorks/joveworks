@@ -126,15 +126,15 @@ function strides(axes: readonly Axis[]): readonly number[] {
  * A series whose axes are not a subset of the target is a caller error — the
  * target is always built as a union that includes them.
  */
-export function indexer(series: Series, target: readonly Axis[]): (cell: number) => number {
-  if (series.axes.length === 0) return () => 0;
+function indexerForAxes(seriesAxes: readonly Axis[], target: readonly Axis[]): (cell: number) => number {
+  if (seriesAxes.length === 0) return () => 0;
 
   const targetStrides = strides(target);
-  const seriesStrides = strides(series.axes);
+  const seriesStrides = strides(seriesAxes);
 
   const contributions: Array<{ divisor: number; length: number; stride: number }> = [];
   for (const [i, axis] of target.entries()) {
-    const position = series.axes.findIndex((own) => own.id === axis.id);
+    const position = seriesAxes.findIndex((own) => own.id === axis.id);
     if (position === -1) continue;
     contributions.push({
       divisor: targetStrides[i] as number,
@@ -143,7 +143,7 @@ export function indexer(series: Series, target: readonly Axis[]): (cell: number)
     });
   }
 
-  if (contributions.length !== series.axes.length) {
+  if (contributions.length !== seriesAxes.length) {
     throw new KernelError('a series carries an axis the target grid does not');
   }
 
@@ -154,6 +154,10 @@ export function indexer(series: Series, target: readonly Axis[]): (cell: number)
     }
     return index;
   };
+}
+
+export function indexer(series: Series, target: readonly Axis[]): (cell: number) => number {
+  return indexerForAxes(series.axes, target);
 }
 
 /** Read one cell of a numeric series, broadcast over `target`. */
@@ -193,6 +197,24 @@ export function broadcastSeries(series: Series, target: readonly Axis[]): Series
     axes: target,
     data: Array.from({ length: gridSize(target) }, (_unused, cell) => series.data[index(cell)] as string),
   };
+}
+
+/**
+ * Expand a boolean mask (a Check node's per-cell verdicts) onto `target`,
+ * the same broadcast `broadcastSeries` does for a numeric or categorical
+ * series — used to AND several checks' results onto their shared union grid
+ * for a Feasibility output.
+ */
+export function broadcastBoolean(
+  data: readonly boolean[],
+  axes: readonly Axis[],
+  target: readonly Axis[],
+): readonly boolean[] {
+  if (axes.length === target.length && axes.every((axis, index) => axis.id === target[index]?.id)) {
+    return data;
+  }
+  const index = indexerForAxes(axes, target);
+  return Array.from({ length: gridSize(target) }, (_unused, cell) => data[index(cell)] as boolean);
 }
 
 /**

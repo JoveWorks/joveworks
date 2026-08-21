@@ -56,6 +56,7 @@ import {
   addNamedColumn,
   addNode,
   connect,
+  defaultOutput,
   duplicateNode,
   duplicateSelection,
   edgeId,
@@ -319,14 +320,7 @@ export function compatibleQuickAddPort(
                   }
                 : choice.kind === 'monteCarloReceiver'
                   ? { kind: 'monteCarloReceiver', id, sampleLimit: monteCarloSampleLimit(document), position }
-                  : {
-                      kind: 'output', id, position,
-                      output: choice.outputKind === 'check'
-                        ? { kind: 'check', comparison: '>=', threshold: { value: 1, unit: parseUnit('') } }
-                        : choice.outputKind === 'plot' ? { kind: 'plot' }
-                        : choice.outputKind === 'table' ? { kind: 'table', columns: [] }
-                        : { kind: 'print' },
-                    };
+                  : { kind: 'output', id, position, output: defaultOutput(choice.outputKind) };
 
   if (target.from.type === 'source' && (choice.kind === 'input' || choice.kind === 'monteCarloGenerator')) {
     return undefined;
@@ -1245,14 +1239,7 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
                       kind: 'output',
                       id,
                       label: id,
-                      output:
-                        choice.outputKind === 'check'
-                          ? { kind: 'check', comparison: '>=', threshold: { value: 1, unit: parseUnit('') } }
-                          : choice.outputKind === 'plot'
-                            ? { kind: 'plot' }
-                            : choice.outputKind === 'table'
-                              ? { kind: 'table', columns: [] }
-                              : { kind: 'print' },
+                      output: defaultOutput(choice.outputKind),
                       position,
                     };
 

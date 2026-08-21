@@ -47,8 +47,10 @@ import { comparator } from './compile.js';
 import { KernelError } from './errors.js';
 import { assertEvaluable, compileClosureFormula, compileFormula } from './formula.js';
 import { canonicalUnit, endpointKey, resolveGraph, type PortType, type Resolution } from './graph.js';
+import { evaluateSensitivity, type SensitivityRankingResult } from './sensitivity.js';
 import {
   LARGE_GRID,
+  broadcastBoolean,
   broadcastSeries,
   gridSize,
   indexer,
@@ -137,7 +139,34 @@ export interface EquationResult extends OutputBase {
   readonly citation?: string;
 }
 
-export type OutputResult = PrintResult | CheckResult | PlotResult | TableResult | EquationResult;
+/** Shades where every referenced Check node's verdict passes at once. */
+export interface FeasibilityResult extends OutputBase {
+  readonly kind: 'feasibility';
+  readonly checks: readonly string[];
+  /** The union of every referenced check's own axes. */
+  readonly axes: readonly Axis[];
+  /** One AND'd verdict per cell of `axes`. */
+  readonly mask: readonly boolean[];
+  readonly x: PlotAxis;
+  readonly series2?: PlotAxis;
+  readonly facet?: PlotAxis;
+}
+
+/** A tornado: every candidate input, ranked by how much the target moves across its bracket. */
+export interface SensitivityResult extends OutputBase {
+  readonly kind: 'sensitivity';
+  readonly targetUnit: Unit;
+  readonly rankings: readonly SensitivityRankingResult[];
+}
+
+export type OutputResult =
+  | PrintResult
+  | CheckResult
+  | PlotResult
+  | TableResult
+  | EquationResult
+  | FeasibilityResult
+  | SensitivityResult;
 
 export interface Evaluation {
   readonly document: GraphDocument;
@@ -168,6 +197,15 @@ export function evaluateDocument(
   const outputs: OutputResult[] = [];
   const axisByNode = resolution.axes;
   const largeGrid = options.largeGrid ?? LARGE_GRID;
+
+  // Output nodes are always sinks — `resolveGraph` never records an edge
+  // *from* an output port — so a Feasibility node's position in
+  // `resolution.order` relative to the Check nodes it references is
+  // incidental to node-array/insertion order, not semantic. Deferring every
+  // Feasibility node to a second pass, after every other output (including
+  // every Check) has been computed, is what makes referencing them by id
+  // safe regardless of where either node sits on the canvas.
+  const deferredFeasibility: OutputNode[] = [];
 
   for (const node of resolution.order) {
     switch (node.kind) {
@@ -229,9 +267,17 @@ export function evaluateDocument(
         break;
 
       case 'output':
-        outputs.push(outputResult(node, resolution, values, axisByNode, warnings));
+        if (node.output.kind === 'feasibility') {
+          deferredFeasibility.push(node);
+          break;
+        }
+        outputs.push(outputResult(node, resolution, values, axisByNode, warnings, catalogues, outputs));
         break;
     }
+  }
+
+  for (const node of deferredFeasibility) {
+    outputs.push(outputResult(node, resolution, values, axisByNode, warnings, catalogues, outputs));
   }
 
   return { document, resolution, values, outputs, warnings };
@@ -779,12 +825,62 @@ function displayUnit(type: PortType | undefined): Unit {
   return canonicalUnit(type?.dimension ?? DIMENSIONLESS);
 }
 
+/**
+ * Up to three slots — x, series (color), facet (small multiples) — each
+ * either pinned by the student or filled automatically, in document order,
+ * from `varyingAxes` — the plotted value's own axes for a plot, or the union
+ * of every referenced check's axes for a Feasibility output. A pinned slot
+ * is never touched, and never double-filled by autofill.
+ */
+function pickPlotAxes(
+  pinned: {
+    readonly x?: string | undefined;
+    readonly series?: string | undefined;
+    readonly facet?: string | undefined;
+  },
+  varyingAxes: readonly Axis[],
+  axes: ReadonlyMap<string, Axis>,
+  nodeId: string,
+  warnings: Warning[],
+): { readonly x: string; readonly series?: string; readonly facet?: string } {
+  const pinnedIds = new Set(
+    [pinned.x, pinned.series, pinned.facet].filter((id): id is string => id !== undefined),
+  );
+  const autofill = [...varyingAxes].filter((axis) => !pinnedIds.has(axis.id)).sort((a, b) => a.order - b.order);
+  let cursor = 0;
+  const nextAuto = (): string | undefined => autofill[cursor++]?.id;
+
+  const xId = pinned.x ?? nextAuto() ?? [...axes.values()].sort((a, b) => a.order - b.order)[0]?.id;
+  if (xId === undefined) {
+    throw new KernelError('needs at least one range input node in the document', nodeId);
+  }
+  const seriesId = pinned.series ?? nextAuto();
+  const facetId = pinned.facet ?? nextAuto();
+
+  for (; cursor < autofill.length; cursor += 1) {
+    const axis = autofill[cursor] as Axis;
+    warnings.push({
+      kind: 'plotAxisDropped',
+      nodeId,
+      message: `this output also varies along '${axis.label}', which it has no room to show`,
+    });
+  }
+
+  return {
+    x: xId,
+    ...(seriesId === undefined ? {} : { series: seriesId }),
+    ...(facetId === undefined ? {} : { facet: facetId }),
+  };
+}
+
 function outputResult(
   node: OutputNode,
   resolution: Resolution,
   values: ReadonlyMap<string, PortValue>,
   axes: ReadonlyMap<string, Axis>,
   warnings: Warning[],
+  catalogues: readonly Catalogue[],
+  outputsSoFar: readonly OutputResult[],
 ): OutputResult {
   const base: OutputBase = {
     nodeId: node.id,
@@ -824,6 +920,76 @@ function outputResult(
       kind: 'table',
       columns,
       axes: tableAxes,
+    };
+  }
+
+  if (output.kind === 'feasibility') {
+    const checkResults = output.checks.map((checkId) => {
+      const result = outputsSoFar.find((entry) => entry.nodeId === checkId);
+      if (result === undefined) {
+        throw new KernelError(`'${checkId}' is not a Check node, or has not been computed yet`, node.id);
+      }
+      if (result.kind !== 'check') {
+        throw new KernelError(`'${checkId}' is not a Check node — a Feasibility node can only reference checks`, node.id);
+      }
+      return result;
+    });
+    const maskAxes = unionAxes(...checkResults.map((result) => result.series.axes));
+    const mask =
+      checkResults.length === 0
+        ? []
+        : checkResults
+            .map((result) => broadcastBoolean(result.results, result.series.axes, maskAxes))
+            .reduce((acc, next) => acc.map((value, i) => value && (next[i] as boolean)));
+
+    const picked = pickPlotAxes(
+      { x: output.x, series: output.series, facet: output.facet },
+      maskAxes,
+      axes,
+      node.id,
+      warnings,
+    );
+    const axisFor = (id: string): PlotAxis => {
+      const axis = axes.get(id);
+      if (axis === undefined) {
+        throw new KernelError(`'${id}' is not a range input node, so it introduces no axis`, node.id);
+      }
+      const coordinates = values.get(endpointKey(id, VALUE_PORT));
+      if (coordinates === undefined || coordinates.kind === 'spectrum' || coordinates.kind === 'bundle') {
+        throw new KernelError(`'${id}' produced no coordinates to plot against`, node.id);
+      }
+      if (!maskAxes.some((own) => own.id === axis.id)) {
+        warnings.push({
+          kind: 'plotAxis',
+          nodeId: node.id,
+          message: `the shaded region does not vary along '${axis.label}' — it will be flat`,
+        });
+      }
+      return { axis, coordinates, unit: displayUnit(resolution.sources.get(endpointKey(id, VALUE_PORT))) };
+    };
+
+    return {
+      ...base,
+      kind: 'feasibility',
+      checks: output.checks,
+      axes: maskAxes,
+      mask,
+      x: axisFor(picked.x),
+      ...(picked.series === undefined ? {} : { series2: axisFor(picked.series) }),
+      ...(picked.facet === undefined ? {} : { facet: axisFor(picked.facet) }),
+    };
+  }
+
+  if (output.kind === 'sensitivity') {
+    const key = endpointKey(node.id, VALUE_PORT);
+    const edge = resolution.incoming.get(key)?.[0];
+    if (edge === undefined) throw new KernelError("'value' is not connected", key);
+    const rankings = evaluateSensitivity(resolution.document, catalogues, edge.from.node, edge.from.port, warnings);
+    return {
+      ...base,
+      kind: 'sensitivity',
+      targetUnit: displayUnit(resolution.sources.get(endpointKey(edge.from.node, edge.from.port))),
+      rankings,
     };
   }
 
@@ -925,37 +1091,16 @@ function outputResult(
     };
   };
 
-  // Up to three slots — x, series (color), facet (small multiples) — each
-  // either pinned by the student or filled automatically from axes the
-  // plotted value varies along, in document order. A pinned slot is
-  // never touched, and never double-filled by autofill.
-  const pinned = new Set(
-    [output.x, output.series, output.facet].filter((id): id is string => id !== undefined),
+  const picked = pickPlotAxes(
+    { x: output.x, series: output.series, facet: output.facet },
+    value.axes,
+    axes,
+    node.id,
+    warnings,
   );
-  const autofill = [...value.axes]
-    .filter((axis) => !pinned.has(axis.id))
-    .sort((a, b) => a.order - b.order);
-  let cursor = 0;
-  const nextAuto = (): string | undefined => autofill[cursor++]?.id;
-
-  const xId =
-    output.x ??
-    nextAuto() ??
-    [...axes.values()].sort((a, b) => a.order - b.order)[0]?.id;
-  if (xId === undefined) {
-    throw new KernelError('a plot needs at least one range input node in the document', node.id);
-  }
-  const seriesId = output.series ?? nextAuto();
-  const facetId = output.facet ?? nextAuto();
-
-  for (; cursor < autofill.length; cursor += 1) {
-    const axis = autofill[cursor] as Axis;
-    warnings.push({
-      kind: 'plotAxisDropped',
-      nodeId: node.id,
-      message: `the plotted value also varies along '${axis.label}', which this plot has no room to show`,
-    });
-  }
+  const xId = picked.x;
+  const seriesId = picked.series;
+  const facetId = picked.facet;
 
   const contour = output.contour ?? false;
   if (contour && facetId !== undefined) {

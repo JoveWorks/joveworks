@@ -161,9 +161,49 @@ export interface EquationOutput {
   readonly kind: 'equation';
 }
 
-export type Output = PrintOutput | CheckOutput | PlotOutput | TableOutput | EquationOutput;
+/**
+ * Shades where every referenced Check node's verdict passes at once — the
+ * multi-constraint counterpart of a single scalar check, and the reason it
+ * references existing Check nodes by id rather than re-entering their
+ * comparisons/thresholds: a student who already built "safety factor ≥ 1.5"
+ * and "pressure ≤ 200 N/mm²" as separate checks wants to see where *both*
+ * hold, not retype either bound a second time.
+ *
+ * No `contour` field, unlike `PlotOutput`: a boolean mask has no
+ * line/contour ambiguity a numeric plot has — `series` present means a 2-D
+ * shaded region, absent means a 1-D band along `x`.
+ */
+export interface FeasibilityOutput {
+  readonly kind: 'feasibility';
+  /** The ids of the Check output nodes whose verdicts are ANDed together. */
+  readonly checks: readonly string[];
+  readonly x?: string;
+  readonly series?: string;
+  readonly facet?: string;
+}
 
-export const OUTPUT_KINDS = ['print', 'check', 'plot', 'table', 'equation'] as const;
+/**
+ * "Which input actually matters?" — a tornado: each sweepable input swept
+ * alone across its own bounds, the rest held fixed, ranked by how much a
+ * wired target output moves. No fields of its own — everything it needs
+ * (the target, and every candidate input) comes from the document itself,
+ * the same minimal footprint `EquationOutput` has, wired via the one
+ * `VALUE_PORT` like `check`/`print`.
+ */
+export interface SensitivityOutput {
+  readonly kind: 'sensitivity';
+}
+
+export type Output =
+  | PrintOutput
+  | CheckOutput
+  | PlotOutput
+  | TableOutput
+  | EquationOutput
+  | FeasibilityOutput
+  | SensitivityOutput;
+
+export const OUTPUT_KINDS = ['print', 'check', 'plot', 'table', 'equation', 'feasibility', 'sensitivity'] as const;
 export type OutputKind = (typeof OUTPUT_KINDS)[number];
 
 interface NodeBase {
@@ -477,6 +517,22 @@ function parseOutput(value: JsonValue, path: string): Output {
 
     case 'equation':
       return { kind };
+
+    case 'feasibility':
+      // An empty array is a freshly-dropped node that has not been given
+      // any checks yet — allowed, unlike `table`'s `columns`, which rejects
+      // an empty list (a separate pre-existing inconsistency, not one to
+      // copy here).
+      return {
+        kind,
+        checks: readStringArray(required(object, 'checks', path), join(path, 'checks')),
+        ...put('x', optional(object, 'x', path, readName)),
+        ...put('series', optional(object, 'series', path, readName)),
+        ...put('facet', optional(object, 'facet', path, readName)),
+      };
+
+    case 'sensitivity':
+      return { kind };
   }
 }
 
@@ -515,6 +571,16 @@ function serializeOutput(output: Output): JsonObject {
         ...put('marks', output.marks === undefined || output.marks.length === 0 ? undefined : [...output.marks]),
       };
     case 'equation':
+      return { kind: output.kind };
+    case 'feasibility':
+      return {
+        kind: output.kind,
+        checks: [...output.checks],
+        ...put('x', output.x),
+        ...put('series', output.series),
+        ...put('facet', output.facet),
+      };
+    case 'sensitivity':
       return { kind: output.kind };
   }
 }
@@ -828,7 +894,7 @@ function checkReferences(document: GraphDocument, path: string): void {
   // does. Pointing at a scalar input is the mistake this catches.
   const axisIds = new Set(axes(document).map((node) => node.id));
   for (const [i, node] of document.nodes.entries()) {
-    if (node.kind !== 'output' || node.output.kind !== 'plot') continue;
+    if (node.kind !== 'output' || (node.output.kind !== 'plot' && node.output.kind !== 'feasibility')) continue;
     const at = `${join(path, 'nodes')}[${i}].output`;
     for (const [key, axis] of [
       ['x', node.output.x],

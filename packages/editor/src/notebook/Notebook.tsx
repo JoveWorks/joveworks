@@ -57,7 +57,9 @@ import { display, displayNumber } from '../model/quantity';
 import { checkVerdict, summarise, summariseCheck } from '../model/values';
 import { CheckReading } from '../CheckReading';
 import { MonteCarloReceiverPlayback } from '../canvas/MonteCarloReceiverPlayback';
+import { FeasibilityFigure } from './FeasibilityFigure';
 import { PlotFigure } from './PlotFigure';
+import { SensitivityFigure } from './SensitivityFigure';
 import { phrase, ui } from '../i18n';
 
 /**
@@ -333,6 +335,28 @@ function Result({ result, node }: { readonly result: OutputResult; readonly node
             ))}
           </tbody>
         </table>
+      </div>
+    );
+  }
+
+  if (result.kind === 'feasibility') {
+    return (
+      <div className="result plot">
+        <span className="label">
+          <OutputTitle node={node} />
+        </span>
+        <FeasibilityFigure result={result} />
+      </div>
+    );
+  }
+
+  if (result.kind === 'sensitivity') {
+    return (
+      <div className="result plot">
+        <span className="label">
+          <OutputTitle node={node} />
+        </span>
+        <SensitivityFigure result={result} />
       </div>
     );
   }

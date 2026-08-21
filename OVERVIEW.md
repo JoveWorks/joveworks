@@ -201,7 +201,7 @@ canvas                              notebook panel
 It lives in a **collapsible side panel and updates live**, so the document takes
 shape while the graph is built rather than being discovered at export time.
 
-### Four kinds of output node
+### Kinds of output node
 
 | Kind | What it does |
 |---|---|
@@ -209,6 +209,9 @@ shape while the graph is built rather than being discovered at export time.
 | **Check** | An assertion — `S ≥ 1.5` → pass or fail |
 | **Plot** | Line or contour over swept inputs, with threshold overlay |
 | **Table** | A swept series as rows — standard sizes against results |
+| **Equation** | Shows a wired formula's own expression, typeset — the opt-in escape hatch |
+| **Feasibility** | Shades where every referenced Check node's verdict passes at once — the multi-constraint counterpart of a single check |
+| **Sensitivity** | A tornado diagram: every candidate input swept alone across its own bounds, ranked by how much a wired output moves |
 
 The **check** node is what makes the notebook a *dimensioning report* rather
 than a list of numbers: it is the scalar counterpart of the threshold line on a

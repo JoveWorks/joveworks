@@ -42,6 +42,7 @@ import { useSettings } from '../settings-context';
 import { toUnitsFormat } from '../model/numberFormat';
 import {
   changeOutputKind,
+  defaultOutput,
   NEW_COLUMN,
   reframe,
   removeColumn,
@@ -144,6 +145,25 @@ function Verdict({ nodeId }: { readonly nodeId: string }): ReactElement | null {
     );
   }
 
+  if (result.kind === 'feasibility') {
+    const passing = result.mask.filter(Boolean).length;
+    const verdict = passing === result.mask.length ? 'pass' : passing === 0 ? 'fail' : 'partial';
+    return (
+      <span className={`badge ${verdict}`}>
+        {passing === result.mask.length
+          ? 'passes everywhere'
+          : passing === 0
+            ? 'fails everywhere'
+            : `passes at ${passing} of ${result.mask.length} points`}
+      </span>
+    );
+  }
+
+  if (result.kind === 'sensitivity') {
+    const top = result.rankings[0];
+    return <span className="badge plot">{top === undefined ? 'no candidates' : `top driver: ${top.label}`}</span>;
+  }
+
   return null;
 }
 
@@ -183,6 +203,8 @@ export function OutputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>
   const plotResult = result?.kind === 'plot' ? result : undefined;
   const checkResult = result?.kind === 'check' ? result : undefined;
   const equationResult = result?.kind === 'equation' ? result : undefined;
+  const feasibilityResult = result?.kind === 'feasibility' ? result : undefined;
+  const sensitivityResult = result?.kind === 'sensitivity' ? result : undefined;
   // Not the upstream formula's own id — a closure's is always the literal
   // 'closure' (kernel/closure.ts), which would be a useless caption default
   // repeated across every closure-sourced equation node.
@@ -195,7 +217,11 @@ export function OutputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>
     edit((current) => updateNode<OutputNode>(current, id, (entry) => ({ ...entry, output: next })));
 
   const ranges = documentAxes(document);
-  const ports = output.kind === 'table' ? output.columns : [VALUE_PORT];
+  const checkNodes = document.nodes.filter(
+    (candidate): candidate is OutputNode => candidate.kind === 'output' && candidate.output.kind === 'check',
+  );
+  const ports =
+    output.kind === 'table' ? output.columns : output.kind === 'feasibility' ? [] : [VALUE_PORT];
   const wired = new Set(
     document.edges.filter((edge) => edge.to.node === id).map((edge) => edge.to.port),
   );
@@ -228,17 +254,7 @@ export function OutputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>
               onChange={(event) => {
                 const kind = event.target.value as Output['kind'];
                 if (kind === 'plot' && ranges[0] === undefined) return;
-                const next: Output =
-                  kind === 'print'
-                    ? { kind }
-                    : kind === 'check'
-                      ? { kind, comparison: '>=', threshold: { value: 1, unit: shown?.unit ?? parseUnit('') } }
-                      : kind === 'plot'
-                        ? { kind }
-                        : kind === 'equation'
-                          ? { kind }
-                          : { kind, columns: [] };
-                edit((current) => changeOutputKind(current, id, next));
+                edit((current) => changeOutputKind(current, id, defaultOutput(kind, shown?.unit)));
               }}
             >
               <option value="print">print</option>
@@ -248,6 +264,8 @@ export function OutputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>
               </option>
               <option value="table">table</option>
               <option value="equation">equation</option>
+              <option value="feasibility">feasibility</option>
+              <option value="sensitivity">sensitivity</option>
             </select>
           </label>
 
@@ -359,6 +377,70 @@ export function OutputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>
                   />
                 </label>
               )}
+            </>
+          ) : null}
+
+          {output.kind === 'feasibility' ? (
+            <>
+              <label className="wide">
+                checks
+                <ul className="table-columns">
+                  {checkNodes.length === 0 ? (
+                    <li className="table-column table-column-empty">no Check nodes in this document yet</li>
+                  ) : (
+                    checkNodes.map((checkNode) => (
+                      <li key={checkNode.id} className="table-column nodrag">
+                        <label>
+                          <input
+                            type="checkbox"
+                            checked={output.checks.includes(checkNode.id)}
+                            onChange={(event) => {
+                              const checks = event.target.checked
+                                ? [...output.checks, checkNode.id]
+                                : output.checks.filter((entry) => entry !== checkNode.id);
+                              setOutput({ ...output, checks });
+                            }}
+                          />
+                          {checkNode.label ?? checkNode.id}
+                        </label>
+                      </li>
+                    ))
+                  )}
+                </ul>
+              </label>
+              <AxisPicker
+                name="x axis"
+                value={output.x}
+                automatic={`auto${feasibilityResult === undefined ? '' : ` (${feasibilityResult.x.axis.label})`}`}
+                ranges={ranges}
+                excluded={[output.series, output.facet]}
+                onChange={(chosen) => {
+                  const { x: _dropped, ...rest } = output;
+                  setOutput(chosen === undefined ? rest : { ...rest, x: chosen });
+                }}
+              />
+              <AxisPicker
+                name="series"
+                value={output.series}
+                automatic={`auto${feasibilityResult?.series2 === undefined ? ' (none)' : ` (${feasibilityResult.series2.axis.label})`}`}
+                ranges={ranges}
+                excluded={[output.x, output.facet]}
+                onChange={(chosen) => {
+                  const { series: _dropped, ...rest } = output;
+                  setOutput(chosen === undefined ? rest : { ...rest, series: chosen });
+                }}
+              />
+              <AxisPicker
+                name="facet"
+                value={output.facet}
+                automatic={`auto${feasibilityResult?.facet === undefined ? ' (none)' : ` (${feasibilityResult.facet.axis.label})`}`}
+                ranges={ranges}
+                excluded={[output.x, output.series]}
+                onChange={(chosen) => {
+                  const { facet: _dropped, ...rest } = output;
+                  setOutput(chosen === undefined ? rest : { ...rest, facet: chosen });
+                }}
+              />
             </>
           ) : null}
 
@@ -562,7 +644,7 @@ export function OutputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>
           ) : (
             <Equation latex={toLatex(parseExpression(equationResult.expression))} displayMode={false} />
           )
-        ) : output.kind === 'table' ? null : (
+        ) : output.kind === 'table' || output.kind === 'feasibility' || output.kind === 'sensitivity' ? null : (
           <>
             <span className="reading">
               {value === undefined ? (

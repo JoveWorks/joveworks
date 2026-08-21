@@ -14,6 +14,7 @@
  */
 
 import { closureFormula, packChannelIndices, waypointChannelIndices } from '@joveworks/kernel';
+import { parseUnit, type Unit } from '@joveworks/units';
 import {
   VALUE_PORT,
   type ClosureNode,
@@ -23,6 +24,7 @@ import {
   type GraphDocument,
   type GraphNode,
   type Output,
+  type OutputKind,
   type OutputNode,
   type Position,
 } from '@joveworks/schema';
@@ -580,6 +582,33 @@ export function pruneEdgesTo(
 }
 
 /**
+ * The default `Output` for a freshly-chosen kind, given the context unit a
+ * `check`'s typed threshold should start in (the source port's own unit,
+ * where one is known) — factored out so the palette, the canvas's quick-add
+ * paths and the output node's own kind `<select>` cannot drift out of sync
+ * on the two newest kinds the way four independent copies of this switch
+ * otherwise would.
+ */
+export function defaultOutput(kind: OutputKind, contextUnit?: Unit): Output {
+  switch (kind) {
+    case 'print':
+      return { kind };
+    case 'check':
+      return { kind, comparison: '>=', threshold: { value: 1, unit: contextUnit ?? parseUnit('') } };
+    case 'plot':
+      return { kind };
+    case 'table':
+      return { kind, columns: [] };
+    case 'equation':
+      return { kind };
+    case 'feasibility':
+      return { kind, checks: [] };
+    case 'sensitivity':
+      return { kind };
+  }
+}
+
+/**
  * Switch an output node to a different kind, adapting whatever is already
  * wired rather than stranding it — an edge pointing at a port the new kind
  * does not declare is exactly the dangling-edge bug this exists to prevent.
@@ -591,6 +620,9 @@ export function pruneEdgesTo(
  * `value` as a first column, named after its source the same way a fresh
  * column from the ghost slot is (Canvas.tsx). Between print,
  * check and plot — all single-`value`-port kinds — nothing needs adapting.
+ * `feasibility` is the one kind that goes to *zero* ports, so entering it
+ * prunes whatever was wired to `value`/`threshold` the same way leaving
+ * `table` prunes everything but its adopted first column.
  */
 export function changeOutputKind(document: GraphDocument, nodeId: string, next: Output): GraphDocument {
   const node = document.nodes.find((entry) => entry.id === nodeId);
@@ -616,6 +648,11 @@ export function changeOutputKind(document: GraphDocument, nodeId: string, next: 
     const base = source === undefined ? existing.from.port : nodeLabel(source);
     const named = addNamedColumn(withKind, nodeId, base);
     return renameColumn(named.document, nodeId, VALUE_PORT, named.column);
+  }
+
+  if (next.kind === 'feasibility') {
+    const pruned = pruneEdgesTo(document, nodeId, new Set());
+    return updateNode<OutputNode>(pruned, nodeId, (entry) => ({ ...entry, output: next }));
   }
 
   return updateNode<OutputNode>(document, nodeId, (entry) => ({ ...entry, output: next }));

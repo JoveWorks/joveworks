@@ -8,11 +8,15 @@ import {
   valueAt,
   type CheckResult,
   type EquationResult,
+  type FeasibilityResult,
   type PlotResult,
+  type SensitivityResult,
   type TableResult,
   type PrintResult,
 } from './evaluate.js';
 import { KernelError } from './errors.js';
+import { resolveGraph } from './graph.js';
+import { sensitivityCandidates } from './sensitivity.js';
 import {
   CATALOGUE,
   catalogueOf,
@@ -1041,5 +1045,245 @@ describe('the gates', () => {
       [wire('d.value', 'c.d')],
     );
     expect(evaluateDocument(document, catalogues).warnings).toEqual([]);
+  });
+});
+
+describe('feasibility outputs', () => {
+  /** `A = d * h` swept along `d` — five points, so each check's mask is easy to read by eye. */
+  const sweptArea = (feasibilityFirst: boolean) =>
+    documentOf(
+      [
+        ...(feasibilityFirst
+          ? [outputNode('feas', { kind: 'feasibility', checks: ['check1', 'check2'] })]
+          : []),
+        input('d', linear(10, 50, 5, 'mm'), { axisLabel: 'diameter' }),
+        input('h', scalar(2, 'mm')),
+        formulaNode('area', refTo('area')),
+        outputNode('check1', { kind: 'check', comparison: '>=', threshold: { value: 30, unit: 'mm²' } }),
+        outputNode('check2', { kind: 'check', comparison: '<=', threshold: { value: 80, unit: 'mm²' } }),
+        ...(feasibilityFirst
+          ? []
+          : [outputNode('feas', { kind: 'feasibility', checks: ['check1', 'check2'] })]),
+      ],
+      [
+        wire('d.value', 'area.w'),
+        wire('h.value', 'area.h'),
+        wire('area.A', 'check1.value'),
+        wire('area.A', 'check2.value'),
+      ],
+    );
+
+  it('ANDs two checks sharing one axis, cell for cell', () => {
+    const evaluation = evaluateDocument(sweptArea(false), catalogues);
+    const feas = evaluation.outputs.find((entry) => entry.nodeId === 'feas') as FeasibilityResult;
+    expect(feas.kind).toBe('feasibility');
+    // A = 20, 40, 60, 80, 100 mm²: check1 (>= 30) is [F,T,T,T,T], check2 (<= 80) is [T,T,T,T,F].
+    expect(feas.mask).toEqual([false, true, true, true, false]);
+  });
+
+  it('evaluates correctly however the checks are ordered relative to it — the ordering regression this closes', () => {
+    // The Feasibility node's array position precedes the Check nodes it
+    // references. It has no incoming edges of its own (it references
+    // checks by id, not by wire), so it is trivially ready in the first
+    // pass of a naive single-pass evaluation — this is the exact scenario
+    // that would read an uncomputed Check without the two-pass fix.
+    const evaluation = evaluateDocument(sweptArea(true), catalogues);
+    const feas = evaluation.outputs.find((entry) => entry.nodeId === 'feas') as FeasibilityResult;
+    expect(feas.mask).toEqual([false, true, true, true, false]);
+  });
+
+  it('ANDs across the union of two different axes, broadcasting each check onto the shared grid', () => {
+    const document = documentOf(
+      [
+        input('d1', linear(0, 10, 3, 'mm'), { axisLabel: 'd1' }),
+        input('d2', linear(0, 20, 2, 'mm'), { axisLabel: 'd2' }),
+        input('unit1', scalar(1, 'mm')),
+        input('unit2', scalar(1, 'mm')),
+        formulaNode('f1', refTo('area')),
+        formulaNode('f2', refTo('area')),
+        outputNode('check1', { kind: 'check', comparison: '>=', threshold: { value: 5, unit: 'mm²' } }),
+        outputNode('check2', { kind: 'check', comparison: '<=', threshold: { value: 10, unit: 'mm²' } }),
+        outputNode('feas', { kind: 'feasibility', checks: ['check1', 'check2'] }),
+      ],
+      [
+        wire('d1.value', 'f1.w'),
+        wire('unit1.value', 'f1.h'),
+        wire('d2.value', 'f2.w'),
+        wire('unit2.value', 'f2.h'),
+        wire('f1.A', 'check1.value'),
+        wire('f2.A', 'check2.value'),
+      ],
+    );
+    const evaluation = evaluateDocument(document, catalogues);
+    const feas = evaluation.outputs.find((entry) => entry.nodeId === 'feas') as FeasibilityResult;
+    // d1 → A1 = [0, 5, 10] (check1 >= 5: [F, T, T]); d2 → A2 = [0, 20] (check2 <= 10: [T, F]).
+    // Row-major over [d1 (3), d2 (2)]: AND is [F,F, T,F, T,F].
+    expect(feas.axes.map((axis) => axis.label)).toEqual(['d1', 'd2']);
+    expect(feas.mask).toEqual([false, false, true, false, true, false]);
+  });
+
+  it('throws a clear error when a referenced id is not a Check node', () => {
+    const document = documentOf(
+      [
+        input('d', scalar(20, 'mm')),
+        input('h', scalar(2, 'mm')),
+        formulaNode('area', refTo('area')),
+        outputNode('readout', { kind: 'print' }),
+        outputNode('feas', { kind: 'feasibility', checks: ['readout'] }),
+      ],
+      [wire('d.value', 'area.w'), wire('h.value', 'area.h'), wire('area.A', 'readout.value')],
+    );
+    expect(() => evaluateDocument(document, catalogues)).toThrow(/can only reference checks/u);
+  });
+
+  it('throws a clear error when a referenced id does not exist', () => {
+    const document = documentOf(
+      [input('d', scalar(20, 'mm')), outputNode('feas', { kind: 'feasibility', checks: ['nope'] })],
+      [],
+    );
+    expect(() => evaluateDocument(document, catalogues)).toThrow(/not a Check node, or has not been computed/u);
+  });
+});
+
+describe('sensitivity outputs', () => {
+  it('finds a candidate from a range input, bracketed by its own start/stop', () => {
+    const document = documentOf(
+      [
+        input('d', linear(10, 50, 3, 'mm'), { axisLabel: 'diameter' }),
+        input('h', scalar(2, 'mm')),
+        formulaNode('area', refTo('area')),
+        outputNode('sens', { kind: 'sensitivity' }),
+      ],
+      [wire('d.value', 'area.w'), wire('h.value', 'area.h'), wire('area.A', 'sens.value')],
+    );
+    const evaluation = evaluateDocument(document, catalogues);
+    const sens = evaluation.outputs.find((entry) => entry.nodeId === 'sens') as SensitivityResult;
+    expect(sens.kind).toBe('sensitivity');
+    const ranking = sens.rankings.find((entry) => entry.nodeId === 'd');
+    expect(ranking?.low).toBe(10);
+    expect(ranking?.high).toBe(50);
+    // A = d * 2mm, so at d=10 → 20mm², at d=50 → 100mm².
+    expect(ranking?.lowValue).toBeCloseTo(20);
+    expect(ranking?.highValue).toBeCloseTo(100);
+    expect(ranking?.swing).toBeCloseTo(80);
+  });
+
+  it('finds a candidate from a scalar input whose wired port declares a validRange — the first real consumer of it', () => {
+    const bounded = catalogueOf([
+      {
+        id: 'bounded', version: 1,
+        output: { kind: 'numeric', name: 'y', unit: 'mm' },
+        inputs: [{ kind: 'numeric', name: 'x', unit: 'mm', validRange: { min: 5, max: 15 } }],
+        expression: 'x * 2',
+        description: 'Invented for a validRange sensitivity test.',
+        status: 'unverified',
+      },
+    ]);
+    const document = documentOf(
+      [input('x', scalar(8, 'mm')), formulaNode('f', refTo('bounded', bounded)), outputNode('sens', { kind: 'sensitivity' })],
+      [wire('x.value', 'f.x'), wire('f.y', 'sens.value')],
+    );
+    const evaluation = evaluateDocument(document, [bounded]);
+    const sens = evaluation.outputs.find((entry) => entry.nodeId === 'sens') as SensitivityResult;
+    const ranking = sens.rankings.find((entry) => entry.nodeId === 'x');
+    expect(ranking?.low).toBe(5);
+    expect(ranking?.high).toBe(15);
+    expect(ranking?.lowValue).toBeCloseTo(10);
+    expect(ranking?.highValue).toBeCloseTo(30);
+  });
+
+  it('excludes a categorical sweep — a numeric swing has no meaning on an unordered axis', () => {
+    const document = documentOf(
+      [
+        input('cls', { kind: 'categoricalList', values: ['A', 'B'] }, { axisLabel: 'cls' }),
+        input('x', linear(0, 10, 2, 'mm'), { axisLabel: 'x' }),
+      ],
+      [],
+    );
+    const resolution = resolveGraph(document, catalogues);
+    const candidates = sensitivityCandidates(document, resolution);
+    expect(candidates.some((entry) => entry.nodeId === 'cls')).toBe(false);
+    expect(candidates.some((entry) => entry.nodeId === 'x')).toBe(true);
+  });
+
+  it('ranks candidates by swing, descending', () => {
+    const document = documentOf(
+      [
+        input('a', linear(0, 100, 2, 'mm'), { axisLabel: 'a' }),
+        input('b', linear(0, 1, 2, 'mm'), { axisLabel: 'b' }),
+        formulaNode('sum', refTo('addTwo')),
+        outputNode('sens', { kind: 'sensitivity' }),
+      ],
+      [wire('a.value', 'sum.a'), wire('b.value', 'sum.b'), wire('sum.sum', 'sens.value')],
+    );
+    const evaluation = evaluateDocument(document, catalogues);
+    const sens = evaluation.outputs.find((entry) => entry.nodeId === 'sens') as SensitivityResult;
+    expect(sens.rankings.map((entry) => entry.nodeId)).toEqual(['a', 'b']);
+    expect(sens.rankings[0]?.swing ?? 0).toBeGreaterThan(sens.rankings[1]?.swing ?? 0);
+  });
+
+  it('skips a candidate that throws at evaluation time, with a warning, rather than aborting the whole result', () => {
+    // A lookup cell that is explicitly undefined for one bound of the
+    // candidate's bracket but not the other — the candidate's own low/high
+    // splice is what triggers it, not the document's authored value (5,
+    // 'B'), which lands on a defined cell and lets the top-level evaluation
+    // succeed.
+    const lookupCatalogue = catalogueOf([
+      {
+        id: 'lookup', version: 1,
+        output: { kind: 'numeric', name: 'result', unit: 'mm' },
+        inputs: [
+          { kind: 'numeric', name: 'size', unit: 'mm', validRange: { min: 10, max: 20 } },
+          { kind: 'categorical', name: 'class', domain: ['A', 'B'] },
+        ],
+        expression: '0 * size',
+        lookup: {
+          axes: [
+            { input: 'size', kind: 'numeric', values: [10, 20] },
+            { input: 'class', kind: 'categorical', values: ['A', 'B'] },
+          ],
+          // (size ≤ 10, A) → 1; (size ≤ 10, B) → 2; (size ≤ 20, A) → 3; (size ≤ 20, B) → undefined.
+          values: [1, 2, 3, null],
+        },
+        description: 'Invented lookup table, for a sensitivity skip test.', status: 'unverified',
+      },
+    ]);
+    const document = documentOf(
+      [
+        input('size', scalar(5, 'mm')),
+        input('class', { kind: 'categorical', value: 'B' }),
+        formulaNode('lookup', refTo('lookup', lookupCatalogue)),
+        outputNode('sens', { kind: 'sensitivity' }),
+      ],
+      [
+        wire('size.value', 'lookup.size'),
+        wire('class.value', 'lookup.class'),
+        wire('lookup.result', 'sens.value'),
+      ],
+    );
+    const evaluation = evaluateDocument(document, [lookupCatalogue]);
+    const sens = evaluation.outputs.find((entry) => entry.nodeId === 'sens') as SensitivityResult;
+    expect(sens.rankings).toEqual([]);
+    expect(evaluation.warnings.some((warning) => warning.kind === 'sensitivityCandidateSkipped')).toBe(true);
+  });
+
+  it('does not blow up when the document carries a second analysis output — every sub-evaluation strips output nodes first', () => {
+    const document = documentOf(
+      [
+        input('a', linear(0, 10, 2, 'mm'), { axisLabel: 'a' }),
+        input('b', linear(0, 1, 2, 'mm'), { axisLabel: 'b' }),
+        formulaNode('sum', refTo('addTwo')),
+        outputNode('sens1', { kind: 'sensitivity' }),
+        outputNode('sens2', { kind: 'sensitivity' }),
+      ],
+      [wire('a.value', 'sum.a'), wire('b.value', 'sum.b'), wire('sum.sum', 'sens1.value'), wire('sum.sum', 'sens2.value')],
+    );
+    const start = Date.now();
+    const evaluation = evaluateDocument(document, catalogues);
+    expect(Date.now() - start).toBeLessThan(3000);
+    const sens1 = evaluation.outputs.find((entry) => entry.nodeId === 'sens1') as SensitivityResult;
+    const sens2 = evaluation.outputs.find((entry) => entry.nodeId === 'sens2') as SensitivityResult;
+    expect(sens1.rankings).toHaveLength(2);
+    expect(sens2.rankings).toHaveLength(2);
   });
 });

@@ -148,6 +148,8 @@ export type {
   CheckOutput,
   PlotOutput,
   TableOutput,
+  FeasibilityOutput,
+  SensitivityOutput,
   Comparison,
 } from './document.js';
 
