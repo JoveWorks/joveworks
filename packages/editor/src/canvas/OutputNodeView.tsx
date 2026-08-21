@@ -168,7 +168,7 @@ function Verdict({ nodeId }: { readonly nodeId: string }): ReactElement | null {
 }
 
 export function OutputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>): ReactElement | null {
-  const { document, analysis, edit, expanded, toggleExpanded, hovered } = useGraph();
+  const { document, analysis, edit, expanded, toggleExpanded, hovered, setHovered } = useGraph();
   const { numberFormat } = useSettings();
   const format = toUnitsFormat(numberFormat);
   const node = document.nodes.find((candidate) => candidate.id === id);
@@ -384,13 +384,24 @@ export function OutputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>
             <>
               <label className="wide">
                 checks
-                <ul className="table-columns">
+                {/* No wire connects these — a Feasibility node references
+                    existing Check nodes by id, the same "name it, don't
+                    wire it" pattern a plot's axis picker already uses for
+                    range nodes. Hovering a row highlights the Check node it
+                    names on the canvas (and lights back up here if that
+                    Check is hovered from its own notebook entry instead),
+                    so the reference is still visible even without a wire. */}
+                <ul className="check-list nodrag">
                   {checkNodes.length === 0 ? (
-                    <li className="table-column table-column-empty">no Check nodes in this document yet</li>
+                    <li className="check-list-empty">no Check nodes in this document yet</li>
                   ) : (
                     checkNodes.map((checkNode) => (
-                      <li key={checkNode.id} className="table-column nodrag">
-                        <label>
+                      <li key={checkNode.id}>
+                        <label
+                          className={`check-list-item${hovered.has(checkNode.id) ? ' check-list-item-active' : ''}`}
+                          onMouseEnter={() => setHovered(() => new Set([checkNode.id]))}
+                          onMouseLeave={() => setHovered(() => new Set())}
+                        >
                           <input
                             type="checkbox"
                             checked={output.checks.includes(checkNode.id)}
@@ -401,7 +412,7 @@ export function OutputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>
                               setOutput({ ...output, checks });
                             }}
                           />
-                          {checkNode.label ?? checkNode.id}
+                          <span className="check-list-label">{checkNode.label ?? checkNode.id}</span>
                         </label>
                       </li>
                     ))
