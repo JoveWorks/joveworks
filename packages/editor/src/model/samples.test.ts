@@ -21,7 +21,7 @@ import { fromCanonical, parseUnit } from '@joveworks/units';
 import { analyse } from './analysis';
 import { baseCatalogue, bundledCatalogues } from './catalogues';
 import { GAP } from './layout-constants';
-import { beltLab, millingPowerEnvelope, monteCarloClearance, padPressure, pressfitLab } from './samples';
+import { beltLab, depthOfField, millingPowerEnvelope, monteCarloClearance, padPressure, pressfitLab } from './samples';
 
 const path = process.env['JOVEWORKS_CATALOGUE'];
 const present = path !== undefined && path.length > 0 && existsSync(path);
@@ -143,6 +143,46 @@ describe('the milling power-envelope study through the editor', () => {
     expect(feasible.mask).toHaveLength(20);
     expect(feasible.mask.some(Boolean)).toBe(true);
     expect(feasible.mask.some((value) => !value)).toBe(true);
+  });
+});
+
+describe('the depth-of-field study through the editor', () => {
+  it('offers the study from the bundled public catalogue', () => {
+    expect(depthOfField(PUBLIC_CATALOGUES)).toBeDefined();
+  });
+
+  it('evaluates its 5 × 5 grid and crosses the depth-of-field threshold', () => {
+    const document = depthOfField(PUBLIC_CATALOGUES);
+    expect(document).toBeDefined();
+    const analysis = analyse(document as NonNullable<typeof document>, PUBLIC_CATALOGUES);
+
+    expect(analysis.message).toBeUndefined();
+    expect([...analysis.states.values()].every((state) => state === 'ok')).toBe(true);
+
+    const dof = analysis.evaluation?.values.get('dof.DoF');
+    expect(dof?.kind).toBe('numeric');
+    const depths = dof?.kind === 'numeric' ? dof.data.map((value) => fromCanonical(value, parseUnit('m'))) : [];
+    expect(depths).toHaveLength(25);
+    // Every point stays within the near/far-limit formula's own domain
+    // (s < H) — the whole grid is a valid reading, not merely 25 numbers.
+    expect(depths.every((value) => Number.isFinite(value) && value > 0)).toBe(true);
+    expect(Math.min(...depths)).toBeCloseTo(0.031, 3);
+    expect(Math.max(...depths)).toBeCloseTo(6.763, 3);
+
+    const outputs = analysis.evaluation?.outputs ?? [];
+    // A mixed pass/fail, like the milling study above: worth demonstrating
+    // the shaded Feasibility output precisely because it is not uniform.
+    const feasible = outputs.find((entry) => entry.nodeId === 'out_feasible');
+    expect(feasible?.kind).toBe('feasibility');
+    if (feasible?.kind !== 'feasibility') throw new Error('missing feasibility output');
+    expect(feasible.mask).toHaveLength(25);
+    expect(feasible.mask.some(Boolean)).toBe(true);
+    expect(feasible.mask.some((value) => !value)).toBe(true);
+
+    const table = outputs.find((entry) => entry.nodeId === 'out_table');
+    expect(table?.kind).toBe('table');
+    if (table?.kind !== 'table') throw new Error('missing depth-of-field table');
+    expect(table.axes.map((axis) => axis.id)).toEqual(['f', 'N']);
   });
 });
 

@@ -106,10 +106,12 @@ import {
   PRESSFIT_LAB_FORMULAS,
   CANTILEVER_FORMULAS,
   MILLING_STUDY_FORMULAS,
+  DEPTH_OF_FIELD_FORMULAS,
   beltLab,
   pressfitLab,
   cantileverHollowSections,
   millingPowerEnvelope,
+  depthOfField,
   monteCarloClearance,
   padPressure,
   platformFootprint,
@@ -167,6 +169,7 @@ function exampleDocument(
   if (id === 'belt-lab') return beltLab(catalogues, locale);
   if (id === 'pressfit-lab') return pressfitLab(catalogues, locale);
   if (id === 'cantilever-hollow-sections') return cantileverHollowSections(catalogues, locale);
+  if (id === 'depth-of-field') return depthOfField(catalogues, locale);
   return millingPowerEnvelope(catalogues, locale);
 }
 
@@ -647,6 +650,7 @@ function AppShell(): ReactElement {
   const pressfitAvailable = provides(catalogues, PRESSFIT_LAB_FORMULAS);
   const cantileverAvailable = provides(catalogues, CANTILEVER_FORMULAS);
   const millingAvailable = provides(catalogues, MILLING_STUDY_FORMULAS);
+  const depthOfFieldAvailable = provides(catalogues, DEPTH_OF_FIELD_FORMULAS);
 
   const loadCatalogueFile = async (): Promise<void> => {
     const file = await openTextFile();
@@ -891,6 +895,16 @@ function AppShell(): ReactElement {
           openExample('milling-power-envelope');
           setShowNotebook(true);
           setTutorial({ kind: 'example', id: 'milling-power-envelope' });
+        }),
+    },
+    {
+      label: t('Depth of field — aperture and focal length'),
+      disabled: !depthOfFieldAvailable,
+      onClick: () =>
+        guardDiscard(() => {
+          openExample('depth-of-field');
+          setShowNotebook(true);
+          setTutorial({ kind: 'example', id: 'depth-of-field' });
         }),
     },
   ];

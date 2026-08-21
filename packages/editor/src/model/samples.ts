@@ -861,3 +861,151 @@ export function millingPowerEnvelope(catalogues: readonly Catalogue[], locale: A
 
   return localizeExample(document('milling-power-envelope', 'Pocket milling — power envelope', withFrames, edges, frames), locale);
 }
+
+// --- depth of field, from the public Photography catalogue ------------------
+
+export const DEPTH_OF_FIELD_FORMULAS = [
+  'photography.dof.circle-of-confusion',
+  'photography.dof.hyperfocal-distance',
+  'photography.dof.near-limit',
+  'photography.dof.far-limit',
+  'photography.dof.total',
+] as const;
+
+/**
+ * How much of the scene stays acceptably sharp, swept over focal length and
+ * aperture — not one number for one setting, but the grid a kit bag
+ * represents.
+ *
+ * The subject stays fixed at 1.5 m throughout, and the aperture list stops at
+ * f/11: both keep the hyperfocal distance comfortably above the subject
+ * distance for every cell (`photography.dof.far-limit` only holds while
+ * `s < H`), so every point in the grid is a valid reading rather than an
+ * out-of-domain one.
+ */
+export function depthOfField(catalogues: readonly Catalogue[], locale: AppLocale = 'en'): GraphDocument | undefined {
+  if (!provides(catalogues, DEPTH_OF_FIELD_FORMULAS)) return undefined;
+  const formula = (id: string): Formula => lookup(catalogues, id) as Formula;
+
+  const mm = parseUnit('mm');
+  const m = parseUnit('m');
+
+  const nodes: GraphNode[] = [
+    input('d', 'Sensor diagonal d', { kind: 'scalar', value: 43.27, unit: mm }, at(-165, 495)),
+    formulaNode('coc', formula('photography.dof.circle-of-confusion'), at(165, 660)),
+    input('s', 'Subject distance s', { kind: 'scalar', value: 1.5, unit: m }, at(-165, 220)),
+
+    {
+      ...input('f', 'Focal length f', { kind: 'linear', start: 24, stop: 105, points: 5, unit: mm }, at(-165, 330)),
+      axisLabel: 'focal length f (mm)',
+    },
+    {
+      ...input('N', 'Aperture N', { kind: 'list', values: [2.8, 4, 5.6, 8, 11], unit: parseUnit('') }, at(-165, 0)),
+      axisLabel: 'aperture N (f-stop)',
+    },
+    formulaNode('hyperfocal', formula('photography.dof.hyperfocal-distance'), at(495, 605)),
+    formulaNode('near_limit', formula('photography.dof.near-limit'), at(880, 275)),
+    formulaNode('far_limit', formula('photography.dof.far-limit'), at(880, 550)),
+    formulaNode('dof', formula('photography.dof.total'), at(1210, 385)),
+
+    output(
+      'out_table',
+      'Depth of field by lens and aperture',
+      { kind: 'table', columns: ['f', 'N', 'DoF'], figures: { f: 0, N: 1, DoF: 2 } },
+      at(1595, -55),
+    ),
+
+    output(
+      'out_dof_plot',
+      'Depth of field across the grid',
+      { kind: 'plot', x: 'N', series: 'f', contour: true, unit: m },
+      at(1595, 275),
+    ),
+    output(
+      'out_dof_check',
+      'At least 0.5 m of depth of field',
+      { kind: 'check', comparison: '>=', threshold: { value: 0.5, unit: m } },
+      at(1595, 495),
+    ),
+    output(
+      'out_feasible',
+      'Usable depth of field across the grid',
+      { kind: 'feasibility', checks: ['out_dof_check'], x: 'N', series: 'f' },
+      at(1595, 715),
+    ),
+
+    output('out_sensitivity', 'What moves depth of field most', { kind: 'sensitivity' }, at(1595, 990)),
+  ];
+
+  const edges = [
+    wire('d.value', 'coc.d'),
+
+    wire('f.value', 'hyperfocal.f'),
+    wire('N.value', 'hyperfocal.N'),
+    wire('coc.c', 'hyperfocal.c'),
+
+    wire('hyperfocal.H', 'near_limit.H'),
+    wire('s.value', 'near_limit.s'),
+    wire('f.value', 'near_limit.f'),
+
+    wire('hyperfocal.H', 'far_limit.H'),
+    wire('s.value', 'far_limit.s'),
+    wire('f.value', 'far_limit.f'),
+
+    wire('far_limit.D_f', 'dof.D_f'),
+    wire('near_limit.D_n', 'dof.D_n'),
+
+    wire('f.value', 'out_table.f'),
+    wire('N.value', 'out_table.N'),
+    wire('dof.DoF', 'out_table.DoF'),
+
+    wire('dof.DoF', 'out_dof_plot.value'),
+    wire('dof.DoF', 'out_dof_check.value'),
+    wire('dof.DoF', 'out_sensitivity.value'),
+  ];
+
+  const frames = [
+    {
+      id: 'sweep',
+      title: '1. Aperture × focal length grid',
+      note:
+        'Focal length sweeps linearly from 24 to 105 mm across five points, crossed with five ' +
+        'full-stop apertures, producing a 5×5 grid of hyperfocal distances and depths of field.',
+      position: at(1540, -110),
+      size: { width: 330, height: 275 },
+    },
+    {
+      id: 'depth-of-field',
+      title: '2. Depth of field across the grid',
+      note:
+        'Wide focal lengths hold well over half a metre of depth of field even wide open; the ' +
+        '105 mm end never reaches it in this grid, wide open or stopped down to f/11. 0.5 m marks ' +
+        'a usable margin for this subject distance, not a universal minimum.',
+      position: at(1540, 220),
+      size: { width: 330, height: 660 },
+    },
+    {
+      id: 'sensitivity',
+      title: '3. What drives depth of field',
+      note:
+        'The tornado ranks focal length and aperture by how much each moves total depth of ' +
+        'field on its own — useful for deciding which dial to reach for first.',
+      position: at(1540, 935),
+      size: { width: 330, height: 220 },
+    },
+  ];
+
+  const frameForOutput: Readonly<Record<string, string>> = {
+    out_table: 'sweep',
+    out_dof_plot: 'depth-of-field',
+    out_dof_check: 'depth-of-field',
+    out_feasible: 'depth-of-field',
+    out_sensitivity: 'sensitivity',
+  };
+  const withFrames = nodes.map((node) => {
+    const frameId = frameForOutput[node.id];
+    return node.kind === 'output' && frameId !== undefined ? { ...node, frameId } : node;
+  });
+
+  return localizeExample(document('depth-of-field', 'Depth of field — aperture and focal length', withFrames, edges, frames), locale);
+}

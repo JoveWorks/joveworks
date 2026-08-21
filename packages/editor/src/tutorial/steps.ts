@@ -139,6 +139,16 @@ const EXAMPLE_COPY = {
     studyBody: 'Feed, removal rate, power, torque and cutting time are evaluated for the full chip-load × engagement grid without duplicating the graph.',
     resultBody: 'Read the power and torque contours together: their thresholds carve out the feasible region, while the productivity plot shows what is gained inside it.',
   },
+  'depth-of-field': {
+    title: 'Depth of field — aperture and focal length',
+    opening: 'This example sweeps depth of field over focal length and full-stop apertures, for a subject held at a fixed 1.5 m.',
+    inputTarget: '[data-tour="input-f"]',
+    inputTitle: 'Two swept axes',
+    inputBody: 'Focal length is a linear sweep from 24 to 105 mm; aperture is an explicit list of full stops. Together they grid the whole graph beneath.',
+    studyTitle: 'One grid, several readings',
+    studyBody: 'Hyperfocal distance, near limit, far limit and total depth of field are evaluated for every focal-length × aperture pair in the grid.',
+    resultBody: 'The 0.5 m check turns the contour into a decision: the wide end clears it at almost any aperture, while the 105 mm end never does in this grid — the sensitivity tornado says which dial moves the result more.',
+  },
 } as const satisfies Readonly<Record<string, ExampleTutorialCopy>>;
 
 export type TutorialExampleId = keyof typeof EXAMPLE_COPY;

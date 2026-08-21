@@ -232,3 +232,5 @@ Root cause found: `compatiblePort` — a document clone plus a full `resolveGrap
 Investigated, not changed: `@xyflow/react`'s `ZoomPane` takes `panOnScrollSpeed` but exposes no equivalent for scroll/pinch zoom — no sensitivity knob to turn. The only way to slow it down would be disabling `zoomOnScroll`/`zoomOnPinch` and hand-rolling zoom from raw `onWheel` events (distinguishing pinch from pan by `ctrlKey`, as browsers report trackpad pinch) — a real rewrite of core canvas interaction, and one I can't verify without trackpad hardware in front of me. Given two-finger swipe already covers pan, leaving this as a discussion item rather than guessing at a gesture handler.
 
 **43. Bug: Equation node output unit cannot be set**
+
+**44. Bug: Hovering over the output of a node does not highlight connected nodes/edges**. Only the port is recognized, not the full output text
