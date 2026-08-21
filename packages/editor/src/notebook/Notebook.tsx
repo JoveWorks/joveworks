@@ -44,10 +44,14 @@ import {
   reframe,
   removeNodes,
   renameNode,
+  reorderColumn,
   reorderFrame,
+  setColumnFigures,
+  toggleMark,
   updateFrame,
   updateNode,
 } from '../model/document';
+import { NumberField } from '../canvas/fields';
 import { toUnitsFormat } from '../model/numberFormat';
 import { display, displayNumber } from '../model/quantity';
 import { checkVerdict, summarise, summariseCheck } from '../model/values';
@@ -173,12 +177,18 @@ function OutputTitle({ node }: { readonly node: OutputNode | MonteCarloReceiverN
   );
 }
 
-function Result({ result, node }: { readonly result: OutputResult; readonly node: OutputNode }): ReactElement {
-  const { document } = useGraph();
+function Result({ result, node }: { readonly result: OutputResult; readonly node: OutputNode }): ReactElement | null {
+  const { document, edit } = useGraph();
   const { numberFormat, locale } = useSettings();
   const notebookLocale = document.notebookLocale ?? locale;
   const t = (english: string): string => phrase(notebookLocale, english);
   const format: NumberFormat = toUnitsFormat(numberFormat);
+  // A table's own drag state — one table at a time can be mid-reorder, and
+  // each Result instance owns just its own (same locality as the node
+  // panel's original column list before this moved here).
+  const [columnDrag, setColumnDrag] = useState<
+    { readonly over: string; readonly position: 'before' | 'after' } | undefined
+  >(undefined);
 
   if (result.kind === 'print') {
     return (
@@ -241,7 +251,12 @@ function Result({ result, node }: { readonly result: OutputResult; readonly node
   }
 
   if (result.kind === 'table') {
+    // In sync with result.kind by construction — the kernel only produces a
+    // 'table' OutputResult from a 'table' Output.
+    const output = node.output;
+    if (output.kind !== 'table') return null;
     const rows = Math.max(...result.columns.map((column) => column.series.data.length));
+    const marks = new Set(output.marks ?? []);
     return (
       <div className="result table">
         <span className="label">
@@ -251,23 +266,65 @@ function Result({ result, node }: { readonly result: OutputResult; readonly node
           <thead>
             <tr>
               {result.columns.map((column) => (
-                <th key={column.name}>
+                <th
+                  key={column.name}
+                  className={columnDrag?.over === column.name ? `drag-over-${columnDrag.position}` : undefined}
+                  draggable
+                  onDragStart={(event) => {
+                    event.dataTransfer.setData('text/plain', column.name);
+                    event.dataTransfer.effectAllowed = 'move';
+                  }}
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                    event.dataTransfer.dropEffect = 'move';
+                    const bounds = event.currentTarget.getBoundingClientRect();
+                    const position = event.clientX - bounds.left < bounds.width / 2 ? 'before' : 'after';
+                    setColumnDrag({ over: column.name, position });
+                  }}
+                  onDragLeave={() => setColumnDrag(undefined)}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    const position = columnDrag?.position;
+                    setColumnDrag(undefined);
+                    if (position === undefined) return;
+                    const source = event.dataTransfer.getData('text/plain');
+                    if (source.length === 0) return;
+                    edit((current) => reorderColumn(current, node.id, source, column.name, position));
+                  }}
+                >
                   <ParameterLabel name={column.name} unit={column.unit} unitClassName="unit" />
+                  <NumberField
+                    className="column-figures"
+                    value={output.figures?.[column.name] ?? 4}
+                    integer
+                    minimum={1}
+                    autoSize={1}
+                    title={`decimal figures for ${column.name}`}
+                    onCommit={(figures) =>
+                      edit((current) => setColumnFigures(current, node.id, column.name, figures))
+                    }
+                  />
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
             {Array.from({ length: rows }, (_unused, row) => (
-              <tr key={row}>
+              <tr
+                key={row}
+                className={marks.has(row) ? 'marked' : undefined}
+                title="Click to mark this row."
+                onClick={() => edit((current) => toggleMark(current, node.id, row))}
+              >
                 {result.columns.map((column) => {
                   const cell = column.series.data[row];
+                  const figures = output.figures?.[column.name] ?? 4;
                   return (
                     <td key={column.name}>
                       {cell === undefined
                         ? ''
                         : typeof cell === 'number'
-                          ? displayNumber(cell, column.unit, 4, format)
+                          ? displayNumber(cell, column.unit, figures, format)
                           : cell}
                     </td>
                   );

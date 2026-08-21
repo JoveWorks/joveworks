@@ -331,17 +331,18 @@ export function renameColumn(
   from: string,
   to: string,
 ): GraphDocument {
-  const renamed = updateNode<OutputNode>(document, nodeId, (node) =>
-    node.output.kind === 'table'
-      ? {
-          ...node,
-          output: {
-            ...node.output,
-            columns: node.output.columns.map((column) => (column === from ? to : column)),
-          },
-        }
-      : node,
-  );
+  const renamed = updateNode<OutputNode>(document, nodeId, (node) => {
+    if (node.output.kind !== 'table') return node;
+    const { [from]: figuresForColumn, ...otherFigures } = node.output.figures ?? {};
+    return {
+      ...node,
+      output: {
+        ...node.output,
+        columns: node.output.columns.map((column) => (column === from ? to : column)),
+        ...(figuresForColumn === undefined ? {} : { figures: { ...otherFigures, [to]: figuresForColumn } }),
+      },
+    };
+  });
   return {
     ...renamed,
     edges: renamed.edges.map((edge) => {
@@ -354,11 +355,19 @@ export function renameColumn(
 
 /** Drop a table column and whatever edge fed it — the port it wired to is gone with it. */
 export function removeColumn(document: GraphDocument, nodeId: string, name: string): GraphDocument {
-  const dropped = updateNode<OutputNode>(document, nodeId, (node) =>
-    node.output.kind === 'table'
-      ? { ...node, output: { ...node.output, columns: node.output.columns.filter((column) => column !== name) } }
-      : node,
-  );
+  const dropped = updateNode<OutputNode>(document, nodeId, (node) => {
+    if (node.output.kind !== 'table') return node;
+    const { [name]: _dropped, ...otherFigures } = node.output.figures ?? {};
+    const { figures: _current, ...withoutFigures } = node.output;
+    return {
+      ...node,
+      output: {
+        ...withoutFigures,
+        columns: node.output.columns.filter((column) => column !== name),
+        ...(Object.keys(otherFigures).length === 0 ? {} : { figures: otherFigures }),
+      },
+    };
+  });
   return {
     ...dropped,
     edges: dropped.edges.filter((edge) => !(edge.to.node === nodeId && edge.to.port === name)),
@@ -518,6 +527,39 @@ export function reorderColumn(
     const targetIndex = columns.indexOf(target);
     columns.splice(position === 'after' ? targetIndex + 1 : targetIndex, 0, source);
     return { ...node, output: { ...node.output, columns } };
+  });
+}
+
+/** Set (or, passing `undefined`, clear back to the default) a table column's decimal-figure count. */
+export function setColumnFigures(
+  document: GraphDocument,
+  nodeId: string,
+  column: string,
+  figures: number | undefined,
+): GraphDocument {
+  return updateNode<OutputNode>(document, nodeId, (node) => {
+    if (node.output.kind !== 'table') return node;
+    const { [column]: _dropped, ...otherFigures } = node.output.figures ?? {};
+    const next = figures === undefined ? otherFigures : { ...otherFigures, [column]: figures };
+    const { figures: _current, ...withoutFigures } = node.output;
+    return {
+      ...node,
+      output: Object.keys(next).length === 0 ? withoutFigures : { ...withoutFigures, figures: next },
+    };
+  });
+}
+
+/** Toggle whether a table row is marked — a student calling out a specific swept value in the notebook. */
+export function toggleMark(document: GraphDocument, nodeId: string, row: number): GraphDocument {
+  return updateNode<OutputNode>(document, nodeId, (node) => {
+    if (node.output.kind !== 'table') return node;
+    const marks = node.output.marks ?? [];
+    const next = marks.includes(row) ? marks.filter((mark) => mark !== row) : [...marks, row];
+    const { marks: _dropped, ...withoutMarks } = node.output;
+    return {
+      ...node,
+      output: next.length === 0 ? withoutMarks : { ...withoutMarks, marks: next },
+    };
   });
 }
 

@@ -91,10 +91,23 @@ begins.
 
 **1. Plot node's remaining options.** A first slice landed: three axis slots
 (`x`, `series`, `facet`), auto-assigned from whatever axes the wired value
-varies along. Still open: marking specific values on a curve, and a fourth
-axis (facet-row × facet-col) if that turns out to be needed.
-Instead of setting options on the node, we can set them in the notebook and
-store it in the node. The same goes for the table output. More complex settings should be set in the notebook. Number of decimal digits per column, highlighted values, drag and drop columns to reorder (and remove that option from the node)
+varies along. The table half of "complex settings live in the notebook, not
+the node panel" has landed too: a table's column order, per-column decimal
+figures and marked rows are now edited directly in the rendered notebook
+table (drag a header to reorder, a small figures field per column, click a
+row to mark it) and only stored on the node (`TableOutput.figures`,
+`TableOutput.marks`); the node panel keeps just rename and remove. Marks are
+row-index based for now, not axis-value based, so a sweep that changes shape
+can leave a mark pointing at the wrong row — an accepted gap until this is
+unified with the plot's own version below.
+
+Still open, on the plot side: marking specific values on a curve (the same
+"mark a value" affordance as the table's, extended to a curve — and the
+natural point to revisit index- vs. axis-value-based marks so both share one
+representation), a fourth axis (facet-row × facet-col) if that turns out to
+be needed, and a settable plot height. Plot width was raised too but folded
+into the larger "whole notebook redesign" and postponed rather than picked up
+here.
 
 **2. A range's two bounds showing different units** — `10 mm ... 1 m`, each
 bound keeping its own unit rather than both sharing one. Two ways to build
@@ -202,3 +215,5 @@ the private `machine-design-catalogue` repository, not here.
 Out of scope for this repo — bearing pad/platform formulas are R&M catalogue
 content and live in the private `machine-design-catalogue` repository, not
 here.
+
+**39. Change: Checkmark in the check output nodes should be on other side of label** to be consistent with other notebook items.

@@ -89,7 +89,7 @@ const study: JsonObject = {
       kind: 'output',
       id: 'o-table',
       position: { x: 520, y: 360 },
-      output: { kind: 'table', columns: ['d', 'S'] },
+      output: { kind: 'table', columns: ['d', 'S'], figures: { d: 1, S: 3 }, marks: [0, 5] },
     },
     {
       kind: 'output',

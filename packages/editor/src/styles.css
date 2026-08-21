@@ -1791,36 +1791,9 @@ aside.right {
   position: relative;
 }
 
-.column-grip {
-  flex: 0 0 auto;
-  cursor: grab;
-  color: var(--muted);
-}
-
 .table-column .column-name {
   flex: 1 1 auto;
   min-width: 0;
-}
-
-/* Same line-at-the-edge convention as .notebook-section's drag-over (S30's
-   reorder gesture, reused here for a table's columns). */
-.table-column.drag-over-before::before,
-.table-column.drag-over-after::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 2px;
-  border-radius: 1px;
-  background: var(--accent);
-}
-
-.table-column.drag-over-before::before {
-  top: -2px;
-}
-
-.table-column.drag-over-after::after {
-  bottom: -2px;
 }
 
 .column-remove {
@@ -2820,9 +2793,56 @@ aside.right {
   text-align: right;
 }
 
+.notebook th {
+  position: relative;
+  cursor: grab;
+}
+
 .notebook th .unit {
   color: var(--muted);
   font-weight: 400;
+}
+
+.notebook .column-figures {
+  display: block;
+  margin: 0 0 0 auto;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+/* Same edge-line drag-over convention as .notebook-section's own reorder —
+ * vertical here because a table's columns sit side by side, not stacked. */
+.notebook th.drag-over-before::before,
+.notebook th.drag-over-after::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--accent);
+}
+
+.notebook th.drag-over-before::before {
+  left: -1px;
+}
+
+.notebook th.drag-over-after::after {
+  right: -1px;
+}
+
+.notebook tbody tr {
+  cursor: pointer;
+}
+
+.notebook tbody tr:hover {
+  background: var(--panel);
+}
+
+.notebook tbody tr.marked,
+.notebook tbody tr.marked:hover {
+  background: var(--accent-wash);
+  font-weight: 600;
 }
 
 .notebook .caption {

@@ -41,7 +41,9 @@ import {
   renameNode,
   reorderColumn,
   setClosureExpression,
+  setColumnFigures,
   syncColumnLabels,
+  toggleMark,
   uniqueId,
   updateNode,
 } from './document';
@@ -293,6 +295,37 @@ describe('table output columns', () => {
     const before = reorderColumn(three, 't', 'b', 'value', 'before');
     const beforeNode = before.nodes.find((entry) => entry.id === 't') as OutputNode;
     expect(beforeNode.output.kind === 'table' && beforeNode.output.columns).toEqual(['b', 'value', 'a']);
+  });
+
+  it('sets and clears a column figures count, edited in the notebook rather than the node panel', () => {
+    const figured = setColumnFigures(withTable, 't', 'value', 2);
+    const node = figured.nodes.find((entry) => entry.id === 't') as OutputNode;
+    expect(node.output.kind === 'table' && node.output.figures).toEqual({ value: 2 });
+
+    const cleared = setColumnFigures(figured, 't', 'value', undefined);
+    const clearedNode = cleared.nodes.find((entry) => entry.id === 't') as OutputNode;
+    expect(clearedNode.output.kind === 'table' && clearedNode.output.figures).toBeUndefined();
+  });
+
+  it('carries a column figures count forward across a rename, and drops it on removal', () => {
+    const figured = setColumnFigures(withTable, 't', 'value', 2);
+    const renamed = renameColumn(figured, 't', 'value', 'width');
+    const renamedNode = renamed.nodes.find((entry) => entry.id === 't') as OutputNode;
+    expect(renamedNode.output.kind === 'table' && renamedNode.output.figures).toEqual({ width: 2 });
+
+    const removed = removeColumn(figured, 't', 'value');
+    const removedNode = removed.nodes.find((entry) => entry.id === 't') as OutputNode;
+    expect(removedNode.output.kind === 'table' && removedNode.output.figures).toBeUndefined();
+  });
+
+  it('toggles a marked row on and off', () => {
+    const marked = toggleMark(withTable, 't', 3);
+    const node = marked.nodes.find((entry) => entry.id === 't') as OutputNode;
+    expect(node.output.kind === 'table' && node.output.marks).toEqual([3]);
+
+    const unmarked = toggleMark(marked, 't', 3);
+    const unmarkedNode = unmarked.nodes.find((entry) => entry.id === 't') as OutputNode;
+    expect(unmarkedNode.output.kind === 'table' && unmarkedNode.output.marks).toBeUndefined();
   });
 });
 

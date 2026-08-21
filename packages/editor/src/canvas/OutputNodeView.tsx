@@ -9,20 +9,21 @@
  * symbol, which is not what a student typed), and deleting that wire closes
  * the column with it (`closeEmptyColumns`, model/document.ts). Unlike a
  * spectrum's anonymous slots, a table's columns are named and have an order
- * a student cares about, so they also get a manual rename while still wired,
- * and drag to reorder — the same before/after-half drag Notebook.tsx's
- * sections use. Switching an output node's kind goes through
- * `changeOutputKind` (model/document.ts) rather than replacing `output`
- * outright, so a wire the student already made adapts to the new kind's
- * ports instead of being left pointing at one that no longer exists.
+ * a student cares about, so they get a manual rename here; order itself,
+ * decimal figures and marked rows are edited in the notebook instead
+ * (Notebook.tsx), where the rendered table is. Switching an output node's
+ * kind goes through `changeOutputKind` (model/document.ts) rather than
+ * replacing `output` outright, so a wire the student already made adapts to
+ * the new kind's ports instead of being left pointing at one that no longer
+ * exists.
  *
  * The check node is the one that earns its place immediately — `S ≥ 1.5` as a
  * badge is what makes the notebook a dimensioning report rather than a list of
  * numbers, and it is the scalar counterpart of the plot's threshold line.
  */
 
-import { useState, type MouseEvent, type ReactElement } from 'react';
-import { Handle, Position, type NodeProps } from '@xyflow/react';
+import { useEffect, type MouseEvent, type ReactElement } from 'react';
+import { Handle, Position, useUpdateNodeInternals, type NodeProps } from '@xyflow/react';
 
 import { parseExpression, toLatex } from '@joveworks/kernel';
 import { parseUnit } from '@joveworks/units';
@@ -47,7 +48,6 @@ import {
   removeNodes,
   renameColumn,
   renameNode,
-  reorderColumn,
   updateNode,
 } from '../model/document';
 import { Equation } from '../Equation';
@@ -151,10 +151,19 @@ export function OutputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>
   const { document, analysis, edit, expanded, toggleExpanded, hovered } = useGraph();
   const { numberFormat } = useSettings();
   const format = toUnitsFormat(numberFormat);
-  const [columnDrag, setColumnDrag] = useState<
-    { readonly over: string; readonly position: 'before' | 'after' } | undefined
-  >(undefined);
   const node = document.nodes.find((candidate) => candidate.id === id);
+  const tableColumns = node?.kind === 'output' && node.output.kind === 'table' ? node.output.columns : undefined;
+  // React Flow only remeasures a handle's screen position on a node resize
+  // (its ResizeObserver) — reordering a table's columns (Notebook.tsx) keeps
+  // the same port count and node height, so nothing triggers that on its
+  // own. Without this, an edge stays visually anchored to a handle's old
+  // position after a reorder even though the wire itself (keyed by port
+  // name, not position) is still attached to the right one — the port and
+  // its edge visibly disagree until something else forces a remeasure.
+  const updateNodeInternals = useUpdateNodeInternals();
+  useEffect(() => {
+    if (tableColumns !== undefined) updateNodeInternals(id);
+  }, [id, updateNodeInternals, JSON.stringify(tableColumns)]);
   if (node === undefined || node.kind !== 'output') return null;
 
   const highlightedPorts = new Set(data?.highlightedPorts ?? []);
@@ -356,39 +365,12 @@ export function OutputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>
           {output.kind === 'table' ? (
             <label className="wide">
               columns
+              {/* Order, per-column decimal figures and marked rows are all
+                  edited in the notebook (Notebook.tsx), where the rendered
+                  table actually is — this list is rename and remove only. */}
               <ul className="table-columns">
                 {output.columns.map((column) => (
-                  <li
-                    key={column}
-                    className={`table-column nodrag${
-                      columnDrag?.over === column ? ` drag-over-${columnDrag.position}` : ''
-                    }`}
-                    draggable
-                    onDragStart={(event) => {
-                      event.dataTransfer.setData('text/plain', column);
-                      event.dataTransfer.effectAllowed = 'move';
-                    }}
-                    onDragOver={(event) => {
-                      event.preventDefault();
-                      event.dataTransfer.dropEffect = 'move';
-                      const bounds = event.currentTarget.getBoundingClientRect();
-                      const position = event.clientY - bounds.top < bounds.height / 2 ? 'before' : 'after';
-                      setColumnDrag({ over: column, position });
-                    }}
-                    onDragLeave={() => setColumnDrag(undefined)}
-                    onDrop={(event) => {
-                      event.preventDefault();
-                      const position = columnDrag?.position;
-                      setColumnDrag(undefined);
-                      if (position === undefined) return;
-                      const source = event.dataTransfer.getData('text/plain');
-                      if (source.length === 0) return;
-                      edit((current) => reorderColumn(current, id, source, column, position));
-                    }}
-                  >
-                    <span className="column-grip" aria-hidden="true">
-                      ⠿
-                    </span>
+                  <li key={column} className="table-column nodrag">
                     <TextField
                       className="column-name"
                       value={column}

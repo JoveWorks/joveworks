@@ -124,11 +124,30 @@ export interface PlotOutput {
   readonly unit?: Unit;
 }
 
-/** A swept series as rows — standard sizes against results, an explicit-list range at its natural home. */
+/**
+ * A swept series as rows — standard sizes against results, an explicit-list
+ * range at its natural home.
+ *
+ * `figures` and `marks` are edited in the notebook, where the rendered table
+ * is, rather than in this node's own panel — the same "complex settings live
+ * where they're read" rule the notebook's captions and section notes already
+ * follow. They still live on this node because the table's rendering is a
+ * property of the output, not of the notebook view showing it.
+ */
 export interface TableOutput {
   readonly kind: 'table';
   /** Input port names on this node, in column order. */
   readonly columns: readonly string[];
+  /** Decimal-figure count per column, keyed by column name. Missing means the default (4). */
+  readonly figures?: Readonly<Record<string, number>>;
+  /**
+   * Row indices a student has marked to call a value out. Indices, not axis
+   * values, so a sweep that changes shape (a different sample count, a
+   * reordered range) can leave a mark pointing at a different row than the
+   * one it was set on — an accepted gap until this is unified with the
+   * plot's own "mark a point on the curve" affordance.
+   */
+  readonly marks?: readonly number[];
 }
 
 /**
@@ -448,7 +467,12 @@ function parseOutput(value: JsonValue, path: string): Output {
     case 'table': {
       const columns = readStringArray(required(object, 'columns', path), join(path, 'columns'));
       if (columns.length === 0) fail(join(path, 'columns'), 'is empty');
-      return { kind, columns };
+      return {
+        kind,
+        columns,
+        ...put('figures', optional(object, 'figures', path, parseTableFigures)),
+        ...put('marks', optional(object, 'marks', path, parseTableMarks)),
+      };
     }
 
     case 'equation':
@@ -484,7 +508,12 @@ function serializeOutput(output: Output): JsonObject {
         ...put('unit', output.unit?.symbol),
       };
     case 'table':
-      return { kind: output.kind, columns: [...output.columns] };
+      return {
+        kind: output.kind,
+        columns: [...output.columns],
+        ...put('figures', serializeTableFigures(output.figures)),
+        ...put('marks', output.marks === undefined || output.marks.length === 0 ? undefined : [...output.marks]),
+      };
     case 'equation':
       return { kind: output.kind };
   }
@@ -692,6 +721,25 @@ function parseDisplayUnits(value: JsonValue, path: string): Readonly<Record<stri
 function serializeDisplayUnits(units: Readonly<Record<string, Unit>> | undefined): JsonObject | undefined {
   if (units === undefined || Object.keys(units).length === 0) return undefined;
   return Object.fromEntries(Object.entries(units).map(([port, unit]) => [port, unit.symbol]));
+}
+
+function parseTableFigures(value: JsonValue, path: string): Readonly<Record<string, number>> {
+  const object = readObject(value, path);
+  return Object.fromEntries(
+    Object.entries(object).map(([column, figures]) => [
+      readName(column, path),
+      readInteger(figures, join(path, column), 1),
+    ]),
+  );
+}
+
+function serializeTableFigures(figures: Readonly<Record<string, number>> | undefined): JsonObject | undefined {
+  if (figures === undefined || Object.keys(figures).length === 0) return undefined;
+  return { ...figures };
+}
+
+function parseTableMarks(value: JsonValue, path: string): readonly number[] {
+  return readArray(value, path).map((entry, i) => readInteger(entry, `${path}[${i}]`, 0));
 }
 
 function parseEndpoint(value: JsonValue, path: string): Endpoint {

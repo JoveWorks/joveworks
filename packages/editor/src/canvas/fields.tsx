@@ -191,6 +191,7 @@ interface NumberFieldProps {
   readonly integer?: boolean;
   readonly minimum?: number;
   readonly autoSize?: number;
+  readonly className?: string;
   /** The global number-format preference (`useSettings().numberFormat`); plain punctuation if omitted. */
   readonly format?: NumberFormat;
 }
@@ -202,11 +203,12 @@ export function NumberField({
   integer = false,
   minimum,
   autoSize,
+  className,
   format = PLAIN_NUMBER_FORMAT,
 }: NumberFieldProps): ReactElement {
   return (
     <TextField
-      className="number"
+      className={className === undefined ? 'number' : `number ${className}`}
       value={formatPlainNumber(value, format)}
       {...(title === undefined ? {} : { title })}
       {...(autoSize === undefined ? {} : { autoSize })}
