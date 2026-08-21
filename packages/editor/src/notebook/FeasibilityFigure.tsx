@@ -92,8 +92,14 @@ export function FeasibilityFigure({ result }: Props): ReactElement {
     });
 
     container.append(chart);
-    if (titleMathRendering && chart instanceof SVGSVGElement) {
-      typesetChartLabels(chart, [xLabel, seriesLabel, ...(result.facet === undefined ? [] : [result.facet.axis.label])]);
+    // A categorical `color.legend` makes `Plot.plot` return an HTML
+    // `<figure>` wrapping the chart and a separate legend swatch, not a bare
+    // `<svg>` (unlike PlotFigure, which draws its own legend precisely to
+    // avoid this) — so the element to typeset is the chart's own inner
+    // `<svg>`, not necessarily `chart` itself.
+    const svg = chart instanceof SVGSVGElement ? chart : chart.querySelector('svg');
+    if (titleMathRendering && svg !== null) {
+      typesetChartLabels(svg, [xLabel, seriesLabel, ...(result.facet === undefined ? [] : [result.facet.axis.label])]);
     }
     return () => chart.remove();
   }, [result, titleMathRendering]);

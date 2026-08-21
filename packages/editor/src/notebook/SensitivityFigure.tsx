@@ -63,8 +63,9 @@ export function SensitivityFigure({ result }: Props): ReactElement {
     });
 
     container.append(chart);
-    if (titleMathRendering && chart instanceof SVGSVGElement) {
-      typesetChartLabels(chart, data.map((row) => row.label));
+    const svg = chart instanceof SVGSVGElement ? chart : chart.querySelector('svg');
+    if (titleMathRendering && svg !== null) {
+      typesetChartLabels(svg, data.map((row) => row.label));
     }
     return () => chart.remove();
   }, [result, titleMathRendering]);

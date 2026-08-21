@@ -1914,7 +1914,15 @@ aside.right {
   color: var(--ink);
 }
 
+/* `.output-editor input` (above) sets every input in the panel to
+   `width: 100%`, for the ordinary text fields it was written for — a
+   checkbox picking that up too is what actually caused the checkbox to
+   claim the whole row (and shove its label out to the side): with
+   `flex-shrink: 0` it never gave that width back, no matter how the row's
+   own flex sizing was fixed. `width: auto` here is the one property that
+   matters; `flex: 0 0 auto` on top just keeps it from growing further. */
 .check-list-item input[type='checkbox'] {
+  width: auto;
   flex: 0 0 auto;
 }
 
