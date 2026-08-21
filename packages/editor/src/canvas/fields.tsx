@@ -49,6 +49,13 @@ interface TextFieldProps {
   readonly onBlur?: () => void;
   /** A content-height textarea, for fields such as canvas frame titles. */
   readonly multiline?: boolean;
+  /**
+   * Selects the whole value when the field gains focus, so typing a
+   * replacement doesn't need a backspace first. For values (numbers, digit
+   * counts) where a click almost always means "replace this" — not for
+   * prose, titles, or labels, where a click means "place my cursor here".
+   */
+  readonly selectOnFocus?: boolean;
 }
 
 /**
@@ -67,6 +74,7 @@ export function TextField({
   onChange,
   onBlur,
   multiline = false,
+  selectOnFocus = false,
 }: TextFieldProps): ReactElement {
   const [text, setText] = useState(value);
   const [error, setError] = useState<string | undefined>(undefined);
@@ -136,6 +144,7 @@ export function TextField({
             commit();
             onBlur?.();
           }}
+          onFocus={selectOnFocus ? (event) => event.currentTarget.select() : undefined}
           onPointerDown={(event) => event.stopPropagation()}
           onKeyDown={(event) => {
             if (event.key === 'Escape') {
@@ -165,6 +174,7 @@ export function TextField({
             commit();
             onBlur?.();
           }}
+          onFocus={selectOnFocus ? (event) => event.currentTarget.select() : undefined}
           onPointerDown={(event) => event.stopPropagation()}
           onKeyDown={(event) => {
             if (event.key === 'Enter') event.currentTarget.blur();
@@ -210,6 +220,7 @@ export function NumberField({
     <TextField
       className={className === undefined ? 'number' : `number ${className}`}
       value={formatPlainNumber(value, format)}
+      selectOnFocus
       {...(title === undefined ? {} : { title })}
       {...(autoSize === undefined ? {} : { autoSize })}
       onCommit={(text) => {
