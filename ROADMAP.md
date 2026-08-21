@@ -230,3 +230,5 @@ Root cause found: `compatiblePort` — a document clone plus a full `resolveGrap
 
 **42. Bug: Zooming with trackpad pinch is too slow** Can we even change this? Using two finger swipe is working as intended.
 Investigated, not changed: `@xyflow/react`'s `ZoomPane` takes `panOnScrollSpeed` but exposes no equivalent for scroll/pinch zoom — no sensitivity knob to turn. The only way to slow it down would be disabling `zoomOnScroll`/`zoomOnPinch` and hand-rolling zoom from raw `onWheel` events (distinguishing pinch from pan by `ctrlKey`, as browsers report trackpad pinch) — a real rewrite of core canvas interaction, and one I can't verify without trackpad hardware in front of me. Given two-finger swipe already covers pan, leaving this as a discussion item rather than guessing at a gesture handler.
+
+**43. Bug: Equation node output unit cannot be set**
