@@ -86,10 +86,12 @@ export interface CheckSegment {
  * A check's reading, broken into colour-coded segments so a sweep shows
  * *where* it starts failing, not just its extremes. A single pass/fail
  * transition becomes three segments — start, the point it crosses, end —
- * each in its own state colour; a uniform sweep collapses to one segment in
- * its overall colour, and more than one crossing falls back to the plain
- * extent range (`summarise`'s own text) rather than guessing which crossing
- * matters.
+ * each in its own state colour; two transitions (one contiguous region
+ * dipping into the other state, e.g. briefly exceeding a limit) becomes
+ * four — start, the two points it crosses, end. A uniform sweep collapses
+ * to one segment in its overall colour, and more than two crossings falls
+ * back to the plain extent range (`summarise`'s own text) rather than
+ * guessing which crossing matters.
  */
 export function summariseCheck(
   reading: Reading,
@@ -119,14 +121,26 @@ export function summariseCheck(
   for (let index = 1; index <= last; index += 1) {
     if (results[index] !== results[index - 1]) transitions.push(index);
   }
-  if (transitions.length !== 1) return [{ text: range(), state: 'mixed' }];
+  if (transitions.length === 1) {
+    const [boundary] = transitions as [number];
+    return [
+      { text: at(0), state: results[0] === true ? 'pass' : 'fail' },
+      { text: at(boundary), state: 'boundary' },
+      { text: at(last), state: results[last] === true ? 'pass' : 'fail' },
+    ];
+  }
 
-  const [boundary] = transitions as [number];
-  return [
-    { text: at(0), state: results[0] === true ? 'pass' : 'fail' },
-    { text: at(boundary), state: 'boundary' },
-    { text: at(last), state: results[last] === true ? 'pass' : 'fail' },
-  ];
+  if (transitions.length === 2) {
+    const [first, second] = transitions as [number, number];
+    return [
+      { text: at(0), state: results[0] === true ? 'pass' : 'fail' },
+      { text: at(first), state: 'boundary' },
+      { text: at(second), state: 'boundary' },
+      { text: at(last), state: results[last] === true ? 'pass' : 'fail' },
+    ];
+  }
+
+  return [{ text: range(), state: 'mixed' }];
 }
 
 /** `26 points along pad width w` — what a sparkline is labelled with. */

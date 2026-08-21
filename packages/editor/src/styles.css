@@ -1284,6 +1284,12 @@ aside.right {
   color: var(--state-fail);
 }
 
+/* More than two crossings — no single boundary reads as "the" one, so this
+   is the plain extent range in the same amber as a partial verdict. */
+.check-segment-mixed {
+  color: var(--state-quarantined);
+}
+
 .check-segment-separator {
   color: var(--muted);
 }

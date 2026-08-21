@@ -54,7 +54,18 @@ describe('summariseCheck', () => {
     ]);
   });
 
-  it('falls back to the plain range when a sweep crosses more than once', () => {
+  it('splits two crossings into start, both boundaries, and end — a limit briefly exceeded', () => {
+    const six: Axis = { ...axis, length: 6 };
+    const reading = { series: series([5, 13, 40, 38, 13, 5], [six]), unit: mpa };
+    expect(summariseCheck(reading, [true, true, false, false, true, true])).toEqual([
+      { text: '5 MPa', state: 'pass' },
+      { text: '40 MPa', state: 'boundary' },
+      { text: '13 MPa', state: 'boundary' },
+      { text: '5 MPa', state: 'pass' },
+    ]);
+  });
+
+  it('falls back to the plain range when a sweep crosses more than twice', () => {
     const four: Axis = { ...axis, length: 4 };
     const reading = { series: series([5, 30, 5, 30], [four]), unit: mpa };
     expect(summariseCheck(reading, [true, false, true, false])).toEqual([
