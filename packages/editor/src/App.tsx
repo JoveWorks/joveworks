@@ -38,7 +38,12 @@ import { DOCS_BASE_URL } from './help-links';
 import { GraphContext } from './graph-context';
 import { SettingsContext } from './settings-context';
 import { clearAutosaveSnapshot, loadAutosaveSnapshot, saveAutosaveSnapshot } from './io/autosave';
-import { cacheCatalogue, cachedCatalogueTexts } from './io/catalogueCache';
+import {
+  cacheCatalogue,
+  cachedCatalogueTexts,
+  markLockedCatalogueUnlocked,
+  unlockedLockedCatalogueIds,
+} from './io/catalogueCache';
 import { documentFileName, openTextFile, saveTextFile, userEquationsFileName } from './io/files';
 import {
   loadRecentDocuments,
@@ -266,14 +271,19 @@ function MobileLanding(): ReactElement {
 function AppShell(): ReactElement {
   const flow = useReactFlow();
   const [catalogues, setCatalogues] = useState<readonly Catalogue[]>(initialCatalogues);
-  // Locked catalogues shipped with the app, minus whichever ones are already
-  // unlocked and loaded — a previous session's unlock is cached the same way
-  // an LMS-loaded file is (`initialCatalogues`), so it must not still show as
-  // locked here.
-  const notYetUnlockedCatalogues = useMemo(
-    () => lockedCatalogues().filter((locked) => !catalogues.some((loaded) => loaded.id === locked.id)),
-    [catalogues],
-  );
+  // Locked catalogues shipped with the app, minus whichever ones this
+  // student has already unlocked — tracked by the locked asset's own id
+  // (`markLockedCatalogueUnlocked`), not by matching it against a decrypted
+  // catalogue's id: `encryptCatalogue` sets those equal, but nothing enforces
+  // it, and staying locked forever after a successful unlock is worse than
+  // one extra id to track. Recomputed off `catalogues` because that is what
+  // actually changes on unlock; the unlocked-id set changes in lockstep.
+  const notYetUnlockedCatalogues = useMemo(() => {
+    const unlocked = unlockedLockedCatalogueIds();
+    return lockedCatalogues().filter(
+      (locked) => !unlocked.has(locked.id) && !catalogues.some((loaded) => loaded.id === locked.id),
+    );
+  }, [catalogues]);
   const [userEquations, setUserEquationsState] = useState<readonly UserEquation[]>(loadStoredUserEquations);
   const setUserEquations = (update: (current: readonly UserEquation[]) => readonly UserEquation[]): void =>
     setUserEquationsState((current) => {
@@ -574,6 +584,7 @@ function AppShell(): ReactElement {
     }
     setCatalogues((current) => withCatalogue(current, loaded));
     cacheCatalogue(loaded.id, saveCatalogue(loaded));
+    markLockedCatalogueUnlocked(locked.id);
     analytics.track({ name: 'catalogue_unlocked' });
     pushNotice(`Unlocked ${localize(loaded.name, locale)} — ${loaded.formulas.length} formulas.`);
   };

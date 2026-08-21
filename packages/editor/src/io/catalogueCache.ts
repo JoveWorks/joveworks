@@ -46,3 +46,36 @@ export function cachedCatalogueTexts(): readonly string[] {
     return [];
   }
 }
+
+/**
+ * Which locked catalogues (docs/password-shared-catalogues.md) a student has
+ * already unlocked, keyed by the *locked* asset's own id — not the decrypted
+ * catalogue's id. `encryptCatalogue` sets those equal, but nothing enforces
+ * it for a file produced another way, and "still shows as locked after being
+ * unlocked" is a worse failure than one extra id to track: File > Unlock
+ * catalogue… greying out is this list, not a lookup into the loaded
+ * catalogues by id.
+ */
+const UNLOCKED_KEY = 'joveworks:unlocked-locked-catalogues';
+
+export function markLockedCatalogueUnlocked(id: string): void {
+  try {
+    const current = unlockedLockedCatalogueIds();
+    if (current.has(id)) return;
+    window.localStorage.setItem(UNLOCKED_KEY, JSON.stringify([...current, id]));
+  } catch {
+    // Private browsing, or storage full: the catalogue is still loaded and
+    // cached for this session, it just re-offers to unlock next time.
+  }
+}
+
+export function unlockedLockedCatalogueIds(): ReadonlySet<string> {
+  try {
+    const raw = window.localStorage.getItem(UNLOCKED_KEY);
+    if (raw === null) return new Set();
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed) ? new Set(parsed.filter((entry) => typeof entry === 'string')) : new Set();
+  } catch {
+    return new Set();
+  }
+}
