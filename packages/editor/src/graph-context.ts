@@ -10,7 +10,7 @@
 
 import { createContext, useContext } from 'react';
 
-import type { Catalogue, GraphDocument } from '@joveworks/schema';
+import type { Catalogue, GraphDocument, LockedCatalogue } from '@joveworks/schema';
 
 import type { Analysis } from './model/analysis';
 import type { MonteCarloPlaybackState } from './model/monteCarloPlayback';
@@ -19,6 +19,15 @@ import type { UserEquation } from './model/userEquations';
 export interface GraphContextValue {
   readonly document: GraphDocument;
   readonly catalogues: readonly Catalogue[];
+  /**
+   * Restricted catalogues bundled with the app but not yet unlocked
+   * (docs/password-shared-catalogues.md) — listed by id/name only, so the
+   * palette can show them locked without the password. Once `unlockCatalogue`
+   * succeeds for one, it moves into `catalogues` and drops out of this list.
+   */
+  readonly lockedCatalogues: readonly LockedCatalogue[];
+  /** Resolves once the catalogue is decrypted, loaded, and cached; rejects on a wrong password. */
+  readonly unlockCatalogue: (locked: LockedCatalogue, password: string) => Promise<void>;
   readonly userEquations: readonly UserEquation[];
   readonly saveUserEquation: (label: string, expression: string) => void;
   readonly removeUserEquation: (id: string) => void;

@@ -40,7 +40,9 @@ export type AnalyticsEvent =
   | { readonly name: 'plot_created'; readonly props: { readonly mode: 'line' | 'contour' } }
   | { readonly name: 'table_created' | 'check_created' }
   | { readonly name: 'catalogue_load_failed'; readonly props: { readonly reason: 'invalid_file' } }
-  | { readonly name: 'document_load_failed'; readonly props: { readonly reason: 'invalid_file' } };
+  | { readonly name: 'document_load_failed'; readonly props: { readonly reason: 'invalid_file' } }
+  | { readonly name: 'catalogue_unlocked' }
+  | { readonly name: 'catalogue_unlock_failed'; readonly props: { readonly reason: 'wrong_password' } };
 
 export interface Analytics {
   track(event: AnalyticsEvent): void;
