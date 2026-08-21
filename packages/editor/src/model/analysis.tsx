@@ -48,6 +48,7 @@ import {
   type Formula,
   type GraphDocument,
   type GraphNode,
+  type OutputNode,
   type Port,
 } from '@joveworks/schema';
 
@@ -191,6 +192,14 @@ function readiness(
     return sources.length > 0 && sources.every((source) => ready.has(source.node));
   };
 
+  // A Feasibility node references Check nodes by id rather than by wire, so
+  // it carries no dependency edge and its position in `order` is incidental
+  // — the same reason `evaluateDocument` (kernel/evaluate.ts) defers it to a
+  // second pass after every other output has been decided, and this walks
+  // the identical topological order to decide per-node state, so it needs
+  // the identical split.
+  const deferredFeasibility: OutputNode[] = [];
+
   for (const node of order) {
     if (node.kind === 'input' || node.kind === 'monteCarloGenerator') {
       ready.add(node.id);
@@ -320,18 +329,10 @@ function readiness(
     // A Feasibility node has no wired ports of its own (`outputPortNames`
     // returns none for it) — it references existing Check nodes by id, so
     // its readiness is inherited from theirs directly rather than from any
-    // wire.
+    // wire. Deferred to the second pass below, after every other node
+    // (including every Check) has been decided.
     if (node.output.kind === 'feasibility') {
-      if (node.output.checks.length === 0) {
-        states.set(node.id, 'incomplete');
-        problems.set(node.id, 'choose at least one check');
-        continue;
-      }
-      if (!node.output.checks.every((id) => ready.has(id))) {
-        states.set(node.id, 'blocked');
-        continue;
-      }
-      ready.add(node.id);
+      deferredFeasibility.push(node);
       continue;
     }
 
@@ -359,6 +360,20 @@ function readiness(
       isWired(node.id, THRESHOLD_PORT) &&
       !upstreamReady(node.id, THRESHOLD_PORT)
     ) {
+      states.set(node.id, 'blocked');
+      continue;
+    }
+    ready.add(node.id);
+  }
+
+  for (const node of deferredFeasibility) {
+    if (node.output.kind !== 'feasibility') continue; // narrows for TS; always true here
+    if (node.output.checks.length === 0) {
+      states.set(node.id, 'incomplete');
+      problems.set(node.id, 'choose at least one check');
+      continue;
+    }
+    if (!node.output.checks.every((id) => ready.has(id))) {
       states.set(node.id, 'blocked');
       continue;
     }

@@ -283,6 +283,74 @@ const checkOutputNode = (id: string, comparison: string, threshold: number, unit
   },
 });
 
+const feasibilityOutputNode = (id: string, checks: readonly string[]) => ({
+  kind: 'output' as const,
+  id,
+  position: { x: 0, y: 0 },
+  output: { kind: 'feasibility' as const, checks },
+});
+
+const range = (id: string, start: number, stop: number, points: number, unit: string) => ({
+  kind: 'input' as const,
+  id,
+  position: { x: 0, y: 0 },
+  value: { kind: 'linear' as const, start, stop, points, unit: parseUnit(unit) },
+});
+
+describe('feasibility outputs', () => {
+  it('is ready once every referenced check is ready, however it is ordered relative to them', () => {
+    // The Feasibility node's array position precedes the Check nodes it
+    // references — the exact ordering regression the kernel's two-pass
+    // evaluation closes (evaluate.ts). `readiness()` here walks the same
+    // topological order to decide per-node state, so it needs the identical
+    // second-pass deferral, or this node is trivially "blocked" forever: it
+    // has no wire of its own, so nothing about it ever becomes ready in a
+    // single forward pass unless the checks happen to already be marked.
+    const document = graph(
+      [
+        feasibilityOutputNode('f', ['c1', 'c2']),
+        range('a', 1, 5, 3, 'mm'),
+        checkOutputNode('c1', '>=', 1, 'mm'),
+        checkOutputNode('c2', '<=', 5, 'mm'),
+      ],
+      [
+        wire('e1', ['a', 'value'], ['c1', 'value']),
+        wire('e2', ['a', 'value'], ['c2', 'value']),
+      ],
+    );
+    const analysis = analyse(document, CATALOGUES);
+
+    expect(analysis.states.get('c1')).toBe('ok');
+    expect(analysis.states.get('c2')).toBe('ok');
+    expect(analysis.states.get('f')).toBe('ok');
+  });
+
+  it('is incomplete with no checks chosen yet', () => {
+    const document = graph([feasibilityOutputNode('f', [])], []);
+    const analysis = analyse(document, CATALOGUES);
+    expect(analysis.states.get('f')).toBe('incomplete');
+  });
+
+  it('is blocked while a referenced check is not ready itself', () => {
+    const document = graph(
+      [
+        feasibilityOutputNode('f', ['c1']),
+        range('a', 1, 5, 3, 'mm'),
+        formulaNode('bad', 'inv.quarantined'),
+        checkOutputNode('c1', '>=', 1, 'mm'),
+      ],
+      [
+        wire('e1', ['a', 'value'], ['bad', 'a']),
+        wire('e2', ['bad', 'y'], ['c1', 'value']),
+      ],
+    );
+    const analysis = analyse(document, CATALOGUES);
+
+    expect(analysis.states.get('c1')).toBe('blocked');
+    expect(analysis.states.get('f')).toBe('blocked');
+  });
+});
+
 describe('check outputs', () => {
   it('is ready with only its value wired — the threshold has its own typed default', () => {
     const document = graph(
