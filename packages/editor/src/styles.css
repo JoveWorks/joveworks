@@ -2205,7 +2205,12 @@ aside.right {
   cursor: pointer;
 }
 
-.context-menu button:hover {
+.context-menu button:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.context-menu button:hover:not(:disabled) {
   background: var(--panel);
 }
 
