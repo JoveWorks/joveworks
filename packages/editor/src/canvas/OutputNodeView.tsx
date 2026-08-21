@@ -591,7 +591,9 @@ export function OutputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>
                 <CheckReading segments={summariseCheck(value, checkResult.results, 4, format)} />
               )}
             </span>
-            {value === undefined ? null : <Sparkline reading={value} />}
+            {value === undefined ? null : (
+              <Sparkline reading={value} {...(checkResult === undefined ? {} : { threshold: checkResult.threshold })} />
+            )}
           </>
         )}
         <Verdict nodeId={id} />

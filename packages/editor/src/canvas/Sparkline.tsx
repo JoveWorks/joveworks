@@ -36,13 +36,23 @@ export function sparkRows(values: readonly number[], innerLength: number): reado
   );
 }
 
-export function Sparkline({ reading }: { readonly reading: Reading }): ReactElement | null {
+export function Sparkline({
+  reading,
+  threshold,
+}: {
+  readonly reading: Reading;
+  /** A check's bound, in canonical units — the same reference line a plot draws. */
+  readonly threshold?: number;
+}): ReactElement | null {
   if (reading.series.kind !== 'numeric' || reading.series.data.length < 2) return null;
 
   const { axes, data } = reading.series;
   const values = data.map((value) => fromCanonical(value, reading.unit));
-  const low = Math.min(...values);
-  const high = Math.max(...values);
+  const thresholdValue = threshold === undefined ? undefined : fromCanonical(threshold, reading.unit);
+  // The domain stretches to include the threshold, not just the data, so a
+  // sweep that never crosses it still shows how far off it is.
+  const low = Math.min(...values, ...(thresholdValue === undefined ? [] : [thresholdValue]));
+  const high = Math.max(...values, ...(thresholdValue === undefined ? [] : [thresholdValue]));
   const span = high - low;
 
   const innerLength = axes.length === 0 ? values.length : (axes.at(-1)?.length as number);
@@ -60,6 +70,9 @@ export function Sparkline({ reading }: { readonly reading: Reading }): ReactElem
 
   return (
     <svg className="sparkline" width={WIDTH} height={HEIGHT} viewBox={`0 0 ${WIDTH} ${HEIGHT}`}>
+      {thresholdValue === undefined ? null : (
+        <line className="sparkline-threshold" x1={1} x2={WIDTH - 1} y1={y(thresholdValue)} y2={y(thresholdValue)} />
+      )}
       {paths.map((path, row) => (
         <path
           key={row}

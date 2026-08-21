@@ -81,8 +81,25 @@ export function TextField({
 
   useLayoutEffect(() => {
     if (!multiline || textarea.current === null) return;
-    textarea.current.style.height = '0px';
-    textarea.current.style.height = `${textarea.current.scrollHeight}px`;
+    const element = textarea.current;
+    const resize = (): void => {
+      element.style.height = '0px';
+      element.style.height = `${element.scrollHeight}px`;
+    };
+    resize();
+
+    // A column resize (e.g. a sibling taking more of the row) can change how
+    // many lines the same text wraps to, and the height set above must
+    // follow it — not just re-measure when the text itself changes.
+    if (typeof ResizeObserver === 'undefined') return;
+    let lastWidth = element.offsetWidth;
+    const observer = new ResizeObserver(() => {
+      if (element.offsetWidth === lastWidth) return;
+      lastWidth = element.offsetWidth;
+      resize();
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
   }, [multiline, text]);
 
   const commit = (): void => {

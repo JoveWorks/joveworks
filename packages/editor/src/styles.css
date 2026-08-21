@@ -972,6 +972,14 @@ aside.right {
   stroke: var(--accent);
 }
 
+/* A check's bound, dashed so it reads as a reference rather than data —
+   the same amber a plot's own threshold line uses (PlotFigure.tsx). */
+.node .sparkline-threshold {
+  stroke: var(--state-quarantined);
+  stroke-width: 1;
+  stroke-dasharray: 2 2;
+}
+
 /* Shared by the Monte Carlo receiver's playback widget wherever it renders —
    inline on its canvas node (MonteCarloReceiverNodeView.tsx, compact) and
    again, larger, as a notebook result (Notebook.tsx, like a plot) — so
@@ -2632,6 +2640,14 @@ aside.right {
 
 .notebook .result.check.fail .mark {
   color: var(--state-fail);
+}
+
+/* ✓/✗/! sit high in most fonts' em-box relative to lowercase text — even
+   with the flex row's boxes centred, the glyph's own ink isn't, so it reads
+   as floating above the title rather than centred against it. */
+.notebook .result.check .mark {
+  position: relative;
+  top: 0.1em;
 }
 
 /* A check's own row (mark, title, reading) stacks above its optional count
