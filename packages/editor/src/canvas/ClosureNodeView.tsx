@@ -15,12 +15,14 @@ import type { ReactElement } from 'react';
 import { phrase } from '../i18n';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 
+import { parseExpression, toLatex } from '@joveworks/kernel';
 import { CLOSURE_RESULT_PORT, type Port } from '@joveworks/schema';
 
 import { useGraph } from '../graph-context';
 import { useSettings } from '../settings-context';
 import { toUnitsFormat } from '../model/numberFormat';
 import { reframe, removeNodes, renameNode, setClosureExpression } from '../model/document';
+import { Equation } from '../Equation';
 import { Symbol } from '../Symbol';
 import { ParameterLabel, UnitInLabel } from '../ParameterLabel';
 import { axisLabel, reading, summarise } from '../model/values';
@@ -87,6 +89,11 @@ export function ClosureNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
             edit((current) => setClosureExpression(current, id, expression))
           }
         />
+      }
+      detail={
+        formula === undefined ? undefined : (
+          <Equation latex={toLatex(parseExpression(node.expression))} displayMode={false} />
+        )
       }
     >
       <ul className="ports">
