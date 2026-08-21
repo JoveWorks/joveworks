@@ -1269,6 +1269,15 @@ aside.right {
   border-top: 1px solid var(--line);
 }
 
+/* The node's own equation, when the detail panel renders one as its first
+   line (ClosureNodeView.tsx, FormulaNodeView.tsx) — centered like a
+   textbook display equation, with room before the text that follows it. */
+.node .node-detail > .equation {
+  display: block;
+  margin-bottom: 8px;
+  text-align: center;
+}
+
 .node .description,
 .node .applies {
   margin: 0 0 4px;
