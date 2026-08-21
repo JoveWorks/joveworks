@@ -15,6 +15,9 @@ import * as Plot from '@observablehq/plot';
 import { gridSize, indexer, type FeasibilityResult, type PlotAxis } from '@joveworks/kernel';
 import { fromCanonical } from '@joveworks/units';
 
+import { useSettings } from '../settings-context';
+import { typesetChartLabels } from './PlotFigure';
+
 interface Row {
   readonly x: number | string;
   readonly series: number | string;
@@ -54,6 +57,7 @@ interface Props {
 
 export function FeasibilityFigure({ result }: Props): ReactElement {
   const host = useRef<HTMLDivElement>(null);
+  const { titleMathRendering } = useSettings();
 
   useEffect(() => {
     const container = host.current;
@@ -61,6 +65,7 @@ export function FeasibilityFigure({ result }: Props): ReactElement {
 
     const data = rows(result);
     const xLabel = result.x.axis.label;
+    const seriesLabel = result.series2?.axis.label ?? '';
     const fx = result.facet === undefined ? undefined : 'facet';
 
     const chart = Plot.plot({
@@ -69,7 +74,7 @@ export function FeasibilityFigure({ result }: Props): ReactElement {
       marginLeft: 56,
       marginBottom: 40,
       x: { label: xLabel },
-      y: { label: result.series2?.axis.label ?? '', ...(result.series2 === undefined ? { ticks: [] } : {}) },
+      y: { label: seriesLabel, ...(result.series2 === undefined ? { ticks: [] } : {}) },
       color: {
         legend: true,
         domain: ['pass', 'fail'],
@@ -87,8 +92,11 @@ export function FeasibilityFigure({ result }: Props): ReactElement {
     });
 
     container.append(chart);
+    if (titleMathRendering && chart instanceof SVGSVGElement) {
+      typesetChartLabels(chart, [xLabel, seriesLabel, ...(result.facet === undefined ? [] : [result.facet.axis.label])]);
+    }
     return () => chart.remove();
-  }, [result]);
+  }, [result, titleMathRendering]);
 
   return <div className="figure" ref={host} />;
 }

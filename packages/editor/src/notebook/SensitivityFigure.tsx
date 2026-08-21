@@ -10,6 +10,9 @@ import * as Plot from '@observablehq/plot';
 import type { SensitivityResult } from '@joveworks/kernel';
 import { fromCanonical } from '@joveworks/units';
 
+import { useSettings } from '../settings-context';
+import { typesetChartLabels } from './PlotFigure';
+
 interface Row {
   readonly label: string;
   readonly low: number;
@@ -30,6 +33,7 @@ interface Props {
 
 export function SensitivityFigure({ result }: Props): ReactElement {
   const host = useRef<HTMLDivElement>(null);
+  const { titleMathRendering } = useSettings();
 
   useEffect(() => {
     const container = host.current;
@@ -59,8 +63,11 @@ export function SensitivityFigure({ result }: Props): ReactElement {
     });
 
     container.append(chart);
+    if (titleMathRendering && chart instanceof SVGSVGElement) {
+      typesetChartLabels(chart, data.map((row) => row.label));
+    }
     return () => chart.remove();
-  }, [result]);
+  }, [result, titleMathRendering]);
 
   return <div className="figure" ref={host} />;
 }

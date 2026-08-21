@@ -137,7 +137,7 @@ interface Props {
 }
 
 /** Replace Observable's plain SVG text with KaTeX where an axis label needs it. */
-function typesetChartLabels(chart: SVGSVGElement, labels: readonly string[]): void {
+export function typesetChartLabels(chart: SVGSVGElement, labels: readonly string[]): void {
   for (const text of chart.querySelectorAll('text')) {
     const label = text.textContent;
     if (label === null || !labels.includes(label)) continue;

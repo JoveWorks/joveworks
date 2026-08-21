@@ -1887,13 +1887,22 @@ aside.right {
   padding: 0;
 }
 
-.check-list-item {
+/* `.output-editor label` (below) sets every label inside the panel to a
+   column flex layout for its usual name-above-field shape — more specific
+   than `.check-list-item` alone would be, so it would otherwise override
+   this row's own row layout and stack the checkbox above its text instead
+   of beside it. Matched here on the same `.output-editor` ancestor to win
+   on specificity rather than fight it with `!important`. */
+.output-editor .check-list-item {
   display: flex;
+  flex-direction: row;
   align-items: center;
   gap: 6px;
   padding: 2px 4px;
   border-radius: 4px;
   cursor: pointer;
+  font-size: 12px;
+  color: var(--ink);
 }
 
 .check-list-item input[type='checkbox'] {

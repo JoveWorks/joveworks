@@ -747,10 +747,20 @@ export function millingPowerEnvelope(catalogues: readonly Catalogue[], locale: A
       at(1680, 1300),
     ),
     output(
+      'out_feasible',
+      'Within both spindle limits at once',
+      { kind: 'feasibility', checks: ['out_P_check', 'out_M_check'], x: 'f_z', series: 'a_e' },
+      at(1680, 1500),
+    ),
+    output(
       'out_table',
       'Candidate cutting parameters',
-      { kind: 'table', columns: ['f_z', 'a_e', 'v_f', 'Q', 'P_m', 'M_c', 't_c'] },
-      at(1680, 1580),
+      {
+        kind: 'table',
+        columns: ['f_z', 'a_e', 'v_f', 'Q', 'P_m', 'M_c', 't_c'],
+        figures: { f_z: 2, a_e: 2, v_f: 2, Q: 2, P_m: 2, M_c: 2, t_c: 2 },
+      },
+      at(1680, 1820),
     ),
   ];
 
@@ -816,9 +826,10 @@ export function millingPowerEnvelope(catalogues: readonly Catalogue[], locale: A
       note:
         'The 5.5 kW input-power and 35 Nm cutting-torque limits cut different boundaries ' +
         'through the grid. A failed overall check means some candidates fail, not that every ' +
-        'candidate does; use the contours to find the feasible region.',
+        'candidate does; use the contours to find the feasible region — or read it directly off ' +
+        'the shaded feasibility below, which is both limits at once.',
       position: at(1620, 620),
-      size: { width: 440, height: 780 },
+      size: { width: 440, height: 980 },
     },
     {
       id: 'selection',
@@ -828,7 +839,7 @@ export function millingPowerEnvelope(catalogues: readonly Catalogue[], locale: A
         'f_z = 0.24 mm/tooth and a_e = 30 mm, giving Q = 132 cm³/min. This is an initial ' +
         'power-envelope result with constant k_c—not a production recommendation. Tool ' +
         'deflection, chatter, chip thinning, workholding, and manufacturer limits remain to check.',
-      position: at(1620, 1420),
+      position: at(1620, 1640),
       size: { width: 440, height: 520 },
     },
   ];
@@ -840,6 +851,7 @@ export function millingPowerEnvelope(catalogues: readonly Catalogue[], locale: A
     out_P_check: 'constraints',
     out_M_plot: 'constraints',
     out_M_check: 'constraints',
+    out_feasible: 'constraints',
     out_table: 'selection',
   };
   const withFrames = nodes.map((node) => {

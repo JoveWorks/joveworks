@@ -129,6 +129,20 @@ describe('the milling power-envelope study through the editor', () => {
       expect.any(Array),
     ]);
     expect(table.columns.every((column) => column.series.data.length === 20)).toBe(true);
+    expect(document?.nodes.find((node) => node.id === 'out_table')).toMatchObject({
+      output: { figures: { f_z: 2, a_e: 2, v_f: 2, Q: 2, P_m: 2, M_c: 2, t_c: 2 } },
+    });
+
+    // Both spindle limits are crossed by some, but not all, of the grid
+    // (the checks above are 'passed: false' each) — a genuinely mixed
+    // feasible region, which is exactly what makes this study a good
+    // demonstration of the shaded Feasibility output.
+    const feasible = outputs.find((entry) => entry.nodeId === 'out_feasible');
+    expect(feasible?.kind).toBe('feasibility');
+    if (feasible?.kind !== 'feasibility') throw new Error('missing feasibility output');
+    expect(feasible.mask).toHaveLength(20);
+    expect(feasible.mask.some(Boolean)).toBe(true);
+    expect(feasible.mask.some((value) => !value)).toBe(true);
   });
 });
 
