@@ -1875,6 +1875,50 @@ aside.right {
   font-style: italic;
 }
 
+/* A Feasibility output's checklist of Check nodes — no wire connects them,
+   so the checkbox and its label are aligned like an ordinary form control
+   rather than borrowing table-column's text-input layout. */
+.check-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 2px 0;
+  list-style: none;
+  padding: 0;
+}
+
+.check-list-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.check-list-item input[type='checkbox'] {
+  flex: 0 0 auto;
+}
+
+.check-list-label {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Hovering a row highlights the Check node it references on the canvas
+   (`hovered` in graph-context.ts); this is the reverse — the row lights up
+   the same way when that Check is hovered from elsewhere instead (its own
+   notebook entry, say), since both read the one shared set. */
+.check-list-item-active {
+  background: var(--hover-bg);
+}
+
+.check-list-empty {
+  color: var(--muted);
+  font-size: 11px;
+  font-style: italic;
+}
+
 /* --- frames ------------------------------------------------------------- */
 
 .frame {
