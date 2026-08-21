@@ -1248,6 +1248,27 @@ aside.right {
   color: var(--muted);
 }
 
+/* A check's reading, coloured per segment — shared by the canvas node body,
+   the notebook, and the course viewer (CheckReading.tsx). */
+.check-segment-pass {
+  color: var(--state-pass);
+}
+
+/* The crossing point itself stays plain — it isn't a pass or a fail, and
+   an accent colour there competed with the pass/fail read either side of
+   it rather than supporting it. */
+.check-segment-boundary {
+  color: var(--ink);
+}
+
+.check-segment-fail {
+  color: var(--state-fail);
+}
+
+.check-segment-separator {
+  color: var(--muted);
+}
+
 /* State is the only thing colour says (S49). */
 .node.state-incomplete {
   border-color: var(--state-waiting);
@@ -2578,14 +2599,25 @@ aside.right {
   font-size: 11px;
 }
 
-.notebook .result.check.pass .mark,
-.notebook .result.check.pass .number {
+/* Only the mark takes the overall verdict colour — the number's own
+   segments (CheckReading) carry their own per-point colour, and the
+   threshold text after them stays plain rather than inheriting a verdict
+   that isn't about the threshold itself. */
+.notebook .result.check.pass .mark {
   color: var(--state-pass);
 }
 
-.notebook .result.check.fail .mark,
-.notebook .result.check.fail .number {
+.notebook .result.check.fail .mark {
   color: var(--state-fail);
+}
+
+/* `align-items: baseline` (the shared `.result` row default) aligns every
+   item to the title's own baseline, but the title is an editable textarea
+   (TitleField) — its baseline falls near its *last* line, not its first, so
+   a wrapped two-line title pulled the mark/count/number down to sit next to
+   its second line instead of its first. Top-align the row instead. */
+.notebook .result.check {
+  align-items: flex-start;
 }
 
 .notebook .result.pending .number {

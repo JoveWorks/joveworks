@@ -23,7 +23,8 @@ import {
   platformFootprint,
 } from '../model/samples';
 import { display, displayNumber } from '../model/quantity';
-import { summarise } from '../model/values';
+import { summarise, summariseCheck } from '../model/values';
+import { CheckReading } from '../CheckReading';
 import { PlotFigure } from '../notebook/PlotFigure';
 import { SettingsContext, type SettingsContextValue } from '../settings-context';
 import { analytics, type CourseMaterial } from '../analytics/analytics';
@@ -71,7 +72,10 @@ function Result({ result, node, document }: { readonly result: OutputResult; rea
       <div className={`viewer-result viewer-check ${state}`}>
         <strong><span aria-hidden="true">{result.passed ? '✓' : '✗'}</span> {title}</strong>
         <span>
-          {summarise({ series: result.series, unit: result.unit }, 4, format)} {comparisonText[result.comparison] ?? result.comparison}{' '}
+          <CheckReading
+            segments={summariseCheck({ series: result.series, unit: result.unit }, result.results, 4, format)}
+          />{' '}
+          {comparisonText[result.comparison] ?? result.comparison}{' '}
           {display(result.threshold, result.unit, 4, format)}
           {result.results.length > 1 && !result.passed ? ` · fails at ${failures} of ${result.results.length} points` : ''}
         </span>

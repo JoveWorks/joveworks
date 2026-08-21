@@ -54,7 +54,8 @@ import { Equation } from '../Equation';
 import { Symbol } from '../Symbol';
 import { ParameterLabel } from '../ParameterLabel';
 import { display, formatAuthored, parseAuthored, unitLabel } from '../model/quantity';
-import { reading, summarise } from '../model/values';
+import { reading, summarise, summariseCheck } from '../model/values';
+import { CheckReading } from '../CheckReading';
 import { NodeShell } from './NodeShell';
 import { Sparkline } from './Sparkline';
 import type { CanvasFlowNode } from './node-data';
@@ -171,6 +172,7 @@ export function OutputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>
       ? { series: result.series, unit: result.unit }
       : shown;
   const plotResult = result?.kind === 'plot' ? result : undefined;
+  const checkResult = result?.kind === 'check' ? result : undefined;
   const equationResult = result?.kind === 'equation' ? result : undefined;
   // Not the upstream formula's own id — a closure's is always the literal
   // 'closure' (kernel/closure.ts), which would be a useless caption default
@@ -581,9 +583,13 @@ export function OutputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>
         ) : output.kind === 'table' ? null : (
           <>
             <span className="reading">
-              {value === undefined
-                ? '—'
-                : summarise(value, output.kind === 'print' ? output.figures ?? 4 : 4, format)}
+              {value === undefined ? (
+                '—'
+              ) : checkResult === undefined ? (
+                summarise(value, output.kind === 'print' ? output.figures ?? 4 : 4, format)
+              ) : (
+                <CheckReading segments={summariseCheck(value, checkResult.results, 4, format)} />
+              )}
             </span>
             {value === undefined ? null : <Sparkline reading={value} />}
           </>

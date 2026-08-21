@@ -200,8 +200,6 @@ catalogues that the user made before.
 Out of scope for this repo — R&M catalogue content (equation 16.3) lives in
 the private `machine-design-catalogue` repository, not here.
 
-**37. Change: The check nodes must clarify what points fail/pass.** In a sweep, the failing value can be added to the output as e.g. 5 MPa ... 13 MPa ... 30 MPa, with the first part in green, middle in orange, failing part in red?
-
 **38. Change: Bearing pad and platform size should use the Pa unit instead of N/mm²**
 Out of scope for this repo — bearing pad/platform formulas are R&M catalogue
 content and live in the private `machine-design-catalogue` repository, not

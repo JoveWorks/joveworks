@@ -50,7 +50,8 @@ import {
 } from '../model/document';
 import { toUnitsFormat } from '../model/numberFormat';
 import { display, displayNumber } from '../model/quantity';
-import { summarise } from '../model/values';
+import { summarise, summariseCheck } from '../model/values';
+import { CheckReading } from '../CheckReading';
 import { MonteCarloReceiverPlayback } from '../canvas/MonteCarloReceiverPlayback';
 import { PlotFigure } from './PlotFigure';
 import { phrase, ui } from '../i18n';
@@ -211,7 +212,9 @@ function Result({ result, node }: { readonly result: OutputResult; readonly node
           </span>
         ) : null}
         <span className="number">
-          {summarise({ series: result.series, unit: result.unit }, 4, format)}{' '}
+          <CheckReading
+            segments={summariseCheck({ series: result.series, unit: result.unit }, result.results, 4, format)}
+          />{' '}
           {COMPARISON_TEXT[result.comparison] ?? result.comparison} {shown}
         </span>
       </p>
