@@ -23,7 +23,8 @@ import {
   platformFootprint,
 } from '../model/samples';
 import { display, displayNumber } from '../model/quantity';
-import { summarise } from '../model/values';
+import { checkVerdict, summarise, summariseCheck } from '../model/values';
+import { CheckReading } from '../CheckReading';
 import { PlotFigure } from '../notebook/PlotFigure';
 import { SettingsContext, type SettingsContextValue } from '../settings-context';
 import { analytics, type CourseMaterial } from '../analytics/analytics';
@@ -66,14 +67,19 @@ function Result({ result, node, document }: { readonly result: OutputResult; rea
 
   if (result.kind === 'check') {
     const failures = result.results.filter((passed) => !passed).length;
-    const state = result.passed ? 'pass' : 'fail';
+    const verdict = checkVerdict(result.results);
+    const mark = verdict === 'pass' ? '✓' : verdict === 'fail' ? '✗' : '!';
     return (
-      <div className={`viewer-result viewer-check ${state}`}>
-        <strong><span aria-hidden="true">{result.passed ? '✓' : '✗'}</span> {title}</strong>
+      <div className={`viewer-result viewer-check ${verdict}`}>
+        <strong><span aria-hidden="true">{mark}</span> {title}</strong>
         <span>
-          {summarise({ series: result.series, unit: result.unit }, 4, format)} {comparisonText[result.comparison] ?? result.comparison}{' '}
-          {display(result.threshold, result.unit, 4, format)}
-          {result.results.length > 1 && !result.passed ? ` · fails at ${failures} of ${result.results.length} points` : ''}
+          <CheckReading
+            segments={summariseCheck({ series: result.series, unit: result.unit }, result.results, 4, format)}
+          />{' '}
+          <span className="check-threshold">
+            {comparisonText[result.comparison] ?? result.comparison} {display(result.threshold, result.unit, 4, format)}
+          </span>
+          {result.results.length > 1 && verdict !== 'pass' ? ` · fails at ${failures} of ${result.results.length} points` : ''}
         </span>
       </div>
     );

@@ -62,6 +62,73 @@ export function summarise(
   return `${display(low, unit, figures, format)} … ${display(high, unit, figures, format)}`;
 }
 
+export type CheckVerdict = 'pass' | 'partial' | 'fail';
+
+/**
+ * Whether every point passes, every point fails, or it's a mix — "some
+ * pass" is a different thing to tell a student than "none do", so a swept
+ * check's mark/badge is three-way, not the binary pass/fail a scalar one is.
+ */
+export function checkVerdict(results: readonly boolean[]): CheckVerdict {
+  if (results.every(Boolean)) return 'pass';
+  if (results.every((passed) => !passed)) return 'fail';
+  return 'partial';
+}
+
+export type CheckState = 'pass' | 'boundary' | 'fail' | 'mixed';
+
+export interface CheckSegment {
+  readonly text: string;
+  readonly state: CheckState;
+}
+
+/**
+ * A check's reading, broken into colour-coded segments so a sweep shows
+ * *where* it starts failing, not just its extremes. A single pass/fail
+ * transition becomes three segments — start, the point it crosses, end —
+ * each in its own state colour; a uniform sweep collapses to one segment in
+ * its overall colour, and more than one crossing falls back to the plain
+ * extent range (`summarise`'s own text) rather than guessing which crossing
+ * matters.
+ */
+export function summariseCheck(
+  reading: Reading,
+  results: readonly boolean[],
+  figures = 4,
+  format: NumberFormat = PLAIN_NUMBER_FORMAT,
+): readonly CheckSegment[] {
+  const { series, unit } = reading;
+  if (series.kind !== 'numeric' || series.data.length === 0) return [];
+  const { data } = series;
+  const at = (index: number): string => display(data[index] as number, unit, figures, format);
+  const last = data.length - 1;
+
+  if (series.axes.length === 0) {
+    return [{ text: at(0), state: results[0] === true ? 'pass' : 'fail' }];
+  }
+
+  const range = (): string => {
+    const [low, high] = extent(reading) as readonly [number, number];
+    return `${display(low, unit, figures, format)} … ${display(high, unit, figures, format)}`;
+  };
+
+  if (results.every(Boolean)) return [{ text: range(), state: 'pass' }];
+  if (results.every((passed) => !passed)) return [{ text: range(), state: 'fail' }];
+
+  const transitions: number[] = [];
+  for (let index = 1; index <= last; index += 1) {
+    if (results[index] !== results[index - 1]) transitions.push(index);
+  }
+  if (transitions.length !== 1) return [{ text: range(), state: 'mixed' }];
+
+  const [boundary] = transitions as [number];
+  return [
+    { text: at(0), state: results[0] === true ? 'pass' : 'fail' },
+    { text: at(boundary), state: 'boundary' },
+    { text: at(last), state: results[last] === true ? 'pass' : 'fail' },
+  ];
+}
+
 /** `26 points along pad width w` — what a sparkline is labelled with. */
 export function axisLabel({ series }: Reading): string | undefined {
   if (series.axes.length === 0) return undefined;
