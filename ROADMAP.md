@@ -217,3 +217,9 @@ content and live in the private `machine-design-catalogue` repository, not
 here.
 
 **39. Change: Checkmark in the check output nodes should be on other side of label** to be consistent with other notebook items.
+
+**40. change: number of digits in table view must not be printed to pdf** Also, it should be digits after decimal point, not total digits.
+
+**41. Bug: Fuzzy finding in quick add is still very slow**
+
+**42. Bug: Zooming with trackpad pinch is too slow** Can we even change this? Using two finger swipe is working as intended.
