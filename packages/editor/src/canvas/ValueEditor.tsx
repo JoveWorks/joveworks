@@ -13,7 +13,7 @@
 import type { ReactElement } from 'react';
 
 import { dimensionsEqual, parseUnit, type NumberFormat, type Unit } from '@joveworks/units';
-import { DEFAULT_SLIDER_FIGURES, RENARD_SERIES, type RenardSeries, type ValueSpec } from '@joveworks/schema';
+import { DEFAULT_SLIDER_FIGURES, RENARD_SERIES, localize, type RenardSeries, type ValueSpec } from '@joveworks/schema';
 
 import { useSettings } from '../settings-context';
 import { useGraph } from '../graph-context';
@@ -56,6 +56,11 @@ function smallest(value: ValueSpec): number {
   return 1;
 }
 
+/** The largest value already typed into a list, so a list → range switch can take both its ends as bounds. */
+function largest(value: ValueSpec): number | undefined {
+  return value.kind === 'list' ? Math.max(...value.values) : undefined;
+}
+
 function firstCategory(value: ValueSpec): string {
   if (value.kind === 'categorical') return value.value;
   if (value.kind === 'categoricalList') return value.values[0] ?? 'value';
@@ -88,13 +93,17 @@ export function converted(value: ValueSpec, kind: Kind): ValueSpec {
     case 'linear':
     case 'logarithmic': {
       const start = kind === 'logarithmic' && sample <= 0 ? 1 : sample;
-      return { kind, start, stop: start * 2, points: 10, unit };
+      const upper = largest(value);
+      const stop = upper !== undefined && upper > start ? upper : start * 2;
+      return { kind, start, stop, points: 10, unit };
     }
     case 'list':
       return { kind, values: [sample, sample * 2], unit };
     case 'renard': {
       const start = sample <= 0 ? 1 : sample;
-      return { kind, series: 'R20', start, stop: start * 2, unit };
+      const upper = largest(value);
+      const stop = upper !== undefined && upper > start ? upper : start * 2;
+      return { kind, series: 'R20', start, stop, unit };
     }
     case 'categorical':
       return { kind, value: firstCategory(value) };
@@ -244,6 +253,7 @@ export function ValueFields({ value, onChange }: Props): ReactElement {
   const unit = unitOf(value);
   const format = useValueFormat();
   const { catalogues } = useGraph();
+  const { locale } = useSettings();
   const lookupFormulas = catalogues.flatMap((catalogue) =>
     catalogue.formulas.filter((formula) => formula.lookup !== undefined),
   );
@@ -334,7 +344,11 @@ export function ValueFields({ value, onChange }: Props): ReactElement {
               });
             }}
           >
-            {lookupFormulas.map((formula) => <option key={formula.id} value={formula.id}>{formula.id}</option>)}
+            {lookupFormulas.map((formula) => (
+              <option key={formula.id} value={formula.id}>
+                {formula.label === undefined ? formula.id : localize(formula.label, locale)}
+              </option>
+            ))}
           </select>
           <select
             className="nodrag"

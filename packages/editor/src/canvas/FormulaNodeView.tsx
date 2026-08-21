@@ -180,6 +180,10 @@ export function FormulaNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
       <ul className="ports">
         {formula.inputs.flatMap((port) => {
           const authored = node.inputValues?.[port.name];
+          // On the row itself, not just the label — a student pointing at the
+          // handle or the default field should see the same description a
+          // pointer over the name would.
+          const description = port.description === undefined ? undefined : localize(port.description, locale);
           // An ordinary port is exactly one slot. A spectrum port is one
           // slot per edge already joined to it, plus a trailing open one —
           // there is no numbered "a1, a2" identity to keep in step, since
@@ -190,6 +194,7 @@ export function FormulaNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
               <li
                 key={port.name}
                 className={`${missing(port) ? 'port missing' : 'port'}${highlightedPorts.has(port.name) ? ' port-highlighted' : ''}`}
+                {...(description === undefined ? {} : { title: description })}
                 onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: port.name })}
                 onMouseLeave={() => data?.onPortHover?.()}
               >
@@ -202,7 +207,6 @@ export function FormulaNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
                 <ParameterLabel
                   name={port.name}
                   unit={portUnit(port)}
-                title={port.description === undefined ? '' : localize(port.description, locale)}
                   nameClassName="port-name"
                   unitClassName="port-unit"
                 />
@@ -247,6 +251,7 @@ export function FormulaNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
             <li
               key={`${port.name}-${i}`}
               className={`port${highlightedPorts.has(port.name) ? ' port-highlighted' : ''}`}
+              {...(description === undefined ? {} : { title: description })}
               onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: port.name })}
               onMouseLeave={() => data?.onPortHover?.()}
             >
@@ -261,7 +266,6 @@ export function FormulaNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
                   <ParameterLabel
                     name={port.name}
                     unit={portUnit(port)}
-                    title={port.description === undefined ? '' : localize(port.description, locale)}
                     nameClassName="port-name"
                     unitClassName="port-unit"
                   />
@@ -276,6 +280,7 @@ export function FormulaNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
             <li
               key={`${port.name}-open`}
               className={`${count === 0 ? 'port missing' : 'port port-open'}${highlightedPorts.has(port.name) ? ' port-highlighted' : ''}`}
+              {...(description === undefined ? {} : { title: description })}
               onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: port.name })}
               onMouseLeave={() => data?.onPortHover?.()}
             >
@@ -286,7 +291,7 @@ export function FormulaNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
                 className={`${count === 0 ? 'missing' : ''}${highlightedPorts.has(port.name) ? ' port-highlighted' : ''}`}
               />
               {count === 0 ? (
-                <span className="port-name" title={port.description === undefined ? '' : localize(port.description, locale)}>
+                <span className="port-name">
                   <Symbol name={port.name} />
                 </span>
               ) : null}

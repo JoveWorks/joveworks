@@ -190,7 +190,17 @@ export function CompareNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
                   ? 'Overridden by the wire — this is what applies when it is removed.'
                   : 'A number a student types, with its unit, unless something is wired in.'
               }
-              onCommit={(text) => setNode({ threshold: parseAuthored(text, format) })}
+              onCommit={(text) => {
+                const parsed = parseAuthored(text, format);
+                // A bare number typed while a unit is only implied adopts
+                // that unit outright, so the field stops relying on the
+                // "implied" chip beside it to say what it means.
+                const threshold =
+                  isDimensionless(parsed.unit.dimension) && impliedUnit !== undefined
+                    ? { ...parsed, unit: impliedUnit }
+                    : parsed;
+                setNode({ threshold });
+              }}
             />
             {impliedUnit === undefined ? null : (
               <span

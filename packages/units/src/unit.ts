@@ -135,7 +135,37 @@ export function lookupAtomicUnit(
     if (rest === undefined || !rest.prefixable) continue;
     return { dimension: rest.dimension, factor: rest.factor * scale };
   }
-  return undefined;
+  return correctedCasing(symbol);
+}
+
+/**
+ * A casing mistake corrected only when exactly one reading is possible —
+ * `Mpa` can only mean `MPa`, since no other atom spells `pa` under any
+ * casing. The prefix letter itself is never guessed here: `m` and `M` are
+ * genuinely different units (milli vs mega), so a prefix is only ever tried
+ * under the exact case the author typed. Only the atom name — the part
+ * after a correctly-cased prefix, or a whole unprefixed symbol — has its
+ * case corrected, and only when a single atom matches it.
+ */
+function correctedCasing(symbol: string): { dimension: Dimension; factor: number } | undefined {
+  const lower = symbol.toLowerCase();
+  const candidates: { dimension: Dimension; factor: number }[] = [];
+
+  for (const [key, atom] of Object.entries(ATOMS)) {
+    if (key.toLowerCase() === lower) candidates.push({ dimension: atom.dimension, factor: atom.factor });
+  }
+
+  for (const [prefix, scale] of Object.entries(PREFIXES)) {
+    if (!symbol.startsWith(prefix) || symbol.length === prefix.length) continue;
+    const rest = symbol.slice(prefix.length).toLowerCase();
+    for (const [key, atom] of Object.entries(ATOMS)) {
+      if (atom.prefixable && key.toLowerCase() === rest) {
+        candidates.push({ dimension: atom.dimension, factor: atom.factor * scale });
+      }
+    }
+  }
+
+  return candidates.length === 1 ? candidates[0] : undefined;
 }
 
 /** A dimension that is already one bare base symbol — `mm`, not `mm²` or `N/mm`. */
@@ -176,7 +206,7 @@ export function knownUnitSymbols(): readonly string[] {
  * valid expression), but a picker needs choices a student can recognise.
  */
 const DISPLAY_UNIT_SYMBOLS = [
-  '', '%', 'm', 'N', 's', 'min', 'h', 'rad', 'deg', 'K', 'g', 't',
+  '', '%', 'mm', 'm', 'N', 's', 'min', 'h', 'rad', 'deg', 'K', 'g', 't',
   'Pa', 'N/mm²', 'Nm', 'Nmm', 'J', 'W', 'Hz', 'rpm',
 ] as const;
 

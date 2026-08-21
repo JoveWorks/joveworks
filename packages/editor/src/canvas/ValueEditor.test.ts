@@ -33,6 +33,23 @@ describe('switching an input value between kinds', () => {
     expect(converted(scalar, 'list')).toEqual({ kind: 'list', values: [20, 40], unit: mm });
   });
 
+  it('takes a list’s min and max as the bounds, switching to a linear or Renard range', () => {
+    const list = { kind: 'list' as const, values: [40, 10, 25], unit: mm };
+    expect(converted(list, 'linear')).toEqual({
+      kind: 'linear', start: 10, stop: 40, points: 10, unit: mm,
+    });
+    expect(converted(list, 'renard')).toEqual({
+      kind: 'renard', series: 'R20', start: 10, stop: 40, unit: mm,
+    });
+  });
+
+  it('falls back to doubling the smallest value when a list has only one entry or is not increasing', () => {
+    const single = { kind: 'list' as const, values: [10], unit: mm };
+    expect(converted(single, 'linear')).toEqual({
+      kind: 'linear', start: 10, stop: 20, points: 10, unit: mm,
+    });
+  });
+
   it('starts a log range at 1 rather than a non-positive smallest bound', () => {
     const scalar = { kind: 'scalar' as const, value: -5, unit: mm };
     expect(converted(scalar, 'logarithmic')).toEqual({

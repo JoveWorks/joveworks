@@ -46,6 +46,19 @@ describe('unit parsing', () => {
     expectUnit('MPa', STRESS, 1);
   });
 
+  it('corrects an atom casing mistake when exactly one reading is possible', () => {
+    expectUnit('Mpa', STRESS, 1);
+    expectUnit('mPa', STRESS, 1e-3 * 1e-6);
+    expectUnit('PA', STRESS, 1e-6);
+    expectUnit('hz', FREQUENCY, 1);
+  });
+
+  it('still refuses a casing mistake that reads two different ways', () => {
+    // 'nM' could be a garbled 'Nm' (torque) or a garbled 'nm' (nanometre) —
+    // genuinely ambiguous, so it stays a hard error rather than guessing.
+    expect(() => parseUnit('nM')).toThrow(UnitError);
+  });
+
   it('prefers an exact symbol over a prefix reading', () => {
     // 'min' is a minute, not milli-inch; 'm' is a metre, not a stray prefix.
     expectUnit('min', dimension({ time: 1 }), 60);

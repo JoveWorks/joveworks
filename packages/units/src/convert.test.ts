@@ -29,6 +29,12 @@ describe('boundary conversion', () => {
     expect(compatibleDisplayUnits(parseUnit('Pa').dimension).map((unit) => unit.symbol)).not.toContain('MPa');
   });
 
+  it('offers both mm and m for a length dimension, so switching back and forth never loses one', () => {
+    expect(compatibleDisplayUnits(parseUnit('mm').dimension).map((unit) => unit.symbol)).toEqual(
+      expect.arrayContaining(['mm', 'm']),
+    );
+  });
+
   it('converts into and out of canonical units', () => {
     expect(toCanonical(2.5, parseUnit('m'))).toBe(2500);
     expect(fromCanonical(2500, parseUnit('m'))).toBe(2.5);

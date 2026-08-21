@@ -180,28 +180,6 @@ Largely implemented, but R&M catalogue needs updating.
 **17. What about migration to newer versions?** I'm thinking notebooks and
 catalogues that the user made before.
 
-**19. Bug: Text can be clipped when the textbox is full** Text should be
-wrapped so it is always fully visible. Occurs in node titles (in node and in
-notebook). Captions in nodes (not in notebooks)
-Implemented on `feat/canvas-layout-interaction-polish`. Awaiting review before merge.
-Feedback: Now the alignment of the check node is not correct. Check label sticks out above the line. Rest seems ok.
-
-**20. Change: Range input shows `range` as node id** instead of `input`.
-
-**21. Bug: Table column** Input has no entries. Is this the look up table being not finished?
-
-**22. Bug: Units are enforced too soon when dragging an input port with quick
-add** Input nodes are not addable because they do not have a unit yet. We can
-enforce their unit though, so they should be addable.
-
-**23. Change: Switching from list to range input should take min and max as bounds**.
-
-**24. Bug: Switching from m to mm is not possible after switching from mm to m.**
-In the output port unit dropdown in the multiply node. Maybe in others too.
-
-**25. Change: When the unit is implied on data entry, the unit should be
-explicitly added** e.g. when changing the threshold value
-
 **26. Feature: We need more array nodes.** Sum and product are in. We need length, mean, median, sdev, etc. Combine them in a catalogue, what should we name this?
 
 **27. Not all nodes are fuzzy findable in the palette** At leaste Monte carlo nodes are missing. The finder in the canvas also does not list the monte carlo nodes, is the list not dynamic and build on all nodes?
@@ -218,12 +196,13 @@ explicitly added** e.g. when changing the threshold value
 
 **33. Change: What is the {table XX} notation in RM catalogue?** E.g. in eq 16.1. There must be a better way to integrate the tables in the catalogue. Actually, since we will have a LUT node, can we just have the table as catalogue items?
 
-**34. Bug: Port tooltip only appears on the label.** Not on the whole port row and port itself.
-
 **35. Change: equation R&M 16.3 uses betahat_1** The hat is currently not present as a caret on the letter
-
-**36. Change: Unit recognition is too strict.** I want casing to be inferred to a certain degree. Mpa can only refer to MPa. If the 'mistake' is unambiguous, we can correct it for the user.
+Out of scope for this repo — R&M catalogue content (equation 16.3) lives in
+the private `machine-design-catalogue` repository, not here.
 
 **37. Change: The check nodes must clarify what points fail/pass.** In a sweep, the failing value can be added to the output as e.g. 5 MPa ... 13 MPa ... 30 MPa, with the first part in green, middle in orange, failing part in red?
 
 **38. Change: Bearing pad and platform size should use the Pa unit instead of N/mm²**
+Out of scope for this repo — bearing pad/platform formulas are R&M catalogue
+content and live in the private `machine-design-catalogue` repository, not
+here.

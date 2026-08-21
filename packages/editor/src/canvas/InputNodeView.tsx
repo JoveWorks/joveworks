@@ -65,7 +65,7 @@ export function InputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>)
           }
         />
       }
-      subtitle={swept ? 'range' : 'input'}
+      subtitle="input"
       detail={
         <>
           <ValueKindSelect value={node.value} onChange={setValue} />
