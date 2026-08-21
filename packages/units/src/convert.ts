@@ -146,6 +146,22 @@ export function toSignificantFigures(
 }
 
 /**
+ * Round to a fixed count of digits after the decimal point, rather than
+ * `toSignificantFigures`'s total-digit count — a table column's own
+ * convention (each column's magnitude is usually similar row to row, so a
+ * fixed decimal count reads more predictably than a shifting significant-
+ * figure count would).
+ */
+export function toDecimalPlaces(
+  value: number,
+  decimals = 4,
+  format: NumberFormat = PLAIN_NUMBER_FORMAT,
+): string {
+  if (!Number.isFinite(value)) return String(value);
+  return punctuate(value.toFixed(Math.max(0, decimals)), format);
+}
+
+/**
  * Render a canonical value in a display unit — `435.7 N`, `6.464 s-1`.
  *
  * The unit is printed exactly as it was written by whoever declared it, so a

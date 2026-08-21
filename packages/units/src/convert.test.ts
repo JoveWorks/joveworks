@@ -16,6 +16,7 @@ import {
   siPrefixedUnit,
   stripNumberFormatting,
   toCanonical,
+  toDecimalPlaces,
   toSignificantFigures,
   type NumberFormat,
 } from './index.js';
@@ -59,6 +60,13 @@ describe('display formatting', () => {
     expect(toSignificantFigures(2187.4)).toBe('2187');
     expect(toSignificantFigures(0)).toBe('0');
     expect(toSignificantFigures(1 / 3, 6)).toBe('0.333333');
+  });
+
+  it('rounds to a fixed count of digits after the decimal point, not significant figures', () => {
+    expect(toDecimalPlaces(73.3137829912024, 2)).toBe('73.31');
+    expect(toDecimalPlaces(2187.4, 2)).toBe('2187.40');
+    expect(toDecimalPlaces(0.0001234, 2)).toBe('0.00');
+    expect(toDecimalPlaces(1 / 3, 0)).toBe('0');
   });
 
   it('prints a dimensionless value with no trailing symbol', () => {

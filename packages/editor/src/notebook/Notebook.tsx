@@ -217,10 +217,10 @@ function Result({ result, node }: { readonly result: OutputResult; readonly node
     return (
       <p className={`result check ${verdict}`}>
         <span className="check-row">
-          <span className="mark">{mark}</span>
           <span className="label">
             <OutputTitle node={node} />
           </span>
+          <span className="mark">{mark}</span>
           <span className="number">
             <CheckReading
               segments={summariseCheck({ series: result.series, unit: result.unit }, result.results, 4, format)}
@@ -297,9 +297,9 @@ function Result({ result, node }: { readonly result: OutputResult; readonly node
                     className="column-figures"
                     value={output.figures?.[column.name] ?? 4}
                     integer
-                    minimum={1}
+                    minimum={0}
                     autoSize={1}
-                    title={`decimal figures for ${column.name}`}
+                    title={`digits after the decimal point for ${column.name}`}
                     onCommit={(figures) =>
                       edit((current) => setColumnFigures(current, node.id, column.name, figures))
                     }

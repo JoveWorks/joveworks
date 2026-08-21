@@ -139,7 +139,7 @@ export function padPressure(catalogues: readonly Catalogue[], locale: AppLocale 
   if (multiply === undefined || divide === undefined) return undefined;
 
   const mm = parseUnit('mm');
-  const stress = parseUnit('N/mm²');
+  const stress = parseUnit('Pa');
 
   const nodes: GraphNode[] = [
     input('F', 'Pad load F', { kind: 'scalar', value: 12, unit: parseUnit('kN') }, at(0, 0)),
@@ -156,13 +156,13 @@ export function padPressure(catalogues: readonly Catalogue[], locale: AppLocale 
     output(
       'p_check',
       'Pressure within the bearing limit',
-      { kind: 'check', comparison: '<=', threshold: { value: 2, unit: stress } },
+      { kind: 'check', comparison: '<=', threshold: { value: 2_000_000, unit: stress } },
       at(1020, 170),
     ),
     output(
       'p_plot',
       'Pressure against pad width',
-      { kind: 'plot', x: 'w', threshold: { value: 2, unit: stress }, unit: stress },
+      { kind: 'plot', x: 'w', threshold: { value: 2_000_000, unit: stress }, unit: stress },
       at(1020, 340),
     ),
   ];
@@ -183,7 +183,7 @@ export function padPressure(catalogues: readonly Catalogue[], locale: AppLocale 
       title: 'Pad sizing',
       note:
         'A 12 kN load on a 40 mm pad, swept across pad widths from 10 to 60 mm. The pressure ' +
-        'limit is 2 N/mm², and the plot says where the sweep crosses it.',
+        'limit is 2 MPa, and the plot says where the sweep crosses it.',
       position: at(960, -80),
       size: { width: 400, height: 620 },
     },
@@ -211,7 +211,7 @@ export function platformFootprint(catalogues: readonly Catalogue[], locale: AppL
   if (multiply === undefined || divide === undefined) return undefined;
 
   const mm = parseUnit('mm');
-  const stress = parseUnit('N/mm²');
+  const stress = parseUnit('Pa');
   const nodes: GraphNode[] = [
     input('load', 'Equipment load', { kind: 'scalar', value: 12, unit: parseUnit('kN') }, at(0, 0)),
     input('length', 'Platform length', { kind: 'scalar', value: 1000, unit: mm }, at(0, 150)),
@@ -227,13 +227,13 @@ export function platformFootprint(catalogues: readonly Catalogue[], locale: AppL
     output(
       'safe',
       'Within the agreed floor-load limit',
-      { kind: 'check', comparison: '<=', threshold: { value: 0.02, unit: stress } },
+      { kind: 'check', comparison: '<=', threshold: { value: 20_000, unit: stress } },
       at(1020, 170),
     ),
     output(
       'decision_plot',
       'How width changes the floor pressure',
-      { kind: 'plot', x: 'width', threshold: { value: 0.02, unit: stress }, unit: stress },
+      { kind: 'plot', x: 'width', threshold: { value: 20_000, unit: stress }, unit: stress },
       at(1020, 340),
     ),
   ];

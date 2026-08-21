@@ -43,6 +43,9 @@ export type QuickAddCandidate =
   | { readonly kind: 'formula'; readonly formula: Formula }
   | Exclude<QuickAddChoice, { readonly kind: 'formula' | 'existing' }>;
 
+/** How many ranked formula matches the menu shows — and the cap on how many pay for a kernel compatibility check. */
+const MAX_FORMULA_RESULTS = 30;
+
 /**
  * Compile-time guarantee that every node kind the schema knows about (besides
  * `formula`, which the catalogue search above already covers) has a
@@ -106,12 +109,21 @@ export function QuickAddMenu({
   // The catalogue's own `search` reads ports and descriptions too, which a
   // name-only fuzzy match would not replicate — kept as the formula list's
   // first pass, with fuzzy ranking only re-ordering what it already found.
+  //
+  // `compatiblePort` asks the kernel about a prospective edge — a document
+  // clone plus a full `resolveGraph`/`canConnect` — so it must only run on
+  // what the menu can actually show (`MAX_FORMULA_RESULTS`, matching the
+  // render slice below), not on every fuzzy match. Running it on every match
+  // was the quick-add slowdown: a common query matches most of the
+  // catalogue, and each one was paying for a full graph resolution.
   const formulas = useMemo(
     () =>
-      search(entries(catalogues), query).flatMap(({ formula, ...match }) => {
-        const port = compatiblePort({ kind: 'formula', formula });
-        return port === undefined ? [] : [{ formula, ...match, port }];
-      }),
+      search(entries(catalogues), query)
+        .slice(0, MAX_FORMULA_RESULTS)
+        .flatMap(({ formula, ...match }) => {
+          const port = compatiblePort({ kind: 'formula', formula });
+          return port === undefined ? [] : [{ formula, ...match, port }];
+        }),
     [catalogues, compatiblePort, query],
   );
   const matchingExisting = useMemo(
@@ -192,7 +204,7 @@ export function QuickAddMenu({
                   {label}
                 </button>
               ))}
-              {formulas.slice(0, 30).map(({ formula, port }) => (
+              {formulas.map(({ formula, port }) => (
                 <button key={formula.id} type="button" onClick={() => pick({ kind: 'formula', formula, port })}>
                   <span className="entry-id">{formula.citation ?? formula.id}</span>
                   <span className="entry-output">

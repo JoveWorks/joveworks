@@ -22,6 +22,7 @@ import {
   fromCanonical,
   parseUnit,
   stripNumberFormatting,
+  toDecimalPlaces,
   toSignificantFigures,
   type NumberFormat,
   type Unit,
@@ -69,14 +70,18 @@ export function display(
 /**
  * The number alone, no unit — for a table cell whose column header already
  * carries it (unit-once-per-column, not repeated down every row).
+ *
+ * `decimals` is digits *after the decimal point*, not significant figures —
+ * a table column's own convention (the header's own `decimal figures for X`
+ * control), distinct from the significant-figures rule everywhere else.
  */
 export function displayNumber(
   canonical: number,
   unit: Unit,
-  figures = 4,
+  decimals = 4,
   format: NumberFormat = PLAIN_NUMBER_FORMAT,
 ): string {
-  return toSignificantFigures(fromCanonical(canonical, unit), figures, format);
+  return toDecimalPlaces(fromCanonical(canonical, unit), decimals, format);
 }
 
 /** A unit's symbol as its author spelled it — port labels are text, not colour. */

@@ -195,8 +195,6 @@ catalogues that the user made before.
 
 **26. Feature: We need more array nodes.** Sum and product are in. We need length, mean, median, sdev, etc. Combine them in a catalogue, what should we name this?
 
-**27. Not all nodes are fuzzy findable in the palette** At leaste Monte carlo nodes are missing. The finder in the canvas also does not list the monte carlo nodes, is the list not dynamic and build on all nodes?
-
 **28. Feature: Can we share private catalogues with a password?** Maybe encrypt them and share public key?
 
 **29. Bug: Opening an example link on mobile does not redirect to the mobile landing page**. It just shows a blank screen.
@@ -212,14 +210,23 @@ Out of scope for this repo — R&M catalogue content (equation 16.3) lives in
 the private `machine-design-catalogue` repository, not here.
 
 **38. Change: Bearing pad and platform size should use the Pa unit instead of N/mm²**
-Out of scope for this repo — bearing pad/platform formulas are R&M catalogue
-content and live in the private `machine-design-catalogue` repository, not
-here.
+Implemented: these are the `padPressure` and `platformFootprint` worked
+examples in `model/samples.ts` — built from base nodes only, not R&M content,
+so this was in scope here after all. Both now declare `Pa` as the display
+unit; thresholds were rescaled to match (2 N/mm² → 2,000,000 Pa, 0.02 N/mm² →
+20,000 Pa) so the canonical values driving the checks are unchanged. `Pa` is
+a prefixable atom and the app's own default number format is `si`
+(`numberFormat.ts`), so these print as `2 MPa` / `20 kPa` for most viewers
+rather than raw Pa magnitudes. Awaiting a look in the browser.
 
 **39. Change: Checkmark in the check output nodes should be on other side of label** to be consistent with other notebook items.
+Implemented: the mark now sits between the label and the reading (`Notebook.tsx`'s `check-row`), matching print/equation's label-then-value order instead of leading the row. Awaiting a look in the browser.
 
 **40. change: number of digits in table view must not be printed to pdf** Also, it should be digits after decimal point, not total digits.
+Implemented: `displayNumber` (table cells only — the notebook table and the mobile viewer) now rounds to a fixed decimal-place count (`toDecimalPlaces`, `@joveworks/units`) instead of significant figures, matching what the header's own "decimal figures" label already claimed. The per-column figures field is hidden under `@media print` alongside the rest of the editing chrome. Nothing else that calls `toSignificantFigures`/`formatQuantity` changed — this was table-only. Awaiting a look in the browser and a real print-to-PDF check.
 
 **41. Bug: Fuzzy finding in quick add is still very slow**
+Root cause found: `compatiblePort` — a document clone plus a full `resolveGraph`/`canConnect` through the kernel — was run on *every* fuzzy match, not just the ones the menu shows. A common query matches most of the catalogue, so each keystroke paid for hundreds of full graph resolutions. Fixed in `QuickAddMenu.tsx` by capping to the top `MAX_FORMULA_RESULTS` (30, matching what was already the render slice) before running the kernel check, not after. Awaiting a look in the browser to confirm it feels fast now.
 
 **42. Bug: Zooming with trackpad pinch is too slow** Can we even change this? Using two finger swipe is working as intended.
+Investigated, not changed: `@xyflow/react`'s `ZoomPane` takes `panOnScrollSpeed` but exposes no equivalent for scroll/pinch zoom — no sensitivity knob to turn. The only way to slow it down would be disabling `zoomOnScroll`/`zoomOnPinch` and hand-rolling zoom from raw `onWheel` events (distinguishing pinch from pan by `ctrlKey`, as browsers report trackpad pinch) — a real rewrite of core canvas interaction, and one I can't verify without trackpad hardware in front of me. Given two-finger swipe already covers pan, leaving this as a discussion item rather than guessing at a gesture handler.

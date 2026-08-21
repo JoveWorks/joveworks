@@ -69,6 +69,7 @@ export {
   fromCanonical,
   convert,
   toSignificantFigures,
+  toDecimalPlaces,
   formatQuantity,
   formatPlainNumber,
   parseQuantity,

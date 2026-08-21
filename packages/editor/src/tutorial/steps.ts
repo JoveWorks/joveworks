@@ -87,7 +87,7 @@ const EXAMPLE_COPY = {
     inputBody: 'Pad width is a linear sweep from 10 to 60 mm. One graph evaluates every candidate width; there is no loop to write.',
     studyTitle: 'The graph is the calculation',
     studyBody: 'Load divided by pad area produces pressure. The same result feeds a printed value, a limit check and a plot.',
-    resultBody: 'Use the threshold on the pressure plot to see where the design first clears 2 N/mm², rather than treating the sweep as a list of unrelated answers.',
+    resultBody: 'Use the threshold on the pressure plot to see where the design first clears 2 MPa, rather than treating the sweep as a list of unrelated answers.',
   },
   'monte-carlo-clearance': {
     title: 'Clearance-fit stack-up',

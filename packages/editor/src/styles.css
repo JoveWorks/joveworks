@@ -2915,7 +2915,8 @@ aside.right {
   .canvas,
   .notebook-icon-button,
   .notebook-section .grip,
-  .notebook-section .chevron {
+  .notebook-section .chevron,
+  .column-figures {
     display: none !important;
   }
 
