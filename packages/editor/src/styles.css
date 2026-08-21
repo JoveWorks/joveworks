@@ -2808,6 +2808,15 @@ aside.right {
   margin: 4px 0;
 }
 
+/* A faceted Feasibility chart sizes itself to stay legible per facet
+   rather than fitting a fixed cap, so it can end up wider than its panel
+   in both the notebook and the read-only course viewer — scroll it
+   within its own box instead of forcing the whole panel to scroll
+   sideways. */
+.figure {
+  overflow-x: auto;
+}
+
 /* Contours have a compact vertical scale; categorical series continue to use
  * Observable's ordinary swatch legend above their chart. */
 .notebook .contour-figure {

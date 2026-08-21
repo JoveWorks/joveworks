@@ -68,8 +68,14 @@ export function FeasibilityFigure({ result }: Props): ReactElement {
     const seriesLabel = result.series2?.axis.label ?? '';
     const fx = result.facet === undefined ? undefined : 'facet';
 
+    // Each facet panel needs to fit its own x-axis ticks, not just a fixed
+    // share of an overall cap — a mask only has two colours to read a facet
+    // by, so a facet crushed too narrow to show its own ticks reads as
+    // noise rather than a small multiple. `PlotFigure`'s facet width (used
+    // for a line, which stays legible smaller) is the wrong model here.
+    const perFacetWidth = Math.max(120, 22 * result.x.axis.length + 48);
     const chart = Plot.plot({
-      width: result.facet === undefined ? 360 : Math.min(180 * result.facet.axis.length, 1080),
+      width: result.facet === undefined ? 360 : perFacetWidth * result.facet.axis.length,
       height: result.series2 === undefined ? 80 : 240,
       marginLeft: 56,
       marginBottom: 40,
