@@ -15,6 +15,7 @@
     "dev:all": "pnpm run --parallel '/^(dev|docs:dev)$/'",
     "docs:dev": "pnpm --filter @joveworks/docs-site dev",
     "docs:build": "pnpm --filter @joveworks/docs-site build",
+    "encrypt-catalogue": "node tools/encrypt-catalogue/encrypt-catalogue.mjs",
     "release": "commit-and-tag-version"
   },
   "devDependencies": {

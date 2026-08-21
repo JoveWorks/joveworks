@@ -39,6 +39,8 @@ Plausible's default pageview, plus these custom events:
 | --- | --- | --- |
 | `catalogue_loaded` | A catalogue file was parsed and accepted | None |
 | `catalogue_load_failed` | A chosen catalogue file was rejected | `reason=invalid_file` |
+| `catalogue_unlocked` | A locked catalogue was decrypted and added | None |
+| `catalogue_unlock_failed` | A locked catalogue's password did not decrypt it | `reason=wrong_password` |
 | `example_opened` | A built-in example was opened | None |
 | `graph_created` | The user created a new graph | None |
 | `document_load_failed` | A chosen graph file was rejected | `reason=invalid_file` |

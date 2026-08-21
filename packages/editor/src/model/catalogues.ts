@@ -1,15 +1,27 @@
 /**
  * The loaded catalogues, and the palette that lists them.
  *
- * The base node library is always present and the R&M catalogue arrives as
- * a file through the LMS, so the palette has two or more sources and one
- * kind of entry. Nothing here treats a restricted catalogue differently from an
- * unrestricted one *for computing*; the `restricted` flag is what an export must
- * honour, and it is carried through so the UI can say where a formula came
- * from.
+ * The base node library is always present, and a restricted catalogue can
+ * arrive either as a file through the LMS or password-locked and bundled
+ * with the app (docs/password-shared-catalogues.md, `lockedCatalogues`
+ * below) — so the palette has two or more sources and one kind of entry
+ * once a catalogue is actually loaded. Nothing here treats a restricted
+ * catalogue differently from an unrestricted one *for computing*; the
+ * `restricted` flag is what an export must honour, and it is carried
+ * through so the UI can say where a formula came from.
  */
 
-import { localize, parseCatalogue, loadCatalogue, ports, type Catalogue, type Formula, type JsonValue } from '@joveworks/schema';
+import {
+  localize,
+  parseCatalogue,
+  parseLockedCatalogue,
+  loadCatalogue,
+  ports,
+  type Catalogue,
+  type Formula,
+  type JsonValue,
+  type LockedCatalogue,
+} from '@joveworks/schema';
 import type { AppLocale } from './editorSettings';
 import { BASE_CATALOGUE_ID, baseCatalogueJson } from '@joveworks/nodes';
 import { fuzzySearch } from './fuzzy';
@@ -39,6 +51,21 @@ const bundledCatalogueModules = import.meta.glob<JsonValue>('../catalogues/*.jso
  */
 export function bundledCatalogues(): readonly Catalogue[] {
   return Object.values(bundledCatalogueModules).map((data) => parseCatalogue(data));
+}
+
+const lockedCatalogueModules = import.meta.glob<JsonValue>('../catalogues/locked/*.json', {
+  eager: true,
+  import: 'default',
+});
+
+/**
+ * Restricted catalogues (docs/password-shared-catalogues.md) shipped as
+ * ciphertext next to the unrestricted bundled ones. `id` and `name` are
+ * readable without the password so the palette can list a locked entry —
+ * everything else needs a student to unlock it first via `decryptCatalogue`.
+ */
+export function lockedCatalogues(): readonly LockedCatalogue[] {
+  return Object.values(lockedCatalogueModules).map((data) => parseLockedCatalogue(data));
 }
 
 /**
