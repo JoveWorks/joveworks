@@ -54,15 +54,18 @@ export interface GraphContextValue {
   readonly hovered: ReadonlySet<string>;
   readonly setHovered: (update: (current: ReadonlySet<string>) => ReadonlySet<string>) => void;
   /**
-   * Monte Carlo receiver playback, by receiver id (`ROADMAP.md` #27) — held
-   * here, one level above any single view, so the canvas node and the
-   * notebook entry for the same receiver (`MonteCarloReceiverPlayback.tsx`)
-   * read and drive the same position rather than two independent ones.
+   * Monte Carlo playback: one shared position for the whole document
+   * (`ROADMAP.md` #27, #31), held here, one level above any single view, so
+   * every receiver's canvas node and notebook entry
+   * (`MonteCarloReceiverPlayback.tsx`) read and drive the same position
+   * rather than independent ones — every generator shares one trial axis,
+   * so there is one "how far into the run we are" to show, not one per
+   * receiver.
    */
-  readonly monteCarloPlayback: ReadonlyMap<string, MonteCarloPlaybackState>;
-  readonly toggleMonteCarloPlayback: (id: string) => void;
-  readonly stepMonteCarloPlayback: (id: string) => void;
-  readonly resetMonteCarloPlayback: (id: string) => void;
+  readonly monteCarloPlayback: MonteCarloPlaybackState;
+  readonly toggleMonteCarloPlayback: () => void;
+  readonly stepMonteCarloPlayback: () => void;
+  readonly resetMonteCarloPlayback: () => void;
 }
 
 export const GraphContext = createContext<GraphContextValue | undefined>(undefined);

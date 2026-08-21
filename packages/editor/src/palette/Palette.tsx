@@ -20,7 +20,6 @@ import { useReactFlow } from '@xyflow/react';
 import { parseUnit, type Unit } from '@joveworks/units';
 import { BASE_CATALOGUE_ID } from '@joveworks/nodes';
 import {
-  DEFAULT_MONTE_CARLO_SAMPLE_LIMIT,
   localize,
   axes as documentAxes,
   formulaRef,
@@ -35,7 +34,7 @@ import { useSettings } from '../settings-context';
 import { phrase, ui } from '../i18n';
 import { addNode, uniqueId } from '../model/document';
 import { entries, search, type PaletteEntry } from '../model/catalogues';
-import { monteCarloSampleCount } from '../model/monteCarlo';
+import { monteCarloSampleCount, monteCarloSampleLimit } from '../model/monteCarlo';
 import { loadFavourites, saveFavourites } from '../model/palettePreferences';
 import { converted } from '../canvas/ValueEditor';
 import { ContextMenu } from '../canvas/ContextMenu';
@@ -262,7 +261,9 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
         kind: 'monteCarloReceiver',
         id,
         label: id,
-        sampleLimit: DEFAULT_MONTE_CARLO_SAMPLE_LIMIT,
+        // Matches whatever limit is already in use (ROADMAP.md #31), the
+        // same treatment a freshly dropped generator's count gets.
+        sampleLimit: monteCarloSampleLimit(current),
         position: position(),
       });
     });

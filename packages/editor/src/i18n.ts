@@ -49,6 +49,7 @@ const DUTCH_PHRASES: Readonly<Record<string, string>> = {
   'Add to favourites': 'Aan favorieten toevoegen', 'Remove from favourites': 'Uit favorieten verwijderen',
   'input': 'invoer', 'equation': 'vergelijking', 'waypoint': 'tussenpunt', 'pack': 'bundel', 'unpack': 'ontbundel', 'compare': 'vergelijk',
   'print output': 'afdrukuitvoer', 'check output': 'controle-uitvoer', 'plot output': 'grafiekuitvoer', 'table output': 'tabeluitvoer',
+  'Monte Carlo generator': 'Monte Carlo-generator', 'Monte Carlo receiver': 'Monte Carlo-ontvanger',
   'Selection': 'Selectie', 'Auto-arrange selection': 'Selectie automatisch schikken',
   'Space evenly horizontally': 'Horizontaal gelijkmatig verdelen', 'Space evenly vertically': 'Verticaal gelijkmatig verdelen',
   'Canvas': 'Canvas', 'Snap nodes to grid': 'Knooppunten aan raster vastklikken', 'Node': 'Knooppunt',

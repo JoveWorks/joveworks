@@ -17,7 +17,7 @@
 
 import { useMemo, useState, type ReactElement } from 'react';
 
-import type { Catalogue, Formula } from '@joveworks/schema';
+import type { Catalogue, Formula, GraphNode } from '@joveworks/schema';
 
 import { entries, search } from '../model/catalogues';
 import { fuzzySearch } from '../model/fuzzy';
@@ -35,11 +35,27 @@ export type QuickAddChoice =
   | { readonly kind: 'waypoint' }
   | { readonly kind: 'pack' }
   | { readonly kind: 'unpack' }
+  | { readonly kind: 'monteCarloGenerator' }
+  | { readonly kind: 'monteCarloReceiver' }
   | { readonly kind: 'existing'; readonly nodeId: string; readonly port: string };
 
 export type QuickAddCandidate =
   | { readonly kind: 'formula'; readonly formula: Formula }
   | Exclude<QuickAddChoice, { readonly kind: 'formula' | 'existing' }>;
+
+/**
+ * Compile-time guarantee that every node kind the schema knows about (besides
+ * `formula`, which the catalogue search above already covers) has a
+ * `QuickAddChoice` — the exact gap Monte Carlo nodes fell into: they existed
+ * in the schema and the palette for a while with no corresponding entry
+ * here, and nothing forced anyone to notice. If this stops compiling, a new
+ * schema node kind needs a `QuickAddChoice` variant and a `possibleSpecials`
+ * entry below, not just a palette action.
+ */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+type AssertEveryNodeKindIsQuickAddable<T extends QuickAddChoice['kind']> = T;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+type _EveryNodeKindIsQuickAddable = AssertEveryNodeKindIsQuickAddable<Exclude<GraphNode['kind'], 'formula'>>;
 
 /** An already-placed node the menu can offer, worked out by Canvas.tsx from the drag's direction. */
 export interface ExistingCandidate {
@@ -109,6 +125,7 @@ export function QuickAddMenu({
     readonly disabled?: boolean;
   }[] = [
       { label: t('input'), choice: { kind: 'input' } },
+      { label: t('Monte Carlo generator'), choice: { kind: 'monteCarloGenerator' } },
       { label: t('equation'), choice: { kind: 'closure' } },
       { label: t('waypoint'), choice: { kind: 'waypoint' } },
       { label: t('pack'), choice: { kind: 'pack' } },
@@ -122,6 +139,7 @@ export function QuickAddMenu({
         disabled: !canPlot,
       },
       { label: t('table output'), choice: { kind: 'output', outputKind: 'table' } },
+      { label: t('Monte Carlo receiver'), choice: { kind: 'monteCarloReceiver' } },
   ];
   const specials = possibleSpecials.filter(({ choice }) => compatiblePort(choice) !== undefined);
   const matchingSpecials = fuzzySearch(query, specials, (entry) => entry.label);

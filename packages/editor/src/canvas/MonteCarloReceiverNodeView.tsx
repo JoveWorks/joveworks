@@ -18,6 +18,7 @@ import { MONTE_CARLO_SAMPLE_PORT, type MonteCarloReceiverNode } from '@joveworks
 
 import { useGraph } from '../graph-context';
 import { reframe, removeNodes, renameNode, updateNode } from '../model/document';
+import { setMonteCarloSampleLimit } from '../model/monteCarlo';
 import { ParameterLabel } from '../ParameterLabel';
 import { MonteCarloReceiverPlayback } from './MonteCarloReceiverPlayback';
 import { NodeShell } from './NodeShell';
@@ -67,7 +68,9 @@ export function MonteCarloReceiverNodeView({ id, selected, data }: NodeProps<Can
               value={sampleLimit}
               integer
               minimum={1}
-              onCommit={(limit) => setReceiver((current) => ({ ...current, sampleLimit: limit }))}
+              // Shared across every receiver in the document (`ROADMAP.md`
+              // #31), the same treatment as a generator's sample count.
+              onCommit={(limit) => edit((current) => setMonteCarloSampleLimit(current, limit))}
             />
           </label>
           <label>

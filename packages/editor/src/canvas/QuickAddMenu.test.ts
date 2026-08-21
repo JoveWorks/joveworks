@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { emptyDocument, VALUE_PORT, type Catalogue, type Formula } from '@joveworks/schema';
+import { emptyDocument, MONTE_CARLO_SAMPLE_PORT, VALUE_PORT, type Catalogue, type Formula } from '@joveworks/schema';
 import { parseUnit } from '@joveworks/units';
 
 import { baseCatalogue } from '../model/catalogues';
@@ -23,6 +23,30 @@ describe('compatibleQuickAddPort', () => {
     expect(compatibleQuickAddPort(document, catalogues, target, { kind: 'waypoint' })).toBe('in0');
     expect(compatibleQuickAddPort(document, catalogues, target, { kind: 'pack' })).toBe('in0');
     expect(compatibleQuickAddPort(document, catalogues, target, { kind: 'unpack' })).toBeUndefined();
+  });
+
+  it('offers a Monte Carlo receiver for a dragged numeric output, and hides the generator (regression: ROADMAP.md #27, they were missing entirely)', () => {
+    const document = addNode(emptyDocument('study', 'Study'), {
+      kind: 'input',
+      id: 'source',
+      value: { kind: 'scalar', value: 1, unit: parseUnit('mm') },
+      position: { x: 0, y: 0 },
+    });
+    const target = { x: 0, y: 0, from: { nodeId: 'source', port: VALUE_PORT, type: 'source' as const } };
+
+    expect(compatibleQuickAddPort(document, catalogues, target, { kind: 'monteCarloReceiver' }))
+      .toBe(MONTE_CARLO_SAMPLE_PORT);
+    expect(compatibleQuickAddPort(document, catalogues, target, { kind: 'monteCarloGenerator' })).toBeUndefined();
+  });
+
+  it('offers a Monte Carlo generator for a dragged numeric input, and hides the receiver', () => {
+    const document = addNode(emptyDocument('study', 'Study'), {
+      kind: 'output', id: 'sink', output: { kind: 'print' }, position: { x: 0, y: 0 },
+    });
+    const target = { x: 0, y: 0, from: { nodeId: 'sink', port: VALUE_PORT, type: 'target' as const } };
+
+    expect(compatibleQuickAddPort(document, catalogues, target, { kind: 'monteCarloGenerator' })).toBe(VALUE_PORT);
+    expect(compatibleQuickAddPort(document, catalogues, target, { kind: 'monteCarloReceiver' })).toBeUndefined();
   });
 
   it('offers a pack, and hides numeric-only kinds, for a fresh bundle input', () => {

@@ -38,6 +38,7 @@ import {
   CLOSURE_RESULT_PORT,
   hasUnit,
   localize,
+  MONTE_CARLO_SAMPLE_PORT,
   THRESHOLD_PORT,
   VALUE_PORT,
   VERDICT_PORT,
@@ -71,6 +72,7 @@ import {
 } from '../model/document';
 import { GAP as CANVAS_GRID_SIZE } from '../model/layout-constants';
 import { autoArrange } from '../model/layout';
+import { monteCarloSampleCount, monteCarloSampleLimit } from '../model/monteCarlo';
 import type { NodeSizes } from '../model/node-sizes';
 import { primaryModifierLabel } from '../model/platform';
 import { fuzzySearch } from '../model/fuzzy';
@@ -304,17 +306,34 @@ export function compatibleQuickAddPort(
             ? { kind: 'closure', id, expression: 'value', position }
             : choice.kind === 'waypoint' || choice.kind === 'pack' || choice.kind === 'unpack'
               ? { kind: choice.kind, id, position }
-              : {
-                  kind: 'output', id, position,
-                  output: choice.outputKind === 'check'
-                    ? { kind: 'check', comparison: '>=', threshold: { value: 1, unit: parseUnit('') } }
-                    : choice.outputKind === 'plot' ? { kind: 'plot' }
-                    : choice.outputKind === 'table' ? { kind: 'table', columns: [] }
-                    : { kind: 'print' },
-                };
+              : choice.kind === 'monteCarloGenerator'
+                ? {
+                    kind: 'monteCarloGenerator',
+                    id,
+                    distribution: 'uniform',
+                    min: 0,
+                    max: 1,
+                    count: monteCarloSampleCount(document),
+                    unit: parseUnit(''),
+                    position,
+                  }
+                : choice.kind === 'monteCarloReceiver'
+                  ? { kind: 'monteCarloReceiver', id, sampleLimit: monteCarloSampleLimit(document), position }
+                  : {
+                      kind: 'output', id, position,
+                      output: choice.outputKind === 'check'
+                        ? { kind: 'check', comparison: '>=', threshold: { value: 1, unit: parseUnit('') } }
+                        : choice.outputKind === 'plot' ? { kind: 'plot' }
+                        : choice.outputKind === 'table' ? { kind: 'table', columns: [] }
+                        : { kind: 'print' },
+                    };
 
-  if (target.from.type === 'source' && choice.kind === 'input') return undefined;
-  if (target.from.type === 'target' && choice.kind === 'output') return undefined;
+  if (target.from.type === 'source' && (choice.kind === 'input' || choice.kind === 'monteCarloGenerator')) {
+    return undefined;
+  }
+  if (target.from.type === 'target' && (choice.kind === 'output' || choice.kind === 'monteCarloReceiver')) {
+    return undefined;
+  }
 
   const ports = choice.kind === 'formula'
     ? target.from.type === 'source' ? choice.formula.inputs.map((port) => port.name) : [choice.formula.output.name]
@@ -324,6 +343,7 @@ export function compatibleQuickAddPort(
     : choice.kind === 'pack' ? [target.from.type === 'source' ? 'in0' : 'bundle']
     : choice.kind === 'unpack' ? [target.from.type === 'source' ? 'bundle' : 'out0']
     : choice.kind === 'output' ? [choice.outputKind === 'table' ? NEW_COLUMN : VALUE_PORT]
+    : choice.kind === 'monteCarloReceiver' ? [MONTE_CARLO_SAMPLE_PORT]
     : [VALUE_PORT];
 
   for (const port of ports) {
@@ -1169,9 +1189,13 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
                 ? 'equation'
                 : choice.kind === 'waypoint' || choice.kind === 'pack' || choice.kind === 'unpack'
                   ? choice.kind
-              : choice.outputKind === 'print'
-                ? 'result'
-                : choice.outputKind,
+              : choice.kind === 'monteCarloGenerator'
+                ? 'draw'
+                : choice.kind === 'monteCarloReceiver'
+                  ? 'watch'
+                  : choice.outputKind === 'print'
+                    ? 'result'
+                    : choice.outputKind,
       );
       const node: GraphNode =
         choice.kind === 'formula'
@@ -1197,20 +1221,40 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
                 ? { kind: 'closure', id, label: id, expression: 'value', position }
                 : choice.kind === 'waypoint' || choice.kind === 'pack' || choice.kind === 'unpack'
                   ? { kind: choice.kind, id, label: id, position }
-              : {
-                  kind: 'output',
-                  id,
-                  label: id,
-                  output:
-                    choice.outputKind === 'check'
-                      ? { kind: 'check', comparison: '>=', threshold: { value: 1, unit: parseUnit('') } }
-                      : choice.outputKind === 'plot'
-                        ? { kind: 'plot' }
-                        : choice.outputKind === 'table'
-                          ? { kind: 'table', columns: [] }
-                          : { kind: 'print' },
-                  position,
-                };
+              : choice.kind === 'monteCarloGenerator'
+                ? {
+                    kind: 'monteCarloGenerator',
+                    id,
+                    label: id,
+                    distribution: 'uniform',
+                    min: 0,
+                    max: 1,
+                    count: monteCarloSampleCount(current),
+                    unit: parseUnit(''),
+                    position,
+                  }
+                : choice.kind === 'monteCarloReceiver'
+                  ? {
+                      kind: 'monteCarloReceiver',
+                      id,
+                      label: id,
+                      sampleLimit: monteCarloSampleLimit(current),
+                      position,
+                    }
+                  : {
+                      kind: 'output',
+                      id,
+                      label: id,
+                      output:
+                        choice.outputKind === 'check'
+                          ? { kind: 'check', comparison: '>=', threshold: { value: 1, unit: parseUnit('') } }
+                          : choice.outputKind === 'plot'
+                            ? { kind: 'plot' }
+                            : choice.outputKind === 'table'
+                              ? { kind: 'table', columns: [] }
+                              : { kind: 'print' },
+                      position,
+                    };
 
       const port =
         choice.kind === 'formula'
@@ -1229,7 +1273,9 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
                     ? target.from.type === 'source' ? 'in0' : 'bundle'
                     : choice.kind === 'unpack'
                       ? target.from.type === 'source' ? 'bundle' : 'out0'
-              : VALUE_PORT;
+                      : choice.kind === 'monteCarloReceiver'
+                        ? MONTE_CARLO_SAMPLE_PORT
+                        : VALUE_PORT;
 
       let next = addNode(current, node);
       if (port === undefined) return next;
@@ -1273,6 +1319,21 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
       return next;
     });
   };
+
+  // Memoized so QuickAddMenu's own `formulas` list — one `resolveGraph`/
+  // `canConnect` per candidate formula — only recomputes when the drag, the
+  // document, or the catalogues actually change, not on every Canvas
+  // re-render the menu happens to be open for (a fresh inline callback prop
+  // here would invalidate that memo every render, however unrelated).
+  const quickAddCompatiblePort = useCallback(
+    (choice: QuickAddCandidate): string | undefined =>
+      quickAdd === undefined ? undefined : compatibleQuickAddPort(document, catalogues, quickAdd, choice),
+    [document, catalogues, quickAdd],
+  );
+  const quickAddExisting = useMemo(
+    () => (quickAdd === undefined ? [] : existingCandidates(document, analysis.formulas, quickAdd.from)),
+    [document, analysis.formulas, quickAdd],
+  );
 
   return (
     <div className="canvas">
@@ -1418,9 +1479,9 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
             x={quickAdd.x}
             y={quickAdd.y}
             catalogues={catalogues}
-            existing={existingCandidates(document, analysis.formulas, quickAdd.from)}
+            existing={quickAddExisting}
             canPlot={documentAxes(document).length > 0}
-            compatiblePort={(choice) => compatibleQuickAddPort(document, catalogues, quickAdd, choice)}
+            compatiblePort={quickAddCompatiblePort}
             onPick={(choice) => pickQuickAdd(quickAdd, choice)}
             onClose={() => setQuickAdd(undefined)}
           />

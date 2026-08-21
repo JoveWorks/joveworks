@@ -29,7 +29,7 @@ import { DEFAULT_MONTE_CARLO_SAMPLE_LIMIT, MONTE_CARLO_SAMPLE_PORT, type GraphDo
 import { useGraph } from '../graph-context';
 import { useSettings } from '../settings-context';
 import type { Analysis } from '../model/analysis';
-import { MONTE_CARLO_BATCH_SIZE, isReceiverWired, upstreamGenerators, withGeneratorCounts } from '../model/monteCarlo';
+import { allGeneratorIds, isReceiverWired, upstreamGenerators, withGeneratorCounts } from '../model/monteCarlo';
 import { display, displayed } from '../model/quantity';
 import { toUnitsFormat } from '../model/numberFormat';
 
@@ -199,14 +199,21 @@ export function MonteCarloReceiverPlayback({
   const sampleLimit = receiver?.sampleLimit ?? DEFAULT_MONTE_CARLO_SAMPLE_LIMIT;
   const showMeanBand = receiver?.showMeanBand ?? true;
   const showHistogram = receiver?.showHistogram ?? true;
-  const state = monteCarloPlayback.get(receiverId);
-  const revealed = Math.min(state?.revealed ?? MONTE_CARLO_BATCH_SIZE, sampleLimit);
-  const playing = state?.playing ?? false;
+  // Shared across every receiver in the document (`ROADMAP.md` #31) — only
+  // the clamp to this receiver's own `sampleLimit` is local to it.
+  const revealed = Math.min(monteCarloPlayback.revealed, sampleLimit);
+  const playing = monteCarloPlayback.playing;
 
   const sample = useMemo(() => {
     if (receiver === undefined || !ready || !wired || generatorIds.length === 0) return undefined;
     try {
-      const scratch = withGeneratorCounts(readySubgraph(document, analysis), generatorIds, revealed);
+      // Every generator in the document, not just this receiver's own
+      // upstream subset (`generatorIds`) — they all share one trial axis
+      // (`model/monteCarlo.ts`'s `allGeneratorIds` doc comment), so leaving
+      // one behind at a stale count breaks evaluation of any *other* node
+      // in the readied subgraph that combines it with one this scratch did
+      // advance, even though this receiver never reads that other generator.
+      const scratch = withGeneratorCounts(readySubgraph(document, analysis), allGeneratorIds(document), revealed);
       const evaluation = evaluateDocument(scratch, catalogues);
       const value = receiverSampleValue(receiver, evaluation.resolution, evaluation.values);
       return value?.kind === 'numeric' ? value : undefined;
@@ -255,14 +262,14 @@ export function MonteCarloReceiverPlayback({
             type="button"
             className="primary"
             disabled={!canPlay && !playing}
-            onClick={() => toggleMonteCarloPlayback(receiverId)}
+            onClick={() => toggleMonteCarloPlayback()}
           >
             {playing ? '⏸' : '▶'}
           </button>
-          <button type="button" disabled={!canPlay} onClick={() => stepMonteCarloPlayback(receiverId)}>
+          <button type="button" disabled={!canPlay} onClick={() => stepMonteCarloPlayback()}>
             ⏭
           </button>
-          <button type="button" onClick={() => resetMonteCarloPlayback(receiverId)}>
+          <button type="button" onClick={() => resetMonteCarloPlayback()}>
             ↺
           </button>
         </div>

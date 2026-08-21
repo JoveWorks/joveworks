@@ -13,6 +13,7 @@
  */
 
 import {
+  DEFAULT_MONTE_CARLO_SAMPLE_LIMIT,
   MONTE_CARLO_SAMPLE_PORT,
   type GraphDocument,
   type MonteCarloGeneratorNode,
@@ -22,11 +23,15 @@ import {
 /**
  * Every Monte Carlo generator upstream of a receiver's `sample` port,
  * reached by walking edges backward through however many ordinary nodes sit
- * in between. Two or more generators combined this way pair sample-for-
- * sample rather than gridding (`packages/kernel/src/series.ts`'s union rule,
- * given every generator's axis id — `graph.ts`'s `Resolution.axes`), which is
- * exactly what advancing every one together as a single "revealed count"
- * assumes.
+ * in between. Used only to tell whether a receiver has anything Monte Carlo
+ * about it at all — *advancing* playback bumps every generator in the
+ * document (`allGeneratorIds`), not just this subset, because every
+ * generator shares one trial axis (`graph.ts`'s `Resolution.axes`) whether
+ * or not this particular receiver happens to read it: leaving an
+ * unrelated-to-this-receiver generator at a stale count would still
+ * disagree with this one wherever some *other* node in the document
+ * combines them, and break that node's evaluation for every receiver, not
+ * just the one that left it behind.
  */
 export function upstreamGenerators(
   document: GraphDocument,
@@ -51,6 +56,13 @@ export function upstreamGenerators(
   }
 
   return [...found];
+}
+
+/** Every Monte Carlo generator in the document, not just ones feeding a particular receiver. */
+export function allGeneratorIds(document: GraphDocument): readonly string[] {
+  return document.nodes
+    .filter((node): node is MonteCarloGeneratorNode => node.kind === 'monteCarloGenerator')
+    .map((node) => node.id);
 }
 
 /**
@@ -131,6 +143,38 @@ export function setMonteCarloSampleCount(document: GraphDocument, count: number)
     ...document,
     nodes: document.nodes.map((node) =>
       node.kind === 'monteCarloGenerator' ? ({ ...node, count } satisfies MonteCarloGeneratorNode) : node,
+    ),
+  };
+}
+
+/**
+ * The sample limit a new receiver should be dropped with (`ROADMAP.md`
+ * #31) — the same treatment as a generator's `count`: whatever limit is
+ * already in use, so a document never opens with two receivers disagreeing
+ * before a student has touched either one.
+ */
+export function monteCarloSampleLimit(document: GraphDocument): number {
+  const receiver = document.nodes.find(
+    (node): node is MonteCarloReceiverNode => node.kind === 'monteCarloReceiver',
+  );
+  return receiver?.sampleLimit ?? DEFAULT_MONTE_CARLO_SAMPLE_LIMIT;
+}
+
+/**
+ * Sets `sampleLimit` on every Monte Carlo receiver in the document at once —
+ * the one field a student edits from any receiver's inspector, kept
+ * identical everywhere rather than offered per-node, mirroring
+ * `setMonteCarloSampleCount`. Not required for correctness the way linking
+ * generator `count` was (playback already clamps each receiver to its own
+ * limit, `model/monteCarloPlayback.ts`) — just the same "one shared number,
+ * not one per node" treatment, since a document is one Monte Carlo study,
+ * not several with independently-sized runs.
+ */
+export function setMonteCarloSampleLimit(document: GraphDocument, sampleLimit: number): GraphDocument {
+  return {
+    ...document,
+    nodes: document.nodes.map((node) =>
+      node.kind === 'monteCarloReceiver' ? ({ ...node, sampleLimit } satisfies MonteCarloReceiverNode) : node,
     ),
   };
 }
