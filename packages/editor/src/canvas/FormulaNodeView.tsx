@@ -1,14 +1,15 @@
 /**
  * A formula node: the catalogue record, its ports, and what it produced.
  *
- * Three things this node must get right, and they are all restrictions rather
+ * Two things this node must get right, and they are both restrictions rather
  * than features:
  *
- * - **The expression is not shown.** The node carries a citation, a description
- *   and numbers, which is what an export defaults to and what a graph file
- *   carries. Milestone 1 has no need to display R&M expressions in the app,
- *   so it does not.
- * - **Units are text on the port**. Colour is spent on state.
+ * - **A restricted catalogue's expression is not shown.** Roloff & Matek
+ *   content is licensed for computation, not for reprinting in the app —
+ *   `source.restricted` is the same flag the palette and this node's own
+ *   provenance line already key off of. An unrestricted formula has no such
+ *   constraint, so its expression renders on expand exactly like a closure
+ *   node's own (`ClosureNodeView`).
  * - **A missing required input is visible while compact**, because an
  *   incomplete graph should be obvious before it is evaluated.
  */
@@ -17,6 +18,7 @@ import type { ReactElement } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 
 import { isGenericPort, localize, type FormulaNode, type Port, type ValueSpec } from '@joveworks/schema';
+import { parseExpression, toLatex } from '@joveworks/kernel';
 import { phrase } from '../i18n';
 import type { Unit } from '@joveworks/units';
 
@@ -24,6 +26,7 @@ import { useGraph } from '../graph-context';
 import { useSettings } from '../settings-context';
 import { toUnitsFormat } from '../model/numberFormat';
 import { reframe, removeNodes, renameNode, updateNode } from '../model/document';
+import { Equation } from '../Equation';
 import { Symbol } from '../Symbol';
 import { ParameterLabel, UnitInLabel } from '../ParameterLabel';
 import { axisLabel, reading, summarise } from '../model/values';
@@ -146,6 +149,9 @@ export function FormulaNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
       }
       detail={
         <>
+          {source?.restricted ? null : (
+            <Equation latex={toLatex(parseExpression(formula.expression))} displayMode={false} />
+          )}
           <p className="description">{localize(formula.description, locale)}</p>
           {formula.appliesWhen === undefined ? null : (
             <p className="applies">{phrase(locale, 'applies when')} {formula.appliesWhen}</p>

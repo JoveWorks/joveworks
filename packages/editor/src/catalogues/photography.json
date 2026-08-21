@@ -1,0 +1,1385 @@
+{
+  "schemaVersion": 1,
+  "id": "public-photography",
+  "name": {
+    "en": "Photography"
+  },
+  "restricted": false,
+  "formulas": [
+    {
+      "id": "photography.lens.image-distance",
+      "version": 1,
+      "output": {
+        "kind": "numeric",
+        "name": "d_i",
+        "unit": "mm",
+        "description": null
+      },
+      "inputs": [
+        {
+          "kind": "numeric",
+          "name": "f",
+          "unit": "mm",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Focal length of the lens."
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "d_o",
+          "unit": "mm",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Object distance from the lens."
+          }
+        }
+      ],
+      "expression": "(f * d_o) / (d_o - f)",
+      "label": {
+        "en": "Image distance (thin lens)"
+      },
+      "description": {
+        "en": "Thin-lens (Gaussian) equation: image distance from focal length and object distance. A negative result is a virtual image behind the lens."
+      },
+      "citation": "Thin lens equation",
+      "variantOf": "photography.lens.gaussian",
+      "status": "unverified"
+    },
+    {
+      "id": "photography.lens.object-distance",
+      "version": 1,
+      "output": {
+        "kind": "numeric",
+        "name": "d_o",
+        "unit": "mm",
+        "description": null
+      },
+      "inputs": [
+        {
+          "kind": "numeric",
+          "name": "f",
+          "unit": "mm",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Focal length of the lens."
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "d_i",
+          "unit": "mm",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Image distance from the lens."
+          }
+        }
+      ],
+      "expression": "(f * d_i) / (d_i - f)",
+      "label": {
+        "en": "Object distance (thin lens)"
+      },
+      "description": {
+        "en": "Thin-lens equation solved for object distance, given focal length and image distance."
+      },
+      "citation": "Thin lens equation",
+      "variantOf": "photography.lens.gaussian",
+      "status": "unverified"
+    },
+    {
+      "id": "photography.lens.focal-length",
+      "version": 1,
+      "output": {
+        "kind": "numeric",
+        "name": "f",
+        "unit": "mm",
+        "description": null
+      },
+      "inputs": [
+        {
+          "kind": "numeric",
+          "name": "d_o",
+          "unit": "mm",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Object distance from the lens."
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "d_i",
+          "unit": "mm",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Image distance from the lens."
+          }
+        }
+      ],
+      "expression": "(d_o * d_i) / (d_o + d_i)",
+      "label": {
+        "en": "Focal length (thin lens)"
+      },
+      "description": {
+        "en": "Thin-lens equation solved for focal length, given conjugate object and image distances."
+      },
+      "citation": "Thin lens equation",
+      "variantOf": "photography.lens.gaussian",
+      "status": "unverified"
+    },
+    {
+      "id": "photography.lens.magnification-from-distances",
+      "version": 1,
+      "output": {
+        "kind": "numeric",
+        "name": "m",
+        "unit": "",
+        "description": null
+      },
+      "inputs": [
+        {
+          "kind": "numeric",
+          "name": "d_i",
+          "unit": "mm",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Image distance from the lens."
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "d_o",
+          "unit": "mm",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Object distance from the lens."
+          }
+        }
+      ],
+      "expression": "d_i / d_o",
+      "label": {
+        "en": "Magnification, from distances"
+      },
+      "description": {
+        "en": "Transverse magnification as the ratio of image to object distance. Magnitude only; a real image is inverted."
+      },
+      "citation": "Thin lens magnification",
+      "status": "unverified"
+    },
+    {
+      "id": "photography.lens.magnification-from-focal",
+      "version": 1,
+      "output": {
+        "kind": "numeric",
+        "name": "m",
+        "unit": "",
+        "description": null
+      },
+      "inputs": [
+        {
+          "kind": "numeric",
+          "name": "f",
+          "unit": "mm",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Focal length of the lens."
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "d_o",
+          "unit": "mm",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Object distance from the lens."
+          }
+        }
+      ],
+      "expression": "f / (d_o - f)",
+      "label": {
+        "en": "Magnification, from focal length"
+      },
+      "description": {
+        "en": "Transverse magnification from focal length and object distance alone."
+      },
+      "citation": "Thin lens magnification",
+      "status": "unverified"
+    },
+    {
+      "id": "photography.lens.image-height",
+      "version": 1,
+      "output": {
+        "kind": "numeric",
+        "name": "h_i",
+        "unit": "mm",
+        "description": null
+      },
+      "inputs": [
+        {
+          "kind": "numeric",
+          "name": "m",
+          "unit": "",
+          "description": {
+            "en": "Transverse magnification."
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "h_o",
+          "unit": "mm",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Object height."
+          }
+        }
+      ],
+      "expression": "m * h_o",
+      "label": {
+        "en": "Image height"
+      },
+      "description": {
+        "en": "Image height on the sensor from magnification and object height."
+      },
+      "status": "unverified"
+    },
+    {
+      "id": "photography.dof.hyperfocal-distance",
+      "version": 1,
+      "output": {
+        "kind": "numeric",
+        "name": "H",
+        "unit": "mm",
+        "description": null
+      },
+      "inputs": [
+        {
+          "kind": "numeric",
+          "name": "f",
+          "unit": "mm",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Focal length of the lens."
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "N",
+          "unit": "",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Relative aperture (f-number)."
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "c",
+          "unit": "mm",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Acceptable circle of confusion."
+          }
+        }
+      ],
+      "expression": "f**2 / (N * c) + f",
+      "label": {
+        "en": "Hyperfocal distance"
+      },
+      "description": {
+        "en": "Distance beyond which everything is acceptably sharp when focused at the hyperfocal distance."
+      },
+      "citation": "Hyperfocal distance",
+      "status": "unverified"
+    },
+    {
+      "id": "photography.dof.near-limit",
+      "version": 1,
+      "output": {
+        "kind": "numeric",
+        "name": "D_n",
+        "unit": "mm",
+        "description": null
+      },
+      "inputs": [
+        {
+          "kind": "numeric",
+          "name": "H",
+          "unit": "mm",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Hyperfocal distance."
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "s",
+          "unit": "mm",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Focus (subject) distance."
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "f",
+          "unit": "mm",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Focal length of the lens."
+          }
+        }
+      ],
+      "expression": "(H * s) / (H + (s - f))",
+      "label": {
+        "en": "Depth of field, near limit"
+      },
+      "description": {
+        "en": "Near limit of acceptable sharpness for a lens focused at distance s."
+      },
+      "citation": "Depth of field, near limit",
+      "status": "unverified"
+    },
+    {
+      "id": "photography.dof.far-limit",
+      "version": 1,
+      "output": {
+        "kind": "numeric",
+        "name": "D_f",
+        "unit": "mm",
+        "description": null
+      },
+      "inputs": [
+        {
+          "kind": "numeric",
+          "name": "H",
+          "unit": "mm",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Hyperfocal distance."
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "s",
+          "unit": "mm",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Focus (subject) distance."
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "f",
+          "unit": "mm",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Focal length of the lens."
+          }
+        }
+      ],
+      "expression": "(H * s) / (H - (s - f))",
+      "label": {
+        "en": "Depth of field, far limit"
+      },
+      "description": {
+        "en": "Far limit of acceptable sharpness for a lens focused at distance s. Only holds while s is within the hyperfocal distance; beyond it the far limit is effectively infinite and this formula does not apply."
+      },
+      "citation": "Depth of field, far limit",
+      "appliesWhen": "s < H",
+      "status": "unverified"
+    },
+    {
+      "id": "photography.dof.total",
+      "version": 1,
+      "output": {
+        "kind": "numeric",
+        "name": "DoF",
+        "unit": "mm",
+        "description": null
+      },
+      "inputs": [
+        {
+          "kind": "numeric",
+          "name": "D_f",
+          "unit": "mm",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Far limit of acceptable sharpness."
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "D_n",
+          "unit": "mm",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Near limit of acceptable sharpness."
+          }
+        }
+      ],
+      "expression": "D_f - D_n",
+      "label": {
+        "en": "Total depth of field"
+      },
+      "description": {
+        "en": "Total depth of field between the near and far limits."
+      },
+      "status": "unverified"
+    },
+    {
+      "id": "photography.dof.circle-of-confusion",
+      "version": 1,
+      "output": {
+        "kind": "numeric",
+        "name": "c",
+        "unit": "mm",
+        "description": null
+      },
+      "inputs": [
+        {
+          "kind": "numeric",
+          "name": "d",
+          "unit": "mm",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Sensor or film diagonal."
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "k",
+          "unit": "",
+          "default": 1500,
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Sharpness criterion divisor; 1500 is a common general-purpose choice, 1730 a stricter one."
+          }
+        }
+      ],
+      "expression": "d / k",
+      "label": {
+        "en": "Circle of confusion (diagonal rule)"
+      },
+      "description": {
+        "en": "Rule-of-thumb acceptable circle of confusion from the sensor diagonal."
+      },
+      "citation": "Circle of confusion, diagonal rule",
+      "status": "unverified"
+    },
+    {
+      "id": "photography.format.field-of-view",
+      "version": 1,
+      "output": {
+        "kind": "numeric",
+        "name": "fov",
+        "unit": "deg",
+        "description": null
+      },
+      "inputs": [
+        {
+          "kind": "numeric",
+          "name": "w",
+          "unit": "mm",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Sensor width (or height, or diagonal) along the axis of interest."
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "f",
+          "unit": "mm",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Focal length of the lens."
+          }
+        }
+      ],
+      "expression": "2 * atan(w / (2 * f))",
+      "label": {
+        "en": "Angle of view"
+      },
+      "description": {
+        "en": "Angle of view along one sensor dimension from focal length and that dimension's extent."
+      },
+      "citation": "Angle of view",
+      "status": "unverified"
+    },
+    {
+      "id": "photography.format.sensor-diagonal",
+      "version": 1,
+      "output": {
+        "kind": "numeric",
+        "name": "d",
+        "unit": "mm",
+        "description": null
+      },
+      "inputs": [
+        {
+          "kind": "numeric",
+          "name": "h",
+          "unit": "mm",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Sensor height."
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "aspect",
+          "unit": "",
+          "default": 1.5,
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Sensor width-to-height ratio; 1.5 for 3:2, 1.333 for 4:3, 1.778 for 16:9."
+          }
+        }
+      ],
+      "expression": "h * sqrt(1 + aspect**2)",
+      "label": {
+        "en": "Sensor diagonal"
+      },
+      "description": {
+        "en": "Sensor diagonal from sensor height and its width-to-height aspect ratio."
+      },
+      "status": "unverified"
+    },
+    {
+      "id": "photography.format.crop-factor",
+      "version": 1,
+      "output": {
+        "kind": "numeric",
+        "name": "c",
+        "unit": "",
+        "description": null
+      },
+      "inputs": [
+        {
+          "kind": "numeric",
+          "name": "d_ref",
+          "unit": "mm",
+          "default": 43.27,
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Reference sensor diagonal (43.27 mm for full-frame 35 mm)."
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "d_sensor",
+          "unit": "mm",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Actual sensor diagonal."
+          }
+        }
+      ],
+      "expression": "d_ref / d_sensor",
+      "label": {
+        "en": "Crop factor"
+      },
+      "description": {
+        "en": "Crop factor of a sensor relative to a reference format, from diagonal measurements."
+      },
+      "status": "unverified"
+    },
+    {
+      "id": "photography.format.equivalent-focal-length",
+      "version": 1,
+      "output": {
+        "kind": "numeric",
+        "name": "f_eq",
+        "unit": "mm",
+        "description": null
+      },
+      "inputs": [
+        {
+          "kind": "numeric",
+          "name": "f",
+          "unit": "mm",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Actual focal length."
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "c",
+          "unit": "",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Crop factor relative to the reference format."
+          }
+        }
+      ],
+      "expression": "f * c",
+      "label": {
+        "en": "Equivalent focal length"
+      },
+      "description": {
+        "en": "Focal length in the reference format's equivalent field of view."
+      },
+      "status": "unverified"
+    },
+    {
+      "id": "photography.format.equivalent-aperture",
+      "version": 1,
+      "output": {
+        "kind": "numeric",
+        "name": "N_eq",
+        "unit": "",
+        "description": null
+      },
+      "inputs": [
+        {
+          "kind": "numeric",
+          "name": "N",
+          "unit": "",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Actual relative aperture (f-number)."
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "c",
+          "unit": "",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Crop factor relative to the reference format."
+          }
+        }
+      ],
+      "expression": "N * c",
+      "label": {
+        "en": "Equivalent aperture"
+      },
+      "description": {
+        "en": "Aperture in the reference format's equivalent depth-of-field and light-gathering terms."
+      },
+      "status": "unverified"
+    },
+    {
+      "id": "photography.format.pixel-pitch",
+      "version": 1,
+      "output": {
+        "kind": "numeric",
+        "name": "p",
+        "unit": "µm",
+        "description": null
+      },
+      "inputs": [
+        {
+          "kind": "numeric",
+          "name": "d",
+          "unit": "mm",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Sensor diagonal."
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "aspect",
+          "unit": "",
+          "default": 1.5,
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Sensor width-to-height ratio; 1.5 for 3:2, 1.333 for 4:3, 1.778 for 16:9."
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "MP",
+          "unit": "",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Sensor resolution, in megapixels."
+          }
+        }
+      ],
+      "expression": "sqrt((aspect * d**2) / ((1 + aspect**2) * MP * 1e6))",
+      "label": {
+        "en": "Pixel pitch"
+      },
+      "description": {
+        "en": "Pixel pitch (photosite spacing) from sensor diagonal, aspect ratio and total pixel count."
+      },
+      "status": "unverified"
+    },
+    {
+      "id": "photography.exposure.value",
+      "version": 1,
+      "output": {
+        "kind": "numeric",
+        "name": "EV",
+        "unit": "",
+        "description": null
+      },
+      "inputs": [
+        {
+          "kind": "numeric",
+          "name": "N",
+          "unit": "",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Relative aperture (f-number)."
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "t",
+          "unit": "s",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Shutter time."
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "t_ref",
+          "unit": "s",
+          "default": 1,
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Reference shutter time that defines EV 0 at N = 1; leave at 1 s."
+          }
+        }
+      ],
+      "expression": "log(N**2 * (t_ref / t)) / log(2)",
+      "label": {
+        "en": "Exposure value"
+      },
+      "description": {
+        "en": "Exposure value at ISO 100 from aperture and shutter time, on the standard log base-2 scale."
+      },
+      "citation": "Exposure value",
+      "status": "unverified"
+    },
+    {
+      "id": "photography.exposure.value-at-iso",
+      "version": 1,
+      "output": {
+        "kind": "numeric",
+        "name": "EV_iso",
+        "unit": "",
+        "description": null
+      },
+      "inputs": [
+        {
+          "kind": "numeric",
+          "name": "EV100",
+          "unit": "",
+          "description": {
+            "en": "Exposure value at ISO 100."
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "ISO",
+          "unit": "",
+          "default": 100,
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Film or sensor sensitivity."
+          }
+        }
+      ],
+      "expression": "EV100 + log(ISO / 100) / log(2)",
+      "label": {
+        "en": "Exposure value, ISO-corrected"
+      },
+      "description": {
+        "en": "Exposure value adjusted from ISO 100 to an arbitrary sensitivity."
+      },
+      "citation": "Exposure value, ISO correction",
+      "status": "unverified"
+    },
+    {
+      "id": "photography.exposure.equivalent-shutter-aperture",
+      "version": 1,
+      "output": {
+        "kind": "numeric",
+        "name": "t2",
+        "unit": "s",
+        "description": null
+      },
+      "inputs": [
+        {
+          "kind": "numeric",
+          "name": "t1",
+          "unit": "s",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Original shutter time."
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "N1",
+          "unit": "",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Original aperture."
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "N2",
+          "unit": "",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "New aperture."
+          }
+        }
+      ],
+      "expression": "t1 * (N2 / N1)**2",
+      "label": {
+        "en": "Equivalent shutter time (aperture change)"
+      },
+      "description": {
+        "en": "Shutter time that keeps exposure constant after changing the aperture."
+      },
+      "citation": "Reciprocity, aperture for shutter time",
+      "status": "unverified"
+    },
+    {
+      "id": "photography.exposure.equivalent-shutter-iso",
+      "version": 1,
+      "output": {
+        "kind": "numeric",
+        "name": "t2",
+        "unit": "s",
+        "description": null
+      },
+      "inputs": [
+        {
+          "kind": "numeric",
+          "name": "t1",
+          "unit": "s",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Original shutter time."
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "ISO1",
+          "unit": "",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Original sensitivity."
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "ISO2",
+          "unit": "",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "New sensitivity."
+          }
+        }
+      ],
+      "expression": "t1 * (ISO1 / ISO2)",
+      "label": {
+        "en": "Equivalent shutter time (ISO change)"
+      },
+      "description": {
+        "en": "Shutter time that keeps exposure constant after changing sensitivity."
+      },
+      "citation": "Reciprocity, ISO for shutter time",
+      "status": "unverified"
+    },
+    {
+      "id": "photography.exposure.equivalent-aperture-shutter",
+      "version": 1,
+      "output": {
+        "kind": "numeric",
+        "name": "N2",
+        "unit": "",
+        "description": null
+      },
+      "inputs": [
+        {
+          "kind": "numeric",
+          "name": "N1",
+          "unit": "",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Original aperture."
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "t1",
+          "unit": "s",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Original shutter time."
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "t2",
+          "unit": "s",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "New shutter time."
+          }
+        }
+      ],
+      "expression": "N1 * sqrt(t2 / t1)",
+      "label": {
+        "en": "Equivalent aperture (shutter change)"
+      },
+      "description": {
+        "en": "Aperture that keeps exposure constant after changing the shutter time."
+      },
+      "citation": "Reciprocity, shutter time for aperture",
+      "status": "unverified"
+    },
+    {
+      "id": "photography.flash.guide-number",
+      "version": 1,
+      "output": {
+        "kind": "numeric",
+        "name": "GN",
+        "unit": "m",
+        "description": null
+      },
+      "inputs": [
+        {
+          "kind": "numeric",
+          "name": "d",
+          "unit": "m",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Flash-to-subject distance."
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "N",
+          "unit": "",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Aperture that gives correct exposure at that distance."
+          }
+        }
+      ],
+      "expression": "d * N",
+      "label": {
+        "en": "Guide number"
+      },
+      "description": {
+        "en": "Flash guide number from a correctly exposed distance and aperture pair, at ISO 100."
+      },
+      "citation": "Guide number",
+      "status": "unverified"
+    },
+    {
+      "id": "photography.flash.distance",
+      "version": 1,
+      "output": {
+        "kind": "numeric",
+        "name": "d",
+        "unit": "m",
+        "description": null
+      },
+      "inputs": [
+        {
+          "kind": "numeric",
+          "name": "GN",
+          "unit": "m",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Flash guide number at ISO 100."
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "N",
+          "unit": "",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Aperture in use."
+          }
+        }
+      ],
+      "expression": "GN / N",
+      "label": {
+        "en": "Flash distance (from guide number)"
+      },
+      "description": {
+        "en": "Correctly exposed flash distance from guide number and aperture."
+      },
+      "citation": "Guide number",
+      "status": "unverified"
+    },
+    {
+      "id": "photography.flash.aperture",
+      "version": 1,
+      "output": {
+        "kind": "numeric",
+        "name": "N",
+        "unit": "",
+        "description": null
+      },
+      "inputs": [
+        {
+          "kind": "numeric",
+          "name": "GN",
+          "unit": "m",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Flash guide number at ISO 100."
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "d",
+          "unit": "m",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Flash-to-subject distance."
+          }
+        }
+      ],
+      "expression": "GN / d",
+      "label": {
+        "en": "Flash aperture (from guide number)"
+      },
+      "description": {
+        "en": "Correctly exposed aperture from guide number and subject distance."
+      },
+      "citation": "Guide number",
+      "status": "unverified"
+    },
+    {
+      "id": "photography.macro.reproduction-ratio",
+      "version": 1,
+      "output": {
+        "kind": "numeric",
+        "name": "R",
+        "unit": "",
+        "description": null
+      },
+      "inputs": [
+        {
+          "kind": "numeric",
+          "name": "h_i",
+          "unit": "mm",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Image (sensor) height of the subject."
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "h_o",
+          "unit": "mm",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Actual subject height."
+          }
+        }
+      ],
+      "expression": "h_i / h_o",
+      "label": {
+        "en": "Reproduction ratio"
+      },
+      "description": {
+        "en": "Reproduction ratio, the macro-photography name for magnification."
+      },
+      "status": "unverified"
+    },
+    {
+      "id": "photography.macro.magnification-from-extension",
+      "version": 1,
+      "output": {
+        "kind": "numeric",
+        "name": "m",
+        "unit": "",
+        "description": null
+      },
+      "inputs": [
+        {
+          "kind": "numeric",
+          "name": "e",
+          "unit": "mm",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Extension tube or bellows length added behind the lens."
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "f",
+          "unit": "mm",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Focal length of the lens."
+          }
+        }
+      ],
+      "expression": "e / f",
+      "label": {
+        "en": "Magnification from extension"
+      },
+      "description": {
+        "en": "Additional magnification gained from extension behind a lens focused at infinity."
+      },
+      "status": "unverified"
+    },
+    {
+      "id": "photography.macro.effective-aperture",
+      "version": 1,
+      "output": {
+        "kind": "numeric",
+        "name": "N_eff",
+        "unit": "",
+        "description": null
+      },
+      "inputs": [
+        {
+          "kind": "numeric",
+          "name": "N",
+          "unit": "",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Marked aperture."
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "m",
+          "unit": "",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Magnification at the current focus distance."
+          }
+        }
+      ],
+      "expression": "N * (1 + m)",
+      "label": {
+        "en": "Effective aperture (macro)"
+      },
+      "description": {
+        "en": "Effective aperture, accounting for the light lost to lens extension at macro magnifications."
+      },
+      "citation": "Effective f-number",
+      "status": "unverified"
+    },
+    {
+      "id": "photography.diffraction.blur-diameter",
+      "version": 1,
+      "output": {
+        "kind": "numeric",
+        "name": "b",
+        "unit": "mm",
+        "description": null
+      },
+      "inputs": [
+        {
+          "kind": "numeric",
+          "name": "N",
+          "unit": "",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Relative aperture (f-number)."
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "lambda",
+          "unit": "mm",
+          "default": 0.00055,
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Wavelength of light; 0.00055 mm (550 nm) is a green-light default."
+          }
+        }
+      ],
+      "expression": "2.44 * lambda * N",
+      "label": {
+        "en": "Diffraction blur diameter"
+      },
+      "description": {
+        "en": "Diameter of the Airy disk, the diffraction-limited blur spot at a given aperture."
+      },
+      "citation": "Rayleigh criterion",
+      "status": "unverified"
+    },
+    {
+      "id": "photography.diffraction.limited-aperture",
+      "version": 1,
+      "output": {
+        "kind": "numeric",
+        "name": "N_max",
+        "unit": "",
+        "description": null
+      },
+      "inputs": [
+        {
+          "kind": "numeric",
+          "name": "p",
+          "unit": "mm",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Sensor pixel pitch."
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "lambda",
+          "unit": "mm",
+          "default": 0.00055,
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Wavelength of light; 0.00055 mm (550 nm) is a green-light default."
+          }
+        }
+      ],
+      "expression": "p / (2.44 * lambda)",
+      "label": {
+        "en": "Diffraction-limited aperture"
+      },
+      "description": {
+        "en": "Widest aperture (largest f-number) below which diffraction blur exceeds one pixel."
+      },
+      "citation": "Rayleigh criterion",
+      "status": "unverified"
+    }
+  ]
+}
