@@ -34,6 +34,7 @@ import { useSettings } from '../settings-context';
 import { phrase, ui } from '../i18n';
 import { addNode, defaultOutput, uniqueId } from '../model/document';
 import { entries, search, type PaletteEntry } from '../model/catalogues';
+import { LockedCatalogueSection } from './LockedCatalogueSection';
 import { monteCarloSampleCount, monteCarloSampleLimit } from '../model/monteCarlo';
 import { loadFavourites, saveFavourites } from '../model/palettePreferences';
 import { converted } from '../canvas/ValueEditor';
@@ -83,7 +84,7 @@ function useDropPosition(): () => Position {
 }
 
 export function Palette({ onClose }: { readonly onClose: () => void }): ReactElement {
-  const { document, catalogues, userEquations, removeUserEquation, edit } = useGraph();
+  const { document, catalogues, lockedCatalogues, unlockCatalogue, userEquations, removeUserEquation, edit } = useGraph();
   const { locale } = useSettings();
   const copy = ui(locale);
   const t = (english: string): string => phrase(locale, english);
@@ -514,6 +515,13 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
         ) : null}
 
         {otherGroups.map((group) => catalogueSection(group))}
+
+        {query.trim().length === 0
+          ? lockedCatalogues.map((locked) => (
+              <LockedCatalogueSection key={locked.id} locked={locked} locale={locale} onUnlock={unlockCatalogue} />
+            ))
+          : null}
+
         {found.length === 0 ? <p className="empty">{t('Nothing matches')} “{query}”.</p> : null}
       </div>
 

@@ -17,12 +17,15 @@ import { ReactFlowProvider, useReactFlow } from '@xyflow/react';
 
 import {
   emptyDocument,
+  decryptCatalogue,
   loadCatalogue,
   localize,
   loadDocument,
+  saveCatalogue,
   saveDocument,
   type Catalogue,
   type GraphDocument,
+  type LockedCatalogue,
 } from '@joveworks/schema';
 
 import { Canvas } from './canvas/Canvas';
@@ -35,7 +38,12 @@ import { DOCS_BASE_URL } from './help-links';
 import { GraphContext } from './graph-context';
 import { SettingsContext } from './settings-context';
 import { clearAutosaveSnapshot, loadAutosaveSnapshot, saveAutosaveSnapshot } from './io/autosave';
-import { cacheCatalogue, cachedCatalogueTexts } from './io/catalogueCache';
+import {
+  cacheCatalogue,
+  cachedCatalogueTexts,
+  markLockedCatalogueUnlocked,
+  unlockedLockedCatalogueIds,
+} from './io/catalogueCache';
 import { documentFileName, openTextFile, saveTextFile, userEquationsFileName } from './io/files';
 import {
   loadRecentDocuments,
@@ -43,7 +51,7 @@ import {
   type RecentDocument,
 } from './io/recentDocuments';
 import { analyse } from './model/analysis';
-import { bundledCatalogues, baseCatalogue, withCatalogue } from './model/catalogues';
+import { bundledCatalogues, baseCatalogue, lockedCatalogues, withCatalogue } from './model/catalogues';
 import { groupIntoSection } from './model/document';
 import { autoArrange } from './model/layout';
 import type { NodeSizes } from './model/node-sizes';
@@ -111,6 +119,7 @@ import { useMonteCarloPlayback } from './model/monteCarloPlayback';
 import { Notebook } from './notebook/Notebook';
 import { Palette } from './palette/Palette';
 import { SettingsDialog } from './settings/SettingsDialog';
+import { UnlockCatalogueDialog } from './palette/UnlockCatalogueDialog';
 import { Tutorial } from './tutorial/Tutorial';
 import { exampleTutorialSteps, TUTORIAL_STEPS } from './tutorial/steps';
 import { loadTutorialSeen } from './tutorial/tutorialSettings';
@@ -262,6 +271,19 @@ function MobileLanding(): ReactElement {
 function AppShell(): ReactElement {
   const flow = useReactFlow();
   const [catalogues, setCatalogues] = useState<readonly Catalogue[]>(initialCatalogues);
+  // Locked catalogues shipped with the app, minus whichever ones this
+  // student has already unlocked — tracked by the locked asset's own id
+  // (`markLockedCatalogueUnlocked`), not by matching it against a decrypted
+  // catalogue's id: `encryptCatalogue` sets those equal, but nothing enforces
+  // it, and staying locked forever after a successful unlock is worse than
+  // one extra id to track. Recomputed off `catalogues` because that is what
+  // actually changes on unlock; the unlocked-id set changes in lockstep.
+  const notYetUnlockedCatalogues = useMemo(() => {
+    const unlocked = unlockedLockedCatalogueIds();
+    return lockedCatalogues().filter(
+      (locked) => !unlocked.has(locked.id) && !catalogues.some((loaded) => loaded.id === locked.id),
+    );
+  }, [catalogues]);
   const [userEquations, setUserEquationsState] = useState<readonly UserEquation[]>(loadStoredUserEquations);
   const setUserEquations = (update: (current: readonly UserEquation[]) => readonly UserEquation[]): void =>
     setUserEquationsState((current) => {
@@ -366,6 +388,7 @@ function AppShell(): ReactElement {
     useState<ThemePreference>(loadThemePreference);
   const [contourPalette, setContourPaletteState] = useState<ContourPalette>(loadContourPalette);
   const [showSettings, setShowSettings] = useState(false);
+  const [showUnlockCatalogue, setShowUnlockCatalogue] = useState(false);
 
   useEffect(() => {
     window.document.title = `JoveWorks | ${document.title}`;
@@ -544,10 +567,34 @@ function AppShell(): ReactElement {
   const { playback: monteCarloPlayback, togglePlayback, stepPlayback, resetPlayback } =
     useMonteCarloPlayback(document);
 
+  /**
+   * A student enters a password, once, for a catalogue that shipped with the
+   * app locked. Success loads it exactly like a file dropped through the
+   * LMS — `withCatalogue` + `cacheCatalogue` — so afterward there is no
+   * difference between the two paths; failure (a wrong password) rejects and
+   * leaves the catalogue locked for another attempt.
+   */
+  const unlockCatalogue = async (locked: LockedCatalogue, password: string): Promise<void> => {
+    let loaded: Catalogue;
+    try {
+      loaded = await decryptCatalogue(locked, password);
+    } catch (error) {
+      analytics.track({ name: 'catalogue_unlock_failed', props: { reason: 'wrong_password' } });
+      throw error;
+    }
+    setCatalogues((current) => withCatalogue(current, loaded));
+    cacheCatalogue(loaded.id, saveCatalogue(loaded));
+    markLockedCatalogueUnlocked(locked.id);
+    analytics.track({ name: 'catalogue_unlocked' });
+    pushNotice(`Unlocked ${localize(loaded.name, locale)} — ${loaded.formulas.length} formulas.`);
+  };
+
   const context = useMemo(
     () => ({
       document,
       catalogues,
+      lockedCatalogues: notYetUnlockedCatalogues,
+      unlockCatalogue,
       userEquations,
       saveUserEquation: (label: string, expression: string) =>
         setUserEquations((current) => {
@@ -583,6 +630,7 @@ function AppShell(): ReactElement {
     [
       analysis,
       catalogues,
+      notYetUnlockedCatalogues,
       document,
       userEquations,
       expanded,
@@ -698,7 +746,13 @@ function AppShell(): ReactElement {
           label: recent.title,
           onClick: () => guardDiscard(() => openRecentDocument(recent)),
         }))),
+    { heading: t('Catalogues') },
     { label: t('Load catalogue…'), onClick: () => void loadCatalogueFile() },
+    {
+      label: t('Unlock catalogue…'),
+      disabled: notYetUnlockedCatalogues.length === 0,
+      onClick: () => setShowUnlockCatalogue(true),
+    },
     { heading: t('User equations') },
     { label: t('Import equations…'), onClick: () => void importUserEquationFile() },
     {
@@ -1010,6 +1064,15 @@ function AppShell(): ReactElement {
               contourPalette={contourPalette}
               onContourPaletteChange={setContourPalette}
               onClose={() => setShowSettings(false)}
+            />
+          ) : null}
+
+          {showUnlockCatalogue ? (
+            <UnlockCatalogueDialog
+              locked={notYetUnlockedCatalogues}
+              locale={locale}
+              onUnlock={unlockCatalogue}
+              onClose={() => setShowUnlockCatalogue(false)}
             />
           ) : null}
 
