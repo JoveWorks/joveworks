@@ -50,7 +50,7 @@ import {
 } from '../model/document';
 import { toUnitsFormat } from '../model/numberFormat';
 import { display, displayNumber } from '../model/quantity';
-import { summarise, summariseCheck } from '../model/values';
+import { checkVerdict, summarise, summariseCheck } from '../model/values';
 import { CheckReading } from '../CheckReading';
 import { MonteCarloReceiverPlayback } from '../canvas/MonteCarloReceiverPlayback';
 import { PlotFigure } from './PlotFigure';
@@ -194,29 +194,37 @@ function Result({ result, node }: { readonly result: OutputResult; readonly node
   if (result.kind === 'check') {
     const shown = display(result.threshold, result.unit, 4, format);
     // A scalar check has exactly one verdict, so ✓/✗ already says everything.
-    // A swept one has one verdict per point, and a single mark for the
-    // whole range used to read as "the range failed" on the first bad point
-    // — the count says which, and how many, instead, matching the wording
-    // the compact node's own badge already uses (OutputNodeView.tsx).
+    // A swept one has one verdict per point — pass, fail, or (unlike a
+    // scalar) genuinely partial, which gets its own mark rather than
+    // reading as a total failure. The count says which points and how
+    // many, matching the wording the compact node's own badge already uses
+    // (OutputNodeView.tsx), and moves below the row so the reading itself
+    // never has to compete with it for width.
     const swept = result.results.length > 1;
     const failures = result.results.filter((passed) => !passed).length;
+    const verdict = checkVerdict(result.results);
+    const mark = verdict === 'pass' ? '✓' : verdict === 'fail' ? '✗' : '!';
     return (
-      <p className={`result check ${result.passed ? 'pass' : 'fail'}`}>
-        <span className="mark">{result.passed ? '✓' : '✗'}</span>
-        <span className="label">
-          <OutputTitle node={node} />
+      <p className={`result check ${verdict}`}>
+        <span className="check-row">
+          <span className="mark">{mark}</span>
+          <span className="label">
+            <OutputTitle node={node} />
+          </span>
+          <span className="number">
+            <CheckReading
+              segments={summariseCheck({ series: result.series, unit: result.unit }, result.results, 4, format)}
+            />{' '}
+            <span className="check-threshold">
+              {COMPARISON_TEXT[result.comparison] ?? result.comparison} {shown}
+            </span>
+          </span>
         </span>
-        {swept && !result.passed ? (
+        {swept && verdict !== 'pass' ? (
           <span className="count">
             {notebookLocale === 'nl' ? `faalt op ${failures} van ${result.results.length} punten` : `fails at ${failures} of ${result.results.length} points`}
           </span>
         ) : null}
-        <span className="number">
-          <CheckReading
-            segments={summariseCheck({ series: result.series, unit: result.unit }, result.results, 4, format)}
-          />{' '}
-          {COMPARISON_TEXT[result.comparison] ?? result.comparison} {shown}
-        </span>
       </p>
     );
   }

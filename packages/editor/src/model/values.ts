@@ -62,6 +62,19 @@ export function summarise(
   return `${display(low, unit, figures, format)} … ${display(high, unit, figures, format)}`;
 }
 
+export type CheckVerdict = 'pass' | 'partial' | 'fail';
+
+/**
+ * Whether every point passes, every point fails, or it's a mix — "some
+ * pass" is a different thing to tell a student than "none do", so a swept
+ * check's mark/badge is three-way, not the binary pass/fail a scalar one is.
+ */
+export function checkVerdict(results: readonly boolean[]): CheckVerdict {
+  if (results.every(Boolean)) return 'pass';
+  if (results.every((passed) => !passed)) return 'fail';
+  return 'partial';
+}
+
 export type CheckState = 'pass' | 'boundary' | 'fail' | 'mixed';
 
 export interface CheckSegment {

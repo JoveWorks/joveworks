@@ -349,6 +349,7 @@ body {
 }
 
 .viewer-check.pass strong { color: var(--state-pass); }
+.viewer-check.partial strong { color: var(--state-quarantined); }
 .viewer-check.fail strong { color: var(--state-fail); }
 
 .viewer-table strong,
@@ -1244,12 +1245,22 @@ aside.right {
   background: var(--badge-fail-bg);
 }
 
+.node .badge.partial {
+  color: var(--state-quarantined);
+}
+
 .node .badge.plot {
   color: var(--muted);
 }
 
 /* A check's reading, coloured per segment — shared by the canvas node body,
-   the notebook, and the course viewer (CheckReading.tsx). */
+   the notebook, and the course viewer (CheckReading.tsx). A line break can
+   fall between segments (at a separator, or before the trailing comparison
+   and threshold) but never inside one — a value and its unit stay together. */
+.check-segment {
+  white-space: nowrap;
+}
+
 .check-segment-pass {
   color: var(--state-pass);
 }
@@ -1267,6 +1278,12 @@ aside.right {
 
 .check-segment-separator {
   color: var(--muted);
+}
+
+/* The comparison symbol and its threshold stay together too, same reasoning
+   as `.check-segment` — a break can land before it, never inside it. */
+.check-threshold {
+  white-space: nowrap;
 }
 
 /* State is the only thing colour says (S49). */
@@ -2602,22 +2619,43 @@ aside.right {
 /* Only the mark takes the overall verdict colour — the number's own
    segments (CheckReading) carry their own per-point colour, and the
    threshold text after them stays plain rather than inheriting a verdict
-   that isn't about the threshold itself. */
+   that isn't about the threshold itself. Partial reuses the quarantined
+   amber (S49's existing "needs attention" hue) rather than the pass/fail
+   green/red, since some-pass-some-fail is neither. */
 .notebook .result.check.pass .mark {
   color: var(--state-pass);
+}
+
+.notebook .result.check.partial .mark {
+  color: var(--state-quarantined);
 }
 
 .notebook .result.check.fail .mark {
   color: var(--state-fail);
 }
 
-/* `align-items: baseline` (the shared `.result` row default) aligns every
-   item to the title's own baseline, but the title is an editable textarea
-   (TitleField) — its baseline falls near its *last* line, not its first, so
-   a wrapped two-line title pulled the mark/count/number down to sit next to
-   its second line instead of its first. Top-align the row instead. */
+/* A check's own row (mark, title, reading) stacks above its optional count
+   line, rather than sharing one row with it — freeing the row's width for
+   the reading to stay on one line (`.number` above), and keeping the mark
+   vertically centred against the title even when a long title wraps to two
+   lines (baseline, the shared `.result` row's default, would instead align
+   to the title textarea's *last* line). */
 .notebook .result.check {
-  align-items: flex-start;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+}
+
+.notebook .result.check .check-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* Under the reading it annotates, on the right — not under the title,
+   which it has nothing to do with. */
+.notebook .result.check .count {
+  text-align: right;
 }
 
 .notebook .result.pending .number {

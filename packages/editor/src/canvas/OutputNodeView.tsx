@@ -54,7 +54,7 @@ import { Equation } from '../Equation';
 import { Symbol } from '../Symbol';
 import { ParameterLabel } from '../ParameterLabel';
 import { display, formatAuthored, parseAuthored, unitLabel } from '../model/quantity';
-import { reading, summarise, summariseCheck } from '../model/values';
+import { checkVerdict, reading, summarise, summariseCheck } from '../model/values';
 import { CheckReading } from '../CheckReading';
 import { NodeShell } from './NodeShell';
 import { Sparkline } from './Sparkline';
@@ -122,7 +122,7 @@ function Verdict({ nodeId }: { readonly nodeId: string }): ReactElement | null {
   if (result.kind === 'check') {
     const failures = result.results.filter((passed) => !passed).length;
     return (
-      <span className={`badge ${result.passed ? 'pass' : 'fail'}`}>
+      <span className={`badge ${checkVerdict(result.results)}`}>
         {result.passed
           ? 'passes'
           : `fails at ${failures} of ${result.results.length} point${
