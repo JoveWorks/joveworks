@@ -2,6 +2,33 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.9.1](https://github.com/ThomasVanRiel/joveworks/compare/v0.9.0...v0.9.1) (2026-08-21)
+
+### Features
+
+* **editor:** colour a check's sweep by where it starts failing ([04642df](https://github.com/ThomasVanRiel/joveworks/commit/04642df822c2dc8f747c94960cfa13c2325f05ff))
+* **editor:** Monte Carlo nodes in Quick Add, shared playback, linked sample limit ([841fba3](https://github.com/ThomasVanRiel/joveworks/commit/841fba3e149492abbe7ec15e5e60fcfe9f318f0a)), references [#27](https://github.com/ThomasVanRiel/joveworks/issues/27) [#31](https://github.com/ThomasVanRiel/joveworks/issues/31)
+* **editor:** move table settings into the notebook, fix reorder edge mismatch ([f6948e2](https://github.com/ThomasVanRiel/joveworks/commit/f6948e2c0fdaa2589a8996a9ff4674f18fb67dc5)), references [#1](https://github.com/ThomasVanRiel/joveworks/issues/1)
+* let Monte Carlo generators combine without gridding (ROADMAP.md [#31](https://github.com/ThomasVanRiel/joveworks/issues/31)) ([223243a](https://github.com/ThomasVanRiel/joveworks/commit/223243a233a62da4734a0d229befd3838134b812))
+
+### Fixes
+
+* batch of small editor and unit-parsing roadmap fixes ([eefa2c9](https://github.com/ThomasVanRiel/joveworks/commit/eefa2c938170b4096a94cb51b59a3cc1ba06e0c2))
+* **editor:** check threshold on the node sparkline, and a title-clipping bug ([cb21fce](https://github.com/ThomasVanRiel/joveworks/commit/cb21fce5875c9e19bb374b8b31e85f454adc28d7))
+* **editor:** colour mixed check segments and split two-crossing sweeps ([3823d29](https://github.com/ThomasVanRiel/joveworks/commit/3823d297a458d76a36f6bfd855fb094d8f51bf3b))
+* **editor:** three-state check verdict, and notebook layout polish ([950cdac](https://github.com/ThomasVanRiel/joveworks/commit/950cdac10516c9c8984962faa9eea9c93a491f28))
+
+### Documentation
+
+* add plan for password-shared catalogues (roadmap [#28](https://github.com/ThomasVanRiel/joveworks/issues/28)) ([4f73aa8](https://github.com/ThomasVanRiel/joveworks/commit/4f73aa8f20d7a3529ce08efe92fae3e0df26cf65))
+* Add roadmap items ([27dffad](https://github.com/ThomasVanRiel/joveworks/commit/27dffad5095dad63ca82f67a42fa6a0da4f456fc))
+* Add roadmap items ([1da2478](https://github.com/ThomasVanRiel/joveworks/commit/1da247871f5da73bd172d016fa0740c8515bbcd5))
+* Add roadmap items ([82e968c](https://github.com/ThomasVanRiel/joveworks/commit/82e968c9962379d0c11b016b25d7592b16ee208d))
+* Cleanup old docs ([fbcfe72](https://github.com/ThomasVanRiel/joveworks/commit/fbcfe72f51b2f0648d36ed2e66e99e4b8cca80db))
+* Roadmap items. ([ab69258](https://github.com/ThomasVanRiel/joveworks/commit/ab692587743627b679f1b419648d4b448aebc920))
+* update roadmap ([c7c2a1d](https://github.com/ThomasVanRiel/joveworks/commit/c7c2a1d67fa19ad69e5262611f6bf309a92eaf65))
+* update roadmap ([7d6f061](https://github.com/ThomasVanRiel/joveworks/commit/7d6f06104a9ca237671126146189c00a425772e1))
+* update roadmap ([3518044](https://github.com/ThomasVanRiel/joveworks/commit/3518044341d6af8804cd8d358c0a69101caaf7dc))
 ## [0.9.0](https://github.com/ThomasVanRiel/joveworks/compare/v0.8.0...v0.9.0) (2026-08-18)
 
 ### Features
