@@ -375,6 +375,7 @@ function AppShell(): ReactElement {
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [hovered, setHovered] = useState<ReadonlySet<string>>(new Set());
+  const [marqueeActive, setMarqueeActive] = useState(false);
   // Panel visibility is session-only: both panels start open on every load,
   // while their close buttons and the View menu make hiding them deliberate.
   const [showPalette, setShowPalette] = useState(true);
@@ -625,6 +626,8 @@ function AppShell(): ReactElement {
       setSelected,
       hovered,
       setHovered,
+      marqueeActive,
+      setMarqueeActive,
       monteCarloPlayback,
       toggleMonteCarloPlayback: togglePlayback,
       stepMonteCarloPlayback: stepPlayback,
@@ -639,6 +642,7 @@ function AppShell(): ReactElement {
       expanded,
       selected,
       hovered,
+      marqueeActive,
       monteCarloPlayback,
       togglePlayback,
       stepPlayback,

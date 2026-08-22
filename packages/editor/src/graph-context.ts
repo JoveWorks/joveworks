@@ -63,6 +63,16 @@ export interface GraphContextValue {
   readonly hovered: ReadonlySet<string>;
   readonly setHovered: (update: (current: ReadonlySet<string>) => ReadonlySet<string>) => void;
   /**
+   * Whether a marquee (drag-select) rectangle is currently being dragged.
+   * `NodeShell` reads this to keep a node's DOM footprint at its collapsed
+   * (or pinned-open) size for the whole drag — otherwise hover or the
+   * marquee's own live selection would open a node mid-drag, growing the box
+   * React Flow hit-tests against and dropping it back out of the selection
+   * it was already fully inside of.
+   */
+  readonly marqueeActive: boolean;
+  readonly setMarqueeActive: (active: boolean) => void;
+  /**
    * Monte Carlo playback: one shared position for the whole document
    * (`ROADMAP.md` #27, #31), held here, one level above any single view, so
    * every receiver's canvas node and notebook entry

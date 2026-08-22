@@ -429,8 +429,20 @@ export function Canvas({
   readonly controlsVisible: boolean;
   readonly tutorialActive?: boolean;
 }): ReactElement {
-  const { document, catalogues, analysis, edit, editLive, commitEdit, expanded, toggleExpanded, selected, setSelected, saveUserEquation } =
-    useGraph();
+  const {
+    document,
+    catalogues,
+    analysis,
+    edit,
+    editLive,
+    commitEdit,
+    expanded,
+    toggleExpanded,
+    selected,
+    setSelected,
+    setMarqueeActive,
+    saveUserEquation,
+  } = useGraph();
   const { locale, minimapVisible, snapToGrid, setSnapToGrid, themePreference } = useSettings();
   const t = (english: string): string => phrase(locale, english);
   const modifierKey = primaryModifierLabel();
@@ -1345,6 +1357,13 @@ export function Canvas({
         deleteKeyCode={['Backspace', 'Delete']}
         selectionKeyCode="Shift"
         multiSelectionKeyCode={['Control', 'Meta', 'Shift']}
+        // A node opens on hover or selection (NodeShell.tsx), which grows its
+        // measured DOM box — exactly what the marquee is mid-drag testing
+        // that box against. Freezing every node's open/collapsed state for
+        // the drag's duration keeps hit-testing stable regardless of what
+        // the marquee happens to pass over.
+        onSelectionStart={() => setMarqueeActive(true)}
+        onSelectionEnd={() => setMarqueeActive(false)}
         // React Flow's default lifts a selected node's z-index above every
         // other node's, frame's declared zIndex: -1 included — selecting a
         // frame then buried its own contents underneath it, so a student had

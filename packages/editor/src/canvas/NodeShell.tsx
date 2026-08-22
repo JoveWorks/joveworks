@@ -9,6 +9,7 @@
 import { useState, type ReactElement, type ReactNode } from 'react';
 
 import { NODE_HELP_URLS } from '../help-links';
+import { useGraph } from '../graph-context';
 import type { NodeState } from '../model/analysis';
 import { useSettings } from '../settings-context';
 import { phrase, ui } from '../i18n';
@@ -69,10 +70,15 @@ export function NodeShell({
   dataTour,
 }: Props): ReactElement {
   const { locale } = useSettings();
+  const { marqueeActive } = useGraph();
   const copy = ui(locale);
   const stateLabel = phrase(locale, STATE_LABELS[state]);
   const [hovered, setHovered] = useState(false);
-  const open = selected || hovered || expanded;
+  // A marquee drag hit-tests each node's current DOM box (Canvas.tsx), so
+  // hover or the marquee's own live selection opening a node mid-drag would
+  // grow that box out from under the very rectangle it was fully inside of.
+  // Freeze at collapsed-or-pinned for the drag; a pin (`expanded`) still wins.
+  const open = expanded || (!marqueeActive && (selected || hovered));
   return (
     <div
       className={`node node-${kind} state-${state}${open ? ' open' : ''}${highlighted ? ' highlighted' : ''}`}
