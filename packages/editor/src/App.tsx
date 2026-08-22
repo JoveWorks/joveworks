@@ -51,7 +51,7 @@ import {
   type RecentDocument,
 } from './io/recentDocuments';
 import { analyse } from './model/analysis';
-import { arrayCatalogue, bundledCatalogues, baseCatalogue, lockedCatalogues, withCatalogue } from './model/catalogues';
+import { arrayCatalogue, bundledCatalogues, baseCatalogue, lockedCatalogues, mechanicsCatalogue, withCatalogue } from './model/catalogues';
 import { groupIntoSection } from './model/document';
 import { autoArrange } from './model/layout';
 import type { NodeSizes } from './model/node-sizes';
@@ -136,7 +136,7 @@ import { CourseMaterialViewer } from './viewer/CourseMaterialViewer';
  * hand the way an R&M catalogue does, so all are always present.
  */
 function initialCatalogues(): readonly Catalogue[] {
-  let catalogues: readonly Catalogue[] = [baseCatalogue(), arrayCatalogue(), ...bundledCatalogues()];
+  let catalogues: readonly Catalogue[] = [baseCatalogue(), arrayCatalogue(), mechanicsCatalogue(), ...bundledCatalogues()];
   for (const text of cachedCatalogueTexts()) {
     try {
       catalogues = withCatalogue(catalogues, loadCatalogue(text));

@@ -38,12 +38,13 @@ import {
   asInputPort,
   asOutputPort,
   parsePort,
+  portDimension,
   serializePort,
   type OutputPort,
   type Port,
 } from './port.js';
 import { readSchemaVersion } from './version.js';
-import { genericVariables, isGenericDimension } from '@joveworks/units';
+import { dimensionsEqual, divideDimensions, genericVariables, isGenericDimension, type Dimension } from '@joveworks/units';
 
 /** The dimension variables a port mentions — none, unless it is generic. */
 function portVariables(port: Port): readonly string[] {
@@ -80,6 +81,61 @@ export interface FormulaLookup {
   readonly values: readonly (number | null)[];
 }
 
+/**
+ * `kind`s of piecewise evaluator a formula may declare instead of (never
+ * alongside) `lookup`:
+ *
+ * - `cumulativeStep` — a running total of `values`' entries whose matching
+ *   `breakpoints` entry is at or before `axis`'s current value. A shear or
+ *   torque diagram directly.
+ * - `cumulativeMoment` — the same running total, each entry weighted by its
+ *   distance from `axis`'s current value: `Σ value·(axis − breakpoint)` over
+ *   breakpoints at or before `axis`. A bending-moment diagram directly —
+ *   the closed-form integral of `cumulativeStep`'s result — and, evaluated
+ *   at a support position instead of swept, the moment used to solve that
+ *   support's reaction (ordinary `divide`/`subtract` base nodes take it
+ *   from there; no third kind is needed for reactions).
+ *
+ * `breakpoints` and `values` each name one or more declared input ports,
+ * concatenated in the order listed — not paired by wire order, which a
+ * student could wire inconsistently between the two ports. This is what
+ * lets a diagram formula take a spectrum of applied loads *and* a support's
+ * separately-computed reaction as one more, single-valued entry: e.g.
+ * `breakpoints: ['position', 'supportA']`, `values: ['force', 'reactionA']`
+ * pairs `position`/`force` (a spectrum, many values) with `supportA`/
+ * `reactionA` (plain numeric ports, one value each) by declared position,
+ * not by however a student happened to wire them.
+ *
+ * `distributedStart`/`distributedEnd`/`distributedRate` add a uniform
+ * distributed load's contribution to either kind, on top of whatever
+ * `breakpoints`/`values` already total — a span of the axis (`start` to
+ * `end`) carrying a constant `rate` per unit of axis. Writing
+ * `a = clamp(axis − start, 0, end − start)`, `cumulativeStep` adds
+ * `rate·a` and `cumulativeMoment` adds `rate·a·(axis − start − a/2)`: the
+ * closed-form integral (and its own integral) of a rectangular load,
+ * whether the axis sits before, inside, or past the span. A formula may
+ * declare either group, or both — a shear diagram with point loads and a
+ * distributed load in the same span totals both.
+ */
+export const PIECEWISE_KINDS = ['cumulativeStep', 'cumulativeMoment'] as const;
+export type PiecewiseKind = (typeof PIECEWISE_KINDS)[number];
+
+export interface FormulaPiecewise {
+  readonly kind: PiecewiseKind;
+  /** Name of the declared numeric input evaluated against each breakpoint. */
+  readonly axis: string;
+  /** Declared spectrum/numeric input(s) holding each breakpoint's position, in `axis`'s dimension. Paired with `values`. */
+  readonly breakpoints?: readonly string[];
+  /** Declared spectrum/numeric input(s) holding the value added at each breakpoint. Paired with `breakpoints`. */
+  readonly values?: readonly string[];
+  /** Declared spectrum/numeric input(s) holding each distributed span's start, in `axis`'s dimension. Paired with `distributedEnd`/`distributedRate`. */
+  readonly distributedStart?: readonly string[];
+  /** Declared spectrum/numeric input(s) holding each distributed span's end, in `axis`'s dimension. Paired with `distributedStart`/`distributedRate`. */
+  readonly distributedEnd?: readonly string[];
+  /** Declared spectrum/numeric input(s) holding each distributed span's rate, per unit of `axis`. Paired with `distributedStart`/`distributedEnd`. */
+  readonly distributedRate?: readonly string[];
+}
+
 export interface Formula {
   /** Stable within its catalogue — the migration writes it from the method name. */
   readonly id: string;
@@ -91,6 +147,8 @@ export interface Formula {
   readonly expression: string;
   /** Optional table-backed evaluator. The expression still declares/checks dimensions. */
   readonly lookup?: FormulaLookup;
+  /** Optional piecewise evaluator, mutually exclusive with `lookup`. Same role: the expression still declares/checks dimensions. */
+  readonly piecewise?: FormulaPiecewise;
   /** Short display name. Omit when a citation or id is the natural title. */
   readonly label?: LocalizedText;
   readonly description: LocalizedText;
@@ -149,6 +207,40 @@ function serializeLookup(lookup: FormulaLookup): JsonObject {
       ...put('lowerExclusive', axis.lowerExclusive),
     })),
     values: [...lookup.values],
+  };
+}
+
+function parsePortNameList(value: JsonValue, path: string): readonly string[] {
+  const names = readArray(value, path).map((entry, i) => readName(entry, `${path}[${i}]`));
+  if (names.length === 0) fail(path, 'is empty');
+  return names;
+}
+
+function parsePiecewise(value: JsonValue, path: string): FormulaPiecewise {
+  const object = readObject(value, path);
+  const kind = readEnum(required(object, 'kind', path), join(path, 'kind'), PIECEWISE_KINDS);
+  const list = (name: string) => optional(object, name, path, (v, p) => parsePortNameList(v, p));
+  return {
+    kind,
+    axis: readName(required(object, 'axis', path), join(path, 'axis')),
+    ...put('breakpoints', list('breakpoints')),
+    ...put('values', list('values')),
+    ...put('distributedStart', list('distributedStart')),
+    ...put('distributedEnd', list('distributedEnd')),
+    ...put('distributedRate', list('distributedRate')),
+  };
+}
+
+function serializePiecewise(piecewise: FormulaPiecewise): JsonObject {
+  const list = (names: readonly string[] | undefined) => (names === undefined ? undefined : [...names]);
+  return {
+    kind: piecewise.kind,
+    axis: piecewise.axis,
+    ...put('breakpoints', list(piecewise.breakpoints)),
+    ...put('values', list(piecewise.values)),
+    ...put('distributedStart', list(piecewise.distributedStart)),
+    ...put('distributedEnd', list(piecewise.distributedEnd)),
+    ...put('distributedRate', list(piecewise.distributedRate)),
   };
 }
 
@@ -228,6 +320,76 @@ export function parseFormula(value: JsonValue, path: string): Formula {
     }
   }
 
+  const piecewise = optional(object, 'piecewise', path, parsePiecewise);
+  if (piecewise !== undefined) {
+    if (lookup !== undefined) fail(join(path, 'piecewise'), 'cannot accompany a lookup — a formula is one or the other');
+    const outputDimension = portDimension(output);
+    if (outputDimension === undefined) {
+      fail(join(path, 'output'), 'a piecewise formula needs a concrete numeric output');
+    }
+    const axisPort = inputs.find((candidate) => candidate.name === piecewise.axis);
+    const axisDimension = axisPort === undefined ? undefined : portDimension(axisPort);
+    if (axisPort === undefined || axisPort.kind !== 'numeric' || axisDimension === undefined) {
+      fail(join(path, 'piecewise.axis'), `'${piecewise.axis}' must be a declared input with a concrete numeric unit`);
+    }
+    // Each entry is a spectrum or a plain numeric port — concatenated in the
+    // order listed to build the full breakpoint/value arrays, so a support's
+    // separately-computed reaction can join a load spectrum as one more
+    // single-valued entry without depending on wire order (see the
+    // `FormulaPiecewise` docstring).
+    const checkNames = (names: readonly string[] | undefined, namesPath: string, wantDimension: Dimension | undefined, mismatch: string): void => {
+      for (const [i, name] of (names ?? []).entries()) {
+        const entryPath = `${namesPath}[${i}]`;
+        const port = inputs.find((candidate) => candidate.name === name);
+        const dimension = port === undefined ? undefined : portDimension(port);
+        if (port === undefined || (port.kind !== 'spectrum' && port.kind !== 'numeric') || dimension === undefined) {
+          fail(entryPath, `'${name}' must be a declared spectrum or numeric input with a concrete unit`);
+        } else if (wantDimension !== undefined && !dimensionsEqual(wantDimension, dimension)) {
+          fail(entryPath, mismatch);
+        }
+      }
+    };
+    if ((piecewise.breakpoints === undefined) !== (piecewise.values === undefined)) {
+      fail(join(path, 'piecewise'), 'breakpoints and values must be declared together, or not at all');
+    }
+    const distributedFields = [piecewise.distributedStart, piecewise.distributedEnd, piecewise.distributedRate];
+    if (distributedFields.some((field) => field !== undefined) && distributedFields.some((field) => field === undefined)) {
+      fail(join(path, 'piecewise'), 'distributedStart, distributedEnd and distributedRate must be declared together, or not at all');
+    }
+    if (piecewise.breakpoints === undefined && piecewise.distributedStart === undefined) {
+      fail(join(path, 'piecewise'), 'needs breakpoints/values, distributedStart/End/Rate, or both');
+    }
+    checkNames(piecewise.breakpoints, join(path, 'piecewise.breakpoints'), axisDimension, `must share '${piecewise.axis}''s dimension`);
+    // `cumulativeStep`'s output is a plain total of `values`, so they share a
+    // dimension. `cumulativeMoment`'s output is `Σ value·(axis − breakpoint)`,
+    // so `values` carries the output's dimension divided by `axis`'s instead
+    // — force in, force·length out, for a breakpoint measured in length.
+    const valuesDimension =
+      piecewise.kind === 'cumulativeMoment' && outputDimension !== undefined && axisDimension !== undefined
+        ? divideDimensions(outputDimension, axisDimension)
+        : outputDimension;
+    const valuesMismatch =
+      piecewise.kind === 'cumulativeMoment'
+        ? `must have the output's dimension divided by '${piecewise.axis}''s`
+        : "must share the output's dimension";
+    checkNames(piecewise.values, join(path, 'piecewise.values'), valuesDimension, valuesMismatch);
+
+    checkNames(piecewise.distributedStart, join(path, 'piecewise.distributedStart'), axisDimension, `must share '${piecewise.axis}''s dimension`);
+    checkNames(piecewise.distributedEnd, join(path, 'piecewise.distributedEnd'), axisDimension, `must share '${piecewise.axis}''s dimension`);
+    // A rate is `values`' dimension per unit of axis, whichever kind this is
+    // — a rectangular load's own rectangle, before either kind integrates it
+    // further (`values`' dimension already carries the kind-specific
+    // adjustment above: force for cumulativeStep, force per axis-unit —
+    // i.e. this same rate dimension — for cumulativeMoment).
+    const rateDimension =
+      valuesDimension !== undefined && axisDimension !== undefined ? divideDimensions(valuesDimension, axisDimension) : undefined;
+    const rateMismatch =
+      piecewise.kind === 'cumulativeMoment'
+        ? `must have the output's dimension divided by '${piecewise.axis}''s, squared`
+        : `must have the output's dimension divided by '${piecewise.axis}''s`;
+    checkNames(piecewise.distributedRate, join(path, 'piecewise.distributedRate'), rateDimension, rateMismatch);
+  }
+
   const status = readEnum(required(object, 'status', path), join(path, 'status'), FORMULA_STATUSES);
   const quarantineReason = optional(object, 'quarantineReason', path, parseLocalizedText);
   if (status === 'quarantined' && quarantineReason === undefined) {
@@ -241,6 +403,7 @@ export function parseFormula(value: JsonValue, path: string): Formula {
     inputs,
     expression,
     ...put('lookup', lookup),
+    ...put('piecewise', piecewise),
     description: parseLocalizedText(required(object, 'description', path), join(path, 'description')),
     ...put('label', optional(object, 'label', path, parseLocalizedText)),
     ...put('citation', optional(object, 'citation', path, readString)),
@@ -259,6 +422,7 @@ export function serializeFormula(formula: Formula): JsonObject {
     inputs: formula.inputs.map(serializePort),
     expression: formula.expression,
     ...put('lookup', formula.lookup === undefined ? undefined : serializeLookup(formula.lookup)),
+    ...put('piecewise', formula.piecewise === undefined ? undefined : serializePiecewise(formula.piecewise)),
     ...(formula.label === undefined ? {} : { label: serializeLocalizedText(formula.label) }),
     description: serializeLocalizedText(formula.description),
     ...put('citation', formula.citation),
@@ -307,6 +471,7 @@ export function formulaHash(formula: Formula): string {
     inputs: formula.inputs.map(withoutText),
     expression: formula.expression,
     ...put('lookup', formula.lookup === undefined ? undefined : serializeLookup(formula.lookup)),
+    ...put('piecewise', formula.piecewise === undefined ? undefined : serializePiecewise(formula.piecewise)),
     ...put('citation', formula.citation),
     ...put('variantOf', formula.variantOf),
     ...put('appliesWhen', formula.appliesWhen),

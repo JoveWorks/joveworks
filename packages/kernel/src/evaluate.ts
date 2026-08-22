@@ -633,6 +633,102 @@ function evaluateFormula(
     });
   }
 
+  if (formula.piecewise !== undefined) {
+    if (isGenericDimension(formula.output.unit)) {
+      throw new KernelError('a piecewise output must declare a concrete unit', nodeId);
+    }
+    const { kind: piecewiseKind, axis, breakpoints, values: valueNames, distributedStart, distributedEnd, distributedRate } =
+      formula.piecewise;
+    const axisEntry = regularInputs.find(({ port }) => port.name === axis);
+    if (axisEntry === undefined || axisEntry.value.kind !== 'numeric') {
+      throw new KernelError(`piecewise axis '${axis}' must be a numeric input`, nodeId);
+    }
+    const axisRead = reader(axisEntry.value, axes);
+
+    // Each declared name contributes one reader per cell — a spectrum port's
+    // every value (`fixed`, an authored list, or `reader` if it is itself
+    // wired to something swept) or a plain numeric port's single value —
+    // concatenated across names in the order `formula.piecewise` lists them,
+    // never by wire order (see the schema docstring: a support's reaction
+    // joins a load spectrum this way, as one more single-valued entry).
+    type EdgeContribution =
+      | { readonly kind: 'fixed'; readonly values: readonly number[] }
+      | { readonly kind: 'reader'; readonly read: (cell: number) => number };
+    const namedContributions = (names: readonly string[] | undefined): readonly EdgeContribution[] =>
+      (names ?? []).flatMap((name): readonly EdgeContribution[] => {
+        const spectrumEntry = spectrumInputs.find(({ port }) => port.name === name);
+        if (spectrumEntry !== undefined) {
+          return spectrumEntry.edgeValues.map((value): EdgeContribution =>
+            value.kind === 'spectrum'
+              ? { kind: 'fixed', values: value.values }
+              : { kind: 'reader', read: reader(value, axes) },
+          );
+        }
+        const regularEntry = regularInputs.find(({ port }) => port.name === name);
+        if (regularEntry !== undefined && regularEntry.value.kind === 'numeric') {
+          return [{ kind: 'reader', read: reader(regularEntry.value, axes) }];
+        }
+        throw new KernelError(`piecewise input '${name}' must be a declared spectrum or numeric input`, nodeId);
+      });
+    const namesAt = (cell: number, contributions: readonly EdgeContribution[]): readonly number[] =>
+      contributions.flatMap((edge) => (edge.kind === 'fixed' ? edge.values : [edge.read(cell)]));
+
+    const breakpointContributions = namedContributions(breakpoints);
+    const valueContributions = namedContributions(valueNames);
+    const startContributions = namedContributions(distributedStart);
+    const endContributions = namedContributions(distributedEnd);
+    const rateContributions = namedContributions(distributedRate);
+
+    // Closed-form at every sampled `z`, not a numeric cumulative sum over the
+    // sweep — accuracy never depends on how densely `z` happens to be swept.
+    const data = new Array<number>(cells);
+    for (let cell = 0; cell < cells; cell += 1) {
+      const z = axisRead(cell);
+      const positions = namesAt(cell, breakpointContributions);
+      const magnitudes = namesAt(cell, valueContributions);
+      if (positions.length !== magnitudes.length) {
+        throw new KernelError(
+          `'${(breakpoints ?? []).join('+')}' has ${positions.length} values but '${(valueNames ?? []).join('+')}' has ${magnitudes.length}`,
+          nodeId,
+        );
+      }
+      let total = 0;
+      for (let i = 0; i < positions.length; i += 1) {
+        const position = positions[i] as number;
+        if (position > z) continue;
+        total += piecewiseKind === 'cumulativeMoment' ? (magnitudes[i] as number) * (z - position) : (magnitudes[i] as number);
+      }
+
+      const starts = namesAt(cell, startContributions);
+      const ends = namesAt(cell, endContributions);
+      const rates = namesAt(cell, rateContributions);
+      if (starts.length !== ends.length || starts.length !== rates.length) {
+        throw new KernelError(
+          `'${(distributedStart ?? []).join('+')}' has ${starts.length} values, ` +
+            `'${(distributedEnd ?? []).join('+')}' has ${ends.length}, ` +
+            `'${(distributedRate ?? []).join('+')}' has ${rates.length} — they must match`,
+          nodeId,
+        );
+      }
+      for (let i = 0; i < starts.length; i += 1) {
+        const start = starts[i] as number;
+        const end = ends[i] as number;
+        const rate = rates[i] as number;
+        if (end < start) {
+          throw new KernelError(`a distributed load's end (${end}) is before its start (${start})`, nodeId);
+        }
+        // a = how far z has advanced into [start, end] — 0 before it starts,
+        // (end − start) once past it. rate·a integrates the rectangle up to
+        // z; cumulativeMoment integrates that again, about z, splitting the
+        // already-swept portion at its own centroid (start + a/2).
+        const a = Math.min(Math.max(z - start, 0), end - start);
+        total += piecewiseKind === 'cumulativeMoment' ? rate * a * (z - start - a / 2) : rate * a;
+      }
+      data[cell] = total;
+    }
+    return { kind: 'numeric', axes, data };
+  }
+
   if (formula.lookup !== undefined) {
     if (isGenericDimension(formula.output.unit)) {
       throw new KernelError('a lookup output must declare a concrete unit', nodeId);

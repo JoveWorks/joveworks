@@ -176,6 +176,254 @@ describe('table-backed formulas', () => {
   });
 });
 
+describe('piecewise-backed formulas', () => {
+  const stepCatalogue = catalogueOf([
+    {
+      id: 'runningTotal', version: 1,
+      output: { kind: 'numeric', name: 'y', unit: 'N' },
+      inputs: [
+        { kind: 'numeric', name: 'z', unit: 'mm', default: 0 },
+        { kind: 'spectrum', name: 'position', unit: 'mm' },
+        { kind: 'spectrum', name: 'value', unit: 'N' },
+        { kind: 'numeric', name: 'extraPosition', unit: 'mm', default: 1_000_000 },
+        { kind: 'numeric', name: 'extraValue', unit: 'N', default: 0 },
+      ],
+      expression: 'sum(value)',
+      piecewise: {
+        kind: 'cumulativeStep', axis: 'z',
+        breakpoints: ['position', 'extraPosition'], values: ['value', 'extraValue'],
+      },
+      description: 'Invented running-total-vs-position formula.', status: 'unverified',
+    },
+  ]);
+  const stepRef = refTo('runningTotal', stepCatalogue);
+
+  it('totals only the breakpoints at or before z', () => {
+    const document = documentOf(
+      [
+        input('position', { kind: 'spectrum', values: [10, 30, 50], unit: 'mm' }),
+        input('value', { kind: 'spectrum', values: [100, 200, 300], unit: 'N' }),
+        formulaNode('step', stepRef, { inputValues: { z: { kind: 'scalar', value: 40, unit: 'mm' } } }),
+      ],
+      [wire('position.value', 'step.position'), wire('value.value', 'step.value')],
+    );
+    // 10 mm and 30 mm are at or before z = 40 mm; 50 mm is not.
+    expect(numeric(valueAt(evaluateDocument(document, [stepCatalogue]), 'step', 'y')).data).toEqual([300]);
+  });
+
+  it('is closed-form at every sampled z, not a cumulative sum over the sweep', () => {
+    const document = documentOf(
+      [
+        input('position', { kind: 'spectrum', values: [10, 30, 50], unit: 'mm' }),
+        input('value', { kind: 'spectrum', values: [100, 200, 300], unit: 'N' }),
+        input('z', linear(0, 60, 4, 'mm')), // 0, 20, 40, 60 mm
+        formulaNode('step', stepRef),
+      ],
+      [
+        wire('position.value', 'step.position'),
+        wire('value.value', 'step.value'),
+        wire('z.value', 'step.z'),
+      ],
+    );
+    expect(numeric(valueAt(evaluateDocument(document, [stepCatalogue]), 'step', 'y')).data).toEqual([
+      0, 100, 300, 600,
+    ]);
+  });
+
+  it('reports mismatched breakpoint/value counts rather than silently truncating', () => {
+    const document = documentOf(
+      [
+        input('position', { kind: 'spectrum', values: [10, 30], unit: 'mm' }),
+        input('value', { kind: 'spectrum', values: [100, 200, 300], unit: 'N' }),
+        formulaNode('step', stepRef),
+      ],
+      [wire('position.value', 'step.position'), wire('value.value', 'step.value')],
+    );
+    // Plus the fixture's own extraPosition/extraValue: 2+1 = 3 breakpoints, 3+1 = 4 values.
+    expect(() => evaluateDocument(document, [stepCatalogue])).toThrow(/has 3 values but 'value\+extraValue' has 4/u);
+  });
+
+  it('joins a plain numeric port to a spectrum in the same list, by declared order rather than wire order', () => {
+    const document = documentOf(
+      [
+        input('position', { kind: 'spectrum', values: [10, 30], unit: 'mm' }),
+        input('value', { kind: 'spectrum', values: [100, 200], unit: 'N' }),
+        formulaNode('step', stepRef, {
+          inputValues: {
+            z: { kind: 'scalar', value: 50, unit: 'mm' },
+            extraPosition: { kind: 'scalar', value: 20, unit: 'mm' },
+            extraValue: { kind: 'scalar', value: 1000, unit: 'N' },
+          },
+        }),
+      ],
+      [wire('position.value', 'step.position'), wire('value.value', 'step.value')],
+    );
+    // 10, 30 and 20 mm are all at or before z = 50 mm: 100 + 200 + 1000.
+    expect(numeric(valueAt(evaluateDocument(document, [stepCatalogue]), 'step', 'y')).data).toEqual([1300]);
+  });
+
+  const momentCatalogue = catalogueOf([
+    {
+      id: 'runningMoment', version: 1,
+      output: { kind: 'numeric', name: 'y', unit: 'Nmm' },
+      inputs: [
+        { kind: 'numeric', name: 'z', unit: 'mm', default: 0 },
+        { kind: 'spectrum', name: 'position', unit: 'mm' },
+        { kind: 'spectrum', name: 'value', unit: 'N' },
+      ],
+      expression: 'sum(value) * z',
+      piecewise: { kind: 'cumulativeMoment', axis: 'z', breakpoints: ['position'], values: ['value'] },
+      description: 'Invented running-moment-vs-position formula.', status: 'unverified',
+    },
+  ]);
+  const momentRef = refTo('runningMoment', momentCatalogue);
+
+  it('weighs each breakpoint at or before z by its distance from z', () => {
+    const document = documentOf(
+      [
+        input('position', { kind: 'spectrum', values: [10, 30, 50], unit: 'mm' }),
+        input('value', { kind: 'spectrum', values: [100, 200, 300], unit: 'N' }),
+        input('z', { kind: 'list', values: [0, 40, 60], unit: 'mm' }),
+        formulaNode('moment', momentRef),
+      ],
+      [wire('position.value', 'moment.position'), wire('value.value', 'moment.value'), wire('z.value', 'moment.z')],
+    );
+    // z = 0: no breakpoint at or before 0 → 0.
+    // z = 40: 100·(40−10) + 200·(40−30) = 3000 + 2000 = 5000.
+    // z = 60: 100·50 + 200·30 + 300·10 = 5000 + 6000 + 3000 = 14000.
+    expect(numeric(valueAt(evaluateDocument(document, [momentCatalogue]), 'moment', 'y')).data).toEqual([
+      0, 5000, 14000,
+    ]);
+  });
+
+  describe('distributed loads', () => {
+    const distributedInputs = [
+      { kind: 'numeric', name: 'z', unit: 'mm', default: 0 },
+      { kind: 'spectrum', name: 'start', unit: 'mm' },
+      { kind: 'spectrum', name: 'end', unit: 'mm' },
+      { kind: 'spectrum', name: 'rate', unit: 'N/mm' },
+    ];
+    const distributedStepCatalogue = catalogueOf([
+      {
+        id: 'distributedStep', version: 1,
+        output: { kind: 'numeric', name: 'y', unit: 'N' },
+        inputs: distributedInputs,
+        expression: 'sum(rate) * z',
+        piecewise: {
+          kind: 'cumulativeStep', axis: 'z',
+          distributedStart: ['start'], distributedEnd: ['end'], distributedRate: ['rate'],
+        },
+        description: 'Invented distributed-load shear formula.', status: 'unverified',
+      },
+    ]);
+    const distributedStepRef = refTo('distributedStep', distributedStepCatalogue);
+
+    const distributedMomentCatalogue = catalogueOf([
+      {
+        id: 'distributedMoment', version: 1,
+        output: { kind: 'numeric', name: 'y', unit: 'Nmm' },
+        inputs: distributedInputs,
+        expression: 'sum(rate) * z * z',
+        piecewise: {
+          kind: 'cumulativeMoment', axis: 'z',
+          distributedStart: ['start'], distributedEnd: ['end'], distributedRate: ['rate'],
+        },
+        description: 'Invented distributed-load moment formula.', status: 'unverified',
+      },
+    ]);
+    const distributedMomentRef = refTo('distributedMoment', distributedMomentCatalogue);
+
+    // A single uniform load, 10 N/mm from z = 20 to z = 60 (400 N total,
+    // centroid at z = 40).
+    const loadInputs = [
+      input('start', { kind: 'spectrum', values: [20], unit: 'mm' }),
+      input('end', { kind: 'spectrum', values: [60], unit: 'mm' }),
+      input('rate', { kind: 'spectrum', values: [10], unit: 'N/mm' }),
+      input('z', { kind: 'list', values: [0, 10, 20, 30, 60, 100], unit: 'mm' }),
+    ];
+    const loadWires = [
+      wire('start.value', 'v.start'), wire('end.value', 'v.end'), wire('rate.value', 'v.rate'), wire('z.value', 'v.z'),
+    ];
+
+    it('integrates a rectangular load into a shear-shaped ramp — flat, then linear, then flat again', () => {
+      const document = documentOf(
+        [...loadInputs, formulaNode('v', distributedStepRef)],
+        loadWires,
+      );
+      // Before the span: 0. Inside: rate·(z − start). Past it: the full 400 N.
+      expect(numeric(valueAt(evaluateDocument(document, [distributedStepCatalogue]), 'v', 'y')).data).toEqual([
+        0, 0, 0, 100, 400, 400,
+      ]);
+    });
+
+    it("integrates the same load twice for the moment — quadratic inside the span, linear from the load's centroid past it", () => {
+      const document = documentOf([...loadInputs, formulaNode('v', distributedMomentRef)], loadWires);
+      // z=30: 10·10·(30−20−5) = 500. z=60: 10·40·(60−20−20) = 8000.
+      // z=100: 400·(100 − 40) = 24000 — total force times distance to the centroid.
+      expect(numeric(valueAt(evaluateDocument(document, [distributedMomentCatalogue]), 'v', 'y')).data).toEqual([
+        0, 0, 0, 500, 8000, 24000,
+      ]);
+    });
+
+    it('adds a distributed load on top of point breakpoints in the same formula', () => {
+      const combinedCatalogue = catalogueOf([
+        {
+          id: 'combined', version: 1,
+          output: { kind: 'numeric', name: 'y', unit: 'N' },
+          inputs: [
+            { kind: 'numeric', name: 'z', unit: 'mm', default: 0 },
+            { kind: 'spectrum', name: 'position', unit: 'mm' },
+            { kind: 'spectrum', name: 'value', unit: 'N' },
+            { kind: 'spectrum', name: 'start', unit: 'mm' },
+            { kind: 'spectrum', name: 'end', unit: 'mm' },
+            { kind: 'spectrum', name: 'rate', unit: 'N/mm' },
+          ],
+          expression: 'sum(value) + sum(rate) * z',
+          piecewise: {
+            kind: 'cumulativeStep', axis: 'z',
+            breakpoints: ['position'], values: ['value'],
+            distributedStart: ['start'], distributedEnd: ['end'], distributedRate: ['rate'],
+          },
+          description: 'Invented point-plus-distributed shear formula.', status: 'unverified',
+        },
+      ]);
+      const document = documentOf(
+        [
+          input('position', { kind: 'spectrum', values: [50], unit: 'mm' }),
+          input('value', { kind: 'spectrum', values: [1000], unit: 'N' }),
+          ...loadInputs.filter((n) => n['id'] !== 'z'),
+          input('z', { kind: 'list', values: [10, 55], unit: 'mm' }),
+          formulaNode('v', refTo('combined', combinedCatalogue)),
+        ],
+        [
+          wire('position.value', 'v.position'), wire('value.value', 'v.value'),
+          wire('start.value', 'v.start'), wire('end.value', 'v.end'), wire('rate.value', 'v.rate'),
+          wire('z.value', 'v.z'),
+        ],
+      );
+      // z=10: only the distributed load's ramp has started? No — z=10 is
+      // before the 20–60 span too, so both contribute 0.
+      // z=55: distributed 10·(55−20) = 350, plus the 1000 N point load at 50.
+      expect(numeric(valueAt(evaluateDocument(document, [combinedCatalogue]), 'v', 'y')).data).toEqual([
+        0, 1350,
+      ]);
+    });
+
+    it("rejects a distributed load whose end is before its start", () => {
+      const document = documentOf(
+        [
+          input('start', { kind: 'spectrum', values: [60], unit: 'mm' }),
+          input('end', { kind: 'spectrum', values: [20], unit: 'mm' }),
+          input('rate', { kind: 'spectrum', values: [10], unit: 'N/mm' }),
+          formulaNode('v', distributedStepRef),
+        ],
+        [wire('start.value', 'v.start'), wire('end.value', 'v.end'), wire('rate.value', 'v.rate')],
+      );
+      expect(() => evaluateDocument(document, [distributedStepCatalogue])).toThrow(/end .* is before its start/u);
+    });
+  });
+});
+
 describe('closure nodes', () => {
   it('computes a student-typed expression, ports and all', () => {
     const document = documentOf(

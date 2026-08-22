@@ -273,3 +273,200 @@ describe('generic formulas', () => {
     ).toThrow(/not a bare variable/);
   });
 });
+
+describe('piecewise formulas', () => {
+  const running: JsonObject = {
+    id: 'demo.running-total',
+    version: 1,
+    output: { kind: 'numeric', name: 'y', unit: 'N' },
+    inputs: [
+      { kind: 'numeric', name: 'z', unit: 'mm', default: 0 },
+      { kind: 'spectrum', name: 'position', unit: 'mm' },
+      { kind: 'spectrum', name: 'value', unit: 'N' },
+    ],
+    expression: 'sum(value)',
+    piecewise: { kind: 'cumulativeStep', axis: 'z', breakpoints: ['position'], values: ['value'] },
+    description: { en: 'An invented running-total-vs-position formula.' },
+    status: 'unverified',
+  };
+
+  it('round-trips the piecewise field', () => {
+    expect(serializeFormula(parseFormula(running, ''))['piecewise']).toEqual(running['piecewise']);
+  });
+
+  it('rejects piecewise alongside lookup', () => {
+    expect(() =>
+      parseFormula(
+        {
+          ...running,
+          lookup: { axes: [{ input: 'z', kind: 'numeric', values: [1] }], values: [1] },
+        },
+        '',
+      ),
+    ).toThrow(/cannot accompany a lookup/);
+  });
+
+  it("rejects an axis that isn't a concrete numeric input", () => {
+    expect(() =>
+      parseFormula(
+        { ...running, piecewise: { ...(running['piecewise'] as JsonObject), axis: 'position' } },
+        '',
+      ),
+    ).toThrow(/must be a declared input with a concrete numeric unit/);
+  });
+
+  it('rejects breakpoints whose dimension does not match the axis', () => {
+    expect(() =>
+      parseFormula(
+        { ...running, piecewise: { ...(running['piecewise'] as JsonObject), breakpoints: ['value'] } },
+        '',
+      ),
+    ).toThrow(/must share 'z''s dimension/);
+  });
+
+  it("rejects values whose dimension does not match the output's", () => {
+    expect(() =>
+      parseFormula(
+        { ...running, piecewise: { ...(running['piecewise'] as JsonObject), values: ['position'] } },
+        '',
+      ),
+    ).toThrow(/must share the output's dimension/);
+  });
+
+  it('rejects a piecewise output with no concrete unit', () => {
+    expect(() =>
+      parseFormula(
+        { ...running, output: { kind: 'numeric', name: 'y', unit: '$A' }, inputs: [...(running['inputs'] as JsonObject[]), { kind: 'numeric', name: 'dummy', unit: '$A' }], expression: 'dummy' },
+        '',
+      ),
+    ).toThrow(/needs a concrete numeric output/);
+  });
+
+  it('accepts a plain numeric port alongside a spectrum in the same breakpoints/values list', () => {
+    const withExtra: JsonObject = {
+      ...running,
+      inputs: [
+        ...(running['inputs'] as JsonObject[]),
+        { kind: 'numeric', name: 'extraPosition', unit: 'mm', default: 0 },
+        { kind: 'numeric', name: 'extraValue', unit: 'N', default: 0 },
+      ],
+      piecewise: { kind: 'cumulativeStep', axis: 'z', breakpoints: ['position', 'extraPosition'], values: ['value', 'extraValue'] },
+    };
+    expect(serializeFormula(parseFormula(withExtra, ''))['piecewise']).toEqual(withExtra['piecewise']);
+  });
+
+  it('rejects an empty breakpoints/values list', () => {
+    expect(() =>
+      parseFormula({ ...running, piecewise: { ...(running['piecewise'] as JsonObject), breakpoints: [] } }, ''),
+    ).toThrow(/is empty/);
+  });
+
+  it('rejects a name in breakpoints/values that is not a declared input', () => {
+    expect(() =>
+      parseFormula({ ...running, piecewise: { ...(running['piecewise'] as JsonObject), values: ['nope'] } }, ''),
+    ).toThrow(/'nope' must be a declared spectrum or numeric input/);
+  });
+
+  it('round-trips the cumulativeMoment kind', () => {
+    // Nmm out, N in, mm axis: the output is `values`' dimension times `axis`'s.
+    const moment: JsonObject = {
+      ...running,
+      output: { kind: 'numeric', name: 'y', unit: 'Nmm' },
+      piecewise: { kind: 'cumulativeMoment', axis: 'z', breakpoints: ['position'], values: ['value'] },
+    };
+    expect(serializeFormula(parseFormula(moment, ''))['piecewise']).toEqual(moment['piecewise']);
+  });
+
+  it("rejects cumulativeMoment values whose dimension isn't the output's divided by the axis's", () => {
+    expect(() =>
+      parseFormula(
+        {
+          ...running,
+          // Nmm output ÷ mm axis wants an N-dimensioned `values` port; `position`
+          // is mm, not N.
+          output: { kind: 'numeric', name: 'y', unit: 'Nmm' },
+          piecewise: { kind: 'cumulativeMoment', axis: 'z', breakpoints: ['position'], values: ['position'] },
+          expression: 'sum(position) * z',
+        },
+        '',
+      ),
+    ).toThrow(/must have the output's dimension divided by 'z''s/);
+  });
+
+  describe('distributed loads', () => {
+    const distributed: JsonObject = {
+      ...running,
+      inputs: [
+        ...(running['inputs'] as JsonObject[]),
+        { kind: 'spectrum', name: 'start', unit: 'mm' },
+        { kind: 'spectrum', name: 'end', unit: 'mm' },
+        { kind: 'spectrum', name: 'rate', unit: 'N/mm' },
+      ],
+      piecewise: {
+        kind: 'cumulativeStep', axis: 'z',
+        breakpoints: ['position'], values: ['value'],
+        distributedStart: ['start'], distributedEnd: ['end'], distributedRate: ['rate'],
+      },
+    };
+
+    it('round-trips distributedStart/End/Rate alongside breakpoints/values', () => {
+      expect(serializeFormula(parseFormula(distributed, ''))['piecewise']).toEqual(distributed['piecewise']);
+    });
+
+    it('accepts a distributed load with no point breakpoints at all', () => {
+      const onlyDistributed: JsonObject = {
+        ...distributed,
+        piecewise: {
+          kind: 'cumulativeStep', axis: 'z',
+          distributedStart: ['start'], distributedEnd: ['end'], distributedRate: ['rate'],
+        },
+      };
+      expect(serializeFormula(parseFormula(onlyDistributed, ''))['piecewise']).toEqual(onlyDistributed['piecewise']);
+    });
+
+    it('rejects a piecewise formula with neither breakpoints nor a distributed load', () => {
+      expect(() =>
+        parseFormula({ ...distributed, piecewise: { kind: 'cumulativeStep', axis: 'z' } }, ''),
+      ).toThrow(/needs breakpoints\/values, distributedStart\/End\/Rate, or both/);
+    });
+
+    it('rejects breakpoints without a matching values (and vice versa)', () => {
+      expect(() =>
+        parseFormula(
+          { ...distributed, piecewise: { kind: 'cumulativeStep', axis: 'z', breakpoints: ['position'] } },
+          '',
+        ),
+      ).toThrow(/breakpoints and values must be declared together/);
+    });
+
+    it('rejects a partial distributed-load declaration', () => {
+      expect(() =>
+        parseFormula(
+          {
+            ...distributed,
+            piecewise: {
+              kind: 'cumulativeStep', axis: 'z',
+              distributedStart: ['start'], distributedEnd: ['end'],
+            },
+          },
+          '',
+        ),
+      ).toThrow(/distributedStart, distributedEnd and distributedRate must be declared together/);
+    });
+
+    it("rejects a distributedRate whose dimension isn't the output's per axis unit", () => {
+      expect(() =>
+        parseFormula(
+          {
+            ...distributed,
+            piecewise: {
+              kind: 'cumulativeStep', axis: 'z',
+              distributedStart: ['start'], distributedEnd: ['end'], distributedRate: ['value'],
+            },
+          },
+          '',
+        ),
+      ).toThrow(/must have the output's dimension divided by 'z''s/);
+    });
+  });
+});
