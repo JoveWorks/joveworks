@@ -179,4 +179,42 @@ describe('the mechanics node library through the kernel', () => {
       0, 30000, 48000, 20000, 0, 0,
     ]);
   });
+
+  it('combines a point load and a distributed load via an ordinary add node', () => {
+    // A −1000 N point load at z = 80 mm (no supports wired — this checks
+    // superposition, not a realistic supported beam), plus a −2 N/mm
+    // distributed load from z = 100 to 140 mm (−80 N total).
+    const nodes: JsonObject[] = [
+      input('position', { kind: 'spectrum', values: [80], unit: 'mm' }),
+      input('force', { kind: 'spectrum', values: [-1000], unit: 'N' }),
+      input('start', { kind: 'spectrum', values: [100], unit: 'mm' }),
+      input('end', { kind: 'spectrum', values: [140], unit: 'mm' }),
+      input('rate', { kind: 'spectrum', values: [-2], unit: 'N/mm' }),
+      input('z', { kind: 'list', values: [50, 90, 120, 200], unit: 'mm' }),
+      node('pointShear', 'shaftShear'),
+      node('distShear', 'shaftDistributedShear'),
+      node('shear', 'add', withBaseNodes),
+      node('pointMoment', 'shaftMoment'),
+      node('distMoment', 'shaftDistributedMoment'),
+      node('moment', 'add', withBaseNodes),
+    ];
+    const edges: JsonObject[] = [
+      wire('z.value', 'pointShear.z'), wire('position.value', 'pointShear.position'), wire('force.value', 'pointShear.force'),
+      wire('z.value', 'distShear.z'), wire('start.value', 'distShear.start'), wire('end.value', 'distShear.end'), wire('rate.value', 'distShear.rate'),
+      wire('pointShear.V', 'shear.a'), wire('distShear.V', 'shear.b'),
+
+      wire('z.value', 'pointMoment.z'), wire('position.value', 'pointMoment.position'), wire('force.value', 'pointMoment.force'),
+      wire('z.value', 'distMoment.z'), wire('start.value', 'distMoment.start'), wire('end.value', 'distMoment.end'), wire('rate.value', 'distMoment.rate'),
+      wire('pointMoment.M', 'moment.a'), wire('distMoment.M', 'moment.b'),
+    ];
+    const evaluation = evaluateDocument(graph(nodes, edges), withBaseNodes);
+
+    // z=50: both 0. z=90: point only, −1000. z=120: −1000 + (−2·20) = −1040.
+    // z=200: −1000 + (−2·40, clamped to the span) = −1080.
+    expect(numeric(valueAt(evaluation, 'shear', 'sum')).data).toEqual([0, -1000, -1040, -1080]);
+
+    // z=200: point moment −1000·(200−80) = −120000; distributed moment
+    // −2·40·(200−100−20) = −6400; combined −126400.
+    expect(numeric(valueAt(evaluation, 'moment', 'sum')).data[3]).toBe(-126400);
+  });
 });

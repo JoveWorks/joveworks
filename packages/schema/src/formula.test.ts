@@ -392,4 +392,81 @@ describe('piecewise formulas', () => {
       ),
     ).toThrow(/must have the output's dimension divided by 'z''s/);
   });
+
+  describe('distributed loads', () => {
+    const distributed: JsonObject = {
+      ...running,
+      inputs: [
+        ...(running['inputs'] as JsonObject[]),
+        { kind: 'spectrum', name: 'start', unit: 'mm' },
+        { kind: 'spectrum', name: 'end', unit: 'mm' },
+        { kind: 'spectrum', name: 'rate', unit: 'N/mm' },
+      ],
+      piecewise: {
+        kind: 'cumulativeStep', axis: 'z',
+        breakpoints: ['position'], values: ['value'],
+        distributedStart: ['start'], distributedEnd: ['end'], distributedRate: ['rate'],
+      },
+    };
+
+    it('round-trips distributedStart/End/Rate alongside breakpoints/values', () => {
+      expect(serializeFormula(parseFormula(distributed, ''))['piecewise']).toEqual(distributed['piecewise']);
+    });
+
+    it('accepts a distributed load with no point breakpoints at all', () => {
+      const onlyDistributed: JsonObject = {
+        ...distributed,
+        piecewise: {
+          kind: 'cumulativeStep', axis: 'z',
+          distributedStart: ['start'], distributedEnd: ['end'], distributedRate: ['rate'],
+        },
+      };
+      expect(serializeFormula(parseFormula(onlyDistributed, ''))['piecewise']).toEqual(onlyDistributed['piecewise']);
+    });
+
+    it('rejects a piecewise formula with neither breakpoints nor a distributed load', () => {
+      expect(() =>
+        parseFormula({ ...distributed, piecewise: { kind: 'cumulativeStep', axis: 'z' } }, ''),
+      ).toThrow(/needs breakpoints\/values, distributedStart\/End\/Rate, or both/);
+    });
+
+    it('rejects breakpoints without a matching values (and vice versa)', () => {
+      expect(() =>
+        parseFormula(
+          { ...distributed, piecewise: { kind: 'cumulativeStep', axis: 'z', breakpoints: ['position'] } },
+          '',
+        ),
+      ).toThrow(/breakpoints and values must be declared together/);
+    });
+
+    it('rejects a partial distributed-load declaration', () => {
+      expect(() =>
+        parseFormula(
+          {
+            ...distributed,
+            piecewise: {
+              kind: 'cumulativeStep', axis: 'z',
+              distributedStart: ['start'], distributedEnd: ['end'],
+            },
+          },
+          '',
+        ),
+      ).toThrow(/distributedStart, distributedEnd and distributedRate must be declared together/);
+    });
+
+    it("rejects a distributedRate whose dimension isn't the output's per axis unit", () => {
+      expect(() =>
+        parseFormula(
+          {
+            ...distributed,
+            piecewise: {
+              kind: 'cumulativeStep', axis: 'z',
+              distributedStart: ['start'], distributedEnd: ['end'], distributedRate: ['value'],
+            },
+          },
+          '',
+        ),
+      ).toThrow(/must have the output's dimension divided by 'z''s/);
+    });
+  });
 });

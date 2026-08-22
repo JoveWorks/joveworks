@@ -113,4 +113,56 @@ const shaftMoment: Formula = {
   status: 'unverified',
 };
 
-export const MECHANICS_OPERATIONS: readonly Formula[] = [shaftTorque, shaftShear, shaftMoment];
+/**
+ * A distributed load's own shear/moment contribution, kept separate from
+ * `shaftShear`/`shaftMoment` rather than folded in as more optional ports
+ * the way a support's reaction was: a spectrum port has no `default` (only
+ * a numeric port does), so an optional spectrum input would have to be
+ * wired to a `[0]`-rate placeholder just to be left out — worse than
+ * wiring an `add` node only when a distributed load actually exists.
+ */
+const shaftDistributedShear: Formula = {
+  id: 'shaftDistributedShear',
+  version: 1,
+  label: text('Distributed-load shear contribution'),
+  description: text(
+    "A uniform distributed load's own contribution to the shear diagram at a given position — " +
+      "add this to shaftShear's output (an ordinary add node) for the combined diagram. Wire " +
+      'as many start/end/rate spectra as the shaft has distributed loads.',
+  ),
+  output: { kind: 'numeric', name: 'V', unit: parseUnit('N'), description: text('Shear contribution at z') },
+  inputs: [
+    { kind: 'numeric', name: 'z', unit: parseUnit('mm'), default: 0, description: text('Position along the shaft') },
+    { kind: 'spectrum', name: 'start', unit: parseUnit('mm'), description: text('Start of each distributed load') },
+    { kind: 'spectrum', name: 'end', unit: parseUnit('mm'), description: text('End of each distributed load') },
+    { kind: 'spectrum', name: 'rate', unit: parseUnit('N/mm'), description: text('Load per unit length, signed, over its span') },
+  ],
+  expression: 'sum(rate) * z',
+  piecewise: { kind: 'cumulativeStep', axis: 'z', distributedStart: ['start'], distributedEnd: ['end'], distributedRate: ['rate'] },
+  status: 'unverified',
+};
+
+const shaftDistributedMoment: Formula = {
+  id: 'shaftDistributedMoment',
+  version: 1,
+  label: text('Distributed-load moment contribution'),
+  description: text(
+    "A uniform distributed load's own contribution to the bending-moment diagram at a given " +
+      "position — add this to shaftMoment's output (an ordinary add node) for the combined " +
+      'diagram. Wire as many start/end/rate spectra as the shaft has distributed loads.',
+  ),
+  output: { kind: 'numeric', name: 'M', unit: parseUnit('Nmm'), description: text('Moment contribution at z') },
+  inputs: [
+    { kind: 'numeric', name: 'z', unit: parseUnit('mm'), default: 0, description: text('Position along the shaft') },
+    { kind: 'spectrum', name: 'start', unit: parseUnit('mm'), description: text('Start of each distributed load') },
+    { kind: 'spectrum', name: 'end', unit: parseUnit('mm'), description: text('End of each distributed load') },
+    { kind: 'spectrum', name: 'rate', unit: parseUnit('N/mm'), description: text('Load per unit length, signed, over its span') },
+  ],
+  expression: 'sum(rate) * z * z',
+  piecewise: { kind: 'cumulativeMoment', axis: 'z', distributedStart: ['start'], distributedEnd: ['end'], distributedRate: ['rate'] },
+  status: 'unverified',
+};
+
+export const MECHANICS_OPERATIONS: readonly Formula[] = [
+  shaftTorque, shaftShear, shaftMoment, shaftDistributedShear, shaftDistributedMoment,
+];
