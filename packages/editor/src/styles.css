@@ -2815,6 +2815,9 @@ aside.right {
    sideways. */
 .figure {
   overflow-x: auto;
+  /* Plot.tip's default style paints its box with this variable — map it to
+     the app's themed panel color so a hover tooltip matches light/dark. */
+  --plot-background: var(--panel);
 }
 
 /* Contours have a compact vertical scale; categorical series continue to use

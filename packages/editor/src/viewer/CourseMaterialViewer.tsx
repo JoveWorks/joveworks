@@ -112,10 +112,13 @@ function Result({ result, node, document }: { readonly result: OutputResult; rea
   if (result.kind === 'equation') return null;
 
   if (result.kind === 'feasibility') {
+    const checkLabels = Object.fromEntries(
+      result.checks.map((id) => [id, document.nodes.find((candidate) => candidate.id === id)?.label ?? id]),
+    );
     return (
       <div className="viewer-result viewer-plot">
         <strong>{title}</strong>
-        <FeasibilityFigure result={result} />
+        <FeasibilityFigure result={result} checkLabels={checkLabels} />
       </div>
     );
   }

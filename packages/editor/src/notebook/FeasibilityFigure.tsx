@@ -16,13 +16,15 @@ import { gridSize, indexer, type FeasibilityResult, type PlotAxis } from '@jovew
 import { fromCanonical } from '@joveworks/units';
 
 import { useSettings } from '../settings-context';
-import { typesetChartLabels } from './PlotFigure';
+import { chartTip, typesetChartLabels } from './PlotFigure';
 
 interface Row {
   readonly x: number | string;
   readonly series: number | string;
   readonly facet?: number | string;
   readonly mask: 'pass' | 'fail';
+  /** Swept coordinates + verdict, prose for the hover tip — see `chartTip`. */
+  readonly title: string;
 }
 
 /** No band to sit a single-axis strip on — Observable Plot still wants a `y`. */
@@ -34,28 +36,60 @@ function coordinates(axis: PlotAxis): readonly (number | string)[] {
     : axis.coordinates.data;
 }
 
-function rows(result: FeasibilityResult): readonly Row[] {
+function formatCoordinate(value: number | string): string {
+  return typeof value === 'number' ? value.toLocaleString(undefined, { maximumSignificantDigits: 3 }) : value;
+}
+
+/** The referenced Check node ids that failed a given cell, in `result.checks` order. */
+function failedChecksAt(result: FeasibilityResult, cell: number): readonly string[] {
+  return result.checks.filter((_unused, i) => result.perCheck[i]?.[cell] === false);
+}
+
+function rows(result: FeasibilityResult, checkLabels: Readonly<Record<string, string>>): readonly Row[] {
   const target = result.axes;
   const xAt = indexer(result.x.coordinates, target);
   const xs = coordinates(result.x);
+  const xLabel = result.x.axis.label;
   const seriesAt = result.series2 === undefined ? undefined : indexer(result.series2.coordinates, target);
   const seriesValues = result.series2 === undefined ? undefined : coordinates(result.series2);
+  const seriesLabel = result.series2?.axis.label;
   const facetAt = result.facet === undefined ? undefined : indexer(result.facet.coordinates, target);
   const facetValues = result.facet === undefined ? undefined : coordinates(result.facet);
+  const facetLabel = result.facet?.axis.label;
 
-  return Array.from({ length: gridSize(target) }, (_unused, cell) => ({
-    x: xs[xAt(cell)] as number | string,
-    series: seriesAt === undefined || seriesValues === undefined ? SINGLE_ROW : (seriesValues[seriesAt(cell)] as number | string),
-    ...(facetAt === undefined || facetValues === undefined ? {} : { facet: facetValues[facetAt(cell)] as number | string }),
-    mask: (result.mask[cell] === true ? 'pass' : 'fail') as 'pass' | 'fail',
-  }));
+  return Array.from({ length: gridSize(target) }, (_unused, cell) => {
+    const x = xs[xAt(cell)] as number | string;
+    const series = seriesAt === undefined || seriesValues === undefined ? SINGLE_ROW : (seriesValues[seriesAt(cell)] as number | string);
+    const facet = facetAt === undefined || facetValues === undefined ? undefined : (facetValues[facetAt(cell)] as number | string);
+    const mask: 'pass' | 'fail' = result.mask[cell] === true ? 'pass' : 'fail';
+
+    const lines = [`${xLabel}: ${formatCoordinate(x)}`];
+    if (seriesLabel !== undefined) lines.push(`${seriesLabel}: ${formatCoordinate(series)}`);
+    if (facetLabel !== undefined && facet !== undefined) lines.push(`${facetLabel}: ${formatCoordinate(facet)}`);
+    if (mask === 'pass') {
+      lines.push('→ pass');
+    } else {
+      const failed = failedChecksAt(result, cell).map((id) => checkLabels[id] ?? id);
+      lines.push(`→ fail (${failed.join(', ')})`);
+    }
+
+    return {
+      x,
+      series,
+      ...(facet === undefined ? {} : { facet }),
+      mask,
+      title: lines.join('\n'),
+    };
+  });
 }
 
 interface Props {
   readonly result: FeasibilityResult;
+  /** Referenced Check node id → its display label, for the fail tip's breakdown. */
+  readonly checkLabels: Readonly<Record<string, string>>;
 }
 
-export function FeasibilityFigure({ result }: Props): ReactElement {
+export function FeasibilityFigure({ result, checkLabels }: Props): ReactElement {
   const host = useRef<HTMLDivElement>(null);
   const { titleMathRendering } = useSettings();
 
@@ -63,7 +97,7 @@ export function FeasibilityFigure({ result }: Props): ReactElement {
     const container = host.current;
     if (container === null) return undefined;
 
-    const data = rows(result);
+    const data = rows(result, checkLabels);
     const xLabel = result.x.axis.label;
     const seriesLabel = result.series2?.axis.label ?? '';
     const fx = result.facet === undefined ? undefined : 'facet';
@@ -94,6 +128,12 @@ export function FeasibilityFigure({ result }: Props): ReactElement {
           fill: 'mask',
           ...(fx === undefined ? {} : { fx }),
         }),
+        chartTip(data, 'x', {
+          x: 'x',
+          y: 'series',
+          title: 'title',
+          ...(fx === undefined ? {} : { fx }),
+        }),
       ],
     });
 
@@ -108,7 +148,7 @@ export function FeasibilityFigure({ result }: Props): ReactElement {
       typesetChartLabels(svg, [xLabel, seriesLabel, ...(result.facet === undefined ? [] : [result.facet.axis.label])]);
     }
     return () => chart.remove();
-  }, [result, titleMathRendering]);
+  }, [result, checkLabels, titleMathRendering]);
 
   return <div className="figure" ref={host} />;
 }
