@@ -164,6 +164,14 @@ function collapseRange(range: RangeSpec, tableColumn: ResolvedTableColumn | unde
  * introducing — a `MonteCarloGeneratorNode` isn't a `ValueSpec`/`InputNode`
  * at all, so it gets its own collapse: uniform → mean of `[min, max]`,
  * normal → its own `mean` field.
+ *
+ * Always the node's own typed field, even when `mean`/`min`/`max` is wired —
+ * this collapse has no evaluated `values` map to read a live wire from (it
+ * runs ahead of the one-point evaluation it is building the input for), so a
+ * wired-in distribution parameter's typed default stands in for the tornado,
+ * same as everywhere else on this node it is what applies unwired. Accepted
+ * as long as this stays documented, the same spirit as the R&M
+ * `unverified`/quarantine gaps.
  */
 function collapseAxis(node: AxisNode, tableColumn: ResolvedTableColumn | undefined): InputNode {
   if (node.kind === 'monteCarloGenerator') {

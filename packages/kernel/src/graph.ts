@@ -43,6 +43,10 @@ import {
   THRESHOLD_PORT,
   VERDICT_PORT,
   MONTE_CARLO_SAMPLE_PORT,
+  MIN_PORT,
+  MAX_PORT,
+  MEAN_PORT,
+  STDDEV_PORT,
   axes as documentAxes,
   hasUnit,
   isRange,
@@ -509,6 +513,23 @@ export function resolveGraph(
 
     if (node.kind === 'monteCarloGenerator') {
       sources.set(endpointKey(node.id, VALUE_PORT), generatorValueType(node));
+
+      // Each distribution parameter is a `CompareNode.threshold`-shaped port:
+      // typed on the node, wireable, dimension fixed to the generator's own
+      // `unit` (unlike threshold, which infers its dimension from whatever
+      // `value` is wired to — here there is no `value` input to infer from,
+      // so the target type never needs to wait on anything).
+      const paramType: PortType = { kind: 'numeric', dimension: node.unit.dimension, unit: node.unit };
+      const paramPorts = node.distribution === 'uniform' ? [MIN_PORT, MAX_PORT] : [MEAN_PORT, STDDEV_PORT];
+      for (const name of paramPorts) {
+        const key = endpointKey(node.id, name);
+        targets.set(key, paramType);
+        const edge = oneEdge(key);
+        if (edge === undefined) continue;
+        const source = sourceType(edge);
+        checkKind(source, paramType, key);
+        if (source.dimension !== undefined) assertConnectable(source.dimension, node.unit.dimension, key);
+      }
       continue;
     }
 

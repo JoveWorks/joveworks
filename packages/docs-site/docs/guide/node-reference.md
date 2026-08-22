@@ -110,6 +110,12 @@ Sampling is deterministic per document: reopening the same NodeBook
 reproduces the same draws, and raising the count only ever appends new
 samples rather than reshuffling the ones already drawn.
 
+Each distribution parameter (`min`/`max`, or `mean`/`stddev`) is also a
+port: typed on the node, and wireable like a check or plot's threshold — an
+edge into it overrides the typed value, which still applies once the edge is
+removed. Wiring one takes a single value, not a swept series, since nothing
+on the axis this node introduces exists yet for it to line up against.
+
 ## Monte Carlo receiver
 
 Watches a wired series accumulate and an aggregate converge, sample by

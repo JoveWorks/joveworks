@@ -381,6 +381,43 @@ describe('the Monte Carlo generator and receiver (roadmap #27)', () => {
     expect(() => evaluateDocument(document, catalogues)).toThrow(/appears with lengths 25 and 30/u);
   });
 
+  it('takes a wired mean over its own typed default, the same `CompareNode.threshold` shape', () => {
+    const document = documentOf(
+      [
+        input('center', scalar(100, 'mm')),
+        monteCarloGeneratorNode('draw', normalDraw(1, 0.1), 500, 'mm'),
+      ],
+      [wire('center.value', 'draw.mean')],
+    );
+    const series = numeric(valueAt(evaluateDocument(document, catalogues), 'draw', 'value'));
+    // Wired mean of 100 mm, stddev still the node's own typed 0.1 mm default.
+    expect(series.data.every((value) => value > 99.5 && value < 100.5)).toBe(true);
+  });
+
+  it('takes wired min/max for a uniform generator the same way', () => {
+    const document = documentOf(
+      [
+        input('lo', scalar(5, 'mm')),
+        input('hi', scalar(6, 'mm')),
+        monteCarloGeneratorNode('draw', uniformDraw(0, 1), 500, 'mm'),
+      ],
+      [wire('lo.value', 'draw.min'), wire('hi.value', 'draw.max')],
+    );
+    const series = numeric(valueAt(evaluateDocument(document, catalogues), 'draw', 'value'));
+    expect(series.data.every((value) => value >= 5 && value <= 6)).toBe(true);
+  });
+
+  it('refuses a wired mean that is not a single value', () => {
+    const document = documentOf(
+      [
+        input('sweep', linear(0, 10, 5, 'mm')),
+        monteCarloGeneratorNode('draw', normalDraw(1, 0.1), 25, 'mm'),
+      ],
+      [wire('sweep.value', 'draw.mean')],
+    );
+    expect(() => evaluateDocument(document, catalogues)).toThrow(/single value/u);
+  });
+
   it('lets a receiver read through to whatever is wired to its sample port', () => {
     const document = documentOf(
       [monteCarloGeneratorNode('draw', uniformDraw(0, 1), 25, ''), monteCarloReceiverNode('watch', 10_000)],

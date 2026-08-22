@@ -9,9 +9,13 @@
 import type { ReactElement } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 
-import { parseUnit } from '@joveworks/units';
+import { parseUnit, type Unit } from '@joveworks/units';
 import {
+  MAX_PORT,
+  MEAN_PORT,
+  MIN_PORT,
   MONTE_CARLO_DISTRIBUTIONS,
+  STDDEV_PORT,
   VALUE_PORT,
   type MonteCarloDistribution,
   type MonteCarloGeneratorNode,
@@ -23,11 +27,69 @@ import { useGraph } from '../graph-context';
 import { nodeLabel, reframe, removeNodes, syncColumnLabels, updateNode } from '../model/document';
 import { setMonteCarloSampleCount } from '../model/monteCarlo';
 import { axisLabel, reading } from '../model/values';
+import { ParameterLabel } from '../ParameterLabel';
 import { NodeShell } from './NodeShell';
 import { NumberField, TextField } from './fields';
 import type { CanvasFlowNode } from './node-data';
+import { slotHandleId } from './spectrumSlots';
 import { Sparkline } from './Sparkline';
 import { TitleField, TitleText } from './TitleField';
+
+/**
+ * One distribution-parameter port row — `mean`/`stddev` or `min`/`max`,
+ * whichever pair matches the node's current distribution. The same
+ * wireable-with-typed-default shape `CompareNodeView.threshold` and the
+ * check/plot output's own threshold row use: always editable, a wire (if
+ * any) overriding it at evaluation time (`packages/kernel/src/evaluate.ts`'s
+ * `generatorParam`), not this field.
+ */
+function ParamPort({
+  name,
+  value,
+  unit,
+  minimum,
+  wired,
+  highlighted,
+  onCommit,
+  onHover,
+  onHoverEnd,
+}: {
+  readonly name: string;
+  readonly value: number;
+  readonly unit: Unit;
+  readonly minimum?: number;
+  readonly wired: boolean;
+  readonly highlighted: boolean;
+  readonly onCommit: (value: number) => void;
+  readonly onHover: () => void;
+  readonly onHoverEnd: () => void;
+}): ReactElement {
+  return (
+    <li className={`port${highlighted ? ' port-highlighted' : ''}`} onMouseEnter={onHover} onMouseLeave={onHoverEnd}>
+      <Handle
+        type="target"
+        position={Position.Left}
+        id={slotHandleId(name, 0)}
+        className={highlighted ? 'port-highlighted' : ''}
+      />
+      <ParameterLabel name={name} unit={unit} nameClassName="port-name" unitClassName="port-unit" />
+      <span className="quantity-split port-quantity">
+        <NumberField
+          className="quantity"
+          value={value}
+          autoSize={4}
+          {...(minimum === undefined ? {} : { minimum })}
+          title={
+            wired
+              ? 'Overridden by the wire — this is what applies when it is removed.'
+              : 'A number, unless something is wired in.'
+          }
+          onCommit={onCommit}
+        />
+      </span>
+    </li>
+  );
+}
 
 /**
  * Switching distributions keeps `id`/`count`/`unit`/`label` and picks a
@@ -54,6 +116,11 @@ export function MonteCarloGeneratorNodeView({ id, selected, data }: NodeProps<Ca
 
   const highlightedPorts = new Set(data?.highlightedPorts ?? []);
   const value = reading(analysis, id, VALUE_PORT);
+  const wired = new Set(
+    document.edges.filter((edge) => edge.to.node === id).map((edge) => edge.to.port),
+  );
+  const onPortHover = (port: string) => () => data?.onPortHover?.({ nodeId: id, port });
+  const onPortHoverEnd = () => data?.onPortHover?.();
   const setNode = (change: (current: MonteCarloGeneratorNode) => MonteCarloGeneratorNode): void =>
     edit((current) => updateNode<MonteCarloGeneratorNode>(current, id, change));
 
@@ -127,30 +194,62 @@ export function MonteCarloGeneratorNodeView({ id, selected, data }: NodeProps<Ca
         </div>
       }
     >
-      <div className="node-value-editor generator-editor">
+      {/* A full-width row list, like every other node's wireable ports
+          (`CompareNodeView`) — not nested in `.generator-editor`'s two-column
+          grid, whose `.port .react-flow__handle` docks at its own row's left
+          edge and needs that row spanning the node's full width to land at
+          the card's edge rather than partway across it. */}
+      <ul className="ports">
         {node.distribution === 'uniform' ? (
           <>
-            <label>
-              min
-              <NumberField value={node.min} onCommit={setMin} />
-            </label>
-            <label>
-              max
-              <NumberField value={node.max} onCommit={setMax} />
-            </label>
+            <ParamPort
+              name={MIN_PORT}
+              value={node.min}
+              unit={node.unit}
+              wired={wired.has(MIN_PORT)}
+              highlighted={highlightedPorts.has(MIN_PORT)}
+              onCommit={setMin}
+              onHover={onPortHover(MIN_PORT)}
+              onHoverEnd={onPortHoverEnd}
+            />
+            <ParamPort
+              name={MAX_PORT}
+              value={node.max}
+              unit={node.unit}
+              wired={wired.has(MAX_PORT)}
+              highlighted={highlightedPorts.has(MAX_PORT)}
+              onCommit={setMax}
+              onHover={onPortHover(MAX_PORT)}
+              onHoverEnd={onPortHoverEnd}
+            />
           </>
         ) : (
           <>
-            <label>
-              mean
-              <NumberField value={node.mean} onCommit={setMean} />
-            </label>
-            <label>
-              stddev
-              <NumberField value={node.stddev} minimum={1e-6} onCommit={setStddev} />
-            </label>
+            <ParamPort
+              name={MEAN_PORT}
+              value={node.mean}
+              unit={node.unit}
+              wired={wired.has(MEAN_PORT)}
+              highlighted={highlightedPorts.has(MEAN_PORT)}
+              onCommit={setMean}
+              onHover={onPortHover(MEAN_PORT)}
+              onHoverEnd={onPortHoverEnd}
+            />
+            <ParamPort
+              name={STDDEV_PORT}
+              value={node.stddev}
+              unit={node.unit}
+              minimum={1e-6}
+              wired={wired.has(STDDEV_PORT)}
+              highlighted={highlightedPorts.has(STDDEV_PORT)}
+              onCommit={setStddev}
+              onHover={onPortHover(STDDEV_PORT)}
+              onHoverEnd={onPortHoverEnd}
+            />
           </>
         )}
+      </ul>
+      <div className="node-value-editor generator-editor">
         <label>
           unit
           <TextField

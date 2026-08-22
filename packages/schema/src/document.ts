@@ -55,6 +55,18 @@ export const VALUE_PORT = 'value';
 export const THRESHOLD_PORT = 'threshold';
 export const VERDICT_PORT = 'verdict';
 
+/**
+ * A Monte Carlo generator's distribution parameters — each a `CompareNode.threshold`-
+ * shaped port: the node's own typed field is what applies unwired, and an edge
+ * into the matching port overrides it. `min`/`max` apply to a `uniform`
+ * generator, `mean`/`stddev` to a `normal` one — only the pair matching the
+ * node's current `distribution` is a live target port.
+ */
+export const MIN_PORT = 'min';
+export const MAX_PORT = 'max';
+export const MEAN_PORT = 'mean';
+export const STDDEV_PORT = 'stddev';
+
 /** A closure node's one output port — its inputs are whatever its expression mentions. */
 export const CLOSURE_RESULT_PORT = 'result';
 
@@ -325,14 +337,23 @@ interface MonteCarloGeneratorBase extends NodeBase {
   readonly axisLabel?: string;
 }
 
-/** Draws uniformly over `[min, max]`. */
+/**
+ * Draws uniformly over `[min, max]`, in `unit`. Each bound is also that
+ * bound's port default (`MIN_PORT`/`MAX_PORT`) — wired, the edge overrides it,
+ * the same `CompareNode.threshold` shape.
+ */
 export interface UniformMonteCarloGeneratorNode extends MonteCarloGeneratorBase {
   readonly distribution: 'uniform';
   readonly min: number;
   readonly max: number;
 }
 
-/** Draws from a normal distribution with the given mean and standard deviation. */
+/**
+ * Draws from a normal distribution with the given mean and standard
+ * deviation, in `unit`. Each is also that parameter's port default
+ * (`MEAN_PORT`/`STDDEV_PORT`) — wired, the edge overrides it, the same
+ * `CompareNode.threshold` shape.
+ */
 export interface NormalMonteCarloGeneratorNode extends MonteCarloGeneratorBase {
   readonly distribution: 'normal';
   readonly mean: number;

@@ -24,6 +24,10 @@ import {
   THRESHOLD_PORT,
   VERDICT_PORT,
   MONTE_CARLO_SAMPLE_PORT,
+  MIN_PORT,
+  MAX_PORT,
+  MEAN_PORT,
+  STDDEV_PORT,
   isRange,
   renardValues,
   type Catalogue,
@@ -216,7 +220,7 @@ export function evaluateDocument(
       case 'monteCarloGenerator':
         values.set(
           endpointKey(node.id, VALUE_PORT),
-          generatorValue(node, axisByNode, resolution.document.id),
+          generatorValue(node, axisByNode, resolution.document.id, resolution, values),
         );
         break;
 
@@ -303,11 +307,51 @@ export function receiverSampleValue(
 
 // --- input nodes ------------------------------------------------------------
 
+/**
+ * One distribution parameter's value: the wired edge if `name`'s port has
+ * one — already canonical, like every resolved value — else the node's own
+ * typed field, converted in here the same way `inputValue` converts a bare
+ * literal. `CompareNode.threshold`'s pattern, minus the dimension inference
+ * `evaluateCompare` needs (`resolveGraph`'s `monteCarloGenerator` branch
+ * already pins every one of these ports to `node.unit`'s dimension, since
+ * there is no `value` port here to infer it from).
+ *
+ * A wired source has to collapse to one number: unlike `threshold`, which is
+ * allowed to line up one bound per point against the value it bounds, a
+ * distribution parameter has nothing on this node's own axis to line up
+ * against — the generator is what introduces that axis in the first place.
+ */
+function generatorParam(
+  node: MonteCarloGeneratorNode,
+  name: string,
+  literal: number,
+  resolution: Resolution,
+  values: ReadonlyMap<string, PortValue>,
+): number {
+  const key = endpointKey(node.id, name);
+  const edge = resolution.incoming.get(key)?.[0];
+  if (edge === undefined) return toCanonical(literal, node.unit);
+  const wired = valueAtEdge(edge, key, values);
+  if (wired.kind !== 'numeric') {
+    throw new KernelError(`'${name}' needs a numeric value, not a categorical one`, key);
+  }
+  if (wired.data.length !== 1) {
+    throw new KernelError(
+      `'${name}' needs a single value, not a swept series of ${wired.data.length} — ` +
+        'nothing on the axis this generator introduces exists yet to line up against',
+      key,
+    );
+  }
+  return wired.data[0] as number;
+}
+
 /** A generator's draws, converted into canonical units — the same boundary `inputValue` crosses. */
 function generatorValue(
   node: MonteCarloGeneratorNode,
   axes: ReadonlyMap<string, Axis>,
   documentId: string,
+  resolution: Resolution,
+  values: ReadonlyMap<string, PortValue>,
 ): NumericSeries {
   const axis = axes.get(node.id);
   if (axis === undefined) {
@@ -317,17 +361,17 @@ function generatorValue(
     node.distribution === 'uniform'
       ? {
           distribution: 'uniform' as const,
-          min: toCanonical(node.min, node.unit),
-          max: toCanonical(node.max, node.unit),
+          min: generatorParam(node, MIN_PORT, node.min, resolution, values),
+          max: generatorParam(node, MAX_PORT, node.max, resolution, values),
         }
       : {
           distribution: 'normal' as const,
-          mean: toCanonical(node.mean, node.unit),
+          mean: generatorParam(node, MEAN_PORT, node.mean, resolution, values),
           // `toCanonical` is a pure scale factor (`convert.ts`) — every
           // internal unit is a plain multiple, never an offset scale — so
           // converting the spread this way is exactly as valid as
           // converting the mean.
-          stddev: toCanonical(node.stddev, node.unit),
+          stddev: generatorParam(node, STDDEV_PORT, node.stddev, resolution, values),
         };
   return {
     kind: 'numeric',

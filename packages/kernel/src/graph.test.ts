@@ -23,6 +23,7 @@ import {
   input,
   monteCarloGeneratorNode,
   monteCarloReceiverNode,
+  normalDraw,
   outputNode,
   refTo,
   scalar,
@@ -157,6 +158,38 @@ describe('the Monte Carlo generator and receiver', () => {
       [wire('a.value', 'watch.sample'), wire('b.value', 'watch.sample')],
     );
     expect(() => resolveGraph(document, catalogues)).toThrow(/one connection/u);
+  });
+
+  it('types a normal generator’s mean/stddev ports in its own declared unit, wired or not', () => {
+    const document = documentOf([monteCarloGeneratorNode('draw', normalDraw(1, 0.1), 25, 'mm')], []);
+    const resolution = resolveGraph(document, catalogues);
+    expect(resolution.targets.get(endpointKey('draw', 'mean'))?.dimension).toEqual(LENGTH);
+    expect(resolution.targets.get(endpointKey('draw', 'stddev'))?.dimension).toEqual(LENGTH);
+    // A uniform generator has no `mean`/`stddev` ports — `min`/`max` instead.
+    expect(resolution.targets.has(endpointKey('draw', 'min'))).toBe(false);
+  });
+
+  it('types a uniform generator’s min/max ports in its own declared unit, wired or not', () => {
+    const document = documentOf([monteCarloGeneratorNode('draw', uniformDraw(0, 1), 25, 'mm')], []);
+    const resolution = resolveGraph(document, catalogues);
+    expect(resolution.targets.get(endpointKey('draw', 'min'))?.dimension).toEqual(LENGTH);
+    expect(resolution.targets.get(endpointKey('draw', 'max'))?.dimension).toEqual(LENGTH);
+  });
+
+  it('accepts a wire into mean whose dimension matches the generator’s own unit', () => {
+    const document = documentOf(
+      [input('center', scalar(100, 'mm')), monteCarloGeneratorNode('draw', normalDraw(1, 0.1), 25, 'mm')],
+      [wire('center.value', 'draw.mean')],
+    );
+    expect(() => resolveGraph(document, catalogues)).not.toThrow();
+  });
+
+  it('refuses a wire into mean whose dimension does not match the generator’s own unit', () => {
+    const document = documentOf(
+      [input('f', scalar(100, 'N')), monteCarloGeneratorNode('draw', normalDraw(1, 0.1), 25, 'mm')],
+      [wire('f.value', 'draw.mean')],
+    );
+    expect(() => resolveGraph(document, catalogues)).toThrow(KernelError);
   });
 });
 
