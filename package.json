@@ -12,9 +12,11 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "dev": "pnpm --filter @joveworks/editor dev",
-    "dev:all": "pnpm run --parallel '/^(dev|docs:dev)$/'",
+    "dev:all": "pnpm run --parallel '/^(dev|docs:dev|author:dev)$/'",
     "docs:dev": "pnpm --filter @joveworks/docs-site dev",
     "docs:build": "pnpm --filter @joveworks/docs-site build",
+    "author:dev": "pnpm --filter @joveworks/catalogue-author dev",
+    "author:build": "pnpm --filter @joveworks/catalogue-author build",
     "encrypt-catalogue": "node tools/encrypt-catalogue/encrypt-catalogue.mjs",
     "release": "commit-and-tag-version"
   },
