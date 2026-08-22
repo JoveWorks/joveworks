@@ -1187,7 +1187,8 @@ aside.right {
 
 .node .port.port-highlighted,
 .node .port-out.port-highlighted,
-.node .axis.port-highlighted {
+.node .axis.port-highlighted,
+.node .reading.port-highlighted {
   color: var(--accent);
 }
 

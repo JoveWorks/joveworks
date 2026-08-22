@@ -214,15 +214,17 @@ export function CompareNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
         </li>
       </ul>
 
-      <div className="node-value">
-        <span className="reading">{verdict === undefined ? '—' : summarise(verdict, 4, format)}</span>
+      <div
+        className="node-value"
+        onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: VERDICT_PORT })}
+        onMouseLeave={() => data?.onPortHover?.()}
+      >
+        <span className={`reading${highlightedPorts.has(VERDICT_PORT) ? ' port-highlighted' : ''}`}>
+          {verdict === undefined ? '—' : summarise(verdict, 4, format)}
+        </span>
         {verdict === undefined ? null : <Sparkline reading={verdict} />}
         <Verdict nodeId={id} />
-        <span
-          className={`port-out${highlightedPorts.has(VERDICT_PORT) ? ' port-highlighted' : ''}`}
-          onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: VERDICT_PORT })}
-          onMouseLeave={() => data?.onPortHover?.()}
-        >
+        <span className={`port-out${highlightedPorts.has(VERDICT_PORT) ? ' port-highlighted' : ''}`}>
           <Symbol name={VERDICT_PORT} />
         </span>
         <Handle
@@ -230,8 +232,6 @@ export function CompareNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
           position={Position.Right}
           id={VERDICT_PORT}
           className={highlightedPorts.has(VERDICT_PORT) ? 'port-highlighted' : ''}
-          onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: VERDICT_PORT })}
-          onMouseLeave={() => data?.onPortHover?.()}
         />
       </div>
     </NodeShell>

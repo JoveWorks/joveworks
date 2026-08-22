@@ -187,19 +187,21 @@ export function ClosureNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
         })}
       </ul>
 
-      <div className="node-value">
-        <span className="reading">{value === undefined ? '—' : summarise(value, 4, format)}</span>
+      <div
+        className="node-value"
+        onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: CLOSURE_RESULT_PORT })}
+        onMouseLeave={() => data?.onPortHover?.()}
+      >
+        <span className={`reading${highlightedPorts.has(CLOSURE_RESULT_PORT) ? ' port-highlighted' : ''}`}>
+          {value === undefined ? '—' : summarise(value, 4, format)}
+        </span>
         {value === undefined ? null : <Sparkline reading={value} />}
         {value === undefined ? null : (
-          <span className="axis">
+          <span className={`axis${highlightedPorts.has(CLOSURE_RESULT_PORT) ? ' port-highlighted' : ''}`}>
             <TitleText value={axisLabel(value) ?? ''} />
           </span>
         )}
-        <span
-          className={`port-out${highlightedPorts.has(CLOSURE_RESULT_PORT) ? ' port-highlighted' : ''}`}
-          onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: CLOSURE_RESULT_PORT })}
-          onMouseLeave={() => data?.onPortHover?.()}
-        >
+        <span className={`port-out${highlightedPorts.has(CLOSURE_RESULT_PORT) ? ' port-highlighted' : ''}`}>
           <ParameterLabel name={CLOSURE_RESULT_PORT} />
           {outputUnit === undefined ? null : (
             <DisplayUnitPicker unit={outputUnit} onChange={setOutputDisplayUnit} />
@@ -213,8 +215,6 @@ export function ClosureNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
           position={Position.Right}
           id={CLOSURE_RESULT_PORT}
           className={highlightedPorts.has(CLOSURE_RESULT_PORT) ? 'port-highlighted' : ''}
-          onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: CLOSURE_RESULT_PORT })}
-          onMouseLeave={() => data?.onPortHover?.()}
         />
       </div>
     </NodeShell>

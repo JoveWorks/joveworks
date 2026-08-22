@@ -306,11 +306,17 @@ export function FormulaNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
         })}
       </ul>
 
-      <div className="node-value">
-        <span className="reading">{value === undefined ? '—' : summarise(value, 4, format)}</span>
+      <div
+        className="node-value"
+        onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: formula.output.name })}
+        onMouseLeave={() => data?.onPortHover?.()}
+      >
+        <span className={`reading${highlightedPorts.has(formula.output.name) ? ' port-highlighted' : ''}`}>
+          {value === undefined ? '—' : summarise(value, 4, format)}
+        </span>
         {value === undefined ? null : <Sparkline reading={value} />}
         {value === undefined ? null : (
-          <span className="axis">
+          <span className={`axis${highlightedPorts.has(formula.output.name) ? ' port-highlighted' : ''}`}>
             <TitleText value={axisLabel(value) ?? ''} />
           </span>
         )}
@@ -319,8 +325,6 @@ export function FormulaNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
           {...(formula.output.description === undefined
             ? {}
             : { title: localize(formula.output.description, locale) })}
-          onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: formula.output.name })}
-          onMouseLeave={() => data?.onPortHover?.()}
         >
           <ParameterLabel name={formula.output.name} />
           {outputUnit === undefined ? null : (
@@ -332,8 +336,6 @@ export function FormulaNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
           position={Position.Right}
           id={formula.output.name}
           className={highlightedPorts.has(formula.output.name) ? 'port-highlighted' : ''}
-          onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: formula.output.name })}
-          onMouseLeave={() => data?.onPortHover?.()}
         />
       </div>
     </NodeShell>
