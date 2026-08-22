@@ -35,7 +35,7 @@ import {
 } from '@joveworks/schema';
 
 import { lookup } from './analysis';
-import { edgeId } from './document';
+import { edgeId, frameAround as frameAroundExact } from './document';
 import { GAP as CANVAS_GRID_SIZE } from './layout-constants';
 import { type AppLocale } from '../i18n';
 import dutchText from './sample-translations.json';
@@ -47,6 +47,30 @@ const at = (x: number, y: number): Position => ({
   x: snapExampleCoordinate(x),
   y: snapExampleCoordinate(y),
 });
+
+/**
+ * `frameAround`, snapped to the canvas grid the same way every other example
+ * frame is (`at`'s own snap) — its own top edge sits half a `GAP` above the
+ * padding line for a title bar, which is not itself a grid multiple. The
+ * right/bottom edge is left exactly where `frameAround` put it, since only a
+ * frame's `position` needs grid alignment (`samples.test.ts`'s check), not
+ * its `size`.
+ */
+function frameAround(
+  id: string,
+  title: string,
+  nodes: readonly GraphNode[],
+  padding?: number,
+): ReturnType<typeof frameAroundExact> {
+  const frame = frameAroundExact(id, title, nodes, padding);
+  const x = snapExampleCoordinate(frame.position.x);
+  const y = snapExampleCoordinate(frame.position.y);
+  return {
+    ...frame,
+    position: { x, y },
+    size: { width: frame.position.x + frame.size.width - x, height: frame.position.y + frame.size.height - y },
+  };
+}
 
 function input(id: string, label: string, value: ValueSpec, position: Position): InputNode {
   return { kind: 'input', id, label, value, position };
@@ -70,6 +94,24 @@ function normalGenerator(
   position: Position,
 ): MonteCarloGeneratorNode {
   return { kind: 'monteCarloGenerator', id, label, distribution: 'normal', mean, stddev, count, unit, position };
+}
+
+/**
+ * `min`/`max` here are only the fallback the node falls back to once its
+ * wired `min`/`max` edge (`MIN_PORT`/`MAX_PORT`, `packages/schema/src/document.ts`)
+ * is removed — a caller wiring both is free to pick any placeholder that
+ * satisfies `min < max`.
+ */
+function uniformGenerator(
+  id: string,
+  label: string,
+  min: number,
+  max: number,
+  count: number,
+  unit: Unit,
+  position: Position,
+): MonteCarloGeneratorNode {
+  return { kind: 'monteCarloGenerator', id, label, distribution: 'uniform', min, max, count, unit, position };
 }
 
 function receiver(id: string, label: string, sampleLimit: number, position: Position): MonteCarloReceiverNode {
@@ -265,47 +307,113 @@ export function platformFootprint(catalogues: readonly Catalogue[], locale: AppL
   return localizeExample(document('platform-footprint', 'Choose a safe platform size', withFrames, edges, frames), locale);
 }
 
-// --- Monte Carlo: a clearance-fit stack-up (ROADMAP.md #27, #31) ------------
+// --- Monte Carlo: a clearance-fit stack-up (ROADMAP.md #13, #27, #31) -------
 
 /**
- * The classic tolerance stack-up. A hole and a shaft are each toleranced
- * independently, so their clearance is a distribution rather than one
- * worst-case subtraction — and that is now exactly how this graph builds it:
- * two independent generators, `hole` and `shaft`, feed a `subtract` node
- * directly. Every Monte Carlo generator's axis shares one trial identity
- * (`packages/kernel/src/graph.ts`'s `Resolution.axes` doc comment), so the
- * two combine sample-for-sample rather than broadcasting into their
- * cross-product grid the way two ordinary independent sweeps would
- * (`series.ts`'s `unionAxes`) — a 1,000-sample pairing, not a 1,000,000-cell
- * grid. Before that fix, this example folded both tolerances into one
- * generator by hand (root-sum-square) to sidestep the grid; wiring the two
- * sources straight into `subtract` is the more legible version, and doubles
- * as this fix's regression case.
+ * The classic tolerance stack-up, on a real ISO 286 fit rather than two
+ * hand-picked ± numbers. A nominal Ø20 mm hole/shaft pair, each toleranced by
+ * a chosen letter and IT grade (H7 for the hole, g6 for the shaft — an easy
+ * running clearance fit), is looked up twice per feature — its `lower` and
+ * `upper` limit deviation — through `iso286-hole-deviation`/
+ * `iso286-shaft-deviation` (`packages/nodes/src/iso286.ts`), added back onto
+ * the nominal diameter, and wired straight into a *uniform* generator's
+ * `min`/`max` ports (`MIN_PORT`/`MAX_PORT`, wireable-with-typed-default the
+ * same way `CompareNode.threshold` is — `packages/kernel/src/graph.ts`'s
+ * `monteCarloGenerator` branch). A uniform draw across the standard's hard
+ * bounds is the honest read of what ISO 286 actually promises — a normal
+ * draw would need a σ this graph has no standard to derive from a nominal
+ * size and tolerance class alone.
+ *
+ * Their clearance is still the two draws subtracted trial by trial, not one
+ * worst-case subtraction: two independent generators, `hole` and `shaft`,
+ * feed a `subtract` node directly. Every Monte Carlo generator's axis shares
+ * one trial identity (`packages/kernel/src/graph.ts`'s `Resolution.axes` doc
+ * comment), so the two combine sample-for-sample rather than broadcasting
+ * into their cross-product grid the way two ordinary independent sweeps
+ * would (`series.ts`'s `unionAxes`) — a 1,000-sample pairing, not a
+ * 1,000,000-cell grid.
  */
 export function monteCarloClearance(catalogues: readonly Catalogue[], locale: AppLocale = 'en'): GraphDocument | undefined {
   const subtract = lookup(catalogues, 'subtract');
-  if (subtract === undefined) return undefined;
+  const add = lookup(catalogues, 'add');
+  const holeDeviation = lookup(catalogues, 'iso286-hole-deviation');
+  const shaftDeviation = lookup(catalogues, 'iso286-shaft-deviation');
+  if (subtract === undefined || add === undefined || holeDeviation === undefined || shaftDeviation === undefined) {
+    return undefined;
+  }
 
   const mm = parseUnit('mm');
+  const categorical = (value: string): ValueSpec => ({ kind: 'categorical', value });
 
-  const nodes: GraphNode[] = [
-    normalGenerator('hole', 'Hole diameter', 20.02, 0.005, 1000, mm, at(0, -80)),
-    normalGenerator('shaft', 'Shaft diameter', 19.98, 0.004, 1000, mm, at(0, 100)),
+  const fitNodes: GraphNode[] = [
+    input('nominal_d', 'Nominal diameter', { kind: 'scalar', value: 20, unit: mm }, at(0, -260)),
+    input('hole_letter', 'Hole tolerance position', categorical('H'), at(0, -180)),
+    input('hole_grade', 'Hole IT grade', categorical('7'), at(0, -100)),
+    input('shaft_letter', 'Shaft tolerance position', categorical('g'), at(0, 20)),
+    input('shaft_grade', 'Shaft IT grade', categorical('6'), at(0, 100)),
+    input('limit_lower', 'Lower limit', categorical('lower'), at(0, 220)),
+    input('limit_upper', 'Upper limit', categorical('upper'), at(0, 300)),
 
-    formulaNode('clearance', subtract, at(340, 10)),
+    formulaNode('hole_lower', holeDeviation, at(340, -220)),
+    formulaNode('hole_upper', holeDeviation, at(340, -100)),
+    formulaNode('shaft_lower', shaftDeviation, at(340, 60)),
+    formulaNode('shaft_upper', shaftDeviation, at(340, 180)),
 
-    output('out_clearance', 'Clearance', { kind: 'print', unit: mm, figures: 4 }, at(680, -80)),
+    formulaNode('hole_min', add, at(680, -220)),
+    formulaNode('hole_max', add, at(680, -100)),
+    formulaNode('shaft_min', add, at(680, 60)),
+    formulaNode('shaft_max', add, at(680, 180)),
+  ];
+
+  const stackUpNodes: GraphNode[] = [
+    uniformGenerator('hole', 'Hole diameter', 19.98, 20.04, 1000, mm, at(1020, -140)),
+    uniformGenerator('shaft', 'Shaft diameter', 19.95, 20, 1000, mm, at(1020, 60)),
+
+    formulaNode('clearance', subtract, at(1360, -40)),
+
+    output('out_clearance', 'Clearance', { kind: 'print', unit: mm, figures: 4 }, at(1700, -140)),
     output(
       'out_positive',
       'Clearance stays positive (no interference)',
       { kind: 'check', comparison: '>=', threshold: { value: 0, unit: mm } },
-      at(680, 90),
+      at(1700, 40),
     ),
-
-    receiver('watch', 'Clearance distribution', 1000, at(680, 260)),
   ];
 
+  const distributionNodes: GraphNode[] = [receiver('watch', 'Clearance distribution', 1000, at(1700, 220))];
+
+  const nodes: GraphNode[] = [...fitNodes, ...stackUpNodes, ...distributionNodes];
+
   const edges = [
+    ...(['hole_lower', 'hole_upper'] as const).map((id) => wire('nominal_d.value', `${id}.diameter`)),
+    ...(['shaft_lower', 'shaft_upper'] as const).map((id) => wire('nominal_d.value', `${id}.diameter`)),
+    wire('hole_letter.value', 'hole_lower.letter'),
+    wire('hole_grade.value', 'hole_lower.grade'),
+    wire('limit_lower.value', 'hole_lower.limit'),
+    wire('hole_letter.value', 'hole_upper.letter'),
+    wire('hole_grade.value', 'hole_upper.grade'),
+    wire('limit_upper.value', 'hole_upper.limit'),
+    wire('shaft_letter.value', 'shaft_lower.letter'),
+    wire('shaft_grade.value', 'shaft_lower.grade'),
+    wire('limit_lower.value', 'shaft_lower.limit'),
+    wire('shaft_letter.value', 'shaft_upper.letter'),
+    wire('shaft_grade.value', 'shaft_upper.grade'),
+    wire('limit_upper.value', 'shaft_upper.limit'),
+
+    wire('nominal_d.value', 'hole_min.a'),
+    wire('hole_lower.deviation', 'hole_min.b'),
+    wire('nominal_d.value', 'hole_max.a'),
+    wire('hole_upper.deviation', 'hole_max.b'),
+    wire('nominal_d.value', 'shaft_min.a'),
+    wire('shaft_lower.deviation', 'shaft_min.b'),
+    wire('nominal_d.value', 'shaft_max.a'),
+    wire('shaft_upper.deviation', 'shaft_max.b'),
+
+    wire('hole_min.sum', 'hole.min'),
+    wire('hole_max.sum', 'hole.max'),
+    wire('shaft_min.sum', 'shaft.min'),
+    wire('shaft_max.sum', 'shaft.max'),
+
     wire('hole.value', 'clearance.a'),
     wire('shaft.value', 'clearance.b'),
     wire('clearance.difference', 'out_clearance.value'),
@@ -313,33 +421,33 @@ export function monteCarloClearance(catalogues: readonly Catalogue[], locale: Ap
     wire('clearance.difference', 'watch.sample'),
   ];
 
-  // Two sections: the stack-up's numbers, and — separately — the receiver
-  // that watches them accumulate. Different content, different note, so a
-  // student can read "what the calculation says" and "what playback shows"
-  // as two distinct claims rather than one frame doing both jobs.
+  // Three sections: picking the fit, the stack-up's numbers, and —
+  // separately — the receiver that watches them accumulate. Different
+  // content, different note, so a student can read "which fit is this",
+  // "what the calculation says" and "what playback shows" as three distinct
+  // claims rather than one frame doing all three jobs.
   const frames = [
     {
-      id: 'stack-up',
-      title: 'Clearance-fit stack-up',
+      ...frameAround('fit', 'Pick an ISO fit', fitNodes),
       note:
-        'A hole bored to Ø20.02 mm ± 0.005 mm and a shaft ground to Ø19.98 mm ± 0.004 mm each vary from part to part. Their clearance is the two draws subtracted trial by trial, not one worst-case subtraction — the value and interference check below both read that same difference.',
-      position: at(340, -160),
-      size: { width: 660, height: 380 },
+        'A Ø20 mm hole and shaft, each toleranced by an ISO 286 letter and IT grade — H7 for the hole, g6 for the shaft, an easy running clearance fit. Looking up each feature’s lower and upper limit deviation and adding it back onto the nominal diameter gives the hard bounds the two generators on the right draw uniformly across — change a letter or grade here and both redraw from the standard, not from a hand-typed ± number.',
     },
     {
-      id: 'distribution',
-      title: 'Watch it converge',
+      ...frameAround('stack-up', 'Clearance-fit stack-up', stackUpNodes),
+      note:
+        'The hole and shaft each vary from part to part within their ISO-fit bounds. Their clearance is the two draws subtracted trial by trial, not one worst-case subtraction — the value and interference check both read that same difference.',
+    },
+    {
+      ...frameAround('distribution', 'Watch it converge', distributionNodes),
       note:
         'Press play and watch the samples accumulate and the mean converge — a single worst-case subtraction would miss how rarely the extremes actually coincide.',
-      position: at(340, 250),
-      size: { width: 320, height: 220 },
     },
   ];
 
   const withFrames = nodes.map((node) => {
-    if (node.kind === 'formula' || node.kind === 'output') return { ...node, frameId: 'stack-up' };
-    if (node.kind === 'monteCarloReceiver') return { ...node, frameId: 'distribution' };
-    return node;
+    if (fitNodes.some((candidate) => candidate.id === node.id)) return { ...node, frameId: 'fit' };
+    if (stackUpNodes.some((candidate) => candidate.id === node.id)) return { ...node, frameId: 'stack-up' };
+    return { ...node, frameId: 'distribution' };
   });
 
   return localizeExample(
