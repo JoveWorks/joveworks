@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.10.0](https://github.com/ThomasVanRiel/joveworks/compare/v0.9.2...v0.10.0) (2026-08-22)
+
+### Features
+
+* **editor:** drive the Monte Carlo clearance example from an ISO fit ([11961da](https://github.com/ThomasVanRiel/joveworks/commit/11961da22fe9f6b55548323cc0cb3ecc63ff8e01))
+* **editor:** hover a Feasibility cell for coordinates and which check failed ([0eb58e9](https://github.com/ThomasVanRiel/joveworks/commit/0eb58e960636bbea09ab876cec44b56a9a07f207))
+* **editor:** show output-port tooltips, fill in photography catalogue ([ccad1fe](https://github.com/ThomasVanRiel/joveworks/commit/ccad1fe858e7caf1bfe03efec6166c1c023b63de))
+* **kernel:** make Monte Carlo generator parameters wireable ([6c1d430](https://github.com/ThomasVanRiel/joveworks/commit/6c1d430c238da2b6cccdd9320cc9d3325eb3da7c))
+* **nodes:** add array reduction nodes — count, mean, median, sdev, valueAt ([0f38fdd](https://github.com/ThomasVanRiel/joveworks/commit/0f38fdd16e53be82d04a1eecc8f30e76691075d8))
+* **nodes:** split spectrum reductions into their own Array nodes catalogue ([3eb8e2d](https://github.com/ThomasVanRiel/joveworks/commit/3eb8e2d654ee18da4298892510ea4d6a236b9574))
+
+### Fixes
+
+* **editor:** freeze the canvas during the tutorial to stop a crash ([bc0365e](https://github.com/ThomasVanRiel/joveworks/commit/bc0365eedf0f0a0681744e97da50f50163cd65db))
+* **editor:** resolve chartTip's box color for real instead of trusting Plot.tip's var() ([34f1e5a](https://github.com/ThomasVanRiel/joveworks/commit/34f1e5a2f1a5a87f46670a8099ac6a0fab480cdf))
+* **kernel:** make at(xs, i) 0-based, not 1-based ([bb410d1](https://github.com/ThomasVanRiel/joveworks/commit/bb410d18e76d179825e26f862a01c4795f45aec9))
+
+### Performance
+
+* **kernel:** let evaluateDocument skip nodes seeded from a prior run ([419953c](https://github.com/ThomasVanRiel/joveworks/commit/419953c90c2b5be53b70afcce5097db1e4791033))
+* **schema:** memoize formulaHash per formula object ([ae1a777](https://github.com/ThomasVanRiel/joveworks/commit/ae1a777d3fdb039824b1f0b2f43180b9e2f152d5))
+
+### Documentation
+
+* **roadmap:** add Feasibility heatmap and marquee-selection backlog items ([d378020](https://github.com/ThomasVanRiel/joveworks/commit/d378020cefd1c8d8ab886c2440bcae871e7cead7))
 ## [0.9.2](https://github.com/ThomasVanRiel/joveworks/compare/v0.9.1...v0.9.2) (2026-08-21)
 
 ### Features
