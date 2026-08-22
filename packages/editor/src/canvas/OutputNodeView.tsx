@@ -32,6 +32,7 @@ import {
   THRESHOLD_PORT,
   VALUE_PORT,
   axes as documentAxes,
+  localize,
   type Comparison,
   type Output,
   type OutputNode,
@@ -169,7 +170,7 @@ function Verdict({ nodeId }: { readonly nodeId: string }): ReactElement | null {
 
 export function OutputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>): ReactElement | null {
   const { document, analysis, edit, expanded, toggleExpanded, hovered, setHovered } = useGraph();
-  const { numberFormat } = useSettings();
+  const { numberFormat, locale } = useSettings();
   const format = toUnitsFormat(numberFormat);
   const node = document.nodes.find((candidate) => candidate.id === id);
   const tableColumns = node?.kind === 'output' && node.output.kind === 'table' ? node.output.columns : undefined;
@@ -515,30 +516,39 @@ export function OutputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>
       }
     >
       <ul className="ports">
-        {ports.map((name) => (
-          <li
-            key={name}
-            className={`port${highlightedPorts.has(name) ? ' port-highlighted' : ''}`}
-            onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: name })}
-            onMouseLeave={() => data?.onPortHover?.()}
-          >
-            {/* Every target handle is slot-suffixed now (spectrumSlots.ts),
-                even a single-occupancy one, since Canvas's edge projection
-                does not know port kinds and suffixes uniformly. */}
-            <Handle
-              type="target"
-              position={Position.Left}
-              id={slotHandleId(name, 0)}
-              className={highlightedPorts.has(name) ? 'port-highlighted' : ''}
-            />
-            <ParameterLabel
-              name={name}
-              unit={analysis.resolution?.targets.get(`${id}.${name}`)?.unit}
-              nameClassName="port-name"
-              unitClassName="port-unit"
-            />
-          </li>
-        ))}
+        {ports.map((name) => {
+          // Neither a table column nor a plot/check's value port describes
+          // itself — it shows whatever is wired to it, so its tooltip is
+          // borrowed from the upstream formula's own output description.
+          const portSource = document.edges.find((edge) => edge.to.node === id && edge.to.port === name);
+          const description =
+            portSource === undefined ? undefined : analysis.formulas.get(portSource.from.node)?.output.description;
+          return (
+            <li
+              key={name}
+              className={`port${highlightedPorts.has(name) ? ' port-highlighted' : ''}`}
+              {...(description === undefined ? {} : { title: localize(description, locale) })}
+              onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: name })}
+              onMouseLeave={() => data?.onPortHover?.()}
+            >
+              {/* Every target handle is slot-suffixed now (spectrumSlots.ts),
+                  even a single-occupancy one, since Canvas's edge projection
+                  does not know port kinds and suffixes uniformly. */}
+              <Handle
+                type="target"
+                position={Position.Left}
+                id={slotHandleId(name, 0)}
+                className={highlightedPorts.has(name) ? 'port-highlighted' : ''}
+              />
+              <ParameterLabel
+                name={name}
+                unit={analysis.resolution?.targets.get(`${id}.${name}`)?.unit}
+                nameClassName="port-name"
+                unitClassName="port-unit"
+              />
+            </li>
+          );
+        })}
         {output.kind === 'table' ? (
           <li
             className={`port port-open${highlightedPorts.has(NEW_COLUMN) ? ' port-highlighted' : ''}`}
