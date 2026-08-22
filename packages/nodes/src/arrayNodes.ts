@@ -71,10 +71,10 @@ const DRAFTS: readonly Draft[] = [
   },
   {
     id: 'valueAt',
-    description: 'The value at a given position in a whole series. 1 is the first value.',
+    description: 'The value at a given position in a whole series. 0 is the first value.',
     expression: 'at(xs, i)',
     output: generic('value', 'A', 'xsᵢ'),
-    inputs: [genericSpectrum('xs', 'A', 'Series to index into'), plain('i', '', 'Position, counting from 1')],
+    inputs: [genericSpectrum('xs', 'A', 'Series to index into'), plain('i', '', 'Position, counting from 0')],
   },
 ];
 

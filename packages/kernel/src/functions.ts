@@ -246,10 +246,10 @@ const REDUCTION_SPECS: readonly ReductionSpec[] = [
   },
   {
     // The one reduction with a second argument: a plain index alongside the
-    // series it selects from. 1-based, so "the third value" reads as `at(xs, 3)`.
+    // series it selects from. 0-based, so "the third value" reads as `at(xs, 2)`.
     name: 'at',
     extraArity: 1,
-    apply: (values, extra) => values[Math.round(extra[0] as number) - 1] as number,
+    apply: (values, extra) => values[Math.round(extra[0] as number)] as number,
     dimension: (argument, where, extra) => {
       const index = extra[0] as Dimension;
       if (!dimensionsEqual(index, DIMENSIONLESS)) {

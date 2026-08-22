@@ -71,10 +71,10 @@ describe('compiled closures', () => {
     expect(compileExpression('sdev(xs)')({ xs: [2, 4, 4, 4, 5, 5, 7, 9] })).toBeCloseTo(2.13809, 4);
   });
 
-  it('picks a value out of a spectrum by a 1-based index, computed like any other argument', () => {
-    expect(compileExpression('at(xs, 2)')({ xs: [10, 20, 30] })).toBe(20);
-    expect(compileExpression('at(xs, i)')({ xs: [10, 20, 30], i: 3 })).toBe(30);
-    expect(compileExpression('at(xs, i + 1)')({ xs: [10, 20, 30], i: 1 })).toBe(20);
+  it('picks a value out of a spectrum by a 0-based index, computed like any other argument', () => {
+    expect(compileExpression('at(xs, 1)')({ xs: [10, 20, 30] })).toBe(20);
+    expect(compileExpression('at(xs, i)')({ xs: [10, 20, 30], i: 2 })).toBe(30);
+    expect(compileExpression('at(xs, i + 1)')({ xs: [10, 20, 30], i: 0 })).toBe(20);
     expect(() => compileExpression('at(xs)')).toThrow(/one spectrum port by name/u);
   });
 

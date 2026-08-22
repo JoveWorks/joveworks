@@ -200,7 +200,7 @@ catalogues that the user made before.
 Implemented, for everything expressible as a pure function of the whole series:
 `count`, `mean`, `median`, `standardDeviation` (sample stdev, n − 1 — the usual
 estimator when the series is a sample, which is also what closes out item 9's
-standard-deviation node) and `valueAt` (1-based index, `at(xs, i)`) join
+standard-deviation node) and `valueAt` (0-based index, `at(xs, i)`) join
 `sum`/`product` — moved out of `operations.ts` alongside them — in a new
 `packages/nodes/src/arrayNodes.ts`, its own **Array nodes** catalogue
 (`ARRAY_CATALOGUE`) rather than folded into Base nodes, so it answers the
