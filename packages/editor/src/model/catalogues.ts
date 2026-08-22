@@ -24,7 +24,14 @@ import {
   type LockedCatalogue,
 } from '@joveworks/schema';
 import type { AppLocale } from './editorSettings';
-import { ARRAY_CATALOGUE_ID, BASE_CATALOGUE_ID, arrayCatalogueJson, baseCatalogueJson } from '@joveworks/nodes';
+import {
+  ARRAY_CATALOGUE_ID,
+  BASE_CATALOGUE_ID,
+  MECHANICS_CATALOGUE_ID,
+  arrayCatalogueJson,
+  baseCatalogueJson,
+  mechanicsCatalogueJson,
+} from '@joveworks/nodes';
 import { fuzzySearch } from './fuzzy';
 
 export interface PaletteEntry {
@@ -40,6 +47,11 @@ export function baseCatalogue(): Catalogue {
 /** The array-node library, parsed the same way a loaded file is. */
 export function arrayCatalogue(): Catalogue {
   return loadCatalogue(arrayCatalogueJson());
+}
+
+/** The mechanics-node library (beam/shaft diagrams, ROADMAP item 8), parsed the same way a loaded file is. */
+export function mechanicsCatalogue(): Catalogue {
+  return loadCatalogue(mechanicsCatalogueJson());
 }
 
 const bundledCatalogueModules = import.meta.glob<JsonValue>('../catalogues/*.json', {
@@ -87,8 +99,8 @@ export function withCatalogue(
   return replaced.some((existing) => existing.id === loaded.id) ? replaced : [...replaced, loaded];
 }
 
-/** Base nodes and Array nodes are both always present — neither can be removed. */
-const PERMANENT_CATALOGUE_IDS = new Set([BASE_CATALOGUE_ID, ARRAY_CATALOGUE_ID]);
+/** Base, Array and Mechanics nodes are all always present — none can be removed. */
+const PERMANENT_CATALOGUE_IDS = new Set([BASE_CATALOGUE_ID, ARRAY_CATALOGUE_ID, MECHANICS_CATALOGUE_ID]);
 
 export function removeCatalogue(
   catalogues: readonly Catalogue[],
