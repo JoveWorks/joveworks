@@ -122,10 +122,6 @@ under scope pressure.
 choice is already implemented locally; the broader settings-persistence item
 below is specifically about panel widths and other remaining preferences.
 
-**4. Extensive worked examples**, beyond the one belt lab sample. Waits on
-breadth — more chapters, or more graphs within belt — rather than being an
-editor feature on its own. Revisit once the second slice is in.
-
 **5. Spectrum-editing UI.** A load spectrum (a hand-typed collection consumed
 whole by an aggregation, not swept) exists in the schema, but nothing in the
 editor can create or edit one yet. Surfaced while adding the palette's Input
@@ -150,22 +146,6 @@ design question than most items here: how it's parametrized, what rendering
 approach draws the diagram from port values, and which diagram to build
 first. Needs its own discussion before building.
 
-**9. Standard-deviation node.** Fits and tolerance calculations need the standard
-deviation that underlies a tolerance. Add it as a public base node, with its
-input shape and its relationship to spectra settled when the ISO fit/table
-slice is designed; there is no node for it today.
-Implemented as `standardDeviation` (`sdev(xs)`, sample stdev over a spectrum)
-alongside item 26's other array reductions — its relationship to the ISO
-fit/table slice is still open, since that slice hasn't been designed yet.
-
-**10. Vertical spacing does not take actual node height into account**
-Widths are constant, but heights vary per node. The spacing should add same width space between bottom and top of each node, based on the total height from top of top node to bottom of bottom node. Also spacing should take into account rows of nodes and collumns of nodes for vertical and horizontal spacing respectively. There should be some error margin where nodes are considered aligned, and they will be aligned exactly.
-Question: How should we integrate this spacing in grid-snap mode?
-Implemented on `feat/canvas-layout-interaction-polish` — auto-arrange now uses
-each node's real measured height instead of a nominal constant. Awaiting
-review before merge.
-Feedback: Does this follow collapsed or expanded height? It should be collapsed (unless pinned)
-
 **11. Notebook export to Markdown**, for pasting a finished graph into an
 external site. Checked against `~/source/website`'s Astro content
 collections: entries are Markdown/MDX with frontmatter (`title`, `subtitle`,
@@ -174,17 +154,6 @@ export matching that shape drops straight in. Same rule as any other export:
 citations and values by default, expressions only behind the explicit
 toggle. Gate it behind a hidden console command for now rather than a UI
 button — personal-use export, not a student-facing feature yet.
-
-**12. Tutorial guides** The tutorial seems to break when the viewport was moved/zoomed. It should check in each step if the target is visible, and adapt the viewport. Actually, maybe zooming and moving should just be part of the steps to clarify the nodes and controls?
-Fixed the crash (moving the viewport, or dragging a spotlighted node out of
-view, could pin the caption's on-screen correction against an edge forever —
-an infinite `setState` loop, "Maximum update depth exceeded"): the canvas now
-freezes pan/zoom/node-drag for the tour's duration, plus a hard cap on the
-correction so the same class of bug can't recur. The design question — target
-visibility driving the viewport, or making viewport moves part of the steps
-themselves — is still open.
-
-**13. Press fit example** Update it to use ISO fit LUT based on categorical input. I also want to have a new section that showcases plotting and sweep functionality.
 
 **16. Nodes expose preferred display units.** Dimensions do not have one global
 presentation unit: values evaluate canonically, while each exposed node port
@@ -203,54 +172,6 @@ Largely implemented, but R&M catalogue needs updating.
 **17. What about migration to newer versions?** I'm thinking notebooks and
 catalogues that the user made before.
 
-**26. Feature: We need more array nodes.** Sum and product are in. We need length, mean, median, sdev, etc. Combine them in a catalogue, what should we name this?
-Implemented, for everything expressible as a pure function of the whole series:
-`count`, `mean`, `median`, `standardDeviation` (sample stdev, n − 1 — the usual
-estimator when the series is a sample, which is also what closes out item 9's
-standard-deviation node) and `valueAt` (0-based index, `at(xs, i)`) join
-`sum`/`product` — moved out of `operations.ts` alongside them — in a new
-`packages/nodes/src/arrayNodes.ts`, its own **Array nodes** catalogue
-(`ARRAY_CATALOGUE`) rather than folded into Base nodes, so it answers the
-item's own "what should we name this" with its own palette section. It's
-wired into the editor the same way Base nodes is: always loaded
-(`App.tsx`'s `initialCatalogues`), never removable
-(`model/catalogues.ts`'s `removeCatalogue`), pinned right after Base nodes'
-section rather than sorted in with restricted/bundled catalogues
-(`Palette.tsx`). `minimum`/`maximum` stayed in `operations.ts` — they also
-take a spectrum port, but read as arithmetic over an open set of
-same-dimension values rather than as a property of the series itself. The two
-files now share their small port-building helpers (`text`/`generic`/`plain`/
-the `Draft` shape) from a new `draft.ts`, since the alternative was copying
-them a second time.
-
-`at` needed a real kernel extension: every reduction before it took exactly
-one spectrum argument by name (`REDUCTIONS`'s whole contract), and an index
-is a second, ordinary argument alongside it. `ReductionSpec` now carries an
-`extraArity` (`packages/kernel/src/functions.ts`), threaded through
-`compile.ts`'s `reductionCallParts` and `closure.ts`'s spectrum-argument
-detection — so a typed-equation node's `at(xs, i)` also infers `xs` as a
-spectrum port and `i` as a plain one, the same as `sum(xs)` does today.
-
-**A random value from a spectrum did not get built**, and needs a decision,
-not just more code: every existing reduction is a pure function of the values
-it's given, but a random pick needs a seed to be reproducible at all — and
-nothing in the expression language carries one. The one place this codebase
-already draws random numbers, the Monte Carlo generator
-(`packages/kernel/src/random.ts`), isn't a `Formula`/expression node for
-exactly this reason: it derives its seed from the document id and its own
-node id, both of which live outside what a compiled expression closure ever
-sees. Bolting a seed into `Env` just for this would leak generator-specific
-plumbing into every other reduction's call site. The honest options are a
-dedicated node kind that samples one element the way the generator samples a
-range (consistent with how randomness already works here, but a bigger,
-`evaluate.ts`-touching change than any reduction above), or accepting a
-`Math.random()` draw that differs on every evaluation — which breaks
-replayability and the golden-value discipline every other node in this
-catalogue is held to. Leaning toward the former; parked here rather than
-decided under scope pressure, the same way item 2 was.
-
-**28. Feature: Can we share private catalogues with a password?** Maybe encrypt them and share public key?
-
 **29. Bug: Opening an example link on mobile does not redirect to the mobile landing page**. It just shows a blank screen.
 
 **30. Change: Should we use compiled notebooks to share in the notebook viewer?** To save mobile processing power, they can't edit anyway.
@@ -263,56 +184,13 @@ decided under scope pressure, the same way item 2 was.
 Out of scope for this repo — R&M catalogue content (equation 16.3) lives in
 the private `machine-design-catalogue` repository, not here.
 
-**38. Change: Bearing pad and platform size should use the Pa unit instead of N/mm²**
-Implemented: these are the `padPressure` and `platformFootprint` worked
-examples in `model/samples.ts` — built from base nodes only, not R&M content,
-so this was in scope here after all. Both now declare `Pa` as the display
-unit; thresholds were rescaled to match (2 N/mm² → 2,000,000 Pa, 0.02 N/mm² →
-20,000 Pa) so the canonical values driving the checks are unchanged. `Pa` is
-a prefixable atom and the app's own default number format is `si`
-(`numberFormat.ts`), so these print as `2 MPa` / `20 kPa` for most viewers
-rather than raw Pa magnitudes. Awaiting a look in the browser.
-
-**39. Change: Checkmark in the check output nodes should be on other side of label** to be consistent with other notebook items.
-Implemented: the mark now sits between the label and the reading (`Notebook.tsx`'s `check-row`), matching print/equation's label-then-value order instead of leading the row. Awaiting a look in the browser.
-
-**40. change: number of digits in table view must not be printed to pdf** Also, it should be digits after decimal point, not total digits.
-Implemented: `displayNumber` (table cells only — the notebook table and the mobile viewer) now rounds to a fixed decimal-place count (`toDecimalPlaces`, `@joveworks/units`) instead of significant figures, matching what the header's own "decimal figures" label already claimed. The per-column figures field is hidden under `@media print` alongside the rest of the editing chrome. Nothing else that calls `toSignificantFigures`/`formatQuantity` changed — this was table-only. Awaiting a look in the browser and a real print-to-PDF check.
-
 **41. Bug: Fuzzy finding in quick add is still very slow**
 Root cause found: `compatiblePort` — a document clone plus a full `resolveGraph`/`canConnect` through the kernel — was run on *every* fuzzy match, not just the ones the menu shows. A common query matches most of the catalogue, so each keystroke paid for hundreds of full graph resolutions. Fixed in `QuickAddMenu.tsx` by capping to the top `MAX_FORMULA_RESULTS` (30, matching what was already the render slice) before running the kernel check, not after. Awaiting a look in the browser to confirm it feels fast now.
-
-**42. Bug: Zooming with trackpad pinch is too slow** Can we even change this? Using two finger swipe is working as intended.
-Investigated, not changed: `@xyflow/react`'s `ZoomPane` takes `panOnScrollSpeed` but exposes no equivalent for scroll/pinch zoom — no sensitivity knob to turn. The only way to slow it down would be disabling `zoomOnScroll`/`zoomOnPinch` and hand-rolling zoom from raw `onWheel` events (distinguishing pinch from pan by `ctrlKey`, as browsers report trackpad pinch) — a real rewrite of core canvas interaction, and one I can't verify without trackpad hardware in front of me. Given two-finger swipe already covers pan, leaving this as a discussion item rather than guessing at a gesture handler.
-
-**43. Bug: Equation node output unit cannot be set**
-Implemented: the palette's "equation" node is the `closure` node kind
-(`ClosureNodeView.tsx`); its output already resolved a display unit but
-rendered it as read-only text instead of the same `DisplayUnitPicker`
-`FormulaNodeView.tsx` uses. `displayUnits`/`displayOverride` already worked
-identically for closure and formula outputs (`kernel/src/graph.ts`), so this
-was purely a missing wire-up in the view: added the picker and a
-`setOutputDisplayUnit` writing `displayUnits[CLOSURE_RESULT_PORT]`, matching
-the formula node's pattern. Awaiting a look in the browser.
-
-**44. Bug: Hovering over the output of a node does not highlight connected nodes/edges**. Only the port is recognized, not the full output text
-Fixed: `InputNodeView.tsx` and `MonteCarloGeneratorNodeView.tsx` were the only
-two views that wired `onPortHover` solely to the source `Handle`'s tiny hit
-circle instead of the row showing the value, unlike `FormulaNodeView`,
-`ClosureNodeView`, `CompareNodeView`, `PackNodeView`, `WaypointNodeView`, and
-`UnpackNodeView`, which already put the hover handlers on the row/label
-alongside the port. Moved the handlers onto the containing `.node-value`/
-`.node-value-editor` row in both files, and gave the `.axis` label a
-`port-highlighted` class (new CSS rule alongside the existing `.port`/
-`.port-out` ones) so the text tints on hover the same way other output
-labels already do. Awaiting a look in the browser.
 
 **45. Bug: RM catalogue does not show equations in dropdown** Can we not autogenerate it from the expression?
 
 **46. Bug: Feasibility heatmap's axis title, tick labels, and ticks overlap.** The non-faceted branch of `FeasibilityFigure.tsx` fixes its plot width at a flat `360` (`packages/editor/src/notebook/FeasibilityFigure.tsx:78`) regardless of how many x-axis ticks the swept range produces or how long their coordinate labels are — unlike the faceted branch, already fixed to size each facet panel from its own tick count (`perFacetWidth`, line 76, commit 897e2f6). A two-input sweep with many points and long decimal coordinates (e.g. `66.667`, `73.333`, …) crowds ten-plus tick labels into a ~300px plot area, so they collide with each other and with the x-axis title sitting below them. Same class of bug as the one already fixed for facets, just not extended to the single-panel case — likely wants the same tick-count-aware width logic.
 
 Separately, worth having but a distinct piece of work: interpolating/smoothing between a Feasibility node's sampled grid cells, since each cell is currently solved independently — the feasibility branch ANDs every referenced Check node's verdict cell-by-cell (`packages/kernel/src/evaluate.ts:926-980`) with no interpolation, so a true pass/fail boundary that doesn't line up with the sampled grid can show as scattered single-cell islands rather than a contiguous region. Should be an opt-in per-node setting rather than a default, the same pattern as item 1's per-node display settings (table figures/marks stored on the node, not forced) — smoothing implies a claim about what happens between samples that not every check can back up, so the node author should choose it rather than have it assumed.
-
-Also worth adding: hovering a cell to show what combination it represents and whether it passed. Nothing in the notebook's charts is interactive today — `PlotFigure.tsx` and `SensitivityFigure.tsx` both render a static SVG once per `useEffect` (`PlotFigure.tsx:323-351`), and no chart uses Observable Plot's `Plot.tip` or any other hover mechanism, so this would be the first. Showing the swept coordinates plus the combined pass/fail is a `Plot.tip` mark away. Showing *which* referenced Check failed is more than a UI change: `FeasibilityResult` only keeps the AND'd `mask` (`packages/kernel/src/evaluate.ts:143-153`) — the per-check boolean grid is computed and thrown away inside the `.reduce` that builds it (`evaluate.ts:926-943`) — so surfacing a per-check breakdown on hover needs the kernel to retain that intermediate per-check result alongside `checks` (currently just the list of referenced Check node IDs), not only the final combined mask.
 
 **47. Bug: Marquee selection opens a node's dropdown, which then falls outside the marquee and gets unselected.** Dragging a marquee over a compact node expands it (hover/selection opens the node, per `OVERVIEW.md`'s "compact by default... open on selection or hover"), but the expanded bounds are what selection then tests against — so a node whose collapsed footprint was fully inside the marquee ends up only partially inside once it opens, and drops out of the selection. Marquee hit-testing should use each node's collapsed (unexpanded, unless pinned open) size regardless of what opening does to it mid-drag.
