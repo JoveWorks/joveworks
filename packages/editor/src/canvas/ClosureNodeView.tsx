@@ -18,10 +18,12 @@ import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { parseExpression, toLatex } from '@joveworks/kernel';
 import { CLOSURE_RESULT_PORT, type Port } from '@joveworks/schema';
 
+import type { Unit } from '@joveworks/units';
+
 import { useGraph } from '../graph-context';
 import { useSettings } from '../settings-context';
 import { toUnitsFormat } from '../model/numberFormat';
-import { reframe, removeNodes, renameNode, setClosureExpression } from '../model/document';
+import { reframe, removeNodes, renameNode, setClosureExpression, updateNode } from '../model/document';
 import { Equation } from '../Equation';
 import { Symbol } from '../Symbol';
 import { ParameterLabel, UnitInLabel } from '../ParameterLabel';
@@ -30,6 +32,7 @@ import { NodeShell } from './NodeShell';
 import { Sparkline } from './Sparkline';
 import type { CanvasFlowNode } from './node-data';
 import { slotHandleId } from './spectrumSlots';
+import { DisplayUnitPicker } from './DisplayUnitPicker';
 import { TextField } from './fields';
 import { TitleField, TitleText } from './TitleField';
 
@@ -62,6 +65,13 @@ export function ClosureNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
     formula === undefined
       ? undefined
       : analysis.resolution?.sources.get(`${id}.${formula.output.name}`)?.unit;
+  const setOutputDisplayUnit = (unit: Unit): void =>
+    edit((current) =>
+      updateNode(current, id, (entry) => ({
+        ...entry,
+        displayUnits: { ...entry.displayUnits, [CLOSURE_RESULT_PORT]: unit },
+      })),
+    );
 
   return (
     <NodeShell
@@ -190,7 +200,10 @@ export function ClosureNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
           onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: CLOSURE_RESULT_PORT })}
           onMouseLeave={() => data?.onPortHover?.()}
         >
-          <ParameterLabel name={CLOSURE_RESULT_PORT} unit={outputUnit} unitClassName="port-unit" />
+          <ParameterLabel name={CLOSURE_RESULT_PORT} />
+          {outputUnit === undefined ? null : (
+            <DisplayUnitPicker unit={outputUnit} onChange={setOutputDisplayUnit} />
+          )}
         </span>
         {/* The output's name is fixed regardless of whether the expression
             currently parses, so a downstream wire never looks disconnected

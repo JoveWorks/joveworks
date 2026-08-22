@@ -286,6 +286,14 @@ Root cause found: `compatiblePort` — a document clone plus a full `resolveGrap
 Investigated, not changed: `@xyflow/react`'s `ZoomPane` takes `panOnScrollSpeed` but exposes no equivalent for scroll/pinch zoom — no sensitivity knob to turn. The only way to slow it down would be disabling `zoomOnScroll`/`zoomOnPinch` and hand-rolling zoom from raw `onWheel` events (distinguishing pinch from pan by `ctrlKey`, as browsers report trackpad pinch) — a real rewrite of core canvas interaction, and one I can't verify without trackpad hardware in front of me. Given two-finger swipe already covers pan, leaving this as a discussion item rather than guessing at a gesture handler.
 
 **43. Bug: Equation node output unit cannot be set**
+Implemented: the palette's "equation" node is the `closure` node kind
+(`ClosureNodeView.tsx`); its output already resolved a display unit but
+rendered it as read-only text instead of the same `DisplayUnitPicker`
+`FormulaNodeView.tsx` uses. `displayUnits`/`displayOverride` already worked
+identically for closure and formula outputs (`kernel/src/graph.ts`), so this
+was purely a missing wire-up in the view: added the picker and a
+`setOutputDisplayUnit` writing `displayUnits[CLOSURE_RESULT_PORT]`, matching
+the formula node's pattern. Awaiting a look in the browser.
 
 **44. Bug: Hovering over the output of a node does not highlight connected nodes/edges**. Only the port is recognized, not the full output text
 
