@@ -260,10 +260,14 @@ export function MonteCarloGeneratorNodeView({ id, selected, data }: NodeProps<Ca
           />
         </label>
       </div>
-      <div className="node-value">
+      <div
+        className="node-value"
+        onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: VALUE_PORT })}
+        onMouseLeave={() => data?.onPortHover?.()}
+      >
         {value === undefined ? null : <Sparkline reading={value} />}
         {value === undefined ? null : (
-          <span className="axis">
+          <span className={`axis${highlightedPorts.has(VALUE_PORT) ? ' port-highlighted' : ''}`}>
             <TitleText value={axisLabel(value) ?? ''} />
           </span>
         )}
@@ -272,8 +276,6 @@ export function MonteCarloGeneratorNodeView({ id, selected, data }: NodeProps<Ca
           position={Position.Right}
           id={VALUE_PORT}
           className={highlightedPorts.has(VALUE_PORT) ? 'port-highlighted' : ''}
-          onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: VALUE_PORT })}
-          onMouseLeave={() => data?.onPortHover?.()}
         />
       </div>
     </NodeShell>

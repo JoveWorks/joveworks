@@ -296,6 +296,16 @@ was purely a missing wire-up in the view: added the picker and a
 the formula node's pattern. Awaiting a look in the browser.
 
 **44. Bug: Hovering over the output of a node does not highlight connected nodes/edges**. Only the port is recognized, not the full output text
+Fixed: `InputNodeView.tsx` and `MonteCarloGeneratorNodeView.tsx` were the only
+two views that wired `onPortHover` solely to the source `Handle`'s tiny hit
+circle instead of the row showing the value, unlike `FormulaNodeView`,
+`ClosureNodeView`, `CompareNodeView`, `PackNodeView`, `WaypointNodeView`, and
+`UnpackNodeView`, which already put the hover handlers on the row/label
+alongside the port. Moved the handlers onto the containing `.node-value`/
+`.node-value-editor` row in both files, and gave the `.axis` label a
+`port-highlighted` class (new CSS rule alongside the existing `.port`/
+`.port-out` ones) so the text tints on hover the same way other output
+labels already do. Awaiting a look in the browser.
 
 **45. Bug: RM catalogue does not show equations in dropdown** Can we not autogenerate it from the expression?
 

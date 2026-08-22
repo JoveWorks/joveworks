@@ -76,8 +76,18 @@ export function InputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>)
     >
       {/* The port always docks on whichever row is actually showing the value:
           the field itself when it's a scalar, the swept-range summary below
-          when it's a range — never both, and never neither. */}
-      <div className="node-value-editor">
+          when it's a range — never both, and never neither. Hover handlers
+          live on the row itself, not just the handle, so the value text
+          hits the same target as the port circle. */}
+      <div
+        className="node-value-editor"
+        {...(swept
+          ? {}
+          : {
+              onMouseEnter: () => data?.onPortHover?.({ nodeId: id, port: VALUE_PORT }),
+              onMouseLeave: () => data?.onPortHover?.(),
+            })}
+      >
         <ValueFields value={node.value} onChange={setValue} />
         {swept ? null : (
           <Handle
@@ -85,8 +95,6 @@ export function InputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>)
             position={Position.Right}
             id={VALUE_PORT}
             className={highlightedPorts.has(VALUE_PORT) ? 'port-highlighted' : ''}
-            onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: VALUE_PORT })}
-            onMouseLeave={() => data?.onPortHover?.()}
           />
         )}
       </div>
@@ -94,10 +102,14 @@ export function InputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>)
         // The extent is already the two bounds above, presented once — this
         // row only earns its place for what isn't shown there: the
         // sparkline's shape and the axis label.
-        <div className="node-value">
+        <div
+          className="node-value"
+          onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: VALUE_PORT })}
+          onMouseLeave={() => data?.onPortHover?.()}
+        >
           {value === undefined ? null : <Sparkline reading={value} />}
           {value === undefined ? null : (
-            <span className="axis">
+            <span className={`axis${highlightedPorts.has(VALUE_PORT) ? ' port-highlighted' : ''}`}>
               <TitleText value={axisLabel(value) ?? ''} />
             </span>
           )}
@@ -106,8 +118,6 @@ export function InputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>)
             position={Position.Right}
             id={VALUE_PORT}
             className={highlightedPorts.has(VALUE_PORT) ? 'port-highlighted' : ''}
-            onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: VALUE_PORT })}
-            onMouseLeave={() => data?.onPortHover?.()}
           />
         </div>
       ) : null}
