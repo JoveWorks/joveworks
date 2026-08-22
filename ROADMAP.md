@@ -173,6 +173,21 @@ Largely implemented, but R&M catalogue needs updating.
 catalogues that the user made before.
 
 **29. Bug: Opening an example link on mobile does not redirect to the mobile landing page**. It just shows a blank screen.
+Fixed: `?example=<id>` unconditionally auto-started the example tour
+(`App.tsx`'s `tutorial` state), regardless of viewport width. On mobile,
+`.desktop-editor` — the tour's overlay included — is CSS-hidden in favour of
+`MobileLanding`, so the spotlighted caption never actually lays out:
+`getBoundingClientRect()` on a `display:none` ancestor always reads zero,
+so `Tutorial.tsx`'s self-correction effect kept computing the same non-zero
+nudge forever. Before the correction cap added for item 12's crash, that was
+an unbounded `setState` loop — "Maximum update depth exceeded" — and with no
+error boundary anywhere in the app, it took down the whole React root,
+`MobileLanding` included, which is the blank screen. The cap now bounds it to
+20 wasted renders instead of a crash, but the tour still had no reason to run
+behind a page nobody can see, so `tutorial` now starts `undefined` outright
+on a mobile-width viewport (same `(max-width: 899px)` check `MobileLanding`
+itself uses) — no wasted 100ms polling interval, no correction effect to
+trip. Awaiting a look in the browser to confirm.
 
 **30. Change: Should we use compiled notebooks to share in the notebook viewer?** To save mobile processing power, they can't edit anyway.
 
@@ -187,36 +202,6 @@ the private `machine-design-catalogue` repository, not here.
 **41. Bug: Fuzzy finding in quick add is still very slow**
 Root cause found: `compatiblePort` — a document clone plus a full `resolveGraph`/`canConnect` through the kernel — was run on *every* fuzzy match, not just the ones the menu shows. A common query matches most of the catalogue, so each keystroke paid for hundreds of full graph resolutions. Fixed in `QuickAddMenu.tsx` by capping to the top `MAX_FORMULA_RESULTS` (30, matching what was already the render slice) before running the kernel check, not after. Awaiting a look in the browser to confirm it feels fast now.
 
-**45. Bug: RM catalogue does not show equations in dropdown** Can we not autogenerate it from the expression?
-Fixed in two places. First pass: `QuickAddMenu.tsx`'s formula rows rendered
-only `citation ?? id` and the output symbol, never the expression — now each
-row also renders `toLatex(parseExpression(formula.expression))` through the
-existing `Equation` component. The actual bug, though, was the R&M node's own
-expanded view on the canvas: `FormulaNodeView.tsx` had a deliberate
-`source?.restricted ? null : <Equation .../>` gate hiding the equation for
-restricted catalogues, so an R&M node stayed blank where a built-in node
-showed its formula. That gate is removed — the equation output node
-(`OutputNodeView.tsx`) already displays any wired formula's expression
-unconditionally regardless of source catalogue, so `restricted` gates export,
-not in-app display; hiding it on this one node was inconsistent, not
-protective. Both `FormulaNodeView.tsx` and `QuickAddMenu.tsx` now render the
-same way for every formula. Awaiting a look in the browser to confirm.
-
 **46. Bug: Feasibility heatmap's axis title, tick labels, and ticks overlap.** The non-faceted branch of `FeasibilityFigure.tsx` fixes its plot width at a flat `360` (`packages/editor/src/notebook/FeasibilityFigure.tsx:78`) regardless of how many x-axis ticks the swept range produces or how long their coordinate labels are — unlike the faceted branch, already fixed to size each facet panel from its own tick count (`perFacetWidth`, line 76, commit 897e2f6). A two-input sweep with many points and long decimal coordinates (e.g. `66.667`, `73.333`, …) crowds ten-plus tick labels into a ~300px plot area, so they collide with each other and with the x-axis title sitting below them. Same class of bug as the one already fixed for facets, just not extended to the single-panel case — likely wants the same tick-count-aware width logic.
 
 Separately, worth having but a distinct piece of work: interpolating/smoothing between a Feasibility node's sampled grid cells, since each cell is currently solved independently — the feasibility branch ANDs every referenced Check node's verdict cell-by-cell (`packages/kernel/src/evaluate.ts:926-980`) with no interpolation, so a true pass/fail boundary that doesn't line up with the sampled grid can show as scattered single-cell islands rather than a contiguous region. Should be an opt-in per-node setting rather than a default, the same pattern as item 1's per-node display settings (table figures/marks stored on the node, not forced) — smoothing implies a claim about what happens between samples that not every check can back up, so the node author should choose it rather than have it assumed.
-
-**47. Bug: Marquee selection opens a node's dropdown, which then falls outside the marquee and gets unselected.** Dragging a marquee over a compact node expands it (hover/selection opens the node, per `OVERVIEW.md`'s "compact by default... open on selection or hover"), but the expanded bounds are what selection then tests against — so a node whose collapsed footprint was fully inside the marquee ends up only partially inside once it opens, and drops out of the selection. Marquee hit-testing should use each node's collapsed (unexpanded, unless pinned open) size regardless of what opening does to it mid-drag.
-Fixed: React Flow's own `ResizeObserver` tracks each node's live DOM box
-independently of anything this app feeds it, and updates a node's `selected`
-flag continuously as the drag rectangle sweeps across the canvas — so hover
-or that live selection could open a node mid-drag and grow the very box the
-marquee was hit-testing against. Added `marqueeActive` to `GraphContext`
-(`graph-context.ts`, `App.tsx`), set from React Flow's `onSelectionStart`/
-`onSelectionEnd` in `Canvas.tsx`. `NodeShell.tsx`'s open state is now
-`expanded || (!marqueeActive && (selected || hovered))` — frozen at collapsed
-(or pinned-open) for the whole drag, reopening normally once it ends. Awaiting
-a look in the browser to confirm a marquee over compact nodes keeps them
-selected.
-
-**48. Feature: Let's design the shaft calculations** Take a look at the shaft notebooks and equations in the /home/thomas/source/mechanical-design repo and discuss what we can do. It will need force/distance, support/distance pairs to construct the piecewise arrays. I want to be able to show the bending/load diagrams and calculate the shaft sizes from it. This is a big feature, so we must plan it meticulously.

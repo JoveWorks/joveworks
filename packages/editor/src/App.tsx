@@ -401,8 +401,22 @@ function AppShell(): ReactElement {
   // for: a restored autosave is somebody's own graph, not the pad-pressure
   // sample the script's steps assume. Launching it from the Help menu still
   // works on any document — it loads the sample first (see `helpMenuItems`).
+  //
+  // Never auto-starts on a mobile-width viewport: `.desktop-editor` (and the
+  // tour overlay inside it) is CSS-hidden there in favour of `MobileLanding`,
+  // so a spotlighted target never actually lays out — its caption keeps
+  // measuring a permanently zero-sized box and nudging itself against a
+  // corner it can never reach. That's pure wasted work at best (a 100ms
+  // polling interval — Tutorial.tsx's `frame` — running behind a page nobody
+  // sees) and, before the correction loop's cap landed, was the concrete
+  // cause of opening an example link on mobile going blank: an unbounded
+  // `setState` loop with no error boundary to catch it took the whole React
+  // root down, `MobileLanding` included.
+  const isMobileViewport = window.matchMedia('(max-width: 899px)').matches;
   const [tutorial, setTutorial] = useState<{ readonly kind: 'introduction' } | { readonly kind: 'example'; readonly id: ExampleId } | undefined>(() =>
-    linkedExample === undefined
+    isMobileViewport
+      ? undefined
+      : linkedExample === undefined
       ? (!restoredAutosave && !loadTutorialSeen() ? { kind: 'introduction' } : undefined)
       : { kind: 'example', id: linkedExample },
   );
