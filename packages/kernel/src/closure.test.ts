@@ -24,6 +24,14 @@ describe('closureFormula', () => {
     expect(n?.kind).toBe('numeric');
   });
 
+  it('marks only the spectrum argument of a two-argument reduction, not its index', () => {
+    const formula = closureFormula('at(xs, i)');
+    const xs = formula.inputs.find((port) => port.name === 'xs');
+    const i = formula.inputs.find((port) => port.name === 'i');
+    expect(xs?.kind).toBe('spectrum');
+    expect(i?.kind).toBe('numeric');
+  });
+
   it('rejects a symbol named after the output port', () => {
     expect(() => closureFormula('result + 1')).toThrow(KernelError);
   });

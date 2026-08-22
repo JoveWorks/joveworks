@@ -17,9 +17,11 @@
  * - `min`/`max` require **identical** dimensions across their arguments;
  * - rounding **preserves** dimension.
  *
- * `sum` and `prod` are apart from the rest: they consume a whole series at once
- * rather than a value, so they are listed separately and their argument
- * must be a spectrum port by name.
+ * `sum`, `prod` and the rest of `REDUCTIONS` are apart from the whitelist above:
+ * they consume a whole series at once rather than a value, so they are listed
+ * separately and their first argument must be a spectrum port by name. `at` is
+ * the one exception with a second argument — a plain index alongside the
+ * series — which is what `ReductionSpec.extraArity` exists to declare.
  */
 
 import {
@@ -164,8 +166,10 @@ export const FUNCTIONS: ReadonlyMap<string, FunctionSpec> = new Map(
  */
 export interface ReductionSpec {
   readonly name: string;
-  readonly apply: (values: readonly number[]) => number;
-  readonly dimension: (argument: Dimension, where: string | undefined) => Dimension;
+  /** How many plain scalar arguments follow the spectrum argument. Defaults to 0. */
+  readonly extraArity?: number;
+  readonly apply: (values: readonly number[], extra: readonly number[]) => number;
+  readonly dimension: (argument: Dimension, where: string | undefined, extra: readonly Dimension[]) => Dimension;
 }
 
 const REDUCTION_SPECS: readonly ReductionSpec[] = [
@@ -203,6 +207,56 @@ const REDUCTION_SPECS: readonly ReductionSpec[] = [
     name: 'greatest',
     apply: (values) => values.reduce((greatest, value) => Math.max(greatest, value)),
     dimension: (argument) => argument,
+  },
+  {
+    name: 'count',
+    apply: (values) => values.length,
+    // How many values there are carries no dimension of its own, whatever the
+    // series holds — unlike `sum`, which inherits it.
+    dimension: () => DIMENSIONLESS,
+  },
+  {
+    name: 'mean',
+    apply: (values) => values.reduce((total, value) => total + value, 0) / values.length,
+    dimension: (argument) => argument,
+  },
+  {
+    name: 'median',
+    apply: (values) => {
+      const sorted = [...values].sort((a, b) => a - b);
+      const middle = sorted.length / 2;
+      return sorted.length % 2 === 0
+        ? ((sorted[middle - 1] as number) + (sorted[middle] as number)) / 2
+        : (sorted[Math.floor(middle)] as number);
+    },
+    dimension: (argument) => argument,
+  },
+  {
+    // Sample standard deviation (n − 1): the series is a sample of
+    // measurements, not the whole population, which is the usual case a
+    // tolerance is built from.
+    name: 'sdev',
+    apply: (values) => {
+      const n = values.length;
+      const mean = values.reduce((total, value) => total + value, 0) / n;
+      const variance = values.reduce((total, value) => total + (value - mean) ** 2, 0) / (n - 1);
+      return Math.sqrt(variance);
+    },
+    dimension: (argument) => argument,
+  },
+  {
+    // The one reduction with a second argument: a plain index alongside the
+    // series it selects from. 1-based, so "the third value" reads as `at(xs, 3)`.
+    name: 'at',
+    extraArity: 1,
+    apply: (values, extra) => values[Math.round(extra[0] as number) - 1] as number,
+    dimension: (argument, where, extra) => {
+      const index = extra[0] as Dimension;
+      if (!dimensionsEqual(index, DIMENSIONLESS)) {
+        throw new KernelError(`at() takes a plain index, not ${describeDimension(index)}`, where);
+      }
+      return argument;
+    },
   },
 ];
 

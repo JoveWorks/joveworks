@@ -34,7 +34,10 @@ import { KernelError } from './errors.js';
 import { CONSTANTS, REDUCTIONS } from './functions.js';
 import { parseExpression } from './parse.js';
 
-/** Every free name that is ever the sole argument of a reduction — `sum(xs)`, not `xs` alone. */
+/**
+ * Every free name that is ever a reduction's spectrum argument — `sum(xs)`,
+ * or `at(xs, i)`'s `xs` but not its plain index `i` — not `xs` alone.
+ */
 function reductionArguments(expr: Expr, into: Set<string>): void {
   switch (expr.kind) {
     case 'number':
@@ -48,9 +51,10 @@ function reductionArguments(expr: Expr, into: Set<string>): void {
       reductionArguments(expr.right, into);
       return;
     case 'call': {
-      const [only] = expr.args;
-      if (REDUCTIONS.has(expr.callee) && expr.args.length === 1 && only?.kind === 'name') {
-        into.add(only.name);
+      const [first] = expr.args;
+      const spec = REDUCTIONS.get(expr.callee);
+      if (spec !== undefined && expr.args.length === 1 + (spec.extraArity ?? 0) && first?.kind === 'name') {
+        into.add(first.name);
       }
       for (const arg of expr.args) reductionArguments(arg, into);
     }

@@ -63,6 +63,21 @@ describe('compiled closures', () => {
     expect(() => compileExpression('sum(xs * 2)')).toThrow(/one spectrum port by name/u);
   });
 
+  it('reduces a spectrum to the descriptive statistics', () => {
+    expect(compileExpression('count(xs)')({ xs: [1, 2, 3, 4] })).toBe(4);
+    expect(compileExpression('mean(xs)')({ xs: [1, 2, 3, 4] })).toBe(2.5);
+    expect(compileExpression('median(xs)')({ xs: [1, 3, 2] })).toBe(2);
+    expect(compileExpression('median(xs)')({ xs: [1, 2, 3, 4] })).toBe(2.5);
+    expect(compileExpression('sdev(xs)')({ xs: [2, 4, 4, 4, 5, 5, 7, 9] })).toBeCloseTo(2.13809, 4);
+  });
+
+  it('picks a value out of a spectrum by a 1-based index, computed like any other argument', () => {
+    expect(compileExpression('at(xs, 2)')({ xs: [10, 20, 30] })).toBe(20);
+    expect(compileExpression('at(xs, i)')({ xs: [10, 20, 30], i: 3 })).toBe(30);
+    expect(compileExpression('at(xs, i + 1)')({ xs: [10, 20, 30], i: 1 })).toBe(20);
+    expect(() => compileExpression('at(xs)')).toThrow(/one spectrum port by name/u);
+  });
+
   it('refuses a value where a series belongs, and the reverse', () => {
     expect(() => compileExpression('sum(xs)')({ xs: 3 })).toThrow(/not a series/u);
     expect(() => compileExpression('a + 1')({ a: [1, 2] })).toThrow(/is a series/u);
@@ -160,6 +175,20 @@ describe('dimensions of an expression', () => {
     expect(() => dimensionOf('prod(xs)', spectra)).toThrow(/pure series/u);
     expect(() => dimensionOf('xs + xs', spectra)).toThrow(/only be reduced/u);
     expect(() => dimensionOf('sum(F)', ports)).toThrow(/takes a spectrum port/u);
+  });
+
+  it('keeps a spectrum reduction dimension-preserving for the descriptive statistics, and count always dimensionless', () => {
+    const spectra = scope({ xs: FORCE }, ['xs']);
+    expect(dimensionOf('mean(xs)', spectra)).toEqual(FORCE);
+    expect(dimensionOf('median(xs)', spectra)).toEqual(FORCE);
+    expect(dimensionOf('sdev(xs)', spectra)).toEqual(FORCE);
+    expect(dimensionOf('count(xs)', spectra)).toEqual(DIMENSIONLESS);
+  });
+
+  it('takes a plain index alongside a reduced spectrum, and refuses a dimensioned one', () => {
+    const spectra = scope({ xs: FORCE, n: DIMENSIONLESS, d: LENGTH }, ['xs']);
+    expect(dimensionOf('at(xs, n)', spectra)).toEqual(FORCE);
+    expect(() => dimensionOf('at(xs, d)', spectra)).toThrow(/plain index/u);
   });
 
   it('rejects a name that is not a port', () => {

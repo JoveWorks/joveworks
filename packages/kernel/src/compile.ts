@@ -66,21 +66,30 @@ function readSeries(env: Env, name: string): readonly number[] {
 }
 
 /**
- * The bare name a reduction must be applied to.
+ * The bare spectrum name a reduction's first argument must be, plus whatever
+ * plain expressions follow it (`at`'s index, for reductions that declare an
+ * `extraArity`).
  *
  * `sum(xs)` is a whole port consumed at once, so `sum(xs * 2)` is not a smaller
  * version of the same idea — it is an elementwise operation this language has no
  * way to express. Saying so at compile time beats a confusing runtime failure.
  */
-function reductionArgument(expr: Expr, callee: string, where: string | undefined): string {
-  const [only] = expr.kind === 'call' ? expr.args : [];
-  if (expr.kind !== 'call' || expr.args.length !== 1 || only === undefined || only.kind !== 'name') {
+function reductionCallParts(
+  expr: Expr,
+  callee: string,
+  extraArity: number,
+  where: string | undefined,
+): { readonly name: string; readonly extra: readonly Expr[] } {
+  const args = expr.kind === 'call' ? expr.args : [];
+  const [first, ...rest] = args;
+  if (expr.kind !== 'call' || args.length !== 1 + extraArity || first === undefined || first.kind !== 'name') {
+    const example = extraArity === 0 ? `${callee}(xs)` : `${callee}(xs, i)`;
     throw new KernelError(
-      `${callee}() takes one spectrum port by name, as in '${callee}(xs)'`,
+      `${callee}() takes one spectrum port by name${extraArity > 0 ? ' plus an index' : ''}, as in '${example}'`,
       where,
     );
   }
-  return only.name;
+  return { name: first.name, extra: rest };
 }
 
 function checkArity(callee: string, count: number, where: string | undefined): void {
@@ -135,8 +144,9 @@ function compileNode(expr: Expr, where: string | undefined): CompiledExpression 
     case 'call': {
       const reduction = REDUCTIONS.get(expr.callee);
       if (reduction !== undefined) {
-        const name = reductionArgument(expr, expr.callee, where);
-        return (env) => reduction.apply(readSeries(env, name));
+        const { name, extra } = reductionCallParts(expr, expr.callee, reduction.extraArity ?? 0, where);
+        const compiledExtra = extra.map((arg) => compileNode(arg, where));
+        return (env) => reduction.apply(readSeries(env, name), compiledExtra.map((arg) => arg(env)));
       }
 
       const spec = FUNCTIONS.get(expr.callee);
@@ -346,7 +356,7 @@ function dimensionOf(expr: Expr, scope: DimensionScope, where: string | undefine
     case 'call': {
       const reduction = REDUCTIONS.get(expr.callee);
       if (reduction !== undefined) {
-        const name = reductionArgument(expr, expr.callee, where);
+        const { name, extra } = reductionCallParts(expr, expr.callee, reduction.extraArity ?? 0, where);
         const dimension = scope.dimensions[name];
         if (dimension === undefined) {
           throw new KernelError(`'${name}' is not a port of this formula`, where);
@@ -357,7 +367,8 @@ function dimensionOf(expr: Expr, scope: DimensionScope, where: string | undefine
             where,
           );
         }
-        return reduction.dimension(dimension, where);
+        const extraDimensions = extra.map((arg) => dimensionOf(arg, scope, where));
+        return reduction.dimension(dimension, where, extraDimensions);
       }
 
       const spec = FUNCTIONS.get(expr.callee);

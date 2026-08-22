@@ -126,13 +126,28 @@ describe('what the library carries', () => {
       'pi',
       'sum',
       'product',
+      'count',
+      'mean',
+      'median',
+      'standardDeviation',
+      'valueAt',
     ]) {
       expect(ids, id).toContain(id);
     }
   });
 
   it('has a spectrum input on each reduction and nowhere else', () => {
-    const reductions = new Set(['sum', 'product', 'minimum', 'maximum']);
+    const reductions = new Set([
+      'sum',
+      'product',
+      'minimum',
+      'maximum',
+      'count',
+      'mean',
+      'median',
+      'standardDeviation',
+      'valueAt',
+    ]);
     for (const formula of OPERATIONS) {
       const spectrum = formula.inputs.some((port) => port.kind === 'spectrum');
       expect(spectrum, formula.id).toBe(reductions.has(formula.id));
@@ -180,6 +195,11 @@ const FUNCTIONS = new Set([
   'prod',
   'least',
   'greatest',
+  'count',
+  'mean',
+  'median',
+  'sdev',
+  'at',
   'pi',
 ]);
 
@@ -218,6 +238,10 @@ describe('dimensions are consistent with the expression, by inspection', () => {
     ['ceiling', { A: LENGTH }, LENGTH],
     ['round', { A: LENGTH }, LENGTH],
     ['sum', { A: FORCE }, FORCE],
+    ['mean', { A: FORCE }, FORCE],
+    ['median', { A: LENGTH }, LENGTH],
+    ['standardDeviation', { A: STRESS }, STRESS],
+    ['valueAt', { A: TIME }, TIME],
     // Concrete ports: the bindings are irrelevant and must stay so.
     ['power', {}, DIMENSIONLESS],
     ['sine', {}, DIMENSIONLESS],
@@ -226,6 +250,7 @@ describe('dimensions are consistent with the expression, by inspection', () => {
     ['exponential', {}, DIMENSIONLESS],
     ['pi', {}, DIMENSIONLESS],
     ['product', {}, DIMENSIONLESS],
+    ['count', { A: FORCE }, DIMENSIONLESS],
   ];
 
   for (const [id, bindings, expected] of cases) {

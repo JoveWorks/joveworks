@@ -154,6 +154,9 @@ first. Needs its own discussion before building.
 deviation that underlies a tolerance. Add it as a public base node, with its
 input shape and its relationship to spectra settled when the ISO fit/table
 slice is designed; there is no node for it today.
+Implemented as `standardDeviation` (`sdev(xs)`, sample stdev over a spectrum)
+alongside item 26's other array reductions — its relationship to the ISO
+fit/table slice is still open, since that slice hasn't been designed yet.
 
 **10. Vertical spacing does not take actual node height into account**
 Widths are constant, but heights vary per node. The spacing should add same width space between bottom and top of each node, based on the total height from top of top node to bottom of bottom node. Also spacing should take into account rows of nodes and collumns of nodes for vertical and horizontal spacing respectively. There should be some error margin where nodes are considered aligned, and they will be aligned exactly.
@@ -194,6 +197,38 @@ Largely implemented, but R&M catalogue needs updating.
 catalogues that the user made before.
 
 **26. Feature: We need more array nodes.** Sum and product are in. We need length, mean, median, sdev, etc. Combine them in a catalogue, what should we name this?
+Implemented, for everything expressible as a pure function of the whole series:
+`count`, `mean`, `median`, `standardDeviation` (sample stdev, n − 1 — the usual
+estimator when the series is a sample, which is also what closes out item 9's
+standard-deviation node) and `valueAt` (1-based index, `at(xs, i)`) join
+`sum`/`product` in `packages/nodes/src/operations.ts`'s existing "reductions
+over a spectrum" section — no new catalogue needed, the question the item
+title asked turned out to already have an answer in the code's own naming.
+`at` needed a real kernel extension: every reduction before it took exactly
+one spectrum argument by name (`REDUCTIONS`'s whole contract), and an index
+is a second, ordinary argument alongside it. `ReductionSpec` now carries an
+`extraArity` (`packages/kernel/src/functions.ts`), threaded through
+`compile.ts`'s `reductionCallParts` and `closure.ts`'s spectrum-argument
+detection — so a typed-equation node's `at(xs, i)` also infers `xs` as a
+spectrum port and `i` as a plain one, the same as `sum(xs)` does today.
+
+**A random value from a spectrum did not get built**, and needs a decision,
+not just more code: every existing reduction is a pure function of the values
+it's given, but a random pick needs a seed to be reproducible at all — and
+nothing in the expression language carries one. The one place this codebase
+already draws random numbers, the Monte Carlo generator
+(`packages/kernel/src/random.ts`), isn't a `Formula`/expression node for
+exactly this reason: it derives its seed from the document id and its own
+node id, both of which live outside what a compiled expression closure ever
+sees. Bolting a seed into `Env` just for this would leak generator-specific
+plumbing into every other reduction's call site. The honest options are a
+dedicated node kind that samples one element the way the generator samples a
+range (consistent with how randomness already works here, but a bigger,
+`evaluate.ts`-touching change than any reduction above), or accepting a
+`Math.random()` draw that differs on every evaluation — which breaks
+replayability and the golden-value discipline every other node in this
+catalogue is held to. Leaning toward the former; parked here rather than
+decided under scope pressure, the same way item 2 was.
 
 **28. Feature: Can we share private catalogues with a password?** Maybe encrypt them and share public key?
 

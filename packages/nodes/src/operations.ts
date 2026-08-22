@@ -288,7 +288,7 @@ const DRAFTS: readonly Draft[] = [
     inputs: [],
   },
 
-  // --- reductions over a spectrum ------------------------------------
+  // --- reductions over a spectrum: sum, product, and descriptive statistics ---
   {
     id: 'sum',
     description:
@@ -308,6 +308,71 @@ const DRAFTS: readonly Draft[] = [
     output: plain('total', '', 'Π xᵢ'),
     inputs: [{ kind: 'spectrum', name: 'xs', unit: parseUnit(''), description: text('Series to multiply') }],
   },
+  {
+    id: 'count',
+    description: 'How many values a whole series holds. Dimensionless, whatever the series holds.',
+    expression: 'count(xs)',
+    output: plain('n', '', '|xs|'),
+    inputs: [
+      { kind: 'spectrum', name: 'xs', unit: parseGenericDimension('$A'), description: text('Series to count') },
+    ],
+  },
+  {
+    id: 'mean',
+    description: 'Average of a whole series — a load spectrum consumed at once, not a swept range.',
+    expression: 'mean(xs)',
+    output: generic('average', 'A', 'x̄'),
+    inputs: [
+      { kind: 'spectrum', name: 'xs', unit: parseGenericDimension('$A'), description: text('Series to average') },
+    ],
+  },
+  {
+    id: 'median',
+    description:
+      'Middle value of a whole series once sorted — the mean of the two middle values when ' +
+      'the series has an even length.',
+    expression: 'median(xs)',
+    output: generic('median', 'A', 'x̃'),
+    inputs: [
+      {
+        kind: 'spectrum',
+        name: 'xs',
+        unit: parseGenericDimension('$A'),
+        description: text('Series to find the median of'),
+      },
+    ],
+  },
+  {
+    id: 'standardDeviation',
+    description:
+      'Sample standard deviation of a whole series (n − 1 in the denominator — the usual ' +
+      'estimator when the series is a sample of measurements, as a tolerance is built from).',
+    expression: 'sdev(xs)',
+    output: generic('deviation', 'A', 's'),
+    inputs: [
+      {
+        kind: 'spectrum',
+        name: 'xs',
+        unit: parseGenericDimension('$A'),
+        description: text('Series to find the spread of'),
+      },
+    ],
+  },
+  {
+    id: 'valueAt',
+    description: 'The value at a given position in a whole series. 1 is the first value.',
+    expression: 'at(xs, i)',
+    output: generic('value', 'A', 'xsᵢ'),
+    inputs: [
+      {
+        kind: 'spectrum',
+        name: 'xs',
+        unit: parseGenericDimension('$A'),
+        description: text('Series to index into'),
+      },
+      plain('i', '', 'Position, counting from 1'),
+    ],
+  },
 ];
 
 /**
@@ -326,7 +391,8 @@ const DUTCH_LABELS: Readonly<Record<string, string>> = {
   sine: 'Sinus', cosine: 'Cosinus', tangent: 'Tangens', arcSine: 'Boogsinus', arcCosine: 'Boogcosinus',
   arcTangent: 'Boogtangens', hyperbolicSine: 'Hyperbolische sinus', hyperbolicCosine: 'Hyperbolische cosinus',
   hyperbolicTangent: 'Hyperbolische tangens', logarithm: 'Natuurlijke logaritme', exponential: 'Exponentieel',
-  pi: 'Pi', sum: 'Som', product: 'Product',
+  pi: 'Pi', sum: 'Som', product: 'Product', count: 'Aantal', mean: 'Gemiddelde', median: 'Mediaan',
+  standardDeviation: 'Standaardafwijking', valueAt: 'Waarde op positie',
 };
 
 function operationLabel(id: string): LocalizedText {
