@@ -11,7 +11,7 @@ import { describe, expect, it } from 'vitest';
 import type { Axis, PlotResult } from '@joveworks/kernel';
 import { PLAIN_NUMBER_FORMAT, parseUnit, type NumberFormat } from '@joveworks/units';
 
-import { rows, siAxisUnit, siResult } from './PlotFigure';
+import { plotValueLabel, plotYLabel, rows, siAxisUnit, siResult } from './PlotFigure';
 
 const mm = parseUnit('mm');
 
@@ -88,6 +88,39 @@ describe('a plot with a facet axis', () => {
       { x: 30, y: 5, facet: 'low' },
       { x: 30, y: 6, facet: 'high' },
     ]);
+  });
+});
+
+describe('a contour plot', () => {
+  const axisY: Axis = { id: 'h', label: 'h', length: 2, order: 1 };
+
+  const result: PlotResult = {
+    ...base,
+    contour: true,
+    label: 'stress',
+    series: { kind: 'numeric', axes: [axisW, axisY], data: [1, 2, 3, 4, 5, 6] },
+    x: {
+      axis: axisW,
+      coordinates: { kind: 'numeric', axes: [axisW], data: [10, 20, 30] },
+      unit: mm,
+    },
+    series2: {
+      axis: axisY,
+      coordinates: { kind: 'numeric', axes: [axisY], data: [100, 200] },
+      unit: parseUnit('N'),
+    },
+  };
+
+  // The bug this guards: the y axis was titled with the color-mapped
+  // value's own label (the colorbar title) instead of the axis actually
+  // plotted along y, so a contour's y axis read the same as its colorbar.
+  it('labels the y axis with the second swept axis, not the color-mapped value', () => {
+    expect(plotYLabel(result)).toBe('h (N)');
+    expect(plotValueLabel(result)).toBe('stress (mm)');
+  });
+
+  it('still labels a non-contour plot with the plotted value', () => {
+    expect(plotYLabel({ ...result, contour: false })).toBe('stress (mm)');
   });
 });
 

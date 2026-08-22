@@ -130,6 +130,27 @@ export function siResult(result: PlotResult, format: NumberFormat): PlotResult {
   };
 }
 
+/** An axis's title with its unit appended, unitless axes printing bare. */
+export function axisLabel(axis: PlotAxis): string {
+  return `${axis.axis.label}${axis.unit.symbol.trim().length === 0 ? '' : ` (${axis.unit.symbol})`}`;
+}
+
+/** The plotted value's own label — the contour colorbar title, and (outside contour mode) the y axis title. */
+export function plotValueLabel(result: PlotResult): string {
+  return result.unit.symbol.trim().length === 0
+    ? (result.label ?? '')
+    : `${result.label ?? ''} (${result.unit.symbol})`;
+}
+
+/**
+ * The chart's y axis title. A contour plots the value as color, not
+ * position, so its y axis is the second swept axis instead — using the
+ * value's own label there mislabels the axis as the colorbar.
+ */
+export function plotYLabel(result: PlotResult): string {
+  return result.contour && result.series2 !== undefined ? axisLabel(result.series2) : plotValueLabel(result);
+}
+
 interface Props {
   readonly result: PlotResult;
   readonly document: GraphDocument;
@@ -277,11 +298,9 @@ export function PlotFigure({ result: rawResult, document: graph, format }: Props
     const data = rows(result);
     const threshold =
       result.threshold === undefined ? undefined : fromCanonical(result.threshold, result.unit);
-    const xLabel = `${result.x.axis.label}${
-      result.x.unit.symbol.trim().length === 0 ? '' : ` (${result.x.unit.symbol})`
-    }`;
-    const yLabel =
-      result.unit.symbol.trim().length === 0 ? (result.label ?? '') : `${result.label ?? ''} (${result.unit.symbol})`;
+    const xLabel = axisLabel(result.x);
+    const valueLabel = plotValueLabel(result);
+    const yLabel = plotYLabel(result);
     // A second axis makes separate curves. Even when its coordinates are
     // numeric (for example, one curve per pad length), it is a discrete
     // selection of lines rather than a continuous value map.
@@ -376,7 +395,7 @@ export function PlotFigure({ result: rawResult, document: graph, format }: Props
     if (result.contour) {
       const wrapper = document.createElement('div');
       wrapper.className = 'contour-figure';
-      wrapper.append(chart, contourColorbar(result, yLabel, contourPalette, titleMathRendering));
+      wrapper.append(chart, contourColorbar(result, valueLabel, contourPalette, titleMathRendering));
       rendered = wrapper;
     } else if (lineSeries !== undefined) {
       const wrapper = document.createElement('div');
@@ -398,6 +417,7 @@ export function PlotFigure({ result: rawResult, document: graph, format }: Props
       typesetChartLabels(chart, [
         xLabel,
         yLabel,
+        valueLabel,
         ...(result.contour || result.series2 === undefined ? [] : [result.series2.axis.label]),
         ...(result.facet === undefined ? [] : [result.facet.axis.label]),
       ]);
