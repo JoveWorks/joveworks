@@ -340,12 +340,17 @@ function Result({ result, node }: { readonly result: OutputResult; readonly node
   }
 
   if (result.kind === 'feasibility') {
+    // Same fallback `OutputTitle` uses for an unlabelled node — the tip's
+    // failed-check breakdown should read the way the check's own row does.
+    const checkLabels = Object.fromEntries(
+      result.checks.map((id) => [id, document.nodes.find((candidate) => candidate.id === id)?.label ?? id]),
+    );
     return (
       <div className="result plot">
         <span className="label">
           <OutputTitle node={node} />
         </span>
-        <FeasibilityFigure result={result} />
+        <FeasibilityFigure result={result} checkLabels={checkLabels} />
       </div>
     );
   }

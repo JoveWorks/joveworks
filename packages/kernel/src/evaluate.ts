@@ -151,6 +151,8 @@ export interface FeasibilityResult extends OutputBase {
   readonly axes: readonly Axis[];
   /** One AND'd verdict per cell of `axes`. */
   readonly mask: readonly boolean[];
+  /** One verdict grid per entry of `checks`, same order — the inputs `mask` was AND'd from. */
+  readonly perCheck: readonly (readonly boolean[])[];
   readonly x: PlotAxis;
   readonly series2?: PlotAxis;
   readonly facet?: PlotAxis;
@@ -979,12 +981,8 @@ function outputResult(
       return result;
     });
     const maskAxes = unionAxes(...checkResults.map((result) => result.series.axes));
-    const mask =
-      checkResults.length === 0
-        ? []
-        : checkResults
-            .map((result) => broadcastBoolean(result.results, result.series.axes, maskAxes))
-            .reduce((acc, next) => acc.map((value, i) => value && (next[i] as boolean)));
+    const perCheck = checkResults.map((result) => broadcastBoolean(result.results, result.series.axes, maskAxes));
+    const mask = perCheck.length === 0 ? [] : perCheck.reduce((acc, next) => acc.map((value, i) => value && (next[i] as boolean)));
 
     const picked = pickPlotAxes(
       { x: output.x, series: output.series, facet: output.facet },
@@ -1018,6 +1016,7 @@ function outputResult(
       checks: output.checks,
       axes: maskAxes,
       mask,
+      perCheck,
       x: axisFor(picked.x),
       ...(picked.series === undefined ? {} : { series2: axisFor(picked.series) }),
       ...(picked.facet === undefined ? {} : { facet: axisFor(picked.facet) }),

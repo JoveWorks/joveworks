@@ -1116,6 +1116,11 @@ describe('feasibility outputs', () => {
     expect(feas.kind).toBe('feasibility');
     // A = 20, 40, 60, 80, 100 mm²: check1 (>= 30) is [F,T,T,T,T], check2 (<= 80) is [T,T,T,T,F].
     expect(feas.mask).toEqual([false, true, true, true, false]);
+    // `perCheck` keeps each input mask `mask` was AND'd from, same order as `checks`.
+    expect(feas.perCheck).toEqual([
+      [false, true, true, true, true],
+      [true, true, true, true, false],
+    ]);
   });
 
   it('evaluates correctly however the checks are ordered relative to it — the ordering regression this closes', () => {

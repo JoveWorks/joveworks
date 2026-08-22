@@ -161,6 +161,19 @@ export function typesetChartLabels(chart: SVGSVGElement, labels: readonly string
   }
 }
 
+/**
+ * A themed `Plot.tip` bound to the nearest data point under the cursor.
+ * `bias` picks which axis dominates "nearest" — 'x' for a chart swept along
+ * x (a line, a set of dots, a heatmap's cells), 'y' for a horizontal-bar
+ * chart keyed by a categorical y. Themed for free: `Plot.tip`'s own default
+ * style paints its box with `var(--plot-background)` (`styles.css` maps that
+ * to `--panel`, so it already matches app theme in both light and dark).
+ */
+export function chartTip<T>(data: readonly T[], bias: 'x' | 'y', options: Plot.TipOptions): Plot.Markish {
+  const pointer = bias === 'y' ? Plot.pointerY : Plot.pointerX;
+  return Plot.tip(data, pointer(options));
+}
+
 /** A compact vertical key keeps the contour itself large enough to read. */
 function contourColorbar(
   result: PlotResult,
