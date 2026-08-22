@@ -273,3 +273,72 @@ describe('generic formulas', () => {
     ).toThrow(/not a bare variable/);
   });
 });
+
+describe('piecewise formulas', () => {
+  const running: JsonObject = {
+    id: 'demo.running-total',
+    version: 1,
+    output: { kind: 'numeric', name: 'y', unit: 'N' },
+    inputs: [
+      { kind: 'numeric', name: 'z', unit: 'mm', default: 0 },
+      { kind: 'spectrum', name: 'position', unit: 'mm' },
+      { kind: 'spectrum', name: 'value', unit: 'N' },
+    ],
+    expression: 'sum(value)',
+    piecewise: { kind: 'cumulativeStep', axis: 'z', breakpoints: 'position', values: 'value' },
+    description: { en: 'An invented running-total-vs-position formula.' },
+    status: 'unverified',
+  };
+
+  it('round-trips the piecewise field', () => {
+    expect(serializeFormula(parseFormula(running, ''))['piecewise']).toEqual(running['piecewise']);
+  });
+
+  it('rejects piecewise alongside lookup', () => {
+    expect(() =>
+      parseFormula(
+        {
+          ...running,
+          lookup: { axes: [{ input: 'z', kind: 'numeric', values: [1] }], values: [1] },
+        },
+        '',
+      ),
+    ).toThrow(/cannot accompany a lookup/);
+  });
+
+  it("rejects an axis that isn't a concrete numeric input", () => {
+    expect(() =>
+      parseFormula(
+        { ...running, piecewise: { ...(running['piecewise'] as JsonObject), axis: 'position' } },
+        '',
+      ),
+    ).toThrow(/must be a declared input with a concrete numeric unit/);
+  });
+
+  it('rejects breakpoints whose dimension does not match the axis', () => {
+    expect(() =>
+      parseFormula(
+        { ...running, piecewise: { ...(running['piecewise'] as JsonObject), breakpoints: 'value' } },
+        '',
+      ),
+    ).toThrow(/must share 'z''s dimension/);
+  });
+
+  it("rejects values whose dimension does not match the output's", () => {
+    expect(() =>
+      parseFormula(
+        { ...running, piecewise: { ...(running['piecewise'] as JsonObject), values: 'position' } },
+        '',
+      ),
+    ).toThrow(/must share the output's dimension/);
+  });
+
+  it('rejects a piecewise output with no concrete unit', () => {
+    expect(() =>
+      parseFormula(
+        { ...running, output: { kind: 'numeric', name: 'y', unit: '$A' }, inputs: [...(running['inputs'] as JsonObject[]), { kind: 'numeric', name: 'dummy', unit: '$A' }], expression: 'dummy' },
+        '',
+      ),
+    ).toThrow(/needs a concrete numeric output/);
+  });
+});

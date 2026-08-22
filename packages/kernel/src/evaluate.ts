@@ -633,6 +633,56 @@ function evaluateFormula(
     });
   }
 
+  if (formula.piecewise !== undefined) {
+    if (isGenericDimension(formula.output.unit)) {
+      throw new KernelError('a piecewise output must declare a concrete unit', nodeId);
+    }
+    const { axis, breakpoints, values: valuesName } = formula.piecewise;
+    const axisEntry = regularInputs.find(({ port }) => port.name === axis);
+    if (axisEntry === undefined || axisEntry.value.kind !== 'numeric') {
+      throw new KernelError(`piecewise axis '${axis}' must be a numeric input`, nodeId);
+    }
+    const axisRead = reader(axisEntry.value, axes);
+
+    type EdgeContribution =
+      | { readonly kind: 'fixed'; readonly values: readonly number[] }
+      | { readonly kind: 'reader'; readonly read: (cell: number) => number };
+    const edgeContributions = (name: string): readonly EdgeContribution[] => {
+      const entry = spectrumInputs.find(({ port }) => port.name === name);
+      if (entry === undefined) {
+        throw new KernelError(`piecewise input '${name}' must be a declared spectrum port`, nodeId);
+      }
+      return entry.edgeValues.map((value): EdgeContribution =>
+        value.kind === 'spectrum'
+          ? { kind: 'fixed', values: value.values }
+          : { kind: 'reader', read: reader(value, axes) },
+      );
+    };
+    const breakpointEdges = edgeContributions(breakpoints);
+    const valueEdges = edgeContributions(valuesName);
+
+    // Closed-form at every sampled `z`, not a numeric cumulative sum over the
+    // sweep — accuracy never depends on how densely `z` happens to be swept.
+    const data = new Array<number>(cells);
+    for (let cell = 0; cell < cells; cell += 1) {
+      const z = axisRead(cell);
+      const positions = breakpointEdges.flatMap((edge) => (edge.kind === 'fixed' ? edge.values : [edge.read(cell)]));
+      const magnitudes = valueEdges.flatMap((edge) => (edge.kind === 'fixed' ? edge.values : [edge.read(cell)]));
+      if (positions.length !== magnitudes.length) {
+        throw new KernelError(
+          `'${breakpoints}' has ${positions.length} values but '${valuesName}' has ${magnitudes.length}`,
+          nodeId,
+        );
+      }
+      let total = 0;
+      for (let i = 0; i < positions.length; i += 1) {
+        if ((positions[i] as number) <= z) total += magnitudes[i] as number;
+      }
+      data[cell] = total;
+    }
+    return { kind: 'numeric', axes, data };
+  }
+
   if (formula.lookup !== undefined) {
     if (isGenericDimension(formula.output.unit)) {
       throw new KernelError('a lookup output must declare a concrete unit', nodeId);

@@ -176,6 +176,68 @@ describe('table-backed formulas', () => {
   });
 });
 
+describe('piecewise-backed formulas', () => {
+  const stepCatalogue = catalogueOf([
+    {
+      id: 'runningTotal', version: 1,
+      output: { kind: 'numeric', name: 'y', unit: 'N' },
+      inputs: [
+        { kind: 'numeric', name: 'z', unit: 'mm', default: 0 },
+        { kind: 'spectrum', name: 'position', unit: 'mm' },
+        { kind: 'spectrum', name: 'value', unit: 'N' },
+      ],
+      expression: 'sum(value)',
+      piecewise: { kind: 'cumulativeStep', axis: 'z', breakpoints: 'position', values: 'value' },
+      description: 'Invented running-total-vs-position formula.', status: 'unverified',
+    },
+  ]);
+  const stepRef = refTo('runningTotal', stepCatalogue);
+
+  it('totals only the breakpoints at or before z', () => {
+    const document = documentOf(
+      [
+        input('position', { kind: 'spectrum', values: [10, 30, 50], unit: 'mm' }),
+        input('value', { kind: 'spectrum', values: [100, 200, 300], unit: 'N' }),
+        formulaNode('step', stepRef, { inputValues: { z: { kind: 'scalar', value: 40, unit: 'mm' } } }),
+      ],
+      [wire('position.value', 'step.position'), wire('value.value', 'step.value')],
+    );
+    // 10 mm and 30 mm are at or before z = 40 mm; 50 mm is not.
+    expect(numeric(valueAt(evaluateDocument(document, [stepCatalogue]), 'step', 'y')).data).toEqual([300]);
+  });
+
+  it('is closed-form at every sampled z, not a cumulative sum over the sweep', () => {
+    const document = documentOf(
+      [
+        input('position', { kind: 'spectrum', values: [10, 30, 50], unit: 'mm' }),
+        input('value', { kind: 'spectrum', values: [100, 200, 300], unit: 'N' }),
+        input('z', linear(0, 60, 4, 'mm')), // 0, 20, 40, 60 mm
+        formulaNode('step', stepRef),
+      ],
+      [
+        wire('position.value', 'step.position'),
+        wire('value.value', 'step.value'),
+        wire('z.value', 'step.z'),
+      ],
+    );
+    expect(numeric(valueAt(evaluateDocument(document, [stepCatalogue]), 'step', 'y')).data).toEqual([
+      0, 100, 300, 600,
+    ]);
+  });
+
+  it('reports mismatched breakpoint/value counts rather than silently truncating', () => {
+    const document = documentOf(
+      [
+        input('position', { kind: 'spectrum', values: [10, 30], unit: 'mm' }),
+        input('value', { kind: 'spectrum', values: [100, 200, 300], unit: 'N' }),
+        formulaNode('step', stepRef),
+      ],
+      [wire('position.value', 'step.position'), wire('value.value', 'step.value')],
+    );
+    expect(() => evaluateDocument(document, [stepCatalogue])).toThrow(/has 2 values but/u);
+  });
+});
+
 describe('closure nodes', () => {
   it('computes a student-typed expression, ports and all', () => {
     const document = documentOf(

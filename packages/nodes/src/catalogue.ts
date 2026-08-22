@@ -18,9 +18,11 @@ import {
 
 import { OPERATIONS } from './operations.js';
 import { ARRAY_OPERATIONS } from './arrayNodes.js';
+import { MECHANICS_OPERATIONS } from './mechanicsNodes.js';
 
 export const BASE_CATALOGUE_ID = 'base';
 export const ARRAY_CATALOGUE_ID = 'array';
+export const MECHANICS_CATALOGUE_ID = 'mechanics';
 
 /**
  * The library as authored.
@@ -46,6 +48,15 @@ export const ARRAY_CATALOGUE: Catalogue = {
   formulas: ARRAY_OPERATIONS,
 };
 
+/** `mechanicsNodes.ts`'s beam/shaft diagrams — generic mechanics, not R&M content. */
+export const MECHANICS_CATALOGUE: Catalogue = {
+  schemaVersion: SCHEMA_VERSION,
+  id: MECHANICS_CATALOGUE_ID,
+  name: { en: 'Mechanics nodes', nl: 'Mechanicaknooppunten' },
+  restricted: false,
+  formulas: MECHANICS_OPERATIONS,
+};
+
 /**
  * A catalogue as a file, having been through the parser.
  *
@@ -59,4 +70,8 @@ export function baseCatalogueJson(): string {
 
 export function arrayCatalogueJson(): string {
   return saveCatalogue(parseCatalogue(serializeCatalogue(ARRAY_CATALOGUE)));
+}
+
+export function mechanicsCatalogueJson(): string {
+  return saveCatalogue(parseCatalogue(serializeCatalogue(MECHANICS_CATALOGUE)));
 }

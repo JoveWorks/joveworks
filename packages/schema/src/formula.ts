@@ -38,12 +38,13 @@ import {
   asInputPort,
   asOutputPort,
   parsePort,
+  portDimension,
   serializePort,
   type OutputPort,
   type Port,
 } from './port.js';
 import { readSchemaVersion } from './version.js';
-import { genericVariables, isGenericDimension } from '@joveworks/units';
+import { dimensionsEqual, genericVariables, isGenericDimension } from '@joveworks/units';
 
 /** The dimension variables a port mentions — none, unless it is generic. */
 function portVariables(port: Port): readonly string[] {
@@ -80,6 +81,26 @@ export interface FormulaLookup {
   readonly values: readonly (number | null)[];
 }
 
+/**
+ * `kind`s of piecewise evaluator a formula may declare instead of (never
+ * alongside) `lookup`. `cumulativeStep` is the shaft-diagram primitive: a
+ * running total of `values`' entries whose matching `breakpoints' entry is at
+ * or before `axis`'s current value — a torque diagram directly, and the
+ * building block a shear diagram's point-load contribution is made from.
+ */
+export const PIECEWISE_KINDS = ['cumulativeStep'] as const;
+export type PiecewiseKind = (typeof PIECEWISE_KINDS)[number];
+
+export interface FormulaPiecewise {
+  readonly kind: PiecewiseKind;
+  /** Name of the declared numeric input evaluated against each breakpoint. */
+  readonly axis: string;
+  /** Name of the declared spectrum input holding each breakpoint's position, in `axis`'s dimension. */
+  readonly breakpoints: string;
+  /** Name of the declared spectrum input holding the value added at each breakpoint, in the output's dimension. */
+  readonly values: string;
+}
+
 export interface Formula {
   /** Stable within its catalogue — the migration writes it from the method name. */
   readonly id: string;
@@ -91,6 +112,8 @@ export interface Formula {
   readonly expression: string;
   /** Optional table-backed evaluator. The expression still declares/checks dimensions. */
   readonly lookup?: FormulaLookup;
+  /** Optional piecewise evaluator, mutually exclusive with `lookup`. Same role: the expression still declares/checks dimensions. */
+  readonly piecewise?: FormulaPiecewise;
   /** Short display name. Omit when a citation or id is the natural title. */
   readonly label?: LocalizedText;
   readonly description: LocalizedText;
@@ -149,6 +172,26 @@ function serializeLookup(lookup: FormulaLookup): JsonObject {
       ...put('lowerExclusive', axis.lowerExclusive),
     })),
     values: [...lookup.values],
+  };
+}
+
+function parsePiecewise(value: JsonValue, path: string): FormulaPiecewise {
+  const object = readObject(value, path);
+  const kind = readEnum(required(object, 'kind', path), join(path, 'kind'), PIECEWISE_KINDS);
+  return {
+    kind,
+    axis: readName(required(object, 'axis', path), join(path, 'axis')),
+    breakpoints: readName(required(object, 'breakpoints', path), join(path, 'breakpoints')),
+    values: readName(required(object, 'values', path), join(path, 'values')),
+  };
+}
+
+function serializePiecewise(piecewise: FormulaPiecewise): JsonObject {
+  return {
+    kind: piecewise.kind,
+    axis: piecewise.axis,
+    breakpoints: piecewise.breakpoints,
+    values: piecewise.values,
   };
 }
 
@@ -228,6 +271,34 @@ export function parseFormula(value: JsonValue, path: string): Formula {
     }
   }
 
+  const piecewise = optional(object, 'piecewise', path, parsePiecewise);
+  if (piecewise !== undefined) {
+    if (lookup !== undefined) fail(join(path, 'piecewise'), 'cannot accompany a lookup — a formula is one or the other');
+    const outputDimension = portDimension(output);
+    if (outputDimension === undefined) {
+      fail(join(path, 'output'), 'a piecewise formula needs a concrete numeric output');
+    }
+    const axisPort = inputs.find((candidate) => candidate.name === piecewise.axis);
+    const axisDimension = axisPort === undefined ? undefined : portDimension(axisPort);
+    if (axisPort === undefined || axisPort.kind !== 'numeric' || axisDimension === undefined) {
+      fail(join(path, 'piecewise.axis'), `'${piecewise.axis}' must be a declared input with a concrete numeric unit`);
+    }
+    const breakpointsPort = inputs.find((candidate) => candidate.name === piecewise.breakpoints);
+    const breakpointsDimension = breakpointsPort === undefined ? undefined : portDimension(breakpointsPort);
+    if (breakpointsPort === undefined || breakpointsPort.kind !== 'spectrum' || breakpointsDimension === undefined) {
+      fail(join(path, 'piecewise.breakpoints'), `'${piecewise.breakpoints}' must be a declared spectrum input with a concrete unit`);
+    } else if (axisDimension !== undefined && !dimensionsEqual(axisDimension, breakpointsDimension)) {
+      fail(join(path, 'piecewise.breakpoints'), `must share '${piecewise.axis}''s dimension`);
+    }
+    const valuesPort = inputs.find((candidate) => candidate.name === piecewise.values);
+    const valuesDimension = valuesPort === undefined ? undefined : portDimension(valuesPort);
+    if (valuesPort === undefined || valuesPort.kind !== 'spectrum' || valuesDimension === undefined) {
+      fail(join(path, 'piecewise.values'), `'${piecewise.values}' must be a declared spectrum input with a concrete unit`);
+    } else if (outputDimension !== undefined && !dimensionsEqual(outputDimension, valuesDimension)) {
+      fail(join(path, 'piecewise.values'), "must share the output's dimension");
+    }
+  }
+
   const status = readEnum(required(object, 'status', path), join(path, 'status'), FORMULA_STATUSES);
   const quarantineReason = optional(object, 'quarantineReason', path, parseLocalizedText);
   if (status === 'quarantined' && quarantineReason === undefined) {
@@ -241,6 +312,7 @@ export function parseFormula(value: JsonValue, path: string): Formula {
     inputs,
     expression,
     ...put('lookup', lookup),
+    ...put('piecewise', piecewise),
     description: parseLocalizedText(required(object, 'description', path), join(path, 'description')),
     ...put('label', optional(object, 'label', path, parseLocalizedText)),
     ...put('citation', optional(object, 'citation', path, readString)),
@@ -259,6 +331,7 @@ export function serializeFormula(formula: Formula): JsonObject {
     inputs: formula.inputs.map(serializePort),
     expression: formula.expression,
     ...put('lookup', formula.lookup === undefined ? undefined : serializeLookup(formula.lookup)),
+    ...put('piecewise', formula.piecewise === undefined ? undefined : serializePiecewise(formula.piecewise)),
     ...(formula.label === undefined ? {} : { label: serializeLocalizedText(formula.label) }),
     description: serializeLocalizedText(formula.description),
     ...put('citation', formula.citation),
@@ -307,6 +380,7 @@ export function formulaHash(formula: Formula): string {
     inputs: formula.inputs.map(withoutText),
     expression: formula.expression,
     ...put('lookup', formula.lookup === undefined ? undefined : serializeLookup(formula.lookup)),
+    ...put('piecewise', formula.piecewise === undefined ? undefined : serializePiecewise(formula.piecewise)),
     ...put('citation', formula.citation),
     ...put('variantOf', formula.variantOf),
     ...put('appliesWhen', formula.appliesWhen),
