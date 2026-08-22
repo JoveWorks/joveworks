@@ -2,12 +2,11 @@
  * A closure node: a student-typed equation whose ports are whatever names the
  * expression mentions (`packages/kernel/src/closure.ts` derives them).
  *
- * The one deliberate reversal of `FormulaNodeView`'s own rule: **the
- * expression is shown, and is the primary thing edited on the node.** That
- * rule exists to keep restricted R&M content out of the app's own display —
- * this content is the student's own, and showing it is the point of the
- * node. The expression field sits where `CompareNodeView`'s threshold does:
- * always visible, editable right there, no inspector needed.
+ * Unlike `FormulaNodeView`, where the expression is read-only, **here it is
+ * shown editable and is the primary thing edited on the node** — this
+ * content is the student's own. The expression field sits where
+ * `CompareNodeView`'s threshold does: always visible, editable right there,
+ * no inspector needed.
  */
 
 import type { ReactElement } from 'react';

@@ -1,17 +1,15 @@
 /**
  * A formula node: the catalogue record, its ports, and what it produced.
  *
- * Two things this node must get right, and they are both restrictions rather
- * than features:
+ * The one thing this node must get right, and it is a restriction rather
+ * than a feature: **a missing required input is visible while compact**,
+ * because an incomplete graph should be obvious before it is evaluated.
  *
- * - **A restricted catalogue's expression is not shown.** Roloff & Matek
- *   content is licensed for computation, not for reprinting in the app —
- *   `source.restricted` is the same flag the palette and this node's own
- *   provenance line already key off of. An unrestricted formula has no such
- *   constraint, so its expression renders on expand exactly like a closure
- *   node's own (`ClosureNodeView`).
- * - **A missing required input is visible while compact**, because an
- *   incomplete graph should be obvious before it is evaluated.
+ * The expression itself renders on expand for every formula, restricted
+ * catalogues included — `source.restricted` (the same flag the palette and
+ * this node's own provenance line key off of) gates export, not in-app
+ * display, since a wired formula's expression is already readable from any
+ * equation output node regardless of its source catalogue.
  */
 
 import type { ReactElement } from 'react';
@@ -149,9 +147,7 @@ export function FormulaNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
       }
       detail={
         <>
-          {source?.restricted ? null : (
-            <Equation latex={toLatex(parseExpression(formula.expression))} displayMode={false} />
-          )}
+          <Equation latex={toLatex(parseExpression(formula.expression))} displayMode={false} />
           <p className="description">{localize(formula.description, locale)}</p>
           {formula.appliesWhen === undefined ? null : (
             <p className="applies">{phrase(locale, 'applies when')} {formula.appliesWhen}</p>

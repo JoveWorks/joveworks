@@ -188,6 +188,19 @@ the private `machine-design-catalogue` repository, not here.
 Root cause found: `compatiblePort` — a document clone plus a full `resolveGraph`/`canConnect` through the kernel — was run on *every* fuzzy match, not just the ones the menu shows. A common query matches most of the catalogue, so each keystroke paid for hundreds of full graph resolutions. Fixed in `QuickAddMenu.tsx` by capping to the top `MAX_FORMULA_RESULTS` (30, matching what was already the render slice) before running the kernel check, not after. Awaiting a look in the browser to confirm it feels fast now.
 
 **45. Bug: RM catalogue does not show equations in dropdown** Can we not autogenerate it from the expression?
+Fixed in two places. First pass: `QuickAddMenu.tsx`'s formula rows rendered
+only `citation ?? id` and the output symbol, never the expression — now each
+row also renders `toLatex(parseExpression(formula.expression))` through the
+existing `Equation` component. The actual bug, though, was the R&M node's own
+expanded view on the canvas: `FormulaNodeView.tsx` had a deliberate
+`source?.restricted ? null : <Equation .../>` gate hiding the equation for
+restricted catalogues, so an R&M node stayed blank where a built-in node
+showed its formula. That gate is removed — the equation output node
+(`OutputNodeView.tsx`) already displays any wired formula's expression
+unconditionally regardless of source catalogue, so `restricted` gates export,
+not in-app display; hiding it on this one node was inconsistent, not
+protective. Both `FormulaNodeView.tsx` and `QuickAddMenu.tsx` now render the
+same way for every formula. Awaiting a look in the browser to confirm.
 
 **46. Bug: Feasibility heatmap's axis title, tick labels, and ticks overlap.** The non-faceted branch of `FeasibilityFigure.tsx` fixes its plot width at a flat `360` (`packages/editor/src/notebook/FeasibilityFigure.tsx:78`) regardless of how many x-axis ticks the swept range produces or how long their coordinate labels are — unlike the faceted branch, already fixed to size each facet panel from its own tick count (`perFacetWidth`, line 76, commit 897e2f6). A two-input sweep with many points and long decimal coordinates (e.g. `66.667`, `73.333`, …) crowds ten-plus tick labels into a ~300px plot area, so they collide with each other and with the x-axis title sitting below them. Same class of bug as the one already fixed for facets, just not extended to the single-panel case — likely wants the same tick-count-aware width logic.
 

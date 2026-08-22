@@ -18,9 +18,11 @@
 import { useMemo, useState, type ReactElement } from 'react';
 
 import type { Catalogue, Formula, GraphNode } from '@joveworks/schema';
+import { parseExpression, toLatex } from '@joveworks/kernel';
 
 import { entries, search } from '../model/catalogues';
 import { fuzzySearch } from '../model/fuzzy';
+import { Equation } from '../Equation';
 import { Symbol } from '../Symbol';
 import { TitleText } from './TitleField';
 import { phrase } from '../i18n';
@@ -210,11 +212,19 @@ export function QuickAddMenu({
                 </button>
               ))}
               {formulas.map(({ formula, port }) => (
-                <button key={formula.id} type="button" onClick={() => pick({ kind: 'formula', formula, port })}>
-                  <span className="entry-id">{formula.citation ?? formula.id}</span>
-                  <span className="entry-output">
-                    <Symbol name={formula.output.name} />
+                <button
+                  key={formula.id}
+                  type="button"
+                  className="quick-add-formula"
+                  onClick={() => pick({ kind: 'formula', formula, port })}
+                >
+                  <span className="quick-add-formula-heading">
+                    <span className="entry-id">{formula.citation ?? formula.id}</span>
+                    <span className="entry-output">
+                      <Symbol name={formula.output.name} />
+                    </span>
                   </span>
+                  <Equation latex={toLatex(parseExpression(formula.expression))} displayMode={false} />
                 </button>
               ))}
             </>
