@@ -28,6 +28,12 @@ if [ "$current_branch" != "main" ]; then
   exit 1
 fi
 
+if ! git push origin main; then
+  echo "error: push to origin/main failed (likely a conflict with upstream changes)." >&2
+  echo "Pull/rebase and resolve, then re-run this script." >&2
+  exit 1
+fi
+
 gh workflow run release.yml \
   -f "release-as=$release_as" \
   -f "prerelease=true"
