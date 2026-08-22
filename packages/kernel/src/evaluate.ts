@@ -74,6 +74,21 @@ import type { Warning } from './warnings.js';
 export interface EvaluationOptions {
   /** Cell count at which the large-grid guard warns. */
   readonly largeGrid?: number;
+  /**
+   * Node ids whose computation is skipped entirely — `seed` stands in for
+   * whatever they would have produced. Nothing here changes what a fresh
+   * `evaluateDocument(document, catalogues)` call computes; it only lets a
+   * caller who already knows part of the graph cannot have changed (a
+   * Monte Carlo playback tick, most usefully — a generator's revealed count
+   * is the only thing that differs between ticks, so everything not
+   * downstream of a generator is invariant across them) skip redoing that
+   * part's work. A node skipped without every one of its output ports
+   * present in `seed` fails exactly the way an unwired required input does,
+   * once something downstream tries to read it.
+   */
+  readonly skip?: ReadonlySet<string>;
+  /** Prior port values, read for any node id in `skip` instead of recomputed. */
+  readonly seed?: ReadonlyMap<string, PortValue>;
 }
 
 interface OutputBase {
@@ -199,10 +214,11 @@ export function evaluateDocument(
 ): Evaluation {
   const resolution = resolveGraph(document, catalogues);
   const warnings: Warning[] = [...resolution.warnings];
-  const values = new Map<string, PortValue>();
+  const values = new Map<string, PortValue>(options.seed ?? []);
   const outputs: OutputResult[] = [];
   const axisByNode = resolution.axes;
   const largeGrid = options.largeGrid ?? LARGE_GRID;
+  const skip = options.skip;
 
   // Output nodes are always sinks — `resolveGraph` never records an edge
   // *from* an output port — so a Feasibility node's position in
@@ -214,6 +230,7 @@ export function evaluateDocument(
   const deferredFeasibility: OutputNode[] = [];
 
   for (const node of resolution.order) {
+    if (skip?.has(node.id)) continue;
     switch (node.kind) {
       case 'input':
         values.set(endpointKey(node.id, VALUE_PORT), inputValue(node, axisByNode, resolution));

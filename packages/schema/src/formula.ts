@@ -271,8 +271,28 @@ export function serializeFormula(formula: Formula): JsonObject {
   };
 }
 
+/**
+ * `formulaHash` results, keyed by the `Formula` object itself — every caller
+ * in this codebase holds formulas as the stable references a catalogue was
+ * parsed into once, never rebuilt per call, so identity is a safe cache key.
+ *
+ * `matchRef` calls this on every formula-kind node on every `resolveGraph`
+ * (`packages/kernel/src/graph.ts`'s `lookupFormula`) — every edit, not just
+ * a document's initial load. A lookup formula's `values` array can run to
+ * tens of thousands of entries (`packages/nodes/src/iso286.ts`'s hole/shaft
+ * deviation tables); re-serializing and re-hashing that on every keystroke,
+ * for every node that references it, is exactly the redundant work a
+ * WeakMap avoids — the record a formula hashes to cannot change without the
+ * catalogue itself reloading into fresh objects, which invalidates the
+ * cache for free (a new `Formula` object is a new key).
+ */
+const HASH_CACHE = new WeakMap<Formula, string>();
+
 /** The content hash, taken over the serialized record. */
 export function formulaHash(formula: Formula): string {
+  const cached = HASH_CACHE.get(formula);
+  if (cached !== undefined) return cached;
+
   // A graph reference pins calculation semantics, not words shown to a reader.
   // Catalogue translators must be able to correct text without invalidating
   // students' saved graphs.
@@ -280,7 +300,7 @@ export function formulaHash(formula: Formula): string {
     const { description: _description, ...semantic } = serializePort(port);
     return semantic;
   };
-  return hashRecord({
+  const hash = hashRecord({
     id: formula.id,
     version: formula.version,
     output: withoutText(formula.output),
@@ -292,6 +312,8 @@ export function formulaHash(formula: Formula): string {
     ...put('appliesWhen', formula.appliesWhen),
     status: formula.status,
   });
+  HASH_CACHE.set(formula, hash);
+  return hash;
 }
 
 /**
