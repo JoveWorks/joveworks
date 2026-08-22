@@ -126,6 +126,10 @@ below is specifically about panel widths and other remaining preferences.
 whole by an aggregation, not swept) exists in the schema, but nothing in the
 editor can create or edit one yet. Surfaced while adding the palette's Input
 shortcuts — left out of that pass on purpose.
+Fixed, while building item 48/8: `spectrum` joins `ValueEditor.tsx`'s kind
+switch and gets its own comma-separated-numbers field, following `list`'s
+pattern exactly (same shape, different consumption). A "spectrum" shortcut
+joins the palette's Input row too.
 
 **6. `list` vs `spectrum` naming.** Both are a hand-typed collection of values,
 but `list` sweeps (one point per value) and `spectrum` is consumed whole,
@@ -145,6 +149,28 @@ referenceable from the notebook the way Plot nodes already are. A bigger
 design question than most items here: how it's parametrized, what rendering
 approach draws the diagram from port values, and which diagram to build
 first. Needs its own discussion before building.
+First slice landed as part of item 48: `packages/schema/src/formula.ts`
+gained `Formula.piecewise`, a `lookup`-shaped alternative computation kind
+for formulas whose value comes from bespoke TS logic (`evaluate.ts`) rather
+than the expression compiler — needed because the expression compiler's
+reductions (`sum`, `mean`, …) take exactly one spectrum port, and a shear/
+moment diagram needs several synced ones (breakpoint positions and values,
+concatenated by declared order rather than wire order) at once. Its
+`cumulativeStep`/`cumulativeMoment` kinds, plus optional
+`distributedStart`/`End`/`Rate` fields for a uniform load's own closed-form
+contribution, back three new public "Mechanics nodes": `shaftTorque`,
+`shaftShear`, `shaftMoment` (each with an optional support/reaction pair —
+folded in as one more single-valued breakpoint, not a new kind), and
+`shaftDistributedShear`/`shaftDistributedMoment` (composed in via an
+ordinary `add` node). A support's reaction turned out to need no new
+kernel code at all: it's `shaftMoment` evaluated at the support's position,
+divided by the span, via ordinary base nodes. No rendering code needed
+either — the output is an ordinary `NumericSeries`, plotted the same way
+any swept formula output already is. Existing gap, not addressed here: the
+formula's own `expression` field is a dimensionally-valid placeholder, not
+the real computation (same accepted tradeoff `iso286`'s lookup formulas
+already make) — the palette's equation preview for these nodes won't show
+the actual piecewise relation.
 
 **11. Notebook export to Markdown**, for pasting a finished graph into an
 external site. Checked against `~/source/website`'s Astro content
@@ -196,3 +222,14 @@ Separately, worth having but a distinct piece of work: interpolating/smoothing b
 **47. Bug: Marquee selection opens a node's dropdown, which then falls outside the marquee and gets unselected.** Dragging a marquee over a compact node expands it (hover/selection opens the node, per `OVERVIEW.md`'s "compact by default... open on selection or hover"), but the expanded bounds are what selection then tests against — so a node whose collapsed footprint was fully inside the marquee ends up only partially inside once it opens, and drops out of the selection. Marquee hit-testing should use each node's collapsed (unexpanded, unless pinned open) size regardless of what opening does to it mid-drag.
 
 **48. Feature: Let's design the shaft calculations** Take a look at the shaft notebooks and equations in the /home/thomas/source/mechanical-design repo and discuss what we can do. It will need force/distance, support/distance pairs to construct the piecewise arrays. I want to be able to show the bending/load diagrams and calculate the shaft sizes from it. This is a big feature, so we must plan it meticulously.
+Planned in `~/.claude/plans/fuzzy-imagining-fountain.md`, built in the
+`shaft-calculations` worktree. Landed: load/shear/moment/torque diagrams,
+the 2-support reaction solve, and uniform distributed loads (item 8's
+first slice, details there), plus the load-spectrum editing UI (item 5) —
+end to end, editor included, entirely without R&M content. Deliberately
+out of this slice, matching the plan: 3+ support (statically indeterminate)
+shafts, linearly-varying distributed loads, and — the larger remaining
+half — the required-diameter formula and full stepped-diameter
+safety-factor verification, which need `C11_Shaft` extracted from the
+private catalogue repo with sign-off on the formula readings as they come
+up, the same way belt's defect table did.
