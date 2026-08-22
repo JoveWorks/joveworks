@@ -1,0 +1,304 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  color: #1a1a1a;
+  background: #f7f7f8;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1.25rem;
+  background: #1a1a2e;
+  color: white;
+}
+
+.app-header h1 {
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.app-header-actions button {
+  margin-left: 0.5rem;
+}
+
+.file-error {
+  background: #ffe4e1;
+  color: #8b0000;
+  padding: 0.5rem 1.25rem;
+}
+
+.catalogue-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-start;
+  padding: 0.75rem 1.25rem;
+  background: white;
+  border-bottom: 1px solid #ddd;
+}
+
+.catalogue-meta label {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.85rem;
+  gap: 0.2rem;
+}
+
+.checkbox-field {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 0.4rem !important;
+  max-width: 24rem;
+}
+
+.app-main {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.formula-list {
+  width: 18rem;
+  flex-shrink: 0;
+  background: white;
+  border-right: 1px solid #ddd;
+  overflow-y: auto;
+}
+
+.formula-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.6rem 0.8rem;
+  font-weight: 600;
+  border-bottom: 1px solid #eee;
+}
+
+.formula-list ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.formula-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.3rem 0.5rem;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.formula-list li.selected {
+  background: #e8ecff;
+}
+
+.formula-list-item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: none;
+  border: none;
+  text-align: left;
+  padding: 0.3rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.formula-list-actions button {
+  font-size: 0.75rem;
+  padding: 0.1rem 0.35rem;
+}
+
+.status-dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.status-dot.ok {
+  background: #2e7d32;
+}
+
+.status-dot.error {
+  background: #c62828;
+}
+
+.empty-hint {
+  padding: 0.75rem;
+  color: #666;
+  font-size: 0.85rem;
+}
+
+.formula-form,
+.formula-form-placeholder {
+  flex: 1;
+  padding: 1rem 1.25rem;
+  overflow-y: auto;
+}
+
+.formula-form-placeholder {
+  color: #666;
+}
+
+.formula-form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(10rem, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.formula-form label {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.85rem;
+  gap: 0.2rem;
+}
+
+.formula-form input,
+.formula-form select,
+.formula-form textarea,
+.catalogue-meta input,
+.localized-field input {
+  font: inherit;
+  padding: 0.3rem 0.4rem;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+}
+
+.expression-field {
+  margin-bottom: 0.75rem;
+}
+
+.expression-field textarea {
+  font-family: ui-monospace, monospace;
+}
+
+h3 {
+  margin: 1rem 0 0.4rem;
+  font-size: 0.95rem;
+}
+
+.port-editor {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 0.6rem;
+  margin-bottom: 0.6rem;
+  background: #fafafa;
+}
+
+.port-editor-header {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+
+.port-editor-header input {
+  flex: 1;
+}
+
+.port-editor-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.add-port-buttons {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0.5rem 0 1rem;
+}
+
+.localized-field {
+  margin-bottom: 0.75rem;
+}
+
+.localized-field-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 0.2rem;
+}
+
+.localized-field-row,
+.localized-field-add {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.25rem;
+}
+
+.localized-field-tag {
+  width: 2.2rem;
+  font-size: 0.75rem;
+  color: #666;
+  text-transform: uppercase;
+}
+
+.localized-field-row input,
+.localized-field-add input {
+  flex: 1;
+}
+
+.formula-form-messages {
+  margin-top: 0.75rem;
+}
+
+.message {
+  margin: 0.2rem 0;
+  padding: 0.3rem 0.5rem;
+  border-radius: 3px;
+  font-size: 0.85rem;
+}
+
+.message.error {
+  background: #ffe4e1;
+  color: #8b0000;
+}
+
+.message.note {
+  background: #fff8e1;
+  color: #8a6d00;
+}
+
+.validation-summary {
+  border-top: 1px solid #ddd;
+  background: white;
+  padding: 0.5rem 1.25rem;
+  max-height: 10rem;
+  overflow-y: auto;
+}
+
+.validation-summary.ok {
+  color: #2e7d32;
+  font-size: 0.9rem;
+}
+
+.validation-summary-formula {
+  margin-bottom: 0.4rem;
+}
+
+.validation-summary-formula > button {
+  font-weight: 600;
+  background: none;
+  border: none;
+  color: #1a1a2e;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+  font-size: 0.9rem;
+}

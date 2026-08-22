@@ -251,6 +251,37 @@ Public docs served at `/docs/` under the editor's own origin in production (sepa
 
 ---
 
+## `packages/catalogue-author/` — companion app for authoring catalogues by hand
+
+ROADMAP #32. A separate static app, structurally a sibling of `packages/editor`
+(same Vite/React shape), served at `/author/` under the editor's own origin
+in production, alongside `/docs/`. Depends only on `@joveworks/schema`
+(parse/serialize/validate) and `@joveworks/kernel` (`checkFormulaDimensions`)
+— no canvas, no graph editing, no evaluation UI. Import/export is the same
+plain-JSON round trip `docs/authoring-catalogues.md` already documents by
+hand; this gives it a form instead of a text editor.
+
+- `src/model/draft.ts` — the editable draft shape for one catalogue: every
+  field kept as a string until validated, plus the list/reorder operations
+  (`addFormula`, `duplicateFormula`, `movePort`, etc.) and the conversion
+  to/from a loaded `Catalogue`.
+- `src/model/validation.ts` — builds a real `Catalogue` from the draft and
+  validates it against the actual schema/kernel, one formula at a time so
+  every problem surfaces at once rather than stopping at the first (mirrors
+  `test/catalogue-check.test.ts`'s own aggregation). Only sets its `catalogue`
+  result once everything is clean — the export-readiness gate.
+- `src/components/` — `FormulaList`, `FormulaForm`, `PortEditor`,
+  `LocalizedTextField`, `ValidationSummary`, `CatalogueMetaForm`.
+- `src/io/files.ts` — a small local copy of the editor's file-picker/download
+  adapter, not shared as a package for two functions.
+- `vite.config.ts` — `base: '/author/'`; outputs to `build/` (kept separate
+  from `tsc`'s `dist/`, same split as the editor).
+- Out of scope for now: editing a formula's `FormulaLookup` table (round-trips
+  untouched), cross-catalogue id-collision checking, and the password-locking
+  workflow (`docs/locking-catalogues.md`, still a separate CLI step).
+
+---
+
 ## `test/` — root-level cross-package tests
 
 Live here (not inside a package) because each needs more than one package, or needs to check something about the workspace itself.

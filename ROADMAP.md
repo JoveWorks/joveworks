@@ -192,6 +192,7 @@ trip. Awaiting a look in the browser to confirm.
 **30. Change: Should we use compiled notebooks to share in the notebook viewer?** To save mobile processing power, they can't edit anyway.
 
 **32. Feature: We need a tool to quickly author catalogues and/or formulas** Import and export to json catalogue. It should be as straightforward as possible for authors. It can be a separate app like the /docs app.
+Built as `packages/catalogue-author`, a companion app alongside `packages/docs-site`, served at `/author/` next to `/docs/`. A catalogue-metadata form plus a form per formula (ports, expression, description, status, citation, etc.); import/export is the plain-JSON round trip `docs/authoring-catalogues.md` already documents by hand, now with live, aggregate validation against the real `@joveworks/schema` parser and `@joveworks/kernel`'s dimension check — every problem surfaces at once, not just the first, and export is disabled until the catalogue is clean. Lookup-table editing, cross-catalogue id checking, and the password-locking workflow stay out of scope; see `docs/file-guide.md`'s entry for the package. Awaiting a look in the browser to confirm.
 
 **33. Change: What is the {table XX} notation in RM catalogue?** E.g. in eq 16.1. There must be a better way to integrate the tables in the catalogue. Actually, since we will have a LUT node, can we just have the table as catalogue items?
 

@@ -5,6 +5,7 @@
     { "path": "./packages/schema" },
     { "path": "./packages/kernel" },
     { "path": "./packages/nodes" },
-    { "path": "./packages/editor" }
+    { "path": "./packages/editor" },
+    { "path": "./packages/catalogue-author" }
   ]
 }
