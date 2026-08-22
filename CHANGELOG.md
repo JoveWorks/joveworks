@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.12.0](https://github.com/ThomasVanRiel/joveworks/compare/v0.11.0...v0.12.0) (2026-08-22)
+
+### Features
+
+* **editor:** show tooltips on table/plot input ports from upstream formula ([99b94c3](https://github.com/ThomasVanRiel/joveworks/commit/99b94c37c4fc327b9b32e8e03730f1ca9260c545))
+
+### Fixes
+
+* **editor:** hover over formula/closure/compare output row highlights connected nodes ([757c4cd](https://github.com/ThomasVanRiel/joveworks/commit/757c4cd1299d6e82269a7464ba9c911cf2ce6e36))
+* **editor:** hover over input/generator output value now highlights connected nodes ([ab29451](https://github.com/ThomasVanRiel/joveworks/commit/ab294516f7fe9d1f7f909d546aa610988951dbb3))
+* **editor:** label a contour plot's y axis with its own axis, not the colorbar ([d9a1aa1](https://github.com/ThomasVanRiel/joveworks/commit/d9a1aa160f258472e2f36f496eeec1fa66bb1ff9))
+* **editor:** let closure/equation node output unit be picked ([cf8260e](https://github.com/ThomasVanRiel/joveworks/commit/cf8260eedb7a4a38f41ef7bb222cbd7be511a97c))
+* **release:** push to origin before dispatching release workflow ([7235596](https://github.com/ThomasVanRiel/joveworks/commit/7235596d50bf1203faeb9247cb903783ed55c8c3))
+
+### Documentation
+
+* Roadmap ([e1b945b](https://github.com/ThomasVanRiel/joveworks/commit/e1b945ba50b2689f2ce3e13f03afb936ece9aa4a))
 ## [0.11.0](https://github.com/ThomasVanRiel/joveworks/compare/v0.10.0...v0.11.0) (2026-08-22)
 ## [0.10.0](https://github.com/ThomasVanRiel/joveworks/compare/v0.9.2...v0.10.0) (2026-08-22)
 
