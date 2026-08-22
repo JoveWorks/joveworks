@@ -165,13 +165,22 @@ export function typesetChartLabels(chart: SVGSVGElement, labels: readonly string
  * A themed `Plot.tip` bound to the nearest data point under the cursor.
  * `bias` picks which axis dominates "nearest" — 'x' for a chart swept along
  * x (a line, a set of dots, a heatmap's cells), 'y' for a horizontal-bar
- * chart keyed by a categorical y. Themed for free: `Plot.tip`'s own default
- * style paints its box with `var(--plot-background)` (`styles.css` maps that
- * to `--panel`, so it already matches app theme in both light and dark).
+ * chart keyed by a categorical y.
+ *
+ * `Plot.tip`'s own default box color is `fill: "var(--plot-background)"` —
+ * a CSS variable reference set as a raw SVG presentation attribute on a
+ * `<g>` built by `Plot.plot()` before it's ever attached to the page. That
+ * doesn't reliably resolve, and when it fails the box falls back to
+ * whatever `fill` value is otherwise active in that DOM position — for
+ * Feasibility's cell heatmap, the hovered cell's own pass/fail color. Read
+ * `--panel` for real via `getComputedStyle` (which does resolve custom
+ * properties correctly, var() and all) and pass it as a literal, so the box
+ * always matches app theme regardless of what mark it's tipping.
  */
 export function chartTip<T>(data: readonly T[], bias: 'x' | 'y', options: Plot.TipOptions): Plot.Markish {
   const pointer = bias === 'y' ? Plot.pointerY : Plot.pointerX;
-  return Plot.tip(data, pointer(options));
+  const panel = getComputedStyle(document.documentElement).getPropertyValue('--panel').trim();
+  return Plot.tip(data, pointer({ ...(panel === '' ? {} : { fill: panel }), ...options }));
 }
 
 /** A compact vertical key keeps the contour itself large enough to read. */
