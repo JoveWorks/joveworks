@@ -172,36 +172,13 @@ Largely implemented, but R&M catalogue needs updating.
 **17. What about migration to newer versions?** I'm thinking notebooks and
 catalogues that the user made before.
 
-**29. Bug: Opening an example link on mobile does not redirect to the mobile landing page**. It just shows a blank screen.
-Fixed: `?example=<id>` unconditionally auto-started the example tour
-(`App.tsx`'s `tutorial` state), regardless of viewport width. On mobile,
-`.desktop-editor` — the tour's overlay included — is CSS-hidden in favour of
-`MobileLanding`, so the spotlighted caption never actually lays out:
-`getBoundingClientRect()` on a `display:none` ancestor always reads zero,
-so `Tutorial.tsx`'s self-correction effect kept computing the same non-zero
-nudge forever. Before the correction cap added for item 12's crash, that was
-an unbounded `setState` loop — "Maximum update depth exceeded" — and with no
-error boundary anywhere in the app, it took down the whole React root,
-`MobileLanding` included, which is the blank screen. The cap now bounds it to
-20 wasted renders instead of a crash, but the tour still had no reason to run
-behind a page nobody can see, so `tutorial` now starts `undefined` outright
-on a mobile-width viewport (same `(max-width: 899px)` check `MobileLanding`
-itself uses) — no wasted 100ms polling interval, no correction effect to
-trip. Awaiting a look in the browser to confirm.
-
 **30. Change: Should we use compiled notebooks to share in the notebook viewer?** To save mobile processing power, they can't edit anyway.
-
-**32. Feature: We need a tool to quickly author catalogues and/or formulas** Import and export to json catalogue. It should be as straightforward as possible for authors. It can be a separate app like the /docs app.
-Built as `packages/catalogue-author`, a companion app alongside `packages/docs-site`, served at `/author/` next to `/docs/`. A catalogue-metadata form plus a form per formula (ports, expression, description, status, citation, etc.); import/export is the plain-JSON round trip `docs/authoring-catalogues.md` already documents by hand, now with live, aggregate validation against the real `@joveworks/schema` parser and `@joveworks/kernel`'s dimension check — every problem surfaces at once, not just the first, and export is disabled until the catalogue is clean. Lookup-table editing, cross-catalogue id checking, and the password-locking workflow stay out of scope; see `docs/file-guide.md`'s entry for the package. Awaiting a look in the browser to confirm.
 
 **33. Change: What is the {table XX} notation in RM catalogue?** E.g. in eq 16.1. There must be a better way to integrate the tables in the catalogue. Actually, since we will have a LUT node, can we just have the table as catalogue items?
 
 **35. Change: equation R&M 16.3 uses betahat_1** The hat is currently not present as a caret on the letter
 Out of scope for this repo — R&M catalogue content (equation 16.3) lives in
 the private `machine-design-catalogue` repository, not here.
-
-**41. Bug: Fuzzy finding in quick add is still very slow**
-Root cause found: `compatiblePort` — a document clone plus a full `resolveGraph`/`canConnect` through the kernel — was run on *every* fuzzy match, not just the ones the menu shows. A common query matches most of the catalogue, so each keystroke paid for hundreds of full graph resolutions. Fixed in `QuickAddMenu.tsx` by capping to the top `MAX_FORMULA_RESULTS` (30, matching what was already the render slice) before running the kernel check, not after. Awaiting a look in the browser to confirm it feels fast now.
 
 **46. Bug: Feasibility heatmap's axis title, tick labels, and ticks overlap.** The non-faceted branch of `FeasibilityFigure.tsx` fixes its plot width at a flat `360` (`packages/editor/src/notebook/FeasibilityFigure.tsx:78`) regardless of how many x-axis ticks the swept range produces or how long their coordinate labels are — unlike the faceted branch, already fixed to size each facet panel from its own tick count (`perFacetWidth`, line 76, commit 897e2f6). A two-input sweep with many points and long decimal coordinates (e.g. `66.667`, `73.333`, …) crowds ten-plus tick labels into a ~300px plot area, so they collide with each other and with the x-axis title sitting below them. Same class of bug as the one already fixed for facets, just not extended to the single-panel case — likely wants the same tick-count-aware width logic.
 
