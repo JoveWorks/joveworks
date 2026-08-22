@@ -13,7 +13,9 @@
         "kind": "numeric",
         "name": "d_i",
         "unit": "mm",
-        "description": null
+        "description": {
+          "en": "Image distance from the lens, along the optical axis."
+        }
       },
       "inputs": [
         {
@@ -57,7 +59,9 @@
         "kind": "numeric",
         "name": "d_o",
         "unit": "mm",
-        "description": null
+        "description": {
+          "en": "Object distance from the lens."
+        }
       },
       "inputs": [
         {
@@ -101,7 +105,9 @@
         "kind": "numeric",
         "name": "f",
         "unit": "mm",
-        "description": null
+        "description": {
+          "en": "Focal length of the lens."
+        }
       },
       "inputs": [
         {
@@ -145,7 +151,9 @@
         "kind": "numeric",
         "name": "m",
         "unit": "",
-        "description": null
+        "description": {
+          "en": "Transverse magnification, as the ratio of image to object distance."
+        }
       },
       "inputs": [
         {
@@ -188,7 +196,9 @@
         "kind": "numeric",
         "name": "m",
         "unit": "",
-        "description": null
+        "description": {
+          "en": "Transverse magnification, from focal length and object distance."
+        }
       },
       "inputs": [
         {
@@ -231,7 +241,9 @@
         "kind": "numeric",
         "name": "h_i",
         "unit": "mm",
-        "description": null
+        "description": {
+          "en": "Image height on the sensor."
+        }
       },
       "inputs": [
         {
@@ -270,7 +282,9 @@
         "kind": "numeric",
         "name": "H",
         "unit": "mm",
-        "description": null
+        "description": {
+          "en": "Hyperfocal distance."
+        }
       },
       "inputs": [
         {
@@ -324,7 +338,9 @@
         "kind": "numeric",
         "name": "D_n",
         "unit": "mm",
-        "description": null
+        "description": {
+          "en": "Near limit of acceptable sharpness."
+        }
       },
       "inputs": [
         {
@@ -378,7 +394,9 @@
         "kind": "numeric",
         "name": "D_f",
         "unit": "mm",
-        "description": null
+        "description": {
+          "en": "Far limit of acceptable sharpness."
+        }
       },
       "inputs": [
         {
@@ -433,7 +451,9 @@
         "kind": "numeric",
         "name": "DoF",
         "unit": "mm",
-        "description": null
+        "description": {
+          "en": "Total depth of field, from near to far limit."
+        }
       },
       "inputs": [
         {
@@ -475,7 +495,9 @@
         "kind": "numeric",
         "name": "c",
         "unit": "mm",
-        "description": null
+        "description": {
+          "en": "Acceptable circle of confusion."
+        }
       },
       "inputs": [
         {
@@ -519,7 +541,9 @@
         "kind": "numeric",
         "name": "fov",
         "unit": "deg",
-        "description": null
+        "description": {
+          "en": "Angle of view along the chosen sensor dimension."
+        }
       },
       "inputs": [
         {
@@ -562,7 +586,9 @@
         "kind": "numeric",
         "name": "d",
         "unit": "mm",
-        "description": null
+        "description": {
+          "en": "Sensor diagonal."
+        }
       },
       "inputs": [
         {
@@ -605,7 +631,9 @@
         "kind": "numeric",
         "name": "c",
         "unit": "",
-        "description": null
+        "description": {
+          "en": "Crop factor relative to the reference format."
+        }
       },
       "inputs": [
         {
@@ -648,7 +676,9 @@
         "kind": "numeric",
         "name": "f_eq",
         "unit": "mm",
-        "description": null
+        "description": {
+          "en": "Focal length in the reference format's equivalent field of view."
+        }
       },
       "inputs": [
         {
@@ -690,7 +720,9 @@
         "kind": "numeric",
         "name": "N_eq",
         "unit": "",
-        "description": null
+        "description": {
+          "en": "Aperture in the reference format's equivalent depth-of-field and light-gathering terms."
+        }
       },
       "inputs": [
         {
@@ -732,7 +764,9 @@
         "kind": "numeric",
         "name": "p",
         "unit": "µm",
-        "description": null
+        "description": {
+          "en": "Pixel pitch (photosite spacing)."
+        }
       },
       "inputs": [
         {
@@ -786,7 +820,9 @@
         "kind": "numeric",
         "name": "EV",
         "unit": "",
-        "description": null
+        "description": {
+          "en": "Exposure value at ISO 100."
+        }
       },
       "inputs": [
         {
@@ -841,7 +877,9 @@
         "kind": "numeric",
         "name": "EV_iso",
         "unit": "",
-        "description": null
+        "description": {
+          "en": "Exposure value adjusted to the given sensitivity."
+        }
       },
       "inputs": [
         {
@@ -882,7 +920,9 @@
         "kind": "numeric",
         "name": "t2",
         "unit": "s",
-        "description": null
+        "description": {
+          "en": "Shutter time that keeps exposure constant after changing the aperture."
+        }
       },
       "inputs": [
         {
@@ -936,7 +976,9 @@
         "kind": "numeric",
         "name": "t2",
         "unit": "s",
-        "description": null
+        "description": {
+          "en": "Shutter time that keeps exposure constant after changing sensitivity."
+        }
       },
       "inputs": [
         {
@@ -990,7 +1032,9 @@
         "kind": "numeric",
         "name": "N2",
         "unit": "",
-        "description": null
+        "description": {
+          "en": "Aperture that keeps exposure constant after changing the shutter time."
+        }
       },
       "inputs": [
         {
@@ -1044,7 +1088,9 @@
         "kind": "numeric",
         "name": "GN",
         "unit": "m",
-        "description": null
+        "description": {
+          "en": "Flash guide number at ISO 100."
+        }
       },
       "inputs": [
         {
@@ -1087,7 +1133,9 @@
         "kind": "numeric",
         "name": "d",
         "unit": "m",
-        "description": null
+        "description": {
+          "en": "Correctly exposed flash-to-subject distance."
+        }
       },
       "inputs": [
         {
@@ -1130,7 +1178,9 @@
         "kind": "numeric",
         "name": "N",
         "unit": "",
-        "description": null
+        "description": {
+          "en": "Correctly exposed aperture."
+        }
       },
       "inputs": [
         {
@@ -1173,7 +1223,9 @@
         "kind": "numeric",
         "name": "R",
         "unit": "",
-        "description": null
+        "description": {
+          "en": "Reproduction ratio (image-to-subject size)."
+        }
       },
       "inputs": [
         {
@@ -1215,7 +1267,9 @@
         "kind": "numeric",
         "name": "m",
         "unit": "",
-        "description": null
+        "description": {
+          "en": "Additional magnification gained from extension."
+        }
       },
       "inputs": [
         {
@@ -1257,7 +1311,9 @@
         "kind": "numeric",
         "name": "N_eff",
         "unit": "",
-        "description": null
+        "description": {
+          "en": "Effective aperture, accounting for extension loss."
+        }
       },
       "inputs": [
         {
@@ -1300,7 +1356,9 @@
         "kind": "numeric",
         "name": "b",
         "unit": "mm",
-        "description": null
+        "description": {
+          "en": "Diameter of the diffraction-limited blur spot (Airy disk)."
+        }
       },
       "inputs": [
         {
@@ -1344,7 +1402,9 @@
         "kind": "numeric",
         "name": "N_max",
         "unit": "",
-        "description": null
+        "description": {
+          "en": "Widest aperture before diffraction blur exceeds one pixel."
+        }
       },
       "inputs": [
         {

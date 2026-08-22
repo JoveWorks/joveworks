@@ -316,6 +316,9 @@ export function FormulaNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
         )}
         <span
           className={`port-out${highlightedPorts.has(formula.output.name) ? ' port-highlighted' : ''}`}
+          {...(formula.output.description === undefined
+            ? {}
+            : { title: localize(formula.output.description, locale) })}
           onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: formula.output.name })}
           onMouseLeave={() => data?.onPortHover?.()}
         >
