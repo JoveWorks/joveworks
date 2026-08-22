@@ -285,7 +285,7 @@ describe('piecewise formulas', () => {
       { kind: 'spectrum', name: 'value', unit: 'N' },
     ],
     expression: 'sum(value)',
-    piecewise: { kind: 'cumulativeStep', axis: 'z', breakpoints: 'position', values: 'value' },
+    piecewise: { kind: 'cumulativeStep', axis: 'z', breakpoints: ['position'], values: ['value'] },
     description: { en: 'An invented running-total-vs-position formula.' },
     status: 'unverified',
   };
@@ -318,7 +318,7 @@ describe('piecewise formulas', () => {
   it('rejects breakpoints whose dimension does not match the axis', () => {
     expect(() =>
       parseFormula(
-        { ...running, piecewise: { ...(running['piecewise'] as JsonObject), breakpoints: 'value' } },
+        { ...running, piecewise: { ...(running['piecewise'] as JsonObject), breakpoints: ['value'] } },
         '',
       ),
     ).toThrow(/must share 'z''s dimension/);
@@ -327,7 +327,7 @@ describe('piecewise formulas', () => {
   it("rejects values whose dimension does not match the output's", () => {
     expect(() =>
       parseFormula(
-        { ...running, piecewise: { ...(running['piecewise'] as JsonObject), values: 'position' } },
+        { ...running, piecewise: { ...(running['piecewise'] as JsonObject), values: ['position'] } },
         '',
       ),
     ).toThrow(/must share the output's dimension/);
@@ -340,5 +340,56 @@ describe('piecewise formulas', () => {
         '',
       ),
     ).toThrow(/needs a concrete numeric output/);
+  });
+
+  it('accepts a plain numeric port alongside a spectrum in the same breakpoints/values list', () => {
+    const withExtra: JsonObject = {
+      ...running,
+      inputs: [
+        ...(running['inputs'] as JsonObject[]),
+        { kind: 'numeric', name: 'extraPosition', unit: 'mm', default: 0 },
+        { kind: 'numeric', name: 'extraValue', unit: 'N', default: 0 },
+      ],
+      piecewise: { kind: 'cumulativeStep', axis: 'z', breakpoints: ['position', 'extraPosition'], values: ['value', 'extraValue'] },
+    };
+    expect(serializeFormula(parseFormula(withExtra, ''))['piecewise']).toEqual(withExtra['piecewise']);
+  });
+
+  it('rejects an empty breakpoints/values list', () => {
+    expect(() =>
+      parseFormula({ ...running, piecewise: { ...(running['piecewise'] as JsonObject), breakpoints: [] } }, ''),
+    ).toThrow(/is empty/);
+  });
+
+  it('rejects a name in breakpoints/values that is not a declared input', () => {
+    expect(() =>
+      parseFormula({ ...running, piecewise: { ...(running['piecewise'] as JsonObject), values: ['nope'] } }, ''),
+    ).toThrow(/'nope' must be a declared spectrum or numeric input/);
+  });
+
+  it('round-trips the cumulativeMoment kind', () => {
+    // Nmm out, N in, mm axis: the output is `values`' dimension times `axis`'s.
+    const moment: JsonObject = {
+      ...running,
+      output: { kind: 'numeric', name: 'y', unit: 'Nmm' },
+      piecewise: { kind: 'cumulativeMoment', axis: 'z', breakpoints: ['position'], values: ['value'] },
+    };
+    expect(serializeFormula(parseFormula(moment, ''))['piecewise']).toEqual(moment['piecewise']);
+  });
+
+  it("rejects cumulativeMoment values whose dimension isn't the output's divided by the axis's", () => {
+    expect(() =>
+      parseFormula(
+        {
+          ...running,
+          // Nmm output ÷ mm axis wants an N-dimensioned `values` port; `position`
+          // is mm, not N.
+          output: { kind: 'numeric', name: 'y', unit: 'Nmm' },
+          piecewise: { kind: 'cumulativeMoment', axis: 'z', breakpoints: ['position'], values: ['position'] },
+          expression: 'sum(position) * z',
+        },
+        '',
+      ),
+    ).toThrow(/must have the output's dimension divided by 'z''s/);
   });
 });

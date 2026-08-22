@@ -637,46 +637,59 @@ function evaluateFormula(
     if (isGenericDimension(formula.output.unit)) {
       throw new KernelError('a piecewise output must declare a concrete unit', nodeId);
     }
-    const { axis, breakpoints, values: valuesName } = formula.piecewise;
+    const { kind: piecewiseKind, axis, breakpoints, values: valueNames } = formula.piecewise;
     const axisEntry = regularInputs.find(({ port }) => port.name === axis);
     if (axisEntry === undefined || axisEntry.value.kind !== 'numeric') {
       throw new KernelError(`piecewise axis '${axis}' must be a numeric input`, nodeId);
     }
     const axisRead = reader(axisEntry.value, axes);
 
+    // Each declared name contributes one reader per cell — a spectrum port's
+    // every value (`fixed`, an authored list, or `reader` if it is itself
+    // wired to something swept) or a plain numeric port's single value —
+    // concatenated across names in the order `formula.piecewise` lists them,
+    // never by wire order (see the schema docstring: a support's reaction
+    // joins a load spectrum this way, as one more single-valued entry).
     type EdgeContribution =
       | { readonly kind: 'fixed'; readonly values: readonly number[] }
       | { readonly kind: 'reader'; readonly read: (cell: number) => number };
-    const edgeContributions = (name: string): readonly EdgeContribution[] => {
-      const entry = spectrumInputs.find(({ port }) => port.name === name);
-      if (entry === undefined) {
-        throw new KernelError(`piecewise input '${name}' must be a declared spectrum port`, nodeId);
-      }
-      return entry.edgeValues.map((value): EdgeContribution =>
-        value.kind === 'spectrum'
-          ? { kind: 'fixed', values: value.values }
-          : { kind: 'reader', read: reader(value, axes) },
-      );
-    };
-    const breakpointEdges = edgeContributions(breakpoints);
-    const valueEdges = edgeContributions(valuesName);
+    const namedContributions = (names: readonly string[]): readonly EdgeContribution[] =>
+      names.flatMap((name): readonly EdgeContribution[] => {
+        const spectrumEntry = spectrumInputs.find(({ port }) => port.name === name);
+        if (spectrumEntry !== undefined) {
+          return spectrumEntry.edgeValues.map((value): EdgeContribution =>
+            value.kind === 'spectrum'
+              ? { kind: 'fixed', values: value.values }
+              : { kind: 'reader', read: reader(value, axes) },
+          );
+        }
+        const regularEntry = regularInputs.find(({ port }) => port.name === name);
+        if (regularEntry !== undefined && regularEntry.value.kind === 'numeric') {
+          return [{ kind: 'reader', read: reader(regularEntry.value, axes) }];
+        }
+        throw new KernelError(`piecewise input '${name}' must be a declared spectrum or numeric input`, nodeId);
+      });
+    const breakpointContributions = namedContributions(breakpoints);
+    const valueContributions = namedContributions(valueNames);
 
     // Closed-form at every sampled `z`, not a numeric cumulative sum over the
     // sweep — accuracy never depends on how densely `z` happens to be swept.
     const data = new Array<number>(cells);
     for (let cell = 0; cell < cells; cell += 1) {
       const z = axisRead(cell);
-      const positions = breakpointEdges.flatMap((edge) => (edge.kind === 'fixed' ? edge.values : [edge.read(cell)]));
-      const magnitudes = valueEdges.flatMap((edge) => (edge.kind === 'fixed' ? edge.values : [edge.read(cell)]));
+      const positions = breakpointContributions.flatMap((edge) => (edge.kind === 'fixed' ? edge.values : [edge.read(cell)]));
+      const magnitudes = valueContributions.flatMap((edge) => (edge.kind === 'fixed' ? edge.values : [edge.read(cell)]));
       if (positions.length !== magnitudes.length) {
         throw new KernelError(
-          `'${breakpoints}' has ${positions.length} values but '${valuesName}' has ${magnitudes.length}`,
+          `'${breakpoints.join('+')}' has ${positions.length} values but '${valueNames.join('+')}' has ${magnitudes.length}`,
           nodeId,
         );
       }
       let total = 0;
       for (let i = 0; i < positions.length; i += 1) {
-        if ((positions[i] as number) <= z) total += magnitudes[i] as number;
+        const position = positions[i] as number;
+        if (position > z) continue;
+        total += piecewiseKind === 'cumulativeMoment' ? (magnitudes[i] as number) * (z - position) : (magnitudes[i] as number);
       }
       data[cell] = total;
     }

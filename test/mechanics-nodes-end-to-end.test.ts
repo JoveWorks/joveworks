@@ -20,20 +20,29 @@ import {
   type GraphDocument,
   type JsonObject,
 } from '@joveworks/schema';
-import { MECHANICS_CATALOGUE, mechanicsCatalogueJson } from '@joveworks/nodes';
+import { baseCatalogueJson, arrayCatalogueJson, MECHANICS_CATALOGUE, mechanicsCatalogueJson } from '@joveworks/nodes';
 import { evaluateDocument, valueAt, type NumericSeries } from '@joveworks/kernel';
 
 const MECHANICS: Catalogue = loadCatalogue(mechanicsCatalogueJson());
+const BASE: Catalogue = loadCatalogue(baseCatalogueJson());
+const ARRAY: Catalogue = loadCatalogue(arrayCatalogueJson());
 const catalogues = [MECHANICS];
+const withBaseNodes = [MECHANICS, BASE, ARRAY];
 
-const node = (id: string, operation: string): JsonObject => {
-  const formula = MECHANICS.formulas.find((entry) => entry.id === operation);
-  if (formula === undefined) throw new Error(`no mechanics node '${operation}'`);
+const node = (
+  id: string,
+  operation: string,
+  from: readonly Catalogue[] = [MECHANICS],
+  extra: JsonObject = {},
+): JsonObject => {
+  const formula = from.flatMap((catalogue) => catalogue.formulas).find((entry) => entry.id === operation);
+  if (formula === undefined) throw new Error(`no node '${operation}'`);
   return {
     kind: 'formula',
     id,
     position: { x: 0, y: 0 },
     formula: serializeFormulaRef(formulaRef(formula)),
+    ...extra,
   };
 };
 
@@ -88,6 +97,86 @@ describe('the mechanics node library through the kernel', () => {
     );
     expect(numeric(valueAt(evaluateDocument(document, catalogues), 'T', 'T')).data).toEqual([
       500, 500, 0, 0,
+    ]);
+  });
+
+  it("solves both a 2-support beam's reactions from shaftMoment and base nodes, then folds them into physically-correct shear/moment diagrams", () => {
+    // A single downward point load of 1000 N (F = −1000, this file's sign
+    // convention), 80 mm from support A, on a 200 mm span (A at 0, B at 200).
+    // Standard simply-supported-beam result: Ra = P·(L−x)/L = 600 N,
+    // Rb = P·x/L = 400 N, both upward (positive) — worked by hand, not from
+    // a book, since this is generic statics rather than R&M content.
+    const nodes: JsonObject[] = [
+      input('position', { kind: 'spectrum', values: [80], unit: 'mm' }),
+      input('force', { kind: 'spectrum', values: [-1000], unit: 'N' }),
+      input('supportA', { kind: 'scalar', value: 0, unit: 'mm' }),
+      input('supportB', { kind: 'scalar', value: 200, unit: 'mm' }),
+
+      // The moment of the applied load alone about support B, with no
+      // reactions wired in — the quantity a reaction is solved from.
+      node('momentAtB', 'shaftMoment', catalogues, {
+        inputValues: { z: { kind: 'scalar', value: 200, unit: 'mm' } },
+      }),
+      node('span', 'subtract', withBaseNodes),
+      node('reactionARaw', 'divide', withBaseNodes),
+      node('reactionA', 'negate', withBaseNodes),
+      node('loadTotal', 'sum', withBaseNodes),
+      node('negLoadTotal', 'negate', withBaseNodes),
+      node('reactionB', 'subtract', withBaseNodes),
+
+      // The real diagrams: both supports' reactions folded in alongside the
+      // applied load, swept across and beyond the span.
+      node('shear', 'shaftShear'),
+      node('moment', 'shaftMoment'),
+      input('z', { kind: 'list', values: [0, 50, 80, 150, 200, 250], unit: 'mm' }),
+    ];
+    const edges: JsonObject[] = [
+      wire('position.value', 'momentAtB.position'),
+      wire('force.value', 'momentAtB.force'),
+
+      wire('supportB.value', 'span.a'),
+      wire('supportA.value', 'span.b'),
+      wire('momentAtB.M', 'reactionARaw.a'),
+      wire('span.difference', 'reactionARaw.b'),
+      wire('reactionARaw.quotient', 'reactionA.a'),
+
+      wire('force.value', 'loadTotal.xs'),
+      wire('loadTotal.total', 'negLoadTotal.a'),
+      wire('negLoadTotal.negated', 'reactionB.a'),
+      wire('reactionA.negated', 'reactionB.b'),
+
+      wire('z.value', 'shear.z'),
+      wire('position.value', 'shear.position'),
+      wire('force.value', 'shear.force'),
+      wire('supportA.value', 'shear.supportA'),
+      wire('reactionA.negated', 'shear.reactionA'),
+      wire('supportB.value', 'shear.supportB'),
+      wire('reactionB.difference', 'shear.reactionB'),
+
+      wire('z.value', 'moment.z'),
+      wire('position.value', 'moment.position'),
+      wire('force.value', 'moment.force'),
+      wire('supportA.value', 'moment.supportA'),
+      wire('reactionA.negated', 'moment.reactionA'),
+      wire('supportB.value', 'moment.supportB'),
+      wire('reactionB.difference', 'moment.reactionB'),
+    ];
+    const document = graph(nodes, edges);
+    const evaluation = evaluateDocument(document, withBaseNodes);
+
+    expect(numeric(valueAt(evaluation, 'reactionA', 'negated')).data[0]).toBeCloseTo(600);
+    expect(numeric(valueAt(evaluation, 'reactionB', 'difference')).data[0]).toBeCloseTo(400);
+
+    // z = [0, 50, 80, 150, 200, 250]. A breakpoint counts "at or before" z,
+    // so the load's own −1000 N already applies at z = 80 itself: Ra alone
+    // (600 N) up to but not through 80, Ra+F (−400 N) from 80 up to 200,
+    // back to 0 at/after support B.
+    expect(numeric(valueAt(evaluation, 'shear', 'V')).data).toEqual([600, 600, -400, -400, 0, 0]);
+
+    // Zero at support A (z=0) and support B (z=200); 48 000 N·mm under the
+    // load (Ra·80); 20 000 N·mm at z=150 (Ra·150 − 1000·70).
+    expect(numeric(valueAt(evaluation, 'moment', 'M')).data).toEqual([
+      0, 30000, 48000, 20000, 0, 0,
     ]);
   });
 });

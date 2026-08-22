@@ -44,7 +44,7 @@ import {
   type Port,
 } from './port.js';
 import { readSchemaVersion } from './version.js';
-import { dimensionsEqual, genericVariables, isGenericDimension } from '@joveworks/units';
+import { dimensionsEqual, divideDimensions, genericVariables, isGenericDimension, type Dimension } from '@joveworks/units';
 
 /** The dimension variables a port mentions — none, unless it is generic. */
 function portVariables(port: Port): readonly string[] {
@@ -83,22 +83,40 @@ export interface FormulaLookup {
 
 /**
  * `kind`s of piecewise evaluator a formula may declare instead of (never
- * alongside) `lookup`. `cumulativeStep` is the shaft-diagram primitive: a
- * running total of `values`' entries whose matching `breakpoints' entry is at
- * or before `axis`'s current value — a torque diagram directly, and the
- * building block a shear diagram's point-load contribution is made from.
+ * alongside) `lookup`:
+ *
+ * - `cumulativeStep` — a running total of `values`' entries whose matching
+ *   `breakpoints` entry is at or before `axis`'s current value. A shear or
+ *   torque diagram directly.
+ * - `cumulativeMoment` — the same running total, each entry weighted by its
+ *   distance from `axis`'s current value: `Σ value·(axis − breakpoint)` over
+ *   breakpoints at or before `axis`. A bending-moment diagram directly —
+ *   the closed-form integral of `cumulativeStep`'s result — and, evaluated
+ *   at a support position instead of swept, the moment used to solve that
+ *   support's reaction (ordinary `divide`/`subtract` base nodes take it
+ *   from there; no third kind is needed for reactions).
+ *
+ * `breakpoints` and `values` each name one or more declared input ports,
+ * concatenated in the order listed — not paired by wire order, which a
+ * student could wire inconsistently between the two ports. This is what
+ * lets a diagram formula take a spectrum of applied loads *and* a support's
+ * separately-computed reaction as one more, single-valued entry: e.g.
+ * `breakpoints: ['position', 'supportA']`, `values: ['force', 'reactionA']`
+ * pairs `position`/`force` (a spectrum, many values) with `supportA`/
+ * `reactionA` (plain numeric ports, one value each) by declared position,
+ * not by however a student happened to wire them.
  */
-export const PIECEWISE_KINDS = ['cumulativeStep'] as const;
+export const PIECEWISE_KINDS = ['cumulativeStep', 'cumulativeMoment'] as const;
 export type PiecewiseKind = (typeof PIECEWISE_KINDS)[number];
 
 export interface FormulaPiecewise {
   readonly kind: PiecewiseKind;
   /** Name of the declared numeric input evaluated against each breakpoint. */
   readonly axis: string;
-  /** Name of the declared spectrum input holding each breakpoint's position, in `axis`'s dimension. */
-  readonly breakpoints: string;
-  /** Name of the declared spectrum input holding the value added at each breakpoint, in the output's dimension. */
-  readonly values: string;
+  /** Declared spectrum/numeric input(s) holding each breakpoint's position, in `axis`'s dimension. */
+  readonly breakpoints: readonly string[];
+  /** Declared spectrum/numeric input(s) holding the value added at each breakpoint, in the output's dimension. */
+  readonly values: readonly string[];
 }
 
 export interface Formula {
@@ -175,14 +193,20 @@ function serializeLookup(lookup: FormulaLookup): JsonObject {
   };
 }
 
+function parsePortNameList(value: JsonValue, path: string): readonly string[] {
+  const names = readArray(value, path).map((entry, i) => readName(entry, `${path}[${i}]`));
+  if (names.length === 0) fail(path, 'is empty');
+  return names;
+}
+
 function parsePiecewise(value: JsonValue, path: string): FormulaPiecewise {
   const object = readObject(value, path);
   const kind = readEnum(required(object, 'kind', path), join(path, 'kind'), PIECEWISE_KINDS);
   return {
     kind,
     axis: readName(required(object, 'axis', path), join(path, 'axis')),
-    breakpoints: readName(required(object, 'breakpoints', path), join(path, 'breakpoints')),
-    values: readName(required(object, 'values', path), join(path, 'values')),
+    breakpoints: parsePortNameList(required(object, 'breakpoints', path), join(path, 'breakpoints')),
+    values: parsePortNameList(required(object, 'values', path), join(path, 'values')),
   };
 }
 
@@ -190,8 +214,8 @@ function serializePiecewise(piecewise: FormulaPiecewise): JsonObject {
   return {
     kind: piecewise.kind,
     axis: piecewise.axis,
-    breakpoints: piecewise.breakpoints,
-    values: piecewise.values,
+    breakpoints: [...piecewise.breakpoints],
+    values: [...piecewise.values],
   };
 }
 
@@ -283,20 +307,37 @@ export function parseFormula(value: JsonValue, path: string): Formula {
     if (axisPort === undefined || axisPort.kind !== 'numeric' || axisDimension === undefined) {
       fail(join(path, 'piecewise.axis'), `'${piecewise.axis}' must be a declared input with a concrete numeric unit`);
     }
-    const breakpointsPort = inputs.find((candidate) => candidate.name === piecewise.breakpoints);
-    const breakpointsDimension = breakpointsPort === undefined ? undefined : portDimension(breakpointsPort);
-    if (breakpointsPort === undefined || breakpointsPort.kind !== 'spectrum' || breakpointsDimension === undefined) {
-      fail(join(path, 'piecewise.breakpoints'), `'${piecewise.breakpoints}' must be a declared spectrum input with a concrete unit`);
-    } else if (axisDimension !== undefined && !dimensionsEqual(axisDimension, breakpointsDimension)) {
-      fail(join(path, 'piecewise.breakpoints'), `must share '${piecewise.axis}''s dimension`);
-    }
-    const valuesPort = inputs.find((candidate) => candidate.name === piecewise.values);
-    const valuesDimension = valuesPort === undefined ? undefined : portDimension(valuesPort);
-    if (valuesPort === undefined || valuesPort.kind !== 'spectrum' || valuesDimension === undefined) {
-      fail(join(path, 'piecewise.values'), `'${piecewise.values}' must be a declared spectrum input with a concrete unit`);
-    } else if (outputDimension !== undefined && !dimensionsEqual(outputDimension, valuesDimension)) {
-      fail(join(path, 'piecewise.values'), "must share the output's dimension");
-    }
+    // Each entry is a spectrum or a plain numeric port — concatenated in the
+    // order listed to build the full breakpoint/value arrays, so a support's
+    // separately-computed reaction can join a load spectrum as one more
+    // single-valued entry without depending on wire order (see the
+    // `FormulaPiecewise` docstring).
+    const checkNames = (names: readonly string[], namesPath: string, wantDimension: Dimension | undefined, mismatch: string): void => {
+      for (const [i, name] of names.entries()) {
+        const entryPath = `${namesPath}[${i}]`;
+        const port = inputs.find((candidate) => candidate.name === name);
+        const dimension = port === undefined ? undefined : portDimension(port);
+        if (port === undefined || (port.kind !== 'spectrum' && port.kind !== 'numeric') || dimension === undefined) {
+          fail(entryPath, `'${name}' must be a declared spectrum or numeric input with a concrete unit`);
+        } else if (wantDimension !== undefined && !dimensionsEqual(wantDimension, dimension)) {
+          fail(entryPath, mismatch);
+        }
+      }
+    };
+    checkNames(piecewise.breakpoints, join(path, 'piecewise.breakpoints'), axisDimension, `must share '${piecewise.axis}''s dimension`);
+    // `cumulativeStep`'s output is a plain total of `values`, so they share a
+    // dimension. `cumulativeMoment`'s output is `Σ value·(axis − breakpoint)`,
+    // so `values` carries the output's dimension divided by `axis`'s instead
+    // — force in, force·length out, for a breakpoint measured in length.
+    const valuesDimension =
+      piecewise.kind === 'cumulativeMoment' && outputDimension !== undefined && axisDimension !== undefined
+        ? divideDimensions(outputDimension, axisDimension)
+        : outputDimension;
+    const valuesMismatch =
+      piecewise.kind === 'cumulativeMoment'
+        ? `must have the output's dimension divided by '${piecewise.axis}''s`
+        : "must share the output's dimension";
+    checkNames(piecewise.values, join(path, 'piecewise.values'), valuesDimension, valuesMismatch);
   }
 
   const status = readEnum(required(object, 'status', path), join(path, 'status'), FORMULA_STATUSES);

@@ -185,9 +185,14 @@ describe('piecewise-backed formulas', () => {
         { kind: 'numeric', name: 'z', unit: 'mm', default: 0 },
         { kind: 'spectrum', name: 'position', unit: 'mm' },
         { kind: 'spectrum', name: 'value', unit: 'N' },
+        { kind: 'numeric', name: 'extraPosition', unit: 'mm', default: 1_000_000 },
+        { kind: 'numeric', name: 'extraValue', unit: 'N', default: 0 },
       ],
       expression: 'sum(value)',
-      piecewise: { kind: 'cumulativeStep', axis: 'z', breakpoints: 'position', values: 'value' },
+      piecewise: {
+        kind: 'cumulativeStep', axis: 'z',
+        breakpoints: ['position', 'extraPosition'], values: ['value', 'extraValue'],
+      },
       description: 'Invented running-total-vs-position formula.', status: 'unverified',
     },
   ]);
@@ -234,7 +239,61 @@ describe('piecewise-backed formulas', () => {
       ],
       [wire('position.value', 'step.position'), wire('value.value', 'step.value')],
     );
-    expect(() => evaluateDocument(document, [stepCatalogue])).toThrow(/has 2 values but/u);
+    // Plus the fixture's own extraPosition/extraValue: 2+1 = 3 breakpoints, 3+1 = 4 values.
+    expect(() => evaluateDocument(document, [stepCatalogue])).toThrow(/has 3 values but 'value\+extraValue' has 4/u);
+  });
+
+  it('joins a plain numeric port to a spectrum in the same list, by declared order rather than wire order', () => {
+    const document = documentOf(
+      [
+        input('position', { kind: 'spectrum', values: [10, 30], unit: 'mm' }),
+        input('value', { kind: 'spectrum', values: [100, 200], unit: 'N' }),
+        formulaNode('step', stepRef, {
+          inputValues: {
+            z: { kind: 'scalar', value: 50, unit: 'mm' },
+            extraPosition: { kind: 'scalar', value: 20, unit: 'mm' },
+            extraValue: { kind: 'scalar', value: 1000, unit: 'N' },
+          },
+        }),
+      ],
+      [wire('position.value', 'step.position'), wire('value.value', 'step.value')],
+    );
+    // 10, 30 and 20 mm are all at or before z = 50 mm: 100 + 200 + 1000.
+    expect(numeric(valueAt(evaluateDocument(document, [stepCatalogue]), 'step', 'y')).data).toEqual([1300]);
+  });
+
+  const momentCatalogue = catalogueOf([
+    {
+      id: 'runningMoment', version: 1,
+      output: { kind: 'numeric', name: 'y', unit: 'Nmm' },
+      inputs: [
+        { kind: 'numeric', name: 'z', unit: 'mm', default: 0 },
+        { kind: 'spectrum', name: 'position', unit: 'mm' },
+        { kind: 'spectrum', name: 'value', unit: 'N' },
+      ],
+      expression: 'sum(value) * z',
+      piecewise: { kind: 'cumulativeMoment', axis: 'z', breakpoints: ['position'], values: ['value'] },
+      description: 'Invented running-moment-vs-position formula.', status: 'unverified',
+    },
+  ]);
+  const momentRef = refTo('runningMoment', momentCatalogue);
+
+  it('weighs each breakpoint at or before z by its distance from z', () => {
+    const document = documentOf(
+      [
+        input('position', { kind: 'spectrum', values: [10, 30, 50], unit: 'mm' }),
+        input('value', { kind: 'spectrum', values: [100, 200, 300], unit: 'N' }),
+        input('z', { kind: 'list', values: [0, 40, 60], unit: 'mm' }),
+        formulaNode('moment', momentRef),
+      ],
+      [wire('position.value', 'moment.position'), wire('value.value', 'moment.value'), wire('z.value', 'moment.z')],
+    );
+    // z = 0: no breakpoint at or before 0 → 0.
+    // z = 40: 100·(40−10) + 200·(40−30) = 3000 + 2000 = 5000.
+    // z = 60: 100·50 + 200·30 + 300·10 = 5000 + 6000 + 3000 = 14000.
+    expect(numeric(valueAt(evaluateDocument(document, [momentCatalogue]), 'moment', 'y')).data).toEqual([
+      0, 5000, 14000,
+    ]);
   });
 });
 

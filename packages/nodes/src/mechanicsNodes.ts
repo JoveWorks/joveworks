@@ -12,9 +12,30 @@
  * equation display and for the schema's own bookkeeping.
  */
 
-import type { Formula } from '@joveworks/schema';
+import type { Formula, Port } from '@joveworks/schema';
 import { parseUnit } from '@joveworks/units';
 import { text } from './draft.js';
+
+/**
+ * A support's position and reaction, as two more single-valued breakpoint
+ * entries alongside a diagram's load spectrum — left unwired (both default
+ * to 0) for a diagram that only shows the applied loads, such as the one a
+ * reaction is itself solved from. `FormulaPiecewise`'s docstring is why this
+ * is two named ports per support rather than one more wire into `position`/
+ * `force`: the pairing is declared once, here, not left to wire order.
+ */
+function supportPorts(letter: 'A' | 'B'): readonly Port[] {
+  return [
+    {
+      kind: 'numeric', name: `support${letter}`, unit: parseUnit('mm'), default: 0,
+      description: text(`Position of support ${letter} — leave unwired if this diagram excludes reactions`),
+    },
+    {
+      kind: 'numeric', name: `reaction${letter}`, unit: parseUnit('N'), default: 0,
+      description: text(`Support ${letter}'s reaction, signed — leave unwired if this diagram excludes reactions`),
+    },
+  ];
+}
 
 const shaftTorque: Formula = {
   id: 'shaftTorque',
@@ -32,8 +53,64 @@ const shaftTorque: Formula = {
     { kind: 'spectrum', name: 'torque', unit: parseUnit('Nmm'), description: text('Torque applied at each position, signed') },
   ],
   expression: 'sum(torque)',
-  piecewise: { kind: 'cumulativeStep', axis: 'z', breakpoints: 'position', values: 'torque' },
+  piecewise: { kind: 'cumulativeStep', axis: 'z', breakpoints: ['position'], values: ['torque'] },
   status: 'unverified',
 };
 
-export const MECHANICS_OPERATIONS: readonly Formula[] = [shaftTorque];
+const shaftShear: Formula = {
+  id: 'shaftShear',
+  version: 1,
+  label: text('Shear diagram'),
+  description: text(
+    'Shear force along a shaft at a given position, V(z) — the running total of every ' +
+      'transverse point load, plus either support’s reaction once wired, at or before that ' +
+      'position. Apply once per transverse plane (x, y).',
+  ),
+  output: { kind: 'numeric', name: 'V', unit: parseUnit('N'), description: text('Shear at z — V(z)') },
+  inputs: [
+    { kind: 'numeric', name: 'z', unit: parseUnit('mm'), default: 0, description: text('Position along the shaft') },
+    { kind: 'spectrum', name: 'position', unit: parseUnit('mm'), description: text('Position of each applied point load') },
+    { kind: 'spectrum', name: 'force', unit: parseUnit('N'), description: text('Each point load, signed') },
+    ...supportPorts('A'),
+    ...supportPorts('B'),
+  ],
+  expression: 'sum(force)',
+  piecewise: {
+    kind: 'cumulativeStep', axis: 'z',
+    breakpoints: ['position', 'supportA', 'supportB'],
+    values: ['force', 'reactionA', 'reactionB'],
+  },
+  status: 'unverified',
+};
+
+const shaftMoment: Formula = {
+  id: 'shaftMoment',
+  version: 1,
+  label: text('Bending moment diagram'),
+  description: text(
+    'Bending moment along a shaft at a given position, M(z) — the moment about z of every ' +
+      'transverse point load, plus either support’s reaction once wired, at or before that ' +
+      "position, M(z) = Σ force·(z − position). The closed-form integral of shaftShear's " +
+      "result. Leave both supports unwired and evaluate at a support's own position instead " +
+      "of sweeping z to get the moment that support's reaction is solved from (divide by the " +
+      'support span, negate, then subtract from the load total for the other support — ' +
+      'ordinary base nodes, not a third piecewise kind).',
+  ),
+  output: { kind: 'numeric', name: 'M', unit: parseUnit('Nmm'), description: text('Moment at z — M(z)') },
+  inputs: [
+    { kind: 'numeric', name: 'z', unit: parseUnit('mm'), default: 0, description: text('Position along the shaft') },
+    { kind: 'spectrum', name: 'position', unit: parseUnit('mm'), description: text('Position of each applied point load') },
+    { kind: 'spectrum', name: 'force', unit: parseUnit('N'), description: text('Each point load, signed') },
+    ...supportPorts('A'),
+    ...supportPorts('B'),
+  ],
+  expression: 'sum(force) * z',
+  piecewise: {
+    kind: 'cumulativeMoment', axis: 'z',
+    breakpoints: ['position', 'supportA', 'supportB'],
+    values: ['force', 'reactionA', 'reactionB'],
+  },
+  status: 'unverified',
+};
+
+export const MECHANICS_OPERATIONS: readonly Formula[] = [shaftTorque, shaftShear, shaftMoment];
