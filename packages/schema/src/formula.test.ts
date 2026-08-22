@@ -149,6 +149,19 @@ describe('references by id, version and hash', () => {
     expect(matchRef(ref, { ...formula, id: 'demo.other' })).toBe('missing');
   });
 
+  it('memoizes the hash per formula object — a lookup formula’s table is not re-serialized on every call', () => {
+    const formula = parse();
+    const first = formulaHash(formula);
+    // Real code never mutates a `Formula` in place — a changed catalogue is
+    // always a fresh object — so this in-place edit exists only to prove the
+    // second call below reads the cache rather than re-hashing: an
+    // un-memoized `formulaHash` would notice this and return a different
+    // string, exactly as `matchRef`'s own `edited` fixture above expects it
+    // to for a genuinely new object.
+    (formula as { expression: string }).expression = 'a*b - c';
+    expect(formulaHash(formula)).toBe(first);
+  });
+
   it('does not change a reference when only translated display text changes', () => {
     const formula = parse();
     const translated: Formula = {
