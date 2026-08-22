@@ -5,9 +5,11 @@
  * **Only one of the three kinds of base node is catalogue content**, and that
  * turned out to be the useful finding of this step:
  *
- * - **Operations** — arithmetic, the function whitelist, `sum`/`prod` — are
- *   `Formula` records, and live here. They are the palette's third source
- *   alongside the R&M catalogues.
+ * - **Operations** — arithmetic and the function whitelist — are `Formula`
+ *   records, and live here as the Base nodes catalogue. Reductions over a
+ *   whole series (`sum`, `mean`, `median`, …) are also `Formula` records but
+ *   ship as their own Array nodes catalogue (`arrayNodes.ts`). Both are the
+ *   palette's sources alongside the R&M catalogues.
  * - **Literal inputs** are *not* records. An input node carries a `ValueSpec`
  *   directly (`schema/value.ts`): a scalar, a categorical choice, a spectrum, or
  *   a range. There is no formula behind `250 kW`, so a `literal` catalogue entry
@@ -27,7 +29,15 @@
  */
 
 export { OPERATIONS } from './operations.js';
-export { BASE_CATALOGUE, BASE_CATALOGUE_ID, baseCatalogueJson } from './catalogue.js';
+export { ARRAY_OPERATIONS } from './arrayNodes.js';
+export {
+  ARRAY_CATALOGUE,
+  ARRAY_CATALOGUE_ID,
+  arrayCatalogueJson,
+  BASE_CATALOGUE,
+  BASE_CATALOGUE_ID,
+  baseCatalogueJson,
+} from './catalogue.js';
 export {
   ISO286_FORMULAS,
   ISO286_GRADES,

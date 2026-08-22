@@ -17,8 +17,10 @@ import {
 } from '@joveworks/schema';
 
 import { OPERATIONS } from './operations.js';
+import { ARRAY_OPERATIONS } from './arrayNodes.js';
 
 export const BASE_CATALOGUE_ID = 'base';
+export const ARRAY_CATALOGUE_ID = 'array';
 
 /**
  * The library as authored.
@@ -35,8 +37,17 @@ export const BASE_CATALOGUE: Catalogue = {
   formulas: OPERATIONS,
 };
 
+/** `arrayNodes.ts`'s reductions, as their own catalogue — see that file's docstring for why. */
+export const ARRAY_CATALOGUE: Catalogue = {
+  schemaVersion: SCHEMA_VERSION,
+  id: ARRAY_CATALOGUE_ID,
+  name: { en: 'Array nodes', nl: 'Arrayknooppunten' },
+  restricted: false,
+  formulas: ARRAY_OPERATIONS,
+};
+
 /**
- * The catalogue as a file, having been through the parser.
+ * A catalogue as a file, having been through the parser.
  *
  * The round trip is not ceremony: it is what makes an authored record and a
  * loaded record the same object, so a base node cannot quietly rely on something
@@ -44,4 +55,8 @@ export const BASE_CATALOGUE: Catalogue = {
  */
 export function baseCatalogueJson(): string {
   return saveCatalogue(parseCatalogue(serializeCatalogue(BASE_CATALOGUE)));
+}
+
+export function arrayCatalogueJson(): string {
+  return saveCatalogue(parseCatalogue(serializeCatalogue(ARRAY_CATALOGUE)));
 }

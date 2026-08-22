@@ -51,7 +51,7 @@ import {
   type RecentDocument,
 } from './io/recentDocuments';
 import { analyse } from './model/analysis';
-import { bundledCatalogues, baseCatalogue, lockedCatalogues, withCatalogue } from './model/catalogues';
+import { arrayCatalogue, bundledCatalogues, baseCatalogue, lockedCatalogues, withCatalogue } from './model/catalogues';
 import { groupIntoSection } from './model/document';
 import { autoArrange } from './model/layout';
 import type { NodeSizes } from './model/node-sizes';
@@ -130,13 +130,13 @@ import { phrase, ui } from './i18n';
 import { CourseMaterialViewer } from './viewer/CourseMaterialViewer';
 
 /**
- * The base catalogue, the bundled public catalogue, and whatever was cached
- * from a previous session. Base nodes and the public catalogue both ship
- * `restricted: false` — neither needs a student to import it by hand the way
- * an R&M catalogue does, so both are always present.
+ * The base catalogue, the array-node catalogue, the bundled public
+ * catalogues, and whatever was cached from a previous session. All of these
+ * ship `restricted: false` — none of them needs a student to import it by
+ * hand the way an R&M catalogue does, so all are always present.
  */
 function initialCatalogues(): readonly Catalogue[] {
-  let catalogues: readonly Catalogue[] = [baseCatalogue(), ...bundledCatalogues()];
+  let catalogues: readonly Catalogue[] = [baseCatalogue(), arrayCatalogue(), ...bundledCatalogues()];
   for (const text of cachedCatalogueTexts()) {
     try {
       catalogues = withCatalogue(catalogues, loadCatalogue(text));

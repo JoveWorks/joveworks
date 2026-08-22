@@ -1,6 +1,5 @@
 /**
- * The base node library's operations: arithmetic, the function whitelist,
- * and the two reductions.
+ * The base node library's operations: arithmetic and the function whitelist.
  *
  * Every one of these is an ordinary `Formula` record. That is the point —
  * the palette has one kind of entry, a graph references a base node exactly as
@@ -8,7 +7,10 @@
  * evaluation path rather than two.
  *
  * **Nothing here is textbook content.** These are the operations of arithmetic;
- * they carry no citation, and the catalogue is `restricted: false`.
+ * they carry no citation, and the catalogue is `restricted: false`. Reductions
+ * over a whole series — `sum`, `mean`, `median`, and the rest — live in
+ * `arrayNodes.ts` instead, as their own catalogue: see that file's docstring
+ * for why they are not folded in here.
  *
  * Three rules govern the dimensions:
  *
@@ -23,40 +25,10 @@
  * `$A/$B`, `sqrt` is `$A**(1/2)`.
  */
 
-import type { Formula, LocalizedText, NumericPort, OutputPort, Port, SpectrumPort } from '@joveworks/schema';
-import { parseGenericDimension, parseUnit } from '@joveworks/units';
+import type { Formula } from '@joveworks/schema';
+import { parseGenericDimension } from '@joveworks/units';
+import { buildFormulas, generic, genericSpectrum, plain, text, type Draft } from './draft.js';
 import { ISO286_FORMULAS } from './iso286.js';
-
-/** A port that adopts the dimension of whatever is wired to it. */
-function text(en: string): LocalizedText {
-  return { en };
-}
-
-function generic(name: string, variable: string, description: string): NumericPort {
-  return { kind: 'numeric', name, unit: parseGenericDimension(`$${variable}`), description: text(description) };
-}
-
-/**
- * A spectrum port that adopts the dimension of whatever is wired to it.
- * Unlike a plain generic port it may be joined by more than one wire —
- * `minimum`/`maximum` are the two base nodes that need it.
- */
-function genericSpectrum(name: string, variable: string, description: string): SpectrumPort {
-  return { kind: 'spectrum', name, unit: parseGenericDimension(`$${variable}`), description: text(description) };
-}
-
-/** A port with a fixed unit. `''` is dimensionless — declared, not absent. */
-function plain(name: string, unit: string, description: string): NumericPort {
-  return { kind: 'numeric', name, unit: parseUnit(unit), description: text(description) };
-}
-
-interface Draft {
-  readonly id: string;
-  readonly description: string;
-  readonly expression: string;
-  readonly output: OutputPort;
-  readonly inputs: readonly Port[];
-}
 
 const DRAFTS: readonly Draft[] = [
   // --- arithmetic, dimension-preserving ------------------------------------
@@ -287,102 +259,8 @@ const DRAFTS: readonly Draft[] = [
     output: plain('value', '', 'π'),
     inputs: [],
   },
-
-  // --- reductions over a spectrum: sum, product, and descriptive statistics ---
-  {
-    id: 'sum',
-    description:
-      'Total of a whole series — a load spectrum consumed at once, not a swept range.',
-    expression: 'sum(xs)',
-    output: generic('total', 'A', 'Σ xᵢ'),
-    inputs: [
-      { kind: 'spectrum', name: 'xs', unit: parseGenericDimension('$A'), description: text('Series to total') },
-    ],
-  },
-  {
-    id: 'product',
-    description:
-      'Product of a whole series. Dimensionless only: the dimension of a product of n terms ' +
-      'depends on n, which is a value rather than a type.',
-    expression: 'prod(xs)',
-    output: plain('total', '', 'Π xᵢ'),
-    inputs: [{ kind: 'spectrum', name: 'xs', unit: parseUnit(''), description: text('Series to multiply') }],
-  },
-  {
-    id: 'count',
-    description: 'How many values a whole series holds. Dimensionless, whatever the series holds.',
-    expression: 'count(xs)',
-    output: plain('n', '', '|xs|'),
-    inputs: [
-      { kind: 'spectrum', name: 'xs', unit: parseGenericDimension('$A'), description: text('Series to count') },
-    ],
-  },
-  {
-    id: 'mean',
-    description: 'Average of a whole series — a load spectrum consumed at once, not a swept range.',
-    expression: 'mean(xs)',
-    output: generic('average', 'A', 'x̄'),
-    inputs: [
-      { kind: 'spectrum', name: 'xs', unit: parseGenericDimension('$A'), description: text('Series to average') },
-    ],
-  },
-  {
-    id: 'median',
-    description:
-      'Middle value of a whole series once sorted — the mean of the two middle values when ' +
-      'the series has an even length.',
-    expression: 'median(xs)',
-    output: generic('median', 'A', 'x̃'),
-    inputs: [
-      {
-        kind: 'spectrum',
-        name: 'xs',
-        unit: parseGenericDimension('$A'),
-        description: text('Series to find the median of'),
-      },
-    ],
-  },
-  {
-    id: 'standardDeviation',
-    description:
-      'Sample standard deviation of a whole series (n − 1 in the denominator — the usual ' +
-      'estimator when the series is a sample of measurements, as a tolerance is built from).',
-    expression: 'sdev(xs)',
-    output: generic('deviation', 'A', 's'),
-    inputs: [
-      {
-        kind: 'spectrum',
-        name: 'xs',
-        unit: parseGenericDimension('$A'),
-        description: text('Series to find the spread of'),
-      },
-    ],
-  },
-  {
-    id: 'valueAt',
-    description: 'The value at a given position in a whole series. 1 is the first value.',
-    expression: 'at(xs, i)',
-    output: generic('value', 'A', 'xsᵢ'),
-    inputs: [
-      {
-        kind: 'spectrum',
-        name: 'xs',
-        unit: parseGenericDimension('$A'),
-        description: text('Series to index into'),
-      },
-      plain('i', '', 'Position, counting from 1'),
-    ],
-  },
 ];
 
-/**
- * The operation records.
- *
- * Every one is `unverified`, and honestly so: no golden value
- * exercises them yet. The kernel's own tests are what will move them, and until
- * then "we wrote it, so it is right" is exactly the assumption `unverified` exists to
- * refuse.
- */
 const DUTCH_LABELS: Readonly<Record<string, string>> = {
   add: 'Optellen', subtract: 'Aftrekken', negate: 'Teken omkeren', absolute: 'Absolute waarde',
   minimum: 'Minimum', maximum: 'Maximum', multiply: 'Vermenigvuldigen', divide: 'Delen',
@@ -391,22 +269,7 @@ const DUTCH_LABELS: Readonly<Record<string, string>> = {
   sine: 'Sinus', cosine: 'Cosinus', tangent: 'Tangens', arcSine: 'Boogsinus', arcCosine: 'Boogcosinus',
   arcTangent: 'Boogtangens', hyperbolicSine: 'Hyperbolische sinus', hyperbolicCosine: 'Hyperbolische cosinus',
   hyperbolicTangent: 'Hyperbolische tangens', logarithm: 'Natuurlijke logaritme', exponential: 'Exponentieel',
-  pi: 'Pi', sum: 'Som', product: 'Product', count: 'Aantal', mean: 'Gemiddelde', median: 'Mediaan',
-  standardDeviation: 'Standaardafwijking', valueAt: 'Waarde op positie',
+  pi: 'Pi',
 };
 
-function operationLabel(id: string): LocalizedText {
-  const en = id.replace(/([A-Z])/gu, ' $1').replace(/^./u, (letter) => letter.toUpperCase());
-  return { en, nl: DUTCH_LABELS[id] ?? en };
-}
-
-export const OPERATIONS: readonly Formula[] = [...DRAFTS.map((draft) => ({
-  id: draft.id,
-  version: 1,
-  output: draft.output as Formula['output'],
-  inputs: draft.inputs,
-  expression: draft.expression,
-  label: operationLabel(draft.id),
-  description: text(draft.description),
-  status: 'unverified' as const,
-})), ...ISO286_FORMULAS];
+export const OPERATIONS: readonly Formula[] = [...buildFormulas(DRAFTS, DUTCH_LABELS), ...ISO286_FORMULAS];

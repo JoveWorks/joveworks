@@ -18,7 +18,7 @@ import { useMemo, useState, type ReactElement } from 'react';
 import { useReactFlow } from '@xyflow/react';
 
 import { parseUnit, type Unit } from '@joveworks/units';
-import { BASE_CATALOGUE_ID } from '@joveworks/nodes';
+import { ARRAY_CATALOGUE_ID, BASE_CATALOGUE_ID } from '@joveworks/nodes';
 import {
   localize,
   axes as documentAxes,
@@ -375,9 +375,13 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
   // waypoint/pack), so it gets its own fixed section rather than a spot in
   // `grouped` — placed right after the built-in section it conceptually
   // extends, ahead of whatever real catalogues (restricted or bundled) come
-  // next.
+  // next. Array nodes gets the same fixed placement, right after Base nodes,
+  // rather than falling wherever it happens to sort among real catalogues.
   const builtInGroup = grouped.find(([catalogueId]) => catalogueId === BASE_CATALOGUE_ID);
-  const otherGroups = grouped.filter(([catalogueId]) => catalogueId !== BASE_CATALOGUE_ID);
+  const arrayGroup = grouped.find(([catalogueId]) => catalogueId === ARRAY_CATALOGUE_ID);
+  const otherGroups = grouped.filter(
+    ([catalogueId]) => catalogueId !== BASE_CATALOGUE_ID && catalogueId !== ARRAY_CATALOGUE_ID,
+  );
 
   const userEquationEntry = (equation: typeof userEquations[number], keyPrefix = ''): ReactElement => (
     <li key={`${keyPrefix}${equation.id}`}>
@@ -501,6 +505,7 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
         ) : null}
 
         {builtInGroup === undefined ? null : catalogueSection(builtInGroup)}
+        {arrayGroup === undefined ? null : catalogueSection(arrayGroup)}
 
         {query.trim().length === 0 ? (
           <section>

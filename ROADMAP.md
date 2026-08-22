@@ -201,9 +201,21 @@ Implemented, for everything expressible as a pure function of the whole series:
 `count`, `mean`, `median`, `standardDeviation` (sample stdev, n − 1 — the usual
 estimator when the series is a sample, which is also what closes out item 9's
 standard-deviation node) and `valueAt` (1-based index, `at(xs, i)`) join
-`sum`/`product` in `packages/nodes/src/operations.ts`'s existing "reductions
-over a spectrum" section — no new catalogue needed, the question the item
-title asked turned out to already have an answer in the code's own naming.
+`sum`/`product` — moved out of `operations.ts` alongside them — in a new
+`packages/nodes/src/arrayNodes.ts`, its own **Array nodes** catalogue
+(`ARRAY_CATALOGUE`) rather than folded into Base nodes, so it answers the
+item's own "what should we name this" with its own palette section. It's
+wired into the editor the same way Base nodes is: always loaded
+(`App.tsx`'s `initialCatalogues`), never removable
+(`model/catalogues.ts`'s `removeCatalogue`), pinned right after Base nodes'
+section rather than sorted in with restricted/bundled catalogues
+(`Palette.tsx`). `minimum`/`maximum` stayed in `operations.ts` — they also
+take a spectrum port, but read as arithmetic over an open set of
+same-dimension values rather than as a property of the series itself. The two
+files now share their small port-building helpers (`text`/`generic`/`plain`/
+the `Draft` shape) from a new `draft.ts`, since the alternative was copying
+them a second time.
+
 `at` needed a real kernel extension: every reduction before it took exactly
 one spectrum argument by name (`REDUCTIONS`'s whole contract), and an index
 is a second, ordinary argument alongside it. `ReductionSpec` now carries an

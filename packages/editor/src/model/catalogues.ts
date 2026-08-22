@@ -1,7 +1,8 @@
 /**
  * The loaded catalogues, and the palette that lists them.
  *
- * The base node library is always present, and a restricted catalogue can
+ * The base node library and the array node library are always present, and a
+ * restricted catalogue can
  * arrive either as a file through the LMS or password-locked and bundled
  * with the app (docs/password-shared-catalogues.md, `lockedCatalogues`
  * below) — so the palette has two or more sources and one kind of entry
@@ -23,7 +24,7 @@ import {
   type LockedCatalogue,
 } from '@joveworks/schema';
 import type { AppLocale } from './editorSettings';
-import { BASE_CATALOGUE_ID, baseCatalogueJson } from '@joveworks/nodes';
+import { ARRAY_CATALOGUE_ID, BASE_CATALOGUE_ID, arrayCatalogueJson, baseCatalogueJson } from '@joveworks/nodes';
 import { fuzzySearch } from './fuzzy';
 
 export interface PaletteEntry {
@@ -34,6 +35,11 @@ export interface PaletteEntry {
 /** The base library, parsed the same way a loaded file is. */
 export function baseCatalogue(): Catalogue {
   return loadCatalogue(baseCatalogueJson());
+}
+
+/** The array-node library, parsed the same way a loaded file is. */
+export function arrayCatalogue(): Catalogue {
+  return loadCatalogue(arrayCatalogueJson());
 }
 
 const bundledCatalogueModules = import.meta.glob<JsonValue>('../catalogues/*.json', {
@@ -81,11 +87,14 @@ export function withCatalogue(
   return replaced.some((existing) => existing.id === loaded.id) ? replaced : [...replaced, loaded];
 }
 
+/** Base nodes and Array nodes are both always present — neither can be removed. */
+const PERMANENT_CATALOGUE_IDS = new Set([BASE_CATALOGUE_ID, ARRAY_CATALOGUE_ID]);
+
 export function removeCatalogue(
   catalogues: readonly Catalogue[],
   id: string,
 ): readonly Catalogue[] {
-  return catalogues.filter((catalogue) => catalogue.id !== id || catalogue.id === BASE_CATALOGUE_ID);
+  return catalogues.filter((catalogue) => catalogue.id !== id || PERMANENT_CATALOGUE_IDS.has(catalogue.id));
 }
 
 export function entries(catalogues: readonly Catalogue[]): readonly PaletteEntry[] {

@@ -34,7 +34,18 @@ import {
   type Port,
 } from '@joveworks/schema';
 
-import { BASE_CATALOGUE, OPERATIONS, baseCatalogueJson, iso286Limits } from './index.js';
+import {
+  ARRAY_CATALOGUE,
+  ARRAY_OPERATIONS,
+  BASE_CATALOGUE,
+  OPERATIONS,
+  arrayCatalogueJson,
+  baseCatalogueJson,
+  iso286Limits,
+} from './index.js';
+
+/** Every hand-authored base node, across both catalogues — everything `iso286.ts`'s lookups are not. */
+const HAND_AUTHORED: readonly Formula[] = [...OPERATIONS, ...ARRAY_OPERATIONS];
 
 describe('ISO 286 tolerance lookups', () => {
   it('returns lower and upper deviations for common hole and shaft classes', () => {
@@ -55,28 +66,31 @@ describe('ISO 286 tolerance lookups', () => {
 });
 
 const byId = (id: string): Formula => {
-  const found = OPERATIONS.find((formula) => formula.id === id);
+  const found = HAND_AUTHORED.find((formula) => formula.id === id);
   if (found === undefined) throw new Error(`no base node '${id}'`);
   return found;
 };
 
-describe('the catalogue as a file', () => {
+describe.each([
+  { name: 'base', catalogue: BASE_CATALOGUE, json: baseCatalogueJson, id: 'base' },
+  { name: 'array', catalogue: ARRAY_CATALOGUE, json: arrayCatalogueJson, id: 'array' },
+])('the $name catalogue as a file', ({ catalogue, json, id }) => {
   it('parses', () => {
-    const catalogue = loadCatalogue(baseCatalogueJson());
-    expect(catalogue.id).toBe('base');
-    expect(catalogue.restricted).toBe(false);
-    expect(catalogue.schemaVersion).toBe(SCHEMA_VERSION);
-    expect(catalogue.formulas).toHaveLength(OPERATIONS.length);
+    const loaded = loadCatalogue(json());
+    expect(loaded.id).toBe(id);
+    expect(loaded.restricted).toBe(false);
+    expect(loaded.schemaVersion).toBe(SCHEMA_VERSION);
+    expect(loaded.formulas).toHaveLength(catalogue.formulas.length);
   });
 
   it('round-trips — authored, serialized, parsed and serialized again', () => {
-    const once = serializeCatalogue(BASE_CATALOGUE);
+    const once = serializeCatalogue(catalogue);
     expect(serializeCatalogue(parseCatalogue(once))).toEqual(once);
   });
 
   it('gives every record the same hash after a round trip', () => {
-    const reloaded = loadCatalogue(baseCatalogueJson());
-    for (const [i, formula] of BASE_CATALOGUE.formulas.entries()) {
+    const reloaded = loadCatalogue(json());
+    for (const [i, formula] of catalogue.formulas.entries()) {
       expect(formulaHash(reloaded.formulas[i] as Formula)).toBe(formulaHash(formula));
     }
   });
@@ -84,20 +98,20 @@ describe('the catalogue as a file', () => {
 
 describe('what the library carries', () => {
   it('cites nothing — arithmetic is not textbook content', () => {
-    for (const formula of OPERATIONS) {
+    for (const formula of HAND_AUTHORED) {
       expect(formula.citation).toBeUndefined();
     }
   });
 
   it('claims nothing is verified until a golden value says so', () => {
-    for (const formula of OPERATIONS) {
+    for (const formula of HAND_AUTHORED) {
       expect(formula.status).toBe('unverified');
       expect(isEvaluable(formula)).toBe(true);
     }
   });
 
   it('covers the function whitelist and the reductions', () => {
-    const ids = new Set(OPERATIONS.map((formula) => formula.id));
+    const ids = new Set(HAND_AUTHORED.map((formula) => formula.id));
     for (const id of [
       'add',
       'subtract',
@@ -148,14 +162,14 @@ describe('what the library carries', () => {
       'standardDeviation',
       'valueAt',
     ]);
-    for (const formula of OPERATIONS) {
+    for (const formula of HAND_AUTHORED) {
       const spectrum = formula.inputs.some((port) => port.kind === 'spectrum');
       expect(spectrum, formula.id).toBe(reductions.has(formula.id));
     }
   });
 
   it('names every port used by its expression, and uses every port it names', () => {
-    for (const formula of OPERATIONS) {
+    for (const formula of HAND_AUTHORED) {
       if (formula.lookup !== undefined) continue;
       for (const port of formula.inputs) {
         expect(formula.expression, formula.id).toContain(port.name);
@@ -286,7 +300,7 @@ describe('dimensions are consistent with the expression, by inspection', () => {
   });
 
   it('keeps every generic input a bare variable, so binding is an assignment', () => {
-    for (const formula of OPERATIONS) {
+    for (const formula of HAND_AUTHORED) {
       for (const port of formula.inputs) {
         if (port.kind === 'categorical' || !isGenericDimension(port.unit)) continue;
         expect(port.unit.symbol, `${formula.id}.${port.name}`).toMatch(/^\$[A-Za-z][A-Za-z0-9]*$/u);
