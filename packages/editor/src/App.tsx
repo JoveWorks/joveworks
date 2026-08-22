@@ -1049,7 +1049,7 @@ function AppShell(): ReactElement {
               </>
             ) : null}
 
-            <Canvas controlsVisible={showCanvasControls} />
+            <Canvas controlsVisible={showCanvasControls} tutorialActive={tutorial !== undefined} />
 
             {showNotebook ? (
               <>

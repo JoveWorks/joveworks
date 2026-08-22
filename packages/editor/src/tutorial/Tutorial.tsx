@@ -107,13 +107,25 @@ export function Tutorial({
     }
   }, [active, setExpanded]);
 
+  // Caps how many times a step will keep nudging itself. The canvas is
+  // frozen for the tour's duration (`Canvas.tsx`), so a spotlighted element
+  // shouldn't move under it — but this effect has no dependency array (it
+  // has to re-measure after its own correction), so anything that ever makes
+  // the box's position not converge would otherwise call `setOffset` forever
+  // and trip React's "Maximum update depth exceeded".
+  const correctionAttempts = useRef(0);
+
   // Resets before measuring the new step's natural position, so a large
   // correction from a previous step doesn't linger into this one.
-  useLayoutEffect(() => setOffset({ dx: 0, dy: 0 }), [stepIndex]);
+  useLayoutEffect(() => {
+    setOffset({ dx: 0, dy: 0 });
+    correctionAttempts.current = 0;
+  }, [stepIndex]);
 
   useLayoutEffect(() => {
     const el = captionRef.current;
     if (el === null) return;
+    if (correctionAttempts.current >= 20) return;
     // The box already reflects whatever offset is currently applied (it's
     // baked into the rendered transform), so a correction computed from it
     // is additional, on top of that — replacing `offset` outright instead of
@@ -132,6 +144,7 @@ export function Tutorial({
     dx = Math.round(dx);
     dy = Math.round(dy);
     if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
+      correctionAttempts.current += 1;
       setOffset((current) => ({ dx: current.dx + dx, dy: current.dy + dy }));
     }
   });

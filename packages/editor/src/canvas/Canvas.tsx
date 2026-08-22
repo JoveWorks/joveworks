@@ -422,7 +422,13 @@ const NODE_TYPES = {
 const EDGE_TYPES = { bundle: BundleEdge };
 const SNAP_GRID: [number, number] = [CANVAS_GRID_SIZE, CANVAS_GRID_SIZE];
 
-export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean }): ReactElement {
+export function Canvas({
+  controlsVisible,
+  tutorialActive = false,
+}: {
+  readonly controlsVisible: boolean;
+  readonly tutorialActive?: boolean;
+}): ReactElement {
   const { document, catalogues, analysis, edit, editLive, commitEdit, expanded, toggleExpanded, selected, setSelected, saveUserEquation } =
     useGraph();
   const { locale, minimapVisible, snapToGrid, setSnapToGrid, themePreference } = useSettings();
@@ -1439,6 +1445,19 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
         }}
         minZoom={0.15}
         fitView
+        // Spotlighted elements are measured by screen position (`Tutorial.tsx`);
+        // letting the viewport pan/zoom or a node drag out from under a running
+        // tour sends that position chasing a moving target every poll, which
+        // can pin the caption against the same edge every frame and never let
+        // its correction converge — a real infinite `setState` loop, not just
+        // jitter. Freezing the canvas for the tour's duration is simpler than
+        // making that math robust to a moving target.
+        panOnDrag={!tutorialActive}
+        panOnScroll={!tutorialActive}
+        zoomOnScroll={!tutorialActive}
+        zoomOnPinch={!tutorialActive}
+        zoomOnDoubleClick={!tutorialActive}
+        nodesDraggable={!tutorialActive}
       >
         <Background gap={CANVAS_GRID_SIZE} />
         {controlsVisible ? (
@@ -1451,8 +1470,8 @@ export function Canvas({ controlsVisible }: { readonly controlsVisible: boolean 
             <span><kbd>{modifierKey}</kbd>+<kbd>D</kbd> {t('duplicate')}</span>
           </Panel>
         ) : null}
-        <Controls />
-        {minimapVisible ? <MiniMap pannable zoomable /> : null}
+        {tutorialActive ? null : <Controls />}
+        {minimapVisible ? <MiniMap pannable={!tutorialActive} zoomable={!tutorialActive} /> : null}
         {menu === undefined ? null : (
           <ContextMenu
             x={menu.x}

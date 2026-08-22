@@ -176,6 +176,13 @@ toggle. Gate it behind a hidden console command for now rather than a UI
 button — personal-use export, not a student-facing feature yet.
 
 **12. Tutorial guides** The tutorial seems to break when the viewport was moved/zoomed. It should check in each step if the target is visible, and adapt the viewport. Actually, maybe zooming and moving should just be part of the steps to clarify the nodes and controls?
+Fixed the crash (moving the viewport, or dragging a spotlighted node out of
+view, could pin the caption's on-screen correction against an edge forever —
+an infinite `setState` loop, "Maximum update depth exceeded"): the canvas now
+freezes pan/zoom/node-drag for the tour's duration, plus a hard cap on the
+correction so the same class of bug can't recur. The design question — target
+visibility driving the viewport, or making viewport moves part of the steps
+themselves — is still open.
 
 **13. Press fit example** Update it to use ISO fit LUT based on categorical input. I also want to have a new section that showcases plotting and sweep functionality.
 
