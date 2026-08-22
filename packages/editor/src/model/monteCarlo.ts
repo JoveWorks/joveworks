@@ -66,6 +66,31 @@ export function allGeneratorIds(document: GraphDocument): readonly string[] {
 }
 
 /**
+ * Every generator, plus every node reached by walking edges forward from
+ * one — the only part of the document a playback tick's revealed count can
+ * actually change. Nothing else in the document differs between ticks (a
+ * generator's own `count` is the only field `withGeneratorCounts` touches),
+ * which is what lets `MonteCarloReceiverPlayback.tsx` evaluate everything
+ * *not* in this set once per run and skip it on every later tick via
+ * `evaluateDocument`'s `skip`/`seed` options
+ * (`packages/kernel/src/evaluate.ts`) instead of redoing it from scratch
+ * every `MONTE_CARLO_TICK_MS`.
+ */
+export function generatorDependentNodeIds(document: GraphDocument): ReadonlySet<string> {
+  const dependent = new Set<string>(allGeneratorIds(document));
+  const queue = [...dependent];
+  while (queue.length > 0) {
+    const nodeId = queue.shift() as string;
+    for (const edge of document.edges) {
+      if (edge.from.node !== nodeId || dependent.has(edge.to.node)) continue;
+      dependent.add(edge.to.node);
+      queue.push(edge.to.node);
+    }
+  }
+  return dependent;
+}
+
+/**
  * A scratch copy of `document` with the given generators' `count` set to
  * `count` (never below 1 — a generator with no samples has no axis at all).
  * The document's own `id` is untouched, which is what keeps the seeded

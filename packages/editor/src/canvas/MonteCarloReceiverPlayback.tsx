@@ -22,14 +22,20 @@
 
 import { useMemo, type ReactElement } from 'react';
 
-import { canonicalUnit, evaluateDocument, receiverSampleValue } from '@joveworks/kernel';
+import { canonicalUnit, evaluateDocument, receiverSampleValue, type EvaluationOptions } from '@joveworks/kernel';
 import { DIMENSIONLESS } from '@joveworks/units';
 import { DEFAULT_MONTE_CARLO_SAMPLE_LIMIT, MONTE_CARLO_SAMPLE_PORT, type GraphDocument } from '@joveworks/schema';
 
 import { useGraph } from '../graph-context';
 import { useSettings } from '../settings-context';
 import type { Analysis } from '../model/analysis';
-import { allGeneratorIds, isReceiverWired, upstreamGenerators, withGeneratorCounts } from '../model/monteCarlo';
+import {
+  allGeneratorIds,
+  generatorDependentNodeIds,
+  isReceiverWired,
+  upstreamGenerators,
+  withGeneratorCounts,
+} from '../model/monteCarlo';
 import { display, displayed } from '../model/quantity';
 import { toUnitsFormat } from '../model/numberFormat';
 
@@ -204,8 +210,38 @@ export function MonteCarloReceiverPlayback({
   const revealed = Math.min(monteCarloPlayback.revealed, sampleLimit);
   const playing = monteCarloPlayback.playing;
 
+  const readyDocument = useMemo(() => readySubgraph(document, analysis), [document, analysis]);
+
+  /**
+   * Everything in the readied document that is *not* downstream of a
+   * generator, evaluated once per `[readyDocument, catalogues]` change
+   * rather than on every playback tick. `revealed` is deliberately absent
+   * from this memo's own dependencies — a generator's revealed count is the
+   * only thing a tick changes, so this part of the document cannot be
+   * affected by it (`generatorDependentNodeIds`'s doc comment). Every
+   * generator is forced to a single sample here, since only the static
+   * part's values are kept from the result — the cheapest full evaluation
+   * that still produces them.
+   */
+  const staticSeed = useMemo((): EvaluationOptions | undefined => {
+    try {
+      const generatorIds = allGeneratorIds(readyDocument);
+      const dependent = generatorDependentNodeIds(readyDocument);
+      const skip = new Set(
+        readyDocument.nodes.filter((node) => !dependent.has(node.id)).map((node) => node.id),
+      );
+      const primed = withGeneratorCounts(readyDocument, generatorIds, 1);
+      const evaluation = evaluateDocument(primed, catalogues);
+      return { skip, seed: evaluation.values };
+    } catch {
+      return undefined;
+    }
+  }, [readyDocument, catalogues]);
+
   const sample = useMemo(() => {
-    if (receiver === undefined || !ready || !wired || generatorIds.length === 0) return undefined;
+    if (receiver === undefined || !ready || !wired || generatorIds.length === 0 || staticSeed === undefined) {
+      return undefined;
+    }
     try {
       // Every generator in the document, not just this receiver's own
       // upstream subset (`generatorIds`) — they all share one trial axis
@@ -213,14 +249,17 @@ export function MonteCarloReceiverPlayback({
       // one behind at a stale count breaks evaluation of any *other* node
       // in the readied subgraph that combines it with one this scratch did
       // advance, even though this receiver never reads that other generator.
-      const scratch = withGeneratorCounts(readySubgraph(document, analysis), allGeneratorIds(document), revealed);
-      const evaluation = evaluateDocument(scratch, catalogues);
+      // `staticSeed` skips everything upstream of every generator — the part
+      // that cannot have changed since it was primed — so this only redoes
+      // the generators themselves and whatever reads them.
+      const scratch = withGeneratorCounts(readyDocument, allGeneratorIds(readyDocument), revealed);
+      const evaluation = evaluateDocument(scratch, catalogues, staticSeed);
       const value = receiverSampleValue(receiver, evaluation.resolution, evaluation.values);
       return value?.kind === 'numeric' ? value : undefined;
     } catch {
       return undefined;
     }
-  }, [receiver, ready, wired, generatorIds, document, analysis, revealed, catalogues]);
+  }, [receiver, ready, wired, generatorIds, readyDocument, staticSeed, revealed, catalogues]);
 
   const targetType = analysis.resolution?.targets.get(`${receiverId}.${MONTE_CARLO_SAMPLE_PORT}`);
   const unit = targetType?.unit ?? canonicalUnit(targetType?.dimension ?? DIMENSIONLESS);

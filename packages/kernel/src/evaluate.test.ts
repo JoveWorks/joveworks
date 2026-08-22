@@ -207,6 +207,33 @@ describe('closure nodes', () => {
   });
 });
 
+describe('skipping already-known nodes (options.skip/seed)', () => {
+  const document = documentOf(
+    [input('w', scalar(20, 'mm')), input('h', scalar(5, 'mm')), formulaNode('area', refTo('area'))],
+    [wire('w.value', 'area.w'), wire('h.value', 'area.h')],
+  );
+
+  it('changes nothing for a caller that passes neither option', () => {
+    const evaluation = evaluateDocument(document, catalogues);
+    expect(numeric(valueAt(evaluation, 'area', 'A')).data).toEqual([100]);
+  });
+
+  it('reads a skipped node’s value from seed instead of recomputing it', () => {
+    // A `w` far off from what the real node says — proof this came from
+    // `seed`, not from re-evaluating the actual input.
+    const seed = new Map(evaluateDocument(document, catalogues).values);
+    seed.set('w.value', { kind: 'numeric', axes: [], data: [1000] });
+    const evaluation = evaluateDocument(document, catalogues, { skip: new Set(['w']), seed });
+    expect(numeric(valueAt(evaluation, 'area', 'A')).data).toEqual([5000]);
+  });
+
+  it('fails the same way an unwired required input would when a skipped node has no seed', () => {
+    expect(() => evaluateDocument(document, catalogues, { skip: new Set(['w']) })).toThrow(
+      /nothing was computed for 'w\.value'/u,
+    );
+  });
+});
+
 describe('sweeps', () => {
   it('turns the whole downstream graph into a series with no rewiring', () => {
     const document = documentOf(

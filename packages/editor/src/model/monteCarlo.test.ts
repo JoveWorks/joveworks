@@ -14,6 +14,7 @@ import {
   type Edge,
   type FormulaNode,
   type GraphDocument,
+  type InputNode,
   type MonteCarloGeneratorNode,
   type MonteCarloReceiverNode,
 } from '@joveworks/schema';
@@ -25,6 +26,7 @@ import {
   allGeneratorIds,
   batchSizeAt,
   DEFAULT_MONTE_CARLO_COUNT,
+  generatorDependentNodeIds,
   isReceiverWired,
   monteCarloSampleCount,
   monteCarloSampleLimit,
@@ -56,6 +58,13 @@ const closure = (id: string, expression: string): ClosureNode => ({
   kind: 'closure',
   id,
   expression,
+  position: { x: 0, y: 0 },
+});
+
+const input = (id: string): InputNode => ({
+  kind: 'input',
+  id,
+  value: { kind: 'scalar', value: 1, unit: parseUnit('mm') },
   position: { x: 0, y: 0 },
 });
 
@@ -146,6 +155,41 @@ describe('allGeneratorIds', () => {
 
   it('finds nothing with no generator', () => {
     expect(allGeneratorIds(doc([receiver('r')], []))).toEqual([]);
+  });
+});
+
+describe('generatorDependentNodeIds', () => {
+  it('includes every generator, whether wired to anything or not', () => {
+    const document = doc([generator('g1', 100), generator('g2', 50)], []);
+    expect(generatorDependentNodeIds(document)).toEqual(new Set(['g1', 'g2']));
+  });
+
+  it('includes everything downstream of a generator, however many nodes deep', () => {
+    const document = doc(
+      [generator('g', 100), closure('c1', 'a * 2'), closure('c2', 'a * 3'), receiver('r')],
+      [edge('g', 'value', 'c1', 'a'), edge('c1', 'out', 'c2', 'a'), edge('c2', 'out', 'r', 'sample')],
+    );
+    expect(generatorDependentNodeIds(document)).toEqual(new Set(['g', 'c1', 'c2', 'r']));
+  });
+
+  it('excludes a node that never receives an edge from a generator, direct or indirect', () => {
+    const document = doc(
+      [generator('g', 100), input('nominal'), closure('c', 'a + b'), receiver('r')],
+      [edge('g', 'value', 'c', 'a'), edge('nominal', 'value', 'c', 'b'), edge('c', 'out', 'r', 'sample')],
+    );
+    const dependent = generatorDependentNodeIds(document);
+    expect(dependent).toEqual(new Set(['g', 'c', 'r']));
+    expect(dependent.has('nominal')).toBe(false);
+  });
+
+  it('does not follow a shared downstream node’s edges back upstream into an unrelated branch', () => {
+    // `nominal` feeds `c` alongside `g`, but nothing feeds back from `c` to
+    // `nominal` — a forward walk from `g` must not somehow pull `nominal` in.
+    const document = doc(
+      [generator('g', 100), input('nominal'), closure('c', 'a + b')],
+      [edge('g', 'value', 'c', 'a'), edge('nominal', 'value', 'c', 'b')],
+    );
+    expect(generatorDependentNodeIds(document).has('nominal')).toBe(false);
   });
 });
 
