@@ -558,6 +558,15 @@ function AppShell(): ReactElement {
 
   const analysis = useMemo(() => analyse(document, catalogues), [document, catalogues]);
 
+  const saveToFile = (): void => {
+    const text = saveDocument(documentRef.current);
+    saveTextFile(documentFileName(documentRef.current.id), text);
+    recordRecentDocument(documentRef.current);
+    clearAutosaveSnapshot();
+    setSavedSnapshot(text);
+    analytics.track({ name: 'document_saved' });
+  };
+
   // The first global keyboard shortcut in the app — Backspace/Delete is
   // React Flow's own `deleteKeyCode`, kept out of text fields by
   // `fields.tsx`'s `stopPropagation`. The notebook's two textareas and this
@@ -569,18 +578,20 @@ function AppShell(): ReactElement {
       const key = event.key.toLowerCase();
       const isUndo = key === 'z' && !event.shiftKey;
       const isRedo = (key === 'z' && event.shiftKey) || key === 'y';
-      if (!isUndo && !isRedo) return;
+      const isSave = key === 's';
+      if (!isUndo && !isRedo && !isSave) return;
       const target = event.target as HTMLElement | null;
       if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable) {
         return;
       }
       event.preventDefault();
       if (isUndo) undo();
-      else redo();
+      else if (isRedo) redo();
+      else saveToFile();
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [undo, redo]);
+  }, [undo, redo, saveToFile]);
 
   const { playback: monteCarloPlayback, togglePlayback, stepPlayback, resetPlayback } =
     useMonteCarloPlayback(document);
@@ -750,17 +761,7 @@ function AppShell(): ReactElement {
   const fileMenuItems: readonly MenuItem[] = [
     { label: t('New'), onClick: () => guardDiscard(newDocument) },
     { label: t('Open…'), onClick: () => guardDiscard(() => void openDocumentFile()) },
-    {
-      label: t('Save'),
-      onClick: () => {
-        const text = saveDocument(document);
-        saveTextFile(documentFileName(document.id), text);
-        recordRecentDocument(document);
-        clearAutosaveSnapshot();
-        setSavedSnapshot(text);
-        analytics.track({ name: 'document_saved' });
-      },
-    },
+    { label: t('Save'), onClick: saveToFile },
     { heading: t('Recent') },
     ...(recentDocuments.length === 0
       ? [{ label: t('No recent documents'), disabled: true, onClick: () => undefined }]
