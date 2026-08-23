@@ -6,9 +6,12 @@
  * implementation per surface — the actions differ, the chrome does not.
  */
 
-import type { ReactElement } from 'react';
+import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactElement } from 'react';
 
 import { TitleText } from './TitleField';
+
+/** Kept clear of the viewport edge so the menu never touches the browser chrome. */
+const VIEWPORT_MARGIN = 8;
 
 export interface ActionItem {
   readonly label: string;
@@ -45,14 +48,30 @@ interface Props {
 }
 
 export function ContextMenu({ x, y, items, onClose, onMouseEnter, onMouseLeave }: Props): ReactElement {
+  const menuRef = useRef<HTMLDivElement>(null);
+  // Rendered hidden at the click point first so its real size can be
+  // measured, then clamped onto screen — a right-click near the bottom or
+  // right edge would otherwise open a menu whose lower rows sit off-viewport.
+  const [style, setStyle] = useState<CSSProperties>({ left: x, top: y, visibility: 'hidden' });
+
+  useLayoutEffect(() => {
+    const menu = menuRef.current;
+    if (menu === null) return;
+    const { width, height } = menu.getBoundingClientRect();
+    const left = Math.max(VIEWPORT_MARGIN, Math.min(x, window.innerWidth - width - VIEWPORT_MARGIN));
+    const top = Math.max(VIEWPORT_MARGIN, Math.min(y, window.innerHeight - height - VIEWPORT_MARGIN));
+    setStyle({ left, top, visibility: 'visible' });
+  }, [x, y]);
+
   return (
     <>
       {/* Catches a click anywhere else, since the menu can be opened from any
           panel and none of them share a single "click missed everything" handler. */}
       <div className="context-menu-backdrop" onClick={onClose} onContextMenu={onClose} />
       <div
+        ref={menuRef}
         className="context-menu"
-        style={{ left: x, top: y }}
+        style={style}
         onMouseEnter={onMouseEnter}
         onMouseLeave={onMouseLeave}
       >
