@@ -2,6 +2,35 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.12.1](https://github.com/ThomasVanRiel/joveworks/compare/v0.12.0...v0.12.1) (2026-08-23)
+
+### Features
+
+* add catalogue-authoring companion app ([20039a4](https://github.com/ThomasVanRiel/joveworks/commit/20039a4e22169f452e1d0e7e61f4972edfee8411)), references [#32](https://github.com/ThomasVanRiel/joveworks/issues/32)
+* **editor:** save the document with Ctrl+S/Cmd+S ([a240446](https://github.com/ThomasVanRiel/joveworks/commit/a24044630ea5e1483ae34d2bbbb0cdda31e5bc9c))
+* **editor:** spectrum values are creatable and editable ([a4c8bce](https://github.com/ThomasVanRiel/joveworks/commit/a4c8bce7f0e3f9e2c2b56b085da9f5cccc17ccb9))
+* **kernel,schema,nodes:** piecewise formula evaluator + shaft torque diagram ([2e81f85](https://github.com/ThomasVanRiel/joveworks/commit/2e81f85835457f0126b7f037ec571560de46d606))
+* **kernel,schema,nodes:** shaft deflection (beam displacement) ([87b496a](https://github.com/ThomasVanRiel/joveworks/commit/87b496ae8add9460b174e3f96e095679a6382400))
+* **kernel,schema,nodes:** shaftDeflection convenience formula ([df778d2](https://github.com/ThomasVanRiel/joveworks/commit/df778d2cf6c782a03020c92cc36fafbd80a48261))
+* **kernel,schema,nodes:** shear/moment diagrams and reaction solve ([4ef37f4](https://github.com/ThomasVanRiel/joveworks/commit/4ef37f4204f8a967b1418bf3ab2ebc85bd691e83))
+* **kernel,schema,nodes:** uniform distributed loads ([aa90b4f](https://github.com/ThomasVanRiel/joveworks/commit/aa90b4f122e38ca430f35fc8e8f6e21e9e70065d))
+* **nodes:** add double/half arithmetic nodes ([4c2e319](https://github.com/ThomasVanRiel/joveworks/commit/4c2e3190f5966945e8caf6758a6c9dc631b4cec3))
+
+### Fixes
+
+* **canvas:** align/space use each node's resting size, and offer selection actions from anywhere on the pane ([a283345](https://github.com/ThomasVanRiel/joveworks/commit/a283345af6b6c41389dc1fd704d8f4a84f5dc248))
+* **canvas:** Enter finalizes a multiline field instead of adding a newline ([bd51f23](https://github.com/ThomasVanRiel/joveworks/commit/bd51f23845552a07e637309f28c5c96123f1e6d6))
+* **canvas:** keep marquee hit-testing stable against hover/selection-driven node opening ([43a3423](https://github.com/ThomasVanRiel/joveworks/commit/43a342379928a2ac9b930ea7c0c277ed13f7fa93))
+* **canvas:** keep the right-click menu on screen near viewport edges ([c3e85c4](https://github.com/ThomasVanRiel/joveworks/commit/c3e85c48fb26e75e15719dcebda81aab3b2e669d))
+* **editor:** don't auto-start the tutorial on a mobile-width viewport ([e189ced](https://github.com/ThomasVanRiel/joveworks/commit/e189cedf4c3bd482a504fa8c2118b52e17913832))
+* **editor:** highlight quick-add's top match and align it with Enter ([ece2603](https://github.com/ThomasVanRiel/joveworks/commit/ece2603ee2a2c9c134b49eaf549ffd7edc551542))
+* **editor:** show formula equations for R&M nodes and in quick-add ([9104720](https://github.com/ThomasVanRiel/joveworks/commit/910472058bfcd7e62380c2670b7a4a9f5d2e8481))
+
+### Documentation
+
+* Roadmap ([08ab8e4](https://github.com/ThomasVanRiel/joveworks/commit/08ab8e4149e1ad7782d119c2bb0b33948ebbfa2c))
+* update ROADMAP for deflection ([4fc3bb8](https://github.com/ThomasVanRiel/joveworks/commit/4fc3bb8960af9aa764a891569b153bb768adde0f))
+* update ROADMAP for the shaft-diagrams slice ([7a33b47](https://github.com/ThomasVanRiel/joveworks/commit/7a33b47046dc7a639d2a37135b678e1830ad7503))
 ## [0.12.0](https://github.com/ThomasVanRiel/joveworks/compare/v0.11.0...v0.12.0) (2026-08-22)
 
 ### Features
