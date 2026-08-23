@@ -860,6 +860,232 @@
       "status": "unverified"
     },
     {
+      "id": "photography.camera.properties",
+      "version": 1,
+      "output": [
+        {
+          "kind": "numeric",
+          "name": "MP",
+          "unit": "",
+          "description": {
+            "en": "Recorded resolution at the native 3:2 (or 4:3) frame, in megapixels."
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "w",
+          "unit": "mm",
+          "description": {
+            "en": "Sensor width."
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "h",
+          "unit": "mm",
+          "description": {
+            "en": "Sensor height."
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "d",
+          "unit": "mm",
+          "description": {
+            "en": "Sensor diagonal."
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "p",
+          "unit": "µm",
+          "description": {
+            "en": "Pixel pitch (photosite spacing), from sensor width over horizontal pixel count."
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "px",
+          "unit": "",
+          "description": {
+            "en": "Horizontal pixel count."
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "py",
+          "unit": "",
+          "description": {
+            "en": "Vertical pixel count."
+          }
+        }
+      ],
+      "inputs": [
+        {
+          "kind": "categorical",
+          "name": "camera",
+          "domain": [
+            "Canon EOS R6 Mark III",
+            "Canon EOS R6",
+            "Canon EOS R8",
+            "Canon EOS R5",
+            "Canon EOS 1200D",
+            "Nikon Z6 III",
+            "Nikon D3300",
+            "Sony A7 IV",
+            "Sony A7R V",
+            "Fujifilm X-T5"
+          ],
+          "default": "Canon EOS R6 Mark III",
+          "description": {
+            "en": "Camera make and model."
+          }
+        }
+      ],
+      "lookup": {
+        "axes": [
+          {
+            "input": "camera",
+            "kind": "categorical",
+            "values": [
+              "Canon EOS R6 Mark III",
+              "Canon EOS R6",
+              "Canon EOS R8",
+              "Canon EOS R5",
+              "Canon EOS 1200D",
+              "Nikon Z6 III",
+              "Nikon D3300",
+              "Sony A7 IV",
+              "Sony A7R V",
+              "Fujifilm X-T5"
+            ]
+          }
+        ],
+        "values": {
+          "MP": [32.3, 20.0, 24.0, 44.8, 17.9, 24.4, 24.0, 32.7, 60.2, 39.8],
+          "w": [35.9, 35.9, 35.9, 36.0, 22.3, 35.9, 23.5, 35.9, 35.7, 23.5],
+          "h": [23.9, 23.9, 23.9, 24.0, 14.9, 23.9, 15.6, 23.9, 23.8, 15.7],
+          "d": [43.13, 43.13, 43.13, 43.27, 26.82, 43.13, 28.21, 43.13, 42.91, 28.26],
+          "p": [5.16, 6.56, 5.98, 4.39, 4.3, 5.94, 3.92, 5.12, 3.76, 3.04],
+          "px": [6960, 5472, 6000, 8192, 5184, 6048, 6000, 7008, 9504, 7728],
+          "py": [4640, 3648, 4000, 5464, 3456, 4032, 4000, 4672, 6336, 5152]
+        }
+      },
+      "label": {
+        "en": "Camera properties"
+      },
+      "description": {
+        "en": "Sensor properties of a camera picked by make and model. Megapixels, pixel pitch and diagonal are consistent with the quoted pixel counts and sensor size rather than copied separately: MP is px × py, pitch is w / px, and the diagonal is √(w² + h²). Crop factor is deliberately absent — wire d into the crop factor node for it."
+      },
+      "status": "unverified"
+    },
+    {
+      "id": "photography.lens.properties",
+      "version": 1,
+      "output": [
+        {
+          "kind": "numeric",
+          "name": "f_min",
+          "unit": "mm",
+          "description": {
+            "en": "Shortest focal length."
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "f_max",
+          "unit": "mm",
+          "description": {
+            "en": "Longest focal length; equal to the shortest on a prime."
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "N_wide",
+          "unit": "",
+          "description": {
+            "en": "Maximum aperture (smallest f-number) at the wide end."
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "N_tele",
+          "unit": "",
+          "description": {
+            "en": "Maximum aperture (smallest f-number) at the long end."
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "d_min",
+          "unit": "m",
+          "description": {
+            "en": "Minimum focus distance, at the focal length where it is shortest."
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "mass",
+          "unit": "g",
+          "description": {
+            "en": "Mass of the lens, without hood or caps."
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "filter",
+          "unit": "mm",
+          "description": {
+            "en": "Filter thread diameter."
+          }
+        }
+      ],
+      "inputs": [
+        {
+          "kind": "categorical",
+          "name": "lens",
+          "domain": [
+            "Canon RF 24-105mm F4 L IS USM",
+            "Canon RF 100-500mm F4.5-7.1 L IS USM",
+            "Canon RF 24-240mm F4-6.3 IS USM"
+          ],
+          "default": "Canon RF 24-105mm F4 L IS USM",
+          "description": {
+            "en": "Lens make and model."
+          }
+        }
+      ],
+      "lookup": {
+        "axes": [
+          {
+            "input": "lens",
+            "kind": "categorical",
+            "values": [
+              "Canon RF 24-105mm F4 L IS USM",
+              "Canon RF 100-500mm F4.5-7.1 L IS USM",
+              "Canon RF 24-240mm F4-6.3 IS USM"
+            ]
+          }
+        ],
+        "values": {
+          "f_min": [24, 100, 24],
+          "f_max": [105, 500, 240],
+          "N_wide": [4.0, 4.5, 4.0],
+          "N_tele": [4.0, 7.1, 6.3],
+          "d_min": [0.45, 0.9, 0.5],
+          "mass": [700, 1365, 750],
+          "filter": [77, 77, 72]
+        }
+      },
+      "label": {
+        "en": "Lens properties"
+      },
+      "description": {
+        "en": "Properties of a lens picked by make and model. A zoom reports its maximum aperture at both ends of the range, which differ on a variable-aperture lens; a constant-aperture zoom reports the same number twice."
+      },
+      "status": "unverified"
+    },
+    {
       "id": "photography.exposure.value",
       "version": 1,
       "output": {

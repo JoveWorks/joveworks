@@ -112,7 +112,9 @@ function portJson(port: DraftPort): JsonObject {
 
 function formulaJson(formula: DraftFormula): JsonObject {
   const out: Record<string, JsonValue> = {
-    output: portJson(formula.output),
+    // One output stays the bare object a catalogue has always been written
+    // with; several are written as a list (see schema/src/formula.ts).
+    output: formula.outputs.length === 1 ? portJson(formula.outputs[0] as DraftPort) : formula.outputs.map(portJson),
     inputs: formula.inputs.map(portJson),
     expression: formula.expression,
     status: formula.status,

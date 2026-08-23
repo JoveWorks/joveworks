@@ -270,14 +270,14 @@ describe('dimensions are consistent with the expression, by inspection', () => {
   for (const [id, bindings, expected] of cases) {
     it(`${id} with ${JSON.stringify(Object.keys(bindings))}`, () => {
       const formula = byId(id);
-      expect(resolved(formula.output, bindings)).toEqual(expected);
+      expect(resolved(formula.outputs[0]!, bindings)).toEqual(expected);
     });
   }
 
   it('gives the same-dimension operations inputs that agree with their output', () => {
     for (const id of ['add', 'subtract', 'minimum', 'maximum', 'absolute', 'negate']) {
       const formula = byId(id);
-      const output = resolved(formula.output, { A: STRESS });
+      const output = resolved(formula.outputs[0]!, { A: STRESS });
       for (const port of formula.inputs) {
         expect(dimensionsEqual(resolved(port, { A: STRESS }), output), `${id}.${port.name}`).toBe(
           true,
@@ -290,12 +290,12 @@ describe('dimensions are consistent with the expression, by inspection', () => {
     for (const id of ['sine', 'cosine', 'tangent']) {
       const formula = byId(id);
       expect(resolved(formula.inputs[0] as Port, {})).toEqual(parseUnit('rad').dimension);
-      expect(resolved(formula.output, {})).toEqual(DIMENSIONLESS);
+      expect(resolved(formula.outputs[0]!, {})).toEqual(DIMENSIONLESS);
     }
     for (const id of ['arcSine', 'arcCosine', 'arcTangent']) {
       const formula = byId(id);
       expect(resolved(formula.inputs[0] as Port, {})).toEqual(DIMENSIONLESS);
-      expect(resolved(formula.output, {})).toEqual(parseUnit('rad').dimension);
+      expect(resolved(formula.outputs[0]!, {})).toEqual(parseUnit('rad').dimension);
     }
   });
 

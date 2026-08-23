@@ -19,11 +19,15 @@ export interface Reading {
   readonly unit: Unit;
 }
 
-/** The output port a node produces on: its formula's output, or `value`. */
+/**
+ * The output port a node produces on: its formula's first output, or `value`.
+ * Callers wanting every port of a node answering with several read
+ * `formula.outputs` directly.
+ */
 export function outputPort(analysis: Analysis, node: GraphNode): string | undefined {
   if (node.kind === 'input' || node.kind === 'monteCarloGenerator') return VALUE_PORT;
   if (node.kind === 'output' || node.kind === 'monteCarloReceiver') return undefined;
-  return analysis.formulas.get(node.id)?.output.name;
+  return analysis.formulas.get(node.id)?.outputs[0]?.name;
 }
 
 export function reading(

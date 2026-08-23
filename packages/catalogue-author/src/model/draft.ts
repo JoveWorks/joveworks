@@ -49,7 +49,7 @@ export interface DraftFormula {
   readonly key: string;
   readonly id: string;
   readonly version: string;
-  readonly output: DraftPort;
+  readonly outputs: readonly DraftPort[];
   readonly inputs: readonly DraftPort[];
   readonly expression: string;
   readonly label: DraftLocalizedText;
@@ -101,7 +101,7 @@ export function emptyFormula(): DraftFormula {
     key: nextKey('formula'),
     id: '',
     version: '1',
-    output: emptyPort('numeric'),
+    outputs: [emptyPort('numeric')],
     inputs: [],
     expression: '',
     label: {},
@@ -188,9 +188,9 @@ export function draftFormulaFromReal(formula: Formula): DraftFormula {
     key: nextKey('formula'),
     id: formula.id,
     version: String(formula.version),
-    output: draftPortFromReal(formula.output),
+    outputs: formula.outputs.map(draftPortFromReal),
     inputs: formula.inputs.map(draftPortFromReal),
-    expression: formula.expression,
+    expression: formula.expression ?? '',
     label: draftLocalizedTextFromReal(formula.label),
     description: draftLocalizedTextFromReal(formula.description),
     citation: formula.citation ?? '',
@@ -225,7 +225,7 @@ export function duplicateFormula(catalogue: DraftCatalogue, key: string): DraftC
     ...source,
     key: nextKey('formula'),
     id: source.id === '' ? '' : `${source.id}-copy`,
-    output: { ...source.output, key: nextKey('port') },
+    outputs: source.outputs.map((port) => ({ ...port, key: nextKey('port') })),
     inputs: source.inputs.map((port) => ({ ...port, key: nextKey('port') })),
   };
   const formulas = [...catalogue.formulas];
@@ -278,9 +278,14 @@ export function movePort(formula: DraftFormula, key: string, direction: -1 | 1):
   return { ...formula, inputs };
 }
 
-/** Updates the output port when `key` matches it, otherwise an input port. */
+/** Updates an output port when `key` matches one, otherwise an input port. */
 export function updatePort(formula: DraftFormula, key: string, patch: Partial<DraftPort>): DraftFormula {
-  if (formula.output.key === key) return { ...formula, output: { ...formula.output, ...patch } };
+  if (formula.outputs.some((port) => port.key === key)) {
+    return {
+      ...formula,
+      outputs: formula.outputs.map((port) => (port.key === key ? { ...port, ...patch } : port)),
+    };
+  }
   return {
     ...formula,
     inputs: formula.inputs.map((port) => (port.key === key ? { ...port, ...patch } : port)),

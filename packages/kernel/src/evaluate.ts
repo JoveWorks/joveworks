@@ -41,6 +41,7 @@ import {
   type Comparison,
   type Formula,
   type FormulaNode,
+  type NumericPort,
   type Port,
   type SpectrumPort,
 } from '@joveworks/schema';
@@ -253,14 +254,14 @@ export function evaluateDocument(
 
       case 'formula': {
         const formula = resolution.formulas.get(node.id) as Formula;
-        const output = evaluateFormula(node, formula, resolution, values, warnings, largeGrid);
-        values.set(endpointKey(node.id, formula.output.name), output);
+        const produced = evaluateFormula(node, formula, resolution, values, warnings, largeGrid);
+        for (const [name, series] of produced) values.set(endpointKey(node.id, name), series);
         break;
       }
 
       case 'closure': {
         const formula = resolution.formulas.get(node.id) as Formula;
-        const output = evaluateFormula(
+        const produced = evaluateFormula(
           node,
           formula,
           resolution,
@@ -269,7 +270,7 @@ export function evaluateDocument(
           largeGrid,
           /* closure */ true,
         );
-        values.set(endpointKey(node.id, formula.output.name), output);
+        for (const [name, series] of produced) values.set(endpointKey(node.id, name), series);
         break;
       }
 
@@ -574,15 +575,22 @@ function evaluateFormula(
   warnings: Warning[],
   largeGrid: number,
   closure = false,
-): NumericSeries {
+): ReadonlyMap<string, NumericSeries> {
   const nodeId = node.id;
   assertEvaluable(formula, nodeId);
-  if (formula.output.kind === 'categorical') {
-    throw new KernelError(
-      `'${formula.id}' produces a categorical value, which needs a table`,
-      nodeId,
-    );
+  for (const output of formula.outputs) {
+    if (output.kind === 'categorical') {
+      throw new KernelError(
+        `'${formula.id}' produces a categorical value, which needs a table`,
+        nodeId,
+      );
+    }
   }
+  // Every branch but the lookup answers with one series, for the one output
+  // such a formula declares.
+  const only = formula.outputs[0] as NumericPort;
+  const single = (series: NumericSeries): ReadonlyMap<string, NumericSeries> =>
+    new Map([[only.name, series]]);
 
   // A closure's declared output has nothing real to check the expression
   // against (closure.ts, formula.ts's compileClosureFormula) — its
@@ -665,7 +673,7 @@ function evaluateFormula(
     contributions.flatMap((edge) => (edge.kind === 'fixed' ? edge.values : [edge.read(cell)]));
 
   if (formula.piecewise !== undefined) {
-    if (isGenericDimension(formula.output.unit)) {
+    if (isGenericDimension(only.unit)) {
       throw new KernelError('a piecewise output must declare a concrete unit', nodeId);
     }
     const { kind: piecewiseKind, axis, breakpoints, values: valueNames, distributedStart, distributedEnd, distributedRate } =
@@ -734,11 +742,11 @@ function evaluateFormula(
       }
       data[cell] = total;
     }
-    return { kind: 'numeric', axes, data };
+    return single({ kind: 'numeric', axes, data });
   }
 
   if (formula.deflection !== undefined) {
-    if (isGenericDimension(formula.output.unit)) {
+    if (isGenericDimension(only.unit)) {
       throw new KernelError('a deflection output must declare a concrete unit', nodeId);
     }
     const { axis, breakpoints, values: valueNames, zeroAt, modulus, secondMomentOfArea } = formula.deflection;
@@ -807,21 +815,32 @@ function evaluateFormula(
       const ei = modulusRead(cell) * secondMomentRead(cell);
       data[cell] = (sZ + c1 * z + c2) / ei;
     }
-    return { kind: 'numeric', axes, data };
+    return single({ kind: 'numeric', axes, data });
   }
 
   if (formula.lookup !== undefined) {
-    if (isGenericDimension(formula.output.unit)) {
-      throw new KernelError('a lookup output must declare a concrete unit', nodeId);
-    }
+    const lookup = formula.lookup;
     const byName = new Map(regularInputs.map((entry) => [entry.port.name, entry] as const));
-    const strides = formula.lookup.axes.map((_axis, i) =>
-      formula.lookup!.axes.slice(i + 1).reduce((size, axis) => size * axis.values.length, 1),
+    const strides = lookup.axes.map((_axis, i) =>
+      lookup.axes.slice(i + 1).reduce((size, axis) => size * axis.values.length, 1),
     );
-    const data = new Array<number>(cells);
+    // The axes pick one row; every output then reads its own column of it, so
+    // a camera chosen once answers with all of its properties at that cell.
+    const columns = formula.outputs.map((output) => {
+      const unit = (output as NumericPort).unit;
+      if (isGenericDimension(unit)) {
+        throw new KernelError('a lookup output must declare a concrete unit', nodeId);
+      }
+      return {
+        name: output.name,
+        unit,
+        cells: lookup.columns[output.name] as readonly (number | null)[],
+        data: new Array<number>(cells),
+      };
+    });
     for (let cell = 0; cell < cells; cell += 1) {
       let flat = 0;
-      for (const [axisIndex, lookupAxis] of formula.lookup.axes.entries()) {
+      for (const [axisIndex, lookupAxis] of lookup.axes.entries()) {
         const entry = byName.get(lookupAxis.input);
         if (entry === undefined) throw new KernelError(`lookup input '${lookupAxis.input}' is not declared`, nodeId);
         const valueIndex = indexer(entry.value, axes)(cell);
@@ -842,11 +861,29 @@ function evaluateFormula(
         if (selected < 0) throw new KernelError(`no lookup entry for '${lookupAxis.input}'`, endpointKey(nodeId, lookupAxis.input));
         flat += selected * (strides[axisIndex] as number);
       }
-      const lookedUp = formula.lookup.values[flat];
-      if (lookedUp === null || lookedUp === undefined) throw new KernelError('this ISO tolerance combination is not defined', nodeId);
-      data[cell] = toCanonical(lookedUp, formula.output.unit);
+      for (const column of columns) {
+        const lookedUp = column.cells[flat];
+        if (lookedUp === null || lookedUp === undefined) {
+          throw new KernelError(
+            formula.outputs.length === 1
+              ? 'this combination is not defined in the table'
+              : `the table defines no '${column.name}' for this combination`,
+            nodeId,
+          );
+        }
+        column.data[cell] = toCanonical(lookedUp, column.unit);
+      }
     }
-    return { kind: 'numeric', axes, data };
+    return new Map(
+      columns.map((column) => [column.name, { kind: 'numeric', axes, data: column.data } as NumericSeries]),
+    );
+  }
+
+  // Nothing table-backed answered, so an expression must — the schema only
+  // lets one be omitted when a lookup covers every output.
+  const evaluateExpression = compiled.evaluate;
+  if (evaluateExpression === undefined) {
+    throw new KernelError(`'${formula.id}' has neither an expression nor a table to evaluate`, nodeId);
   }
 
   const env: Record<string, number | readonly number[]> = {};
@@ -889,7 +926,7 @@ function evaluateFormula(
       );
     }
     if (compiled.appliesWhen !== undefined && !compiled.appliesWhen(env)) outside += 1;
-    data[cell] = compiled.evaluate(env);
+    data[cell] = evaluateExpression(env);
   }
 
   // Using a formula outside the condition R&M states for it warns. It does
@@ -905,7 +942,7 @@ function evaluateFormula(
     });
   }
 
-  return { kind: 'numeric', axes, data };
+  return single({ kind: 'numeric', axes, data });
 }
 
 // --- compare nodes -----------------------------------------------------------
@@ -1136,6 +1173,9 @@ function outputResult(
     // Guaranteed defined: resolveGraph already refused any wire whose
     // source is not a formula or closure node (graph.ts).
     const formula = resolution.formulas.get(edge.from.node) as Formula;
+    if (formula.expression === undefined) {
+      throw new KernelError(`'${formula.id}' reads from a table, so there is no equation to show`, key);
+    }
     return {
       ...base,
       kind: 'equation',

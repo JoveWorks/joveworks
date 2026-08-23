@@ -163,6 +163,51 @@ describe('table-backed formulas', () => {
     expect(() => evaluateDocument(document, [lookupCatalogue])).toThrow(/not defined/u);
   });
 
+  /**
+   * The shape a camera library takes: one dropdown, and every property of the
+   * thing picked answered at once, each in its own unit.
+   */
+  describe('answering with several properties at once', () => {
+    const propertiesCatalogue = catalogueOf([
+      {
+        id: 'properties', version: 1,
+        output: [
+          { kind: 'numeric', name: 'w', unit: 'mm' },
+          { kind: 'numeric', name: 'p', unit: 'µm' },
+          { kind: 'numeric', name: 'n', unit: '' },
+        ],
+        inputs: [{ kind: 'categorical', name: 'pick', domain: ['first', 'second'], default: 'first' }],
+        lookup: {
+          axes: [{ input: 'pick', kind: 'categorical', values: ['first', 'second'] }],
+          values: { w: [36, 23.5], p: [5.9, 3.9], n: [24, 40] },
+        },
+        description: 'Invented property table.', status: 'unverified',
+      },
+    ]);
+    const propertiesRef = refTo('properties', propertiesCatalogue);
+
+    it('reads every output off the row its dropdown picks, each in its own unit', () => {
+      const document = documentOf([formulaNode('spec', propertiesRef)], []);
+      const evaluation = evaluateDocument(document, [propertiesCatalogue]);
+      // Canonical length is mm, so µm arrives scaled and the dimensionless
+      // count arrives untouched.
+      expect(numeric(valueAt(evaluation, 'spec', 'w')).data).toEqual([36]);
+      expect(numeric(valueAt(evaluation, 'spec', 'p')).data[0]).toBeCloseTo(0.0059, 9);
+      expect(numeric(valueAt(evaluation, 'spec', 'n')).data).toEqual([24]);
+    });
+
+    it('moves every output together when the pick changes', () => {
+      const document = documentOf([
+        formulaNode('spec', propertiesRef, {
+          inputValues: { pick: { kind: 'categorical', value: 'second' } },
+        }),
+      ], []);
+      const evaluation = evaluateDocument(document, [propertiesCatalogue]);
+      expect(numeric(valueAt(evaluation, 'spec', 'w')).data).toEqual([23.5]);
+      expect(numeric(valueAt(evaluation, 'spec', 'n')).data).toEqual([40]);
+    });
+  });
+
   it('uses lookup axes as numeric or categorical table-column sweeps', () => {
     const document = documentOf([
       input('sizes', { kind: 'tableColumn', table: 'lookup', column: 'size' }),

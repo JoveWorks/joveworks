@@ -54,6 +54,30 @@ describe('a record checked against its own expression', () => {
     expect(() => checkFormulaDimensions(wrong)).toThrow(/declares its output as force/u);
   });
 
+  /**
+   * A table declares each column's unit, so there is nothing for an expression
+   * to vouch for — and a record whose only input is a dropdown has no numeric
+   * port to build a stand-in expression out of in the first place.
+   */
+  it('asks nothing of a table-backed record with no expression at all', () => {
+    const table = only({
+      id: 'table',
+      version: 1,
+      output: [
+        { kind: 'numeric', name: 'w', unit: 'mm' },
+        { kind: 'numeric', name: 'p', unit: 'µm' },
+      ],
+      inputs: [{ kind: 'categorical', name: 'pick', domain: ['a', 'b'], default: 'a' }],
+      lookup: {
+        axes: [{ input: 'pick', kind: 'categorical', values: ['a', 'b'] }],
+        values: { w: [1, 2], p: [3, 4] },
+      },
+      description: 'Invented property table.',
+      status: 'unverified',
+    });
+    expect(() => checkFormulaDimensions(table)).not.toThrow();
+  });
+
   it('catches arithmetic that cannot be done at all', () => {
     const wrong = only({
       id: 'mixed',

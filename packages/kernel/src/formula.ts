@@ -54,7 +54,8 @@ export function assertEvaluable(formula: Formula, where?: string): void {
 
 export interface CompiledFormula {
   readonly formula: Formula;
-  readonly evaluate: CompiledExpression;
+  /** Absent when a table answers for every output and there is no expression. */
+  readonly evaluate?: CompiledExpression;
   /** The condition R&M states in prose, when the record carries one. */
   readonly appliesWhen?: CompiledPredicate;
   /** Every input port's dimension under this node's bindings. */
@@ -80,7 +81,9 @@ export function compileFormula(
   return {
     formula,
     scope,
-    evaluate: compileExpression(formula.expression, where ?? formula.id),
+    ...(formula.expression === undefined
+      ? {}
+      : { evaluate: compileExpression(formula.expression, where ?? formula.id) }),
     ...(formula.appliesWhen === undefined
       ? {}
       : { appliesWhen: compilePredicate(formula.appliesWhen, where ?? formula.id) }),
@@ -99,7 +102,9 @@ export function compileClosureFormula(formula: Formula, where?: string): Compile
   return {
     formula,
     scope: { dimensions: {}, spectra: new Set() },
-    evaluate: compileExpression(formula.expression, where ?? formula.id),
+    ...(formula.expression === undefined
+      ? {}
+      : { evaluate: compileExpression(formula.expression, where ?? formula.id) }),
   };
 }
 
@@ -132,7 +137,7 @@ function basisDimension(base: BaseDimension): Dimension {
 
 function genericVariablesOf(formula: Formula): ReadonlySet<string> {
   const variables = new Set<string>();
-  for (const port of [formula.output, ...formula.inputs] as readonly Port[]) {
+  for (const port of [...formula.outputs, ...formula.inputs] as readonly Port[]) {
     if (port.kind === 'categorical' || port.kind === 'bundle' || !isGenericDimension(port.unit)) continue;
     for (const variable of Object.keys(port.unit.variables)) variables.add(variable);
   }
@@ -160,14 +165,22 @@ function checkRecord(formula: Formula, bindings: Bindings, where: string): Dimen
   }
   const scope: DimensionScope = { dimensions, spectra };
 
-  const produced = expressionDimension(parseExpression(formula.expression), scope, where);
-  const declared = portDimensionUnder(formula.output, bindings, where);
-  if (declared !== undefined && !dimensionsClose(produced, declared)) {
-    throw new KernelError(
-      `'${formula.id}' declares its output as ${describeDimension(declared)} but its ` +
-        `expression produces ${describeDimension(produced)}`,
-      where,
-    );
+  // A table-backed output needs no expression to vouch for it: its column is
+  // read in the unit it declares. Only what an expression computes has to be
+  // proven to match what the record claims.
+  if (formula.expression !== undefined) {
+    const produced = expressionDimension(parseExpression(formula.expression), scope, where);
+    for (const output of formula.outputs) {
+      if (formula.lookup?.columns[output.name] !== undefined) continue;
+      const declared = portDimensionUnder(output, bindings, where);
+      if (declared !== undefined && !dimensionsClose(produced, declared)) {
+        throw new KernelError(
+          `'${formula.id}' declares ${formula.outputs.length === 1 ? 'its output' : `'${output.name}'`} as ` +
+            `${describeDimension(declared)} but its expression produces ${describeDimension(produced)}`,
+          where,
+        );
+      }
+    }
   }
 
   if (formula.appliesWhen !== undefined) {

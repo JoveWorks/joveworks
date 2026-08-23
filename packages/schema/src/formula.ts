@@ -1,7 +1,7 @@
 /**
  * The formula record — the thing this whole project is a contract around.
  *
- * A formula is **data, not code**: one output port, its input ports, an
+ * A formula is **data, not code**: its output ports, its input ports, an
  * expression as a string, and the metadata that makes it citable, checkable and
  * quarantinable. The expression stays a string here and is parsed by the kernel
  * — this package never evaluates and never compiles, and above all never
@@ -85,8 +85,13 @@ export interface LookupAxis {
 
 export interface FormulaLookup {
   readonly axes: readonly LookupAxis[];
-  /** Values in the formula output's declared unit. `null` means undefined. */
-  readonly values: readonly (number | null)[];
+  /**
+   * One column per output port, keyed by that port's name, each in that port's
+   * own declared unit. `null` means undefined. The axes are shared: a camera
+   * table names its models once and answers with every property of the model
+   * picked, rather than repeating the model list per property.
+   */
+  readonly columns: Readonly<Record<string, readonly (number | null)[]>>;
 }
 
 /**
@@ -193,11 +198,22 @@ export interface Formula {
   readonly id: string;
   /** Bumped whenever the record changes meaning. Part of a graph's reference. */
   readonly version: number;
-  readonly output: OutputPort;
+  /**
+   * At least one. Several outputs share one set of inputs and one evaluator —
+   * a camera picked once answers with its sensor size, pixel pitch and the
+   * rest, rather than making a reader place a node per property. Written as a
+   * bare object in JSON when there is one, as a list when there are several.
+   */
+  readonly outputs: readonly OutputPort[];
   readonly inputs: readonly Port[];
-  /** Parsed and compiled by the kernel, never here. */
-  readonly expression: string;
-  /** Optional table-backed evaluator. The expression still declares/checks dimensions. */
+  /**
+   * Parsed and compiled by the kernel, never here. Absent when a `lookup`
+   * answers for every output: the table is the evaluator, and each output's
+   * declared unit is what its column is read in, so there is nothing left for
+   * an expression to state.
+   */
+  readonly expression?: string;
+  /** Optional table-backed evaluator, one column per output. */
   readonly lookup?: FormulaLookup;
   /** Optional piecewise evaluator, mutually exclusive with `lookup`/`deflection`. Same role: the expression still declares/checks dimensions. */
   readonly piecewise?: FormulaPiecewise;
@@ -223,7 +239,7 @@ export interface Formula {
   readonly quarantineReason?: LocalizedText;
 }
 
-function parseLookup(value: JsonValue, path: string): FormulaLookup {
+function parseLookup(value: JsonValue, path: string, outputs: readonly OutputPort[]): FormulaLookup {
   const object = readObject(value, path);
   const axes = readArray(required(object, 'axes', path), join(path, 'axes')).map((entry, i) => {
     const axisPath = `${join(path, 'axes')}[${i}]`;
@@ -244,15 +260,43 @@ function parseLookup(value: JsonValue, path: string): FormulaLookup {
     };
   });
   if (axes.length === 0) fail(join(path, 'axes'), 'is empty');
-  const values = readArray(required(object, 'values', path), join(path, 'values')).map((cell, i) =>
-    cell === null ? null : readNumber(cell, `${join(path, 'values')}[${i}]`),
-  );
   const expected = axes.reduce((size, axis) => size * axis.values.length, 1);
-  if (values.length !== expected) fail(join(path, 'values'), `has ${values.length} entries; axes require ${expected}`);
-  return { axes, values };
+  const readColumn = (cells: JsonValue, columnPath: string): readonly (number | null)[] => {
+    const column = readArray(cells, columnPath).map((cell, i) =>
+      cell === null ? null : readNumber(cell, `${columnPath}[${i}]`),
+    );
+    if (column.length !== expected) fail(columnPath, `has ${column.length} entries; axes require ${expected}`);
+    return column;
+  };
+
+  // One output keeps the bare `values` array it has always been written as, so
+  // catalogues on disk stay valid untouched; several outputs name their columns.
+  const values = required(object, 'values', path);
+  const valuesPath = join(path, 'values');
+  const columns: Record<string, readonly (number | null)[]> = {};
+  if (Array.isArray(values)) {
+    if (outputs.length !== 1) {
+      fail(valuesPath, `must name a column per output when a formula declares ${outputs.length} of them`);
+    }
+    columns[(outputs[0] as OutputPort).name] = readColumn(values, valuesPath);
+  } else {
+    const named = readObject(values, valuesPath);
+    for (const [name, cells] of Object.entries(named)) {
+      if (!outputs.some((port) => port.name === name)) {
+        fail(join(valuesPath, name), `'${name}' is not a declared output`);
+      }
+      columns[name] = readColumn(cells, join(valuesPath, name));
+    }
+    for (const port of outputs) {
+      if (columns[port.name] === undefined) fail(valuesPath, `has no column for output '${port.name}'`);
+    }
+  }
+  return { axes, columns };
 }
 
 function serializeLookup(lookup: FormulaLookup): JsonObject {
+  const names = Object.keys(lookup.columns);
+  const only = names.length === 1 ? (names[0] as string) : undefined;
   return {
     axes: lookup.axes.map((axis) => ({
       input: axis.input,
@@ -260,7 +304,10 @@ function serializeLookup(lookup: FormulaLookup): JsonObject {
       values: [...axis.values],
       ...put('lowerExclusive', axis.lowerExclusive),
     })),
-    values: [...lookup.values],
+    values:
+      only === undefined
+        ? Object.fromEntries(names.map((name) => [name, [...(lookup.columns[name] as readonly (number | null)[])]]))
+        : [...(lookup.columns[only] as readonly (number | null)[])],
   };
 }
 
@@ -356,9 +403,14 @@ export function isEvaluable(formula: Formula): boolean {
   return formula.status !== 'quarantined';
 }
 
-/** Every port of a formula, output first — the order the editor draws them in. */
+/** Every port of a formula, outputs first — the order the editor draws them in. */
 export function ports(formula: Formula): readonly Port[] {
-  return [formula.output, ...formula.inputs];
+  return [...formula.outputs, ...formula.inputs];
+}
+
+/** The lookup column answering for `name`, when a table answers for it at all. */
+export function lookupColumn(formula: Formula, name: string): readonly (number | null)[] | undefined {
+  return formula.lookup?.columns[name];
 }
 
 export function findInput(formula: Formula, name: string): Port | undefined {
@@ -369,26 +421,39 @@ export function parseFormula(value: JsonValue, path: string): Formula {
   const object = readObject(value, path);
   const id = readName(required(object, 'id', path), join(path, 'id'));
   const version = readInteger(required(object, 'version', path), join(path, 'version'), 1);
-  const output = asOutputPort(
-    parsePort(required(object, 'output', path), join(path, 'output')),
-    join(path, 'output'),
+  // One output is written bare, several as a list — the shape a catalogue was
+  // always written in stays the shape it parses from.
+  const declared = required(object, 'output', path);
+  const outputs = (
+    Array.isArray(declared)
+      ? readArray(declared, join(path, 'output')).map((entry, i) =>
+          asOutputPort(parsePort(entry, `${join(path, 'output')}[${i}]`), `${join(path, 'output')}[${i}]`),
+        )
+      : [asOutputPort(parsePort(declared, join(path, 'output')), join(path, 'output'))]
   );
+  if (outputs.length === 0) fail(join(path, 'output'), 'is empty — a formula answers with something');
 
   const inputs = readArray(required(object, 'inputs', path), join(path, 'inputs')).map((entry, i) =>
     asInputPort(parsePort(entry, `${join(path, 'inputs')}[${i}]`), `${join(path, 'inputs')}[${i}]`),
   );
 
   // A generic output can only be built from variables the inputs bind.
-  if (output.kind === 'numeric' && isGenericDimension(output.unit)) {
-    const bound = new Set(inputs.flatMap(portVariables));
+  const bound = new Set(inputs.flatMap(portVariables));
+  for (const [i, output] of outputs.entries()) {
+    if (output.kind !== 'numeric' || !isGenericDimension(output.unit)) continue;
+    const unitPath = outputs.length === 1 ? join(path, 'output.unit') : `${join(path, 'output')}[${i}].unit`;
     for (const name of genericVariables(output.unit)) {
-      if (!bound.has(name)) {
-        fail(join(path, 'output.unit'), `'$${name}' is not bound by any input port`);
-      }
+      if (!bound.has(name)) fail(unitPath, `'$${name}' is not bound by any input port`);
     }
   }
 
-  const seen = new Set([output.name]);
+  const seen = new Set<string>();
+  for (const [i, port] of outputs.entries()) {
+    if (seen.has(port.name)) {
+      fail(outputs.length === 1 ? join(path, 'output.name') : `${join(path, 'output')}[${i}].name`, `'${port.name}' is declared twice`);
+    }
+    seen.add(port.name);
+  }
   for (const [i, port] of inputs.entries()) {
     if (seen.has(port.name)) {
       fail(`${join(path, 'inputs')}[${i}].name`, `'${port.name}' is declared twice`);
@@ -396,12 +461,22 @@ export function parseFormula(value: JsonValue, path: string): Formula {
     seen.add(port.name);
   }
 
-  const expression = readString(required(object, 'expression', path), join(path, 'expression'));
-  if (expression.trim().length === 0) fail(join(path, 'expression'), 'is empty');
-  const lookup = optional(object, 'lookup', path, parseLookup);
+  const lookup = optional(object, 'lookup', path, (value_, path_) => parseLookup(value_, path_, outputs));
+
+  // A table-backed formula needs no expression: its columns are read in the
+  // units its outputs declare, which is all an expression was ever there to
+  // state. Everything else must still say how it computes.
+  const expression = optional(object, 'expression', path, readString);
+  if (expression !== undefined && expression.trim().length === 0) fail(join(path, 'expression'), 'is empty');
+  if (expression === undefined && lookup === undefined) {
+    fail(join(path, 'expression'), 'is required unless a lookup answers for every output');
+  }
+
   if (lookup !== undefined) {
-    if (output.kind !== 'numeric' || isGenericDimension(output.unit)) {
-      fail(join(path, 'output'), 'a lookup needs a concrete numeric output');
+    for (const [i, output] of outputs.entries()) {
+      if (output.kind !== 'numeric' || isGenericDimension(output.unit)) {
+        fail(outputs.length === 1 ? join(path, 'output') : `${join(path, 'output')}[${i}]`, 'a lookup needs a concrete numeric output');
+      }
     }
     const seenAxes = new Set<string>();
     for (const [i, axis] of lookup.axes.entries()) {
@@ -430,6 +505,8 @@ export function parseFormula(value: JsonValue, path: string): Formula {
   const piecewise = optional(object, 'piecewise', path, parsePiecewise);
   if (piecewise !== undefined) {
     if (lookup !== undefined) fail(join(path, 'piecewise'), 'cannot accompany a lookup — a formula is one or the other');
+    if (outputs.length !== 1) fail(join(path, 'piecewise'), 'answers with one curve, so its formula declares one output');
+    const output = outputs[0] as OutputPort;
     const outputDimension = portDimension(output);
     if (outputDimension === undefined) {
       fail(join(path, 'output'), 'a piecewise formula needs a concrete numeric output');
@@ -497,6 +574,8 @@ export function parseFormula(value: JsonValue, path: string): Formula {
   if (deflection !== undefined) {
     if (lookup !== undefined) fail(join(path, 'deflection'), 'cannot accompany a lookup — a formula is one or the other');
     if (piecewise !== undefined) fail(join(path, 'deflection'), 'cannot accompany a piecewise evaluator — a formula is one or the other');
+    if (outputs.length !== 1) fail(join(path, 'deflection'), 'answers with one curve, so its formula declares one output');
+    const output = outputs[0] as OutputPort;
     const outputDimension = portDimension(output);
     if (outputDimension === undefined) {
       fail(join(path, 'output'), 'a deflection formula needs a concrete numeric output');
@@ -550,9 +629,9 @@ export function parseFormula(value: JsonValue, path: string): Formula {
   return {
     id,
     version,
-    output,
+    outputs,
     inputs,
-    expression,
+    ...put('expression', expression),
     ...put('lookup', lookup),
     ...put('piecewise', piecewise),
     ...put('deflection', deflection),
@@ -566,13 +645,21 @@ export function parseFormula(value: JsonValue, path: string): Formula {
   };
 }
 
+/**
+ * One output serializes to the bare object it has always been, so a record
+ * that gained nothing does not read — or hash — as though it changed.
+ */
+function serializeOutputs(outputs: readonly OutputPort[], port: (value: OutputPort) => JsonObject): JsonValue {
+  return outputs.length === 1 ? port(outputs[0] as OutputPort) : outputs.map(port);
+}
+
 export function serializeFormula(formula: Formula): JsonObject {
   return {
     id: formula.id,
     version: formula.version,
-    output: serializePort(formula.output),
+    output: serializeOutputs(formula.outputs, serializePort),
     inputs: formula.inputs.map(serializePort),
-    expression: formula.expression,
+    ...put('expression', formula.expression),
     ...put('lookup', formula.lookup === undefined ? undefined : serializeLookup(formula.lookup)),
     ...put('piecewise', formula.piecewise === undefined ? undefined : serializePiecewise(formula.piecewise)),
     ...put('deflection', formula.deflection === undefined ? undefined : serializeDeflection(formula.deflection)),
@@ -620,9 +707,9 @@ export function formulaHash(formula: Formula): string {
   const hash = hashRecord({
     id: formula.id,
     version: formula.version,
-    output: withoutText(formula.output),
+    output: serializeOutputs(formula.outputs, withoutText),
     inputs: formula.inputs.map(withoutText),
-    expression: formula.expression,
+    ...put('expression', formula.expression),
     ...put('lookup', formula.lookup === undefined ? undefined : serializeLookup(formula.lookup)),
     ...put('piecewise', formula.piecewise === undefined ? undefined : serializePiecewise(formula.piecewise)),
     ...put('deflection', formula.deflection === undefined ? undefined : serializeDeflection(formula.deflection)),

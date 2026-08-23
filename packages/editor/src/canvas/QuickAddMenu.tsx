@@ -236,10 +236,17 @@ export function QuickAddMenu({
                   <span className="quick-add-formula-heading">
                     <span className="entry-id">{formula.citation ?? formula.id}</span>
                     <span className="entry-output">
-                      <Symbol name={formula.output.name} />
+                      {formula.outputs.map((output, i) => (
+                        <span key={output.name}>
+                          {i === 0 ? null : ', '}
+                          <Symbol name={output.name} />
+                        </span>
+                      ))}
                     </span>
                   </span>
-                  <Equation latex={toLatex(parseExpression(formula.expression))} displayMode={false} />
+                  {formula.expression === undefined ? null : (
+                    <Equation latex={toLatex(parseExpression(formula.expression))} displayMode={false} />
+                  )}
                 </button>
               ))}
             </>

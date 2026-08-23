@@ -80,7 +80,7 @@ describe('compatibleQuickAddPort', () => {
         { kind: 'categorical', name: 'mode', domain: ['a', 'b'] },
         { kind: 'numeric', name: 'length', unit: parseUnit('mm') },
       ],
-      output: { kind: 'numeric', name: 'result', unit: parseUnit('mm') },
+      outputs: [{ kind: 'numeric', name: 'result', unit: parseUnit('mm') }],
       expression: 'length', description: 'Invented test formula', status: 'unverified',
     };
     const testCatalogue: Catalogue = {

@@ -82,13 +82,16 @@ export function FormulaForm({ formula, validation, onChange }: Props) {
       <LocalizedTextField label="Label (optional)" value={formula.label} onChange={(next) => set('label', next)} />
       <LocalizedTextField label="Description" value={formula.description} onChange={(next) => set('description', next)} />
 
-      <h3>Output</h3>
-      <PortEditor
-        port={formula.output}
-        allowedKinds={['numeric', 'categorical']}
-        removable={false}
-        onChange={(patch) => onChange(updatePort(formula, formula.output.key, patch))}
-      />
+      <h3>{formula.outputs.length === 1 ? 'Output' : 'Outputs'}</h3>
+      {formula.outputs.map((port) => (
+        <PortEditor
+          key={port.key}
+          port={port}
+          allowedKinds={['numeric', 'categorical']}
+          removable={false}
+          onChange={(patch) => onChange(updatePort(formula, port.key, patch))}
+        />
+      ))}
 
       <h3>Inputs</h3>
       {formula.inputs.map((port, index) => (

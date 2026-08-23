@@ -78,7 +78,6 @@ export function FormulaNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
     );
   }
 
-  const value = reading(analysis, id, formula.output.name);
   const wired = new Set(
     document.edges.filter((edge) => edge.to.node === id).map((edge) => edge.to.port),
   );
@@ -101,12 +100,13 @@ export function FormulaNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
     !(port.kind === 'numeric' && port.default !== undefined && !isGenericPort(port)) &&
     !(port.kind === 'categorical' && port.default !== undefined);
 
-  const outputUnit = analysis.resolution?.sources.get(`${id}.${formula.output.name}`)?.unit;
-  const setOutputDisplayUnit = (unit: Unit): void =>
+  const outputUnitOf = (name: string): Unit | undefined =>
+    analysis.resolution?.sources.get(`${id}.${name}`)?.unit;
+  const setOutputDisplayUnit = (name: string, unit: Unit): void =>
     edit((current) =>
       updateNode(current, id, (entry) => ({
         ...entry,
-        displayUnits: { ...entry.displayUnits, [formula.output.name]: unit },
+        displayUnits: { ...entry.displayUnits, [name]: unit },
       })),
     );
   const setInputValue = (name: string, value: ValueSpec): void =>
@@ -147,7 +147,9 @@ export function FormulaNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
       }
       detail={
         <>
-          <Equation latex={toLatex(parseExpression(formula.expression))} displayMode={false} />
+          {formula.expression === undefined ? null : (
+            <Equation latex={toLatex(parseExpression(formula.expression))} displayMode={false} />
+          )}
           <p className="description">{localize(formula.description, locale)}</p>
           {formula.appliesWhen === undefined ? null : (
             <p className="applies">{phrase(locale, 'applies when')} {formula.appliesWhen}</p>
@@ -302,38 +304,48 @@ export function FormulaNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
         })}
       </ul>
 
-      <div
-        className="node-value"
-        onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: formula.output.name })}
-        onMouseLeave={() => data?.onPortHover?.()}
-      >
-        <span className={`reading${highlightedPorts.has(formula.output.name) ? ' port-highlighted' : ''}`}>
-          {value === undefined ? '—' : summarise(value, 4, format)}
-        </span>
-        {value === undefined ? null : <Sparkline reading={value} />}
-        {value === undefined ? null : (
-          <span className={`axis${highlightedPorts.has(formula.output.name) ? ' port-highlighted' : ''}`}>
-            <TitleText value={axisLabel(value) ?? ''} />
-          </span>
-        )}
-        <span
-          className={`port-out${highlightedPorts.has(formula.output.name) ? ' port-highlighted' : ''}`}
-          {...(formula.output.description === undefined
-            ? {}
-            : { title: localize(formula.output.description, locale) })}
-        >
-          <ParameterLabel name={formula.output.name} />
-          {outputUnit === undefined ? null : (
-            <DisplayUnitPicker unit={outputUnit} onChange={setOutputDisplayUnit} />
-          )}
-        </span>
-        <Handle
-          type="source"
-          position={Position.Right}
-          id={formula.output.name}
-          className={highlightedPorts.has(formula.output.name) ? 'port-highlighted' : ''}
-        />
-      </div>
+      {/* One row per declared output: a table-backed node answering with a
+          camera's whole spec sheet draws a reading and a pin per property. */}
+      {formula.outputs.map((output) => {
+        const value = reading(analysis, id, output.name);
+        const outputUnit = outputUnitOf(output.name);
+        const highlighted = highlightedPorts.has(output.name);
+        return (
+          <div
+            key={output.name}
+            className="node-value"
+            onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: output.name })}
+            onMouseLeave={() => data?.onPortHover?.()}
+          >
+            <span className={`reading${highlighted ? ' port-highlighted' : ''}`}>
+              {value === undefined ? '—' : summarise(value, 4, format)}
+            </span>
+            {value === undefined ? null : <Sparkline reading={value} />}
+            {value === undefined ? null : (
+              <span className={`axis${highlighted ? ' port-highlighted' : ''}`}>
+                <TitleText value={axisLabel(value) ?? ''} />
+              </span>
+            )}
+            <span
+              className={`port-out${highlighted ? ' port-highlighted' : ''}`}
+              {...(output.description === undefined
+                ? {}
+                : { title: localize(output.description, locale) })}
+            >
+              <ParameterLabel name={output.name} />
+              {outputUnit === undefined ? null : (
+                <DisplayUnitPicker unit={outputUnit} onChange={(unit) => setOutputDisplayUnit(output.name, unit)} />
+              )}
+            </span>
+            <Handle
+              type="source"
+              position={Position.Right}
+              id={output.name}
+              className={highlighted ? 'port-highlighted' : ''}
+            />
+          </div>
+        );
+      })}
     </NodeShell>
   );
 }

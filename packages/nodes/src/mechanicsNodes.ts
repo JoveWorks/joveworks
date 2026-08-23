@@ -46,7 +46,7 @@ const shaftTorque: Formula = {
       'torque at or before that position. Torques are taken as already balanced ' +
       '(input in, output out); this does not solve for a reaction torque.',
   ),
-  output: { kind: 'numeric', name: 'T', unit: parseUnit('Nmm'), description: text('Torque at z — T(z)') },
+  outputs: [{ kind: 'numeric', name: 'T', unit: parseUnit('Nmm'), description: text('Torque at z — T(z)') }],
   inputs: [
     { kind: 'numeric', name: 'z', unit: parseUnit('mm'), default: 0, description: text('Position along the shaft') },
     { kind: 'spectrum', name: 'position', unit: parseUnit('mm'), description: text('Position of each applied torque') },
@@ -66,7 +66,7 @@ const shaftShear: Formula = {
       'transverse point load, plus either support’s reaction once wired, at or before that ' +
       'position. Apply once per transverse plane (x, y).',
   ),
-  output: { kind: 'numeric', name: 'V', unit: parseUnit('N'), description: text('Shear at z — V(z)') },
+  outputs: [{ kind: 'numeric', name: 'V', unit: parseUnit('N'), description: text('Shear at z — V(z)') }],
   inputs: [
     { kind: 'numeric', name: 'z', unit: parseUnit('mm'), default: 0, description: text('Position along the shaft') },
     { kind: 'spectrum', name: 'position', unit: parseUnit('mm'), description: text('Position of each applied point load') },
@@ -96,7 +96,7 @@ const shaftMoment: Formula = {
       'support span, negate, then subtract from the load total for the other support — ' +
       'ordinary base nodes, not a third piecewise kind).',
   ),
-  output: { kind: 'numeric', name: 'M', unit: parseUnit('Nmm'), description: text('Moment at z — M(z)') },
+  outputs: [{ kind: 'numeric', name: 'M', unit: parseUnit('Nmm'), description: text('Moment at z — M(z)') }],
   inputs: [
     { kind: 'numeric', name: 'z', unit: parseUnit('mm'), default: 0, description: text('Position along the shaft') },
     { kind: 'spectrum', name: 'position', unit: parseUnit('mm'), description: text('Position of each applied point load') },
@@ -129,7 +129,7 @@ const shaftDeflectionTerm: Formula = {
       'second moment of area) for the deflection curve itself. Distributed loads are not ' +
       'supported here — wire only point loads and reactions.',
   ),
-  output: { kind: 'numeric', name: 'S', unit: parseUnit('N*mm³'), description: text('Σ force·(z − position)³') },
+  outputs: [{ kind: 'numeric', name: 'S', unit: parseUnit('N*mm³'), description: text('Σ force·(z − position)³') }],
   inputs: [
     { kind: 'numeric', name: 'z', unit: parseUnit('mm'), default: 0, description: text('Position along the shaft') },
     { kind: 'spectrum', name: 'position', unit: parseUnit('mm'), description: text('Position of each applied point load') },
@@ -159,7 +159,7 @@ const shaftDeflection: Formula = {
       'yet, so both are plain numbers here. Distributed loads are not supported — wire ' +
       'only point loads and reactions.',
   ),
-  output: { kind: 'numeric', name: 'y', unit: parseUnit('mm'), description: text('Deflection at z — y(z)') },
+  outputs: [{ kind: 'numeric', name: 'y', unit: parseUnit('mm'), description: text('Deflection at z — y(z)') }],
   inputs: [
     { kind: 'numeric', name: 'z', unit: parseUnit('mm'), default: 0, description: text('Position along the shaft') },
     { kind: 'spectrum', name: 'position', unit: parseUnit('mm'), description: text('Position of each applied point load') },
@@ -200,7 +200,7 @@ const shaftDistributedShear: Formula = {
       "add this to shaftShear's output (an ordinary add node) for the combined diagram. Wire " +
       'as many start/end/rate spectra as the shaft has distributed loads.',
   ),
-  output: { kind: 'numeric', name: 'V', unit: parseUnit('N'), description: text('Shear contribution at z') },
+  outputs: [{ kind: 'numeric', name: 'V', unit: parseUnit('N'), description: text('Shear contribution at z') }],
   inputs: [
     { kind: 'numeric', name: 'z', unit: parseUnit('mm'), default: 0, description: text('Position along the shaft') },
     { kind: 'spectrum', name: 'start', unit: parseUnit('mm'), description: text('Start of each distributed load') },
@@ -221,7 +221,7 @@ const shaftDistributedMoment: Formula = {
       "position — add this to shaftMoment's output (an ordinary add node) for the combined " +
       'diagram. Wire as many start/end/rate spectra as the shaft has distributed loads.',
   ),
-  output: { kind: 'numeric', name: 'M', unit: parseUnit('Nmm'), description: text('Moment contribution at z') },
+  outputs: [{ kind: 'numeric', name: 'M', unit: parseUnit('Nmm'), description: text('Moment contribution at z') }],
   inputs: [
     { kind: 'numeric', name: 'z', unit: parseUnit('mm'), default: 0, description: text('Position along the shaft') },
     { kind: 'spectrum', name: 'start', unit: parseUnit('mm'), description: text('Start of each distributed load') },

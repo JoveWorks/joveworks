@@ -20,7 +20,7 @@ function validFormula(): DraftFormula {
     version: '1',
     expression: 'a * b + c',
     description: { en: 'An invented relation, for tests only.' },
-    output: { ...emptyPort('numeric'), name: 'y', unit: 'mm' },
+    outputs: [{ ...emptyPort('numeric'), name: 'y', unit: 'mm' }],
     inputs: [
       { ...emptyPort('numeric'), name: 'a', unit: '' },
       { ...emptyPort('numeric'), name: 'b', unit: 'mm' },
@@ -40,7 +40,7 @@ describe('validateCatalogue', () => {
 
   it('flags a dimension mismatch instead of silently accepting it', () => {
     const bad = validFormula();
-    const withWrongUnit = { ...bad, output: { ...bad.output, unit: 's' } };
+    const withWrongUnit = { ...bad, outputs: [{ ...bad.outputs[0]!, unit: 's' }] };
     const validation = validateCatalogue(catalogueWith([withWrongUnit]));
     expect(validation.formulas[0]?.errors.length).toBeGreaterThan(0);
     expect(validation.catalogue).toBeUndefined();

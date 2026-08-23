@@ -62,6 +62,7 @@ import {
   type GraphNode,
   type InputNode,
   type MonteCarloGeneratorNode,
+  type OutputPort,
   type Port,
   type PortKind,
 } from '@joveworks/schema';
@@ -570,10 +571,12 @@ export function resolveGraph(
           displayOverride(node, port.name, portType(port, bound)),
         );
       }
-      sources.set(
-        endpointKey(node.id, formula.output.name),
-        displayOverride(node, formula.output.name, portType(formula.output, bound)),
-      );
+      for (const port of formula.outputs) {
+        sources.set(
+          endpointKey(node.id, port.name),
+          displayOverride(node, port.name, portType(port, bound)),
+        );
+      }
       continue;
     }
 
@@ -604,7 +607,9 @@ export function resolveGraph(
       // dimension live, the same way `formula.ts`'s own self-check does for
       // a hand-authored record — just against this one node's real wiring
       // instead of a probed basis.
-      const outputKey = endpointKey(node.id, formula.output.name);
+      // A closure is built with exactly one output (see closure.ts).
+      const closureOutput = formula.outputs[0] as OutputPort;
+      const outputKey = endpointKey(node.id, closureOutput.name);
       if (formula.inputs.every((port) => bound.has(port.name))) {
         const scope: DimensionScope = {
           dimensions: Object.fromEntries(bound),
@@ -615,7 +620,7 @@ export function resolveGraph(
         const dimension = expressionDimension(parseExpression(node.expression), scope, node.id);
         sources.set(
           outputKey,
-          displayOverride(node, formula.output.name, {
+          displayOverride(node, closureOutput.name, {
             kind: 'numeric',
             dimension,
             unit: canonicalUnit(dimension),

@@ -216,6 +216,12 @@ Largely implemented, but R&M catalogue needs updating.
 
 **17. What about migration to newer versions?** I'm thinking notebooks and
 catalogues that the user made before.
+One data point from item 50's multi-output change: nothing needed migrating,
+because the schema was widened rather than replaced. A one-output record still
+parses, serializes **and hashes** byte-for-byte as it always did, so saved
+notebooks kept matching their formula refs; the private catalogue parsed
+unmigrated. A test pins that hash equivalence, since it is the thing that
+silently breaks students' graphs if it ever slips.
 
 **30. Change: Should we use compiled notebooks to share in the notebook viewer?** To save mobile processing power, they can't edit anyway.
 
@@ -243,13 +249,35 @@ formula and full stepped-diameter safety-factor verification, which need
 `C11_Shaft` extracted from the private catalogue repo with sign-off on the
 formula readings as they come up, the same way belt's defect table did.
 
-**49. Change: Photography catalogue. Can we not have circle of confusion in pixels?**
-Circle of confusion was already canonical `mm`, never pixels — switched its display
-unit to `µm` (values are ~0.02-0.03mm) since that reads more naturally
-(`photography.dof.circle-of-confusion`). Also added a resolution-aware
-alternative, `photography.dof.circle-of-confusion-pixels` (`c = n * p`, from
-pixel pitch and an acceptable-blur pixel count), since the existing
-diagonal-rule node is a film-era rule of thumb that ignores pixel count
-entirely.
-
 **50. Feature: I want a camera library in the photography nodes to get properties** Input: Dropdown camera make and model (include at least Canon EOS R6 Mark III), output: MP, sensor width/height, pixel size, ... (Every property we need or might need in the nodes)
+Done, and it needed a real change first: a formula declared exactly one output,
+so "pick a camera, get its whole spec sheet" was not expressible. A record's
+`output` now holds either one port (written bare, exactly as before) or a list,
+and a `lookup` carries one column per output over shared axes — the model is
+picked once and every property is read off that row. `photography.camera.properties`
+covers ten bodies (Canon R6 III/R6/R8/R5/1200D, Nikon Z6 III/D3300, Sony A7 IV/A7R V,
+Fujifilm X-T5) and `photography.lens.properties` three Canon RF zooms. Camera
+figures are held internally consistent — MP is px·py, pitch is w/px, the diagonal
+is √(w²+h²) — and a test asserts that rather than trusting the transcription.
+Crop factor is deliberately not a column: wire `d` into the existing crop-factor
+node. Note there is no RF 24-270mm; the RF 24-240mm F4-6.3 IS USM is what
+shipped, worth confirming that was the lens meant.
+
+A wart went with it. A lookup-backed formula used to need an `expression` purely
+to prove its output's dimension (`iso286.ts`'s `'0 * diameter'`), which a
+dropdown-only node cannot write at all — it would have forced a dummy numeric pin
+per unit. A table already declares each column's unit, so `expression` is now
+optional when a lookup answers for every output, and the declared unit is
+authoritative. `iso286`'s existing placeholder is left alone deliberately:
+removing it would change that record's hash and break saved graphs referencing it.
+
+**51. Feature: a `list from bounds` input node, hidden from the palette.** Build
+a swept list from two values (a lower and an upper bound) rather than making the
+author type the range out. Deliberately not offered in the palette — it exists
+to be reached some other way (quick-add from a dragged wire, or created by
+whatever needs it), not browsed. Open questions before building: how many points,
+and where does the count come from — a third input, a node setting, or inherited
+from whatever it feeds? And how does it relate to the existing range/sweep input,
+which already turns a range into an axis (see `packages/kernel/src/series.ts` and
+the `isRange` value spec) — is this a second face on that same machinery or a
+genuinely new node kind?

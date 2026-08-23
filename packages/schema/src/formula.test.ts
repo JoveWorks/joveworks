@@ -22,6 +22,7 @@ import {
 } from './formula.js';
 import { localize } from './localization.js';
 import { canonicalJson, type JsonObject } from './json.js';
+import { hashRecord } from './hash.js';
 import { SCHEMA_VERSION } from './version.js';
 
 const product: JsonObject = {
@@ -93,6 +94,97 @@ describe('the formula record', () => {
   });
 });
 
+describe('several outputs', () => {
+  /** One dropdown, one row per pick, a column of properties read off it. */
+  const table: JsonObject = {
+    id: 'demo.table',
+    version: 1,
+    output: [
+      { kind: 'numeric', name: 'w', unit: 'mm' },
+      { kind: 'numeric', name: 'n', unit: '' },
+    ],
+    inputs: [{ kind: 'categorical', name: 'pick', domain: ['first', 'second'], default: 'first' }],
+    lookup: {
+      axes: [{ input: 'pick', kind: 'categorical', values: ['first', 'second'] }],
+      values: { w: [10, 20], n: [1, 2] },
+    },
+    description: { en: 'An invented table, used because a real one may not be redistributed.' },
+    status: 'unverified',
+  };
+
+  it('round-trips a record whose outputs are a list, columns and all', () => {
+    expect(serializeFormula(parse(table))).toEqual(table);
+  });
+
+  it('lists every output before the inputs', () => {
+    expect(ports(parse(table)).map((port) => port.name)).toEqual(['w', 'n', 'pick']);
+  });
+
+  it('needs no expression when a table answers for every output', () => {
+    expect(parse(table).expression).toBeUndefined();
+  });
+
+  it('still demands an expression when no table answers', () => {
+    const { lookup: _lookup, ...withoutTable } = table;
+    expect(() => parse(withoutTable)).toThrow(
+      /expression: is required unless a lookup answers for every output/,
+    );
+  });
+
+  it('rejects the same name declared on two outputs', () => {
+    const json = {
+      ...table,
+      output: [
+        { kind: 'numeric', name: 'w', unit: 'mm' },
+        { kind: 'numeric', name: 'w', unit: '' },
+      ],
+      lookup: { ...(table['lookup'] as JsonObject), values: { w: [10, 20] } },
+    };
+    expect(() => parse(json)).toThrow(/output\[1\]\.name: 'w' is declared twice/);
+  });
+
+  it('rejects a column naming something no output declares', () => {
+    const json = {
+      ...table,
+      lookup: { ...(table['lookup'] as JsonObject), values: { w: [10, 20], nope: [1, 2] } },
+    };
+    expect(() => parse(json)).toThrow(/values\.nope: 'nope' is not a declared output/);
+  });
+
+  it('rejects an output no column answers for', () => {
+    const json = {
+      ...table,
+      lookup: { ...(table['lookup'] as JsonObject), values: { w: [10, 20] } },
+    };
+    expect(() => parse(json)).toThrow(/values: has no column for output 'n'/);
+  });
+
+  it('rejects a column whose length does not match the axes', () => {
+    const json = {
+      ...table,
+      lookup: { ...(table['lookup'] as JsonObject), values: { w: [10, 20], n: [1] } },
+    };
+    expect(() => parse(json)).toThrow(/values\.n: has 1 entries; axes require 2/);
+  });
+
+  it('insists a bare values array belongs to a record with one output', () => {
+    const json = { ...table, lookup: { ...(table['lookup'] as JsonObject), values: [10, 20] } };
+    expect(() => parse(json)).toThrow(/values: must name a column per output when a formula declares 2 of them/);
+  });
+
+  it('refuses a curve evaluator on a record answering with several things', () => {
+    const json = {
+      ...table,
+      inputs: [{ kind: 'numeric', name: 'z', unit: 'mm' }],
+      expression: 'z',
+      piecewise: { kind: 'cumulativeStep', axis: 'z', breakpoints: ['z'], values: ['z'] },
+      lookup: undefined,
+    };
+    delete (json as Record<string, unknown>)['lookup'];
+    expect(() => parse(json as JsonObject)).toThrow(/piecewise: answers with one curve/);
+  });
+});
+
 describe('status and quarantine', () => {
   it('cannot be evaluated when quarantined', () => {
     const quarantined = parse({
@@ -160,6 +252,32 @@ describe('references by id, version and hash', () => {
     // to for a genuinely new object.
     (formula as { expression: string }).expression = 'a*b - c';
     expect(formulaHash(formula)).toBe(first);
+  });
+
+  /**
+   * Every saved graph pins its formulas by this hash, so a record that gained
+   * nothing must hash to exactly what it always did — reconstructed here the
+   * way the one-output record was written before outputs could be a list,
+   * rather than pinned to a literal string that would have to be rewritten
+   * (and could be rewritten wrongly) whenever a fixture moves.
+   */
+  it('hashes a one-output record exactly as it did before outputs could be a list', () => {
+    const formula = parse();
+    const port = { ...(serializeFormula(formula)['output'] as JsonObject) };
+    delete port['description'];
+    const asItAlwaysWas = hashRecord({
+      id: formula.id,
+      version: formula.version,
+      output: port,
+      inputs: (serializeFormula(formula)['inputs'] as JsonObject[]).map((input) => {
+        const copy = { ...input };
+        delete copy['description'];
+        return copy;
+      }),
+      expression: formula.expression as string,
+      status: formula.status,
+    });
+    expect(formulaHash(formula)).toBe(asItAlwaysWas);
   });
 
   it('does not change a reference when only translated display text changes', () => {
@@ -235,7 +353,7 @@ describe('generic formulas', () => {
       },
       '',
     );
-    expect(formula.output.kind).toBe('numeric');
+    expect(formula.outputs[0]!.kind).toBe('numeric');
     expect(serializeFormula(formula)['output']).toMatchObject({ unit: '$A*$B' });
   });
 

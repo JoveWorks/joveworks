@@ -8,7 +8,7 @@ describe('closureFormula', () => {
     const formula = closureFormula('b + a');
     expect(formula.inputs.map((port) => port.name)).toEqual(['a', 'b']);
     expect(formula.inputs.every((port) => port.kind === 'numeric')).toBe(true);
-    expect(formula.output.name).toBe('result');
+    expect((formula.outputs[0]!).name).toBe('result');
   });
 
   it('excludes named constants such as pi', () => {

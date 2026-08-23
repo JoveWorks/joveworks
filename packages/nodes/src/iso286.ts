@@ -104,7 +104,7 @@ function lookup(feature: 'hole' | 'shaft', letters: readonly string[]): FormulaL
       { input: 'grade', kind: 'categorical', values: IT_C_NR },
       { input: 'limit', kind: 'categorical', values: ['lower', 'upper'] },
     ],
-    values,
+    columns: { deviation: values },
   };
 }
 
@@ -115,7 +115,7 @@ function formula(feature: 'hole' | 'shaft', letters: readonly string[]): Formula
     version: 1,
     label: text(`ISO 286 ${feature} deviation`),
     description: text(`${capital} limit deviation for a nominal diameter, tolerance letter and IT grade.`),
-    output: { kind: 'numeric', name: 'deviation', unit: parseUnit('µm'), description: text('Selected limit deviation') },
+    outputs: [{ kind: 'numeric', name: 'deviation', unit: parseUnit('µm'), description: text('Selected limit deviation') }],
     inputs: [
       { kind: 'numeric', name: 'diameter', unit: parseUnit('mm'), default: 100, description: text('Nominal size') },
       { kind: 'categorical', name: 'letter', domain: letters, default: feature === 'hole' ? 'H' : 'h', description: text('Tolerance position') },

@@ -97,7 +97,7 @@ export function closureFormula(expression: string): Formula {
     // Inert placeholder — never resolved or checked. graph.ts proves the
     // output's real dimension live, and formula.ts's compileClosureFormula
     // skips the self-check that would otherwise compare this to it.
-    output: { kind: 'numeric', name: CLOSURE_RESULT_PORT, unit: parseGenericDimension('$result') },
+    outputs: [{ kind: 'numeric', name: CLOSURE_RESULT_PORT, unit: parseGenericDimension('$result') }],
     inputs,
     expression,
     description: { en: '' },

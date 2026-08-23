@@ -524,7 +524,11 @@ export function OutputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>
           // borrowed from the upstream formula's own output description.
           const portSource = document.edges.find((edge) => edge.to.node === id && edge.to.port === name);
           const description =
-            portSource === undefined ? undefined : analysis.formulas.get(portSource.from.node)?.output.description;
+            portSource === undefined
+              ? undefined
+              : analysis.formulas
+                  .get(portSource.from.node)
+                  ?.outputs.find((output) => output.name === portSource.from.port)?.description;
           return (
             <li
               key={name}

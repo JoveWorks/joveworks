@@ -15,7 +15,7 @@ import { phrase } from '../i18n';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 
 import { parseExpression, toLatex } from '@joveworks/kernel';
-import { CLOSURE_RESULT_PORT, type Port } from '@joveworks/schema';
+import { CLOSURE_RESULT_PORT, type OutputPort, type Port } from '@joveworks/schema';
 
 import type { Unit } from '@joveworks/units';
 
@@ -59,11 +59,11 @@ export function ClosureNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
 
   const portUnit = (port: Port) => analysis.resolution?.targets.get(`${id}.${port.name}`)?.unit;
 
-  const value = formula === undefined ? undefined : reading(analysis, id, formula.output.name);
+  const value = formula === undefined ? undefined : reading(analysis, id, (formula.outputs[0] as OutputPort).name);
   const outputUnit =
     formula === undefined
       ? undefined
-      : analysis.resolution?.sources.get(`${id}.${formula.output.name}`)?.unit;
+      : analysis.resolution?.sources.get(`${id}.${(formula.outputs[0] as OutputPort).name}`)?.unit;
   const setOutputDisplayUnit = (unit: Unit): void =>
     edit((current) =>
       updateNode(current, id, (entry) => ({

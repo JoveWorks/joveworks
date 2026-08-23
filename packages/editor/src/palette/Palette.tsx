@@ -203,7 +203,14 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
           }}
         >
           <span className="entry-id">{title}</span>
-          <span className="entry-output"><Symbol name={formula.output.name} /></span>
+          <span className="entry-output">
+            {formula.outputs.map((port, i) => (
+              <span key={port.name}>
+                {i === 0 ? null : ', '}
+                <Symbol name={port.name} />
+              </span>
+            ))}
+          </span>
           {formula.status === 'quarantined' ? <span className="entry-status">quarantined</span> : null}
         </button>
       </li>

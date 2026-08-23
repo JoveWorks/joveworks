@@ -119,7 +119,9 @@ function occupantOf(
   if (source === undefined) return undefined;
   if (source.kind === 'formula') {
     const formula = formulas.get(source.id);
-    return formula === undefined ? nodeLabel(source) : `${nodeLabel(source)} (${formula.output.name})`;
+    // Name the port the wire actually leaves from, which on a multi-output
+    // node is the only thing that tells two of its wires apart.
+    return formula === undefined ? nodeLabel(source) : `${nodeLabel(source)} (${edge.from.port})`;
   }
   return nodeLabel(source);
 }
@@ -141,7 +143,7 @@ function searchPorts(document: GraphDocument, formulas: ReadonlyMap<string, Form
   if (node.kind === 'input') return [VALUE_PORT];
   if (node.kind === 'formula') {
     const formula = formulas.get(node.id);
-    return formula === undefined ? [] : [...formula.inputs.map((port) => port.name), formula.output.name];
+    return formula === undefined ? [] : [...formula.inputs, ...formula.outputs].map((port) => port.name);
   }
   if (node.kind === 'output') {
     const valuePorts = node.output.kind === 'table' ? node.output.columns : [VALUE_PORT];
@@ -152,7 +154,7 @@ function searchPorts(document: GraphDocument, formulas: ReadonlyMap<string, Form
   if (node.kind === 'compare') return [VALUE_PORT, THRESHOLD_PORT, VERDICT_PORT];
   if (node.kind === 'closure') {
     const formula = formulas.get(node.id);
-    return formula === undefined ? [CLOSURE_RESULT_PORT] : [...formula.inputs.map((port) => port.name), formula.output.name];
+    return formula === undefined ? [CLOSURE_RESULT_PORT] : [...formula.inputs, ...formula.outputs].map((port) => port.name);
   }
   if (node.kind === 'pack') {
     const inputs = document.edges
@@ -239,12 +241,16 @@ function existingCandidates(
     } else if (node.kind === 'formula') {
       const formula = formulas.get(node.id);
       if (formula === undefined) continue;
-      candidates.push({
-        nodeId: node.id,
-        label: nodeLabel(node),
-        subtitle: formula.citation ?? formula.id,
-        port: formula.output.name,
-      });
+      // Each output is its own thing to wire from, so a node answering with
+      // several offers a choice per property rather than only its first.
+      for (const port of formula.outputs) {
+        candidates.push({
+          nodeId: node.id,
+          label: formula.outputs.length === 1 ? nodeLabel(node) : `${nodeLabel(node)} (${port.name})`,
+          subtitle: formula.citation ?? formula.id,
+          port: port.name,
+        });
+      }
     } else if (node.kind === 'compare') {
       candidates.push({ nodeId: node.id, label: nodeLabel(node), subtitle: 'compare', port: VERDICT_PORT });
     }
@@ -330,7 +336,7 @@ export function compatibleQuickAddPort(
   }
 
   const ports = choice.kind === 'formula'
-    ? target.from.type === 'source' ? choice.formula.inputs.map((port) => port.name) : [choice.formula.output.name]
+    ? (target.from.type === 'source' ? choice.formula.inputs : choice.formula.outputs).map((port) => port.name)
     : choice.kind === 'compare' ? [target.from.type === 'source' ? VALUE_PORT : VERDICT_PORT]
     : choice.kind === 'closure' ? [target.from.type === 'source' ? 'value' : CLOSURE_RESULT_PORT]
     : choice.kind === 'waypoint' ? [target.from.type === 'source' ? 'in0' : 'out0']

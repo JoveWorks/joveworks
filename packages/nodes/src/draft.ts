@@ -63,7 +63,7 @@ export function buildFormulas(
   return drafts.map((draft) => ({
     id: draft.id,
     version: 1,
-    output: draft.output as Formula['output'],
+    outputs: [draft.output],
     inputs: draft.inputs,
     expression: draft.expression,
     label: draftLabel(draft.id, dutchLabels),
