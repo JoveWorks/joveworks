@@ -696,7 +696,12 @@ function evaluateFormula(
       for (let i = 0; i < positions.length; i += 1) {
         const position = positions[i] as number;
         if (position > z) continue;
-        total += piecewiseKind === 'cumulativeMoment' ? (magnitudes[i] as number) * (z - position) : (magnitudes[i] as number);
+        total +=
+          piecewiseKind === 'cumulativeMoment'
+            ? (magnitudes[i] as number) * (z - position)
+            : piecewiseKind === 'cumulativeCubic'
+              ? (magnitudes[i] as number) * (z - position) ** 3
+              : (magnitudes[i] as number);
       }
 
       const starts = namesAt(cell, startContributions);

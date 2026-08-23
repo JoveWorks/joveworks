@@ -44,7 +44,7 @@ import {
   type Port,
 } from './port.js';
 import { readSchemaVersion } from './version.js';
-import { dimensionsEqual, divideDimensions, genericVariables, isGenericDimension, type Dimension } from '@joveworks/units';
+import { dimensionsEqual, divideDimensions, genericVariables, isGenericDimension, powerDimension, type Dimension } from '@joveworks/units';
 
 /** The dimension variables a port mentions — none, unless it is generic. */
 function portVariables(port: Port): readonly string[] {
@@ -95,6 +95,19 @@ export interface FormulaLookup {
  *   at a support position instead of swept, the moment used to solve that
  *   support's reaction (ordinary `divide`/`subtract` base nodes take it
  *   from there; no third kind is needed for reactions).
+ * - `cumulativeCubic` — `Σ value·(axis − breakpoint)³` over breakpoints at
+ *   or before `axis`. `EI` times a beam's deflection, `y(z)`, is the
+ *   second integral of the moment diagram — `cumulativeMoment` integrated
+ *   twice more — up to two constants of integration a document composes
+ *   from ordinary base nodes, the same way a reaction is: evaluate this
+ *   kind at each support's own position (giving two equations in the
+ *   constants from that support's `y = 0`), solve, then add
+ *   `constant·axis + constant` and divide by `EI` for the swept curve.
+ *   Distributed loads are not implemented for this kind — the closed form
+ *   for a rectangular load's second-integral-of-moment contribution is
+ *   more involved and no shaft feature needs it yet; declaring
+ *   `distributedStart`/`End`/`Rate` alongside `cumulativeCubic` is rejected
+ *   rather than silently computing the wrong curve.
  *
  * `breakpoints` and `values` each name one or more declared input ports,
  * concatenated in the order listed — not paired by wire order, which a
@@ -117,7 +130,7 @@ export interface FormulaLookup {
  * declare either group, or both — a shear diagram with point loads and a
  * distributed load in the same span totals both.
  */
-export const PIECEWISE_KINDS = ['cumulativeStep', 'cumulativeMoment'] as const;
+export const PIECEWISE_KINDS = ['cumulativeStep', 'cumulativeMoment', 'cumulativeCubic'] as const;
 export type PiecewiseKind = (typeof PIECEWISE_KINDS)[number];
 
 export interface FormulaPiecewise {
@@ -356,6 +369,9 @@ export function parseFormula(value: JsonValue, path: string): Formula {
     if (distributedFields.some((field) => field !== undefined) && distributedFields.some((field) => field === undefined)) {
       fail(join(path, 'piecewise'), 'distributedStart, distributedEnd and distributedRate must be declared together, or not at all');
     }
+    if (piecewise.kind === 'cumulativeCubic' && distributedFields.some((field) => field !== undefined)) {
+      fail(join(path, 'piecewise'), "a distributed load's cumulativeCubic contribution is not implemented — leave distributedStart/End/Rate off");
+    }
     if (piecewise.breakpoints === undefined && piecewise.distributedStart === undefined) {
       fail(join(path, 'piecewise'), 'needs breakpoints/values, distributedStart/End/Rate, or both');
     }
@@ -364,14 +380,22 @@ export function parseFormula(value: JsonValue, path: string): Formula {
     // dimension. `cumulativeMoment`'s output is `Σ value·(axis − breakpoint)`,
     // so `values` carries the output's dimension divided by `axis`'s instead
     // — force in, force·length out, for a breakpoint measured in length.
+    // `cumulativeCubic`'s output is `Σ value·(axis − breakpoint)³`, so
+    // `values` carries the output's dimension divided by `axis`'s, cubed.
     const valuesDimension =
-      piecewise.kind === 'cumulativeMoment' && outputDimension !== undefined && axisDimension !== undefined
-        ? divideDimensions(outputDimension, axisDimension)
-        : outputDimension;
+      outputDimension === undefined || axisDimension === undefined
+        ? outputDimension
+        : piecewise.kind === 'cumulativeMoment'
+          ? divideDimensions(outputDimension, axisDimension)
+          : piecewise.kind === 'cumulativeCubic'
+            ? divideDimensions(outputDimension, powerDimension(axisDimension, 3))
+            : outputDimension;
     const valuesMismatch =
       piecewise.kind === 'cumulativeMoment'
         ? `must have the output's dimension divided by '${piecewise.axis}''s`
-        : "must share the output's dimension";
+        : piecewise.kind === 'cumulativeCubic'
+          ? `must have the output's dimension divided by '${piecewise.axis}''s, cubed`
+          : "must share the output's dimension";
     checkNames(piecewise.values, join(path, 'piecewise.values'), valuesDimension, valuesMismatch);
 
     checkNames(piecewise.distributedStart, join(path, 'piecewise.distributedStart'), axisDimension, `must share '${piecewise.axis}''s dimension`);
