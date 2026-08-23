@@ -5,7 +5,9 @@
 A node-editor design tool for dimensioning machine parts. Wire inputs,
 equations and outputs together on a canvas; the graph *is* the calculation.
 
-Built for the KU Leuven course on dimensioning of machine parts. Formulas follow
+![JoveWorks editor: a node graph feeding a live results panel with plots and pass/fail checks](docs/images/editor-overview.png)
+
+Built for a course on dimensioning of machine parts. Formulas follow
 **Roloff & Matek, 6th edition**, and each one carries a citation back to its
 textbook equation number.
 

@@ -3,7 +3,7 @@
 A node editor for dimensioning machine parts. You wire inputs, equations and
 outputs together on a canvas, and **the graph is the calculation**.
 
-Built for the KU Leuven machine-parts course. Formulas come from *Roloff &
+Built for a machine-parts course. Formulas come from *Roloff &
 Matek, 6th ed.*, and every one carries a citation back to its equation number.
 
 **Learning is free.** The engine and editor are open source and stay that

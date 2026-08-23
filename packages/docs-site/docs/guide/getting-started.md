@@ -4,7 +4,7 @@ JoveWorks is a node editor for dimensioning machine parts. You
 wire inputs, equations and outputs together on a canvas, and the graph is
 the calculation.
 
-It's built for the KU Leuven machine-parts course. Formulas come from
+It's built for a machine-parts course. Formulas come from
 *Roloff & Matek, 6th ed.*, and every one carries a citation back to its
 equation number. The catalogue itself is distributed separately through the
 course — this site, like the app, ships no textbook content.

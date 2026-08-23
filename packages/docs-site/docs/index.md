@@ -4,7 +4,7 @@ layout: home
 hero:
   name: JoveWorks
   text: Build engineering NodeBooks.
-  tagline: A node editor for dimensioning machine parts, built for the KU Leuven machine-parts course. Formulas come from Roloff & Matek, 6th ed.
+  tagline: A node editor for dimensioning machine parts, built for a machine-parts course. Formulas come from Roloff & Matek, 6th ed.
   actions:
     - theme: brand
       text: Get started
