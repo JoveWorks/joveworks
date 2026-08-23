@@ -242,3 +242,14 @@ contribution, and — the larger remaining half — the required-diameter
 formula and full stepped-diameter safety-factor verification, which need
 `C11_Shaft` extracted from the private catalogue repo with sign-off on the
 formula readings as they come up, the same way belt's defect table did.
+
+**49. Change: Photography catalogue. Can we not have circle of confusion in pixels?**
+Circle of confusion was already canonical `mm`, never pixels — switched its display
+unit to `µm` (values are ~0.02-0.03mm) since that reads more naturally
+(`photography.dof.circle-of-confusion`). Also added a resolution-aware
+alternative, `photography.dof.circle-of-confusion-pixels` (`c = n * p`, from
+pixel pitch and an acceptable-blur pixel count), since the existing
+diagonal-rule node is a film-era rule of thumb that ignores pixel count
+entirely.
+
+**50. Feature: I want a camera library in the photography nodes to get properties** Input: Dropdown camera make and model (include at least Canon EOS R6 Mark III), output: MP, sensor width/height, pixel size, ... (Every property we need or might need in the nodes)

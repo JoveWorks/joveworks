@@ -494,7 +494,7 @@
       "output": {
         "kind": "numeric",
         "name": "c",
-        "unit": "mm",
+        "unit": "µm",
         "description": {
           "en": "Acceptable circle of confusion."
         }
@@ -532,6 +532,52 @@
         "en": "Rule-of-thumb acceptable circle of confusion from the sensor diagonal."
       },
       "citation": "Circle of confusion, diagonal rule",
+      "status": "unverified"
+    },
+    {
+      "id": "photography.dof.circle-of-confusion-pixels",
+      "version": 1,
+      "output": {
+        "kind": "numeric",
+        "name": "c",
+        "unit": "µm",
+        "description": {
+          "en": "Acceptable circle of confusion."
+        }
+      },
+      "inputs": [
+        {
+          "kind": "numeric",
+          "name": "p",
+          "unit": "µm",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Pixel pitch (photosite spacing)."
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "n",
+          "unit": "",
+          "default": 2,
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Acceptable blur, as a number of pixels across the photosite spacing; 2 is a common choice."
+          }
+        }
+      ],
+      "expression": "n * p",
+      "label": {
+        "en": "Circle of confusion (pixel-based)"
+      },
+      "description": {
+        "en": "Acceptable circle of confusion sized to a chosen number of pixels of blur, from the sensor's pixel pitch."
+      },
+      "citation": "Circle of confusion, pixel-based criterion",
       "status": "unverified"
     },
     {
