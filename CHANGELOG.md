@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.12.2](https://github.com/ThomasVanRiel/joveworks/compare/v0.12.1...v0.12.2) (2026-08-23)
+
+### Fixes
+
+* **canvas:** restore scroll-to-zoom ([12b3e4b](https://github.com/ThomasVanRiel/joveworks/commit/12b3e4b40d3b21846e797e7161d9003e0d083bc0))
+
+### Refactoring
+
+* **editor:** trim palette node copy, rename equation to custom expression ([bc83016](https://github.com/ThomasVanRiel/joveworks/commit/bc83016d3899817ec2f71ceea23569eaf07e80f6))
+
+### Documentation
+
+* add editor screenshot, drop KU Leuven references ([ca5a684](https://github.com/ThomasVanRiel/joveworks/commit/ca5a68447bfd30b5a5b531f674dcebbf1c95be9d))
+* **docs-site:** add editor tips-and-tricks guide page ([401c4dc](https://github.com/ThomasVanRiel/joveworks/commit/401c4dc8659865164a378b3f5d362e033cf77541))
+* **docs-site:** fill gaps in getting-started, sweeps, and units guides ([39e7fb4](https://github.com/ThomasVanRiel/joveworks/commit/39e7fb4fcdc176974edc6023c9edff5ae269ec36))
+* **node-reference:** expand and restructure by palette section, link output nodes to their own paragraph ([a3475c1](https://github.com/ThomasVanRiel/joveworks/commit/a3475c1bba5b25880140b8acaeb4cd03c3f550f7))
 ## [0.12.1](https://github.com/ThomasVanRiel/joveworks/compare/v0.12.0...v0.12.1) (2026-08-23)
 
 ### Features
