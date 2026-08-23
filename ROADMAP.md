@@ -171,6 +171,13 @@ formula's own `expression` field is a dimensionally-valid placeholder, not
 the real computation (same accepted tradeoff `iso286`'s lookup formulas
 already make) — the palette's equation preview for these nodes won't show
 the actual piecewise relation.
+Second slice: a third kind, `cumulativeCubic` (`Σ value·(axis −
+breakpoint)³`), backs `shaftDeflectionTerm` — `EI` times a beam's
+deflection, up to two constants of integration a document solves for the
+same way a reaction is (evaluate at each support's own position, `y = 0`
+gives one equation each, `divide`/`subtract`/`multiply` finish it). No
+distributed-load contribution for this kind yet — rejected at parse time
+rather than silently wrong.
 
 **11. Notebook export to Markdown**, for pasting a finished graph into an
 external site. Checked against `~/source/website`'s Astro content
@@ -212,13 +219,14 @@ Separately, worth having but a distinct piece of work: interpolating/smoothing b
 
 **48. Feature: Let's design the shaft calculations** Take a look at the shaft notebooks and equations in the /home/thomas/source/mechanical-design repo and discuss what we can do. It will need force/distance, support/distance pairs to construct the piecewise arrays. I want to be able to show the bending/load diagrams and calculate the shaft sizes from it. This is a big feature, so we must plan it meticulously.
 Planned in `~/.claude/plans/fuzzy-imagining-fountain.md`, built in the
-`shaft-calculations` worktree. Landed: load/shear/moment/torque diagrams,
-the 2-support reaction solve, and uniform distributed loads (item 8's
-first slice, details there), plus the load-spectrum editing UI (item 5) —
-end to end, editor included, entirely without R&M content. Deliberately
-out of this slice, matching the plan: 3+ support (statically indeterminate)
-shafts, linearly-varying distributed loads, and — the larger remaining
-half — the required-diameter formula and full stepped-diameter
-safety-factor verification, which need `C11_Shaft` extracted from the
-private catalogue repo with sign-off on the formula readings as they come
-up, the same way belt's defect table did.
+`shaft-calculations` and `shaft-deflection` worktrees. Landed:
+load/shear/moment/torque diagrams, the 2-support reaction solve, uniform
+distributed loads, and the deflection curve (item 8's two slices, details
+there), plus the load-spectrum editing UI (item 5) — end to end, editor
+included, entirely without R&M content. Deliberately out of this slice,
+matching the plan: 3+ support (statically indeterminate) shafts,
+linearly-varying distributed loads, a distributed load's own deflection
+contribution, and — the larger remaining half — the required-diameter
+formula and full stepped-diameter safety-factor verification, which need
+`C11_Shaft` extracted from the private catalogue repo with sign-off on the
+formula readings as they come up, the same way belt's defect table did.
