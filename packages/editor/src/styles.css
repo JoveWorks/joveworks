@@ -2368,6 +2368,11 @@ aside.right {
   background: var(--panel);
 }
 
+.quick-add-list button.selected {
+  background: var(--panel);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
 .quick-add-list .entry-output {
   color: var(--muted);
   margin-left: auto;

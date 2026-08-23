@@ -168,6 +168,20 @@ export function QuickAddMenu({
     onClose();
   };
 
+  // What Enter would pick — "Add new" before "On this canvas", matching this
+  // menu's own render order — so the same row can be highlighted as selected.
+  const topSpecial = matchingSpecials.find((entry) => entry.disabled !== true);
+  const topFormula = formulas[0];
+  const topExisting = matchingExisting[0];
+  const selected: { readonly kind: 'special' | 'formula' | 'existing'; readonly key: string } | undefined =
+    topSpecial !== undefined
+      ? { kind: 'special', key: topSpecial.label }
+      : topFormula !== undefined
+        ? { kind: 'formula', key: topFormula.formula.id }
+        : topExisting !== undefined
+          ? { kind: 'existing', key: topExisting.nodeId }
+          : undefined;
+
   return (
     <>
       <div className="context-menu-backdrop" onClick={onClose} onContextMenu={onClose} />
@@ -181,15 +195,12 @@ export function QuickAddMenu({
           onKeyDown={(event) => {
             if (event.key === 'Escape') onClose();
             if (event.key === 'Enter') {
-              // "Add new" before "On this canvas" (QuickAddMenu's own render
-              // order below) — picking with Enter should land on the same
-              // thing hitting the first visible row would.
-              const special = matchingSpecials.find((entry) => entry.disabled !== true)?.choice;
-              const existingMatch = matchingExisting[0];
-              if (special !== undefined) pick(special);
-              else if (formulas[0] !== undefined) pick({ kind: 'formula', formula: formulas[0].formula, port: formulas[0].port });
-              else if (existingMatch !== undefined) {
-                pick({ kind: 'existing', nodeId: existingMatch.nodeId, port: existingMatch.port });
+              // Picking with Enter lands on whichever row is highlighted as
+              // `selected` above.
+              if (topSpecial !== undefined) pick(topSpecial.choice);
+              else if (topFormula !== undefined) pick({ kind: 'formula', formula: topFormula.formula, port: topFormula.port });
+              else if (topExisting !== undefined) {
+                pick({ kind: 'existing', nodeId: topExisting.nodeId, port: topExisting.port });
               }
             }
           }}
@@ -202,6 +213,7 @@ export function QuickAddMenu({
                 <button
                   key={label}
                   type="button"
+                  className={selected?.kind === 'special' && selected.key === label ? 'selected' : undefined}
                   disabled={disabled ?? false}
                   title={
                     disabled === true ? t('Needs a range input somewhere in the graph to plot against') : undefined
@@ -215,7 +227,10 @@ export function QuickAddMenu({
                 <button
                   key={formula.id}
                   type="button"
-                  className="quick-add-formula"
+                  className={
+                    'quick-add-formula' +
+                    (selected?.kind === 'formula' && selected.key === formula.id ? ' selected' : '')
+                  }
                   onClick={() => pick({ kind: 'formula', formula, port })}
                 >
                   <span className="quick-add-formula-heading">
@@ -236,6 +251,9 @@ export function QuickAddMenu({
                 <button
                   key={candidate.nodeId}
                   type="button"
+                  className={
+                    selected?.kind === 'existing' && selected.key === candidate.nodeId ? 'selected' : undefined
+                  }
                   title={
                     candidate.replaces === undefined
                       ? undefined
