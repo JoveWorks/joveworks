@@ -54,6 +54,20 @@ const DRAFTS: readonly Draft[] = [
     inputs: [generic('a', 'A', 'Value to negate')],
   },
   {
+    id: 'double',
+    description: 'Twice the value.',
+    expression: 'a * 2',
+    output: generic('doubled', 'A', '2a'),
+    inputs: [generic('a', 'A', 'Value to double')],
+  },
+  {
+    id: 'half',
+    description: 'Half the value.',
+    expression: 'a / 2',
+    output: generic('halved', 'A', 'a / 2'),
+    inputs: [generic('a', 'A', 'Value to halve')],
+  },
+  {
     id: 'absolute',
     description: 'Magnitude, discarding sign.',
     expression: 'abs(a)',
@@ -262,7 +276,8 @@ const DRAFTS: readonly Draft[] = [
 ];
 
 const DUTCH_LABELS: Readonly<Record<string, string>> = {
-  add: 'Optellen', subtract: 'Aftrekken', negate: 'Teken omkeren', absolute: 'Absolute waarde',
+  add: 'Optellen', subtract: 'Aftrekken', negate: 'Teken omkeren', double: 'Verdubbelen', half: 'Helft',
+  absolute: 'Absolute waarde',
   minimum: 'Minimum', maximum: 'Maximum', multiply: 'Vermenigvuldigen', divide: 'Delen',
   square: 'Kwadraat', squareRoot: 'Vierkantswortel', cubeRoot: 'Derde machtswortel', power: 'Macht',
   floor: 'Naar beneden afronden', ceiling: 'Naar boven afronden', round: 'Afronden',
