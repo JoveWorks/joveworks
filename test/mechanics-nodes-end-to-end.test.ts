@@ -334,4 +334,54 @@ describe('the mechanics node library through the kernel', () => {
     expect(y[1]).toBeCloseTo(-153.6); // under the load
     expect(y[2]).toBeCloseTo(0); // support B
   });
+
+  it('shaftDeflection reproduces the same curve as the manual shaftDeflectionTerm composition, in one node', () => {
+    // Same beam, same reactions (600 N / 400 N) — this time E and I are
+    // wired straight into shaftDeflection instead of composing the
+    // boundary-value solve by hand. Genuinely checks the curve is zero at
+    // both supports (not just "zero because I forgot the correction"),
+    // matching the −153.6 mm computed above.
+    const nodes: JsonObject[] = [
+      input('position', { kind: 'spectrum', values: [80], unit: 'mm' }),
+      input('force', { kind: 'spectrum', values: [-1000], unit: 'N' }),
+      input('supportA', { kind: 'scalar', value: 0, unit: 'mm' }),
+      input('supportB', { kind: 'scalar', value: 200, unit: 'mm' }),
+
+      node('momentAtB', 'shaftMoment', catalogues, {
+        inputValues: { z: { kind: 'scalar', value: 200, unit: 'mm' } },
+      }),
+      node('span', 'subtract', withBaseNodes),
+      node('reactionARaw', 'divide', withBaseNodes),
+      node('reactionA', 'negate', withBaseNodes),
+      node('loadTotal', 'sum', withBaseNodes),
+      node('negLoadTotal', 'negate', withBaseNodes),
+      node('reactionB', 'subtract', withBaseNodes),
+
+      input('z', { kind: 'list', values: [0, 80, 200], unit: 'mm' }),
+      input('E', { kind: 'scalar', value: 1000, unit: 'N/mm²' }),
+      input('I', { kind: 'scalar', value: 1000, unit: 'mm⁴' }),
+      node('y', 'shaftDeflection'),
+    ];
+    const edges: JsonObject[] = [
+      wire('position.value', 'momentAtB.position'),
+      wire('force.value', 'momentAtB.force'),
+      wire('supportB.value', 'span.a'),
+      wire('supportA.value', 'span.b'),
+      wire('momentAtB.M', 'reactionARaw.a'),
+      wire('span.difference', 'reactionARaw.b'),
+      wire('reactionARaw.quotient', 'reactionA.a'),
+      wire('force.value', 'loadTotal.xs'),
+      wire('loadTotal.total', 'negLoadTotal.a'),
+      wire('negLoadTotal.negated', 'reactionB.a'),
+      wire('reactionA.negated', 'reactionB.b'),
+
+      wire('z.value', 'y.z'), wire('position.value', 'y.position'), wire('force.value', 'y.force'),
+      wire('supportA.value', 'y.supportA'), wire('reactionA.negated', 'y.reactionA'),
+      wire('supportB.value', 'y.supportB'), wire('reactionB.difference', 'y.reactionB'),
+      wire('E.value', 'y.E'), wire('I.value', 'y.I'),
+    ];
+    const evaluation = evaluateDocument(graph(nodes, edges), withBaseNodes);
+
+    expect(numeric(valueAt(evaluation, 'y', 'y')).data).toEqual([0, -153.6, 0]);
+  });
 });

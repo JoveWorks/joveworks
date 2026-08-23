@@ -513,3 +513,92 @@ describe('piecewise formulas', () => {
     });
   });
 });
+
+describe('deflection formulas', () => {
+  const beam: JsonObject = {
+    id: 'demo.beam-deflection',
+    version: 1,
+    output: { kind: 'numeric', name: 'y', unit: 'mm' },
+    inputs: [
+      { kind: 'numeric', name: 'z', unit: 'mm', default: 0 },
+      { kind: 'spectrum', name: 'position', unit: 'mm' },
+      { kind: 'spectrum', name: 'value', unit: 'N' },
+      { kind: 'numeric', name: 'supportA', unit: 'mm' },
+      { kind: 'numeric', name: 'supportB', unit: 'mm' },
+      { kind: 'numeric', name: 'modulus', unit: 'N/mm²' },
+      { kind: 'numeric', name: 'inertia', unit: 'mm⁴' },
+    ],
+    expression: 'z',
+    deflection: {
+      axis: 'z',
+      breakpoints: ['position'],
+      values: ['value'],
+      zeroAt: ['supportA', 'supportB'],
+      modulus: 'modulus',
+      secondMomentOfArea: 'inertia',
+    },
+    description: { en: 'An invented beam-deflection formula.' },
+    status: 'unverified',
+  };
+
+  it('round-trips', () => {
+    expect(serializeFormula(parseFormula(beam, ''))['deflection']).toEqual(beam['deflection']);
+  });
+
+  it('rejects deflection alongside lookup or piecewise', () => {
+    expect(() =>
+      parseFormula(
+        // A dimensionally-valid cumulativeStep in its own right (mm in, mm
+        // out) — deflection's own mutual-exclusion check is what should
+        // fire here, not piecewise's unrelated dimension check.
+        { ...beam, piecewise: { kind: 'cumulativeStep', axis: 'z', breakpoints: ['position'], values: ['position'] } },
+        '',
+      ),
+    ).toThrow(/cannot accompany a piecewise evaluator/);
+  });
+
+  it('rejects zeroAt with anything but exactly two entries', () => {
+    expect(() =>
+      parseFormula(
+        { ...beam, deflection: { ...(beam['deflection'] as JsonObject), zeroAt: ['supportA'] } },
+        '',
+      ),
+    ).toThrow(/needs exactly two entries/);
+  });
+
+  it('rejects zeroAt naming the same input twice', () => {
+    expect(() =>
+      parseFormula(
+        { ...beam, deflection: { ...(beam['deflection'] as JsonObject), zeroAt: ['supportA', 'supportA'] } },
+        '',
+      ),
+    ).toThrow(/two different supports are needed/);
+  });
+
+  it("rejects a zeroAt entry whose dimension doesn't match the axis", () => {
+    expect(() =>
+      parseFormula(
+        { ...beam, deflection: { ...(beam['deflection'] as JsonObject), zeroAt: ['supportA', 'modulus'] } },
+        '',
+      ),
+    ).toThrow(/must share 'z''s dimension/);
+  });
+
+  it("rejects values whose dimension doesn't satisfy output × modulus × inertia / axis³", () => {
+    expect(() =>
+      parseFormula(
+        { ...beam, deflection: { ...(beam['deflection'] as JsonObject), values: ['position'] } },
+        '',
+      ),
+    ).toThrow(/must have the output's dimension times 'modulus''s and 'inertia''s, divided by 'z''s cubed/);
+  });
+
+  it('rejects a spectrum port used as zeroAt/modulus/secondMomentOfArea', () => {
+    expect(() =>
+      parseFormula(
+        { ...beam, deflection: { ...(beam['deflection'] as JsonObject), modulus: 'position' } },
+        '',
+      ),
+    ).toThrow(/'position' must be a declared numeric input/);
+  });
+});

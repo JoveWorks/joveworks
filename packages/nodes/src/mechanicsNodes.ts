@@ -146,6 +146,43 @@ const shaftDeflectionTerm: Formula = {
   status: 'unverified',
 };
 
+const shaftDeflection: Formula = {
+  id: 'shaftDeflection',
+  version: 1,
+  label: text('Deflection diagram'),
+  description: text(
+    "A shaft's deflection at a given position, y(z) — zero at both supports by " +
+      'construction. Solves the two constants of integration shaftDeflectionTerm leaves ' +
+      "open (from y = 0 at each support) and divides by E·I internally, so unlike " +
+      'shaftDeflectionTerm this is a real, directly-plottable displacement in mm, not an ' +
+      "intermediate N·mm³ term. Wire E and I directly — there's no cross-section formula " +
+      'yet, so both are plain numbers here. Distributed loads are not supported — wire ' +
+      'only point loads and reactions.',
+  ),
+  output: { kind: 'numeric', name: 'y', unit: parseUnit('mm'), description: text('Deflection at z — y(z)') },
+  inputs: [
+    { kind: 'numeric', name: 'z', unit: parseUnit('mm'), default: 0, description: text('Position along the shaft') },
+    { kind: 'spectrum', name: 'position', unit: parseUnit('mm'), description: text('Position of each applied point load') },
+    { kind: 'spectrum', name: 'force', unit: parseUnit('N'), description: text('Each point load, signed') },
+    { kind: 'numeric', name: 'supportA', unit: parseUnit('mm'), description: text('Position of support A') },
+    { kind: 'numeric', name: 'reactionA', unit: parseUnit('N'), description: text("Support A's reaction, signed") },
+    { kind: 'numeric', name: 'supportB', unit: parseUnit('mm'), description: text('Position of support B') },
+    { kind: 'numeric', name: 'reactionB', unit: parseUnit('N'), description: text("Support B's reaction, signed") },
+    { kind: 'numeric', name: 'E', unit: parseUnit('N/mm²'), description: text("Young's modulus") },
+    { kind: 'numeric', name: 'I', unit: parseUnit('mm⁴'), description: text("The section's second moment of area") },
+  ],
+  expression: 'z',
+  deflection: {
+    axis: 'z',
+    breakpoints: ['position', 'supportA', 'supportB'],
+    values: ['force', 'reactionA', 'reactionB'],
+    zeroAt: ['supportA', 'supportB'],
+    modulus: 'E',
+    secondMomentOfArea: 'I',
+  },
+  status: 'unverified',
+};
+
 /**
  * A distributed load's own shear/moment contribution, kept separate from
  * `shaftShear`/`shaftMoment` rather than folded in as more optional ports
@@ -197,5 +234,5 @@ const shaftDistributedMoment: Formula = {
 };
 
 export const MECHANICS_OPERATIONS: readonly Formula[] = [
-  shaftTorque, shaftShear, shaftMoment, shaftDeflectionTerm, shaftDistributedShear, shaftDistributedMoment,
+  shaftTorque, shaftShear, shaftMoment, shaftDeflectionTerm, shaftDeflection, shaftDistributedShear, shaftDistributedMoment,
 ];

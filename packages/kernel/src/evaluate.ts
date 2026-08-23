@@ -633,6 +633,37 @@ function evaluateFormula(
     });
   }
 
+  // Each declared name contributes one reader per cell — a spectrum port's
+  // every value (`fixed`, an authored list, or `reader` if it is itself
+  // wired to something swept) or a plain numeric port's single value —
+  // concatenated across names in the order a `piecewise`/`deflection` field
+  // lists them, never by wire order (see the schema docstring: a support's
+  // reaction joins a load spectrum this way, as one more single-valued
+  // entry). Shared by both computation kinds — a deflection curve's
+  // breakpoints/values are the exact same shape as a `cumulativeCubic`
+  // formula's.
+  type EdgeContribution =
+    | { readonly kind: 'fixed'; readonly values: readonly number[] }
+    | { readonly kind: 'reader'; readonly read: (cell: number) => number };
+  const namedContributions = (names: readonly string[] | undefined): readonly EdgeContribution[] =>
+    (names ?? []).flatMap((name): readonly EdgeContribution[] => {
+      const spectrumEntry = spectrumInputs.find(({ port }) => port.name === name);
+      if (spectrumEntry !== undefined) {
+        return spectrumEntry.edgeValues.map((value): EdgeContribution =>
+          value.kind === 'spectrum'
+            ? { kind: 'fixed', values: value.values }
+            : { kind: 'reader', read: reader(value, axes) },
+        );
+      }
+      const regularEntry = regularInputs.find(({ port }) => port.name === name);
+      if (regularEntry !== undefined && regularEntry.value.kind === 'numeric') {
+        return [{ kind: 'reader', read: reader(regularEntry.value, axes) }];
+      }
+      throw new KernelError(`'${name}' must be a declared spectrum or numeric input`, nodeId);
+    });
+  const namesAt = (cell: number, contributions: readonly EdgeContribution[]): readonly number[] =>
+    contributions.flatMap((edge) => (edge.kind === 'fixed' ? edge.values : [edge.read(cell)]));
+
   if (formula.piecewise !== undefined) {
     if (isGenericDimension(formula.output.unit)) {
       throw new KernelError('a piecewise output must declare a concrete unit', nodeId);
@@ -644,34 +675,6 @@ function evaluateFormula(
       throw new KernelError(`piecewise axis '${axis}' must be a numeric input`, nodeId);
     }
     const axisRead = reader(axisEntry.value, axes);
-
-    // Each declared name contributes one reader per cell — a spectrum port's
-    // every value (`fixed`, an authored list, or `reader` if it is itself
-    // wired to something swept) or a plain numeric port's single value —
-    // concatenated across names in the order `formula.piecewise` lists them,
-    // never by wire order (see the schema docstring: a support's reaction
-    // joins a load spectrum this way, as one more single-valued entry).
-    type EdgeContribution =
-      | { readonly kind: 'fixed'; readonly values: readonly number[] }
-      | { readonly kind: 'reader'; readonly read: (cell: number) => number };
-    const namedContributions = (names: readonly string[] | undefined): readonly EdgeContribution[] =>
-      (names ?? []).flatMap((name): readonly EdgeContribution[] => {
-        const spectrumEntry = spectrumInputs.find(({ port }) => port.name === name);
-        if (spectrumEntry !== undefined) {
-          return spectrumEntry.edgeValues.map((value): EdgeContribution =>
-            value.kind === 'spectrum'
-              ? { kind: 'fixed', values: value.values }
-              : { kind: 'reader', read: reader(value, axes) },
-          );
-        }
-        const regularEntry = regularInputs.find(({ port }) => port.name === name);
-        if (regularEntry !== undefined && regularEntry.value.kind === 'numeric') {
-          return [{ kind: 'reader', read: reader(regularEntry.value, axes) }];
-        }
-        throw new KernelError(`piecewise input '${name}' must be a declared spectrum or numeric input`, nodeId);
-      });
-    const namesAt = (cell: number, contributions: readonly EdgeContribution[]): readonly number[] =>
-      contributions.flatMap((edge) => (edge.kind === 'fixed' ? edge.values : [edge.read(cell)]));
 
     const breakpointContributions = namedContributions(breakpoints);
     const valueContributions = namedContributions(valueNames);
@@ -734,6 +737,79 @@ function evaluateFormula(
     return { kind: 'numeric', axes, data };
   }
 
+  if (formula.deflection !== undefined) {
+    if (isGenericDimension(formula.output.unit)) {
+      throw new KernelError('a deflection output must declare a concrete unit', nodeId);
+    }
+    const { axis, breakpoints, values: valueNames, zeroAt, modulus, secondMomentOfArea } = formula.deflection;
+    const axisEntry = regularInputs.find(({ port }) => port.name === axis);
+    if (axisEntry === undefined || axisEntry.value.kind !== 'numeric') {
+      throw new KernelError(`deflection axis '${axis}' must be a numeric input`, nodeId);
+    }
+    const axisRead = reader(axisEntry.value, axes);
+
+    const namedScalarReader = (name: string): ((cell: number) => number) => {
+      const entry = regularInputs.find(({ port }) => port.name === name);
+      if (entry === undefined || entry.value.kind !== 'numeric') {
+        throw new KernelError(`deflection input '${name}' must be a numeric input`, nodeId);
+      }
+      return reader(entry.value, axes);
+    };
+    const [zeroAtAName, zeroAtBName] = zeroAt;
+    const zeroAtARead = namedScalarReader(zeroAtAName);
+    const zeroAtBRead = namedScalarReader(zeroAtBName);
+    const modulusRead = namedScalarReader(modulus);
+    const secondMomentRead = namedScalarReader(secondMomentOfArea);
+
+    const breakpointContributions = namedContributions(breakpoints);
+    const valueContributions = namedContributions(valueNames);
+
+    const data = new Array<number>(cells);
+    for (let cell = 0; cell < cells; cell += 1) {
+      const positions = namesAt(cell, breakpointContributions);
+      const magnitudes = namesAt(cell, valueContributions);
+      if (positions.length !== magnitudes.length) {
+        throw new KernelError(
+          `'${breakpoints.join('+')}' has ${positions.length} values but '${valueNames.join('+')}' has ${magnitudes.length}`,
+          nodeId,
+        );
+      }
+      // Σ value·(w − breakpoint)³ over breakpoints at or before w — the same
+      // closed form `cumulativeCubic` uses, evaluated at whichever w this
+      // cell needs (a support, or the swept axis).
+      const cubicSum = (w: number): number => {
+        let total = 0;
+        for (let i = 0; i < positions.length; i += 1) {
+          const position = positions[i] as number;
+          if (position > w) continue;
+          total += (magnitudes[i] as number) * (w - position) ** 3;
+        }
+        return total;
+      };
+
+      const a = zeroAtARead(cell);
+      const b = zeroAtBRead(cell);
+      if (a === b) {
+        throw new KernelError(
+          `'${zeroAtAName}' and '${zeroAtBName}' are both at ${a} — two different support positions are needed`,
+          nodeId,
+        );
+      }
+      // Two equations — S(a)/6 + C₁·a + C₂ = 0, S(b)/6 + C₁·b + C₂ = 0,
+      // from `y = 0` at each support — in the two constants of integration.
+      const sA = cubicSum(a) / 6;
+      const sB = cubicSum(b) / 6;
+      const c1 = (sA - sB) / (b - a);
+      const c2 = -(sA + c1 * a);
+
+      const z = axisRead(cell);
+      const sZ = cubicSum(z) / 6;
+      const ei = modulusRead(cell) * secondMomentRead(cell);
+      data[cell] = (sZ + c1 * z + c2) / ei;
+    }
+    return { kind: 'numeric', axes, data };
+  }
+
   if (formula.lookup !== undefined) {
     if (isGenericDimension(formula.output.unit)) {
       throw new KernelError('a lookup output must declare a concrete unit', nodeId);
@@ -788,10 +864,9 @@ function evaluateFormula(
 
   // One reader per spectrum edge — a swept edge contributes one broadcast
   // value per cell, an authored list contributes all of its values at every
-  // cell — collected into one array per spectrum port, per cell.
-  type EdgeContribution =
-    | { readonly kind: 'reader'; readonly read: (cell: number) => number }
-    | { readonly kind: 'fixed'; readonly values: readonly number[] };
+  // cell — collected into one array per spectrum port, per cell. Same
+  // `EdgeContribution` shape as the piecewise/deflection branches above,
+  // hoisted to this function's top.
   const spectrumReaders: Array<{
     readonly name: string;
     readonly perEdge: readonly EdgeContribution[];
