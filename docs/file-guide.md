@@ -243,7 +243,7 @@ Public docs served at `/docs/` under the editor's own origin in production (sepa
 
 - `docs/.vitepress/config.ts` — VitePress site config: nav, sidebar structure, base path.
 - `docs/index.md` — the docs-site landing page.
-- `docs/guide/getting-started.md`, `docs/guide/sweeps.md`, `docs/guide/units.md`, `docs/guide/node-reference.md`, `docs/guide/catalogue-authoring.md` — the guide pages linked from `packages/editor/src/help-links.ts`'s per-node "?" buttons and the palette's help links.
+- `docs/guide/getting-started.md`, `docs/guide/sweeps.md`, `docs/guide/units.md`, `docs/guide/tips-and-tricks.md`, `docs/guide/node-reference.md`, `docs/guide/catalogue-authoring.md` — the guide pages linked from `packages/editor/src/help-links.ts`'s per-node "?" buttons and the palette's help links. `tips-and-tricks.md` is UI mechanics (shortcuts, canvas/palette interactions, panel-specific settings) rather than product concepts — those stay in `getting-started`/`sweeps`/`units`.
 - `docs/examples/milling-power-envelope.md` — walkthrough for the bundled milling sample.
 - `docs/public/favicon.svg`.
 - `package.json` — `vitepress dev/build/preview` scripts.
