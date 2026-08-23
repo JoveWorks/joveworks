@@ -147,6 +147,12 @@ export function TextField({
           onFocus={selectOnFocus ? (event) => event.currentTarget.select() : undefined}
           onPointerDown={(event) => event.stopPropagation()}
           onKeyDown={(event) => {
+            // Enter finalizes, matching the single-line field below —
+            // Shift+Enter remains for a deliberate line break.
+            if (event.key === 'Enter' && !event.shiftKey) {
+              event.preventDefault();
+              event.currentTarget.blur();
+            }
             if (event.key === 'Escape') {
               setText(value);
               setError(undefined);
