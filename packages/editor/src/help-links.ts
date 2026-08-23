@@ -36,3 +36,24 @@ export const NODE_HELP_URLS: Readonly<
   monteCarloGenerator: `${DOCS_BASE_URL}/guide/node-reference#monte-carlo-generator`,
   monteCarloReceiver: `${DOCS_BASE_URL}/guide/node-reference#monte-carlo-receiver`,
 };
+
+/**
+ * An output node's `kind` picks which paragraph under `#output` actually
+ * describes it — seven very different things share one node shell (see
+ * `OutputNodeView`), so the generic `output` entry above (which lands at the
+ * top of that section) is too coarse for the "?" button. Keyed by
+ * `Output['kind']` from `@joveworks/schema`, kept as plain strings here to
+ * avoid this file depending on the schema package for a type it otherwise
+ * doesn't need.
+ */
+export const OUTPUT_HELP_URLS: Readonly<
+  Record<'print' | 'check' | 'plot' | 'table' | 'equation' | 'feasibility' | 'sensitivity', string>
+> = {
+  print: `${DOCS_BASE_URL}/guide/node-reference#print`,
+  check: `${DOCS_BASE_URL}/guide/node-reference#check`,
+  plot: `${DOCS_BASE_URL}/guide/node-reference#plot`,
+  table: `${DOCS_BASE_URL}/guide/node-reference#table`,
+  equation: `${DOCS_BASE_URL}/guide/node-reference#equation`,
+  feasibility: `${DOCS_BASE_URL}/guide/node-reference#feasibility`,
+  sensitivity: `${DOCS_BASE_URL}/guide/node-reference#sensitivity`,
+};

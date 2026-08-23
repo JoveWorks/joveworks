@@ -34,6 +34,8 @@ interface Props {
     | 'unpack'
     | 'monteCarloGenerator'
     | 'monteCarloReceiver';
+  /** Overrides `NODE_HELP_URLS[kind]` — an output node needs a link specific to its own `output.kind`. */
+  readonly helpUrl?: string;
   readonly state: NodeState;
   readonly title: ReactNode;
   readonly subtitle?: ReactNode;
@@ -55,6 +57,7 @@ interface Props {
 
 export function NodeShell({
   kind,
+  helpUrl,
   state,
   title,
   subtitle,
@@ -88,10 +91,10 @@ export function NodeShell({
     >
       <header>
         <span className="node-title">{title}</span>
-        {NODE_HELP_URLS[kind] === undefined ? null : (
+        {(helpUrl ?? NODE_HELP_URLS[kind]) === undefined ? null : (
           <a
             className="help"
-            href={NODE_HELP_URLS[kind]}
+            href={helpUrl ?? NODE_HELP_URLS[kind]}
             target="_blank"
             rel="noopener"
             title={copy.nodeHelp}

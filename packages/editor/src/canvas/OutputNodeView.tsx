@@ -40,6 +40,7 @@ import {
 
 import { useGraph } from '../graph-context';
 import { useSettings } from '../settings-context';
+import { OUTPUT_HELP_URLS } from '../help-links';
 import { toUnitsFormat } from '../model/numberFormat';
 import {
   changeOutputKind,
@@ -231,6 +232,7 @@ export function OutputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>
   return (
     <NodeShell
       kind="output"
+      helpUrl={OUTPUT_HELP_URLS[output.kind]}
       state={analysis.states.get(id) ?? 'ok'}
       {...(analysis.problems.has(id) ? { problem: analysis.problems.get(id) } : {})}
       selected={selected ?? false}
