@@ -1514,7 +1514,6 @@ export function Canvas({
         // jitter. Freezing the canvas for the tour's duration is simpler than
         // making that math robust to a moving target.
         panOnDrag={!tutorialActive}
-        panOnScroll={!tutorialActive}
         zoomOnScroll={!tutorialActive}
         zoomOnPinch={!tutorialActive}
         zoomOnDoubleClick={!tutorialActive}
