@@ -178,6 +178,18 @@ same way a reaction is (evaluate at each support's own position, `y = 0`
 gives one equation each, `divide`/`subtract`/`multiply` finish it). No
 distributed-load contribution for this kind yet — rejected at parse time
 rather than silently wrong.
+Third slice, after `shaftDeflectionTerm` alone read as "wrong units, and
+it isn't even zero at the supports" (true, but confusing — it's the raw
+pre-correction term, correct by construction only at the first support):
+`Formula` gained a fourth computation kind, `deflection`, mutually
+exclusive with `lookup`/`piecewise`. It's the same `cumulativeCubic`
+closed form, but the two constants of integration are solved internally
+from two named `zeroAt` support ports, and the result divides by two more
+named ports (`modulus`, `secondMomentOfArea`) before returning — so
+`shaftDeflection` is a real, directly-plottable curve in mm, E and I wired
+straight in as plain numbers (no cross-section formula exists yet).
+Verified to reproduce the exact same numbers as the manual
+`shaftDeflectionTerm` composition it replaces for most graphs.
 
 **11. Notebook export to Markdown**, for pasting a finished graph into an
 external site. Checked against `~/source/website`'s Astro content

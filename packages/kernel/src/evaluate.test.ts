@@ -457,6 +457,78 @@ describe('piecewise-backed formulas', () => {
   });
 });
 
+describe('deflection-backed formulas', () => {
+  const deflectionCatalogue = catalogueOf([
+    {
+      id: 'beamDeflection', version: 1,
+      output: { kind: 'numeric', name: 'y', unit: 'mm' },
+      inputs: [
+        { kind: 'numeric', name: 'z', unit: 'mm', default: 0 },
+        { kind: 'spectrum', name: 'position', unit: 'mm' },
+        { kind: 'spectrum', name: 'value', unit: 'N' },
+        { kind: 'numeric', name: 'supportA', unit: 'mm' },
+        { kind: 'numeric', name: 'supportB', unit: 'mm' },
+        { kind: 'numeric', name: 'modulus', unit: 'N/mm²' },
+        { kind: 'numeric', name: 'inertia', unit: 'mm⁴' },
+      ],
+      expression: 'z',
+      deflection: {
+        axis: 'z', breakpoints: ['position'], values: ['value'],
+        zeroAt: ['supportA', 'supportB'], modulus: 'modulus', secondMomentOfArea: 'inertia',
+      },
+      description: 'Invented beam-deflection formula.', status: 'unverified',
+    },
+  ]);
+  const deflectionRef = refTo('beamDeflection', deflectionCatalogue);
+
+  it('is zero at both zeroAt positions by construction, and closed-form in between', () => {
+    const document = documentOf(
+      [
+        input('position', { kind: 'spectrum', values: [0], unit: 'mm' }),
+        input('value', { kind: 'spectrum', values: [6], unit: 'N' }),
+        input('supportA', scalar(0, 'mm')),
+        input('supportB', scalar(10, 'mm')),
+        input('modulus', scalar(1, 'N/mm²')),
+        input('inertia', scalar(1, 'mm⁴')),
+        input('z', { kind: 'list', values: [0, 5, 10], unit: 'mm' }),
+        formulaNode('y', deflectionRef),
+      ],
+      [
+        wire('position.value', 'y.position'), wire('value.value', 'y.value'),
+        wire('supportA.value', 'y.supportA'), wire('supportB.value', 'y.supportB'),
+        wire('modulus.value', 'y.modulus'), wire('inertia.value', 'y.inertia'),
+        wire('z.value', 'y.z'),
+      ],
+    );
+    // By hand, EI = 1: S(w) = 6·w³ for w ≥ 0. Sa = S(0)/6 = 0, Sb = S(10)/6
+    // = 1000 ⇒ C1 = (0−1000)/10 = −100, C2 = 0. y(z) = S(z)/6 − 100·z.
+    // z=0: 0. z=5: S(5)/6=125, y=125−500=−375. z=10: 1000−1000=0.
+    expect(numeric(valueAt(evaluateDocument(document, [deflectionCatalogue]), 'y', 'y')).data).toEqual([
+      0, -375, 0,
+    ]);
+  });
+
+  it('rejects zeroAt positions that coincide', () => {
+    const document = documentOf(
+      [
+        input('position', { kind: 'spectrum', values: [0], unit: 'mm' }),
+        input('value', { kind: 'spectrum', values: [6], unit: 'N' }),
+        input('supportA', scalar(5, 'mm')),
+        input('supportB', scalar(5, 'mm')),
+        input('modulus', scalar(1, 'N/mm²')),
+        input('inertia', scalar(1, 'mm⁴')),
+        formulaNode('y', deflectionRef),
+      ],
+      [
+        wire('position.value', 'y.position'), wire('value.value', 'y.value'),
+        wire('supportA.value', 'y.supportA'), wire('supportB.value', 'y.supportB'),
+        wire('modulus.value', 'y.modulus'), wire('inertia.value', 'y.inertia'),
+      ],
+    );
+    expect(() => evaluateDocument(document, [deflectionCatalogue])).toThrow(/two different support positions are needed/u);
+  });
+});
+
 describe('closure nodes', () => {
   it('computes a student-typed expression, ports and all', () => {
     const document = documentOf(

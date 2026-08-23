@@ -44,7 +44,15 @@ import {
   type Port,
 } from './port.js';
 import { readSchemaVersion } from './version.js';
-import { dimensionsEqual, divideDimensions, genericVariables, isGenericDimension, powerDimension, type Dimension } from '@joveworks/units';
+import {
+  dimensionsEqual,
+  divideDimensions,
+  genericVariables,
+  isGenericDimension,
+  multiplyDimensions,
+  powerDimension,
+  type Dimension,
+} from '@joveworks/units';
 
 /** The dimension variables a port mentions — none, unless it is generic. */
 function portVariables(port: Port): readonly string[] {
@@ -149,6 +157,37 @@ export interface FormulaPiecewise {
   readonly distributedRate?: readonly string[];
 }
 
+/**
+ * A beam/shaft deflection curve — `cumulativeCubic`'s raw term, but solved
+ * and scaled all the way to a swept displacement rather than left as an
+ * intermediate a document has to finish by hand.
+ *
+ * `shaftDeflectionTerm` (the `cumulativeCubic` primitive) is exactly zero
+ * at `zeroAt[0]` only by construction — nothing precedes the leftmost
+ * support — and generally nonzero at `zeroAt[1]`, which reads as "wrong
+ * units, and it isn't even zero at the supports" to anyone who wires it
+ * straight to a plot expecting a deflection curve. This kind exists so a
+ * document doesn't have to: it evaluates the same running cubic sum at
+ * both `zeroAt` positions to get two equations in the two constants of
+ * integration a beam's `y = 0` at each support pins down, solves them, and
+ * returns `(Σ value·(axis − breakpoint)³ / 6 + C₁·axis + C₂) / (modulus ×
+ * secondMomentOfArea)` — a real displacement, zero at both supports.
+ */
+export interface FormulaDeflection {
+  /** Name of the declared numeric input the curve is evaluated at. */
+  readonly axis: string;
+  /** Declared spectrum/numeric input(s) holding each breakpoint's position, in `axis`'s dimension. */
+  readonly breakpoints: readonly string[];
+  /** Declared spectrum/numeric input(s) holding the value added at each breakpoint. */
+  readonly values: readonly string[];
+  /** The two declared numeric inputs — support positions, in `axis`'s dimension — the curve is pinned to zero at. */
+  readonly zeroAt: readonly [string, string];
+  /** Declared numeric input: Young's modulus. */
+  readonly modulus: string;
+  /** Declared numeric input: the cross-section's second moment of area. */
+  readonly secondMomentOfArea: string;
+}
+
 export interface Formula {
   /** Stable within its catalogue — the migration writes it from the method name. */
   readonly id: string;
@@ -160,8 +199,10 @@ export interface Formula {
   readonly expression: string;
   /** Optional table-backed evaluator. The expression still declares/checks dimensions. */
   readonly lookup?: FormulaLookup;
-  /** Optional piecewise evaluator, mutually exclusive with `lookup`. Same role: the expression still declares/checks dimensions. */
+  /** Optional piecewise evaluator, mutually exclusive with `lookup`/`deflection`. Same role: the expression still declares/checks dimensions. */
   readonly piecewise?: FormulaPiecewise;
+  /** Optional deflection-curve evaluator, mutually exclusive with `lookup`/`piecewise`. Same role: the expression still declares/checks dimensions. */
+  readonly deflection?: FormulaDeflection;
   /** Short display name. Omit when a citation or id is the natural title. */
   readonly label?: LocalizedText;
   readonly description: LocalizedText;
@@ -229,6 +270,34 @@ function parsePortNameList(value: JsonValue, path: string): readonly string[] {
   return names;
 }
 
+/**
+ * Each entry is a spectrum or a plain numeric port — concatenated in the
+ * order listed to build the full breakpoint/value arrays, so a support's
+ * separately-computed reaction can join a load spectrum as one more
+ * single-valued entry without depending on wire order (see
+ * `FormulaPiecewise`'s docstring). Shared by `piecewise` and `deflection`
+ * validation, since a deflection curve's breakpoints/values are the exact
+ * same shape as a `cumulativeCubic` formula's.
+ */
+function checkNamedPorts(
+  inputs: readonly Port[],
+  names: readonly string[] | undefined,
+  namesPath: string,
+  wantDimension: Dimension | undefined,
+  mismatch: string,
+): void {
+  for (const [i, name] of (names ?? []).entries()) {
+    const entryPath = `${namesPath}[${i}]`;
+    const port = inputs.find((candidate) => candidate.name === name);
+    const dimension = port === undefined ? undefined : portDimension(port);
+    if (port === undefined || (port.kind !== 'spectrum' && port.kind !== 'numeric') || dimension === undefined) {
+      fail(entryPath, `'${name}' must be a declared spectrum or numeric input with a concrete unit`);
+    } else if (wantDimension !== undefined && !dimensionsEqual(wantDimension, dimension)) {
+      fail(entryPath, mismatch);
+    }
+  }
+}
+
 function parsePiecewise(value: JsonValue, path: string): FormulaPiecewise {
   const object = readObject(value, path);
   const kind = readEnum(required(object, 'kind', path), join(path, 'kind'), PIECEWISE_KINDS);
@@ -254,6 +323,31 @@ function serializePiecewise(piecewise: FormulaPiecewise): JsonObject {
     ...put('distributedStart', list(piecewise.distributedStart)),
     ...put('distributedEnd', list(piecewise.distributedEnd)),
     ...put('distributedRate', list(piecewise.distributedRate)),
+  };
+}
+
+function parseDeflection(value: JsonValue, path: string): FormulaDeflection {
+  const object = readObject(value, path);
+  const zeroAt = parsePortNameList(required(object, 'zeroAt', path), join(path, 'zeroAt'));
+  if (zeroAt.length !== 2) fail(join(path, 'zeroAt'), `needs exactly two entries, one per support — has ${zeroAt.length}`);
+  return {
+    axis: readName(required(object, 'axis', path), join(path, 'axis')),
+    breakpoints: parsePortNameList(required(object, 'breakpoints', path), join(path, 'breakpoints')),
+    values: parsePortNameList(required(object, 'values', path), join(path, 'values')),
+    zeroAt: [zeroAt[0] as string, zeroAt[1] as string],
+    modulus: readName(required(object, 'modulus', path), join(path, 'modulus')),
+    secondMomentOfArea: readName(required(object, 'secondMomentOfArea', path), join(path, 'secondMomentOfArea')),
+  };
+}
+
+function serializeDeflection(deflection: FormulaDeflection): JsonObject {
+  return {
+    axis: deflection.axis,
+    breakpoints: [...deflection.breakpoints],
+    values: [...deflection.values],
+    zeroAt: [...deflection.zeroAt],
+    modulus: deflection.modulus,
+    secondMomentOfArea: deflection.secondMomentOfArea,
   };
 }
 
@@ -345,23 +439,8 @@ export function parseFormula(value: JsonValue, path: string): Formula {
     if (axisPort === undefined || axisPort.kind !== 'numeric' || axisDimension === undefined) {
       fail(join(path, 'piecewise.axis'), `'${piecewise.axis}' must be a declared input with a concrete numeric unit`);
     }
-    // Each entry is a spectrum or a plain numeric port — concatenated in the
-    // order listed to build the full breakpoint/value arrays, so a support's
-    // separately-computed reaction can join a load spectrum as one more
-    // single-valued entry without depending on wire order (see the
-    // `FormulaPiecewise` docstring).
-    const checkNames = (names: readonly string[] | undefined, namesPath: string, wantDimension: Dimension | undefined, mismatch: string): void => {
-      for (const [i, name] of (names ?? []).entries()) {
-        const entryPath = `${namesPath}[${i}]`;
-        const port = inputs.find((candidate) => candidate.name === name);
-        const dimension = port === undefined ? undefined : portDimension(port);
-        if (port === undefined || (port.kind !== 'spectrum' && port.kind !== 'numeric') || dimension === undefined) {
-          fail(entryPath, `'${name}' must be a declared spectrum or numeric input with a concrete unit`);
-        } else if (wantDimension !== undefined && !dimensionsEqual(wantDimension, dimension)) {
-          fail(entryPath, mismatch);
-        }
-      }
-    };
+    const checkNames = (names: readonly string[] | undefined, namesPath: string, wantDimension: Dimension | undefined, mismatch: string): void =>
+      checkNamedPorts(inputs, names, namesPath, wantDimension, mismatch);
     if ((piecewise.breakpoints === undefined) !== (piecewise.values === undefined)) {
       fail(join(path, 'piecewise'), 'breakpoints and values must be declared together, or not at all');
     }
@@ -414,6 +493,54 @@ export function parseFormula(value: JsonValue, path: string): Formula {
     checkNames(piecewise.distributedRate, join(path, 'piecewise.distributedRate'), rateDimension, rateMismatch);
   }
 
+  const deflection = optional(object, 'deflection', path, parseDeflection);
+  if (deflection !== undefined) {
+    if (lookup !== undefined) fail(join(path, 'deflection'), 'cannot accompany a lookup — a formula is one or the other');
+    if (piecewise !== undefined) fail(join(path, 'deflection'), 'cannot accompany a piecewise evaluator — a formula is one or the other');
+    const outputDimension = portDimension(output);
+    if (outputDimension === undefined) {
+      fail(join(path, 'output'), 'a deflection formula needs a concrete numeric output');
+    }
+    const axisPort = inputs.find((candidate) => candidate.name === deflection.axis);
+    const axisDimension = axisPort === undefined ? undefined : portDimension(axisPort);
+    if (axisPort === undefined || axisPort.kind !== 'numeric' || axisDimension === undefined) {
+      fail(join(path, 'deflection.axis'), `'${deflection.axis}' must be a declared input with a concrete numeric unit`);
+    }
+    const namedScalar = (name: string, namePath: string): Dimension | undefined => {
+      const port = inputs.find((candidate) => candidate.name === name);
+      const dimension = port === undefined ? undefined : portDimension(port);
+      if (port === undefined || port.kind !== 'numeric' || dimension === undefined) {
+        fail(namePath, `'${name}' must be a declared numeric input with a concrete unit`);
+      }
+      return dimension;
+    };
+    const [zeroAtA, zeroAtB] = deflection.zeroAt;
+    if (zeroAtA === zeroAtB) fail(join(path, 'deflection.zeroAt'), 'names the same input twice — two different supports are needed');
+    for (const [i, name] of deflection.zeroAt.entries()) {
+      const dimension = namedScalar(name, `${join(path, 'deflection.zeroAt')}[${i}]`);
+      if (dimension !== undefined && axisDimension !== undefined && !dimensionsEqual(dimension, axisDimension)) {
+        fail(`${join(path, 'deflection.zeroAt')}[${i}]`, `must share '${deflection.axis}''s dimension`);
+      }
+    }
+    const modulusDimension = namedScalar(deflection.modulus, join(path, 'deflection.modulus'));
+    const secondMomentDimension = namedScalar(deflection.secondMomentOfArea, join(path, 'deflection.secondMomentOfArea'));
+
+    checkNamedPorts(inputs, deflection.breakpoints, join(path, 'deflection.breakpoints'), axisDimension, `must share '${deflection.axis}''s dimension`);
+    // `y = (Σ value·(axis − breakpoint)³ / 6 + C₁·axis + C₂) / (modulus ×
+    // secondMomentOfArea)`, so the sum — and so `values` — carries the
+    // output's dimension times modulus's and secondMomentOfArea's, divided
+    // by axis's cubed (the exact `cumulativeCubic` relation, with the
+    // modulus/section product folded into the output side).
+    const valuesDimension =
+      outputDimension === undefined || axisDimension === undefined || modulusDimension === undefined || secondMomentDimension === undefined
+        ? undefined
+        : divideDimensions(multiplyDimensions(outputDimension, multiplyDimensions(modulusDimension, secondMomentDimension)), powerDimension(axisDimension, 3));
+    checkNamedPorts(
+      inputs, deflection.values, join(path, 'deflection.values'), valuesDimension,
+      `must have the output's dimension times '${deflection.modulus}''s and '${deflection.secondMomentOfArea}''s, divided by '${deflection.axis}''s cubed`,
+    );
+  }
+
   const status = readEnum(required(object, 'status', path), join(path, 'status'), FORMULA_STATUSES);
   const quarantineReason = optional(object, 'quarantineReason', path, parseLocalizedText);
   if (status === 'quarantined' && quarantineReason === undefined) {
@@ -428,6 +555,7 @@ export function parseFormula(value: JsonValue, path: string): Formula {
     expression,
     ...put('lookup', lookup),
     ...put('piecewise', piecewise),
+    ...put('deflection', deflection),
     description: parseLocalizedText(required(object, 'description', path), join(path, 'description')),
     ...put('label', optional(object, 'label', path, parseLocalizedText)),
     ...put('citation', optional(object, 'citation', path, readString)),
@@ -447,6 +575,7 @@ export function serializeFormula(formula: Formula): JsonObject {
     expression: formula.expression,
     ...put('lookup', formula.lookup === undefined ? undefined : serializeLookup(formula.lookup)),
     ...put('piecewise', formula.piecewise === undefined ? undefined : serializePiecewise(formula.piecewise)),
+    ...put('deflection', formula.deflection === undefined ? undefined : serializeDeflection(formula.deflection)),
     ...(formula.label === undefined ? {} : { label: serializeLocalizedText(formula.label) }),
     description: serializeLocalizedText(formula.description),
     ...put('citation', formula.citation),
@@ -496,6 +625,7 @@ export function formulaHash(formula: Formula): string {
     expression: formula.expression,
     ...put('lookup', formula.lookup === undefined ? undefined : serializeLookup(formula.lookup)),
     ...put('piecewise', formula.piecewise === undefined ? undefined : serializePiecewise(formula.piecewise)),
+    ...put('deflection', formula.deflection === undefined ? undefined : serializeDeflection(formula.deflection)),
     ...put('citation', formula.citation),
     ...put('variantOf', formula.variantOf),
     ...put('appliesWhen', formula.appliesWhen),
