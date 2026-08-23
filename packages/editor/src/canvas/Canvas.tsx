@@ -518,9 +518,21 @@ export function Canvas({
    *
    * It is kept *here* rather than in the document because a node's size is a
    * fact about this rendering of the graph, not about the graph — the same
-   * reason selection is local. Nothing downstream reads it.
+   * reason selection is local. This map always holds whatever is on screen
+   * right now, selection-forced growth (NodeShell.tsx opens a selected node)
+   * included, which is exactly what React Flow itself needs.
    */
   const [measured, setMeasured] = useState<Measurements>(new Map());
+  /**
+   * Each node's last-seen size while *not* selected — its resting state,
+   * collapsed by default or however large a pin (`expanded`) keeps it, but
+   * never the taller box selection alone forces open. `alignSelection` and
+   * `spaceSelectionEvenly` only ever run on the current selection, so
+   * `measured` for every node they touch is mid-command inflated by that
+   * very selection; sizing the command off it would bake the transient
+   * expand into node positions that are supposed to be stable once deselected.
+   */
+  const [restingMeasured, setRestingMeasured] = useState<Measurements>(new Map());
 
   const edgeEndpointIds = useMemo(() => {
     const edge = document.edges.find((candidate) => candidate.id === hoveredEdgeId);
@@ -738,6 +750,22 @@ export function Canvas({
         return touched ? next : current;
       });
 
+      setRestingMeasured((current) => {
+        const next = new Map(current);
+        let touched = false;
+        for (const change of changes) {
+          if (change.type === 'dimensions' && change.dimensions !== undefined && !selected.has(change.id)) {
+            const seen = next.get(change.id);
+            if (seen?.width === change.dimensions.width && seen.height === change.dimensions.height)
+              continue;
+            next.set(change.id, change.dimensions);
+            touched = true;
+          }
+          if (change.type === 'remove' && next.delete(change.id)) touched = true;
+        }
+        return touched ? next : current;
+      });
+
       // A removal always goes through `editLive`, coalesced by the
       // `queueMicrotask` below rather than `edit`'s usual one-call-one-step —
       // React Flow's own `deleteElements` (`useGlobalKeyHandler`, Backspace/
@@ -816,7 +844,7 @@ export function Canvas({
       // `onEdgesChange`'s, for the same keypress) has fully landed.
       if (removed.size > 0) queueMicrotask(() => commitEdit());
     },
-    [document.frames, editLive, commitEdit, snapToGrid],
+    [document.frames, editLive, commitEdit, snapToGrid, selected],
   );
 
   const onEdgesChange = useCallback(
@@ -979,7 +1007,14 @@ export function Canvas({
 
   /** What a right click offers, worked out from what was clicked. */
   const menuItems = (target: MenuTarget): readonly MenuItem[] => {
-    const selectionActions = (at: { readonly x: number; readonly y: number }): readonly MenuItem[] => [
+    // Align/space/auto-arrange act on `selected`, not on where the click
+    // landed, so they hold regardless of whether the click was inside the
+    // selection's own bounding box (`onSelectionContextMenu`, target.kind
+    // 'selection') or elsewhere on the pane with a selection still active
+    // (target.kind 'pane') — only "Group into new section" needs a drop
+    // point, so it stays out of this shared list and is added by each
+    // caller with whatever position that context has on hand.
+    const alignSpaceActions = (): readonly MenuItem[] => [
       { heading: t('Selection') },
       ...([
         ['Align left', 'left'],
@@ -990,20 +1025,23 @@ export function Canvas({
         ['Align vertical centres', 'vertical-centre'],
       ] as const).map(([label, alignment]) => ({
         label,
-        onClick: () => edit((current) => alignSelection(current, selected, alignment, measured)),
+        onClick: () => edit((current) => alignSelection(current, selected, alignment, restingMeasured)),
       })),
       {
         label: t('Space evenly horizontally'),
-        onClick: () => edit((current) => spaceSelectionEvenly(current, selected, 'horizontal', measured)),
+        onClick: () => edit((current) => spaceSelectionEvenly(current, selected, 'horizontal', restingMeasured)),
       },
       {
         label: t('Space evenly vertically'),
-        onClick: () => edit((current) => spaceSelectionEvenly(current, selected, 'vertical', measured)),
+        onClick: () => edit((current) => spaceSelectionEvenly(current, selected, 'vertical', restingMeasured)),
       },
       {
         label: t('Auto-arrange selection'),
         onClick: () => edit((current) => arrangeSelection(current, selected)),
       },
+    ];
+    const selectionActions = (at: { readonly x: number; readonly y: number }): readonly MenuItem[] => [
+      ...alignSpaceActions(),
       {
         label: t('Group into new section'),
         onClick: () =>
@@ -1059,6 +1097,10 @@ export function Canvas({
     }
     const at = flow.screenToFlowPosition({ x: target.x, y: target.y });
     return [
+      // A pane click lands here whenever it's outside the selection's own
+      // bounding box — still with `selected` untouched, so the same actions
+      // `onSelectionContextMenu` offers inside that box belong here too.
+      ...(selectedNodeCount(document, selected) > 0 ? alignSpaceActions() : []),
       {
         label: t('Add input'),
         onClick: () =>
@@ -1124,7 +1166,7 @@ export function Canvas({
       },
       {
         label: t('Auto-arrange'),
-        onClick: () => edit((current) => autoArrange(current, measured)),
+        onClick: () => edit((current) => autoArrange(current, restingMeasured)),
       },
       { heading: t('Canvas') },
       {
