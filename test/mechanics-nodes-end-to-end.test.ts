@@ -217,4 +217,121 @@ describe('the mechanics node library through the kernel', () => {
     // −2·40·(200−100−20) = −6400; combined −126400.
     expect(numeric(valueAt(evaluation, 'moment', 'sum')).data[3]).toBe(-126400);
   });
+
+  it("solves a 2-support beam's deflection curve from shaftDeflectionTerm, the same reactions as above, and base nodes", () => {
+    // Same beam as the reaction/shear/moment test: −1000 N at z = 80 mm,
+    // supports at 0 and 200 mm, Ra = 600 N, Rb = 400 N.
+    //
+    // EI·y(z) = S(z)/6 + C1·z + C2, S(z) = shaftDeflectionTerm's raw
+    // Σ force·(z − position)³ over breakpoints at or before z (reactions
+    // included as breakpoints, same as the moment diagram) — shaftMoment
+    // integrated twice more, so this is the same "evaluate at a support's
+    // own position to get an equation, solve with base nodes" trick the
+    // reactions themselves used, just with two equations (one per support,
+    // both from y = 0) instead of one.
+    //
+    // By hand: S(0) = 0 (only supportA's own breakpoint qualifies, and its
+    // own arm is zero) ⇒ C2 = 0. S(200) = 600·200³ + (−1000)·120³ =
+    // 4 800 000 000 − 1 728 000 000 = 3 072 000 000 ⇒ S(200)/6 = 512 000 000
+    // ⇒ C1 = −512 000 000 / 200 = −2 560 000. At z = 80: S(80) = 600·80³ =
+    // 307 200 000 ⇒ S(80)/6 = 51 200 000 ⇒ EI·y(80) = 51 200 000 +
+    // (−2 560 000)·80 = −153 600 000. With E = 1000 N/mm², I = 1000 mm⁴
+    // (EI = 1 000 000 N·mm², invented — no cross-section formula exists
+    // yet), y(80) = −153.6 mm.
+    const nodes: JsonObject[] = [
+      input('position', { kind: 'spectrum', values: [80], unit: 'mm' }),
+      input('force', { kind: 'spectrum', values: [-1000], unit: 'N' }),
+      input('supportA', { kind: 'scalar', value: 0, unit: 'mm' }),
+      input('supportB', { kind: 'scalar', value: 200, unit: 'mm' }),
+
+      node('momentAtB', 'shaftMoment', catalogues, {
+        inputValues: { z: { kind: 'scalar', value: 200, unit: 'mm' } },
+      }),
+      node('span', 'subtract', withBaseNodes),
+      node('reactionARaw', 'divide', withBaseNodes),
+      node('reactionA', 'negate', withBaseNodes),
+      node('loadTotal', 'sum', withBaseNodes),
+      node('negLoadTotal', 'negate', withBaseNodes),
+      node('reactionB', 'subtract', withBaseNodes),
+
+      // S(a) and S(b), the two boundary equations' left-hand terms.
+      node('termAtA', 'shaftDeflectionTerm', catalogues, {
+        inputValues: { z: { kind: 'scalar', value: 0, unit: 'mm' } },
+      }),
+      node('termAtB', 'shaftDeflectionTerm', catalogues, {
+        inputValues: { z: { kind: 'scalar', value: 200, unit: 'mm' } },
+      }),
+      input('six', { kind: 'scalar', value: 6, unit: '' }),
+      node('sA', 'divide', withBaseNodes),
+      node('sB', 'divide', withBaseNodes),
+
+      // C1 = (S(a) − S(b)) / (b − a); C2 = −(S(a) + C1·a).
+      node('sDiff', 'subtract', withBaseNodes),
+      node('c1', 'divide', withBaseNodes),
+      node('c1A', 'multiply', withBaseNodes),
+      node('c2Raw', 'add', withBaseNodes),
+      node('c2', 'negate', withBaseNodes),
+
+      // The swept curve: (S(z)/6 + C1·z + C2) / EI.
+      input('z', { kind: 'list', values: [0, 80, 200], unit: 'mm' }),
+      node('termSwept', 'shaftDeflectionTerm', catalogues),
+      node('sSwept', 'divide', withBaseNodes),
+      node('c1Z', 'multiply', withBaseNodes),
+      node('withC1', 'add', withBaseNodes),
+      node('eiY', 'add', withBaseNodes),
+      input('E', { kind: 'scalar', value: 1000, unit: 'N/mm²' }),
+      input('I', { kind: 'scalar', value: 1000, unit: 'mm⁴' }),
+      node('EI', 'multiply', withBaseNodes),
+      node('y', 'divide', withBaseNodes),
+    ];
+    const edges: JsonObject[] = [
+      wire('position.value', 'momentAtB.position'),
+      wire('force.value', 'momentAtB.force'),
+      wire('supportB.value', 'span.a'),
+      wire('supportA.value', 'span.b'),
+      wire('momentAtB.M', 'reactionARaw.a'),
+      wire('span.difference', 'reactionARaw.b'),
+      wire('reactionARaw.quotient', 'reactionA.a'),
+      wire('force.value', 'loadTotal.xs'),
+      wire('loadTotal.total', 'negLoadTotal.a'),
+      wire('negLoadTotal.negated', 'reactionB.a'),
+      wire('reactionA.negated', 'reactionB.b'),
+
+      wire('position.value', 'termAtA.position'), wire('force.value', 'termAtA.force'),
+      wire('supportA.value', 'termAtA.supportA'), wire('reactionA.negated', 'termAtA.reactionA'),
+      wire('supportB.value', 'termAtA.supportB'), wire('reactionB.difference', 'termAtA.reactionB'),
+
+      wire('position.value', 'termAtB.position'), wire('force.value', 'termAtB.force'),
+      wire('supportA.value', 'termAtB.supportA'), wire('reactionA.negated', 'termAtB.reactionA'),
+      wire('supportB.value', 'termAtB.supportB'), wire('reactionB.difference', 'termAtB.reactionB'),
+
+      wire('termAtA.S', 'sA.a'), wire('six.value', 'sA.b'),
+      wire('termAtB.S', 'sB.a'), wire('six.value', 'sB.b'),
+
+      wire('sA.quotient', 'sDiff.a'), wire('sB.quotient', 'sDiff.b'),
+      wire('sDiff.difference', 'c1.a'), wire('span.difference', 'c1.b'),
+      wire('c1.quotient', 'c1A.a'), wire('supportA.value', 'c1A.b'),
+      wire('sA.quotient', 'c2Raw.a'), wire('c1A.product', 'c2Raw.b'),
+      wire('c2Raw.sum', 'c2.a'),
+
+      wire('z.value', 'termSwept.z'), wire('position.value', 'termSwept.position'), wire('force.value', 'termSwept.force'),
+      wire('supportA.value', 'termSwept.supportA'), wire('reactionA.negated', 'termSwept.reactionA'),
+      wire('supportB.value', 'termSwept.supportB'), wire('reactionB.difference', 'termSwept.reactionB'),
+      wire('termSwept.S', 'sSwept.a'), wire('six.value', 'sSwept.b'),
+      wire('c1.quotient', 'c1Z.a'), wire('z.value', 'c1Z.b'),
+      wire('sSwept.quotient', 'withC1.a'), wire('c1Z.product', 'withC1.b'),
+      wire('withC1.sum', 'eiY.a'), wire('c2.negated', 'eiY.b'),
+      wire('E.value', 'EI.a'), wire('I.value', 'EI.b'),
+      wire('eiY.sum', 'y.a'), wire('EI.product', 'y.b'),
+    ];
+    const evaluation = evaluateDocument(graph(nodes, edges), withBaseNodes);
+
+    expect(numeric(valueAt(evaluation, 'c1', 'quotient')).data[0]).toBeCloseTo(-2_560_000);
+    expect(numeric(valueAt(evaluation, 'c2', 'negated')).data[0]).toBeCloseTo(0);
+
+    const y = numeric(valueAt(evaluation, 'y', 'quotient')).data;
+    expect(y[0]).toBeCloseTo(0); // support A
+    expect(y[1]).toBeCloseTo(-153.6); // under the load
+    expect(y[2]).toBeCloseTo(0); // support B
+  });
 });

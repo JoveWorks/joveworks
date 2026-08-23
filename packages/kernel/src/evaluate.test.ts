@@ -296,6 +296,39 @@ describe('piecewise-backed formulas', () => {
     ]);
   });
 
+  const cubicCatalogue = catalogueOf([
+    {
+      id: 'runningCubic', version: 1,
+      output: { kind: 'numeric', name: 'y', unit: 'N*mm3' },
+      inputs: [
+        { kind: 'numeric', name: 'z', unit: 'mm', default: 0 },
+        { kind: 'spectrum', name: 'position', unit: 'mm' },
+        { kind: 'spectrum', name: 'value', unit: 'N' },
+      ],
+      expression: 'sum(value) * z * z * z',
+      piecewise: { kind: 'cumulativeCubic', axis: 'z', breakpoints: ['position'], values: ['value'] },
+      description: 'Invented running-cubic-vs-position formula.', status: 'unverified',
+    },
+  ]);
+  const cubicRef = refTo('runningCubic', cubicCatalogue);
+
+  it('weighs each breakpoint at or before z by the cube of its distance from z', () => {
+    const document = documentOf(
+      [
+        input('position', { kind: 'spectrum', values: [0, 10], unit: 'mm' }),
+        input('value', { kind: 'spectrum', values: [1, 2], unit: 'N' }),
+        input('z', { kind: 'list', values: [5, 15], unit: 'mm' }),
+        formulaNode('cubic', cubicRef),
+      ],
+      [wire('position.value', 'cubic.position'), wire('value.value', 'cubic.value'), wire('z.value', 'cubic.z')],
+    );
+    // z=5: only the z=0 breakpoint qualifies: 1·5³ = 125.
+    // z=15: both qualify: 1·15³ + 2·5³ = 3375 + 250 = 3625.
+    expect(numeric(valueAt(evaluateDocument(document, [cubicCatalogue]), 'cubic', 'y')).data).toEqual([
+      125, 3625,
+    ]);
+  });
+
   describe('distributed loads', () => {
     const distributedInputs = [
       { kind: 'numeric', name: 'z', unit: 'mm', default: 0 },

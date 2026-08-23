@@ -113,6 +113,39 @@ const shaftMoment: Formula = {
   status: 'unverified',
 };
 
+const shaftDeflectionTerm: Formula = {
+  id: 'shaftDeflectionTerm',
+  version: 1,
+  label: text('Deflection term'),
+  description: text(
+    'Σ force·(z − position)³ over point loads and reactions at or before z — EI times a ' +
+      "beam's deflection, up to the two constants of integration a document still has to " +
+      "solve for. This is shaftMoment's result integrated twice more (moment is this " +
+      'formula’s own second derivative), so build a deflection curve the same way a ' +
+      "reaction is solved from shaftMoment: evaluate this at each support's own position " +
+      '(unswept), each giving one equation in the two constants from that support’s ' +
+      'y = 0, solve them (ordinary base nodes), then add constant·z + constant to this ' +
+      "formula's swept result and divide by EI (Young's modulus times the section's " +
+      'second moment of area) for the deflection curve itself. Distributed loads are not ' +
+      'supported here — wire only point loads and reactions.',
+  ),
+  output: { kind: 'numeric', name: 'S', unit: parseUnit('N*mm³'), description: text('Σ force·(z − position)³') },
+  inputs: [
+    { kind: 'numeric', name: 'z', unit: parseUnit('mm'), default: 0, description: text('Position along the shaft') },
+    { kind: 'spectrum', name: 'position', unit: parseUnit('mm'), description: text('Position of each applied point load') },
+    { kind: 'spectrum', name: 'force', unit: parseUnit('N'), description: text('Each point load, signed') },
+    ...supportPorts('A'),
+    ...supportPorts('B'),
+  ],
+  expression: 'sum(force) * z * z * z',
+  piecewise: {
+    kind: 'cumulativeCubic', axis: 'z',
+    breakpoints: ['position', 'supportA', 'supportB'],
+    values: ['force', 'reactionA', 'reactionB'],
+  },
+  status: 'unverified',
+};
+
 /**
  * A distributed load's own shear/moment contribution, kept separate from
  * `shaftShear`/`shaftMoment` rather than folded in as more optional ports
@@ -164,5 +197,5 @@ const shaftDistributedMoment: Formula = {
 };
 
 export const MECHANICS_OPERATIONS: readonly Formula[] = [
-  shaftTorque, shaftShear, shaftMoment, shaftDistributedShear, shaftDistributedMoment,
+  shaftTorque, shaftShear, shaftMoment, shaftDeflectionTerm, shaftDistributedShear, shaftDistributedMoment,
 ];

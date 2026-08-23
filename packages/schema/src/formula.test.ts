@@ -393,6 +393,49 @@ describe('piecewise formulas', () => {
     ).toThrow(/must have the output's dimension divided by 'z''s/);
   });
 
+  describe('cumulativeCubic', () => {
+    // N·mm³ out, N in, mm axis: the output is `values`' dimension times `axis`'s, cubed.
+    const cubic: JsonObject = {
+      ...running,
+      output: { kind: 'numeric', name: 'y', unit: 'N*mm3' },
+      piecewise: { kind: 'cumulativeCubic', axis: 'z', breakpoints: ['position'], values: ['value'] },
+    };
+
+    it('round-trips', () => {
+      expect(serializeFormula(parseFormula(cubic, ''))['piecewise']).toEqual(cubic['piecewise']);
+    });
+
+    it("rejects values whose dimension isn't the output's divided by the axis's, cubed", () => {
+      expect(() =>
+        parseFormula(
+          { ...cubic, piecewise: { ...(cubic['piecewise'] as JsonObject), values: ['position'] } },
+          '',
+        ),
+      ).toThrow(/must have the output's dimension divided by 'z''s, cubed/);
+    });
+
+    it('rejects a distributed load declared alongside cumulativeCubic', () => {
+      expect(() =>
+        parseFormula(
+          {
+            ...cubic,
+            inputs: [
+              ...(cubic['inputs'] as JsonObject[]),
+              { kind: 'spectrum', name: 'start', unit: 'mm' },
+              { kind: 'spectrum', name: 'end', unit: 'mm' },
+              { kind: 'spectrum', name: 'rate', unit: 'N/mm' },
+            ],
+            piecewise: {
+              ...(cubic['piecewise'] as JsonObject),
+              distributedStart: ['start'], distributedEnd: ['end'], distributedRate: ['rate'],
+            },
+          },
+          '',
+        ),
+      ).toThrow(/cumulativeCubic contribution is not implemented/);
+    });
+  });
+
   describe('distributed loads', () => {
     const distributed: JsonObject = {
       ...running,
