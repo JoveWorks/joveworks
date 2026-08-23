@@ -1,8 +1,11 @@
 # Units
 
-Every port on every node carries a dimension, and every connection is
-checked against it. A force output will not plug into a length input — the
-connection simply doesn't attach.
+Every numeric port carries a dimension, and every connection is checked
+against it. A force output will not plug into a length input — the
+connection simply doesn't attach. (A categorical port — a fit class like
+`H7`, say — checks against a named set of allowed values instead of a
+dimension, but the same rule applies: a mismatched connection doesn't
+attach.)
 
 ## Canonical units
 
@@ -31,6 +34,14 @@ radians.
 Trigonometric functions accept either an angle-dimensioned value or a
 plain dimensionless number, since some formulas define an angle as an
 already-dimensionless ratio.
+
+## Display units are just a view
+
+Canonical units are what's stored and computed; what you *see* is
+independent. Any port can show its value in a different unit of the same
+dimension — a stress result in `MPa` instead of `N/mm²` — without changing
+anything downstream. See [Tips and tricks](./tips-and-tricks) for how to
+switch it.
 
 ## What this buys you
 

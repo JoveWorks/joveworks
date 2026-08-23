@@ -23,6 +23,7 @@ is a size that works.
 | **Linear** — `linspace(20, 60, 21)` | The default. Fixed number of points, both endpoints included |
 | **Logarithmic** — `logspace(1e4, 1e8, 40)` | Power laws and anything spanning decades |
 | **Explicit list** — `{25, 30, 35, 40}` | Standard sizes — the realistic design case |
+| **Renard series** — R10 from 10 to 100 | Preferred numbers — the standardized step sizes stock and catalogue parts actually come in |
 | **Table column** | A series pulled from catalogue data |
 | **Categorical list** — `{H7, H8, K7}` | Fit classes and other named values, on an ordinal axis |
 
@@ -33,6 +34,11 @@ end and leaves the interesting part unresolved.
 
 Point count, not step size, is the primary control — `linspace(20, 60, 21)`
 says exactly what you mean, and a two-input grid is simply `n × m`.
+
+A Monte Carlo generator introduces an axis the same way a range does, but
+draws it from a distribution instead of a designed sequence — reach for one
+when the question is "how sensitive is this to scatter in an input" rather
+than "what happens across this design space."
 
 ## Why this replaces solving for an input
 

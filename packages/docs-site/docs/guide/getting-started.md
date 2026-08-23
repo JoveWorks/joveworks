@@ -14,7 +14,9 @@ course — this site, like the app, ships no textbook content.
 1. **Open a link.** It's a static web app — nothing to install, no account.
 2. **Load the catalogue** file handed out through the course LMS. Once
    loaded it stays in browser storage; this is a first-run step, not a
-   per-session chore.
+   per-session chore. Some catalogues ship bundled with the app but locked —
+   those need a one-time password from your course before their formulas
+   are usable.
 3. **Drag in formulas** by equation number or by what they compute. Each
    arrives as a node with typed ports — inputs on one side, the result on
    the other.
@@ -30,4 +32,6 @@ course — this site, like the app, ships no textbook content.
    order — as the thing you hand in.
 
 See [Units](./units) for how dimensions and canonical units work under the
-hood.
+hood, and [Tips and tricks](./tips-and-tricks) once you're past the basics —
+shortcuts, right-click menus, and interface details that don't fit this
+overview.
