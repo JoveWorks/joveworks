@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.16.0](https://github.com/ThomasVanRiel/joveworks/compare/v0.15.0...v0.16.0) (2026-08-24)
+
+### Features
+
+* add Monte Carlo reliability reports ([9a587b7](https://github.com/ThomasVanRiel/joveworks/commit/9a587b72401da0c5703a18b8e1cb7b5cd2421409))
+* expose interactive inputs in NodeBooks ([454d8ad](https://github.com/ThomasVanRiel/joveworks/commit/454d8ad3015dcae28ef4692bcf8492f9b5e8a566))
+* merge reliability reports ([80bb079](https://github.com/ThomasVanRiel/joveworks/commit/80bb079b11734b96edef67869753ca5b257ce117))
+
+### Documentation
+
+* Roadmap items. ([91e3233](https://github.com/ThomasVanRiel/joveworks/commit/91e3233f5052f738a90a1f71a4fe9ff5fa3460c1))
 ## [0.15.0](https://github.com/ThomasVanRiel/joveworks/compare/v0.14.0...v0.15.0) (2026-08-24)
 
 ### Features
