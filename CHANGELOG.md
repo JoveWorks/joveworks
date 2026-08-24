@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.14.0](https://github.com/ThomasVanRiel/joveworks/compare/v0.13.1...v0.14.0) (2026-08-24)
+
+### Features
+
+* type a value on any input port ([a8aa5da](https://github.com/ThomasVanRiel/joveworks/commit/a8aa5da219e0fdb029c30604d2650b5c24e41179))
+
+### Fixes
+
+* **editor:** draw a contour plot as a line when its second axis goes away ([7dc1174](https://github.com/ThomasVanRiel/joveworks/commit/7dc1174fc4e6b25fe1c77e01f12c991fcf05551c))
+* **editor:** re-center node detail equations ([7d13c8b](https://github.com/ThomasVanRiel/joveworks/commit/7d13c8b5480941dcdfda520c0d0616977a40b2f3))
+* **editor:** stop a feasibility figure crashing on an axis nothing varies along ([4655a3d](https://github.com/ThomasVanRiel/joveworks/commit/4655a3d711f7940adb66c95338b46f6dc711775a))
+* **editor:** stop clipping multi-output node values ([6bddef8](https://github.com/ThomasVanRiel/joveworks/commit/6bddef87d8e8918f0c1678046dbd542d0c5e3a09))
+
+### Refactoring
+
+* centralize node kind and quick-add defaults ([f3d9200](https://github.com/ThomasVanRiel/joveworks/commit/f3d9200120952e500eb8bf5d2c25eaaf3f880ff3))
+* **editor:** centralize table column connections ([4dee434](https://github.com/ThomasVanRiel/joveworks/commit/4dee4342a1d912e8e13be96823d9ba0520f82bda))
+
+### Documentation
+
+* add feature review ([3e44379](https://github.com/ThomasVanRiel/joveworks/commit/3e44379c0710d8521961307ecc5fb9466e9309f2))
 ## [0.13.1](https://github.com/ThomasVanRiel/joveworks/compare/v0.13.0...v0.13.1) (2026-08-24)
 
 ### Features
