@@ -8,6 +8,7 @@
 
 export type NodeKind =
   | 'input'
+  | 'file'
   | 'formula'
   | 'output'
   | 'compare'

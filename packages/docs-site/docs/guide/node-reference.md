@@ -111,6 +111,38 @@ bearing bores, say — rather than typed at all. It sweeps like a list, but
 its values and length live in the table it names, so changing the
 catalogue changes the sweep without editing the input node.
 
+### File
+
+Reads a file you pick and offers what it found as ports. Today one reader
+is available: a **photograph**, from a Canon CR3 raw. It answers with the
+settings the frame was taken at — focal length `f`, aperture `N`, exposure
+time `t`, `ISO`, the pixel counts `px`/`py`, the sensor size `w`/`h`, and
+the names the body gives itself and its lens as `camera` and `lens`. Those
+last two wire straight into the [camera and lens libraries](#formula):
+the library knows the name a body writes into its own files, so a
+photograph selects its own row.
+
+Two things to know about it:
+
+- **The file is not stored in your NodeBook — the values are.** Picking a
+  file reads it and keeps what it found; the file itself is never held or
+  saved. Hand the NodeBook to someone else and every number still
+  evaluates, but the node names a file they do not have. Re-pick to follow
+  a different frame.
+- **Only these fields are read.** A raw file also carries a body serial
+  number and, if the camera had a fix, where the frame was taken. Neither
+  is read, so neither can travel with a NodeBook you share.
+
+Sensor size is derived from the focal-plane resolution rather than
+recorded outright, so it is close but not exact — the camera library
+answers the same question from published figures if you need it precise.
+Subject distance is not in the file at all (Canon keeps it in a private
+block this reader does not open), so wire a plain input node for `s`.
+
+Pick several files at once and the node becomes a sweep: one point per
+file, and every field an axis you can plot against — how depth of field
+moved across a bracket, straight from the frames.
+
 ## Output
 
 Where a graph's result surfaces — in the node itself, and as an entry in

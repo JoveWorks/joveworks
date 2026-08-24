@@ -353,6 +353,12 @@ function axisOf(node: AxisNode, order: number, tableColumn: ResolvedTableColumn 
   if (node.kind === 'monteCarloGenerator') {
     return { id: mcTrialId ?? node.id, label: node.axisLabel ?? node.label ?? node.id, length: node.count, order };
   }
+  if (node.kind === 'file') {
+    // One point per file read, in the order they were picked — the axis is
+    // the frames themselves, so its length is `sources`, not anything the
+    // fields say.
+    return { id: node.id, label: node.axisLabel ?? node.label ?? node.id, length: node.sources.length, order };
+  }
   if (!isRange(node.value)) throw new KernelError('not a range node', node.id);
   const length = node.value.kind === 'tableColumn' ? tableColumn?.values.length : axisLength(node.value);
   if (length === undefined) {
@@ -509,6 +515,27 @@ export function resolveGraph(
   for (const node of order) {
     if (node.kind === 'input') {
       sources.set(endpointKey(node.id, VALUE_PORT), inputValueType(node, tableColumns.get(node.id)));
+      continue;
+    }
+
+    if (node.kind === 'file') {
+      // Every port this node has is declared on the node itself, by the
+      // reader that filled it in — which is why the kernel needs to know
+      // nothing about EXIF, or about any format a later reader understands.
+      // A field with a unit is numeric in that unit; one without is
+      // categorical, the same way a categorical port declares no unit.
+      for (const field of node.fields) {
+        sources.set(
+          endpointKey(node.id, field.name),
+          displayOverride(
+            node,
+            field.name,
+            field.unit === undefined
+              ? { kind: 'categorical' }
+              : { kind: 'numeric', dimension: field.unit.dimension, unit: field.unit },
+          ),
+        );
+      }
       continue;
     }
 

@@ -201,6 +201,19 @@ function readiness(
   const deferredFeasibility: OutputNode[] = [];
 
   for (const node of order) {
+    if (node.kind === 'file') {
+      // Nothing upstream to wait on — but a node with no file picked yet has
+      // nothing to answer with either, which is the same "not finished"
+      // an unwired input port is in.
+      if (node.sources.length === 0) {
+        states.set(node.id, 'incomplete');
+        problems.set(node.id, 'pick a file to read');
+        continue;
+      }
+      ready.add(node.id);
+      continue;
+    }
+
     if (node.kind === 'input' || node.kind === 'monteCarloGenerator') {
       ready.add(node.id);
       continue;

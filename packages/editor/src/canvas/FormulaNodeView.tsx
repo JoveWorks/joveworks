@@ -81,6 +81,30 @@ export function FormulaNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
   const wired = new Set(
     document.edges.filter((edge) => edge.to.node === id).map((edge) => edge.to.port),
   );
+  /** A lookup axis picked from a dropdown, e.g. "pick a camera": the choice
+   * made right here is what applies, and the row reads as that choice rather
+   * than as a labelled port — until something is wired in, which overrides
+   * it the same way a wire overrides `CompareNode.threshold`. */
+  const pickerPorts = new Set(
+    formula.expression === undefined
+      ? (formula.lookup?.axes ?? []).filter((axis) => axis.kind === 'categorical').map((axis) => axis.input)
+      : [],
+  );
+
+  /**
+   * What a wire is actually feeding a categorical port, which is far more
+   * use on the node than the domain it has to come from — a ten-body camera
+   * library listed in full swamps the card, and the one name that arrived is
+   * the answer to "which one is this". Several names mean a swept axis.
+   */
+  const arriving = (portName: string): string | undefined => {
+    const edge = document.edges.find((entry) => entry.to.node === id && entry.to.port === portName);
+    if (edge === undefined) return undefined;
+    const series = analysis.evaluation?.values.get(`${edge.from.node}.${edge.from.port}`);
+    if (series?.kind !== 'categorical') return undefined;
+    const names = [...new Set(series.data)];
+    return names.length > 2 ? `${names.length} choices` : names.join(' | ');
+  };
   /** Every edge already arriving at one port — more than one only for a spectrum port. */
   const edgesAt = (portName: string): number =>
     document.edges.filter((edge) => edge.to.node === id && edge.to.port === portName).length;
@@ -128,6 +152,7 @@ export function FormulaNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
   return (
     <NodeShell
       kind="formula"
+      {...(pickerPorts.size === 0 ? {} : { extraClassName: 'node-picker' })}
       state={state}
       {...(problem === undefined ? {} : { problem })}
       {...(warning.length === 0 ? {} : { warning })}
@@ -193,6 +218,39 @@ export function FormulaNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
           // there is no numbered "a1, a2" identity to keep in step, since
           // every slot targets the same port name; removing a wire and
           // re-rendering from the edge list *is* the shift.
+          if (port.kind === 'categorical' && pickerPorts.has(port.name) && !wired.has(port.name)) {
+            return (
+              <li
+                key={port.name}
+                className={`port port-picker${highlightedPorts.has(port.name) ? ' port-highlighted' : ''}`}
+                {...(description === undefined ? {} : { title: description })}
+                onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: port.name })}
+                onMouseLeave={() => data?.onPortHover?.()}
+              >
+                {/* The dropdown is what applies while nothing is wired, and
+                    the handle is how something gets wired — the same
+                    typed-default-overridden-by-an-edge shape
+                    `CompareNode.threshold` has, here so a photograph's own
+                    camera name can drive the library it is a row of. The
+                    label stays off: the choice reads as the node itself. */}
+                <Handle
+                  type="target"
+                  position={Position.Left}
+                  id={slotHandleId(port.name, 0)}
+                  className={highlightedPorts.has(port.name) ? 'port-highlighted' : ''}
+                />
+                <select
+                  className="nodrag port-picker-select"
+                  aria-label={port.name}
+                  value={authored?.kind === 'categorical' ? authored.value : port.default ?? port.domain[0]}
+                  onChange={(event) => setInputValue(port.name, { kind: 'categorical', value: event.target.value })}
+                >
+                  {port.domain.map((choice) => <option key={choice} value={choice}>{choice}</option>)}
+                </select>
+              </li>
+            );
+          }
+
           if (port.kind !== 'spectrum') {
             return (
               <li
@@ -216,7 +274,7 @@ export function FormulaNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
                 />
                 {port.kind === 'categorical' ? (
                   wired.has(port.name) ? (
-                    <span className="port-unit">{port.domain.join(' | ')}</span>
+                    <span className="port-unit port-arriving">{arriving(port.name) ?? ''}</span>
                   ) : (
                     <select
                       className="nodrag port-default"

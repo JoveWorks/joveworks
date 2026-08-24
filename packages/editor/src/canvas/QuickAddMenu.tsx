@@ -60,7 +60,13 @@ const MAX_FORMULA_RESULTS = 30;
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 type AssertEveryNodeKindIsQuickAddable<T extends QuickAddChoice['kind']> = T;
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-type _EveryNodeKindIsQuickAddable = AssertEveryNodeKindIsQuickAddable<Exclude<GraphNode['kind'], 'formula'>>;
+type _EveryNodeKindIsQuickAddable = AssertEveryNodeKindIsQuickAddable<
+  // `file` is the other exclusion, and for a reason this menu cannot work
+  // around: a fresh file node declares no ports at all until a file has
+  // actually been read, so there is never a port for the dragged wire to
+  // land on. It is added from the palette, given a file, and wired after.
+  Exclude<GraphNode['kind'], 'formula' | 'file'>
+>;
 
 /** An already-placed node the menu can offer, worked out by Canvas.tsx from the drag's direction. */
 export interface ExistingCandidate {

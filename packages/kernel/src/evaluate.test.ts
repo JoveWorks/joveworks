@@ -23,6 +23,8 @@ import {
   closureNode,
   compareNode,
   documentOf,
+  fileNode,
+  fileSource,
   formulaNode,
   input,
   linear,
@@ -205,6 +207,58 @@ describe('table-backed formulas', () => {
       const evaluation = evaluateDocument(document, [propertiesCatalogue]);
       expect(numeric(valueAt(evaluation, 'spec', 'w')).data).toEqual([23.5]);
       expect(numeric(valueAt(evaluation, 'spec', 'n')).data).toEqual([40]);
+    });
+  });
+
+  /**
+   * The point of the alias table: a thing names itself one way and the
+   * domain names it another, and a wire between them still lands.
+   */
+  describe('an entry called by another name', () => {
+    const aliasedCatalogue = catalogueOf([
+      {
+        id: 'aliased', version: 1,
+        output: { kind: 'numeric', name: 'w', unit: 'mm' },
+        inputs: [
+          {
+            kind: 'categorical',
+            name: 'pick',
+            domain: ['First Thing Mark II', 'Second Thing'],
+            aliases: { 'FirstThingM2': 'First Thing Mark II', 'first-thing-2': 'First Thing Mark II' },
+            default: 'Second Thing',
+          },
+        ],
+        lookup: {
+          axes: [{ input: 'pick', kind: 'categorical', values: ['First Thing Mark II', 'Second Thing'] }],
+          values: [36, 23.5],
+        },
+        description: 'Invented aliased table.', status: 'unverified',
+      },
+    ]);
+    const aliasedRef = refTo('aliased', aliasedCatalogue);
+
+    it('resolves a wired-in spelling that is not itself a domain entry', () => {
+      const document = documentOf(
+        [
+          input('name', { kind: 'categorical', value: 'FirstThingM2' }),
+          formulaNode('spec', aliasedRef),
+        ],
+        [wire('name.value', 'spec.pick')],
+      );
+      expect(numeric(valueAt(evaluateDocument(document, [aliasedCatalogue]), 'spec', 'w')).data).toEqual([36]);
+    });
+
+    it('names the spelling that missed, rather than only the port', () => {
+      const document = documentOf(
+        [
+          input('name', { kind: 'categorical', value: 'Third Thing' }),
+          formulaNode('spec', aliasedRef),
+        ],
+        [wire('name.value', 'spec.pick')],
+      );
+      expect(() => evaluateDocument(document, [aliasedCatalogue])).toThrow(
+        /nothing here is called 'Third Thing'/u,
+      );
     });
   });
 
@@ -602,6 +656,120 @@ describe('closure nodes', () => {
     );
     const evaluation = evaluateDocument(document, catalogues);
     expect(numeric(valueAt(evaluation, 'eq', 'result')).data).toEqual([24]);
+  });
+});
+
+describe('file nodes', () => {
+  const field = (name: string, unit: string | undefined, values: readonly (number | string | null)[]) =>
+    ({ name, ...(unit === undefined ? {} : { unit }), values }) as JsonObject;
+
+  it('answers with each field, in canonical units, from one file', () => {
+    const document = documentOf(
+      [
+        fileNode('photo', [fileSource('one.cr3')], [
+          field('f', 'mm', [50]),
+          field('N', '', [2.8]),
+          field('t', 's', [0.004]),
+          field('camera', undefined, ['Canon EOS R6m3']),
+        ]),
+      ],
+      [],
+    );
+    const evaluation = evaluateDocument(document, catalogues);
+    expect(numeric(valueAt(evaluation, 'photo', 'f')).data).toEqual([50]);
+    expect(numeric(valueAt(evaluation, 'photo', 'N')).data).toEqual([2.8]);
+    expect(numeric(valueAt(evaluation, 'photo', 't')).data).toEqual([0.004]);
+    const camera = valueAt(evaluation, 'photo', 'camera');
+    expect(camera?.kind).toBe('categorical');
+    if (camera?.kind === 'categorical') expect(camera.data).toEqual(['Canon EOS R6m3']);
+  });
+
+  it('converts a field out of the unit the reader recorded it in', () => {
+    const document = documentOf(
+      [fileNode('photo', [fileSource('one.cr3')], [field('s', 'm', [2.5])])],
+      [],
+    );
+    // Canonical length is mm, so metres arrive scaled.
+    expect(numeric(valueAt(evaluateDocument(document, catalogues), 'photo', 's')).data).toEqual([2500]);
+  });
+
+  it('leaves a field the file did not record with no value at all', () => {
+    const document = documentOf(
+      [fileNode('photo', [fileSource('one.cr3')], [field('f', 'mm', [50]), field('s', 'm', [null])])],
+      [],
+    );
+    const evaluation = evaluateDocument(document, catalogues);
+    expect(valueAt(evaluation, 'photo', 'f')).toBeDefined();
+    expect(valueAt(evaluation, 'photo', 's')).toBeUndefined();
+  });
+
+  it('reports the node that wanted a field its file never recorded', () => {
+    const document = documentOf(
+      [
+        fileNode('photo', [fileSource('one.cr3')], [field('w', 'mm', [null]), field('h', 'mm', [10])]),
+        formulaNode('area', refTo('area')),
+      ],
+      [wire('photo.w', 'area.w'), wire('photo.h', 'area.h')],
+    );
+    expect(() => evaluateDocument(document, catalogues)).toThrow(/nothing was computed for 'photo\.w'/u);
+  });
+
+  it('sweeps over several files, one point per file', () => {
+    const document = documentOf(
+      [
+        fileNode(
+          'photos',
+          [fileSource('one.cr3'), fileSource('two.cr3'), fileSource('three.cr3')],
+          [field('w', 'mm', [10, 20, 30]), field('h', 'mm', [2, 2, 2])],
+          { label: 'the bracket' },
+        ),
+        formulaNode('area', refTo('area')),
+      ],
+      [wire('photos.w', 'area.w'), wire('photos.h', 'area.h')],
+    );
+    const evaluation = evaluateDocument(document, catalogues);
+    const area = numeric(valueAt(evaluation, 'area', 'A'));
+    expect(area.data).toEqual([20, 40, 60]);
+    expect(area.axes.map((axis) => axis.label)).toEqual(['the bracket']);
+  });
+
+  it('introduces no axis while it holds a single file', () => {
+    const document = documentOf(
+      [fileNode('photo', [fileSource('one.cr3')], [field('f', 'mm', [50])])],
+      [],
+    );
+    expect(numeric(valueAt(evaluateDocument(document, catalogues), 'photo', 'f')).axes).toEqual([]);
+  });
+
+  it('wires a photograph’s own camera name into the library that lists it', () => {
+    const libraryCatalogue = catalogueOf([
+      {
+        id: 'bodies', version: 1,
+        output: { kind: 'numeric', name: 'w', unit: 'mm' },
+        inputs: [
+          {
+            kind: 'categorical',
+            name: 'camera',
+            domain: ['First Body Mark III'],
+            aliases: { 'FirstBodym3': 'First Body Mark III' },
+            default: 'First Body Mark III',
+          },
+        ],
+        lookup: {
+          axes: [{ input: 'camera', kind: 'categorical', values: ['First Body Mark III'] }],
+          values: [35.9],
+        },
+        description: 'Invented body table.', status: 'unverified',
+      },
+    ]);
+    const document = documentOf(
+      [
+        fileNode('photo', [fileSource('one.cr3')], [field('camera', undefined, ['FirstBodym3'])]),
+        formulaNode('spec', refTo('bodies', libraryCatalogue)),
+      ],
+      [wire('photo.camera', 'spec.camera')],
+    );
+    expect(numeric(valueAt(evaluateDocument(document, [libraryCatalogue]), 'spec', 'w')).data).toEqual([35.9]);
   });
 });
 

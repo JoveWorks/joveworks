@@ -6,13 +6,15 @@ import { SchemaError } from './errors.js';
 import {
   asInputPort,
   asOutputPort,
+  domainMember,
   isGenericPort,
   parsePort,
   portDimension,
   serializePort,
   withinRange,
+  type CategoricalPort,
 } from './port.js';
-import type { JsonValue } from './json.js';
+import type { JsonObject, JsonValue } from './json.js';
 
 const numeric: JsonValue = { kind: 'numeric', name: 'F_t', unit: 'N' };
 
@@ -99,6 +101,37 @@ describe('categorical ports', () => {
   it('rejects an empty or duplicated domain', () => {
     expect(() => parsePort({ ...fit, domain: [] }, 'p')).toThrow(/p\.domain: is empty/);
     expect(() => parsePort({ ...fit, domain: ['H7', 'H7'] }, 'p')).toThrow(/lists 'H7' twice/);
+  });
+
+  describe('aliases', () => {
+    const aliased: JsonValue = { ...(fit as JsonObject), aliases: { 'H 7': 'H7', h7: 'H7' } };
+
+    it('round-trips, and resolves several spellings onto one entry', () => {
+      const port = parsePort(aliased, 'port') as CategoricalPort;
+      expect(serializePort(port)).toEqual(aliased);
+      expect(domainMember(port, 'H 7')).toBe('H7');
+      expect(domainMember(port, 'h7')).toBe('H7');
+    });
+
+    it('passes a domain member through, and answers nothing for a stranger', () => {
+      const port = parsePort(aliased, 'port') as CategoricalPort;
+      expect(domainMember(port, 'K7')).toBe('K7');
+      expect(domainMember(port, 'M7')).toBeUndefined();
+      // A key every object inherits is not an alias anyone declared.
+      expect(domainMember(port, 'constructor')).toBeUndefined();
+    });
+
+    it('rejects an alias that names nothing, shadows an entry, or says nothing', () => {
+      expect(() => parsePort({ ...(fit as JsonObject), aliases: { 'H 7': 'H9' } }, 'p')).toThrow(
+        /p\.aliases\.H 7: 'H9' is not in the declared domain/,
+      );
+      expect(() => parsePort({ ...(fit as JsonObject), aliases: { K7: 'H7' } }, 'p')).toThrow(
+        /'K7' is already a domain entry/,
+      );
+      expect(() => parsePort({ ...(fit as JsonObject), aliases: {} }, 'p')).toThrow(
+        /p\.aliases: is empty/,
+      );
+    });
   });
 });
 

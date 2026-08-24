@@ -112,6 +112,24 @@ const study: JsonObject = {
       position: { x: 260, y: 480 },
       expression: 'p + q',
     },
+    {
+      kind: 'file',
+      id: 'frames',
+      label: 'the bracket shots',
+      position: { x: 260, y: 560 },
+      reader: 'exif',
+      axisLabel: 'frame',
+      sources: [
+        { name: 'one.cr3', size: 24_100_000, modified: 1_700_000_000_000 },
+        { name: 'two.cr3', size: 24_400_000 },
+      ],
+      fields: [
+        { name: 'f', unit: 'mm', values: [50, 85] },
+        { name: 'N', unit: '', values: [2.8, 4] },
+        { name: 'camera', values: ['Canon EOS R6m3', 'Canon EOS R6m3'] },
+        { name: 's', unit: 'm', values: [null, null] },
+      ],
+    },
   ],
   edges: [
     { id: 'e1', from: { node: 'd', port: 'value' }, to: { node: 'n1', port: 'a' } },
@@ -353,7 +371,9 @@ describe('round-tripping (the verification docs/PLAN.md asks for)', () => {
 
 describe('labelled axes', () => {
   it('counts one axis per range input node, and no others', () => {
-    expect(axes(parseDocument(study)).map((node) => node.id)).toEqual(['d', 'fit']);
+    // 'frames' is in there too: a file node reading more than one file is a
+    // sweep over the files, the same way a list of sizes is a sweep.
+    expect(axes(parseDocument(study)).map((node) => node.id)).toEqual(['d', 'fit', 'frames']);
   });
 
   it('counts a Monte Carlo generator as an axis too', () => {
@@ -373,7 +393,12 @@ describe('labelled axes', () => {
         },
       ],
     };
-    expect(axes(parseDocument(withGenerator)).map((node) => node.id)).toEqual(['d', 'fit', 'draw']);
+    expect(axes(parseDocument(withGenerator)).map((node) => node.id)).toEqual([
+      'd',
+      'fit',
+      'frames',
+      'draw',
+    ]);
   });
 
   it('rejects a plot pointing at a node that introduces no axis', () => {
@@ -443,6 +468,57 @@ describe('group frames as notebook sections', () => {
   });
 });
 
+describe('file nodes', () => {
+  const fileNode = (study['nodes'] as JsonObject[])[11] as JsonObject;
+  const withFile = (node: JsonObject): JsonObject => ({ ...study, nodes: [node], edges: [] });
+
+  it('accepts a node with no file picked yet, the way a fresh closure has no expression', () => {
+    const fresh = {
+      kind: 'file',
+      id: 'photo',
+      position: { x: 0, y: 0 },
+      reader: 'exif',
+      sources: [],
+      fields: [],
+    };
+    expect(serializeDocument(parseDocument(withFile(fresh)))).toEqual(withFile(fresh));
+  });
+
+  it('refuses fields with no file behind them', () => {
+    const broken = {
+      ...fileNode,
+      sources: [],
+      fields: [{ name: 'f', unit: 'mm', values: [] }],
+    };
+    expect(() => parseDocument(withFile(broken))).toThrow(
+      /fields: has fields but no file to have read them from/,
+    );
+  });
+
+  it('refuses a field that does not answer once per file', () => {
+    const broken = { ...fileNode, fields: [{ name: 'f', unit: 'mm', values: [50] }] };
+    expect(() => parseDocument(withFile(broken))).toThrow(/has 1 entries; 2 file\(s\) require 2/);
+  });
+
+  it('refuses a value that disagrees with its own field’s unit', () => {
+    const numeric = { ...fileNode, fields: [{ name: 'f', unit: 'mm', values: ['50', '85'] }] };
+    expect(() => parseDocument(withFile(numeric))).toThrow(/expected a finite number/);
+    const categorical = { ...fileNode, fields: [{ name: 'camera', values: [1, 2] }] };
+    expect(() => parseDocument(withFile(categorical))).toThrow(/expected a string/);
+  });
+
+  it('refuses two fields fighting over one port name', () => {
+    const broken = {
+      ...fileNode,
+      fields: [
+        { name: 'f', unit: 'mm', values: [50, 85] },
+        { name: 'f', unit: 'mm', values: [24, 24] },
+      ],
+    };
+    expect(() => parseDocument(withFile(broken))).toThrow(/fields: names 'f' twice/);
+  });
+});
+
 describe('structural integrity', () => {
   it('rejects a dangling edge', () => {
     const broken = {
@@ -458,7 +534,7 @@ describe('structural integrity', () => {
   it('rejects a duplicated node id', () => {
     const nodes = study['nodes'] as JsonObject[];
     const broken = { ...study, nodes: [...nodes, nodes[0] as JsonObject] };
-    expect(() => parseDocument(broken)).toThrow(/nodes\[11\]\.id: 'd' appears twice/);
+    expect(() => parseDocument(broken)).toThrow(/nodes\[12\]\.id: 'd' appears twice/);
   });
 
   it('refuses a document written by a schema version it does not read', () => {

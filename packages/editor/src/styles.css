@@ -845,7 +845,9 @@ aside.right {
 }
 
 .node-input::before,
-.node-monteCarloGenerator::before {
+.node-file::before,
+.node-monteCarloGenerator::before,
+.node-picker::before {
   background: var(--kind-input);
 }
 
@@ -1254,6 +1256,104 @@ aside.right {
   text-align-last: right;
 }
 
+/* A lookup-only formula's categorical axis: the choice already reads as the
+   node itself, so the row is the select and nothing else — no port label.
+   The handle stays, and so does the padding that clears it: the dropdown is
+   what applies while nothing is wired, not a replacement for wiring. */
+.node .port-picker {
+  height: auto;
+  align-items: stretch;
+}
+
+.node .port-picker-select {
+  width: 100%;
+  padding: 1px 2px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+}
+
+.node .port-picker-select:hover,
+.node .port-picker-select:focus {
+  border-color: var(--line);
+  background: var(--paper);
+}
+
+
+/* The name a wire is feeding a categorical port. One line, clipped rather
+   than wrapped: a camera model is long, and a port row that grows to four
+   lines pushes everything below it out of place. */
+.node .port-arriving {
+  overflow: hidden;
+  flex: 1;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A file node's picker: the button is the node's one control, and it carries
+   the name of the file the values on the node were read from — so it is
+   full-width and reads as text, not as a chrome-heavy button. */
+.node .node-file-pick {
+  display: flex;
+}
+
+.node .node-file-pick button {
+  flex: 1;
+  overflow: hidden;
+  padding: 1px 2px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.node .node-file-pick button:hover,
+.node .node-file-pick button:focus {
+  background: var(--paper);
+}
+
+/* One line per file read, shown only while the node is open — the provenance
+   of the values, not a way back to the files. */
+.node .file-sources {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.node .file-sources li {
+  display: flex;
+  gap: 6px;
+  justify-content: space-between;
+}
+
+.node .file-source-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.node .file-accepts {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* Reading a raw frame takes a beat; the button says so and refuses a
+   second pick until it is done. */
+.node .node-file-pick button:disabled {
+  color: var(--muted);
+  cursor: progress;
+}
 
 /* `ParameterLabel` owns the punctuation; this class covers labels outside
    port rows that do not already provide their own contextual unit styling. */

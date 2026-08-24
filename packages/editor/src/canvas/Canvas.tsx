@@ -83,6 +83,7 @@ import { CanvasFind } from './CanvasFind';
 import { ClosureNodeView } from './ClosureNodeView';
 import { CompareNodeView } from './CompareNodeView';
 import { ContextMenu, type MenuItem } from './ContextMenu';
+import { FileNodeView } from './FileNodeView';
 import { FormulaNodeView } from './FormulaNodeView';
 import { FrameView } from './FrameView';
 import { InputNodeView } from './InputNodeView';
@@ -141,6 +142,7 @@ function searchTitle(node: GraphNode, formulas: ReadonlyMap<string, Formula>, lo
 
 function searchPorts(document: GraphDocument, formulas: ReadonlyMap<string, Formula>, node: GraphNode): readonly string[] {
   if (node.kind === 'input') return [VALUE_PORT];
+  if (node.kind === 'file') return node.fields.map((field) => field.name);
   if (node.kind === 'formula') {
     const formula = formulas.get(node.id);
     return formula === undefined ? [] : [...formula.inputs, ...formula.outputs].map((port) => port.name);
@@ -238,6 +240,12 @@ function existingCandidates(
 
     if (node.kind === 'input') {
       candidates.push({ nodeId: node.id, label: nodeLabel(node), subtitle: 'input', port: VALUE_PORT });
+    } else if (node.kind === 'file') {
+      // Each field is its own thing to wire from, the same way a formula
+      // answering with several properties offers one candidate per output.
+      for (const field of node.fields) {
+        candidates.push({ nodeId: node.id, label: nodeLabel(node), subtitle: field.name, port: field.name });
+      }
     } else if (node.kind === 'formula') {
       const formula = formulas.get(node.id);
       if (formula === undefined) continue;
@@ -398,6 +406,7 @@ function sizeOf(measured: Measurements, id: string): { measured?: { width: numbe
 function flowType(
   kind:
     | 'input'
+    | 'file'
     | 'formula'
     | 'output'
     | 'compare'
@@ -413,6 +422,7 @@ function flowType(
 
 const NODE_TYPES = {
   'joveworks-input': InputNodeView,
+  file: FileNodeView,
   formula: FormulaNodeView,
   'joveworks-output': OutputNodeView,
   compare: CompareNodeView,

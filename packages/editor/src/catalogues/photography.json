@@ -936,9 +936,14 @@
             "Sony A7R V",
             "Fujifilm X-T5"
           ],
+          "aliases": {
+            "Canon EOS R6m3": "Canon EOS R6 Mark III",
+            "Canon EOS REBEL T5": "Canon EOS 1200D",
+            "Canon EOS Kiss X70": "Canon EOS 1200D"
+          },
           "default": "Canon EOS R6 Mark III",
           "description": {
-            "en": "Camera make and model."
+            "en": "Camera make and model. The name a photograph carries for its own body resolves to the matching entry, so a file node's camera output can be wired straight in."
           }
         }
       ],
@@ -1049,9 +1054,14 @@
             "Canon RF 100-500mm F4.5-7.1 L IS USM",
             "Canon RF 24-240mm F4-6.3 IS USM"
           ],
+          "aliases": {
+            "RF24-105mm F4 L IS USM": "Canon RF 24-105mm F4 L IS USM",
+            "RF100-500mm F4.5-7.1 L IS USM": "Canon RF 100-500mm F4.5-7.1 L IS USM",
+            "RF24-240mm F4-6.3 IS USM": "Canon RF 24-240mm F4-6.3 IS USM"
+          },
           "default": "Canon RF 24-105mm F4 L IS USM",
           "description": {
-            "en": "Lens make and model."
+            "en": "Lens make and model. The name a photograph carries for the lens it was taken with resolves to the matching entry, so a file node's lens output can be wired straight in."
           }
         }
       ],

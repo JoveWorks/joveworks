@@ -120,7 +120,27 @@ export interface CategoricalPort extends PortBase {
   readonly kind: 'categorical';
   /** The enumerated domain. A value outside it is rejected at entry. */
   readonly domain: readonly string[];
+  /**
+   * Other spellings that name a domain member: `'Canon EOS R6m3'` is what the
+   * camera writes into its own files, `'Canon EOS R6 Mark III'` is what the
+   * domain calls it. Many-to-one on purpose — one body sells under a different
+   * name per market, and every one of those names the same entry.
+   *
+   * It lives on the domain rather than on whatever produced the odd spelling,
+   * because "what else this thing is called" is a property of the thing. A
+   * wire keeps carrying the spelling its source actually produced; only a
+   * consumer that has to land on a domain member resolves through this, so a
+   * table column still prints what the source said.
+   */
+  readonly aliases?: Readonly<Record<string, string>>;
   readonly default?: string;
+}
+
+/** The domain member `value` names, directly or through an alias. */
+export function domainMember(port: CategoricalPort, value: string): string | undefined {
+  if (port.domain.includes(value)) return value;
+  if (port.aliases === undefined || !Object.hasOwn(port.aliases, value)) return undefined;
+  return port.aliases[value];
 }
 
 export interface SpectrumPort extends PortBase {
@@ -178,6 +198,27 @@ function parsePreferredUnit(value: JsonValue, path: string): Unit {
   return preferred;
 }
 
+function parseAliases(
+  value: JsonValue,
+  path: string,
+  domain: readonly string[],
+): Readonly<Record<string, string>> {
+  const object = readObject(value, path);
+  const aliases: Record<string, string> = {};
+  for (const [alias, member] of Object.entries(object)) {
+    const target = readString(member, join(path, alias));
+    if (!domain.includes(target)) {
+      fail(join(path, alias), `'${target}' is not in the declared domain`);
+    }
+    // An alias that is itself a domain entry would shadow that entry's own
+    // row, which is never what a translation table means to say.
+    if (domain.includes(alias)) fail(join(path, alias), `'${alias}' is already a domain entry`);
+    aliases[alias] = target;
+  }
+  if (Object.keys(aliases).length === 0) fail(path, 'is empty — leave it out instead');
+  return aliases;
+}
+
 export function parsePort(value: JsonValue, path: string): Port {
   const object = readObject(value, path);
   const name = readName(required(object, 'name', path), join(path, 'name'));
@@ -189,11 +230,21 @@ export function parsePort(value: JsonValue, path: string): Port {
     if (domain.length === 0) fail(join(path, 'domain'), 'is empty — a categorical port needs one');
     const duplicate = domain.find((entry, i) => domain.indexOf(entry) !== i);
     if (duplicate !== undefined) fail(join(path, 'domain'), `lists '${duplicate}' twice`);
+    const aliases = optional(object, 'aliases', path, (entry, entryPath) =>
+      parseAliases(entry, entryPath, domain),
+    );
     const fallback = optional(object, 'default', path, readString);
     if (fallback !== undefined && !domain.includes(fallback)) {
       fail(join(path, 'default'), `'${fallback}' is not in the declared domain`);
     }
-    return { kind, name, domain, ...put('description', description), ...put('default', fallback) };
+    return {
+      kind,
+      name,
+      domain,
+      ...put('aliases', aliases),
+      ...put('description', description),
+      ...put('default', fallback),
+    };
   }
 
   if (kind === 'bundle') {
@@ -249,7 +300,12 @@ export function serializePort(port: Port): JsonObject {
     ...(port.description === undefined ? {} : { description: serializeLocalizedText(port.description) }),
   };
   if (port.kind === 'categorical') {
-    return { ...base, domain: [...port.domain], ...put('default', port.default) };
+    return {
+      ...base,
+      domain: [...port.domain],
+      ...put('aliases', port.aliases === undefined ? undefined : { ...port.aliases }),
+      ...put('default', port.default),
+    };
   }
   if (port.kind === 'bundle') {
     return { ...base, channels: port.channels.map((channel) => channel.symbol) };

@@ -28,11 +28,13 @@ import {
   MAX_PORT,
   MEAN_PORT,
   STDDEV_PORT,
+  domainMember,
   isRange,
   renardValues,
   type Catalogue,
   type CompareNode,
   type Edge,
+  type FileNode,
   type GraphDocument,
   type InputNode,
   type MonteCarloGeneratorNode,
@@ -237,6 +239,12 @@ export function evaluateDocument(
         values.set(endpointKey(node.id, VALUE_PORT), inputValue(node, axisByNode, resolution));
         break;
 
+      case 'file':
+        for (const [name, value] of fileValues(node, axisByNode)) {
+          values.set(endpointKey(node.id, name), value);
+        }
+        break;
+
       case 'monteCarloGenerator':
         values.set(
           endpointKey(node.id, VALUE_PORT),
@@ -398,6 +406,47 @@ function generatorValue(
     axes: [axis],
     data: monteCarloSamples(documentId, node.id, draw, axis.length),
   };
+}
+
+/**
+ * What a file node's ports carry: each field's stored values, converted into
+ * canonical units on the way in — the same boundary `inputValue` is.
+ *
+ * A field the file did not record is skipped rather than emitted as a hole:
+ * its port still resolves, so the node keeps its shape and the rest of it
+ * keeps working, and only a wire that actually asks for the missing field
+ * fails. One file gives a scalar; several give a series over the node's own
+ * axis, exactly as a list range does.
+ */
+function fileValues(
+  node: FileNode,
+  axes: ReadonlyMap<string, Axis>,
+): readonly (readonly [string, PortValue])[] {
+  const axis = node.sources.length > 1 ? axes.get(node.id) : undefined;
+  if (node.sources.length > 1 && axis === undefined) {
+    throw new KernelError('several files introduce an axis, and this node has none', node.id);
+  }
+  const emitted: (readonly [string, PortValue])[] = [];
+  for (const field of node.fields) {
+    if (field.values.some((value) => value === null)) continue;
+    const unit = field.unit;
+    if (unit === undefined) {
+      const data = field.values as readonly string[];
+      emitted.push([
+        field.name,
+        axis === undefined
+          ? categoricalScalar(data[0] as string)
+          : { kind: 'categorical', axes: [axis], data: [...data] },
+      ]);
+      continue;
+    }
+    const data = (field.values as readonly number[]).map((value) => toCanonical(value, unit));
+    emitted.push([
+      field.name,
+      axis === undefined ? scalarSeries(data[0] as number) : { kind: 'numeric', axes: [axis], data },
+    ]);
+  }
+  return emitted;
 }
 
 /**
@@ -845,9 +894,19 @@ function evaluateFormula(
         if (entry === undefined) throw new KernelError(`lookup input '${lookupAxis.input}' is not declared`, nodeId);
         const valueIndex = indexer(entry.value, axes)(cell);
         let selected = -1;
+        /** The spelling that missed, named in the error a miss raises. */
+        let missed: string | undefined;
         if (lookupAxis.kind === 'categorical') {
           if (entry.value.kind !== 'categorical') throw new KernelError(`lookup input '${lookupAxis.input}' must be categorical`, nodeId);
-          selected = lookupAxis.values.indexOf(entry.value.data[valueIndex] as string);
+          // A wire carries whatever spelling its source produced — a camera
+          // names itself 'Canon EOS R6m3' in its own files — so the port's
+          // domain gets to say which entry that is before the axis, whose
+          // values are domain members by construction, matches exactly.
+          const spelling = entry.value.data[valueIndex] as string;
+          const member =
+            entry.port.kind === 'categorical' ? domainMember(entry.port, spelling) : undefined;
+          selected = member === undefined ? -1 : lookupAxis.values.indexOf(member);
+          missed = spelling;
         } else {
           if (entry.value.kind !== 'numeric' || entry.port.kind !== 'numeric' || isGenericDimension(entry.port.unit)) {
             throw new KernelError(`lookup input '${lookupAxis.input}' must have a concrete numeric unit`, nodeId);
@@ -858,7 +917,14 @@ function evaluateFormula(
             coordinate <= toCanonical(lookupAxis.lowerExclusive, inputUnit);
           selected = below ? -1 : lookupAxis.values.findIndex((bound) => coordinate <= toCanonical(bound as number, inputUnit));
         }
-        if (selected < 0) throw new KernelError(`no lookup entry for '${lookupAxis.input}'`, endpointKey(nodeId, lookupAxis.input));
+        if (selected < 0) {
+          throw new KernelError(
+            missed === undefined
+              ? `no lookup entry for '${lookupAxis.input}'`
+              : `no lookup entry for '${lookupAxis.input}': nothing here is called '${missed}'`,
+            endpointKey(nodeId, lookupAxis.input),
+          );
+        }
         flat += selected * (strides[axisIndex] as number);
       }
       for (const column of columns) {

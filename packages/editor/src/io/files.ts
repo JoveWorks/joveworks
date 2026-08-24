@@ -44,6 +44,49 @@ export function openTextFile(accept = 'application/json,.json'): Promise<PickedF
   });
 }
 
+/**
+ * A picked file: what a file node records about where its values came from,
+ * and a way to get at the bytes.
+ *
+ * The bytes are behind a call rather than already read, so a sweep over ten
+ * raw frames holds one frame in memory at a time. They are wanted only long
+ * enough to read a few dozen tags out of them, and nothing keeps them
+ * afterwards — the document stores the values, never the file.
+ */
+export interface PickedBinaryFile {
+  readonly name: string;
+  readonly size: number;
+  readonly modified: number;
+  /** `limit` reads only the first that many bytes — see `FileReaderDefinition.prefixBytes`. */
+  readonly bytes: (limit?: number) => Promise<ArrayBuffer>;
+}
+
+/** Ask for one or more files. Resolves an empty list if nothing is picked. */
+export function openBinaryFiles(accept: string): Promise<readonly PickedBinaryFile[]> {
+  return new Promise((resolve) => {
+    const picker = document.createElement('input');
+    picker.type = 'file';
+    picker.accept = accept;
+    picker.multiple = true;
+    picker.addEventListener('change', () => {
+      resolve(
+        [...(picker.files ?? [])].map((file) => ({
+          name: file.name,
+          size: file.size,
+          modified: file.lastModified,
+          bytes: (limit?: number) =>
+            limit === undefined || limit >= file.size
+              ? file.arrayBuffer()
+              : file.slice(0, limit).arrayBuffer(),
+        })),
+      );
+    });
+    // Same as `openTextFile`: a cancelled dialog fires nothing in some
+    // browsers, so the promise is left pending rather than resolved wrongly.
+    picker.click();
+  });
+}
+
 /** Hand the text back as a download — the export half of file I/O. */
 export function saveTextFile(name: string, text: string): void {
   const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));

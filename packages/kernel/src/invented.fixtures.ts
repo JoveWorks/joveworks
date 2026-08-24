@@ -63,6 +63,25 @@ export function formulaNode(id: string, ref: FormulaRef, extra: JsonObject = {})
   };
 }
 
+export function fileNode(
+  id: string,
+  sources: readonly JsonObject[],
+  fields: readonly JsonObject[],
+  extra: JsonObject = {},
+): JsonObject {
+  return {
+    kind: 'file',
+    id,
+    position: { x: 0, y: 0 },
+    reader: 'exif',
+    sources: [...sources],
+    fields: [...fields],
+    ...extra,
+  };
+}
+
+export const fileSource = (name: string, size = 1_000): JsonObject => ({ name, size });
+
 export function closureNode(id: string, expression: string, extra: JsonObject = {}): JsonObject {
   return { kind: 'closure', id, position: { x: 0, y: 0 }, expression, ...extra };
 }

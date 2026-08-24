@@ -13,6 +13,7 @@ export const DOCS_BASE_URL = import.meta.env.DEV
 export const NODE_HELP_URLS: Readonly<
   Record<
     | 'input'
+    | 'file'
     | 'formula'
     | 'output'
     | 'compare'
@@ -26,6 +27,7 @@ export const NODE_HELP_URLS: Readonly<
   >
 > = {
   input: `${DOCS_BASE_URL}/guide/node-reference#input`,
+  file: `${DOCS_BASE_URL}/guide/node-reference#file`,
   formula: `${DOCS_BASE_URL}/guide/node-reference#formula`,
   output: `${DOCS_BASE_URL}/guide/node-reference#output`,
   compare: `${DOCS_BASE_URL}/guide/node-reference#compare`,

@@ -173,7 +173,18 @@ function collapseRange(range: RangeSpec, tableColumn: ResolvedTableColumn | unde
  * as long as this stays documented, the same spirit as the R&M
  * `unverified`/quarantine gaps.
  */
-function collapseAxis(node: AxisNode, tableColumn: ResolvedTableColumn | undefined): InputNode {
+function collapseAxis(node: AxisNode, tableColumn: ResolvedTableColumn | undefined): GraphNode {
+  if (node.kind === 'file') {
+    // A file axis collapses to its first frame — the counterpart of a range
+    // collapsing to its midpoint, except there is no midpoint between two
+    // photographs. It stays a file node rather than becoming an input node,
+    // since its several ports have no single-value equivalent.
+    return {
+      ...node,
+      sources: node.sources.slice(0, 1),
+      fields: node.fields.map((field) => ({ ...field, values: field.values.slice(0, 1) })),
+    };
+  }
   if (node.kind === 'monteCarloGenerator') {
     const value: ValueSpec =
       node.distribution === 'uniform'

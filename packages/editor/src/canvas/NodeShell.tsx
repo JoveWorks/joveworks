@@ -25,6 +25,7 @@ const STATE_LABELS: Readonly<Record<NodeState, string>> = {
 interface Props {
   readonly kind:
     | 'input'
+    | 'file'
     | 'formula'
     | 'output'
     | 'compare'
@@ -53,6 +54,10 @@ interface Props {
   readonly detail?: ReactNode;
   /** A hook for the tutorial walkthrough to spotlight this node by. */
   readonly dataTour?: string;
+  /** An extra class on the card itself — e.g. a formula that behaves like an
+   * input (nothing to wire, just a choice made on the node) borrowing
+   * input's kind stripe without actually becoming a different node kind. */
+  readonly extraClassName?: string;
 }
 
 export function NodeShell({
@@ -71,6 +76,7 @@ export function NodeShell({
   children,
   detail,
   dataTour,
+  extraClassName,
 }: Props): ReactElement {
   const { locale } = useSettings();
   const { marqueeActive } = useGraph();
@@ -84,7 +90,7 @@ export function NodeShell({
   const open = expanded || (!marqueeActive && (selected || hovered));
   return (
     <div
-      className={`node node-${kind} state-${state}${open ? ' open' : ''}${highlighted ? ' highlighted' : ''}`}
+      className={`node node-${kind} state-${state}${open ? ' open' : ''}${highlighted ? ' highlighted' : ''}${extraClassName === undefined ? '' : ` ${extraClassName}`}`}
       data-tour={dataTour}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}

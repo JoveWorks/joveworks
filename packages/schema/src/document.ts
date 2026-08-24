@@ -411,8 +411,68 @@ export interface MonteCarloReceiverNode extends NodeBase {
   readonly showHistogram?: boolean;
 }
 
+/** Where a file node's values came from. Provenance, never a way back to the file. */
+export interface FileSource {
+  readonly name: string;
+  readonly size: number;
+  /** The file's own last-modified stamp, in epoch milliseconds. */
+  readonly modified?: number;
+}
+
+/**
+ * One quantity read out of a file: a port, and its value once per source.
+ *
+ * `unit` absent means a categorical field — a camera model, a lens name —
+ * the same "no unit to have" a categorical port and `CategoricalValue`
+ * already state by omission. `null` is the honest answer for a file that
+ * simply did not carry the field, and it stays a resolvable port so the rest
+ * of the node keeps working; asking for it is what fails.
+ */
+export interface FileField {
+  readonly name: string;
+  readonly unit?: Unit;
+  /** One entry per `FileNode.sources`, in that order. */
+  readonly values: readonly (number | string | null)[];
+}
+
+/**
+ * Values read out of a file the student picked: EXIF from a photograph today,
+ * whatever a later reader understands after that.
+ *
+ * **The file is not in the document and never will be.** A raw frame is tens
+ * of megabytes against an autosave slot measured in single-digit ones, a file
+ * handle does not survive being mailed to a classmate, and evaluation has to
+ * be reproducible from the document alone. So the node stores what was read
+ * — `fields` — plus enough provenance to say where it came from. Hand the
+ * NodeBook to someone else and every number still evaluates; the file is
+ * gone, and the node says so rather than pretending otherwise.
+ *
+ * `reader` names the editor-side reader that produced the fields. The kernel
+ * never consults it and knows nothing about EXIF or any other format: it sees
+ * declared, typed, constant outputs, the way `closure` hands it ports derived
+ * from an expression it did not write either.
+ *
+ * `sources` is a list at one entry rather than a single source because
+ * several files read the same way are a sweep — ten frames giving an axis of
+ * focal lengths — and that axis is a `FileNode` with a longer `sources` and
+ * correspondingly longer `FileField.values`, not a different node.
+ *
+ * Both lists may be empty: that is a node dropped from the palette with no
+ * file picked yet, the same unfinished-but-valid state a `ClosureNode` with
+ * an empty expression sits in.
+ */
+export interface FileNode extends NodeBase {
+  readonly kind: 'file';
+  readonly reader: string;
+  readonly sources: readonly FileSource[];
+  readonly fields: readonly FileField[];
+  /** What the axis is called while several files are loaded. Defaults to `label`. */
+  readonly axisLabel?: string;
+}
+
 export type GraphNode =
   | InputNode
+  | FileNode
   | FormulaNode
   | OutputNode
   | CompareNode
@@ -455,13 +515,19 @@ export interface GraphDocument {
   readonly frames: readonly Frame[];
 }
 
-/** Every axis in the document, in node order: one per range input node. */
-export type AxisNode = InputNode | MonteCarloGeneratorNode;
+/**
+ * Every axis in the document, in node order: a range input node, a Monte
+ * Carlo generator, or a file node reading more than one file — several
+ * frames are a sweep over the frames, the same way a list of sizes is.
+ */
+export type AxisNode = InputNode | FileNode | MonteCarloGeneratorNode;
 
 export function axes(document: GraphDocument): readonly AxisNode[] {
   return document.nodes.filter(
     (node): node is AxisNode =>
-      (node.kind === 'input' && isRange(node.value)) || node.kind === 'monteCarloGenerator',
+      (node.kind === 'input' && isRange(node.value)) ||
+      (node.kind === 'file' && node.sources.length > 1) ||
+      node.kind === 'monteCarloGenerator',
   );
 }
 
@@ -606,8 +672,41 @@ function serializeOutput(output: Output): JsonObject {
   }
 }
 
+function parseFileSource(value: JsonValue, path: string): FileSource {
+  const object = readObject(value, path);
+  return {
+    name: readString(required(object, 'name', path), join(path, 'name')),
+    size: readInteger(required(object, 'size', path), join(path, 'size'), 0),
+    ...put('modified', optional(object, 'modified', path, readNumber)),
+  };
+}
+
+function parseFileField(value: JsonValue, path: string, sources: number): FileField {
+  const object = readObject(value, path);
+  const unit = optional(object, 'unit', path, parseUnitField);
+  const values = readArray(required(object, 'values', path), join(path, 'values')).map(
+    (cell, i) => {
+      const cellPath = `${join(path, 'values')}[${i}]`;
+      if (cell === null) return null;
+      // A field is numeric or categorical exactly as its unit says; a cell
+      // that disagrees is a reader that lost track of its own field, not a
+      // value to coerce.
+      return unit === undefined ? readString(cell, cellPath) : readNumber(cell, cellPath);
+    },
+  );
+  if (values.length !== sources) {
+    fail(join(path, 'values'), `has ${values.length} entries; ${sources} file(s) require ${sources}`);
+  }
+  return {
+    name: readName(required(object, 'name', path), join(path, 'name')),
+    ...put('unit', unit),
+    values,
+  };
+}
+
 const NODE_KINDS = [
   'input',
+  'file',
   'formula',
   'output',
   'compare',
@@ -638,6 +737,27 @@ function parseNode(value: JsonValue, path: string): GraphNode {
         value: parseValueSpec(required(object, 'value', path), join(path, 'value')),
         ...put('axisLabel', optional(object, 'axisLabel', path, readString)),
       };
+    case 'file': {
+      const sources = readArray(required(object, 'sources', path), join(path, 'sources')).map(
+        (entry, i) => parseFileSource(entry, `${join(path, 'sources')}[${i}]`),
+      );
+      const fields = readArray(required(object, 'fields', path), join(path, 'fields')).map(
+        (entry, i) => parseFileField(entry, `${join(path, 'fields')}[${i}]`, sources.length),
+      );
+      if (sources.length === 0 && fields.length > 0) {
+        fail(join(path, 'fields'), 'has fields but no file to have read them from');
+      }
+      const duplicate = fields.find((field, i) => fields.findIndex((other) => other.name === field.name) !== i);
+      if (duplicate !== undefined) fail(join(path, 'fields'), `names '${duplicate.name}' twice`);
+      return {
+        ...base,
+        kind,
+        reader: readName(required(object, 'reader', path), join(path, 'reader')),
+        sources,
+        fields,
+        ...put('axisLabel', optional(object, 'axisLabel', path, readString)),
+      };
+    }
     case 'formula':
       return {
         ...base,
@@ -738,6 +858,22 @@ function serializeNode(node: GraphNode): JsonObject {
       return {
         ...base,
         value: serializeValueSpec(node.value),
+        ...put('axisLabel', node.axisLabel),
+      };
+    case 'file':
+      return {
+        ...base,
+        reader: node.reader,
+        sources: node.sources.map((source) => ({
+          name: source.name,
+          size: source.size,
+          ...put('modified', source.modified),
+        })),
+        fields: node.fields.map((field) => ({
+          name: field.name,
+          ...put('unit', field.unit?.symbol),
+          values: [...field.values],
+        })),
         ...put('axisLabel', node.axisLabel),
       };
     case 'formula':

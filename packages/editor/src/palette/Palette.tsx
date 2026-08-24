@@ -36,6 +36,7 @@ import { addNode, defaultOutput, uniqueId } from '../model/document';
 import { entries, search, type PaletteEntry } from '../model/catalogues';
 import { LockedCatalogueSection } from './LockedCatalogueSection';
 import { monteCarloSampleCount, monteCarloSampleLimit } from '../model/monteCarlo';
+import { DEFAULT_READER } from '../files/readers';
 import { loadFavourites, saveFavourites } from '../model/palettePreferences';
 import { converted } from '../canvas/ValueEditor';
 import { ContextMenu } from '../canvas/ContextMenu';
@@ -185,11 +186,23 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
     });
   };
 
+  /** A lookup-only formula's single categorical axis, e.g. "pick a camera" —
+   * its many output symbols (MP, w, h, d, p, px, py, ...) would swamp the
+   * palette row, so the entry counts the library instead of listing them. */
+  const pickerDomain = (formula: Formula): readonly (string | number)[] | undefined => {
+    if (formula.expression !== undefined || formula.lookup === undefined || formula.lookup.axes.length !== 1) {
+      return undefined;
+    }
+    const [axis] = formula.lookup.axes;
+    return axis?.kind === 'categorical' ? axis.values : undefined;
+  };
+
   const formulaEntry = (entry: PaletteEntry, keyPrefix = ''): ReactElement => {
     const { formula } = entry;
     const title = formula.label === undefined
       ? formula.citation ?? formula.id
       : localize(formula.label, locale);
+    const domain = pickerDomain(formula);
     return (
       <li key={`${keyPrefix}${formula.id}`}>
         <button
@@ -204,12 +217,14 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
         >
           <span className="entry-id">{title}</span>
           <span className="entry-output">
-            {formula.outputs.map((port, i) => (
-              <span key={port.name}>
-                {i === 0 ? null : ', '}
-                <Symbol name={port.name} />
-              </span>
-            ))}
+            {domain === undefined
+              ? formula.outputs.map((port, i) => (
+                  <span key={port.name}>
+                    {i === 0 ? null : ', '}
+                    <Symbol name={port.name} />
+                  </span>
+                ))
+              : `${domain.length} ${domain.length === 1 ? 'entry' : 'entries'}`}
           </span>
           {formula.status === 'quarantined' ? <span className="entry-status">quarantined</span> : null}
         </button>
@@ -233,6 +248,25 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
     edit((current) => {
       const id = uniqueId(current, 'unpack');
       return addNode(current, { kind: 'unpack', id, label: id, position: position() });
+    });
+
+  /**
+   * Dropped empty, with no file picked and therefore no ports yet — the
+   * same unfinished-but-valid state a fresh equation node is in. The node's
+   * own button is where a file is chosen, so nothing here opens a dialog.
+   */
+  const addFile = (): void =>
+    edit((current) => {
+      const id = uniqueId(current, 'file');
+      return addNode(current, {
+        kind: 'file',
+        id,
+        label: id,
+        reader: DEFAULT_READER.id,
+        sources: [],
+        fields: [],
+        position: position(),
+      });
     });
 
   const addMonteCarloGenerator = (): void =>
@@ -274,6 +308,9 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
     { id: 'builtin:input:list', label: copy.list, summary: copy.listSummary, insert: () => addInput('list') },
     { id: 'builtin:input:spectrum', label: 'spectrum', summary: 'consumed whole, not swept', insert: () => addInput('spectrum') },
     { id: 'builtin:input:category', label: 'category', summary: 'a named choice', insert: () => addInput('categorical') },
+    // A source like the five above it, not a routing node: it starts a graph
+    // rather than doing anything to values already in one.
+    { id: 'builtin:input:file', label: copy.file, summary: copy.fileSummary, insert: addFile },
     { id: 'builtin:general:compare', label: copy.compare, summary: copy.compareSummary, insert: addCompare },
     { id: 'builtin:general:equation', label: copy.equation, summary: copy.equationSummary, insert: addClosure },
     { id: 'builtin:general:waypoint', label: copy.waypoint, summary: copy.waypointSummary, insert: addWaypoint },
