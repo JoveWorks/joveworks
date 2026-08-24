@@ -1310,8 +1310,6 @@ function outputResult(
       return result;
     });
     const maskAxes = unionAxes(...checkResults.map((result) => result.series.axes));
-    const perCheck = checkResults.map((result) => broadcastBoolean(result.results, result.series.axes, maskAxes));
-    const mask = perCheck.length === 0 ? [] : perCheck.reduce((acc, next) => acc.map((value, i) => value && (next[i] as boolean)));
 
     const picked = pickPlotAxes(
       { x: output.x, series: output.series, facet: output.facet },
@@ -1338,6 +1336,25 @@ function outputResult(
       }
       return { axis, coordinates, unit: displayUnit(resolution.sources.get(endpointKey(id, VALUE_PORT))) };
     };
+
+    // The mask is over the checks' own axes and nothing else — one cell when
+    // no check varies at all, which is what makes "passes at 3 of 5 points"
+    // count real points rather than repetitions of one verdict.
+    //
+    // The axis a figure draws this against is a separate question, and need
+    // not be one of these: a pinned axis, or the document-order fallback
+    // `pickPlotAxes` uses when nothing varies, can be an axis the verdict
+    // does not depend on. `axisFor` warns that the shading will be flat, and
+    // flat is a drawing rather than a failure — `FeasibilityFigure` widens
+    // the grid at draw time (`PlotFigure`'s `plotGrid` does the same for a
+    // flat curve) instead of this result claiming a shape it does not have.
+    const perCheck = checkResults.map((result) =>
+      broadcastBoolean(result.results, result.series.axes, maskAxes),
+    );
+    const mask =
+      perCheck.length === 0
+        ? []
+        : perCheck.reduce((acc, next) => acc.map((value, i) => value && (next[i] as boolean)));
 
     return {
       ...base,

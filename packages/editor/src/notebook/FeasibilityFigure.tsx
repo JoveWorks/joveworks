@@ -12,7 +12,15 @@
 import { useEffect, useRef, type ReactElement } from 'react';
 import * as Plot from '@observablehq/plot';
 
-import { gridSize, indexer, type FeasibilityResult, type PlotAxis } from '@joveworks/kernel';
+import {
+  broadcastBoolean,
+  gridSize,
+  indexer,
+  unionAxes,
+  type Axis,
+  type FeasibilityResult,
+  type PlotAxis,
+} from '@joveworks/kernel';
 import { fromCanonical } from '@joveworks/units';
 
 import { useSettings } from '../settings-context';
@@ -41,12 +49,43 @@ function formatCoordinate(value: number | string): string {
 }
 
 /** The referenced Check node ids that failed a given cell, in `result.checks` order. */
-function failedChecksAt(result: FeasibilityResult, cell: number): readonly string[] {
-  return result.checks.filter((_unused, i) => result.perCheck[i]?.[cell] === false);
+function failedChecksAt(
+  checks: readonly string[],
+  perCheck: readonly (readonly boolean[])[],
+  cell: number,
+): readonly string[] {
+  return checks.filter((_unused, i) => perCheck[i]?.[cell] === false);
 }
 
-function rows(result: FeasibilityResult, checkLabels: Readonly<Record<string, string>>): readonly Row[] {
-  const target = result.axes;
+/**
+ * Every axis in play, not just the ones the verdict varies along — the mask's
+ * own grid plus whichever axes this figure is drawn against.
+ *
+ * They are not always the same set. An axis can be pinned, or autofilled from
+ * document order when no check varies at all, that the verdict does not depend
+ * on: a check fed by a value typed on a node rather than by the range node
+ * still on the canvas. `evaluate.ts` warns that the shading "will be flat" and
+ * draws it anyway, so the mask broadcasts along that axis with stride 0 and
+ * every column repeats. Iterating the mask's own axes alone would instead ask
+ * `indexer` to place x coordinates on a grid without the x axis in it, which is
+ * the "a series carries an axis the target grid does not" crash this avoids —
+ * the same fix, for the same reason, as `PlotFigure`'s `plotGrid`.
+ */
+function feasibilityGrid(result: FeasibilityResult): readonly Axis[] {
+  return unionAxes(
+    result.axes,
+    result.x.coordinates.axes,
+    result.series2 === undefined ? [] : result.series2.coordinates.axes,
+    result.facet === undefined ? [] : result.facet.coordinates.axes,
+  );
+}
+
+export function rows(result: FeasibilityResult, checkLabels: Readonly<Record<string, string>>): readonly Row[] {
+  const target = feasibilityGrid(result);
+  // Onto that grid, so a mask that varies along fewer axes than the figure
+  // draws repeats down the ones it does not.
+  const mask = broadcastBoolean(result.mask, result.axes, target);
+  const perCheck = result.perCheck.map((entry) => broadcastBoolean(entry, result.axes, target));
   const xAt = indexer(result.x.coordinates, target);
   const xs = coordinates(result.x);
   const xLabel = result.x.axis.label;
@@ -61,15 +100,15 @@ function rows(result: FeasibilityResult, checkLabels: Readonly<Record<string, st
     const x = xs[xAt(cell)] as number | string;
     const series = seriesAt === undefined || seriesValues === undefined ? SINGLE_ROW : (seriesValues[seriesAt(cell)] as number | string);
     const facet = facetAt === undefined || facetValues === undefined ? undefined : (facetValues[facetAt(cell)] as number | string);
-    const mask: 'pass' | 'fail' = result.mask[cell] === true ? 'pass' : 'fail';
+    const verdict: 'pass' | 'fail' = mask[cell] === true ? 'pass' : 'fail';
 
     const lines = [`${xLabel}: ${formatCoordinate(x)}`];
     if (seriesLabel !== undefined) lines.push(`${seriesLabel}: ${formatCoordinate(series)}`);
     if (facetLabel !== undefined && facet !== undefined) lines.push(`${facetLabel}: ${formatCoordinate(facet)}`);
-    if (mask === 'pass') {
+    if (verdict === 'pass') {
       lines.push('→ pass');
     } else {
-      const failed = failedChecksAt(result, cell).map((id) => checkLabels[id] ?? id);
+      const failed = failedChecksAt(result.checks, perCheck, cell).map((id) => checkLabels[id] ?? id);
       lines.push(`→ fail (${failed.join(', ')})`);
     }
 
@@ -77,7 +116,7 @@ function rows(result: FeasibilityResult, checkLabels: Readonly<Record<string, st
       x,
       series,
       ...(facet === undefined ? {} : { facet }),
-      mask,
+      mask: verdict,
       title: lines.join('\n'),
     };
   });

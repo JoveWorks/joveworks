@@ -1855,6 +1855,34 @@ describe('feasibility outputs', () => {
     expect(feas.mask).toEqual([false, false, true, false, true, false]);
   });
 
+  it('counts one verdict, not one per point, when no check varies along the axis it is drawn against', () => {
+    // The range node is still in the document — and still the only axis in
+    // it, so it is what the figure is drawn against — but nothing feeding the
+    // check varies along it any more: `w` takes a value typed on the node
+    // instead. The mask is then a single cell, and says so.
+    const document = documentOf(
+      [
+        input('d', linear(10, 50, 5, 'mm'), { axisLabel: 'diameter' }),
+        input('h', scalar(2, 'mm')),
+        formulaNode('area', refTo('area'), {
+          inputValues: { w: { kind: 'scalar', value: 20, unit: 'mm' } },
+        }),
+        outputNode('check1', { kind: 'check', comparison: '>=', threshold: { value: 30, unit: 'mm²' } }),
+        outputNode('feas', { kind: 'feasibility', checks: ['check1'] }),
+      ],
+      [wire('h.value', 'area.h'), wire('area.A', 'check1.value')],
+    );
+    const evaluation = evaluateDocument(document, catalogues);
+    const feas = evaluation.outputs.find((entry) => entry.nodeId === 'feas') as FeasibilityResult;
+    // A = 40 mm², once: one verdict over no axes at all. The figure still
+    // draws it against `diameter`, flat — that widening is `FeasibilityFigure`'s
+    // to do, and doing it here would report five points that do not exist.
+    expect(feas.axes).toEqual([]);
+    expect(feas.mask).toEqual([true]);
+    expect(feas.x.axis.label).toBe('diameter');
+    expect(evaluation.warnings.some((entry) => /will be flat/u.test(entry.message))).toBe(true);
+  });
+
   it('throws a clear error when a referenced id is not a Check node', () => {
     const document = documentOf(
       [
