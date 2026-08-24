@@ -115,7 +115,7 @@ export {
   typesConnect,
   wouldCycle,
 } from './graph.js';
-export type { ConnectionCheck, PortType, Resolution } from './graph.js';
+export type { ChannelType, ConnectionCheck, PortType, Resolution } from './graph.js';
 
 export { evaluateDocument, receiverSampleValue, valueAt } from './evaluate.js';
 export type {

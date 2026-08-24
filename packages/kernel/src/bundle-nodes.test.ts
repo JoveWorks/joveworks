@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { evaluateDocument } from './evaluate.js';
 import { resolveGraph } from './graph.js';
 import {
+  categorical,
   documentOf,
   input,
   outputNode,
@@ -65,5 +66,46 @@ describe('waypoint / pack / unpack', () => {
     const result = evaluateDocument(document, []);
     expect(result.values.get('split.out0')).toMatchObject({ kind: 'numeric', data: [20] });
     expect(result.values.get('split.out1')).toMatchObject({ kind: 'numeric', data: [30] });
+  });
+
+  it('passes a categorical value through a waypoint', () => {
+    const document = documentOf(
+      [
+        input('grade', categorical('H7')),
+        waypointNode('via'),
+        outputNode('gradeOut', { kind: 'print' }),
+      ],
+      [wire('grade.value', 'via.in0'), wire('via.out0', 'gradeOut.value')],
+    );
+    const resolution = resolveGraph(document, []);
+    expect(resolution.sources.get('via.out0')).toMatchObject({ kind: 'categorical' });
+    const result = evaluateDocument(document, []);
+    expect(result.values.get('via.out0')).toMatchObject({ kind: 'categorical', data: ['H7'] });
+  });
+
+  it('packs a categorical channel alongside a numeric one and restores both through unpack', () => {
+    const document = documentOf(
+      [
+        input('length', scalar(20, 'mm')),
+        input('grade', categorical('H7')),
+        packNode('bundle'),
+        unpackNode('split'),
+        outputNode('lengthOut', { kind: 'print' }),
+        outputNode('gradeOut', { kind: 'print' }),
+      ],
+      [
+        wire('length.value', 'bundle.in0'),
+        wire('grade.value', 'bundle.in1'),
+        wire('bundle.bundle', 'split.bundle'),
+        wire('split.out0', 'lengthOut.value'),
+        wire('split.out1', 'gradeOut.value'),
+      ],
+    );
+    const resolution = resolveGraph(document, []);
+    expect(resolution.sources.get('split.out0')).toMatchObject({ kind: 'numeric' });
+    expect(resolution.sources.get('split.out1')).toMatchObject({ kind: 'categorical' });
+    const result = evaluateDocument(document, []);
+    expect(result.values.get('split.out0')).toMatchObject({ kind: 'numeric', data: [20] });
+    expect(result.values.get('split.out1')).toMatchObject({ kind: 'categorical', data: ['H7'] });
   });
 });

@@ -146,6 +146,8 @@ export function wire(from: string, to: string): JsonObject {
 
 export const scalar = (value: number, unit: string): JsonObject => ({ kind: 'scalar', value, unit });
 
+export const categorical = (value: string): JsonObject => ({ kind: 'categorical', value });
+
 export const slider = (value: number, min: number, max: number, unit: string): JsonObject => ({
   kind: 'slider',
   value,

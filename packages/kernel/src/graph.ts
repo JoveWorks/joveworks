@@ -76,6 +76,14 @@ import { parseExpression } from './parse.js';
 import type { Axis } from './series.js';
 import type { Warning } from './warnings.js';
 
+/**
+ * One channel of a `bundle`-kind port's per-channel type list. A pack channel
+ * is whatever was wired to it — numeric with its own dimension, or
+ * categorical, the same two kinds `waypoint` and `pack` pass through
+ * unchanged (see their branches in `resolveGraph`).
+ */
+export type ChannelType = { readonly kind: 'numeric'; readonly dimension: Dimension } | { readonly kind: 'categorical' };
+
 /** The type of one port of one node: enough to decide whether an edge may attach. */
 export interface PortType {
   readonly kind: PortKind;
@@ -84,12 +92,12 @@ export interface PortType {
   /** The unit to display in, when the port declares one. */
   readonly unit?: Unit;
   /**
-   * A `bundle`-kind port's per-channel dimensions, in order — `dimension`
+   * A `bundle`-kind port's per-channel types, in order — `dimension`
    * itself is meaningless for a bundle, which carries a list rather than
    * one dimension. `undefined` while unbound, same as `dimension` is for
    * every other generic port.
    */
-  readonly channels?: readonly Dimension[];
+  readonly channels?: readonly ChannelType[];
 }
 
 /** `node.port`, the key both edge ends are indexed by. */
@@ -670,6 +678,12 @@ export function resolveGraph(
           continue;
         }
         const source = sourceType(edge);
+        if (source.kind === 'categorical') {
+          const type: PortType = { kind: 'categorical' };
+          targets.set(inKey, type);
+          sources.set(outKey, type);
+          continue;
+        }
         checkKind(source, { kind: 'numeric' }, inKey);
         if (source.dimension === undefined) {
           throw new KernelError(
@@ -693,12 +707,17 @@ export function resolveGraph(
       // `$A` — every channel may be a different dimension, that being the
       // whole point of bundling several wires into one.
       const indices = packChannelIndices(document, node.id);
-      const channels: Dimension[] = [];
+      const channels: ChannelType[] = [];
       for (const n of indices) {
         const inKey = endpointKey(node.id, `in${n}`);
         const edge = oneEdge(inKey);
         if (edge === undefined) continue;
         const source = sourceType(edge);
+        if (source.kind === 'categorical') {
+          targets.set(inKey, { kind: 'categorical' });
+          channels.push({ kind: 'categorical' });
+          continue;
+        }
         checkKind(source, { kind: 'numeric' }, inKey);
         if (source.dimension === undefined) {
           throw new KernelError(
@@ -707,7 +726,7 @@ export function resolveGraph(
           );
         }
         targets.set(inKey, { kind: 'numeric', dimension: source.dimension, unit: canonicalUnit(source.dimension) });
-        channels.push(source.dimension);
+        channels.push({ kind: 'numeric', dimension: source.dimension });
       }
       sources.set(endpointKey(node.id, 'bundle'), { kind: 'bundle', channels });
       continue;
@@ -727,12 +746,13 @@ export function resolveGraph(
       const source = sourceType(edge);
       checkKind(source, { kind: 'bundle' }, inKey);
       targets.set(inKey, source);
-      for (const [i, dimension] of (source.channels ?? []).entries()) {
-        sources.set(endpointKey(node.id, `out${i}`), {
-          kind: 'numeric',
-          dimension,
-          unit: canonicalUnit(dimension),
-        });
+      for (const [i, channel] of (source.channels ?? []).entries()) {
+        sources.set(
+          endpointKey(node.id, `out${i}`),
+          channel.kind === 'categorical'
+            ? { kind: 'categorical' }
+            : { kind: 'numeric', dimension: channel.dimension, unit: canonicalUnit(channel.dimension) },
+        );
       }
       continue;
     }

@@ -1673,12 +1673,29 @@ aside.right {
   background: var(--accent);
 }
 
-.node .port .react-flow__handle {
+.node .port .react-flow__handle.target {
   /* Keep the 9px marker's centre at its former location while its hitbox
      expands equally in every direction. */
   left: -2.5px;
   top: 50%;
   transform: translateY(-50%);
+}
+
+/* A waypoint's row carries both an in-handle and an out-handle for the same
+   channel (WaypointNodeView.tsx) — the only `.port` row that does. Dock the
+   source half on the opposite edge from the target half above, instead of
+   letting it inherit the target's left docking. */
+.node .port .react-flow__handle.source {
+  left: auto;
+  right: -2.5px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* Clears the out-handle now docked at the row's right edge, mirroring the
+   left clearance every `.port` row already gets. */
+.node-waypoint .port {
+  padding-right: 14px;
 }
 
 /*
