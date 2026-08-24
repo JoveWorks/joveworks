@@ -257,3 +257,43 @@ from whatever it feeds? And how does it relate to the existing range/sweep input
 which already turns a range into an axis (see `packages/kernel/src/series.ts` and
 the `isRange` value spec) — is this a second face on that same machinery or a
 genuinely new node kind?
+
+**52. Feature: a node that reads a file and exposes what is in it.** Shipped for
+photographs: a `file` node kind, a reader for Canon CR3, and ten fields wired
+straight into the photography catalogue — `f`, `N`, `t`, `ISO`, `px`/`py`,
+derived `w`/`h`, and the names the body writes for itself and its lens. Several
+files at once make the node an axis, one point per frame, so a bracket plots
+from the files themselves.
+
+The shape worth remembering: **the file never enters the document, the values
+do.** A raw frame is tens of megabytes against an autosave slot measured in
+single-digit ones, a file handle does not survive being mailed to a classmate,
+and evaluation has to be reproducible from the document alone — so the node
+stores what was read plus enough provenance to name where it came from. The
+kernel learns nothing about EXIF either: it sees declared, typed, constant
+ports, the same way it evaluates a closure without having written the
+expression. Everything format-shaped stops in the editor's `files/`, which is
+the seam a second reader arrives through.
+
+Categorical ports also gained `aliases` for this, and the reason generalises
+past photography: a thing names itself one way and a catalogue names it
+another (`Canon EOS R6m3` against `Canon EOS R6 Mark III`), many-to-one, since
+one body sells under a different name per market. Matching happens at the
+lookup; the wire keeps carrying whatever the file actually said.
+
+Open, in rough order of appetite:
+
+- **A CSV/spreadsheet reader**, the case the registry was built for. Its fields
+  are not a fixed list — they come out of the file's own headers — so it wants
+  a per-field description on `FileField` (today's descriptions live on the
+  reader, since they are the same sentence for every photograph) and a decision
+  about which columns become sweeps rather than scalars.
+- **Subject distance `s`**, the one depth-of-field input a photograph does not
+  hand over: Canon writes it into the maker note, which the reader deliberately
+  does not open. Opening it for one tag means walking a proprietary block that
+  also holds a body serial number, so it wants a decision, not just code.
+- **Aliases for non-Canon bodies**, which nothing can currently produce — a
+  reader for another maker's raw (or plain JPEG, which wraps the same TIFF
+  structure the CR3 blocks already parse) would make them exercisable.
+- **CR2 and other TIFF-based raws.** The IFD parser already handles them; only
+  the container walk is CR3-specific.
