@@ -6,19 +6,9 @@
  * cross this boundary. A disabled build creates no script element or request.
  */
 
-export type NodeKind =
-  | 'input'
-  | 'file'
-  | 'formula'
-  | 'output'
-  | 'compare'
-  | 'closure'
-  | 'frame'
-  | 'waypoint'
-  | 'pack'
-  | 'unpack'
-  | 'monteCarloGenerator'
-  | 'monteCarloReceiver';
+import type { NodeKind } from '@joveworks/schema';
+
+export type AnalyticsNodeKind = NodeKind | 'frame';
 
 export type SweepKind =
   | 'slider'
@@ -36,7 +26,7 @@ export type AnalyticsEvent =
   | { readonly name: 'mobile_landing_viewed' }
   | { readonly name: 'course_viewer_opened'; readonly props: { readonly viewport: 'narrow' | 'wide' } }
   | { readonly name: 'course_material_selected'; readonly props: { readonly material: CourseMaterial } }
-  | { readonly name: 'node_added'; readonly props: { readonly kind: NodeKind } }
+  | { readonly name: 'node_added'; readonly props: { readonly kind: AnalyticsNodeKind } }
   | { readonly name: 'sweep_configured'; readonly props: { readonly kind: SweepKind } }
   | { readonly name: 'plot_created'; readonly props: { readonly mode: 'line' | 'contour' } }
   | { readonly name: 'table_created' | 'check_created' }

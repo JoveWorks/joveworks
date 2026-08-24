@@ -2,9 +2,9 @@
 
 import { isRange, type GraphDocument, type GraphNode } from '@joveworks/schema';
 
-import type { AnalyticsEvent, NodeKind } from './analytics';
+import type { AnalyticsEvent, AnalyticsNodeKind } from './analytics';
 
-function nodeKind(node: GraphNode): NodeKind {
+function nodeKind(node: GraphNode): AnalyticsNodeKind {
   return node.kind;
 }
 

@@ -46,4 +46,21 @@ describe('documentEvents', () => {
     };
     expect(documentEvents(base(), after)).toEqual([{ name: 'node_added', props: { kind: 'frame' } }]);
   });
+
+  it('records a file node with the schema node kind', () => {
+    const after = {
+      ...base(),
+      nodes: [{
+        kind: 'file' as const,
+        id: 'measurements',
+        position: { x: 0, y: 0 },
+        reader: 'exif',
+        sources: [],
+        fields: [],
+      }],
+    };
+    expect(documentEvents(base(), after)).toEqual([
+      { name: 'node_added', props: { kind: 'file' } },
+    ]);
+  });
 });

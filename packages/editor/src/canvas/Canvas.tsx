@@ -34,11 +34,9 @@ import { adaptInputUnit, canConnect, resolveGraph, typesConnect } from '@jovewor
 import { parseUnit } from '@joveworks/units';
 import {
   axes as documentAxes,
-  formulaRef,
   CLOSURE_RESULT_PORT,
   hasUnit,
   localize,
-  MONTE_CARLO_SAMPLE_PORT,
   THRESHOLD_PORT,
   VALUE_PORT,
   VERDICT_PORT,
@@ -47,6 +45,7 @@ import {
   type Formula,
   type GraphDocument,
   type GraphNode,
+  type NodeKind,
 } from '@joveworks/schema';
 
 import { useGraph } from '../graph-context';
@@ -56,7 +55,6 @@ import {
   addNamedColumn,
   addNode,
   connect,
-  defaultOutput,
   duplicateNode,
   duplicateSelection,
   edgeId,
@@ -73,7 +71,6 @@ import {
 } from '../model/document';
 import { GAP as CANVAS_GRID_SIZE } from '../model/layout-constants';
 import { autoArrange } from '../model/layout';
-import { monteCarloSampleCount, monteCarloSampleLimit } from '../model/monteCarlo';
 import type { NodeSizes } from '../model/node-sizes';
 import { primaryModifierLabel } from '../model/platform';
 import { fuzzySearch } from '../model/fuzzy';
@@ -92,7 +89,13 @@ import { MonteCarloReceiverNodeView } from './MonteCarloReceiverNodeView';
 import type { CanvasNodeData, HoveredCanvasPort } from './node-data';
 import { OutputNodeView } from './OutputNodeView';
 import { PackNodeView } from './PackNodeView';
-import { QuickAddMenu, type ExistingCandidate, type QuickAddCandidate, type QuickAddChoice } from './QuickAddMenu';
+import { QuickAddMenu, type ExistingCandidate } from './QuickAddMenu';
+import {
+  quickAddChoicePort,
+  quickAddNodeSpec,
+  type QuickAddCandidate,
+  type QuickAddChoice,
+} from './quickAdd';
 import { UnpackNodeView } from './UnpackNodeView';
 import { WaypointNodeView } from './WaypointNodeView';
 import { basePortName, slotHandleId } from './spectrumSlots';
@@ -310,49 +313,9 @@ export function compatibleQuickAddPort(
 ): string | undefined {
   const id = uniqueId(document, '__quick_add__');
   const position = { x: 0, y: 0 };
-  const node: GraphNode =
-    choice.kind === 'formula'
-      ? { kind: 'formula', id, formula: formulaRef(choice.formula), position }
-      : choice.kind === 'input'
-        ? { kind: 'input', id, value: { kind: 'scalar', value: 1, unit: parseUnit('') }, position }
-        : choice.kind === 'compare'
-          ? { kind: 'compare', id, comparison: '>=', threshold: { value: 1, unit: parseUnit('') }, position }
-          : choice.kind === 'closure'
-            ? { kind: 'closure', id, expression: 'value', position }
-            : choice.kind === 'waypoint' || choice.kind === 'pack' || choice.kind === 'unpack'
-              ? { kind: choice.kind, id, position }
-              : choice.kind === 'monteCarloGenerator'
-                ? {
-                    kind: 'monteCarloGenerator',
-                    id,
-                    distribution: 'uniform',
-                    min: 0,
-                    max: 1,
-                    count: monteCarloSampleCount(document),
-                    unit: parseUnit(''),
-                    position,
-                  }
-                : choice.kind === 'monteCarloReceiver'
-                  ? { kind: 'monteCarloReceiver', id, sampleLimit: monteCarloSampleLimit(document), position }
-                  : { kind: 'output', id, position, output: defaultOutput(choice.outputKind) };
-
-  if (target.from.type === 'source' && (choice.kind === 'input' || choice.kind === 'monteCarloGenerator')) {
-    return undefined;
-  }
-  if (target.from.type === 'target' && (choice.kind === 'output' || choice.kind === 'monteCarloReceiver')) {
-    return undefined;
-  }
-
-  const ports = choice.kind === 'formula'
-    ? (target.from.type === 'source' ? choice.formula.inputs : choice.formula.outputs).map((port) => port.name)
-    : choice.kind === 'compare' ? [target.from.type === 'source' ? VALUE_PORT : VERDICT_PORT]
-    : choice.kind === 'closure' ? [target.from.type === 'source' ? 'value' : CLOSURE_RESULT_PORT]
-    : choice.kind === 'waypoint' ? [target.from.type === 'source' ? 'in0' : 'out0']
-    : choice.kind === 'pack' ? [target.from.type === 'source' ? 'in0' : 'bundle']
-    : choice.kind === 'unpack' ? [target.from.type === 'source' ? 'bundle' : 'out0']
-    : choice.kind === 'output' ? [choice.outputKind === 'table' ? NEW_COLUMN : VALUE_PORT]
-    : choice.kind === 'monteCarloReceiver' ? [MONTE_CARLO_SAMPLE_PORT]
-    : [VALUE_PORT];
+  const spec = quickAddNodeSpec(document, choice);
+  const node = spec.make(id, position);
+  const ports = spec.ports[target.from.type];
 
   for (const port of ports) {
     let next = addNode(document, node);
@@ -403,20 +366,7 @@ function sizeOf(measured: Measurements, id: string): { measured?: { width: numbe
  * `formula`/`compare` never had, since neither name collides). Prefixed here
  * so the type string is ours alone; `node.kind` in the document is untouched.
  */
-function flowType(
-  kind:
-    | 'input'
-    | 'file'
-    | 'formula'
-    | 'output'
-    | 'compare'
-    | 'closure'
-    | 'waypoint'
-    | 'pack'
-    | 'unpack'
-    | 'monteCarloGenerator'
-    | 'monteCarloReceiver',
-): string {
+function flowType(kind: NodeKind): string {
   return kind === 'input' || kind === 'output' ? `joveworks-${kind}` : kind;
 }
 
@@ -1247,98 +1197,10 @@ export function Canvas({
 
     const position = flow.screenToFlowPosition({ x: target.x, y: target.y });
     edit((current) => {
-      const id = uniqueId(
-        current,
-        choice.kind === 'formula'
-          ? choice.formula.id.replace(/[^\w.]/gu, '_')
-          : choice.kind === 'input'
-            ? 'input'
-            : choice.kind === 'compare'
-              ? 'compare'
-              : choice.kind === 'closure'
-                ? 'equation'
-                : choice.kind === 'waypoint' || choice.kind === 'pack' || choice.kind === 'unpack'
-                  ? choice.kind
-              : choice.kind === 'monteCarloGenerator'
-                ? 'draw'
-                : choice.kind === 'monteCarloReceiver'
-                  ? 'watch'
-                  : choice.outputKind === 'print'
-                    ? 'result'
-                    : choice.outputKind,
-      );
-      const node: GraphNode =
-        choice.kind === 'formula'
-          ? { kind: 'formula', id, formula: formulaRef(choice.formula), position }
-          : choice.kind === 'input'
-            ? {
-                kind: 'input',
-                id,
-                label: id,
-                value: { kind: 'scalar', value: 1, unit: parseUnit('') },
-                position,
-              }
-            : choice.kind === 'compare'
-              ? {
-                  kind: 'compare',
-                  id,
-                  label: id,
-                  comparison: '>=',
-                  threshold: { value: 1, unit: parseUnit('') },
-                  position,
-                }
-              : choice.kind === 'closure'
-                ? { kind: 'closure', id, label: id, expression: 'value', position }
-                : choice.kind === 'waypoint' || choice.kind === 'pack' || choice.kind === 'unpack'
-                  ? { kind: choice.kind, id, label: id, position }
-              : choice.kind === 'monteCarloGenerator'
-                ? {
-                    kind: 'monteCarloGenerator',
-                    id,
-                    label: id,
-                    distribution: 'uniform',
-                    min: 0,
-                    max: 1,
-                    count: monteCarloSampleCount(current),
-                    unit: parseUnit(''),
-                    position,
-                  }
-                : choice.kind === 'monteCarloReceiver'
-                  ? {
-                      kind: 'monteCarloReceiver',
-                      id,
-                      label: id,
-                      sampleLimit: monteCarloSampleLimit(current),
-                      position,
-                    }
-                  : {
-                      kind: 'output',
-                      id,
-                      label: id,
-                      output: defaultOutput(choice.outputKind),
-                      position,
-                    };
-
-      const port =
-        choice.kind === 'formula'
-          ? choice.port
-          : choice.kind === 'compare'
-            ? target.from.type === 'source'
-              ? VALUE_PORT
-              : VERDICT_PORT
-            : choice.kind === 'output' && choice.outputKind === 'table'
-              ? NEW_COLUMN
-              : choice.kind === 'closure'
-                ? target.from.type === 'source' ? 'value' : CLOSURE_RESULT_PORT
-                : choice.kind === 'waypoint'
-                  ? target.from.type === 'source' ? 'in0' : 'out0'
-                  : choice.kind === 'pack'
-                    ? target.from.type === 'source' ? 'in0' : 'bundle'
-                    : choice.kind === 'unpack'
-                      ? target.from.type === 'source' ? 'bundle' : 'out0'
-                      : choice.kind === 'monteCarloReceiver'
-                        ? MONTE_CARLO_SAMPLE_PORT
-                        : VALUE_PORT;
+      const spec = quickAddNodeSpec(current, choice);
+      const id = uniqueId(current, spec.idPrefix);
+      const node = spec.make(id, position, choice.kind === 'formula' ? undefined : id);
+      const port = quickAddChoicePort(current, choice, target.from.type);
 
       let next = addNode(current, node);
       if (port === undefined) return next;

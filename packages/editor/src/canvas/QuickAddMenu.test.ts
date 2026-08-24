@@ -1,10 +1,17 @@
 import { describe, expect, it } from 'vitest';
 
-import { emptyDocument, MONTE_CARLO_SAMPLE_PORT, VALUE_PORT, type Catalogue, type Formula } from '@joveworks/schema';
+import {
+  emptyDocument,
+  formulaRef,
+  MONTE_CARLO_SAMPLE_PORT,
+  VALUE_PORT,
+  type Catalogue,
+  type Formula,
+} from '@joveworks/schema';
 import { parseUnit } from '@joveworks/units';
 
 import { baseCatalogue } from '../model/catalogues';
-import { addNode } from '../model/document';
+import { addNode, NEW_COLUMN } from '../model/document';
 import { compatibleQuickAddPort } from './Canvas';
 
 describe('compatibleQuickAddPort', () => {
@@ -73,6 +80,27 @@ describe('compatibleQuickAddPort', () => {
       .toBe(VALUE_PORT);
   });
 
+  it('offers ordinary and table outputs only when the dragged endpoint is a source', () => {
+    const document = addNode(emptyDocument('study', 'Study'), {
+      kind: 'input', id: 'source',
+      value: { kind: 'scalar', value: 1, unit: parseUnit('mm') },
+      position: { x: 0, y: 0 },
+    });
+    const fromSource = { x: 0, y: 0, from: { nodeId: 'source', port: VALUE_PORT, type: 'source' as const } };
+
+    expect(compatibleQuickAddPort(document, catalogues, fromSource, { kind: 'output', outputKind: 'print' }))
+      .toBe(VALUE_PORT);
+    expect(compatibleQuickAddPort(document, catalogues, fromSource, { kind: 'output', outputKind: 'table' }))
+      .toBe(NEW_COLUMN);
+
+    const withSink = addNode(document, {
+      kind: 'output', id: 'sink', output: { kind: 'print' }, position: { x: 0, y: 0 },
+    });
+    const fromTarget = { x: 0, y: 0, from: { nodeId: 'sink', port: VALUE_PORT, type: 'target' as const } };
+    expect(compatibleQuickAddPort(withSink, catalogues, fromTarget, { kind: 'output', outputKind: 'print' }))
+      .toBeUndefined();
+  });
+
   it('uses a compatible formula input instead of assuming the first one', () => {
     const formula: Formula = {
       id: 'choose-compatible-input', version: 1,
@@ -81,7 +109,7 @@ describe('compatibleQuickAddPort', () => {
         { kind: 'numeric', name: 'length', unit: parseUnit('mm') },
       ],
       outputs: [{ kind: 'numeric', name: 'result', unit: parseUnit('mm') }],
-      expression: 'length', description: 'Invented test formula', status: 'unverified',
+      expressions: { result: 'length' }, description: 'Invented test formula', status: 'unverified',
     };
     const testCatalogue: Catalogue = {
       schemaVersion: 1, id: 'quick-add-test', name: 'Quick Add test', restricted: false, formulas: [formula],
@@ -96,5 +124,43 @@ describe('compatibleQuickAddPort', () => {
 
     expect(compatibleQuickAddPort(document, [testCatalogue], target, { kind: 'formula', formula }))
       .toBe('length');
+  });
+
+  it('uses a compatible formula output instead of assuming the first one for a reverse drag', () => {
+    const formula: Formula = {
+      id: 'choose-compatible-output', version: 1,
+      inputs: [
+        { kind: 'numeric', name: 'force', unit: parseUnit('N') },
+        { kind: 'numeric', name: 'length', unit: parseUnit('mm') },
+      ],
+      outputs: [
+        { kind: 'numeric', name: 'forceResult', unit: parseUnit('N') },
+        { kind: 'numeric', name: 'lengthResult', unit: parseUnit('mm') },
+      ],
+      expressions: { forceResult: 'force', lengthResult: 'length' },
+      description: 'Invented test formula', status: 'unverified',
+    };
+    const sinkFormula: Formula = {
+      id: 'length-sink', version: 1,
+      inputs: [{ kind: 'numeric', name: 'length', unit: parseUnit('mm') }],
+      outputs: [{ kind: 'numeric', name: 'result', unit: parseUnit('mm') }],
+      expressions: { result: 'length' }, description: 'Invented test sink', status: 'unverified',
+    };
+    const testCatalogue: Catalogue = {
+      schemaVersion: 1, id: 'quick-add-output-test', name: 'Quick Add output test',
+      restricted: false, formulas: [formula, sinkFormula],
+    };
+    const document = addNode(emptyDocument('study', 'Study'), {
+      kind: 'formula', id: 'sink', formula: formulaRef(sinkFormula),
+      position: { x: 0, y: 0 },
+    });
+    const target = {
+      x: 0,
+      y: 0,
+      from: { nodeId: 'sink', port: 'length', type: 'target' as const },
+    };
+
+    expect(compatibleQuickAddPort(document, [testCatalogue], target, { kind: 'formula', formula }))
+      .toBe('lengthResult');
   });
 });

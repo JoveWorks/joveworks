@@ -7,6 +7,7 @@
  */
 
 import { useState, type ReactElement, type ReactNode } from 'react';
+import type { NodeKind } from '@joveworks/schema';
 
 import { NODE_HELP_URLS } from '../help-links';
 import { useGraph } from '../graph-context';
@@ -23,18 +24,7 @@ const STATE_LABELS: Readonly<Record<NodeState, string>> = {
 };
 
 interface Props {
-  readonly kind:
-    | 'input'
-    | 'file'
-    | 'formula'
-    | 'output'
-    | 'compare'
-    | 'closure'
-    | 'waypoint'
-    | 'pack'
-    | 'unpack'
-    | 'monteCarloGenerator'
-    | 'monteCarloReceiver';
+  readonly kind: NodeKind;
   /** Overrides `NODE_HELP_URLS[kind]` — an output node needs a link specific to its own `output.kind`. */
   readonly helpUrl?: string;
   readonly state: NodeState;

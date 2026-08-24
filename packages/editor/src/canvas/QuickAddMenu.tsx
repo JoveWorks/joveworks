@@ -17,7 +17,7 @@
 
 import { useMemo, useState, type ReactElement } from 'react';
 
-import { soleExpression, type Catalogue, type Formula, type GraphNode } from '@joveworks/schema';
+import { soleExpression, type Catalogue, type GraphNode } from '@joveworks/schema';
 import { parseExpression, toLatex } from '@joveworks/kernel';
 
 import { entries, search } from '../model/catalogues';
@@ -27,23 +27,7 @@ import { Symbol } from '../Symbol';
 import { TitleText } from './TitleField';
 import { phrase } from '../i18n';
 import { useSettings } from '../settings-context';
-
-export type QuickAddChoice =
-  | { readonly kind: 'formula'; readonly formula: Formula; readonly port: string }
-  | { readonly kind: 'input' }
-  | { readonly kind: 'output'; readonly outputKind: 'print' | 'check' | 'plot' | 'table' | 'sensitivity' }
-  | { readonly kind: 'compare' }
-  | { readonly kind: 'closure' }
-  | { readonly kind: 'waypoint' }
-  | { readonly kind: 'pack' }
-  | { readonly kind: 'unpack' }
-  | { readonly kind: 'monteCarloGenerator' }
-  | { readonly kind: 'monteCarloReceiver' }
-  | { readonly kind: 'existing'; readonly nodeId: string; readonly port: string };
-
-export type QuickAddCandidate =
-  | { readonly kind: 'formula'; readonly formula: Formula }
-  | Exclude<QuickAddChoice, { readonly kind: 'formula' | 'existing' }>;
+import type { QuickAddCandidate, QuickAddChoice } from './quickAdd';
 
 /** How many ranked formula matches the menu shows — and the cap on how many pay for a kernel compatibility check. */
 const MAX_FORMULA_RESULTS = 30;

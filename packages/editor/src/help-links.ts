@@ -6,26 +6,13 @@
  * so DOCS_BASE_URL can't just be the editor's own origin there.
  */
 
+import type { NodeKind } from '@joveworks/schema';
+
 export const DOCS_BASE_URL = import.meta.env.DEV
   ? 'http://localhost:5174/docs'
   : `${window.location.origin}/docs`;
 
-export const NODE_HELP_URLS: Readonly<
-  Record<
-    | 'input'
-    | 'file'
-    | 'formula'
-    | 'output'
-    | 'compare'
-    | 'closure'
-    | 'waypoint'
-    | 'pack'
-    | 'unpack'
-    | 'monteCarloGenerator'
-    | 'monteCarloReceiver',
-    string
-  >
-> = {
+export const NODE_HELP_URLS: Readonly<Record<NodeKind, string>> = {
   input: `${DOCS_BASE_URL}/guide/node-reference#input`,
   file: `${DOCS_BASE_URL}/guide/node-reference#file`,
   formula: `${DOCS_BASE_URL}/guide/node-reference#formula`,

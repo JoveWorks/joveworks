@@ -115,6 +115,7 @@ export {
   VERDICT_PORT,
   CLOSURE_RESULT_PORT,
   COMPARISONS,
+  NODE_KINDS,
   OUTPUT_KINDS,
   MONTE_CARLO_DISTRIBUTIONS,
   MONTE_CARLO_SAMPLE_PORT,
@@ -132,6 +133,7 @@ export {
 export type {
   GraphDocument,
   GraphNode,
+  NodeKind,
   AxisNode,
   InputNode,
   FileNode,

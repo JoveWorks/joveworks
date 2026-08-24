@@ -483,6 +483,7 @@ export type GraphNode =
   | MonteCarloGeneratorNode
   | MonteCarloReceiverNode;
 
+export type NodeKind = GraphNode['kind'];
 
 export interface Endpoint {
   readonly node: string;
@@ -704,7 +705,7 @@ function parseFileField(value: JsonValue, path: string, sources: number): FileFi
   };
 }
 
-const NODE_KINDS = [
+export const NODE_KINDS = [
   'input',
   'file',
   'formula',
