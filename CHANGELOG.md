@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.15.0](https://github.com/ThomasVanRiel/joveworks/compare/v0.14.0...v0.15.0) (2026-08-24)
+
+### Features
+
+* **editor:** add aperture decision example ([00ff34a](https://github.com/ThomasVanRiel/joveworks/commit/00ff34abccb9c560082965999ae181d88d3f373f))
+* selection nodes and the Best Design card ([b86799f](https://github.com/ThomasVanRiel/joveworks/commit/b86799f7a3439b116f3c07d9271256c7c80491c2))
+
+### Fixes
+
+* **editor:** stop a first visit autosaving a document nobody touched ([bd62d85](https://github.com/ThomasVanRiel/joveworks/commit/bd62d854168d1e49e29b0ffdd64f60258bf7b8ca))
+
+### Documentation
+
+* feature planning ([33b56d0](https://github.com/ThomasVanRiel/joveworks/commit/33b56d0de6cc4b64199adfeb0517fd66a34f75cc))
+* plan selection nodes and the Best Design card ([28b8db8](https://github.com/ThomasVanRiel/joveworks/commit/28b8db80975ccfd7d45cd7a069dc8c7e4a4c0dc0))
 ## [0.14.0](https://github.com/ThomasVanRiel/joveworks/compare/v0.13.1...v0.14.0) (2026-08-24)
 
 ### Features
