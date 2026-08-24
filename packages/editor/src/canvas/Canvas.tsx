@@ -63,7 +63,6 @@ import {
   NEW_COLUMN,
   nodeLabel,
   reframe,
-  relabelColumn,
   removeEdges,
   removeNodes,
   uniqueId,
@@ -79,6 +78,7 @@ import { BundleEdge } from './BundleEdge';
 import { CanvasFind } from './CanvasFind';
 import { ClosureNodeView } from './ClosureNodeView';
 import { CompareNodeView } from './CompareNodeView';
+import { connectResolvingTableColumn } from './connect';
 import { ContextMenu, type MenuItem } from './ContextMenu';
 import { FileNodeView } from './FileNodeView';
 import { FormulaNodeView } from './FormulaNodeView';
@@ -901,48 +901,25 @@ export function Canvas({
       const candidate = candidateOf(connection);
       if (candidate === undefined) return;
 
-      // A table column's name follows whatever is wired to it (OutputNodeView.tsx,
-      // the same idea a spectrum port's ghost slot uses) — the *node* on
-      // the wire's other end, its own title, never the port symbol, which is
-      // not what a student typed. That holds whether the wire lands on the
-      // trailing ghost slot (the column does not exist until this creates it)
-      // or replaces what an existing column already had (the column keeps its
-      // identity but is relabelled after the new source). Checked and
-      // committed against the same resolved column, computed twice rather
-      // than threaded through, so a commit never applies against a column a
-      // since-changed document no longer has under that name.
       const tableNode = document.nodes.find((entry) => entry.id === candidate.to.node);
-      if (tableNode?.kind === 'output' && tableNode.output.kind === 'table') {
-        const columnBase = (doc: GraphDocument): string => {
-          const source = doc.nodes.find((entry) => entry.id === candidate.from.node);
-          return source === undefined ? candidate.from.port : nodeLabel(source);
-        };
-        const resolveTarget = (doc: GraphDocument): { readonly document: GraphDocument; readonly to: Edge['to'] } => {
-          const resolved =
-            candidate.to.port === NEW_COLUMN
-              ? addNamedColumn(doc, candidate.to.node, columnBase(doc))
-              : relabelColumn(doc, candidate.to.node, candidate.to.port, columnBase(doc));
-          return { document: resolved.document, to: { node: candidate.to.node, port: resolved.column } };
-        };
-
-        const checked = resolveTarget(document);
-        const verdict = canConnect(checked.document, catalogues, { ...candidate, to: checked.to });
-        if (!verdict.ok) {
-          refuseConnection({ ...candidate, to: checked.to }, verdict.reason);
-          return;
-        }
+      const tableTarget = tableNode?.kind === 'output' && tableNode.output.kind === 'table';
+      const result = connectResolvingTableColumn(
+        document,
+        catalogues,
+        candidate,
+        isSpectrumTarget(candidate.to),
+      );
+      if (result.ok) {
         clearRefusal();
-        edit((current) => {
-          const resolved = resolveTarget(current);
-          return connect(resolved.document, candidate.from, resolved.to);
-        });
+        edit(result.apply);
         return;
       }
 
-      const verdict = canConnect(document, catalogues, candidate);
-      if (verdict.ok) {
-        clearRefusal();
-        edit((current) => connect(current, candidate.from, candidate.to, isSpectrumTarget(candidate.to)));
+      // Table inputs never adopt a source input's unit: their named column has
+      // already been resolved and checked above, exactly as every table entry
+      // path is by connectResolvingTableColumn.
+      if (tableTarget) {
+        refuseConnection(result.refusal.edge, result.refusal.reason);
         return;
       }
 
@@ -956,17 +933,20 @@ export function Canvas({
       // before.
       const targetUnit = analysis.resolution?.targets.get(`${candidate.to.node}.${candidate.to.port}`)?.unit;
       const adapted = targetUnit === undefined ? undefined : adaptInputUnit(document, candidate, targetUnit);
-      const adaptedVerdict = adapted === undefined ? undefined : canConnect(adapted, catalogues, candidate);
-      if (targetUnit !== undefined && adaptedVerdict?.ok === true) {
+      const adaptedResult =
+        adapted === undefined
+          ? undefined
+          : connectResolvingTableColumn(adapted, catalogues, candidate, isSpectrumTarget(candidate.to));
+      if (targetUnit !== undefined && adaptedResult?.ok === true) {
         clearRefusal();
         edit((current) => {
           const relabelled = adaptInputUnit(current, candidate, targetUnit) ?? current;
-          return connect(relabelled, candidate.from, candidate.to, isSpectrumTarget(candidate.to));
+          return adaptedResult.apply(relabelled);
         });
         return;
       }
 
-      refuseConnection(candidate, verdict.reason);
+      refuseConnection(result.refusal.edge, result.refusal.reason);
     },
     [analysis.resolution, catalogues, clearRefusal, document, edit, refuseConnection],
   );
@@ -1147,8 +1127,7 @@ export function Canvas({
    * Finish a wire dropped on empty canvas by wiring it to a port that is
    * already there — no node placed, just the edge (the refusal path is
    * the same one a manual drag onto that node's own handle would get).
-   * A table's ghost slot needs the same column-creation `onConnect` gives a
-   * direct drag (`addNamedColumn`, named after the drag's own source).
+   * Table column resolution is shared with direct and fresh-node wiring.
    */
   const wireToExisting = (target: QuickAddTarget, nodeId: string, port: string): void => {
     edit((current) => {
@@ -1157,29 +1136,19 @@ export function Canvas({
       const [from, to] =
         target.from.type === 'source' ? [dragEndpoint, existingEndpoint] : [existingEndpoint, dragEndpoint];
 
-      if (to.port === NEW_COLUMN) {
-        const source = current.nodes.find((entry) => entry.id === from.node);
-        const base = source === undefined ? from.port : nodeLabel(source);
-        const named = addNamedColumn(current, to.node, base);
-        const resolvedTo = { node: to.node, port: named.column };
-        const candidate: Edge = { id: edgeId(from, resolvedTo), from, to: resolvedTo };
-        const verdict = canConnect(named.document, catalogues, candidate);
-        if (!verdict.ok) {
-          refuseConnection(candidate, verdict.reason);
-          return current;
-        }
-        clearRefusal();
-        return connect(named.document, from, resolvedTo);
-      }
-
       const candidate: Edge = { id: edgeId(from, to), from, to };
-      const verdict = canConnect(current, catalogues, candidate);
-      if (!verdict.ok) {
-        refuseConnection(candidate, verdict.reason);
+      const result = connectResolvingTableColumn(
+        current,
+        catalogues,
+        candidate,
+        isSpectrumTarget(candidate.to),
+      );
+      if (!result.ok) {
+        refuseConnection(result.refusal.edge, result.refusal.reason);
         return current;
       }
       clearRefusal();
-      return connect(current, candidate.from, candidate.to, isSpectrumTarget(candidate.to));
+      return result.document;
     });
   };
 
@@ -1210,36 +1179,25 @@ export function Canvas({
       const [from, to] =
         target.from.type === 'source' ? [dragEndpoint, newEndpoint] : [newEndpoint, dragEndpoint];
 
-      // A fresh table starts with zero columns — its ghost slot needs the
-      // same column-creation a direct drag onto it gets (addNamedColumn,
-      // named after the drag's source), not a plain connect onto a port
-      // that does not exist yet.
-      if (to.port === NEW_COLUMN) {
-        const source = next.nodes.find((entry) => entry.id === from.node);
-        const base = source === undefined ? from.port : nodeLabel(source);
-        const named = addNamedColumn(next, to.node, base);
-        const resolvedTo = { node: to.node, port: named.column };
-        const candidate: Edge = { id: edgeId(from, resolvedTo), from, to: resolvedTo };
-        const verdict = canConnect(named.document, catalogues, candidate);
-        if (!verdict.ok) {
-          refuseConnection(candidate, verdict.reason);
-          return named.document;
-        }
-        clearRefusal();
-        return connect(named.document, from, resolvedTo);
-      }
-
       const candidate: Edge = { id: edgeId(from, to), from, to };
       if (choice.kind === 'input') {
         const targetUnit = resolveGraph(next, catalogues).targets.get(`${to.node}.${to.port}`)?.unit;
         next = targetUnit === undefined ? next : adaptInputUnit(next, candidate, targetUnit) ?? next;
       }
-      const verdict = canConnect(next, catalogues, candidate);
-      if (verdict.ok) {
+      const result = connectResolvingTableColumn(
+        next,
+        catalogues,
+        candidate,
+        isSpectrumTarget(candidate.to),
+      );
+      if (result.ok) {
         clearRefusal();
-        next = connect(next, candidate.from, candidate.to, isSpectrumTarget(candidate.to));
+        next = result.document;
       } else {
-        refuseConnection(candidate, verdict.reason);
+        refuseConnection(result.refusal.edge, result.refusal.reason);
+        // A quick-added node remains after a refused wire. For a fresh table,
+        // that includes the named column resolved for the attempted edge.
+        next = result.document;
       }
       return next;
     });
