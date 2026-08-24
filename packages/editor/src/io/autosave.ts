@@ -1,7 +1,7 @@
 /**
  * Recovery from an accidental tab close, not a replacement for explicit
  * Save (`files.ts`). A single localStorage slot holds the most recent
- * snapshot of whatever document is open; App.tsx refreshes it on a timer
+ * snapshot of whatever unsaved work is open; App.tsx refreshes it on a timer
  * and offers it back as a "restore unsaved work?" prompt the next time the
  * app loads. Explicit Save clears the slot — the document is safely on
  * disk, so there is nothing left to recover.

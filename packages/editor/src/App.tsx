@@ -467,9 +467,22 @@ function AppShell(): ReactElement {
   // timer (or unload) fires.
   const documentRef = useRef(document);
   documentRef.current = document;
+  // Read the same way, and for the same reason, as `documentRef`.
+  const isDirtyRef = useRef(isDirty);
+  isDirtyRef.current = isDirty;
 
   useEffect(() => {
-    const snapshot = (): void => saveAutosaveSnapshot(saveDocument(documentRef.current));
+    // Only work that would actually be lost gets snapshotted. Writing
+    // unconditionally meant the untouched startup document was saved on the
+    // way out of a first visit, so the next load "restored" a session the
+    // visitor never had — complete with the restore notice, and (because a
+    // restored autosave suppresses it) without the introduction tour they
+    // had still never seen. It also resurrected the slot that Save had just
+    // cleared, on the way out of a document safely on disk.
+    const snapshot = (): void => {
+      if (!isDirtyRef.current) return;
+      saveAutosaveSnapshot(saveDocument(documentRef.current));
+    };
     const interval = window.setInterval(snapshot, AUTOSAVE_INTERVAL_MS);
     window.addEventListener('beforeunload', snapshot);
     return () => {
