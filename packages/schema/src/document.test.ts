@@ -271,6 +271,92 @@ describe('round-tripping (the verification docs/PLAN.md asks for)', () => {
     expect(serializeDocument(document)).toEqual(withFeasibility);
   });
 
+  it('round-trips a Best Design output, in both directions and with no checks at all', () => {
+    // `checks: []` is legal here for a different reason than on a
+    // Feasibility node: an unconstrained min or max is a real thing to ask
+    // for, not just an unfinished node.
+    const withBestDesign = {
+      ...study,
+      nodes: [
+        ...(study['nodes'] as JsonObject[]),
+        {
+          kind: 'output',
+          id: 'o-best',
+          position: { x: 0, y: 0 },
+          output: { kind: 'bestDesign', checks: ['o-check'], direction: 'minimize' },
+        },
+        {
+          kind: 'output',
+          id: 'o-best-2',
+          position: { x: 0, y: 120 },
+          output: { kind: 'bestDesign', checks: [], direction: 'maximize' },
+        },
+      ],
+    };
+    const document = parseDocument(withBestDesign);
+    expect(serializeDocument(document)).toEqual(withBestDesign);
+  });
+
+  it('refuses a Best Design output with a direction it does not have', () => {
+    const broken = {
+      ...study,
+      nodes: [
+        {
+          kind: 'output',
+          id: 'o-best',
+          position: { x: 0, y: 0 },
+          output: { kind: 'bestDesign', checks: [], direction: 'cheapest' },
+        },
+      ],
+      edges: [],
+    };
+    expect(() => parseDocument(broken)).toThrow(/direction/u);
+  });
+
+  it('round-trips every select mode, carrying threshold and direction on `crossing` alone', () => {
+    // The union is on `mode`, so a `firstPassing` node must not round-trip
+    // fields it has no meaning for — that is what keeps switching mode from
+    // quietly preserving a bound nobody can see any more.
+    const withSelects = {
+      ...study,
+      nodes: [
+        {
+          kind: 'select',
+          id: 'cross',
+          label: 'crosses at',
+          position: { x: 0, y: 0 },
+          mode: 'crossing',
+          threshold: { value: 1.5, unit: '' },
+          direction: 'falling',
+        },
+        { kind: 'select', id: 'first', position: { x: 0, y: 120 }, mode: 'firstPassing' },
+        { kind: 'select', id: 'least', position: { x: 0, y: 240 }, mode: 'argMin' },
+        { kind: 'select', id: 'most', position: { x: 0, y: 360 }, mode: 'argMax' },
+      ],
+      edges: [],
+    };
+    const document = parseDocument(withSelects);
+    expect(serializeDocument(document)).toEqual(withSelects);
+  });
+
+  it('refuses a select node with a mode it does not have', () => {
+    const broken = {
+      ...study,
+      nodes: [{ kind: 'select', id: 'nope', position: { x: 0, y: 0 }, mode: 'nearest' }],
+      edges: [],
+    };
+    expect(() => parseDocument(broken)).toThrow(/mode/u);
+  });
+
+  it('refuses a crossing select node with no threshold to cross', () => {
+    const broken = {
+      ...study,
+      nodes: [{ kind: 'select', id: 'cross', position: { x: 0, y: 0 }, mode: 'crossing', direction: 'any' }],
+      edges: [],
+    };
+    expect(() => parseDocument(broken)).toThrow(/threshold/u);
+  });
+
   it('round-trips a Sensitivity output, which declares no fields of its own', () => {
     const withSensitivity = {
       ...study,

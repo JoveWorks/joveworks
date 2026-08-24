@@ -30,13 +30,16 @@ import {
   type NodeChange,
 } from '@xyflow/react';
 
-import { adaptInputUnit, canConnect, resolveGraph, typesConnect } from '@joveworks/kernel';
+import { adaptInputUnit, canConnect, resolveGraph, selectPortNames, typesConnect } from '@joveworks/kernel';
 import { parseUnit } from '@joveworks/units';
 import {
+  ALONG_PORT,
+  AT_PORT,
   axes as documentAxes,
   CLOSURE_RESULT_PORT,
   hasUnit,
   localize,
+  OBJECTIVE_PORT,
   THRESHOLD_PORT,
   VALUE_PORT,
   VERDICT_PORT,
@@ -90,6 +93,7 @@ import type { CanvasNodeData, HoveredCanvasPort } from './node-data';
 import { OutputNodeView } from './OutputNodeView';
 import { PackNodeView } from './PackNodeView';
 import { QuickAddMenu, type ExistingCandidate } from './QuickAddMenu';
+import { SelectNodeView } from './SelectNodeView';
 import {
   quickAddChoicePort,
   quickAddNodeSpec,
@@ -151,12 +155,21 @@ function searchPorts(document: GraphDocument, formulas: ReadonlyMap<string, Form
     return formula === undefined ? [] : [...formula.inputs, ...formula.outputs].map((port) => port.name);
   }
   if (node.kind === 'output') {
-    const valuePorts = node.output.kind === 'table' ? node.output.columns : [VALUE_PORT];
+    const valuePorts =
+      node.output.kind === 'table'
+        ? node.output.columns
+        : node.output.kind === 'bestDesign'
+          ? [OBJECTIVE_PORT]
+          : [VALUE_PORT];
     return node.output.kind === 'plot' || node.output.kind === 'check'
       ? [...valuePorts, THRESHOLD_PORT]
       : valuePorts;
   }
   if (node.kind === 'compare') return [VALUE_PORT, THRESHOLD_PORT, VERDICT_PORT];
+  if (node.kind === 'select') {
+    const { inputs, outputs } = selectPortNames(node);
+    return [...inputs, ...outputs];
+  }
   if (node.kind === 'closure') {
     const formula = formulas.get(node.id);
     return formula === undefined ? [CLOSURE_RESULT_PORT] : [...formula.inputs, ...formula.outputs].map((port) => port.name);
@@ -221,7 +234,12 @@ function existingCandidates(
         // "wire it and the column names itself" a direct drag onto the
         // node gets (OutputNodeView.tsx). A ghost slot is never occupied —
         // that is what makes it a ghost slot — so `replaces` stays unset.
-        const port = node.output.kind === 'table' ? NEW_COLUMN : VALUE_PORT;
+        const port =
+          node.output.kind === 'table'
+            ? NEW_COLUMN
+            : node.output.kind === 'bestDesign'
+              ? OBJECTIVE_PORT
+              : VALUE_PORT;
         candidates.push({
           nodeId: node.id,
           label: nodeLabel(node),
@@ -237,6 +255,20 @@ function existingCandidates(
           port: VALUE_PORT,
           ...replacesField(occupantOf(document, formulas, { node: node.id, port: VALUE_PORT })),
         });
+      } else if (node.kind === 'select') {
+        // Both required inputs are offered, because they are not
+        // interchangeable: `value` is what is searched, `along` is what the
+        // answer is expressed in, and a student dragging a swept range means
+        // the second one.
+        for (const port of [VALUE_PORT, ALONG_PORT]) {
+          candidates.push({
+            nodeId: node.id,
+            label: nodeLabel(node),
+            subtitle: `${node.mode} (${port})`,
+            port,
+            ...replacesField(occupantOf(document, formulas, { node: node.id, port })),
+          });
+        }
       }
       continue;
     }
@@ -264,6 +296,10 @@ function existingCandidates(
       }
     } else if (node.kind === 'compare') {
       candidates.push({ nodeId: node.id, label: nodeLabel(node), subtitle: 'compare', port: VERDICT_PORT });
+    } else if (node.kind === 'select') {
+      for (const port of selectPortNames(node).outputs) {
+        candidates.push({ nodeId: node.id, label: nodeLabel(node), subtitle: `${node.mode} (${port})`, port });
+      }
     }
   }
   return candidates;
@@ -376,6 +412,7 @@ const NODE_TYPES = {
   formula: FormulaNodeView,
   'joveworks-output': OutputNodeView,
   compare: CompareNodeView,
+  select: SelectNodeView,
   closure: ClosureNodeView,
   waypoint: WaypointNodeView,
   pack: PackNodeView,
@@ -998,7 +1035,7 @@ export function Canvas({
     if (target.kind === 'node') {
       const { id } = target;
       const graphNode = document.nodes.find((node) => node.id === id);
-      const hasDetails = graphNode !== undefined && ['input', 'formula', 'output', 'compare', 'closure'].includes(graphNode.kind);
+      const hasDetails = graphNode !== undefined && ['input', 'formula', 'output', 'compare', 'select', 'closure'].includes(graphNode.kind);
       return [
         ...(hasDetails ? [{
           label: t(expanded.has(id) ? 'Allow auto-collapse' : 'Keep open'),
@@ -1169,7 +1206,13 @@ export function Canvas({
       const spec = quickAddNodeSpec(current, choice);
       const id = uniqueId(current, spec.idPrefix);
       const node = spec.make(id, position, choice.kind === 'formula' ? undefined : id);
-      const port = quickAddChoicePort(current, choice, target.from.type);
+      // The same question the menu already answered to decide this entry was
+      // offerable at all — asked again here so a node whose ports are not
+      // interchangeable (a Select node's `value` and `along`) is wired to
+      // the one the preview promised, not simply to its first.
+      const port =
+        compatibleQuickAddPort(current, catalogues, target, choice) ??
+        quickAddChoicePort(current, choice, target.from.type);
 
       let next = addNode(current, node);
       if (port === undefined) return next;

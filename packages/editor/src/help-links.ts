@@ -18,6 +18,7 @@ export const NODE_HELP_URLS: Readonly<Record<NodeKind, string>> = {
   formula: `${DOCS_BASE_URL}/guide/node-reference#formula`,
   output: `${DOCS_BASE_URL}/guide/node-reference#output`,
   compare: `${DOCS_BASE_URL}/guide/node-reference#compare`,
+  select: `${DOCS_BASE_URL}/guide/node-reference#select`,
   closure: `${DOCS_BASE_URL}/guide/node-reference#closure`,
   waypoint: `${DOCS_BASE_URL}/guide/node-reference#waypoint`,
   pack: `${DOCS_BASE_URL}/guide/node-reference#pack`,
@@ -28,7 +29,7 @@ export const NODE_HELP_URLS: Readonly<Record<NodeKind, string>> = {
 
 /**
  * An output node's `kind` picks which paragraph under `#output` actually
- * describes it — seven very different things share one node shell (see
+ * describes it — eight very different things share one node shell (see
  * `OutputNodeView`), so the generic `output` entry above (which lands at the
  * top of that section) is too coarse for the "?" button. Keyed by
  * `Output['kind']` from `@joveworks/schema`, kept as plain strings here to
@@ -36,7 +37,10 @@ export const NODE_HELP_URLS: Readonly<Record<NodeKind, string>> = {
  * doesn't need.
  */
 export const OUTPUT_HELP_URLS: Readonly<
-  Record<'print' | 'check' | 'plot' | 'table' | 'equation' | 'feasibility' | 'sensitivity', string>
+  Record<
+    'print' | 'check' | 'plot' | 'table' | 'equation' | 'feasibility' | 'sensitivity' | 'bestDesign',
+    string
+  >
 > = {
   print: `${DOCS_BASE_URL}/guide/node-reference#print`,
   check: `${DOCS_BASE_URL}/guide/node-reference#check`,
@@ -45,4 +49,5 @@ export const OUTPUT_HELP_URLS: Readonly<
   equation: `${DOCS_BASE_URL}/guide/node-reference#equation`,
   feasibility: `${DOCS_BASE_URL}/guide/node-reference#feasibility`,
   sensitivity: `${DOCS_BASE_URL}/guide/node-reference#sensitivity`,
+  bestDesign: `${DOCS_BASE_URL}/guide/node-reference#best-design`,
 };

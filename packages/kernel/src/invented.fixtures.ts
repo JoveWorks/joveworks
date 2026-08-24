@@ -133,6 +133,10 @@ export function compareNode(
   return { kind: 'compare', id, position: { x: 0, y: 0 }, comparison, threshold, ...extra };
 }
 
+export function selectNode(id: string, mode: string, extra: JsonObject = {}): JsonObject {
+  return { kind: 'select', id, position: { x: 0, y: 0 }, mode, ...extra };
+}
+
 /** `wire('w.value', 'area.w')` — endpoints written the way errors report them. */
 export function wire(from: string, to: string): JsonObject {
   const [fromNode = '', fromPort = ''] = from.split('.');

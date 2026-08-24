@@ -130,6 +130,32 @@ Every receiver on the same document shares one playback position, so
 stepping or scrubbing samples anywhere advances the whole document's Monte
 Carlo view together rather than one receiver at a time.
 
+## Reading answers off a sweep
+
+- A [**Select**](/guide/node-reference#select) node needs **two** wires, not
+  one: `value` (what to search) and `along` (which axis to search it over).
+  Forgetting `along` is the usual mistake — the node marks itself "not
+  connected: along" rather than guessing an axis.
+- Its four modes are one node kind. Switching mode from the node's panel
+  keeps `value` and `along` wired, so trying "where is this least?" after
+  "where does this cross?" costs one dropdown.
+- **First passing size** never interpolates, and that is the feature: point
+  it at a list or Renard sweep and the answer is a value you can actually
+  set or order — an f-stop, a stocked diameter. **Threshold crossing** does
+  interpolate, so use it for "where is the requirement genuinely met", not
+  "what do I dial in".
+- A **smallest at** / **largest at** answer landing on the *end* of the
+  sweep usually means the objective is monotonic over it — the node is
+  telling you a constraint, not the objective, decides this. That is what
+  Best Design is for.
+- If a Select node warns that the sweep is too coarse, add points and see
+  whether the answer moves. If it does, the earlier answer was
+  interpolation rather than analysis.
+- A [**Best Design**](/guide/node-reference#best-design) output references
+  **Check** nodes by name, exactly like Feasibility — so build your
+  acceptance criteria as Checks once and both can reuse them. Ticking no
+  checks at all is legal and means an unconstrained smallest/largest.
+
 ## Saving, autosave, and recovery
 
 - **Ctrl/⌘+S** or File → Save writes a document file directly — there's no

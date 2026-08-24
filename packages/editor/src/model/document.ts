@@ -17,7 +17,13 @@ import { closureFormula, packChannelIndices, waypointChannelIndices } from '@jov
 import { parseUnit, type Unit } from '@joveworks/units';
 import {
   VALUE_PORT,
+  THRESHOLD_PORT,
+  ALONG_PORT,
+  BEST_PORT,
+  OBJECTIVE_PORT,
   type ClosureNode,
+  type SelectMode,
+  type SelectNode,
   type Edge,
   type Endpoint,
   type FormulaNode,
@@ -628,6 +634,10 @@ export function defaultOutput(kind: OutputKind, contextUnit?: Unit): Output {
       return { kind, checks: [] };
     case 'sensitivity':
       return { kind };
+    case 'bestDesign':
+      // Minimising is the default because the usual first question is "how
+      // little material gets me there?" — the direction is one click away.
+      return { kind, checks: [], direction: 'minimize' };
   }
 }
 
@@ -673,12 +683,89 @@ export function changeOutputKind(document: GraphDocument, nodeId: string, next: 
     return renameColumn(named.document, nodeId, VALUE_PORT, named.column);
   }
 
-  if (next.kind === 'feasibility') {
-    const pruned = pruneEdgesTo(document, nodeId, new Set());
+  // The two kinds whose port set is not `value`(+`threshold`): feasibility
+  // has none at all, and bestDesign renames its one to `objective`. Both
+  // prune whatever the old kind had wired, the same way leaving `table`
+  // prunes everything but its adopted first column.
+  if (next.kind === 'feasibility' || next.kind === 'bestDesign') {
+    const keep = next.kind === 'bestDesign' ? new Set([OBJECTIVE_PORT]) : new Set<string>();
+    const pruned = pruneEdgesTo(document, nodeId, keep);
     return updateNode<OutputNode>(pruned, nodeId, (entry) => ({ ...entry, output: next }));
   }
 
+  if (current.kind === 'bestDesign') {
+    // Coming back the other way: the objective is the value the new kind
+    // would show, so adopt the wire rather than making it be redrawn.
+    const adopted = renamePortEdges(document, nodeId, OBJECTIVE_PORT, VALUE_PORT);
+    return updateNode<OutputNode>(adopted, nodeId, (entry) => ({ ...entry, output: next }));
+  }
+
   return updateNode<OutputNode>(document, nodeId, (entry) => ({ ...entry, output: next }));
+}
+
+/**
+ * Switch a Select node's mode, pruning only what the new mode no longer has:
+ * `threshold` leaving `crossing`, and any wire *from* `best` leaving
+ * `argMin`/`argMax`. `value` and `along` are the same two ports in every
+ * mode, which is the whole reason the ports were kept stable — retyping a
+ * mode should never cost a student the wiring they already did.
+ */
+export function changeSelectMode(
+  document: GraphDocument,
+  nodeId: string,
+  mode: SelectMode,
+): GraphDocument {
+  const node = document.nodes.find((entry) => entry.id === nodeId);
+  if (node?.kind !== 'select' || node.mode === mode) return document;
+
+  const next: SelectNode =
+    mode === 'crossing'
+      ? {
+          ...node,
+          mode,
+          // Whatever the node last carried, if it was a crossing before; else
+          // a bare `1`, read in the checked value's own unit like every other
+          // freshly-typed threshold.
+          threshold: node.mode === 'crossing' ? node.threshold : { value: 1, unit: parseUnit('') },
+          direction: node.mode === 'crossing' ? node.direction : 'any',
+        }
+      : { ...stripCrossingFields(node), mode };
+
+  const keptInputs = new Set(mode === 'crossing' ? [VALUE_PORT, ALONG_PORT, THRESHOLD_PORT] : [VALUE_PORT, ALONG_PORT]);
+  const pruned = pruneEdgesTo(document, nodeId, keptInputs);
+  const withoutBest =
+    mode === 'argMin' || mode === 'argMax'
+      ? pruned
+      : {
+          ...pruned,
+          edges: pruned.edges.filter((edge) => edge.from.node !== nodeId || edge.from.port !== BEST_PORT),
+        };
+  return updateNode<SelectNode>(withoutBest, nodeId, () => next);
+}
+
+/** `exactOptionalPropertyTypes` wants the two crossing-only fields gone, not undefined. */
+function stripCrossingFields(node: SelectNode): Omit<SelectNode, 'mode' | 'threshold' | 'direction'> {
+  const { mode: _mode, ...rest } = node;
+  if ('threshold' in rest) {
+    const { threshold: _threshold, direction: _direction, ...bare } = rest;
+    return bare;
+  }
+  return rest;
+}
+
+/** Move every edge at `from` onto `to` — a port that was renamed, not removed. */
+function renamePortEdges(
+  document: GraphDocument,
+  nodeId: string,
+  from: string,
+  to: string,
+): GraphDocument {
+  return {
+    ...document,
+    edges: document.edges.map((edge) =>
+      edge.to.node === nodeId && edge.to.port === from ? { ...edge, to: { node: nodeId, port: to } } : edge,
+    ),
+  };
 }
 
 // --- frames: the notebook's sections ------------------------------

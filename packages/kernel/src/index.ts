@@ -111,14 +111,21 @@ export {
   endpointKey,
   outputPortNames,
   resolveGraph,
+  selectPortNames,
   topologicalOrder,
   typesConnect,
   wouldCycle,
 } from './graph.js';
 export type { ChannelType, ConnectionCheck, PortType, Resolution } from './graph.js';
 
+export { COARSE_SWEEP_TOLERANCE, select } from './select.js';
+export type { SelectRequest, SelectResult } from './select.js';
+
 export { evaluateDocument, receiverSampleValue, valueAt } from './evaluate.js';
 export type {
+  BestDesignCoordinate,
+  BestDesignMargin,
+  BestDesignResult,
   CheckResult,
   EquationResult,
   Evaluation,

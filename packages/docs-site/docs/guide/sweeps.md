@@ -40,10 +40,33 @@ draws it from a distribution instead of a designed sequence — reach for one
 when the question is "how sensitive is this to scatter in an input" rather
 than "what happens across this design space."
 
+## Turning a sweep into an answer
+
+Reading "somewhere around f/6" off a curve by eye leaves the answer stuck in
+the picture: it never becomes data, never gets wired onward, and never
+appears in the notebook as a decision. Four modes close that gap, all of them
+searching the points the sweep has *already* evaluated:
+
+| You want | Reach for |
+|---|---|
+| The coordinate where a value meets its limit | [Select](/guide/node-reference#select) — **threshold crossing** |
+| The first *settable* value that passes | [Select](/guide/node-reference#select) — **first passing size** |
+| Where a value is least or greatest | [Select](/guide/node-reference#select) — **smallest at** / **largest at** |
+| Which candidate to build, and what governs it | [Best Design](/guide/node-reference#best-design) |
+
+A Select node learns *which* axis to search by having the swept range
+wired into its `along` port — so the answer comes back in that range's own
+unit, and a two-axis study collapses only the axis you wired, leaving one
+answer per coordinate of the other rather than a single number.
+
+Worked end to end in
+[Choosing an aperture](/examples/choosing-an-aperture).
+
 ## Why this replaces solving for an input
 
 The kernel only evaluates forwards; it never rearranges a formula to solve
 for an unknown. Where R&M numbers a rearranged form itself, the editor
 offers it as *same equation, solved for…*. Where no rearrangement exists,
 sweep and read off the curve — which also shows the sensitivity around the
-answer, not just a single number.
+answer, not just a single number. And "read off the curve" is now
+something the graph itself can do: see above.

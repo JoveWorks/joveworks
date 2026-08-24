@@ -25,6 +25,7 @@ import {
 import { display, displayNumber } from '../model/quantity';
 import { checkVerdict, summarise, summariseCheck } from '../model/values';
 import { CheckReading } from '../CheckReading';
+import { BestDesignCard } from '../notebook/BestDesignCard';
 import { FeasibilityFigure } from '../notebook/FeasibilityFigure';
 import { PlotFigure } from '../notebook/PlotFigure';
 import { SensitivityFigure } from '../notebook/SensitivityFigure';
@@ -128,6 +129,18 @@ function Result({ result, node, document }: { readonly result: OutputResult; rea
       <div className="viewer-result viewer-plot">
         <strong>{title}</strong>
         <SensitivityFigure result={result} />
+      </div>
+    );
+  }
+
+  if (result.kind === 'bestDesign') {
+    const checkLabels = Object.fromEntries(
+      result.checks.map((id) => [id, document.nodes.find((candidate) => candidate.id === id)?.label ?? id]),
+    );
+    return (
+      <div className="viewer-result viewer-plot">
+        <strong>{title}</strong>
+        <BestDesignCard result={result} checkLabels={checkLabels} format={format} />
       </div>
     );
   }

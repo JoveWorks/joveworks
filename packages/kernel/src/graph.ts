@@ -43,6 +43,10 @@ import {
   VALUE_PORT,
   THRESHOLD_PORT,
   VERDICT_PORT,
+  ALONG_PORT,
+  AT_PORT,
+  BEST_PORT,
+  OBJECTIVE_PORT,
   MONTE_CARLO_SAMPLE_PORT,
   MIN_PORT,
   MAX_PORT,
@@ -56,6 +60,7 @@ import {
   type AxisNode,
   type Catalogue,
   type CompareNode,
+  type SelectNode,
   type Edge,
   type Formula,
   type FormulaRef,
@@ -263,7 +268,26 @@ export function outputPortNames(node: GraphNode): readonly string[] {
   // A Feasibility output references existing Check nodes by id rather than
   // taking a wire — it is the one output kind with zero ports.
   if (node.output.kind === 'feasibility') return [];
+  // A Best Design output references its checks the same way, and takes one
+  // wire for the quantity being optimised. Named `objective` rather than
+  // `value` because that is what it is: the thing ranked, not the thing shown.
+  if (node.output.kind === 'bestDesign') return [OBJECTIVE_PORT];
   return [VALUE_PORT];
+}
+
+/**
+ * A Select node's ports, which are deliberately **stable across modes** so
+ * switching mode never strands a wire: `value` and `along` are always there,
+ * `threshold` only on `crossing`, `best` only on the two extremum modes.
+ */
+export function selectPortNames(node: SelectNode): {
+  readonly inputs: readonly string[];
+  readonly outputs: readonly string[];
+} {
+  return {
+    inputs: node.mode === 'crossing' ? [VALUE_PORT, ALONG_PORT, THRESHOLD_PORT] : [VALUE_PORT, ALONG_PORT],
+    outputs: node.mode === 'argMin' || node.mode === 'argMax' ? [AT_PORT, BEST_PORT] : [AT_PORT],
+  };
 }
 
 function portType(port: Port, bindings: ReadonlyMap<string, Dimension>): PortType {
@@ -849,6 +873,84 @@ export function resolveGraph(
       }
 
       sources.set(endpointKey(node.id, VERDICT_PORT), { kind: 'categorical' });
+      continue;
+    }
+
+    if (node.kind === 'select') {
+      // Both inputs are unbound until an edge supplies a dimension — the
+      // same state `compare`'s `value` sits in — and each propagates to a
+      // different output: `along`'s to `at`, `value`'s to `best`. That is
+      // the whole reason `along` is a port rather than an axis id typed into
+      // a dropdown: the coordinate the answer is expressed in has to come
+      // from somewhere, and a wire already carries it.
+      const valueKey = endpointKey(node.id, VALUE_PORT);
+      const valueEdge = oneEdge(valueKey);
+      const valueType: PortType =
+        valueEdge === undefined
+          ? { kind: node.mode === 'firstPassing' ? 'categorical' : 'numeric' }
+          : sourceType(valueEdge);
+      targets.set(valueKey, valueType);
+
+      const alongKey = endpointKey(node.id, ALONG_PORT);
+      const alongEdge = oneEdge(alongKey);
+      const alongType: PortType = alongEdge === undefined ? { kind: 'numeric' } : sourceType(alongEdge);
+      checkKind(alongType, { kind: 'numeric' }, alongKey);
+      targets.set(alongKey, alongType);
+
+      // `at` is the headline answer, and it is a coordinate: it carries
+      // `along`'s dimension, never `value`'s.
+      sources.set(
+        endpointKey(node.id, AT_PORT),
+        alongType.dimension === undefined
+          ? { kind: 'numeric' }
+          : displayOverride(node, AT_PORT, {
+              kind: 'numeric',
+              dimension: alongType.dimension,
+              unit: alongType.unit ?? canonicalUnit(alongType.dimension),
+            }),
+      );
+
+      if (node.mode === 'argMin' || node.mode === 'argMax') {
+        sources.set(
+          endpointKey(node.id, BEST_PORT),
+          valueType.dimension === undefined
+            ? { kind: 'numeric' }
+            : displayOverride(node, BEST_PORT, {
+                kind: 'numeric',
+                dimension: valueType.dimension,
+                unit: valueType.unit ?? canonicalUnit(valueType.dimension),
+              }),
+        );
+        continue;
+      }
+
+      if (node.mode !== 'crossing') continue;
+
+      // `threshold` is `CompareNode.threshold` again, for the same reason and
+      // with the same bare-unitless-default reading — reuse the reasoning
+      // rather than inventing a second one.
+      const dimension = valueType.dimension;
+      const thresholdKey = endpointKey(node.id, THRESHOLD_PORT);
+      const thresholdEdge = oneEdge(thresholdKey);
+      targets.set(
+        thresholdKey,
+        dimension === undefined
+          ? { kind: 'numeric' }
+          : { kind: 'numeric', dimension, unit: canonicalUnit(dimension) },
+      );
+      const bareDefault = thresholdEdge === undefined && isDimensionless(node.threshold.unit.dimension);
+      if (dimension !== undefined && !bareDefault) {
+        const boundDimension =
+          thresholdEdge === undefined ? node.threshold.unit.dimension : sourceType(thresholdEdge).dimension;
+        if (boundDimension !== undefined) {
+          assertSameDimension(
+            dimension,
+            boundDimension,
+            'a crossing needs the value and the threshold in the same dimension',
+            thresholdKey,
+          );
+        }
+      }
       continue;
     }
 

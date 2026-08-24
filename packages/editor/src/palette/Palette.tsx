@@ -26,6 +26,7 @@ import {
   type Formula,
   type Output,
   type Position,
+  type SelectMode,
   type ValueSpec,
 } from '@joveworks/schema';
 
@@ -167,6 +168,31 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
         threshold: { value: 1, unit: parseUnit('') },
         position: position(),
       });
+    });
+
+  /**
+   * Four entries, one node kind — the same one-node-several-entries shape
+   * `input` uses for scalar/range/list. Mode stays switchable on the node
+   * afterwards; the entry only saves the first click.
+   */
+  const addSelect = (mode: SelectMode): void =>
+    edit((current) => {
+      const prefix = mode === 'firstPassing' ? 'first' : mode === 'crossing' ? 'crossing' : mode;
+      const id = uniqueId(current, prefix);
+      return addNode(
+        current,
+        mode === 'crossing'
+          ? {
+              kind: 'select',
+              id,
+              label: id,
+              mode,
+              threshold: { value: 1, unit: parseUnit('') },
+              direction: 'any',
+              position: position(),
+            }
+          : { kind: 'select', id, label: id, mode, position: position() },
+      );
     });
 
   const addClosure = (): void =>
@@ -363,6 +389,39 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
       label: copy.sensitivity,
       summary: copy.sensitivitySummary,
       insert: () => addOutput('sensitivity'),
+    },
+    {
+      id: 'builtin:output:bestDesign',
+      label: copy.bestDesign,
+      summary: copy.bestDesignSummary,
+      insert: () => addOutput('bestDesign'),
+    },
+    // The four selection modes sit here rather than in General: they search
+    // a finished study rather than doing arithmetic on a value, which is the
+    // same "graph-level analysis tool" this section already collects.
+    {
+      id: 'builtin:select:crossing',
+      label: copy.crossing,
+      summary: copy.crossingSummary,
+      insert: () => addSelect('crossing'),
+    },
+    {
+      id: 'builtin:select:firstPassing',
+      label: copy.firstPassing,
+      summary: copy.firstPassingSummary,
+      insert: () => addSelect('firstPassing'),
+    },
+    {
+      id: 'builtin:select:argMin',
+      label: copy.argMin,
+      summary: copy.argMinSummary,
+      insert: () => addSelect('argMin'),
+    },
+    {
+      id: 'builtin:select:argMax',
+      label: copy.argMax,
+      summary: copy.argMaxSummary,
+      insert: () => addSelect('argMax'),
     },
   ];
 

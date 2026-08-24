@@ -135,6 +135,13 @@ export function QuickAddMenu({
       { label: t('pack'), choice: { kind: 'pack' } },
       { label: t('unpack'), choice: { kind: 'unpack' } },
       { label: t('compare'), choice: { kind: 'compare' } },
+      // Four entries, one node kind — the same one-node-several-entries
+      // shape `input` uses for scalar/range/list. Mode is switchable on the
+      // node afterwards; the entry only saves the first click.
+      { label: t('threshold crossing'), choice: { kind: 'select', mode: 'crossing' } },
+      { label: t('first passing size'), choice: { kind: 'select', mode: 'firstPassing' } },
+      { label: t('smallest at'), choice: { kind: 'select', mode: 'argMin' } },
+      { label: t('largest at'), choice: { kind: 'select', mode: 'argMax' } },
       { label: t('print output'), choice: { kind: 'output', outputKind: 'print' } },
       { label: t('check output'), choice: { kind: 'output', outputKind: 'check' } },
       {
@@ -149,6 +156,9 @@ export function QuickAddMenu({
       // id, never by wire), unlike `sensitivity`, which has a `VALUE_PORT`
       // like print/check/plot.
       { label: t('sensitivity output'), choice: { kind: 'output', outputKind: 'sensitivity' } },
+      // Unlike `feasibility`, this one *does* have a wire to complete — the
+      // objective it ranks candidates by.
+      { label: t('best design output'), choice: { kind: 'output', outputKind: 'bestDesign' } },
   ];
   const specials = possibleSpecials.filter(({ choice }) => compatiblePort(choice) !== undefined);
   const matchingSpecials = fuzzySearch(query, specials, (entry) => entry.label);

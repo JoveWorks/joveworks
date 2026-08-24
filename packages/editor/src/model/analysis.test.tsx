@@ -407,6 +407,114 @@ describe('feasibility outputs', () => {
   });
 });
 
+const selectNode = (id: string, mode: string, extra: Record<string, unknown> = {}) =>
+  ({ kind: 'select' as const, id, position: { x: 0, y: 0 }, mode: mode as never, ...extra });
+
+const bestDesignOutputNode = (id: string, checks: readonly string[], direction = 'minimize') => ({
+  kind: 'output' as const,
+  id,
+  position: { x: 0, y: 0 },
+  output: { kind: 'bestDesign' as const, checks, direction: direction as never },
+});
+
+describe('select nodes', () => {
+  const crossing = (id: string) =>
+    selectNode(id, 'crossing', { threshold: { value: 3, unit: parseUnit('mm') }, direction: 'any' });
+
+  it('is incomplete until both `value` and `along` are wired, naming what is missing', () => {
+    const bare = analyse(graph([crossing('s'), range('a', 1, 5, 3, 'mm')], []), CATALOGUES);
+    expect(bare.states.get('s')).toBe('incomplete');
+    expect(text(bare.problems.get('s'))).toContain('not connected');
+
+    // `value` alone is not enough: without `along` there is no axis to
+    // search and no coordinate for the answer to be expressed in.
+    const halfWired = analyse(
+      graph([crossing('s'), range('a', 1, 5, 3, 'mm')], [wire('e1', ['a', 'value'], ['s', 'value'])]),
+      CATALOGUES,
+    );
+    expect(halfWired.states.get('s')).toBe('incomplete');
+    expect(text(halfWired.problems.get('s'))).toContain('along');
+  });
+
+  it('is ready with both wired, and answers on `at` in the axis’s own dimension', () => {
+    const document = graph(
+      [crossing('s'), range('a', 1, 5, 3, 'mm')],
+      [wire('e1', ['a', 'value'], ['s', 'value']), wire('e2', ['a', 'value'], ['s', 'along'])],
+    );
+    const analysis = analyse(document, CATALOGUES);
+    expect(analysis.states.get('s')).toBe('ok');
+    expect(analysis.evaluation?.values.get('s.at')).toMatchObject({ data: [3] });
+  });
+
+  it('is blocked while what is wired into it is not ready itself', () => {
+    const document = graph(
+      [crossing('s'), range('a', 1, 5, 3, 'mm'), formulaNode('bad', 'inv.quarantined')],
+      [
+        wire('e1', ['a', 'value'], ['bad', 'a']),
+        wire('e2', ['bad', 'y'], ['s', 'value']),
+        wire('e3', ['a', 'value'], ['s', 'along']),
+      ],
+    );
+    const analysis = analyse(document, CATALOGUES);
+    expect(analysis.states.get('s')).toBe('blocked');
+  });
+});
+
+describe('Best Design outputs', () => {
+  it('is ready with an objective wired and no checks at all — that is an unconstrained minimum', () => {
+    const document = graph(
+      [bestDesignOutputNode('b', []), range('a', 1, 5, 3, 'mm')],
+      [wire('e1', ['a', 'value'], ['b', 'objective'])],
+    );
+    const analysis = analyse(document, CATALOGUES);
+    expect(analysis.states.get('b')).toBe('ok');
+  });
+
+  it('is incomplete without an objective, whatever checks it references', () => {
+    const document = graph(
+      [bestDesignOutputNode('b', ['c1']), range('a', 1, 5, 3, 'mm'), checkOutputNode('c1', '>=', 1, 'mm')],
+      [wire('e1', ['a', 'value'], ['c1', 'value'])],
+    );
+    const analysis = analyse(document, CATALOGUES);
+    expect(analysis.states.get('b')).toBe('incomplete');
+    expect(text(analysis.problems.get('b'))).toContain('objective');
+  });
+
+  it('is ready however it is ordered relative to the checks it references', () => {
+    // Same deferral the Feasibility case above depends on: this node's array
+    // position precedes its checks, and it must still resolve.
+    const document = graph(
+      [
+        bestDesignOutputNode('b', ['c1']),
+        range('a', 1, 5, 3, 'mm'),
+        checkOutputNode('c1', '>=', 1, 'mm'),
+      ],
+      [wire('e1', ['a', 'value'], ['c1', 'value']), wire('e2', ['a', 'value'], ['b', 'objective'])],
+    );
+    const analysis = analyse(document, CATALOGUES);
+    expect(analysis.states.get('b')).toBe('ok');
+  });
+
+  it('is blocked while a referenced check is not ready itself', () => {
+    const document = graph(
+      [
+        bestDesignOutputNode('b', ['c1']),
+        range('a', 1, 5, 3, 'mm'),
+        formulaNode('bad', 'inv.quarantined'),
+        checkOutputNode('c1', '>=', 1, 'mm'),
+      ],
+      [
+        wire('e1', ['a', 'value'], ['bad', 'a']),
+        wire('e2', ['bad', 'y'], ['c1', 'value']),
+        wire('e3', ['a', 'value'], ['b', 'objective']),
+      ],
+    );
+    const analysis = analyse(document, CATALOGUES);
+    expect(analysis.states.get('c1')).toBe('blocked');
+    expect(analysis.states.get('b')).toBe('blocked');
+  });
+});
+
 describe('check outputs', () => {
   it('is ready with only its value wired — the threshold has its own typed default', () => {
     const document = graph(
