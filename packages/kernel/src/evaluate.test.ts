@@ -275,6 +275,104 @@ describe('table-backed formulas', () => {
   });
 });
 
+describe('a formula that answers with several expressions', () => {
+  const limitsCatalogue = catalogueOf([
+    {
+      id: 'limits', version: 1,
+      output: [
+        { kind: 'numeric', name: 'near', unit: 'mm' },
+        { kind: 'numeric', name: 'far', unit: 'mm' },
+        { kind: 'numeric', name: 'span', unit: 'mm' },
+      ],
+      inputs: [
+        { kind: 'numeric', name: 'a', unit: 'mm', default: 10 },
+        { kind: 'numeric', name: 'b', unit: 'mm', default: 2 },
+      ],
+      expression: { near: 'a - b', far: 'a + b', span: 'far - near' },
+      description: 'Invented multi-expression record.', status: 'unverified',
+    },
+  ]);
+  const limitsRef = refTo('limits', limitsCatalogue);
+
+  it('answers on every output, each from its own expression', () => {
+    const evaluation = evaluateDocument(documentOf([formulaNode('l', limitsRef)], []), [limitsCatalogue]);
+    expect(numeric(valueAt(evaluation, 'l', 'near')).data).toEqual([8]);
+    expect(numeric(valueAt(evaluation, 'l', 'far')).data).toEqual([12]);
+    // `span` names the two outputs declared before it rather than restating
+    // their algebra — the whole point of the ordering rule.
+    expect(numeric(valueAt(evaluation, 'l', 'span')).data).toEqual([4]);
+  });
+
+  it('carries the ordering rule through a sweep, cell by cell', () => {
+    const document = documentOf(
+      [input('b', linear(1, 3, 3, 'mm')), formulaNode('l', limitsRef)],
+      [wire('b.value', 'l.b')],
+    );
+    const evaluation = evaluateDocument(document, [limitsCatalogue]);
+    expect(numeric(valueAt(evaluation, 'l', 'span')).data).toEqual([2, 4, 6]);
+  });
+
+  it('refuses a record whose later expression names an output declared after it', () => {
+    const backwards = catalogueOf([
+      {
+        id: 'backwards', version: 1,
+        output: [
+          { kind: 'numeric', name: 'first', unit: 'mm' },
+          { kind: 'numeric', name: 'second', unit: 'mm' },
+        ],
+        inputs: [{ kind: 'numeric', name: 'a', unit: 'mm', default: 1 }],
+        expression: { first: 'second + a', second: 'a * 2' },
+        description: 'Invented backwards record.', status: 'unverified',
+      },
+    ]);
+    const document = documentOf([formulaNode('b', refTo('backwards', backwards))], []);
+    expect(() => evaluateDocument(document, [backwards])).toThrow(/second/u);
+  });
+
+  it('checks each output’s dimension against its own expression', () => {
+    const catalogue = catalogueOf([
+      {
+        id: 'mismatched', version: 1,
+        output: [
+          { kind: 'numeric', name: 'length', unit: 'mm' },
+          // Declared a length, but computed as one squared — the check has to
+          // read `length` out of the scope the earlier output put it in.
+          { kind: 'numeric', name: 'area', unit: 'mm' },
+        ],
+        inputs: [{ kind: 'numeric', name: 'a', unit: 'mm', default: 1 }],
+        expression: { length: 'a', area: 'length * a' },
+        description: 'Invented mismatched record.', status: 'unverified',
+      },
+    ]);
+    const document = documentOf([formulaNode('m', refTo('mismatched', catalogue))], []);
+    expect(() => evaluateDocument(document, [catalogue])).toThrow(/declares 'area' as/u);
+  });
+
+  it('warns only about the output whose own condition does not hold', () => {
+    const guarded = catalogueOf([
+      {
+        id: 'guarded', version: 1,
+        output: [
+          { kind: 'numeric', name: 'always', unit: 'mm' },
+          { kind: 'numeric', name: 'sometimes', unit: 'mm' },
+        ],
+        inputs: [{ kind: 'numeric', name: 'a', unit: 'mm', default: 100 }],
+        expression: { always: 'a', sometimes: 'a * 2' },
+        appliesWhen: { sometimes: 'a < 50' },
+        description: 'Invented guarded record.', status: 'unverified',
+      },
+    ]);
+    const document = documentOf([formulaNode('g', refTo('guarded', guarded))], []);
+    const evaluation = evaluateDocument(document, [guarded]);
+    // Both still compute — a condition warns, it does not block.
+    expect(numeric(valueAt(evaluation, 'g', 'always')).data).toEqual([100]);
+    expect(numeric(valueAt(evaluation, 'g', 'sometimes')).data).toEqual([200]);
+    const applies = evaluation.warnings.filter((warning) => warning.kind === 'appliesWhen');
+    expect(applies).toHaveLength(1);
+    expect(applies[0]?.message).toMatch(/computes 'sometimes' only when a < 50/u);
+  });
+});
+
 describe('piecewise-backed formulas', () => {
   const stepCatalogue = catalogueOf([
     {

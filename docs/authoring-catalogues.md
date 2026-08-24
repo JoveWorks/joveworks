@@ -67,9 +67,27 @@ Fields:
   existing record's expression or ports without bumping version is a silent
   break for anyone who already referenced it.
 - **output, inputs** — ports, see below. Output first is the drawing order,
-  not a schema requirement.
+  not a schema requirement. Write `output` as a bare object for one output, or
+  as a list where one record answers with several — a camera picked once
+  returning its whole spec sheet, a focus distance returning near limit, far
+  limit and total together.
 - **expression** — a string, parsed and compiled by the kernel, never
-  evaluated here. See the expression rules below.
+  evaluated here. See the expression rules below. A record with several
+  outputs writes an object keyed by output name instead:
+
+  ```json
+  "expression": {
+    "D_n": "(H * s) / (H + (s - f))",
+    "D_f": "(H * s) / (H - (s - f))",
+    "DoF": "D_f - D_n"
+  }
+  ```
+
+  Outputs are computed **in declared order, and each may name any output
+  declared before it** — `DoF` above is the difference of the two limits
+  rather than a second copy of their algebra, which is one fewer place for
+  the two to drift apart. Naming a *later* output is refused, so a record
+  cannot hold a cycle.
 - **name, description, port description, quarantineReason and optional label** —
   localized text maps. Every map must contain `en`; add `nl` or any other
   BCP-47 language tag when available. Missing translations fall back to English.
@@ -81,7 +99,16 @@ Fields:
   you are actually authoring more than one arrangement of the same equation.
 - **appliesWhen** — a boolean predicate over this formula's own input port
   names, e.g. `"d < 50"`, for the case where a relation only holds under some
-  condition. Omit if it always applies.
+  condition. Omit if it always applies. Where a record answers with several
+  outputs whose ranges differ, key it by output name the way `expression` is
+  — past the hyperfocal distance a far limit is infinite while the near limit
+  is still meaningful, so only the guarded outputs warn:
+
+  ```json
+  "appliesWhen": { "D_f": "s < H", "DoF": "s < H" }
+  ```
+
+  A bare string guards every output, which is what it has always meant.
 - **status** — `verified`, `unverified`, or `quarantined`. Be honest,
   not optimistic:
   - `unverified` is the correct default for a formula you derived and did not

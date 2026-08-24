@@ -99,7 +99,7 @@ export function closureFormula(expression: string): Formula {
     // skips the self-check that would otherwise compare this to it.
     outputs: [{ kind: 'numeric', name: CLOSURE_RESULT_PORT, unit: parseGenericDimension('$result') }],
     inputs,
-    expression,
+    expressions: { [CLOSURE_RESULT_PORT]: expression },
     description: { en: '' },
     status: 'unverified',
   };

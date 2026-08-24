@@ -975,9 +975,7 @@ export function millingPowerEnvelope(catalogues: readonly Catalogue[], locale: A
 export const DEPTH_OF_FIELD_FORMULAS = [
   'photography.dof.circle-of-confusion',
   'photography.dof.hyperfocal-distance',
-  'photography.dof.near-limit',
-  'photography.dof.far-limit',
-  'photography.dof.total',
+  'photography.dof.limits',
 ] as const;
 
 /**
@@ -987,7 +985,7 @@ export const DEPTH_OF_FIELD_FORMULAS = [
  *
  * The subject stays fixed at 1.5 m throughout, and the aperture list stops at
  * f/11: both keep the hyperfocal distance comfortably above the subject
- * distance for every cell (`photography.dof.far-limit` only holds while
+ * distance for every cell (the far limit and the total only hold while
  * `s < H`), so every point in the grid is a valid reading rather than an
  * out-of-domain one.
  */
@@ -1012,9 +1010,7 @@ export function depthOfField(catalogues: readonly Catalogue[], locale: AppLocale
       axisLabel: 'aperture N (f-stop)',
     },
     formulaNode('hyperfocal', formula('photography.dof.hyperfocal-distance'), at(495, 605)),
-    formulaNode('near_limit', formula('photography.dof.near-limit'), at(880, 275)),
-    formulaNode('far_limit', formula('photography.dof.far-limit'), at(880, 550)),
-    formulaNode('dof', formula('photography.dof.total'), at(1210, 385)),
+    formulaNode('dof', formula('photography.dof.limits'), at(880, 385)),
 
     output(
       'out_table',
@@ -1052,16 +1048,9 @@ export function depthOfField(catalogues: readonly Catalogue[], locale: AppLocale
     wire('N.value', 'hyperfocal.N'),
     wire('coc.c', 'hyperfocal.c'),
 
-    wire('hyperfocal.H', 'near_limit.H'),
-    wire('s.value', 'near_limit.s'),
-    wire('f.value', 'near_limit.f'),
-
-    wire('hyperfocal.H', 'far_limit.H'),
-    wire('s.value', 'far_limit.s'),
-    wire('f.value', 'far_limit.f'),
-
-    wire('far_limit.D_f', 'dof.D_f'),
-    wire('near_limit.D_n', 'dof.D_n'),
+    wire('hyperfocal.H', 'dof.H'),
+    wire('s.value', 'dof.s'),
+    wire('f.value', 'dof.f'),
 
     wire('f.value', 'out_table.f'),
     wire('N.value', 'out_table.N'),

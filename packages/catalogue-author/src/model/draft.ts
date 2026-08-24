@@ -10,6 +10,8 @@
  */
 
 import {
+  appliesWhenOf,
+  soleExpression,
   serializeFormula,
   type Formula,
   type FormulaStatus,
@@ -66,6 +68,13 @@ export interface DraftFormula {
    * already-serialized JSON captured at import time.
    */
   readonly lookupJson?: JsonValue;
+  /**
+   * The same treatment for a record answering with several outputs: the one
+   * `expression` field above edits a single relation, so a per-output map
+   * round-trips as captured JSON rather than being flattened to whichever
+   * expression happened to come first. Set only when there is more than one.
+   */
+  readonly expressionJson?: JsonValue;
 }
 
 export interface DraftCatalogue {
@@ -183,6 +192,14 @@ function draftPortFromReal(port: Port): DraftPort {
   }
 }
 
+/** The one condition a single-output record states, matching `soleExpression`. */
+function soleAppliesWhen(formula: Formula): string | undefined {
+  const only = formula.outputs[0];
+  return formula.outputs.length === 1 && only !== undefined
+    ? appliesWhenOf(formula, only.name)
+    : undefined;
+}
+
 export function draftFormulaFromReal(formula: Formula): DraftFormula {
   return {
     key: nextKey('formula'),
@@ -190,15 +207,16 @@ export function draftFormulaFromReal(formula: Formula): DraftFormula {
     version: String(formula.version),
     outputs: formula.outputs.map(draftPortFromReal),
     inputs: formula.inputs.map(draftPortFromReal),
-    expression: formula.expression ?? '',
+    expression: soleExpression(formula) ?? '',
     label: draftLocalizedTextFromReal(formula.label),
     description: draftLocalizedTextFromReal(formula.description),
     citation: formula.citation ?? '',
     variantOf: formula.variantOf ?? '',
-    appliesWhen: formula.appliesWhen ?? '',
+    appliesWhen: soleAppliesWhen(formula) ?? '',
     status: formula.status,
     quarantineReason: draftLocalizedTextFromReal(formula.quarantineReason),
     ...(formula.lookup === undefined ? {} : { lookupJson: serializeFormula(formula).lookup }),
+    ...(formula.outputs.length === 1 ? {} : { expressionJson: serializeFormula(formula).expression }),
   };
 }
 

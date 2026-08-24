@@ -15,7 +15,15 @@
 import type { ReactElement } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 
-import { isGenericPort, localize, type FormulaNode, type Port, type ValueSpec } from '@joveworks/schema';
+import {
+  appliesWhenOf,
+  expressionOf,
+  isGenericPort,
+  localize,
+  type FormulaNode,
+  type Port,
+  type ValueSpec,
+} from '@joveworks/schema';
 import { parseExpression, toLatex } from '@joveworks/kernel';
 import { phrase } from '../i18n';
 import type { Unit } from '@joveworks/units';
@@ -86,7 +94,7 @@ export function FormulaNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
    * than as a labelled port — until something is wired in, which overrides
    * it the same way a wire overrides `CompareNode.threshold`. */
   const pickerPorts = new Set(
-    formula.expression === undefined
+    formula.expressions === undefined
       ? (formula.lookup?.axes ?? []).filter((axis) => axis.kind === 'categorical').map((axis) => axis.input)
       : [],
   );
@@ -172,13 +180,36 @@ export function FormulaNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
       }
       detail={
         <>
-          {formula.expression === undefined ? null : (
-            <Equation latex={toLatex(parseExpression(formula.expression))} displayMode={false} />
-          )}
+          {/* One equation per output that an expression answers for, named
+              when there is more than one — a merged node states three
+              relations, and an unlabelled stack of them says nothing about
+              which is which. */}
+          {formula.outputs.map((output) => {
+            const expression = expressionOf(formula, output.name);
+            if (expression === undefined) return null;
+            return (
+              <p key={output.name} className="formula-equation">
+                {formula.outputs.length === 1 ? null : (
+                  <span className="equation-name">
+                    <Symbol name={output.name} />
+                    {' = '}
+                  </span>
+                )}
+                <Equation latex={toLatex(parseExpression(expression))} displayMode={false} />
+              </p>
+            );
+          })}
           <p className="description">{localize(formula.description, locale)}</p>
-          {formula.appliesWhen === undefined ? null : (
-            <p className="applies">{phrase(locale, 'applies when')} {formula.appliesWhen}</p>
-          )}
+          {formula.outputs.map((output) => {
+            const condition = appliesWhenOf(formula, output.name);
+            if (condition === undefined) return null;
+            return (
+              <p key={output.name} className="applies">
+                {formula.outputs.length === 1 ? null : <><Symbol name={output.name} />{' '}</>}
+                {phrase(locale, 'applies when')} {condition}
+              </p>
+            );
+          })}
           {formula.variantOf === undefined ? null : (
             <p className="applies">{phrase(locale, 'same relation as')} {formula.variantOf}</p>
           )}

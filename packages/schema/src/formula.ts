@@ -207,12 +207,24 @@ export interface Formula {
   readonly outputs: readonly OutputPort[];
   readonly inputs: readonly Port[];
   /**
-   * Parsed and compiled by the kernel, never here. Absent when a `lookup`
-   * answers for every output: the table is the evaluator, and each output's
-   * declared unit is what its column is read in, so there is nothing left for
-   * an expression to state.
+   * One expression per output, keyed by that output's name. Parsed and
+   * compiled by the kernel, never here. Absent when a `lookup` answers for
+   * every output: the table is the evaluator, and each output's declared unit
+   * is what its column is read in, so there is nothing left for an expression
+   * to state.
+   *
+   * **Outputs are evaluated in declared order, and each may name any output
+   * declared before it** — total depth of field stays written as `D_f - D_n`
+   * rather than restating the near and far algebra a second time, where the
+   * two could silently drift apart. Forward-only by construction, so a cycle
+   * inside one record is not expressible, the same way the graph itself
+   * cannot hold one.
+   *
+   * Written as a bare string in JSON when the formula declares one output,
+   * exactly as it always was, so every existing record round-trips and
+   * **hashes** byte-for-byte unchanged.
    */
-  readonly expression?: string;
+  readonly expressions?: Readonly<Record<string, string>>;
   /** Optional table-backed evaluator, one column per output. */
   readonly lookup?: FormulaLookup;
   /** Optional piecewise evaluator, mutually exclusive with `lookup`/`deflection`. Same role: the expression still declares/checks dimensions. */
@@ -227,16 +239,57 @@ export interface Formula {
   /** Groups the rearranged forms of one relation. */
   readonly variantOf?: string;
   /**
-   * The condition under which this form applies, as a predicate over its own
-   * input ports — `D_A < d_w`. R&M states these in prose and the
-   * predecessor library never read them, so a student could use a variant
-   * outside its range and get a confident wrong number. Using a formula outside
-   * it warns; it does not block.
+   * The condition under which a form applies, as a predicate over its own
+   * input ports — `D_A < d_w` — keyed by the output it guards. R&M states
+   * these in prose and the predecessor library never read them, so a student
+   * could use a variant outside its range and get a confident wrong number.
+   * Using a formula outside it warns; it does not block.
+   *
+   * Per output rather than per formula because one node can answer with
+   * several things whose ranges differ: past the hyperfocal distance a far
+   * limit is infinite while the near limit is still perfectly meaningful, so
+   * only the outputs that stop applying go quiet. A bare string in JSON
+   * guards every output, which is what it has always meant.
    */
-  readonly appliesWhen?: string;
+  readonly appliesWhen?: Readonly<Record<string, string>>;
   readonly status: FormulaStatus;
   /** Why it is quarantined. Required when it is, so the UI has something to show. */
   readonly quarantineReason?: LocalizedText;
+}
+
+/**
+ * A field written either once for the whole record or once per output.
+ *
+ * A bare string is what every record wrote before an evaluator could answer
+ * with more than one thing, and it still means "this, for every output" —
+ * which for the single-output records that make up the corpus is exactly
+ * what it always meant. An object names an output per entry, and may leave
+ * outputs out: an `appliesWhen` guarding only the far limit says nothing
+ * about the near one.
+ */
+function parsePerOutput(
+  value: JsonValue,
+  path: string,
+  outputs: readonly OutputPort[],
+  field: string,
+): Readonly<Record<string, string>> {
+  if (typeof value === 'string') {
+    const text = value.trim();
+    if (text.length === 0) fail(path, 'is empty');
+    return Object.fromEntries(outputs.map((port) => [port.name, value]));
+  }
+  const object = readObject(value, path);
+  const perOutput: Record<string, string> = {};
+  for (const [name, entry] of Object.entries(object)) {
+    if (!outputs.some((port) => port.name === name)) {
+      fail(join(path, name), `'${name}' is not a declared output`);
+    }
+    const text = readString(entry, join(path, name));
+    if (text.trim().length === 0) fail(join(path, name), 'is empty');
+    perOutput[name] = text;
+  }
+  if (Object.keys(perOutput).length === 0) fail(path, `is empty — leave ${field} out instead`);
+  return perOutput;
 }
 
 function parseLookup(value: JsonValue, path: string, outputs: readonly OutputPort[]): FormulaLookup {
@@ -408,6 +461,39 @@ export function ports(formula: Formula): readonly Port[] {
   return [...formula.outputs, ...formula.inputs];
 }
 
+/**
+ * The expression answering for one output, or the condition guarding it.
+ *
+ * Read through these rather than indexing the record directly: an output name
+ * is authored text, and a bare index would happily answer with something off
+ * `Object.prototype` for a name like `constructor`.
+ */
+export function expressionOf(formula: Formula, output: string): string | undefined {
+  return entryOf(formula.expressions, output);
+}
+
+export function appliesWhenOf(formula: Formula, output: string): string | undefined {
+  return entryOf(formula.appliesWhen, output);
+}
+
+/**
+ * The one expression a record states when it declares exactly one output —
+ * what a preview or a single equation wants, where "which output" has only
+ * one answer.
+ */
+export function soleExpression(formula: Formula): string | undefined {
+  if (formula.outputs.length !== 1) return undefined;
+  return expressionOf(formula, (formula.outputs[0] as OutputPort).name);
+}
+
+function entryOf(
+  perOutput: Readonly<Record<string, string>> | undefined,
+  output: string,
+): string | undefined {
+  if (perOutput === undefined || !Object.hasOwn(perOutput, output)) return undefined;
+  return perOutput[output];
+}
+
 /** The lookup column answering for `name`, when a table answers for it at all. */
 export function lookupColumn(formula: Formula, name: string): readonly (number | null)[] | undefined {
   return formula.lookup?.columns[name];
@@ -465,11 +551,18 @@ export function parseFormula(value: JsonValue, path: string): Formula {
 
   // A table-backed formula needs no expression: its columns are read in the
   // units its outputs declare, which is all an expression was ever there to
-  // state. Everything else must still say how it computes.
-  const expression = optional(object, 'expression', path, readString);
-  if (expression !== undefined && expression.trim().length === 0) fail(join(path, 'expression'), 'is empty');
-  if (expression === undefined && lookup === undefined) {
+  // state. Everything else must still say how it computes — once per output.
+  const expressions = optional(object, 'expression', path, (value_, path_) =>
+    parsePerOutput(value_, path_, outputs, 'expression'),
+  );
+  if (expressions === undefined && lookup === undefined) {
     fail(join(path, 'expression'), 'is required unless a lookup answers for every output');
+  }
+  if (expressions !== undefined) {
+    const unanswered = outputs.find((port) => expressions[port.name] === undefined);
+    if (unanswered !== undefined) {
+      fail(join(path, 'expression'), `has nothing to compute '${unanswered.name}' from`);
+    }
   }
 
   if (lookup !== undefined) {
@@ -631,7 +724,7 @@ export function parseFormula(value: JsonValue, path: string): Formula {
     version,
     outputs,
     inputs,
-    ...put('expression', expression),
+    ...put('expressions', expressions),
     ...put('lookup', lookup),
     ...put('piecewise', piecewise),
     ...put('deflection', deflection),
@@ -639,10 +732,31 @@ export function parseFormula(value: JsonValue, path: string): Formula {
     ...put('label', optional(object, 'label', path, parseLocalizedText)),
     ...put('citation', optional(object, 'citation', path, readString)),
     ...put('variantOf', optional(object, 'variantOf', path, readName)),
-    ...put('appliesWhen', optional(object, 'appliesWhen', path, readName)),
+    ...put(
+      'appliesWhen',
+      optional(object, 'appliesWhen', path, (value_, path_) =>
+        parsePerOutput(value_, path_, outputs, 'appliesWhen'),
+      ),
+    ),
     status,
     ...put('quarantineReason', quarantineReason),
   };
+}
+
+/**
+ * A per-output field collapses back to the bare string a single-output record
+ * has always written, so a record that gained nothing does not read — or
+ * hash — as though it changed. With several outputs it is always written out
+ * per output, even where every entry agrees, since which output a condition
+ * belongs to is the thing worth being explicit about.
+ */
+function serializePerOutput(
+  outputs: readonly OutputPort[],
+  perOutput: Readonly<Record<string, string>> | undefined,
+): JsonValue | undefined {
+  if (perOutput === undefined) return undefined;
+  if (outputs.length === 1) return perOutput[(outputs[0] as OutputPort).name];
+  return { ...perOutput };
 }
 
 /**
@@ -659,7 +773,7 @@ export function serializeFormula(formula: Formula): JsonObject {
     version: formula.version,
     output: serializeOutputs(formula.outputs, serializePort),
     inputs: formula.inputs.map(serializePort),
-    ...put('expression', formula.expression),
+    ...put('expression', serializePerOutput(formula.outputs, formula.expressions)),
     ...put('lookup', formula.lookup === undefined ? undefined : serializeLookup(formula.lookup)),
     ...put('piecewise', formula.piecewise === undefined ? undefined : serializePiecewise(formula.piecewise)),
     ...put('deflection', formula.deflection === undefined ? undefined : serializeDeflection(formula.deflection)),
@@ -667,7 +781,7 @@ export function serializeFormula(formula: Formula): JsonObject {
     description: serializeLocalizedText(formula.description),
     ...put('citation', formula.citation),
     ...put('variantOf', formula.variantOf),
-    ...put('appliesWhen', formula.appliesWhen),
+    ...put('appliesWhen', serializePerOutput(formula.outputs, formula.appliesWhen)),
     status: formula.status,
     ...(formula.quarantineReason === undefined
       ? {}
@@ -709,13 +823,13 @@ export function formulaHash(formula: Formula): string {
     version: formula.version,
     output: serializeOutputs(formula.outputs, withoutText),
     inputs: formula.inputs.map(withoutText),
-    ...put('expression', formula.expression),
+    ...put('expression', serializePerOutput(formula.outputs, formula.expressions)),
     ...put('lookup', formula.lookup === undefined ? undefined : serializeLookup(formula.lookup)),
     ...put('piecewise', formula.piecewise === undefined ? undefined : serializePiecewise(formula.piecewise)),
     ...put('deflection', formula.deflection === undefined ? undefined : serializeDeflection(formula.deflection)),
     ...put('citation', formula.citation),
     ...put('variantOf', formula.variantOf),
-    ...put('appliesWhen', formula.appliesWhen),
+    ...put('appliesWhen', serializePerOutput(formula.outputs, formula.appliesWhen)),
     status: formula.status,
   });
   HASH_CACHE.set(formula, hash);

@@ -65,7 +65,9 @@ export function buildFormulas(
     version: 1,
     outputs: [draft.output],
     inputs: draft.inputs,
-    expression: draft.expression,
+    // Keyed by the one output it answers for — every base node states one
+    // relation, so this is the single-output shape, written out.
+    expressions: { [draft.output.name]: draft.expression },
     label: draftLabel(draft.id, dutchLabels),
     description: text(draft.description),
     status: 'unverified' as const,

@@ -80,6 +80,10 @@ export type {
 export {
   FORMULA_STATUSES,
   isEvaluable,
+  expressionOf,
+  appliesWhenOf,
+  soleExpression,
+  lookupColumn,
   ports,
   findInput,
   findFormula,

@@ -27,7 +27,14 @@ import {
   type BaseDimension,
   type Dimension,
 } from '@joveworks/units';
-import { isEvaluable, localize, type Formula, type Port } from '@joveworks/schema';
+import {
+  appliesWhenOf,
+  expressionOf,
+  isEvaluable,
+  localize,
+  type Formula,
+  type Port,
+} from '@joveworks/schema';
 
 import {
   checkPredicateDimensions,
@@ -54,10 +61,10 @@ export function assertEvaluable(formula: Formula, where?: string): void {
 
 export interface CompiledFormula {
   readonly formula: Formula;
-  /** Absent when a table answers for every output and there is no expression. */
-  readonly evaluate?: CompiledExpression;
-  /** The condition R&M states in prose, when the record carries one. */
-  readonly appliesWhen?: CompiledPredicate;
+  /** One per output that an expression answers for; empty when a table answers for every one. */
+  readonly evaluate: ReadonlyMap<string, CompiledExpression>;
+  /** The condition R&M states in prose, per output the record states one for. */
+  readonly appliesWhen: ReadonlyMap<string, CompiledPredicate>;
   /** Every input port's dimension under this node's bindings. */
   readonly scope: DimensionScope;
 }
@@ -81,13 +88,27 @@ export function compileFormula(
   return {
     formula,
     scope,
-    ...(formula.expression === undefined
-      ? {}
-      : { evaluate: compileExpression(formula.expression, where ?? formula.id) }),
-    ...(formula.appliesWhen === undefined
-      ? {}
-      : { appliesWhen: compilePredicate(formula.appliesWhen, where ?? formula.id) }),
+    evaluate: compilePerOutput(formula, where, (name) => expressionOf(formula, name), compileExpression),
+    appliesWhen: compilePerOutput(formula, where, (name) => appliesWhenOf(formula, name), compilePredicate),
   };
+}
+
+/**
+ * One compiled thing per output that declares one — outputs a table answers
+ * for contribute nothing, and neither do outputs with no condition on them.
+ */
+function compilePerOutput<T>(
+  formula: Formula,
+  where: string | undefined,
+  source: (output: string) => string | undefined,
+  compile: (text: string, where: string) => T,
+): ReadonlyMap<string, T> {
+  const compiled = new Map<string, T>();
+  for (const output of formula.outputs) {
+    const text = source(output.name);
+    if (text !== undefined) compiled.set(output.name, compile(text, where ?? formula.id));
+  }
+  return compiled;
 }
 
 /**
@@ -102,9 +123,8 @@ export function compileClosureFormula(formula: Formula, where?: string): Compile
   return {
     formula,
     scope: { dimensions: {}, spectra: new Set() },
-    ...(formula.expression === undefined
-      ? {}
-      : { evaluate: compileExpression(formula.expression, where ?? formula.id) }),
+    evaluate: compilePerOutput(formula, where, (name) => expressionOf(formula, name), compileExpression),
+    appliesWhen: new Map(),
   };
 }
 
@@ -168,11 +188,18 @@ function checkRecord(formula: Formula, bindings: Bindings, where: string): Dimen
   // A table-backed output needs no expression to vouch for it: its column is
   // read in the unit it declares. Only what an expression computes has to be
   // proven to match what the record claims.
-  if (formula.expression !== undefined) {
-    const produced = expressionDimension(parseExpression(formula.expression), scope, where);
-    for (const output of formula.outputs) {
-      if (formula.lookup?.columns[output.name] !== undefined) continue;
-      const declared = portDimensionUnder(output, bindings, where);
+  //
+  // Outputs are walked in declared order, and each one's declared dimension
+  // joins the scope before the next is checked — which is what lets a later
+  // expression name an earlier output (`DoF` as `D_f - D_n`) and still be
+  // proven statically. Declared, not produced: the two were just shown equal,
+  // and using the declaration keeps a chain of outputs from compounding a
+  // rounding difference through `dimensionsClose`.
+  for (const output of formula.outputs) {
+    const declared = portDimensionUnder(output, bindings, where);
+    const expression = expressionOf(formula, output.name);
+    if (expression !== undefined && formula.lookup?.columns[output.name] === undefined) {
+      const produced = expressionDimension(parseExpression(expression), scope, where);
       if (declared !== undefined && !dimensionsClose(produced, declared)) {
         throw new KernelError(
           `'${formula.id}' declares ${formula.outputs.length === 1 ? 'its output' : `'${output.name}'`} as ` +
@@ -181,10 +208,20 @@ function checkRecord(formula: Formula, bindings: Bindings, where: string): Dimen
         );
       }
     }
+    // An output shadowing an input would silently change what every later
+    // expression means, so the record is refused rather than resolved one
+    // way or the other.
+    if (declared !== undefined) {
+      if (Object.hasOwn(dimensions, output.name) && formula.inputs.some((port) => port.name === output.name)) {
+        throw new KernelError(`'${output.name}' is both an input and an output of '${formula.id}'`, where);
+      }
+      dimensions[output.name] = declared;
+    }
   }
 
-  if (formula.appliesWhen !== undefined) {
-    checkPredicateDimensions(parsePredicate(formula.appliesWhen), scope, where);
+  for (const output of formula.outputs) {
+    const condition = appliesWhenOf(formula, output.name);
+    if (condition !== undefined) checkPredicateDimensions(parsePredicate(condition), scope, where);
   }
   return scope;
 }

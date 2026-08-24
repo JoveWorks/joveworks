@@ -116,7 +116,7 @@ function formulaJson(formula: DraftFormula): JsonObject {
     // with; several are written as a list (see schema/src/formula.ts).
     output: formula.outputs.length === 1 ? portJson(formula.outputs[0] as DraftPort) : formula.outputs.map(portJson),
     inputs: formula.inputs.map(portJson),
-    expression: formula.expression,
+    expression: formula.expressionJson ?? formula.expression,
     status: formula.status,
     description: localizedTextJson(formula.description),
   };

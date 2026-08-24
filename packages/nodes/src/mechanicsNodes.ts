@@ -52,7 +52,7 @@ const shaftTorque: Formula = {
     { kind: 'spectrum', name: 'position', unit: parseUnit('mm'), description: text('Position of each applied torque') },
     { kind: 'spectrum', name: 'torque', unit: parseUnit('Nmm'), description: text('Torque applied at each position, signed') },
   ],
-  expression: 'sum(torque)',
+  expressions: { T: 'sum(torque)' },
   piecewise: { kind: 'cumulativeStep', axis: 'z', breakpoints: ['position'], values: ['torque'] },
   status: 'unverified',
 };
@@ -74,7 +74,7 @@ const shaftShear: Formula = {
     ...supportPorts('A'),
     ...supportPorts('B'),
   ],
-  expression: 'sum(force)',
+  expressions: { V: 'sum(force)' },
   piecewise: {
     kind: 'cumulativeStep', axis: 'z',
     breakpoints: ['position', 'supportA', 'supportB'],
@@ -104,7 +104,7 @@ const shaftMoment: Formula = {
     ...supportPorts('A'),
     ...supportPorts('B'),
   ],
-  expression: 'sum(force) * z',
+  expressions: { M: 'sum(force) * z' },
   piecewise: {
     kind: 'cumulativeMoment', axis: 'z',
     breakpoints: ['position', 'supportA', 'supportB'],
@@ -137,7 +137,7 @@ const shaftDeflectionTerm: Formula = {
     ...supportPorts('A'),
     ...supportPorts('B'),
   ],
-  expression: 'sum(force) * z * z * z',
+  expressions: { S: 'sum(force) * z * z * z' },
   piecewise: {
     kind: 'cumulativeCubic', axis: 'z',
     breakpoints: ['position', 'supportA', 'supportB'],
@@ -171,7 +171,7 @@ const shaftDeflection: Formula = {
     { kind: 'numeric', name: 'E', unit: parseUnit('N/mm²'), description: text("Young's modulus") },
     { kind: 'numeric', name: 'I', unit: parseUnit('mm⁴'), description: text("The section's second moment of area") },
   ],
-  expression: 'z',
+  expressions: { y: 'z' },
   deflection: {
     axis: 'z',
     breakpoints: ['position', 'supportA', 'supportB'],
@@ -207,7 +207,7 @@ const shaftDistributedShear: Formula = {
     { kind: 'spectrum', name: 'end', unit: parseUnit('mm'), description: text('End of each distributed load') },
     { kind: 'spectrum', name: 'rate', unit: parseUnit('N/mm'), description: text('Load per unit length, signed, over its span') },
   ],
-  expression: 'sum(rate) * z',
+  expressions: { V: 'sum(rate) * z' },
   piecewise: { kind: 'cumulativeStep', axis: 'z', distributedStart: ['start'], distributedEnd: ['end'], distributedRate: ['rate'] },
   status: 'unverified',
 };
@@ -228,7 +228,7 @@ const shaftDistributedMoment: Formula = {
     { kind: 'spectrum', name: 'end', unit: parseUnit('mm'), description: text('End of each distributed load') },
     { kind: 'spectrum', name: 'rate', unit: parseUnit('N/mm'), description: text('Load per unit length, signed, over its span') },
   ],
-  expression: 'sum(rate) * z * z',
+  expressions: { M: 'sum(rate) * z * z' },
   piecewise: { kind: 'cumulativeMoment', axis: 'z', distributedStart: ['start'], distributedEnd: ['end'], distributedRate: ['rate'] },
   status: 'unverified',
 };

@@ -17,7 +17,7 @@
 
 import { useMemo, useState, type ReactElement } from 'react';
 
-import type { Catalogue, Formula, GraphNode } from '@joveworks/schema';
+import { soleExpression, type Catalogue, type Formula, type GraphNode } from '@joveworks/schema';
 import { parseExpression, toLatex } from '@joveworks/kernel';
 
 import { entries, search } from '../model/catalogues';
@@ -250,8 +250,14 @@ export function QuickAddMenu({
                       ))}
                     </span>
                   </span>
-                  {formula.expression === undefined ? null : (
-                    <Equation latex={toLatex(parseExpression(formula.expression))} displayMode={false} />
+                  {/* Only where there is one: a record answering with
+                      several has no single equation to preview, and the
+                      output symbols above already say what it produces. */}
+                  {soleExpression(formula) === undefined ? null : (
+                    <Equation
+                      latex={toLatex(parseExpression(soleExpression(formula) as string))}
+                      displayMode={false}
+                    />
                   )}
                 </button>
               ))}

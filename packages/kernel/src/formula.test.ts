@@ -148,7 +148,7 @@ describe('compiling against a node’s bindings', () => {
   it('resolves a generic port to what this node is wired to', () => {
     const compiled = compileFormula(byId('addTwo'), new Map([['A', FORCE]]));
     expect(compiled.scope.dimensions['a']).toEqual(FORCE);
-    expect(compiled.evaluate({ a: 2, b: 3 })).toBe(5);
+    expect(compiled.evaluate.get('sum')?.({ a: 2, b: 3 })).toBe(5);
 
     const lengths = compileFormula(byId('addTwo'), new Map([['A', LENGTH]]));
     expect(lengths.scope.dimensions['a']).toEqual(LENGTH);

@@ -124,7 +124,7 @@ function formula(feature: 'hole' | 'shaft', letters: readonly string[]): Formula
     ],
     // The lookup is the evaluator; this expression exists only to state and
     // statically prove the output dimension in the existing formula contract.
-    expression: '0 * diameter',
+    expressions: { deviation: '0 * diameter' },
     lookup: lookup(feature, letters),
     status: 'unverified',
   };

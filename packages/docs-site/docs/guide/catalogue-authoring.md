@@ -12,10 +12,17 @@ A catalogue has an integer `schemaVersion`, a globally unique `id`, a display
 a graph stores the formula id, version, and content hash, but no catalogue id.
 Use a durable namespace such as `course-name.topic.formula`.
 
-Each formula declares one output, its inputs, a safely parsed expression,
-description, status, and optional citation, applicability predicate, and
-variant group. Numeric ports declare units; categorical ports declare their
-allowed domain. Valid ranges are functional data: they also bound sweeps.
+Each formula declares one or more outputs, its inputs, a safely parsed
+expression, description, status, and optional citation, applicability
+predicate, and variant group. Numeric ports declare units; categorical ports
+declare their allowed domain. Valid ranges are functional data: they also
+bound sweeps.
+
+A record answering with several outputs writes `expression` as an object
+keyed by output name, and may key `appliesWhen` the same way where only some
+outputs stop applying. Outputs are computed in declared order and each may
+name any output declared before it, so a total is written as the difference
+of the two limits above it rather than restating their algebra.
 
 The complete field-by-field guide and an invented example live in
 [`docs/authoring-catalogues.md`](https://github.com/ThomasVanRiel/joveworks/blob/main/docs/authoring-catalogues.md).

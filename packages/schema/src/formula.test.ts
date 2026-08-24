@@ -8,6 +8,8 @@ import { describe, expect, it } from 'vitest';
  */
 
 import {
+  expressionOf,
+  soleExpression,
   findFormula,
   formulaHash,
   formulaRef,
@@ -66,7 +68,8 @@ describe('the formula record', () => {
   });
 
   it('leaves the expression a string for the kernel to parse', () => {
-    expect(parse().expression).toBe('a*b + c');
+    expect(soleExpression(parse())).toBe('a*b + c');
+    expect(expressionOf(parse(), 'y')).toBe('a*b + c');
   });
 
   it('lists its ports output first', () => {
@@ -121,7 +124,7 @@ describe('several outputs', () => {
   });
 
   it('needs no expression when a table answers for every output', () => {
-    expect(parse(table).expression).toBeUndefined();
+    expect(parse(table).expressions).toBeUndefined();
   });
 
   it('still demands an expression when no table answers', () => {
@@ -232,7 +235,7 @@ describe('references by id, version and hash', () => {
   it('notices a changed expression, and tells it apart from a missing formula', () => {
     const formula = parse();
     const ref = formulaRef(formula);
-    const edited: Formula = { ...formula, expression: 'a*b - c' };
+    const edited: Formula = { ...formula, expressions: { y: 'a*b - c' } };
 
     expect(matchRef(ref, formula)).toBe('match');
     expect(matchRef(ref, edited)).toBe('changed');
@@ -250,7 +253,7 @@ describe('references by id, version and hash', () => {
     // un-memoized `formulaHash` would notice this and return a different
     // string, exactly as `matchRef`'s own `edited` fixture above expects it
     // to for a genuinely new object.
-    (formula as { expression: string }).expression = 'a*b - c';
+    (formula as { expressions: Record<string, string> }).expressions = { y: 'a*b - c' };
     expect(formulaHash(formula)).toBe(first);
   });
 
@@ -274,7 +277,7 @@ describe('references by id, version and hash', () => {
         delete copy['description'];
         return copy;
       }),
-      expression: formula.expression as string,
+      expression: soleExpression(formula) as string,
       status: formula.status,
     });
     expect(formulaHash(formula)).toBe(asItAlwaysWas);
@@ -314,7 +317,7 @@ describe('catalogues', () => {
   });
 
   it('finds a formula by id', () => {
-    expect(findFormula(parseCatalogue(catalogue), 'demo.product')?.expression).toBe('a*b + c');
+    expect(soleExpression(findFormula(parseCatalogue(catalogue), 'demo.product') as Formula)).toBe('a*b + c');
     expect(findFormula(parseCatalogue(catalogue), 'demo.missing')).toBeUndefined();
   });
 

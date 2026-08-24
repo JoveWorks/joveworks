@@ -332,159 +332,84 @@
       "status": "unverified"
     },
     {
-      "id": "photography.dof.near-limit",
+      "id": "photography.dof.limits",
       "version": 1,
-      "output": {
-        "kind": "numeric",
-        "name": "D_n",
-        "unit": "mm",
-        "description": {
-          "en": "Near limit of acceptable sharpness."
-        }
-      },
-      "inputs": [
+      "output": [
         {
           "kind": "numeric",
-          "name": "H",
+          "name": "D_n",
           "unit": "mm",
-          "validRange": {
-            "min": 0
-          },
           "description": {
-            "en": "Hyperfocal distance."
+            "en": "Near limit of acceptable sharpness."
           }
         },
-        {
-          "kind": "numeric",
-          "name": "s",
-          "unit": "mm",
-          "validRange": {
-            "min": 0
-          },
-          "description": {
-            "en": "Focus (subject) distance."
-          }
-        },
-        {
-          "kind": "numeric",
-          "name": "f",
-          "unit": "mm",
-          "validRange": {
-            "min": 0
-          },
-          "description": {
-            "en": "Focal length of the lens."
-          }
-        }
-      ],
-      "expression": "(H * s) / (H + (s - f))",
-      "label": {
-        "en": "Depth of field, near limit"
-      },
-      "description": {
-        "en": "Near limit of acceptable sharpness for a lens focused at distance s."
-      },
-      "citation": "Depth of field, near limit",
-      "status": "unverified"
-    },
-    {
-      "id": "photography.dof.far-limit",
-      "version": 1,
-      "output": {
-        "kind": "numeric",
-        "name": "D_f",
-        "unit": "mm",
-        "description": {
-          "en": "Far limit of acceptable sharpness."
-        }
-      },
-      "inputs": [
-        {
-          "kind": "numeric",
-          "name": "H",
-          "unit": "mm",
-          "validRange": {
-            "min": 0
-          },
-          "description": {
-            "en": "Hyperfocal distance."
-          }
-        },
-        {
-          "kind": "numeric",
-          "name": "s",
-          "unit": "mm",
-          "validRange": {
-            "min": 0
-          },
-          "description": {
-            "en": "Focus (subject) distance."
-          }
-        },
-        {
-          "kind": "numeric",
-          "name": "f",
-          "unit": "mm",
-          "validRange": {
-            "min": 0
-          },
-          "description": {
-            "en": "Focal length of the lens."
-          }
-        }
-      ],
-      "expression": "(H * s) / (H - (s - f))",
-      "label": {
-        "en": "Depth of field, far limit"
-      },
-      "description": {
-        "en": "Far limit of acceptable sharpness for a lens focused at distance s. Only holds while s is within the hyperfocal distance; beyond it the far limit is effectively infinite and this formula does not apply."
-      },
-      "citation": "Depth of field, far limit",
-      "appliesWhen": "s < H",
-      "status": "unverified"
-    },
-    {
-      "id": "photography.dof.total",
-      "version": 1,
-      "output": {
-        "kind": "numeric",
-        "name": "DoF",
-        "unit": "mm",
-        "description": {
-          "en": "Total depth of field, from near to far limit."
-        }
-      },
-      "inputs": [
         {
           "kind": "numeric",
           "name": "D_f",
           "unit": "mm",
-          "validRange": {
-            "min": 0
-          },
           "description": {
             "en": "Far limit of acceptable sharpness."
           }
         },
         {
           "kind": "numeric",
-          "name": "D_n",
+          "name": "DoF",
+          "unit": "mm",
+          "description": {
+            "en": "Total depth of field, from the near limit to the far one."
+          }
+        }
+      ],
+      "inputs": [
+        {
+          "kind": "numeric",
+          "name": "H",
           "unit": "mm",
           "validRange": {
             "min": 0
           },
           "description": {
-            "en": "Near limit of acceptable sharpness."
+            "en": "Hyperfocal distance."
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "s",
+          "unit": "mm",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Focus (subject) distance."
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "f",
+          "unit": "mm",
+          "validRange": {
+            "min": 0
+          },
+          "description": {
+            "en": "Focal length of the lens."
           }
         }
       ],
-      "expression": "D_f - D_n",
+      "expression": {
+        "D_n": "(H * s) / (H + (s - f))",
+        "D_f": "(H * s) / (H - (s - f))",
+        "DoF": "D_f - D_n"
+      },
       "label": {
-        "en": "Total depth of field"
+        "en": "Depth of field"
       },
       "description": {
-        "en": "Total depth of field between the near and far limits."
+        "en": "Near limit, far limit and total depth of field for a lens focused at distance s, from one hyperfocal distance. The total is the difference between the two limits rather than a restatement of their algebra. Beyond the hyperfocal distance the far limit is effectively infinite: only it and the total stop applying there, while the near limit still holds."
+      },
+      "citation": "Depth of field",
+      "appliesWhen": {
+        "D_f": "s < H",
+        "DoF": "s < H"
       },
       "status": "unverified"
     },
@@ -967,13 +892,90 @@
           }
         ],
         "values": {
-          "MP": [32.3, 20.0, 24.0, 44.8, 17.9, 24.4, 24.0, 32.7, 60.2, 39.8],
-          "w": [35.9, 35.9, 35.9, 36.0, 22.3, 35.9, 23.5, 35.9, 35.7, 23.5],
-          "h": [23.9, 23.9, 23.9, 24.0, 14.9, 23.9, 15.6, 23.9, 23.8, 15.7],
-          "d": [43.13, 43.13, 43.13, 43.27, 26.82, 43.13, 28.21, 43.13, 42.91, 28.26],
-          "p": [5.16, 6.56, 5.98, 4.39, 4.3, 5.94, 3.92, 5.12, 3.76, 3.04],
-          "px": [6960, 5472, 6000, 8192, 5184, 6048, 6000, 7008, 9504, 7728],
-          "py": [4640, 3648, 4000, 5464, 3456, 4032, 4000, 4672, 6336, 5152]
+          "MP": [
+            32.3,
+            20.0,
+            24.0,
+            44.8,
+            17.9,
+            24.4,
+            24.0,
+            32.7,
+            60.2,
+            39.8
+          ],
+          "w": [
+            35.9,
+            35.9,
+            35.9,
+            36.0,
+            22.3,
+            35.9,
+            23.5,
+            35.9,
+            35.7,
+            23.5
+          ],
+          "h": [
+            23.9,
+            23.9,
+            23.9,
+            24.0,
+            14.9,
+            23.9,
+            15.6,
+            23.9,
+            23.8,
+            15.7
+          ],
+          "d": [
+            43.13,
+            43.13,
+            43.13,
+            43.27,
+            26.82,
+            43.13,
+            28.21,
+            43.13,
+            42.91,
+            28.26
+          ],
+          "p": [
+            5.16,
+            6.56,
+            5.98,
+            4.39,
+            4.3,
+            5.94,
+            3.92,
+            5.12,
+            3.76,
+            3.04
+          ],
+          "px": [
+            6960,
+            5472,
+            6000,
+            8192,
+            5184,
+            6048,
+            6000,
+            7008,
+            9504,
+            7728
+          ],
+          "py": [
+            4640,
+            3648,
+            4000,
+            5464,
+            3456,
+            4032,
+            4000,
+            4672,
+            6336,
+            5152
+          ]
         }
       },
       "label": {
@@ -1078,13 +1080,41 @@
           }
         ],
         "values": {
-          "f_min": [24, 100, 24],
-          "f_max": [105, 500, 240],
-          "N_wide": [4.0, 4.5, 4.0],
-          "N_tele": [4.0, 7.1, 6.3],
-          "d_min": [0.45, 0.9, 0.5],
-          "mass": [700, 1365, 750],
-          "filter": [77, 77, 72]
+          "f_min": [
+            24,
+            100,
+            24
+          ],
+          "f_max": [
+            105,
+            500,
+            240
+          ],
+          "N_wide": [
+            4.0,
+            4.5,
+            4.0
+          ],
+          "N_tele": [
+            4.0,
+            7.1,
+            6.3
+          ],
+          "d_min": [
+            0.45,
+            0.9,
+            0.5
+          ],
+          "mass": [
+            700,
+            1365,
+            750
+          ],
+          "filter": [
+            77,
+            77,
+            72
+          ]
         }
       },
       "label": {

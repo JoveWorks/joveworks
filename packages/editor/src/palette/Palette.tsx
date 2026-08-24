@@ -190,7 +190,7 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
    * its many output symbols (MP, w, h, d, p, px, py, ...) would swamp the
    * palette row, so the entry counts the library instead of listing them. */
   const pickerDomain = (formula: Formula): readonly (string | number)[] | undefined => {
-    if (formula.expression !== undefined || formula.lookup === undefined || formula.lookup.axes.length !== 1) {
+    if (formula.expressions !== undefined || formula.lookup === undefined || formula.lookup.axes.length !== 1) {
       return undefined;
     }
     const [axis] = formula.lookup.axes;

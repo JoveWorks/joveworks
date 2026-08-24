@@ -28,7 +28,9 @@ import {
   MAX_PORT,
   MEAN_PORT,
   STDDEV_PORT,
+  appliesWhenOf,
   domainMember,
+  expressionOf,
   isRange,
   renardValues,
   type Catalogue,
@@ -947,10 +949,22 @@ function evaluateFormula(
 
   // Nothing table-backed answered, so an expression must — the schema only
   // lets one be omitted when a lookup covers every output.
-  const evaluateExpression = compiled.evaluate;
-  if (evaluateExpression === undefined) {
-    throw new KernelError(`'${formula.id}' has neither an expression nor a table to evaluate`, nodeId);
-  }
+  const produced = formula.outputs.map((output) => {
+    const evaluate = compiled.evaluate.get(output.name);
+    if (evaluate === undefined) {
+      throw new KernelError(
+        `'${formula.id}' has neither an expression nor a table to compute '${output.name}'`,
+        nodeId,
+      );
+    }
+    return {
+      name: output.name,
+      evaluate,
+      appliesWhen: compiled.appliesWhen.get(output.name),
+      data: new Array<number>(cells),
+      outside: 0,
+    };
+  });
 
   const env: Record<string, number | readonly number[]> = {};
   const readers: Array<{ readonly name: string; readonly read: (cell: number) => number }> = [];
@@ -982,8 +996,6 @@ function evaluateFormula(
     ),
   }));
 
-  const data = new Array<number>(cells);
-  let outside = 0;
   for (let cell = 0; cell < cells; cell += 1) {
     for (const { name, read } of readers) env[name] = read(cell);
     for (const { name, perEdge } of spectrumReaders) {
@@ -991,24 +1003,36 @@ function evaluateFormula(
         contribution.kind === 'reader' ? [contribution.read(cell)] : contribution.values,
       );
     }
-    if (compiled.appliesWhen !== undefined && !compiled.appliesWhen(env)) outside += 1;
-    data[cell] = evaluateExpression(env);
+    // In declared order, each output joining the environment as it is
+    // computed: that is what lets a later expression name an earlier output
+    // — total depth of field is written `D_f - D_n`, not the near and far
+    // algebra restated. Forward-only, so no cycle is expressible.
+    for (const output of produced) {
+      if (output.appliesWhen !== undefined && !output.appliesWhen(env)) output.outside += 1;
+      const value = output.evaluate(env);
+      output.data[cell] = value;
+      env[output.name] = value;
+    }
   }
 
   // Using a formula outside the condition R&M states for it warns. It does
   // not block — the predecessor library never read these conditions at all, and
   // a student who does not know one exists is exactly who this is for.
-  if (outside > 0) {
+  for (const output of produced) {
+    if (output.outside === 0) continue;
     warnings.push({
       kind: 'appliesWhen',
       nodeId,
       message:
-        `'${formula.id}' applies when ${formula.appliesWhen as string}, which does not hold ` +
-        (cells === 1 ? 'here' : `at ${outside} of ${cells} points`),
+        `'${formula.id}'${formula.outputs.length === 1 ? '' : ` computes '${output.name}'`} ` +
+        `only when ${appliesWhenOf(formula, output.name) as string}, which does not hold ` +
+        (cells === 1 ? 'here' : `at ${output.outside} of ${cells} points`),
     });
   }
 
-  return single({ kind: 'numeric', axes, data });
+  return new Map(
+    produced.map((output) => [output.name, { kind: 'numeric', axes, data: output.data } as NumericSeries]),
+  );
 }
 
 // --- compare nodes -----------------------------------------------------------
@@ -1239,13 +1263,18 @@ function outputResult(
     // Guaranteed defined: resolveGraph already refused any wire whose
     // source is not a formula or closure node (graph.ts).
     const formula = resolution.formulas.get(edge.from.node) as Formula;
-    if (formula.expression === undefined) {
+    // The expression for the port actually wired, not the record's first:
+    // wire a merged node's far limit here and the far limit is what is
+    // typeset, which is the only reading that makes sense of the value
+    // beside it.
+    const expression = expressionOf(formula, edge.from.port);
+    if (expression === undefined) {
       throw new KernelError(`'${formula.id}' reads from a table, so there is no equation to show`, key);
     }
     return {
       ...base,
       kind: 'equation',
-      expression: formula.expression,
+      expression,
       ...(formula.citation === undefined ? {} : { citation: formula.citation }),
     };
   }

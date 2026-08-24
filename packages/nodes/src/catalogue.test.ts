@@ -32,6 +32,7 @@ import {
   serializeCatalogue,
   type Formula,
   type Port,
+  soleExpression,
 } from '@joveworks/schema';
 
 import {
@@ -171,10 +172,14 @@ describe('what the library carries', () => {
   it('names every port used by its expression, and uses every port it names', () => {
     for (const formula of HAND_AUTHORED) {
       if (formula.lookup !== undefined) continue;
+      // Every base node states one relation, so one expression — but read it
+      // through the per-output map either way, since that is where a record
+      // answering with several would keep them.
+      const expression = soleExpression(formula) as string;
       for (const port of formula.inputs) {
-        expect(formula.expression, formula.id).toContain(port.name);
+        expect(expression, formula.id).toContain(port.name);
       }
-      const identifiers = new Set(formula.expression.match(/[A-Za-z_][A-Za-z0-9_]*/gu) ?? []);
+      const identifiers = new Set(expression.match(/[A-Za-z_][A-Za-z0-9_]*/gu) ?? []);
       const inputs = new Set(formula.inputs.map((port) => port.name));
       for (const name of identifiers) {
         if (FUNCTIONS.has(name)) continue;

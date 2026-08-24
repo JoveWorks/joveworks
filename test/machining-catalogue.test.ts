@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 import { compileFormula, checkFormulaDimensions } from '@joveworks/kernel';
-import { loadCatalogue, type Formula } from '@joveworks/schema';
+import { loadCatalogue, type Formula, type OutputPort } from '@joveworks/schema';
 import { fromCanonical, parseUnit, toCanonical } from '@joveworks/units';
 
 const catalogue = loadCatalogue(
@@ -20,7 +20,13 @@ function formula(id: string): Formula {
 }
 
 function evaluate(id: string, inputs: Readonly<Record<string, number>>): number {
-  return compileFormula(formula(id), new Map()).evaluate(inputs);
+  // Every machining record answers with one output, so its one compiled
+  // expression is the only entry in the map.
+  const record = formula(id);
+  const only = record.outputs[0] as OutputPort;
+  const compiled = compileFormula(record, new Map()).evaluate.get(only.name);
+  if (compiled === undefined) throw new Error(`no expression for '${id}'`);
+  return compiled(inputs);
 }
 
 const canonical = (value: number, unit: string): number => toCanonical(value, parseUnit(unit));
