@@ -1012,10 +1012,10 @@ aside.right {
 
 /* Several outputs on one node — a camera's spec sheet, a photograph's
    settings — read as a list rather than as a stack of separate results: one
-   rule above the whole group, and one line per property with the value on
-   the left and its name, unit and pin on the right. A single-output node
-   keeps the roomier two-line treatment, where the name has the row to
-   itself and nothing is competing for the space. */
+   rule above the whole group, and one two-line stack per property, matching
+   the single-output treatment (value above, sparkline and pin below) rather
+   than cramming a row onto one line — the sparkline is illegible any
+   smaller, and the value gets clipped if it has to share a line with it. */
 .node .node-values {
   margin-top: 4px;
   padding-top: 2px;
@@ -1023,15 +1023,23 @@ aside.right {
 }
 
 .node .node-values .node-value {
-  margin-top: 0;
+  margin-top: 4px;
   padding-top: 0;
-  min-height: 18px;
   border-top: none;
-  flex-wrap: nowrap;
   gap: 4px;
 }
 
-/* Off the second line and onto the end of the first. */
+.node .node-values .node-value:first-child {
+  margin-top: 0;
+}
+
+/* Its own line, full width, so a long reading never has to compete with the
+   sparkline for space. */
+.node .node-values .reading {
+  flex-basis: 100%;
+}
+
+/* Off the value's line and onto the end of the sparkline's. */
 .node .node-values .port-out {
   flex-basis: auto;
   margin-left: auto;
@@ -1042,12 +1050,6 @@ aside.right {
    same sentence ten times over — the sparkline already says it is swept. */
 .node .node-values .axis {
   display: none;
-}
-
-.node .node-values .reading {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .node .reading {
