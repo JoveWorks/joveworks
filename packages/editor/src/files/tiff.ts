@@ -132,6 +132,24 @@ export function numberAt(
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
 }
 
+/**
+ * One entry of a packed numeric block, by index.
+ *
+ * Canon keeps several small records — shot settings, file info — as one long
+ * `SHORT` array under a single tag, addressed positionally. Only fixed-width
+ * types are read this way: a `RATIONAL` array can drop an unreadable entry
+ * and shift everything after it, which would silently answer with a
+ * neighbour instead of nothing.
+ */
+export function packedAt(
+  tags: ReadonlyMap<number, readonly TiffValue[]>,
+  tag: number,
+  index: number,
+): number | undefined {
+  const value = tags.get(tag)?.[index];
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
 /** The first value of `tag`, when it is a non-empty string. */
 export function textAt(
   tags: ReadonlyMap<number, readonly TiffValue[]>,

@@ -281,6 +281,14 @@ another (`Canon EOS R6m3` against `Canon EOS R6 Mark III`), many-to-one, since
 one body sells under a different name per market. Matching happens at the
 lookup; the wire keeps carrying whatever the file actually said.
 
+Focus distance turned out to be readable after all, and is: Canon records the
+bracket its focus encoder believes the subject sits in, and `s` is the middle
+of it — the same number ExifTool averages for its own depth-of-field figure,
+which the two now agree on to the millimetre. It is the one field taken out of
+the maker note, and it cost the tidy claim that block boundaries were the
+privacy guard: serial numbers live in the ordinary EXIF block too, so what
+actually holds the line is the fixed field list, which a test now says so.
+
 Open, in rough order of appetite:
 
 - **A CSV/spreadsheet reader**, the case the registry was built for. Its fields
@@ -288,10 +296,6 @@ Open, in rough order of appetite:
   a per-field description on `FileField` (today's descriptions live on the
   reader, since they are the same sentence for every photograph) and a decision
   about which columns become sweeps rather than scalars.
-- **Subject distance `s`**, the one depth-of-field input a photograph does not
-  hand over: Canon writes it into the maker note, which the reader deliberately
-  does not open. Opening it for one tag means walking a proprietary block that
-  also holds a body serial number, so it wants a decision, not just code.
 - **Aliases for non-Canon bodies**, which nothing can currently produce — a
   reader for another maker's raw (or plain JPEG, which wraps the same TIFF
   structure the CR3 blocks already parse) would make them exercisable.

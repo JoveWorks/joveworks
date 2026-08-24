@@ -116,11 +116,12 @@ catalogue changes the sweep without editing the input node.
 Reads a file you pick and offers what it found as ports. Today one reader
 is available: a **photograph**, from a Canon CR3 raw. It answers with the
 settings the frame was taken at — focal length `f`, aperture `N`, exposure
-time `t`, `ISO`, the pixel counts `px`/`py`, the sensor size `w`/`h`, and
-the names the body gives itself and its lens as `camera` and `lens`. Those
-last two wire straight into the [camera and lens libraries](#formula):
-the library knows the name a body writes into its own files, so a
-photograph selects its own row.
+time `t`, `ISO`, focus distance `s`, the pixel counts `px`/`py`, the sensor
+size `w`/`h`, and the names the body gives itself and its lens as `camera`
+and `lens`. Those last two wire straight into the [camera and lens
+libraries](#formula): the library knows the name a body writes into its own
+files, so a photograph selects its own row. With `f`, `N` and `s` all read
+from the frame, a depth-of-field graph needs nothing typed in at all.
 
 Two things to know about it:
 
@@ -129,15 +130,20 @@ Two things to know about it:
   saved. Hand the NodeBook to someone else and every number still
   evaluates, but the node names a file they do not have. Re-pick to follow
   a different frame.
-- **Only these fields are read.** A raw file also carries a body serial
-  number and, if the camera had a fix, where the frame was taken. Neither
-  is read, so neither can travel with a NodeBook you share.
+- **Only these fields are read.** A raw file also carries body and lens
+  serial numbers, and — if the camera had a fix — where the frame was taken.
+  What keeps those out of a NodeBook you share is the fixed field list: it
+  names the tags it wants and reads nothing else. The location block is held
+  out structurally as well, and is never opened at all.
 
-Sensor size is derived from the focal-plane resolution rather than
-recorded outright, so it is close but not exact — the camera library
-answers the same question from published figures if you need it precise.
-Subject distance is not in the file at all (Canon keeps it in a private
-block this reader does not open), so wire a plain input node for `s`.
+Two readings come with a caveat. Sensor size is derived from the
+focal-plane resolution rather than recorded outright, so it is close but
+not exact — the camera library answers the same question from published
+figures if you need it precise. And focus distance is a bracket rather than
+a measurement: the camera records the interval its focus encoder believes
+the subject sits in, and `s` is the middle of it. A subject further away
+than that encoder can report leaves `s` empty rather than guessing; wire an
+input node for it when the exact distance matters.
 
 Pick several files at once and the node becomes a sweep: one point per
 file, and every field an axis you can plot against — how depth of field

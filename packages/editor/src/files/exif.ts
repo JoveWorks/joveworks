@@ -1,18 +1,20 @@
 /**
  * What a photograph knows about how it was taken.
  *
- * The field list is fixed: this reader always answers with the same ten
+ * The field list is fixed: this reader always answers with the same eleven
  * ports, and a tag the file did not record answers `null` rather than
  * dropping the port. That keeps a file node's shape stable — the same wires
  * still land after re-reading a different frame — and it is the honest
  * report, since "this body does not write that tag" is a fact about the
  * photograph, not a reason to change the node.
  *
- * The list is also deliberately short. Everything here is a quantity one of
- * the photography catalogue's formulas actually consumes; a raw file carries
- * far more, including a body serial number and, if the camera had a fix,
- * where the frame was taken. None of that is read — see `bmff.ts`, which
- * never descends into the maker note or the GPS block.
+ * The list is also deliberately short, and that is the whole of the privacy
+ * story: everything here is a quantity one of the photography catalogue's
+ * formulas actually consumes, and a raw file carries far more — body and
+ * lens serial numbers among them, in the ordinary EXIF block as much as in
+ * the maker note. What keeps those out of a shared NodeBook is this list,
+ * which names the tags it wants and reads nothing else. GPS is the one thing
+ * held out structurally too: `bmff.ts` never walks that block at all.
  *
  * Two things a photograph cannot tell us, both worth knowing about:
  *
@@ -22,20 +24,38 @@
  *   the pixel count includes masked photosites on some bodies. The camera
  *   library node answers the same question from published figures, so the
  *   two are worth comparing when it matters.
- * - **Subject distance is absent.** The one input a depth-of-field
- *   calculation needs beyond these is where the lens was focused, and Canon
- *   writes it into the maker note rather than into EXIF proper. Wire an
- *   input node for `s`.
+ * - **Focus distance is a bracket, reported as its middle.** Standard EXIF
+ *   `SubjectDistance` is not written by these bodies at all; Canon records
+ *   the interval its focus encoder believes the subject sits in, and `s` is
+ *   the midpoint of that interval. It is the one field read out of the maker
+ *   note, and it is the same number ExifTool averages for its own
+ *   depth-of-field figure. A frame focused past what the encoder can report
+ *   answers with nothing rather than a saturated number; wire an input node
+ *   for `s` when a reading matters more than convenience.
  */
 
 import { DIMENSIONLESS_UNIT, parseUnit } from '@joveworks/units';
 
 import { canonMetadataBlocks, isCr3 } from './bmff';
-import { numberAt, readTiffBlock, textAt, type TiffValue } from './tiff';
+import { numberAt, packedAt, readTiffBlock, textAt, type TiffValue } from './tiff';
 import type { ReadField } from './readers';
 
 /** Image IFD (`CMT1`). */
 const MODEL = 0x0110;
+
+/**
+ * Canon maker note (`CMT3`). Two packed `SHORT` blocks carry the same focus
+ * bracket at different offsets, and the file may fill in either — the
+ * Upper/Lower naming is even swapped between them, which does not matter to
+ * a midpoint. Nothing else in this block is read.
+ */
+const SHOT_INFO = 0x0004;
+const SHOT_INFO_DISTANCES = [19, 20] as const;
+const FILE_INFO = 0x0093;
+const FILE_INFO_DISTANCES = [20, 21] as const;
+
+/** The encoder's "I cannot say" — the ceiling of the 16-bit field it is written in. */
+const NO_READING = 65535;
 
 /** EXIF IFD (`CMT2`). */
 const EXPOSURE_TIME = 0x829a;
@@ -50,6 +70,7 @@ const FOCAL_PLANE_RESOLUTION_UNIT = 0xa210;
 const LENS_MODEL = 0xa434;
 
 const MM = parseUnit('mm');
+const METRE = parseUnit('m');
 const SECOND = parseUnit('s');
 
 /** What each field means, on the node itself — see `FileReaderDefinition.descriptions`. */
@@ -58,6 +79,10 @@ export const EXIF_DESCRIPTIONS: ReadonlyMap<string, string> = new Map([
   ['N', 'Aperture the frame was taken at, as an f-number.'],
   ['t', 'Exposure time.'],
   ['ISO', 'Sensitivity the frame was recorded at.'],
+  [
+    's',
+    'Where the lens was focused — the middle of the bracket the camera records, which is as precise as its focus encoder gets. Empty when the subject was beyond what that encoder can report; wire an input node for s when the exact distance matters.',
+  ],
   ['px', 'Horizontal pixel count of the recorded frame.'],
   ['py', 'Vertical pixel count of the recorded frame.'],
   [
@@ -91,6 +116,29 @@ function positive(value: number | undefined): number | null {
 }
 
 /**
+ * Where the lens was focused, in metres: the middle of the bracket Canon
+ * records, in centimetres, in whichever of its two blocks carries it.
+ *
+ * Either bound reading as the field's ceiling means the subject was further
+ * away than the encoder can express, and averaging a real bound with a
+ * ceiling would answer with a confident number that is nothing of the kind —
+ * so a bracket with a saturated end reports nothing at all.
+ */
+function focusDistance(makerNote: ReadonlyMap<number, readonly TiffValue[]>): number | null {
+  for (const [tag, [first, second]] of [
+    [SHOT_INFO, SHOT_INFO_DISTANCES],
+    [FILE_INFO, FILE_INFO_DISTANCES],
+  ] as const) {
+    const near = packedAt(makerNote, tag, first);
+    const far = packedAt(makerNote, tag, second);
+    if (near === undefined || far === undefined) continue;
+    if (near <= 0 || far <= 0 || near >= NO_READING || far >= NO_READING) continue;
+    return (near + far) / 2 / 100;
+  }
+  return null;
+}
+
+/**
  * Reads one CR3. Throws when the bytes are not a Canon raw v3 at all — that
  * is worth saying out loud, unlike a missing tag, which is just a `null`.
  */
@@ -102,6 +150,7 @@ export function readExif(bytes: ArrayBuffer): readonly ReadField[] {
   const blocks = canonMetadataBlocks(view);
   const image = blockTags(view, blocks.get('CMT1'));
   const exif = blockTags(view, blocks.get('CMT2'));
+  const makerNote = blockTags(view, blocks.get('CMT3'));
   if (image.size === 0 && exif.size === 0) {
     throw new Error('this CR3 carries no readable metadata');
   }
@@ -115,6 +164,7 @@ export function readExif(bytes: ArrayBuffer): readonly ReadField[] {
     { name: 'N', unit: DIMENSIONLESS_UNIT, value: positive(numberAt(exif, F_NUMBER)) },
     { name: 't', unit: SECOND, value: positive(numberAt(exif, EXPOSURE_TIME)) },
     { name: 'ISO', unit: DIMENSIONLESS_UNIT, value: positive(numberAt(exif, ISO_SPEED)) },
+    { name: 's', unit: METRE, value: focusDistance(makerNote) },
     { name: 'px', unit: DIMENSIONLESS_UNIT, value: px },
     { name: 'py', unit: DIMENSIONLESS_UNIT, value: py },
     {

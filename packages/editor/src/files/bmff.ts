@@ -7,10 +7,17 @@
  * self-contained TIFF blocks named `CMT1`..`CMT4`.
  *
  * Only the structure needed to reach those blocks is implemented, and
- * deliberately only two of them: `CMT1` (the image IFD) and `CMT2` (the
- * EXIF IFD). `CMT3` is the Canon maker note and `CMT4` is GPS — this walker
- * never descends into either, which is what keeps a shared NodeBook free of
- * a body's serial number and the coordinates a frame was taken at.
+ * deliberately only three of them: `CMT1` (the image IFD), `CMT2` (the EXIF
+ * IFD) and `CMT3` (the Canon maker note). `CMT4` is GPS and is never walked
+ * at all, so the coordinates a frame was taken at cannot reach a document by
+ * any path.
+ *
+ * `CMT3` is opened for exactly one thing — the focus distance, which is the
+ * one input a depth-of-field calculation needs and which standard EXIF does
+ * not carry on these bodies (`exif.ts`). It also holds serial numbers, and
+ * so, for that matter, does `CMT2`: what keeps those out of a shared NodeBook
+ * is the fixed field list in `exif.ts`, which reads a named handful of tags
+ * and nothing else. The block boundary is not the guard and never was.
  */
 
 /** One box's payload — `type` is its four-character name. */
@@ -86,8 +93,8 @@ export function isCr3(view: DataView): boolean {
 }
 
 /**
- * The `CMT1`/`CMT2` blocks, by name — `moov` → Canon's `uuid` → the CMT
- * boxes inside it. Absent when the file has no such box, which is every
+ * The `CMT1`/`CMT2`/`CMT3` blocks, by name — `moov` → Canon's `uuid` → the
+ * CMT boxes inside it. Absent when the file has no such box, which is every
  * file that is not a Canon raw.
  */
 export function canonMetadataBlocks(view: DataView): ReadonlyMap<string, Box> {
@@ -97,7 +104,8 @@ export function canonMetadataBlocks(view: DataView): ReadonlyMap<string, Box> {
   for (const box of boxes(view, moov.start, moov.end)) {
     if (box.type !== 'uuid' || !isCanonUuid(view, box.start)) continue;
     for (const inner of boxes(view, box.start + CANON_UUID.length, box.end)) {
-      if (inner.type === 'CMT1' || inner.type === 'CMT2') blocks.set(inner.type, inner);
+      if (inner.type === 'CMT4') continue; // GPS, never read.
+      if (/^CMT[1-3]$/u.test(inner.type)) blocks.set(inner.type, inner);
     }
   }
   return blocks;

@@ -56,6 +56,14 @@ const rational = (tag: number, numerator: number, denominator: number): Entry =>
   return { tag, type: 5, data, count: 1 };
 };
 
+/** A packed block: one long SHORT array addressed by index, as Canon writes them. */
+const shorts = (tag: number, values: Readonly<Record<number, number>>, length: number): Entry => {
+  const data = new Uint8Array(length * 2);
+  const view = new DataView(data.buffer);
+  for (const [index, value] of Object.entries(values)) view.setUint16(Number(index) * 2, value, true);
+  return { tag, type: 3, data, count: length };
+};
+
 const ascii = (tag: number, text: string): Entry => {
   const data = new Uint8Array(text.length + 1);
   for (let i = 0; i < text.length; i += 1) data[i] = text.charCodeAt(i);
@@ -123,6 +131,8 @@ const FOCAL_PLANE_UNIT = 0xa210;
 const LENS_MODEL = 0xa434;
 const GPS_LATITUDE = 0x0002;
 const CANON_SERIAL = 0x000c;
+const SHOT_INFO = 0x0004;
+const FILE_INFO = 0x0093;
 
 const frame = cr3({
   CMT1: [ascii(MODEL, 'Canon EOS R6m3')],
@@ -138,7 +148,10 @@ const frame = cr3({
     short(FOCAL_PLANE_UNIT, 2),
     ascii(LENS_MODEL, 'RF24-105mm F4 L IS USM'),
   ],
-  CMT3: [long(CANON_SERIAL, 123_456_789)],
+  // Focus distances at ShotInfo's indices 19 and 20, in centimetres — the
+  // bracket a real frame carries, next to the serial number that must not
+  // come out with them.
+  CMT3: [long(CANON_SERIAL, 123_456_789), shorts(SHOT_INFO, { 19: 45, 20: 47 }, 34)],
   CMT4: [rational(GPS_LATITUDE, 5087, 100)],
 });
 
@@ -179,11 +192,37 @@ describe('reading a photograph', () => {
     expect(unitOf('camera')).toBeUndefined();
   });
 
-  it('answers the same ten fields whatever the file left out', () => {
+  it('reports the middle of the focus bracket the camera recorded', () => {
+    // 0.45 m and 0.47 m — the midpoint is what exiftool averages for its own
+    // depth-of-field figure, so the two agree by construction.
+    expect(readExif(frame).find((field) => field.name === 's')?.value).toBeCloseTo(0.46, 10);
+  });
+
+  it('reads the bracket out of the second block when the first does not carry it', () => {
+    const elsewhere = cr3({
+      CMT1: [ascii(MODEL, 'Canon EOS R6 Mark III')],
+      CMT2: [rational(FOCAL_LENGTH, 50, 1)],
+      CMT3: [shorts(FILE_INFO, { 20: 120, 21: 140 }, 91)],
+    });
+    expect(valueOf(readExif(elsewhere), 's')).toBeCloseTo(1.3, 10);
+  });
+
+  it('answers with nothing when the subject was beyond what the encoder can report', () => {
+    // 65535 is the ceiling of the field, not a distance: averaging it with
+    // the other bound would invent a confident number out of a "cannot say".
+    const distant = cr3({
+      CMT1: [ascii(MODEL, 'Canon EOS R6 Mark III')],
+      CMT2: [rational(FOCAL_LENGTH, 500, 1)],
+      CMT3: [shorts(SHOT_INFO, { 19: 8191, 20: 65535 }, 34)],
+    });
+    expect(valueOf(readExif(distant), 's')).toBeNull();
+  });
+
+  it('answers the same eleven fields whatever the file left out', () => {
     const bare = cr3({ CMT1: [ascii(MODEL, 'Canon EOS R6m3')], CMT2: [rational(FOCAL_LENGTH, 85, 1)] });
     const fields = readExif(bare);
     expect(fields.map((field) => field.name)).toEqual([
-      'f', 'N', 't', 'ISO', 'px', 'py', 'w', 'h', 'camera', 'lens',
+      'f', 'N', 't', 'ISO', 's', 'px', 'py', 'w', 'h', 'camera', 'lens',
     ]);
     expect(valueOf(fields, 'f')).toBe(85);
     // Nothing to derive a sensor size from, and no lens name recorded.
@@ -191,12 +230,16 @@ describe('reading a photograph', () => {
     expect(valueOf(fields, 'lens')).toBeNull();
   });
 
-  it('never reads the maker note or the GPS block, which the fixture both carries', () => {
-    // The privacy claim, as a test rather than a comment: this frame holds a
-    // body serial number and a latitude, and neither can reach a document.
-    const fields = readExif(frame);
-    expect(fields.map((field) => field.value)).not.toContain(123_456_789);
-    expect(fields.map((field) => field.value)).not.toContain(50.87);
+  it('takes only the focus bracket out of the maker note, and nothing out of GPS', () => {
+    // The privacy claim, as a test rather than a comment. The maker note is
+    // opened now — the focus distance is in it — so what holds the line is
+    // the fixed field list, not the block boundary: this frame carries a body
+    // serial number beside the bracket, and a latitude in a block never
+    // walked at all. Neither can reach a document.
+    const values = readExif(frame).map((field) => field.value);
+    expect(values).not.toContain(123_456_789);
+    expect(values).not.toContain(50.87);
+    expect(values).toContain(0.46);
   });
 
   it('describes every field it answers with, so no port hovers blank', () => {
