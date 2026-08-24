@@ -107,11 +107,13 @@ import {
   CANTILEVER_FORMULAS,
   MILLING_STUDY_FORMULAS,
   DEPTH_OF_FIELD_FORMULAS,
+  APERTURE_DECISION_FORMULAS,
   beltLab,
   pressfitLab,
   cantileverHollowSections,
   millingPowerEnvelope,
   depthOfField,
+  apertureDecision,
   monteCarloClearance,
   padPressure,
   platformFootprint,
@@ -170,6 +172,7 @@ function exampleDocument(
   if (id === 'pressfit-lab') return pressfitLab(catalogues, locale);
   if (id === 'cantilever-hollow-sections') return cantileverHollowSections(catalogues, locale);
   if (id === 'depth-of-field') return depthOfField(catalogues, locale);
+  if (id === 'aperture-decision') return apertureDecision(catalogues, locale);
   return millingPowerEnvelope(catalogues, locale);
 }
 
@@ -693,6 +696,7 @@ function AppShell(): ReactElement {
   const cantileverAvailable = provides(catalogues, CANTILEVER_FORMULAS);
   const millingAvailable = provides(catalogues, MILLING_STUDY_FORMULAS);
   const depthOfFieldAvailable = provides(catalogues, DEPTH_OF_FIELD_FORMULAS);
+  const apertureDecisionAvailable = provides(catalogues, APERTURE_DECISION_FORMULAS);
 
   const loadCatalogueFile = async (): Promise<void> => {
     const file = await openTextFile();
@@ -929,6 +933,7 @@ function AppShell(): ReactElement {
           setTutorial({ kind: 'example', id: 'milling-power-envelope' });
         }),
     },
+    { heading: t('Photography') },
     {
       label: t('Depth of field — aperture and focal length'),
       disabled: !depthOfFieldAvailable,
@@ -937,6 +942,16 @@ function AppShell(): ReactElement {
           openExample('depth-of-field');
           setShowNotebook(true);
           setTutorial({ kind: 'example', id: 'depth-of-field' });
+        }),
+    },
+    {
+      label: t('Choose an aperture — depth versus diffraction'),
+      disabled: !apertureDecisionAvailable,
+      onClick: () =>
+        guardDiscard(() => {
+          openExample('aperture-decision');
+          setShowNotebook(true);
+          setTutorial({ kind: 'example', id: 'aperture-decision' });
         }),
     },
   ];

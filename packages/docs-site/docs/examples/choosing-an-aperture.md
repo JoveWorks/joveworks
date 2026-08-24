@@ -12,10 +12,10 @@ a decision anyone can check. This page builds that last step four ways, each
 one a few nodes on top of a sweep you already have.
 
 It uses the public **Photography** catalogue bundled with JoveWorks; no course
-catalogue is required. Unlike [Pocket
-milling](/examples/milling-power-envelope) it is a build-it-yourself
-walkthrough rather than a bundled sample — but every number below is computed
-by the editor, not estimated: they are asserted in
+catalogue is required. Open **Help → Photography → Choose an aperture — depth
+versus diffraction** to explore the finished graph, or follow this page as a
+build-it-yourself walkthrough. Every number below is computed by the editor,
+not estimated: they are asserted in
 `packages/editor/src/model/photographyStudy.test.ts`, so if the catalogue
 changes under them, that test fails.
 

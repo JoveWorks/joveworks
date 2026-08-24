@@ -11,4 +11,8 @@ describe('example tutorials', () => {
     expect(steps.some((step) => step.target === '[data-tour="notebook"]')).toBe(true);
     expect(steps.some((step) => step.body.toLowerCase().includes('notebook'))).toBe(true);
   });
+
+  it('falls back safely when hot reload preserves a stale example id', () => {
+    expect(exampleTutorialSteps('stale-example' as never)).toBe(TUTORIAL_STEPS);
+  });
 });

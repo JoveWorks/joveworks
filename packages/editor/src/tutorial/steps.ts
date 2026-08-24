@@ -149,6 +149,16 @@ const EXAMPLE_COPY = {
     studyBody: 'Hyperfocal distance, near limit, far limit and total depth of field are evaluated for every focal-length × aperture pair in the grid.',
     resultBody: 'The 0.5 m check turns the contour into a decision: the wide end clears it at almost any aperture, while the 105 mm end never does in this grid — the sensitivity tornado says which dial moves the result more.',
   },
+  'aperture-decision': {
+    title: 'Choose an aperture — depth versus diffraction',
+    opening: 'This example chooses one real f-stop by balancing the depth gained from stopping down against the diffraction blur that stopping down also introduces.',
+    inputTarget: '[data-tour="input-N"]',
+    inputTitle: 'Compare settings the lens actually offers',
+    inputBody: 'The aperture input lists seven full-stop settings from f/2.8 to f/22. Each setting produces both a depth-of-field result and a diffraction-blur result.',
+    studyTitle: 'Two requirements define what is usable',
+    studyBody: 'A candidate must provide at least 300 mm of depth of field while keeping diffraction blur within a camera-specific three-pixel blur circle. The checks pull in opposite directions.',
+    resultBody: 'Best Design considers only candidates that pass both checks, then maximises depth of field. It selects f/11—not f/22—because the smaller stops fail the diffraction limit.',
+  },
 } as const satisfies Readonly<Record<string, ExampleTutorialCopy>>;
 
 export type TutorialExampleId = keyof typeof EXAMPLE_COPY;
@@ -157,7 +167,11 @@ export type TutorialExampleId = keyof typeof EXAMPLE_COPY;
  * the canvas/report relationship explicit, while the study steps explain what
  * is distinctive about each graph. */
 export function exampleTutorialSteps(id: TutorialExampleId): readonly TutorialStep[] {
-  const copy = EXAMPLE_COPY[id];
+  // Hot replacement can preserve the App's tutorial state while this module's
+  // copy table is being replaced. Treat that brief mismatch like a closed
+  // example tutorial instead of crashing the whole editor.
+  const copy = (EXAMPLE_COPY as Partial<Record<string, ExampleTutorialCopy>>)[id];
+  if (copy === undefined) return TUTORIAL_STEPS;
   return [
     { title: copy.title, body: copy.opening, placement: 'center' },
     {

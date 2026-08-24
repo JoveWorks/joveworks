@@ -1106,3 +1106,169 @@ export function depthOfField(catalogues: readonly Catalogue[], locale: AppLocale
 
   return localizeExample(document('depth-of-field', 'Depth of field — aperture and focal length', withFrames, edges, frames), locale);
 }
+
+// --- choose an aperture, from the public Photography catalogue --------------
+
+export const APERTURE_DECISION_FORMULAS = [
+  'photography.camera.properties',
+  'photography.dof.circle-of-confusion-pixels',
+  'photography.dof.hyperfocal-distance',
+  'photography.dof.limits',
+  'photography.diffraction.blur-diameter',
+] as const;
+
+/**
+ * Pick a real f-stop that gives at least 300 mm of depth of field without
+ * letting diffraction blur exceed a three-pixel circle of confusion.
+ *
+ * The Best Design output is the point of this example: it maximises depth of
+ * field only among candidates that pass both checks, so it selects f/11 rather
+ * than the unconstrained maximum at f/22.
+ */
+export function apertureDecision(catalogues: readonly Catalogue[], locale: AppLocale = 'en'): GraphDocument | undefined {
+  if (!provides(catalogues, APERTURE_DECISION_FORMULAS)) return undefined;
+  const formula = (id: string): Formula => lookup(catalogues, id) as Formula;
+
+  const dimensionless = parseUnit('');
+  const mm = parseUnit('mm');
+  const micrometre = parseUnit('µm');
+
+  const nodes: GraphNode[] = [
+    input('f', 'Focal length', { kind: 'scalar', value: 50, unit: mm }, at(330, -55)),
+    {
+      ...input(
+        'N',
+        'Available apertures',
+        { kind: 'list', values: [2.8, 4, 5.6, 8, 11, 16, 22], unit: dimensionless },
+        at(330, 55),
+      ),
+      axisLabel: 'aperture (f-number)',
+    },
+    input('s', 'Focus distance', { kind: 'scalar', value: 2, unit: parseUnit('m') }, at(330, -165)),
+    formulaNode('camera', formula('photography.camera.properties'), at(330, 330)),
+    input(
+      'blurPixels',
+      'Acceptable blur circle',
+      { kind: 'scalar', value: 3, unit: dimensionless },
+      at(330, 770),
+    ),
+
+    formulaNode('coc', formula('photography.dof.circle-of-confusion-pixels'), at(715, 550)),
+    formulaNode('hyperfocal', formula('photography.dof.hyperfocal-distance'), at(1155, 55)),
+    formulaNode('diffraction', formula('photography.diffraction.blur-diameter'), at(1155, 330)),
+    formulaNode('dof', formula('photography.dof.limits'), at(1540, -55)),
+
+    {
+      ...output('dofPlot', 'Depth of field by aperture', { kind: 'plot', x: 'N', unit: mm }, at(2145, 110)),
+      caption: 'Stopping down increases the distance range that appears acceptably sharp.',
+    },
+    {
+      ...output(
+        'diffractionPlot',
+        'Diffraction blur by aperture',
+        { kind: 'plot', x: 'N', unit: micrometre },
+        at(2145, 330),
+      ),
+      caption: 'The threshold is the camera-specific three-pixel blur circle; lower is sharper.',
+    },
+    {
+      ...output(
+        'enoughDepth',
+        'At least 300 mm of depth of field',
+        { kind: 'check', comparison: '>=', threshold: { value: 300, unit: mm } },
+        at(2145, 715),
+      ),
+      caption: 'Reject apertures that leave less than 300 mm of the scene acceptably sharp.',
+    },
+    {
+      ...output(
+        'sharpEnough',
+        'Diffraction stays within the blur limit',
+        { kind: 'check', comparison: '<=', threshold: { value: 15, unit: micrometre } },
+        at(2145, 935),
+      ),
+      caption: 'The limit is wired from the selected camera and the three-pixel criterion above.',
+    },
+    {
+      ...output(
+        'bestAperture',
+        'Best aperture for maximum usable depth',
+        { kind: 'bestDesign', checks: ['enoughDepth', 'sharpEnough'], direction: 'maximize' },
+        at(2145, 1265),
+      ),
+      caption: 'Choose the greatest depth of field among the f-stops that pass both checks.',
+    },
+  ];
+
+  const edges = [
+    wire('camera.p', 'coc.p'),
+    wire('blurPixels.value', 'coc.n'),
+
+    wire('f.value', 'hyperfocal.f'),
+    wire('N.value', 'hyperfocal.N'),
+    wire('coc.c', 'hyperfocal.c'),
+
+    wire('hyperfocal.H', 'dof.H'),
+    wire('f.value', 'dof.f'),
+    wire('s.value', 'dof.s'),
+
+    wire('N.value', 'diffraction.N'),
+
+    wire('dof.DoF', 'dofPlot.value'),
+    wire('diffraction.b', 'diffractionPlot.value'),
+    wire('coc.c', 'diffractionPlot.threshold'),
+
+    wire('dof.DoF', 'enoughDepth.value'),
+    wire('diffraction.b', 'sharpEnough.value'),
+    wire('coc.c', 'sharpEnough.threshold'),
+    wire('dof.DoF', 'bestAperture.objective'),
+  ];
+
+  const frames = [
+    {
+      id: 'tradeoff',
+      title: '1. The aperture trade-off',
+      note:
+        'For a 50 mm lens focused at 2 m, stopping down increases depth of field but also ' +
+        'increases diffraction blur. The blur threshold comes from three pixels on the selected ' +
+        'camera, so it follows the camera choice instead of being copied by hand.',
+      position: at(2090, 55),
+      size: { width: 330, height: 550 },
+    },
+    {
+      id: 'requirements',
+      title: '2. Which f-stops are usable?',
+      note:
+        'A candidate must provide at least 300 mm of depth of field and keep diffraction blur ' +
+        'within the three-pixel limit. Only f/8 and f/11 satisfy both requirements.',
+      position: at(2090, 660),
+      size: { width: 330, height: 495 },
+    },
+    {
+      id: 'decision',
+      title: '3. Choose the best feasible aperture',
+      note:
+        'Best Design maximises depth of field only among candidates that pass both checks. It ' +
+        'selects f/11: f/16 and f/22 give more depth, but their diffraction blur is too large.',
+      position: at(2090, 1210),
+      size: { width: 330, height: 275 },
+    },
+  ];
+
+  const frameForOutput: Readonly<Record<string, string>> = {
+    dofPlot: 'tradeoff',
+    diffractionPlot: 'tradeoff',
+    enoughDepth: 'requirements',
+    sharpEnough: 'requirements',
+    bestAperture: 'decision',
+  };
+  const withFrames = nodes.map((node) => {
+    const frameId = frameForOutput[node.id];
+    return node.kind === 'output' && frameId !== undefined ? { ...node, frameId } : node;
+  });
+
+  return localizeExample(
+    document('aperture-decision', 'Choose an aperture — depth versus diffraction', withFrames, edges, frames),
+    locale,
+  );
+}

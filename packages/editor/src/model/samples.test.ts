@@ -21,7 +21,15 @@ import { fromCanonical, parseUnit } from '@joveworks/units';
 import { analyse } from './analysis';
 import { baseCatalogue, bundledCatalogues } from './catalogues';
 import { GAP } from './layout-constants';
-import { beltLab, depthOfField, millingPowerEnvelope, monteCarloClearance, padPressure, pressfitLab } from './samples';
+import {
+  apertureDecision,
+  beltLab,
+  depthOfField,
+  millingPowerEnvelope,
+  monteCarloClearance,
+  padPressure,
+  pressfitLab,
+} from './samples';
 
 const path = process.env['JOVEWORKS_CATALOGUE'];
 const present = path !== undefined && path.length > 0 && existsSync(path);
@@ -183,6 +191,27 @@ describe('the depth-of-field study through the editor', () => {
     expect(table?.kind).toBe('table');
     if (table?.kind !== 'table') throw new Error('missing depth-of-field table');
     expect(table.axes.map((axis) => axis.id)).toEqual(['f', 'N']);
+  });
+});
+
+describe('the aperture decision through the editor', () => {
+  it('selects the deepest f-stop that passes both depth and diffraction checks', () => {
+    const document = apertureDecision(PUBLIC_CATALOGUES);
+    expect(document).toBeDefined();
+    const analysis = analyse(document as NonNullable<typeof document>, PUBLIC_CATALOGUES);
+
+    expect(analysis.message).toBeUndefined();
+    expect([...analysis.states.values()].every((state) => state === 'ok')).toBe(true);
+
+    const result = analysis.evaluation?.outputs.find((entry) => entry.nodeId === 'bestAperture');
+    expect(result?.kind).toBe('bestDesign');
+    if (result?.kind !== 'bestDesign') throw new Error('missing aperture decision');
+
+    expect(result.feasibleCount).toBe(2);
+    expect(result.winner?.at.map((entry) => [entry.axis.label, entry.value])).toEqual([
+      ['aperture (f-number)', 11],
+    ]);
+    expect(result.winner?.governing?.checkId).toBe('sharpEnough');
   });
 });
 
