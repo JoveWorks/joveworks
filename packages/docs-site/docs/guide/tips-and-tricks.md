@@ -140,9 +140,14 @@ Carlo view together rather than one receiver at a time.
   keeps `value` and `along` wired, so trying "where is this least?" after
   "where does this cross?" costs one dropdown.
 - **First passing size** never interpolates, and that is the feature: point
-  it at a Renard or explicit-list sweep and the answer is a size you can
-  order. **Threshold crossing** does interpolate, so use it for "where is
-  the requirement genuinely met", not "what do I buy".
+  it at a list or Renard sweep and the answer is a value you can actually
+  set or order — an f-stop, a stocked diameter. **Threshold crossing** does
+  interpolate, so use it for "where is the requirement genuinely met", not
+  "what do I dial in".
+- A **smallest at** / **largest at** answer landing on the *end* of the
+  sweep usually means the objective is monotonic over it — the node is
+  telling you a constraint, not the objective, decides this. That is what
+  Best Design is for.
 - If a Select node warns that the sweep is too coarse, add points and see
   whether the answer moves. If it does, the earlier answer was
   interpolation rather than analysis.
