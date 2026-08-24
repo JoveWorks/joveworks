@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.13.0](https://github.com/ThomasVanRiel/joveworks/compare/v0.12.2...v0.13.0) (2026-08-24)
+
+### Features
+
+* **photography:** show circle of confusion in µm, add pixel-based variant ([8aaf6d6](https://github.com/ThomasVanRiel/joveworks/commit/8aaf6d669e82f88f84c646cf6bf3b05893fedb1a))
+* read a photograph's own settings into the graph ([06a0dad](https://github.com/ThomasVanRiel/joveworks/commit/06a0daddd8df1906f00f3d5fbe66048cb790400c))
+* **schema:** let a formula answer with several outputs, add camera and lens libraries ([c3f0362](https://github.com/ThomasVanRiel/joveworks/commit/c3f0362d8efdc45bc211549a96ed6eab47db629e))
+
+### Fixes
+
+* **editor:** condense a node that answers with several properties ([05c21ed](https://github.com/ThomasVanRiel/joveworks/commit/05c21ed5a5f3d8dbc6a7ff7053ff74c3b5e7b5c4))
+* **editor:** give every output port hover text of its own ([f9fb167](https://github.com/ThomasVanRiel/joveworks/commit/f9fb167fec0c2762d9bdcad9ee9f62f5af472d25))
+* **nodes:** let categorical values flow through pack/unpack/waypoint, split waypoint's shared handle ([f38f458](https://github.com/ThomasVanRiel/joveworks/commit/f38f4588c2f7a9afd95a81ec9922b11cf5660ca8))
+
+### Documentation
+
+* add full-project review inventory ([c04998d](https://github.com/ThomasVanRiel/joveworks/commit/c04998d2993b2dde81c325f6f25d86f9dba6d77e))
+* drop two roadmap items the work has caught up with ([694914d](https://github.com/ThomasVanRiel/joveworks/commit/694914d139d818295779d38d6470bc5ff80a9061))
+* record the file node and what is still open behind it ([45fab85](https://github.com/ThomasVanRiel/joveworks/commit/45fab857c592b69db9a4016b5fa3e911686b07ff))
 ## [0.12.2](https://github.com/ThomasVanRiel/joveworks/compare/v0.12.1...v0.12.2) (2026-08-23)
 
 ### Fixes
