@@ -814,7 +814,8 @@ aside.right {
 .react-flow__node-joveworks-input:hover,
 .react-flow__node-formula:hover,
 .react-flow__node-joveworks-output:hover,
-.react-flow__node-compare:hover {
+.react-flow__node-compare:hover,
+.react-flow__node-select:hover {
   z-index: 1000 !important;
 }
 
@@ -2079,7 +2080,17 @@ aside.right {
   font-style: italic;
 }
 
-/* A Feasibility output's checklist of Check nodes — no wire connects them,
+/* Every crossing after the first, on a select node — a series has one value
+   per point, so only the first can be the wired answer, and this is where a
+   curve that meets its threshold twice says so. */
+.select-extra {
+  margin: 2px 0 0;
+  font-size: 11px;
+  font-style: italic;
+  color: var(--muted);
+}
+
+/* A Feasibility or Best Design output's checklist of Check nodes — no wire connects them,
    so the checkbox and its label are aligned like an ordinary form control
    rather than borrowing table-column's text-input layout. */
 .check-list {
@@ -3147,6 +3158,47 @@ aside.right {
   margin: 0;
   color: var(--muted);
   font-size: 11px;
+}
+
+/* --- best design card ---------------------------------------------------- */
+
+/* Prose and a short table rather than a figure: the point of this output is
+   that a sweep becomes a decision recorded in the report, and a decision
+   reads as a sentence. */
+.best-design {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.best-design-headline {
+  margin: 0;
+  font-weight: 600;
+}
+
+.best-design-detail {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.best-design.infeasible .best-design-headline {
+  color: var(--state-fail);
+}
+
+.best-design-margins {
+  margin-top: 4px;
+}
+
+.best-design-margins th:first-child,
+.best-design-margins td:first-child {
+  text-align: left;
+}
+
+/* The governing constraint is the least-margin row, which is the first —
+   the card names it in prose too, and this is the same fact in the table. */
+.best-design-margins tr.governing td {
+  font-weight: 600;
 }
 
 .notebook table {

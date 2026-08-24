@@ -24,6 +24,26 @@ export const WARNING_KINDS = [
   'plotContourFlat',
   /** A Sensitivity candidate could not be evaluated at its low/high bound — skipped, not fatal. */
   'sensitivityCandidateSkipped',
+  /** A selection found no crossing (or no usable value) along the axis it searched. */
+  'selectNoCrossing',
+  /** The sweep is too coarse for the interpolated crossing to be trusted. */
+  'selectCoarseSweep',
+  /** More than one crossing was found; the first is the one wired onward. */
+  'selectExtraCrossings',
+  /** A `firstPassing` selection found no passing point at all. */
+  'selectNothingPasses',
+  /** No candidate satisfies every referenced check at once — the failure card. */
+  'bestDesignInfeasible',
+  /** Every feasible candidate scores the same, so the winner is arbitrary. */
+  'bestDesignFlat',
+  /**
+   * A referenced check cannot be ranked for "governing": `==`/`!=` have no
+   * margin to normalise, and a zero threshold makes the ratio meaningless.
+   * Not in the plan's original list — the exclusion is silent otherwise, and
+   * a card that quietly drops a constraint from the ranking is the kind of
+   * thing this project warns about rather than hides.
+   */
+  'bestDesignUnrankable',
 ] as const;
 
 export type WarningKind = (typeof WARNING_KINDS)[number];

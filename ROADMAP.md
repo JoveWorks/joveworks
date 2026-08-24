@@ -301,3 +301,57 @@ Open, in rough order of appetite:
   structure the CR3 blocks already parse) would make them exercisable.
 - **CR2 and other TIFF-based raws.** The IFD parser already handles them; only
   the container walk is CR3-specific.
+
+**53. Feature: selection nodes and the Best Design card.** Shipped, as planned
+in `docs/selection-and-best-design-plan.md` — the top item of
+`docs/feature-review.md`'s own list. The gap it closed was architectural as
+much as it was a feature: the kernel could reduce over a *spectrum*
+(`arrayNodes`) but had no way to reduce **along a labelled axis** and recover
+the coordinate at which something happened. `packages/kernel/src/select.ts` is
+that primitive, and all four features share it.
+
+What landed:
+
+- A `select` node kind, one node with four modes (`crossing`, `firstPassing`,
+  `argMin`/`argMax`), which learns its reduce axis from a swept range wired
+  into an `along` port rather than from an axis id in a dropdown — so `at`
+  takes `along`'s dimension, resolved by the same edge-driven typing
+  `CompareNode.threshold` already uses. Ports are stable across modes, so
+  switching mode strands no wire.
+- Every crossing is found, not an arbitrary one: the first is what is wired
+  (respecting `direction`), the rest ride on `Evaluation.selections` for the
+  canvas readout, with a `selectExtraCrossings` warning. A coarse-sweep check
+  compares the linear interpolation against a quadratic through one extra
+  neighbouring sample — a real numerical criterion, not a point count.
+- A `bestDesign` output kind: the feasible min/max of a wired `objective`, the
+  winning coordinate on *every* axis the study varies along, and the governing
+  constraint as the least normalised margin at the winner. No feasible cell is
+  a first-class answer that names the check failing at the most candidates.
+- The feasible-mask construction is now one helper both `feasibility` and
+  `bestDesign` call, and the deferred second pass in `evaluateDocument` covers
+  both kinds (one pass suffices: both reference only checks, and checks are
+  never deferred).
+
+Two small deviations from the plan, both deliberate:
+
+- A seventh warning kind, `bestDesignUnrankable`, was added. The plan listed
+  six and said `==`/`!=` and zero-threshold checks are "excluded and warned
+  about" from the governing ranking — none of the six named that, and a card
+  that silently drops a constraint from the ranking is exactly what this
+  project warns about rather than hides.
+- An empty `checks` list now yields an all-true mask over the target grid
+  rather than an empty array, so `bestDesign`'s unconstrained min/max composes.
+  A zero-check Feasibility node is marked `incomplete` and never reaches the
+  kernel, so nothing observable changed there.
+
+Deliberately deferred, and not started:
+
+- **Per-point governing constraint** as a wireable value. It needs margin and
+  utilisation to exist as nodes first — a `margin` node emitting
+  `(value − threshold)/|threshold|` per cell, and something to pick the least
+  of several — at which point "governing" is an ordinary graph, not a card
+  field. Today it is reported in the Best Design card only.
+- **Pareto fronts** for two competing objectives. Best Design ranks one
+  objective; "light *and* stiff" is a different question and a different
+  figure, and folding a second objective into this node would make its answer
+  a set rather than a decision.

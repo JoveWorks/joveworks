@@ -31,6 +31,7 @@ import {
   outputPortNames,
   packChannelIndices,
   resolveGraph,
+  selectPortNames,
   waypointChannelIndices,
   type Evaluation,
   type Resolution,
@@ -41,7 +42,9 @@ import {
   isEvaluable,
   isGenericPort,
   localize,
+  ALONG_PORT,
   MONTE_CARLO_SAMPLE_PORT,
+  OBJECTIVE_PORT,
   THRESHOLD_PORT,
   VALUE_PORT,
   type Catalogue,
@@ -200,13 +203,13 @@ function readiness(
     return sources.length > 0 && sources.every((source) => ready.has(source.node));
   };
 
-  // A Feasibility node references Check nodes by id rather than by wire, so
-  // it carries no dependency edge and its position in `order` is incidental
-  // — the same reason `evaluateDocument` (kernel/evaluate.ts) defers it to a
-  // second pass after every other output has been decided, and this walks
-  // the identical topological order to decide per-node state, so it needs
-  // the identical split.
-  const deferredFeasibility: OutputNode[] = [];
+  // A Feasibility or Best Design node references Check nodes by id rather
+  // than by wire, so it carries no dependency edge and its position in
+  // `order` is incidental — the same reason `evaluateDocument`
+  // (kernel/evaluate.ts) defers both to a second pass after every other
+  // output has been decided, and this walks the identical topological order
+  // to decide per-node state, so it needs the identical split.
+  const deferredOutputs: OutputNode[] = [];
 
   for (const node of order) {
     if (node.kind === 'file') {
@@ -292,6 +295,26 @@ function readiness(
       continue;
     }
 
+    if (node.kind === 'select') {
+      // Two required wires, not one: `value` says what to search, and
+      // `along` says which axis to search it over — a selection with no
+      // `along` has no coordinate to answer in and is not a selection yet.
+      // `threshold` is `compare`'s again: typed default, overriding wire.
+      const missing = [VALUE_PORT, ALONG_PORT].filter((port) => !isWired(node.id, port));
+      if (missing.length > 0) {
+        states.set(node.id, 'incomplete');
+        problems.set(node.id, notConnected(missing));
+        continue;
+      }
+      const inputs = selectPortNames(node).inputs;
+      if (inputs.some((port) => isWired(node.id, port) && !upstreamReady(node.id, port))) {
+        states.set(node.id, 'blocked');
+        continue;
+      }
+      ready.add(node.id);
+      continue;
+    }
+
     if (node.kind === 'waypoint') {
       const channels = waypointChannelIndices(document, node.id);
       const inputs = channels.map((channel) => `in${channel}`);
@@ -348,12 +371,13 @@ function readiness(
     }
 
     // A Feasibility node has no wired ports of its own (`outputPortNames`
-    // returns none for it) — it references existing Check nodes by id, so
-    // its readiness is inherited from theirs directly rather than from any
-    // wire. Deferred to the second pass below, after every other node
-    // (including every Check) has been decided.
-    if (node.output.kind === 'feasibility') {
-      deferredFeasibility.push(node);
+    // returns none for it) and a Best Design node has one — but both
+    // reference existing Check nodes by id, so part of their readiness is
+    // inherited from theirs directly rather than from any wire. Deferred to
+    // the second pass below, after every other node (including every Check)
+    // has been decided.
+    if (node.output.kind === 'feasibility' || node.output.kind === 'bestDesign') {
+      deferredOutputs.push(node);
       continue;
     }
 
@@ -387,14 +411,32 @@ function readiness(
     ready.add(node.id);
   }
 
-  for (const node of deferredFeasibility) {
-    if (node.output.kind !== 'feasibility') continue; // narrows for TS; always true here
-    if (node.output.checks.length === 0) {
+  for (const node of deferredOutputs) {
+    const output = node.output;
+    if (output.kind === 'bestDesign') {
+      // `checks: []` is legal here, unlike on a Feasibility node: it is an
+      // unconstrained min or max, which is a real thing to ask for. What
+      // this node cannot do without is the objective — there is nothing to
+      // rank the candidates by.
+      if (!isWired(node.id, OBJECTIVE_PORT)) {
+        states.set(node.id, 'incomplete');
+        problems.set(node.id, notConnected([OBJECTIVE_PORT]));
+        continue;
+      }
+      if (!upstreamReady(node.id, OBJECTIVE_PORT) || !output.checks.every((id) => ready.has(id))) {
+        states.set(node.id, 'blocked');
+        continue;
+      }
+      ready.add(node.id);
+      continue;
+    }
+    if (output.kind !== 'feasibility') continue; // narrows for TS; always true here
+    if (output.checks.length === 0) {
       states.set(node.id, 'incomplete');
       problems.set(node.id, 'choose at least one check');
       continue;
     }
-    if (!node.output.checks.every((id) => ready.has(id))) {
+    if (!output.checks.every((id) => ready.has(id))) {
       states.set(node.id, 'blocked');
       continue;
     }

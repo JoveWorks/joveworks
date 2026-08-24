@@ -153,9 +153,11 @@ moved across a bracket, straight from the frames.
 
 Where a graph's result surfaces — in the node itself, and as an entry in
 the notebook panel. Pick its kind from the dropdown in the node's own
-panel; every kind reads its subject from the same `value` port, so
-switching kinds after the fact keeps the wire. The node's own "?" button
-always opens the paragraph for whichever kind is currently selected.
+panel; the five kinds below all read their subject from the same `value`
+port, so switching between them keeps the wire. (Best Design reads an
+`objective` port instead, and switching in or out of it carries the wire
+across.) The node's own "?" button always opens the paragraph for
+whichever kind is currently selected.
 
 ### Print
 
@@ -171,8 +173,11 @@ node — `S ≥ 1.5`, `pressure ≤ 200 N/mm²` — rendered as pass/fail. This 
 the everyday way to gate a design: wire the same safety-factor node into
 a Check instead of a Print when the report needs a verdict, not just a
 figure. See [Compare](#compare) for the same idea as a wireable value
-rather than a node you read directly, and [Feasibility](#feasibility) for
-combining several Checks into one multi-constraint answer.
+rather than a node you read directly, [Feasibility](#feasibility) for
+combining several Checks into one multi-constraint answer, and
+[Best Design](#best-design) for picking a winner from among the points
+several Checks all pass at — both of those reference Check nodes by name,
+so a Check you build once is reused rather than retyped.
 
 ### Plot
 
@@ -183,6 +188,10 @@ diameter," with a horizontal line at `S = 1.5` marking where the design
 first passes; sweep two inputs and the same output becomes a contour
 instead of a line, with the second axis picked from `x`/`series`/`facet`
 the same way a [Feasibility](#feasibility) output picks its axes.
+
+Reading *where* the curve meets that line is a job for a
+[Select](#select) node, which turns "somewhere around 38 mm" into a value
+on a wire instead of a number read off the picture by eye.
 
 ### Table
 
@@ -198,12 +207,14 @@ own expression, typeset, instead of a number. Use it in a notebook to
 show the reader *which* equation produced a result, right next to the
 Print output that shows what it evaluated to.
 
-Two more output kinds — **Feasibility** and **Sensitivity** — live under
-the palette's separate **[Analysis](#analysis)** heading, because they
-don't read a single wired value the way the five above do; each one looks
-across several other nodes already on the canvas. Their own node's "?"
-button opens [Feasibility](#feasibility) or [Sensitivity](#sensitivity)
-directly, the same as any other output kind here.
+Three more output kinds — **Feasibility**, **Sensitivity** and **Best
+Design** — live under the palette's separate **[Analysis](#analysis)**
+heading, because they don't read a single wired value the way the five
+above do; each one looks across several other nodes already on the
+canvas. Their own node's "?" button opens
+[Feasibility](#feasibility), [Sensitivity](#sensitivity) or
+[Best Design](#best-design) directly, the same as any other output kind
+here.
 
 ## General
 
@@ -225,6 +236,10 @@ name, not Compare nodes — build the acceptance criteria you want to
 combine as Check outputs, even if a Compare node elsewhere already
 produces the same verdict as a wire. If the verdict only needs to be read
 on the canvas, a Check output alone is simpler — one node instead of two.
+
+A Compare node is also what feeds a [Select](#select) node's **first
+passing size** mode: the verdict says which swept sizes are acceptable,
+and Select reports the first one that is.
 
 ### Closure
 
@@ -401,6 +416,14 @@ contains — that's the textbook's material, not this editor's.
 Graph-level tools that look across several other nodes already on the
 canvas, rather than reading one wired value the way a Print or Plot does.
 
+Four of them turn a finished sweep into an answer rather than a picture:
+[Select](#select) reads a coordinate off a study (where a limit is
+crossed, which stocked size passes first, where a value is least), and
+[Best Design](#best-design) picks the winning candidate and names the
+constraint that governs it. [Feasibility](#feasibility) shades where
+every check passes at once, and [Sensitivity](#sensitivity) ranks which
+input moves a result the most.
+
 ### Monte Carlo generator
 
 Draws a value from a distribution, sample by sample, instead of taking
@@ -476,6 +499,157 @@ A Feasibility node needs at least one swept input somewhere in the
 checks it references — with everything held at a single value there is
 only one cell to shade, which is just what the checks themselves already
 show.
+
+Feasibility shows you *where* a design works. To turn that region into a
+choice — which of those points to build, and which check is holding it
+back — add a [Best Design](#best-design) output over the same checks.
+
+### Select
+
+Reads an answer *off* a sweep instead of leaving you to read it off the
+curve by eye. A plot can show that deflection crosses its limit somewhere
+around 38 mm; a Select node turns that into `38.2 mm` as a **value on a
+wire** — one you can print, compare, feed into another formula, or record
+in the notebook as the size you chose.
+
+Nothing here solves anything. It searches the points the graph has
+already evaluated, in the order they were swept, exactly as
+[Sensitivity](#sensitivity) does. If the answer lies between two samples,
+a crossing interpolates between them; every other mode lands on a sample.
+
+#### The two wires it always needs
+
+- **`value`** — what to search: a swept numeric series, or (for **first
+  passing**) a [Compare](#compare) node's verdict.
+- **`along`** — *which axis to search it over*, and the unit the answer
+  comes back in. Wire the swept range input itself here.
+
+`along` is what makes this node work, and it is the one wire people
+forget. A Select node has no dropdown asking which axis you mean: the
+wire says it. Wire the diameter range into `along` and the answer is a
+diameter, in millimetres; wire the temperature range in instead and the
+same `value` gives you a temperature. If you type a plain number on
+`along` instead of wiring a range, the node says so — "wire the swept
+range into `along`" — rather than guessing.
+
+Because the axis comes from a wire, the **`at`** output carries `along`'s
+dimension, never `value`'s. Searching an *area* for where it crosses
+`50 mm²`, with a *diameter* wired into `along`, gives you a length —
+which is the whole point.
+
+#### Four modes, one node
+
+Switch mode from the node's own panel; `value` and `along` stay wired
+across the switch, so trying a different question costs nothing.
+
+- **threshold crossing** — where a value meets a bound, interpolated
+  between the two samples that bracket it. *Sweep a shaft diameter, wire
+  the computed deflection into `value` and the diameter range into
+  `along`, set the threshold to the allowable deflection: the answer is
+  the smallest diameter that just satisfies it.* A `direction` setting
+  ("either way", "rising", "falling") picks which way the value has to be
+  travelling through the bound to count — useful when a curve dips below
+  a limit and comes back.
+- **first passing size** — the first coordinate where a wired verdict
+  reads `pass`, taken **from the samples, never between them**. That is
+  exactly what makes it a *standard size*: build a **Renard** or **list**
+  input of the sizes actually stocked, run them through a
+  [Compare](#compare) against your acceptance criterion, and the answer
+  is one of the sizes you can buy — `40 mm`, not `38.2 mm`.
+- **smallest at** / **largest at** — where a value reaches its minimum or
+  maximum along the axis, plus a second output, **`best`**, carrying the
+  value it takes there. *Sweep a wall thickness and wire mass into
+  `value`: `at` is the thickness where mass is least, `best` is that
+  mass.* Ties go to the first point in sweep order, so the answer never
+  moves between re-evaluations.
+
+#### What it tells you when the answer is doubtful
+
+- **More than one crossing.** All of them are found. A series has one
+  value per point, so only the first can be the value on the wire — the
+  node lists the others underneath ("also crosses at …") and warns, so a
+  curve that meets its limit twice never quietly reports only half the
+  story.
+- **A sweep too coarse to interpolate on.** The straight-line estimate
+  between the bracketing samples is checked against a curve through one
+  extra neighbouring sample. When the two disagree by more than a small
+  fraction of the step, the node warns that the answer will move if you
+  add points. This is a numerical test, not a point count: three points
+  across a gentle curve are fine, and thirty across a knee are not.
+- **Nothing found.** No crossing anywhere, or nothing that passes, is an
+  ordinary state of a study that isn't sized yet — the node answers with
+  a blank and a warning rather than failing. In a two-axis study it says
+  *how many* of the columns came up empty ("at 1 of 2 points").
+
+#### Two swept inputs
+
+A Select node collapses only the axis wired into `along`, and keeps every
+other axis intact. Sweep diameter *and* temperature, wire diameter into
+`along`, and the answer is a **crossing diameter per temperature** — a
+series you can plot against temperature like any other, not a single
+number. That is the same broadcasting rule the rest of the editor uses;
+nothing about a Select node is special-cased for one dimension.
+
+### Best Design
+
+The decision, written into the notebook. Among the candidates where every
+referenced **Check** passes, it picks the one where a wired objective is
+smallest (or largest), reports the coordinates it sits at, and names
+**which check is the reason it can't go further**.
+
+This is the step past [Feasibility](#feasibility). Feasibility shades
+*where* a design works; Best Design says *which point to build* and
+*what's stopping it improving* — the question a report actually has to
+answer.
+
+Wiring it takes one wire and one checklist:
+
+- **`objective`** — the quantity being minimised or maximised: mass,
+  cost, deflection, diameter. Set the direction ("smallest" / "largest")
+  in the node's panel.
+- **checks** — tick the existing **Check** nodes that define feasibility,
+  from the same checklist [Feasibility](#feasibility) uses, and for the
+  same reason: the bounds you already built *are* the constraints, and
+  retyping them here would be a second copy that drifts.
+
+A worked shape: sweep a shaft diameter over stocked sizes, build a Check
+for "safety factor ≥ 1.5" and another for "deflection ≤ 0.5 mm", wire the
+shaft's **mass** into `objective`, tick both checks, and set the
+direction to smallest. The card reads:
+
+> **diameter 40 mm — smallest at 2.47 kg.**
+> 3 of 9 candidates feasible, governed by safety factor at 4.1% margin.
+
+The last clause is the one that earns the node. **Governing** means the
+check with the least *normalised* margin at the winning point —
+`(value − threshold) / |threshold|`, sign-corrected so more room is
+always a bigger number. Normalising is what makes the comparison mean
+anything: a safety factor 0.02 above 1.5 and a pressure 4 N/mm² below 200
+are not comparable as raw differences, and are as percentages. A
+governing margin of 4.1% says the design is genuinely up against that
+constraint; one of 60% says the winner is limited by something else, or
+by the sweep's own bounds.
+
+Two kinds of check are left out of that ranking and reported as being
+left out: `==` and `!=` assert equality rather than a bound, so there is
+no margin to speak of, and a threshold of zero has no scale for a ratio
+to be taken against.
+
+**No feasible candidate is an answer here, not a failure.** When nothing
+passes everything, the card says so and names the check that fails at the
+most candidates — which is where to look next. A study whose every
+constraint is impossible is a real finding worth recording, and it lands
+in the notebook like any other.
+
+**No checks at all is legal too**, and means a plain unconstrained
+minimum or maximum: "the lightest of these nine sizes", with nothing
+saying whether any of them work.
+
+Notice there is no `along` port here, unlike [Select](#select). A
+selection reduces one named axis; a decision reports the winning
+coordinate on *every* axis the study varies along — sweep diameter and
+material and the card names both — so there is no single wire that could
+say which one to answer with.
 
 ### Sensitivity
 

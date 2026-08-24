@@ -70,6 +70,22 @@ export const STDDEV_PORT = 'stddev';
 /** A closure node's one output port — its inputs are whatever its expression mentions. */
 export const CLOSURE_RESULT_PORT = 'result';
 
+/**
+ * A selection node's ports.
+ *
+ * `along` is the whole idea: wiring the swept range into it is how the node
+ * learns *which axis to reduce along*, rather than naming an axis id in a
+ * dropdown. `at` — the coordinate the answer sits at — therefore takes
+ * `along`'s own dimension, resolved from the wire the same edge-driven way
+ * `CompareNode.threshold` resolves from `value`.
+ */
+export const ALONG_PORT = 'along';
+export const AT_PORT = 'at';
+export const BEST_PORT = 'best';
+
+/** A Best Design output's one wired port: the quantity being minimised or maximised. */
+export const OBJECTIVE_PORT = 'objective';
+
 export interface Position {
   readonly x: number;
   readonly y: number;
@@ -206,6 +222,31 @@ export interface SensitivityOutput {
   readonly kind: 'sensitivity';
 }
 
+/**
+ * The decision card: among the points where every referenced check passes,
+ * the one where a wired objective is smallest (or largest) — and which check
+ * is the reason it cannot go further.
+ *
+ * It references Check nodes by id exactly as `FeasibilityOutput` does, and
+ * for the same reason: the bounds a student has already built are the
+ * constraints, and retyping them here would be a second, drifting copy.
+ *
+ * Deliberately **no `along` port**, unlike `SelectNode`. A selection reduces
+ * one named axis; a decision reports the winning coordinate on *every* axis
+ * the study varies along, read from each axis node's own coordinate series.
+ * A study swept over diameter and temperature has a winning pair, and there
+ * is no wire that could say which of the two to answer with.
+ *
+ * `checks: []` stays legal — a plain unconstrained min or max, the same way
+ * a freshly-dropped Feasibility node with no checks yet is legal.
+ */
+export interface BestDesignOutput {
+  readonly kind: 'bestDesign';
+  /** The ids of the Check output nodes whose verdicts define feasibility. */
+  readonly checks: readonly string[];
+  readonly direction: 'minimize' | 'maximize';
+}
+
 export type Output =
   | PrintOutput
   | CheckOutput
@@ -213,9 +254,19 @@ export type Output =
   | TableOutput
   | EquationOutput
   | FeasibilityOutput
-  | SensitivityOutput;
+  | SensitivityOutput
+  | BestDesignOutput;
 
-export const OUTPUT_KINDS = ['print', 'check', 'plot', 'table', 'equation', 'feasibility', 'sensitivity'] as const;
+export const OUTPUT_KINDS = [
+  'print',
+  'check',
+  'plot',
+  'table',
+  'equation',
+  'feasibility',
+  'sensitivity',
+  'bestDesign',
+] as const;
 export type OutputKind = (typeof OUTPUT_KINDS)[number];
 
 interface NodeBase {
@@ -269,6 +320,61 @@ export interface CompareNode extends NodeBase {
   readonly comparison: Comparison;
   readonly threshold: Quantity;
 }
+
+export const SELECT_MODES = ['crossing', 'firstPassing', 'argMin', 'argMax'] as const;
+export type SelectMode = (typeof SELECT_MODES)[number];
+
+export const SELECT_DIRECTIONS = ['any', 'rising', 'falling'] as const;
+export type SelectDirection = (typeof SELECT_DIRECTIONS)[number];
+
+interface SelectNodeBase extends NodeBase {
+  readonly kind: 'select';
+}
+
+/**
+ * The first place a numeric value crosses a bound, interpolated between the
+ * two bracketing samples. `threshold` is the `threshold` port's default when
+ * nothing is wired to it — `CompareNode.threshold`'s shape exactly, down to a
+ * bare unitless number being read in the checked value's own display unit.
+ */
+export interface CrossingSelectNode extends SelectNodeBase {
+  readonly mode: 'crossing';
+  readonly threshold: Quantity;
+  /** Which way the value must be going through the bound for it to count. */
+  readonly direction: SelectDirection;
+}
+
+/**
+ * The first coordinate at which a wired verdict reads `'pass'` — **sampled,
+ * never interpolated**, which is exactly what makes it a *standard size*:
+ * the answer is one of the values the range actually holds, never a number
+ * between two of them.
+ */
+export interface PassingSelectNode extends SelectNodeBase {
+  readonly mode: 'firstPassing';
+}
+
+/** Where a numeric value is least (or greatest), plus the value it takes there. */
+export interface ExtremumSelectNode extends SelectNodeBase {
+  readonly mode: 'argMin' | 'argMax';
+}
+
+/**
+ * Searches a finished study *along one axis* and answers with the coordinate
+ * where something happened — "the deflection limit is crossed at 38.2 mm",
+ * "the first Renard size that passes is 40 mm", "mass is least at 32 mm".
+ *
+ * The axis is learned from the wire: whatever swept range is connected to
+ * `ALONG_PORT` is the axis reduced, and `AT_PORT` takes that port's own
+ * dimension. Nothing here solves or rearranges anything — it walks the points
+ * the graph has already evaluated, exactly as `sensitivity.ts` does.
+ *
+ * A discriminated union on `mode`, the same shape `MonteCarloGeneratorNode`
+ * uses for `distribution`. The ports are deliberately stable across modes, so
+ * switching mode never strands a wire: only `threshold` (crossing only) and
+ * `best` (argMin/argMax only) come and go with it.
+ */
+export type SelectNode = CrossingSelectNode | PassingSelectNode | ExtremumSelectNode;
 
 /**
  * A student-authored equation: the expression is embedded directly (the
@@ -482,6 +588,7 @@ export type GraphNode =
   | FormulaNode
   | OutputNode
   | CompareNode
+  | SelectNode
   | ClosureNode
   | WaypointNode
   | PackNode
@@ -627,6 +734,19 @@ function parseOutput(value: JsonValue, path: string): Output {
 
     case 'sensitivity':
       return { kind };
+
+    case 'bestDesign':
+      // An empty `checks` is an unconstrained min/max, allowed for the same
+      // reason `feasibility`'s is: a node dropped from the palette has not
+      // been given any checks yet, and that is a state, not a defect.
+      return {
+        kind,
+        checks: readStringArray(required(object, 'checks', path), join(path, 'checks')),
+        direction: readEnum(required(object, 'direction', path), join(path, 'direction'), [
+          'minimize',
+          'maximize',
+        ] as const),
+      };
   }
 }
 
@@ -676,6 +796,8 @@ function serializeOutput(output: Output): JsonObject {
       };
     case 'sensitivity':
       return { kind: output.kind };
+    case 'bestDesign':
+      return { kind: output.kind, checks: [...output.checks], direction: output.direction };
   }
 }
 
@@ -717,6 +839,7 @@ export const NODE_KINDS = [
   'formula',
   'output',
   'compare',
+  'select',
   'closure',
   'waypoint',
   'pack',
@@ -820,6 +943,26 @@ function parseNode(value: JsonValue, path: string): GraphNode {
         ),
         threshold: parseQuantity(required(object, 'threshold', path), join(path, 'threshold')),
       };
+    case 'select': {
+      const mode = readEnum(required(object, 'mode', path), join(path, 'mode'), SELECT_MODES);
+      // Only `crossing` carries a threshold and a direction — the union is
+      // on `mode`, so reading them unconditionally would let a `firstPassing`
+      // node round-trip fields it has no meaning for.
+      if (mode === 'crossing') {
+        return {
+          ...base,
+          kind,
+          mode,
+          threshold: parseQuantity(required(object, 'threshold', path), join(path, 'threshold')),
+          direction: readEnum(
+            required(object, 'direction', path),
+            join(path, 'direction'),
+            SELECT_DIRECTIONS,
+          ),
+        };
+      }
+      return { ...base, kind, mode };
+    }
     case 'closure':
       return {
         ...base,
@@ -917,6 +1060,15 @@ function serializeNode(node: GraphNode): JsonObject {
         comparison: node.comparison,
         threshold: serializeQuantity(node.threshold),
       };
+    case 'select':
+      return node.mode === 'crossing'
+        ? {
+            ...base,
+            mode: node.mode,
+            threshold: serializeQuantity(node.threshold),
+            direction: node.direction,
+          }
+        : { ...base, mode: node.mode };
     case 'closure':
       return {
         ...base,

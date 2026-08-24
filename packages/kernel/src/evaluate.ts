@@ -23,6 +23,10 @@ import {
   VALUE_PORT,
   THRESHOLD_PORT,
   VERDICT_PORT,
+  ALONG_PORT,
+  AT_PORT,
+  BEST_PORT,
+  OBJECTIVE_PORT,
   MONTE_CARLO_SAMPLE_PORT,
   MIN_PORT,
   MAX_PORT,
@@ -35,6 +39,7 @@ import {
   renardValues,
   type Catalogue,
   type CompareNode,
+  type SelectNode,
   type Edge,
   type FileNode,
   type GraphDocument,
@@ -58,12 +63,14 @@ import { KernelError } from './errors.js';
 import { assertEvaluable, compileClosureFormula, compileFormula } from './formula.js';
 import { canonicalUnit, endpointKey, resolveGraph, type PortType, type Resolution } from './graph.js';
 import { evaluateSensitivity, type SensitivityRankingResult } from './sensitivity.js';
+import { select, type SelectResult } from './select.js';
 import {
   LARGE_GRID,
   broadcastBoolean,
   broadcastSeries,
   gridSize,
   indexer,
+  isSeries,
   reader,
   scalarSeries,
   categoricalScalar,
@@ -186,6 +193,54 @@ export interface SensitivityResult extends OutputBase {
   readonly rankings: readonly SensitivityRankingResult[];
 }
 
+/** One axis of the study, and the coordinate the winning cell sits at on it. */
+export interface BestDesignCoordinate {
+  readonly axis: Axis;
+  readonly value: number | string;
+  /** The axis node's own display unit — meaningless for a categorical coordinate. */
+  readonly unit: Unit;
+}
+
+/**
+ * How much room a check still had at the winner, as a fraction of its own
+ * bound — the number the checks are ranked by to name the governing one.
+ */
+export interface BestDesignMargin {
+  readonly checkId: string;
+  readonly margin: number;
+}
+
+/**
+ * The decision: the feasible point where a wired objective is smallest (or
+ * largest), the coordinates it sits at, and which constraint is the reason it
+ * cannot go further.
+ */
+export interface BestDesignResult extends OutputBase {
+  readonly kind: 'bestDesign';
+  readonly checks: readonly string[];
+  readonly direction: 'minimize' | 'maximize';
+  /** The union of the objective's axes and every referenced check's. */
+  readonly axes: readonly Axis[];
+  /** One AND'd verdict per cell of `axes` — all true when `checks` is empty. */
+  readonly feasible: readonly boolean[];
+  /** The objective, broadcast onto `axes`. */
+  readonly objective: NumericSeries;
+  readonly unit: Unit;
+  /** Absent exactly when no cell is feasible — a first-class answer, not a failure. */
+  readonly winner?: {
+    readonly cell: number;
+    readonly objective: number;
+    readonly at: readonly BestDesignCoordinate[];
+    /** The least-margin check at the winner, where any check could be ranked. */
+    readonly governing?: BestDesignMargin;
+    /** Every rankable check's margin at the winner, least first. */
+    readonly margins: readonly BestDesignMargin[];
+  };
+  /** With nothing feasible: the check that fails at the most candidates. */
+  readonly blocking?: { readonly checkId: string; readonly failures: number };
+  readonly feasibleCount: number;
+}
+
 export type OutputResult =
   | PrintResult
   | CheckResult
@@ -193,7 +248,8 @@ export type OutputResult =
   | TableResult
   | EquationResult
   | FeasibilityResult
-  | SensitivityResult;
+  | SensitivityResult
+  | BestDesignResult;
 
 export interface Evaluation {
   readonly document: GraphDocument;
@@ -201,6 +257,13 @@ export interface Evaluation {
   /** `node.port` → the value it produced. */
   readonly values: ReadonlyMap<string, PortValue>;
   readonly outputs: readonly OutputResult[];
+  /**
+   * What each Select node found, by node id — the wired `at`/`best` values
+   * are in `values` like any other port, but the full crossing list has no
+   * port to live on (a series has a fixed shape; a variable number of roots
+   * per cell does not fit one), and the canvas readout wants it.
+   */
+  readonly selections: ReadonlyMap<string, SelectResult>;
   readonly warnings: readonly Warning[];
 }
 
@@ -227,13 +290,17 @@ export function evaluateDocument(
   const skip = options.skip;
 
   // Output nodes are always sinks — `resolveGraph` never records an edge
-  // *from* an output port — so a Feasibility node's position in
-  // `resolution.order` relative to the Check nodes it references is
-  // incidental to node-array/insertion order, not semantic. Deferring every
-  // Feasibility node to a second pass, after every other output (including
-  // every Check) has been computed, is what makes referencing them by id
-  // safe regardless of where either node sits on the canvas.
-  const deferredFeasibility: OutputNode[] = [];
+  // *from* an output port — so a Feasibility or Best Design node's position
+  // in `resolution.order` relative to the Check nodes it references is
+  // incidental to node-array/insertion order, not semantic. Deferring both
+  // kinds to a second pass, after every other output (including every Check)
+  // has been computed, is what makes referencing them by id safe regardless
+  // of where either node sits on the canvas.
+  //
+  // One deferred pass suffices because both kinds reference only *checks*,
+  // and a check is never itself deferred: there is no chain to iterate.
+  const deferredOutputs: OutputNode[] = [];
+  const selections = new Map<string, SelectResult>();
 
   for (const node of resolution.order) {
     if (skip?.has(node.id)) continue;
@@ -301,9 +368,18 @@ export function evaluateDocument(
         evaluateUnpack(node.id, resolution, values, values);
         break;
 
+      case 'select': {
+        const found = evaluateSelect(node, resolution, values);
+        selections.set(node.id, found);
+        values.set(endpointKey(node.id, AT_PORT), found.at);
+        if (found.best !== undefined) values.set(endpointKey(node.id, BEST_PORT), found.best);
+        warnings.push(...found.warnings);
+        break;
+      }
+
       case 'output':
-        if (node.output.kind === 'feasibility') {
-          deferredFeasibility.push(node);
+        if (node.output.kind === 'feasibility' || node.output.kind === 'bestDesign') {
+          deferredOutputs.push(node);
           break;
         }
         outputs.push(outputResult(node, resolution, values, axisByNode, warnings, catalogues, outputs));
@@ -311,11 +387,11 @@ export function evaluateDocument(
     }
   }
 
-  for (const node of deferredFeasibility) {
+  for (const node of deferredOutputs) {
     outputs.push(outputResult(node, resolution, values, axisByNode, warnings, catalogues, outputs));
   }
 
-  return { document, resolution, values, outputs, warnings };
+  return { document, resolution, values, outputs, selections, warnings };
 }
 
 /**
@@ -1102,6 +1178,88 @@ function evaluateCompare(
   return { kind: 'categorical', axes: value.axes, data };
 }
 
+/**
+ * A selection: search the study `value` describes along the axis `along`
+ * introduces, and answer with the coordinate.
+ *
+ * All the arithmetic is `select.ts`'s; this is the wiring around it — read
+ * the two required edges, resolve `crossing`'s threshold exactly as
+ * `evaluateCompare` does, and name the axis in whatever message comes back.
+ */
+function evaluateSelect(
+  node: SelectNode,
+  resolution: Resolution,
+  values: ReadonlyMap<string, PortValue>,
+): SelectResult {
+  const valueKey = endpointKey(node.id, VALUE_PORT);
+  const valueEdge = resolution.incoming.get(valueKey)?.[0];
+  if (valueEdge === undefined) {
+    throw new KernelError("'value' is not connected and has no default", valueKey);
+  }
+  const value = valueAtEdge(valueEdge, valueKey, values);
+  if (!isSeries(value)) {
+    throw new KernelError(`'value' is a ${value.kind}, which cannot be searched`, valueKey);
+  }
+
+  const alongKey = endpointKey(node.id, ALONG_PORT);
+  const alongEdge = resolution.incoming.get(alongKey)?.[0];
+  if (alongEdge === undefined) {
+    throw new KernelError(
+      "'along' is not connected — wire the swept range into 'along' so there is an axis to search",
+      alongKey,
+    );
+  }
+  const along = valueAtEdge(alongEdge, alongKey, values);
+  if (along.kind !== 'numeric') {
+    throw new KernelError("'along' needs the swept coordinate, which is a numeric series", alongKey);
+  }
+
+  const alongLabel = along.axes[0]?.label;
+  const common = {
+    value,
+    along,
+    nodeId: node.id,
+    ...(alongLabel === undefined ? {} : { alongLabel }),
+  };
+
+  if (node.mode !== 'crossing') return select({ ...common, mode: node.mode });
+
+  // A bare, unitless default is read in `value`'s own display unit, not its
+  // canonical one — `evaluateCompare`'s `thresholdUnit` reasoning verbatim,
+  // and for the same reason: a typed `6` has to mean 6 of what is on screen.
+  const valueDimension = resolution.targets.get(valueKey)?.dimension;
+  const thresholdUnit =
+    isDimensionless(node.threshold.unit.dimension) &&
+    valueDimension !== undefined &&
+    !isDimensionless(valueDimension)
+      ? displayUnit(resolution.targets.get(valueKey))
+      : node.threshold.unit;
+
+  const thresholdKey = endpointKey(node.id, THRESHOLD_PORT);
+  const thresholdEdge = resolution.incoming.get(thresholdKey)?.[0];
+  const threshold =
+    thresholdEdge === undefined
+      ? toCanonical(node.threshold.value, thresholdUnit)
+      : (() => {
+          const series = valueAtEdge(thresholdEdge, thresholdKey, values);
+          if (series.kind !== 'numeric') {
+            throw new KernelError(
+              "a crossing's threshold needs a numeric value, not a categorical one",
+              thresholdKey,
+            );
+          }
+          if (series.data.length !== 1) {
+            throw new KernelError(
+              "a crossing's threshold needs a single value — it is one bound, not one per point",
+              thresholdKey,
+            );
+          }
+          return series.data[0] as number;
+        })();
+
+  return select({ ...common, mode: node.mode, threshold, direction: node.direction });
+}
+
 // --- waypoint, pack, unpack ---------------------------------------------
 
 /** Literal passthrough of the first wired input — not a reduction, unlike `minimum`/`sum`. */
@@ -1240,6 +1398,73 @@ function pickPlotAxes(
   };
 }
 
+/**
+ * The Check results a `checks` list names, in that order.
+ *
+ * Both kinds that reference checks by id — Feasibility and Best Design —
+ * resolve them here rather than each keeping its own copy of the two error
+ * messages. `outputsSoFar` is the authority: a check is never deferred, so by
+ * the time either of these runs, every one of them has been computed.
+ */
+function referencedChecks(
+  checks: readonly string[],
+  nodeId: string,
+  kindLabel: string,
+  outputsSoFar: readonly OutputResult[],
+): readonly CheckResult[] {
+  return checks.map((checkId) => {
+    const result = outputsSoFar.find((entry) => entry.nodeId === checkId);
+    if (result === undefined) {
+      throw new KernelError(`'${checkId}' is not a Check node, or has not been computed yet`, nodeId);
+    }
+    if (result.kind !== 'check') {
+      throw new KernelError(
+        `'${checkId}' is not a Check node — a ${kindLabel} node can only reference checks`,
+        nodeId,
+      );
+    }
+    return result;
+  });
+}
+
+/**
+ * Each check's verdicts broadcast onto `target`, and their AND.
+ *
+ * No checks at all means nothing constrains the study, so every cell is
+ * feasible — which is what `checks: []` means on a Best Design node (a plain
+ * unconstrained min or max) and the only reading that composes.
+ */
+function feasibleMask(
+  checkResults: readonly CheckResult[],
+  target: readonly Axis[],
+): { readonly perCheck: readonly (readonly boolean[])[]; readonly mask: readonly boolean[] } {
+  const perCheck = checkResults.map((result) =>
+    broadcastBoolean(result.results, result.series.axes, target),
+  );
+  const mask =
+    perCheck.length === 0
+      ? new Array<boolean>(gridSize(target)).fill(true)
+      : perCheck.reduce((acc, next) => acc.map((value, i) => value && (next[i] as boolean)));
+  return { perCheck, mask };
+}
+
+/**
+ * How much room a check still has at one cell, as a fraction of its own bound
+ * — what "governing" is ranked by, and why it is a *normalised* margin: a
+ * safety factor 0.02 above 1.5 and a pressure 4 N/mm² below 200 are not
+ * comparable as raw differences, and are as ratios.
+ *
+ * `undefined` where there is no margin to speak of: `==`/`!=` assert equality
+ * rather than a one-sided bound, and a zero threshold makes the ratio
+ * meaningless whatever the comparison.
+ */
+function normalisedMargin(result: CheckResult, value: number): number | undefined {
+  if (result.comparison === '==' || result.comparison === '!=') return undefined;
+  if (result.threshold === 0 || !Number.isFinite(value)) return undefined;
+  const slack = (value - result.threshold) / Math.abs(result.threshold);
+  return result.comparison === '>=' || result.comparison === '>' ? slack : -slack;
+}
+
 function outputResult(
   node: OutputNode,
   resolution: Resolution,
@@ -1299,16 +1524,7 @@ function outputResult(
   }
 
   if (output.kind === 'feasibility') {
-    const checkResults = output.checks.map((checkId) => {
-      const result = outputsSoFar.find((entry) => entry.nodeId === checkId);
-      if (result === undefined) {
-        throw new KernelError(`'${checkId}' is not a Check node, or has not been computed yet`, node.id);
-      }
-      if (result.kind !== 'check') {
-        throw new KernelError(`'${checkId}' is not a Check node — a Feasibility node can only reference checks`, node.id);
-      }
-      return result;
-    });
+    const checkResults = referencedChecks(output.checks, node.id, 'Feasibility', outputsSoFar);
     const maskAxes = unionAxes(...checkResults.map((result) => result.series.axes));
 
     const picked = pickPlotAxes(
@@ -1348,13 +1564,7 @@ function outputResult(
     // flat is a drawing rather than a failure — `FeasibilityFigure` widens
     // the grid at draw time (`PlotFigure`'s `plotGrid` does the same for a
     // flat curve) instead of this result claiming a shape it does not have.
-    const perCheck = checkResults.map((result) =>
-      broadcastBoolean(result.results, result.series.axes, maskAxes),
-    );
-    const mask =
-      perCheck.length === 0
-        ? []
-        : perCheck.reduce((acc, next) => acc.map((value, i) => value && (next[i] as boolean)));
+    const { perCheck, mask } = feasibleMask(checkResults, maskAxes);
 
     return {
       ...base,
@@ -1366,6 +1576,143 @@ function outputResult(
       x: axisFor(picked.x),
       ...(picked.series === undefined ? {} : { series2: axisFor(picked.series) }),
       ...(picked.facet === undefined ? {} : { facet: axisFor(picked.facet) }),
+    };
+  }
+
+  if (output.kind === 'bestDesign') {
+    const checkResults = referencedChecks(output.checks, node.id, 'Best Design', outputsSoFar);
+    const { value: objective, unit } = sourceOf(node, OBJECTIVE_PORT, resolution, values);
+    if (objective.kind !== 'numeric') {
+      throw new KernelError(
+        'a Best Design objective needs a numeric value, not a categorical one',
+        endpointKey(node.id, OBJECTIVE_PORT),
+      );
+    }
+
+    // The study is the objective's own grid unioned with the checks': a check
+    // varying along a second axis genuinely narrows which cells of that grid
+    // are candidates, even where the objective itself does not vary along it.
+    const studyAxes = unionAxes(objective.axes, ...checkResults.map((result) => result.series.axes));
+    const { perCheck, mask: feasible } = feasibleMask(checkResults, studyAxes);
+    const scores = broadcastSeries(objective, studyAxes);
+    const feasibleCount = feasible.filter(Boolean).length;
+
+    const card = {
+      ...base,
+      kind: 'bestDesign' as const,
+      checks: output.checks,
+      direction: output.direction,
+      axes: studyAxes,
+      feasible,
+      objective: scores,
+      unit,
+      feasibleCount,
+    };
+
+    if (feasibleCount === 0) {
+      // Not a failure — a partly-failing study is the ordinary state of a
+      // design that has not been sized yet. Naming the check that fails at
+      // the most candidates is the review's "failure card" in its cheapest
+      // honest form: it says where to look next.
+      const ranked = checkResults
+        .map((result, i) => ({
+          checkId: result.nodeId,
+          failures: (perCheck[i] as readonly boolean[]).filter((entry) => !entry).length,
+        }))
+        .sort((a, b) => b.failures - a.failures);
+      const blocking = ranked[0];
+      warnings.push({
+        kind: 'bestDesignInfeasible',
+        nodeId: node.id,
+        message:
+          blocking === undefined
+            ? 'nothing to choose from — the objective has no points'
+            : `no candidate satisfies every check at once — '${blocking.checkId}' fails at ` +
+              `${blocking.failures} of ${feasible.length} point${feasible.length === 1 ? '' : 's'}`,
+      });
+      return { ...card, ...(blocking === undefined ? {} : { blocking }) };
+    }
+
+    // Ties resolve to the first cell in axis order, which is what makes the
+    // answer stable: re-evaluating an unchanged document never picks a
+    // different one of two equally good designs.
+    let cell = -1;
+    for (const [i, ok] of feasible.entries()) {
+      if (!ok) continue;
+      const score = scores.data[i] as number;
+      if (!Number.isFinite(score)) continue;
+      if (cell === -1) {
+        cell = i;
+        continue;
+      }
+      const current = scores.data[cell] as number;
+      if (output.direction === 'minimize' ? score < current : score > current) cell = i;
+    }
+    if (cell === -1) {
+      throw new KernelError('the objective has no usable value at any feasible point', node.id);
+    }
+
+    const spread = feasible
+      .map((ok, i) => (ok ? (scores.data[i] as number) : Number.NaN))
+      .filter((entry) => Number.isFinite(entry));
+    if (feasibleCount > 1 && Math.min(...spread) === Math.max(...spread)) {
+      warnings.push({
+        kind: 'bestDesignFlat',
+        nodeId: node.id,
+        message:
+          `every feasible candidate scores the same — the winner is simply the first, ` +
+          'so this is not yet a decision the objective makes',
+      });
+    }
+
+    // The winning coordinate on *every* axis the study varies along, read
+    // from each axis node's own coordinate series — `axisFor` above does the
+    // same lookup for a figure, and this needs no `along` wire for the same
+    // reason: the axes are already in the result.
+    const at = studyAxes.flatMap((axis): readonly BestDesignCoordinate[] => {
+      const nodeId = [...axes.entries()].find(([, entry]) => entry.id === axis.id)?.[0];
+      if (nodeId === undefined) return [];
+      const coordinates = values.get(endpointKey(nodeId, VALUE_PORT));
+      if (coordinates === undefined || !isSeries(coordinates)) return [];
+      const placed = broadcastSeries(coordinates, studyAxes);
+      const found = placed.data[cell];
+      if (found === undefined) return [];
+      return [
+        { axis, value: found, unit: displayUnit(resolution.sources.get(endpointKey(nodeId, VALUE_PORT))) },
+      ];
+    });
+
+    const unrankable: string[] = [];
+    const margins = checkResults
+      .flatMap((result) => {
+        const margin = normalisedMargin(result, broadcastSeries(result.series, studyAxes).data[cell] as number);
+        if (margin === undefined) {
+          unrankable.push(result.nodeId);
+          return [];
+        }
+        return [{ checkId: result.nodeId, margin }];
+      })
+      .sort((a, b) => a.margin - b.margin);
+    if (unrankable.length > 0) {
+      warnings.push({
+        kind: 'bestDesignUnrankable',
+        nodeId: node.id,
+        message:
+          `${unrankable.map((id) => `'${id}'`).join(', ')} cannot be ranked for "governing" — ` +
+          'an equality has no margin, and a zero threshold has no scale to measure one against',
+      });
+    }
+    const governing = margins[0];
+
+    return {
+      ...card,
+      winner: {
+        cell,
+        objective: scores.data[cell] as number,
+        at,
+        ...(governing === undefined ? {} : { governing }),
+        margins,
+      },
     };
   }
 

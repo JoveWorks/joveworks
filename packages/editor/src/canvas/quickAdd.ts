@@ -1,14 +1,18 @@
 import { parseUnit } from '@joveworks/units';
 import {
+  ALONG_PORT,
+  AT_PORT,
   CLOSURE_RESULT_PORT,
   formulaRef,
   MONTE_CARLO_SAMPLE_PORT,
+  OBJECTIVE_PORT,
   VALUE_PORT,
   VERDICT_PORT,
   type Formula,
   type GraphDocument,
   type GraphNode,
   type Position,
+  type SelectMode,
 } from '@joveworks/schema';
 
 import { defaultOutput, NEW_COLUMN } from '../model/document';
@@ -17,8 +21,12 @@ import { monteCarloSampleCount, monteCarloSampleLimit } from '../model/monteCarl
 export type QuickAddChoice =
   | { readonly kind: 'formula'; readonly formula: Formula; readonly port: string }
   | { readonly kind: 'input' }
-  | { readonly kind: 'output'; readonly outputKind: 'print' | 'check' | 'plot' | 'table' | 'sensitivity' }
+  | {
+      readonly kind: 'output';
+      readonly outputKind: 'print' | 'check' | 'plot' | 'table' | 'sensitivity' | 'bestDesign';
+    }
   | { readonly kind: 'compare' }
+  | { readonly kind: 'select'; readonly mode: SelectMode }
   | { readonly kind: 'closure' }
   | { readonly kind: 'waypoint' }
   | { readonly kind: 'pack' }
@@ -83,9 +91,14 @@ export function quickAddNodeSpec(document: GraphDocument, choice: QuickAddCandid
         }),
       };
     case 'output': {
-      const port = choice.outputKind === 'table' ? NEW_COLUMN : VALUE_PORT;
+      const port =
+        choice.outputKind === 'table'
+          ? NEW_COLUMN
+          : choice.outputKind === 'bestDesign'
+            ? OBJECTIVE_PORT
+            : VALUE_PORT;
       return {
-        idPrefix: choice.outputKind === 'print' ? 'result' : choice.outputKind,
+        idPrefix: choice.outputKind === 'print' ? 'result' : choice.outputKind === 'bestDesign' ? 'best' : choice.outputKind,
         ports: { source: [port], target: [] },
         make: (id, position, label) => ({
           kind: 'output',
@@ -108,6 +121,28 @@ export function quickAddNodeSpec(document: GraphDocument, choice: QuickAddCandid
           position,
           ...labelField(label),
         }),
+      };
+    case 'select':
+      return {
+        idPrefix: choice.mode === 'firstPassing' ? 'first' : choice.mode === 'crossing' ? 'crossing' : choice.mode,
+        // A dragged source lands on `value`, the thing being searched, or on
+        // `along` where it cannot — dragging a swept range at a
+        // `firstPassing` node, whose `value` only takes a verdict, is exactly
+        // that case. A dragged target takes `at`, the coordinate, which is
+        // the headline answer and the only output every mode has.
+        ports: { source: [VALUE_PORT, ALONG_PORT], target: [AT_PORT] },
+        make: (id, position, label) =>
+          choice.mode === 'crossing'
+            ? {
+                kind: 'select',
+                id,
+                mode: choice.mode,
+                threshold: { value: 1, unit: parseUnit('') },
+                direction: 'any',
+                position,
+                ...labelField(label),
+              }
+            : { kind: 'select', id, mode: choice.mode, position, ...labelField(label) },
       };
     case 'closure':
       return {

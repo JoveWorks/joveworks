@@ -6,6 +6,7 @@ import {
   evaluateDocument,
   receiverSampleValue,
   valueAt,
+  type BestDesignResult,
   type CheckResult,
   type EquationResult,
   type FeasibilityResult,
@@ -36,6 +37,7 @@ import {
   refTo,
   renard,
   scalar,
+  selectNode,
   slider,
   uniformDraw,
   wire,
@@ -2068,5 +2070,295 @@ describe('sensitivity outputs', () => {
     const sens2 = evaluation.outputs.find((entry) => entry.nodeId === 'sens2') as SensitivityResult;
     expect(sens1.rankings).toHaveLength(2);
     expect(sens2.rankings).toHaveLength(2);
+  });
+});
+
+describe('select nodes', () => {
+  /** `A = w * h` swept along `w`, with `h` fixed at 2 mm: A = 2w, five points. */
+  const sweptArea = (selectJson: JsonObject, wires: readonly JsonObject[]) =>
+    documentOf(
+      [
+        input('d', linear(10, 50, 5, 'mm'), { axisLabel: 'diameter' }),
+        input('h', scalar(2, 'mm')),
+        formulaNode('area', refTo('area')),
+        selectJson,
+      ],
+      [wire('d.value', 'area.w'), wire('h.value', 'area.h'), ...wires],
+    );
+
+  it('answers on `at` in the dimension of whatever is wired into `along`, not the value', () => {
+    const document = sweptArea(
+      selectNode('cross', 'crossing', { threshold: { value: 50, unit: 'mm²' }, direction: 'any' }),
+      [wire('area.A', 'cross.value'), wire('d.value', 'cross.along')],
+    );
+    const evaluation = evaluateDocument(document, catalogues);
+    // A = 20…100 mm² over d = 10…50 mm, so A = 50 mm² at d = 25 mm.
+    expect(numeric(valueAt(evaluation, 'cross', 'at')).data[0]).toBeCloseTo(25, 10);
+    // `at` is a length because `along` is, even though the searched value is an area.
+    const type = resolveGraph(document, catalogues).sources.get('cross.at');
+    expect(type?.unit?.symbol).toBe('mm');
+  });
+
+  it('reads a bare unitless threshold in the searched value’s own unit, exactly as compare does', () => {
+    const document = sweptArea(
+      selectNode('cross', 'crossing', { threshold: { value: 50, unit: '' }, direction: 'any' }),
+      [wire('area.A', 'cross.value'), wire('d.value', 'cross.along')],
+    );
+    const evaluation = evaluateDocument(document, catalogues);
+    expect(numeric(valueAt(evaluation, 'cross', 'at')).data[0]).toBeCloseTo(25, 10);
+  });
+
+  it('emits `best` alongside `at` for an extremum, and nothing for the other modes', () => {
+    const document = sweptArea(selectNode('least', 'argMin'), [
+      wire('area.A', 'least.value'),
+      wire('d.value', 'least.along'),
+    ]);
+    const evaluation = evaluateDocument(document, catalogues);
+    expect(numeric(valueAt(evaluation, 'least', 'at')).data).toEqual([10]);
+    expect(numeric(valueAt(evaluation, 'least', 'best')).data).toEqual([20]);
+
+    const crossing = sweptArea(
+      selectNode('cross', 'crossing', { threshold: { value: 50, unit: 'mm²' }, direction: 'any' }),
+      [wire('area.A', 'cross.value'), wire('d.value', 'cross.along')],
+    );
+    expect(valueAt(evaluateDocument(crossing, catalogues), 'cross', 'best')).toBeUndefined();
+  });
+
+  it('takes a Compare verdict for `firstPassing`, landing on a size the range actually holds', () => {
+    const document = documentOf(
+      [
+        input('d', renard('R10', 10, 25, 'mm'), { axisLabel: 'size' }),
+        input('h', scalar(2, 'mm')),
+        formulaNode('area', refTo('area')),
+        compareNode('ok', '>=', { value: 30, unit: 'mm²' }),
+        selectNode('first', 'firstPassing'),
+      ],
+      [
+        wire('d.value', 'area.w'),
+        wire('h.value', 'area.h'),
+        wire('area.A', 'ok.value'),
+        wire('ok.verdict', 'first.value'),
+        wire('d.value', 'first.along'),
+      ],
+    );
+    const evaluation = evaluateDocument(document, catalogues);
+    // R10 from 10 to 25 is 10, 12.5, 16, 20, 25; A = 2d, so A ≥ 30 mm² first
+    // holds at 16 mm — a size on the list, never one between two of them.
+    expect(numeric(valueAt(evaluation, 'first', 'at')).data).toEqual([16]);
+  });
+
+  it("keeps the second axis of a 2-D study, one crossing size per its coordinate", () => {
+    const document = documentOf(
+      [
+        input('d', linear(10, 50, 5, 'mm'), { axisLabel: 'diameter' }),
+        input('h', list([2, 4], 'mm'), { axisLabel: 'height' }),
+        formulaNode('area', refTo('area')),
+        selectNode('cross', 'crossing', { threshold: { value: 100, unit: 'mm²' }, direction: 'any' }),
+      ],
+      [
+        wire('d.value', 'area.w'),
+        wire('h.value', 'area.h'),
+        wire('area.A', 'cross.value'),
+        wire('d.value', 'cross.along'),
+      ],
+    );
+    const evaluation = evaluateDocument(document, catalogues);
+    const at = numeric(valueAt(evaluation, 'cross', 'at'));
+    expect(at.axes.map((entry) => entry.label)).toEqual(['height']);
+    // A = d·h reaches 100 mm² at d = 50 for h = 2, and at d = 25 for h = 4.
+    expect(at.data[0]).toBeCloseTo(50, 10);
+    expect(at.data[1]).toBeCloseTo(25, 10);
+  });
+
+  it("refuses a scalar in `along` with the message that says what to wire", () => {
+    const document = sweptArea(
+      selectNode('cross', 'crossing', { threshold: { value: 50, unit: 'mm²' }, direction: 'any' }),
+      [wire('area.A', 'cross.value'), wire('h.value', 'cross.along')],
+    );
+    expect(() => evaluateDocument(document, catalogues)).toThrow(/wire the swept range into 'along'/u);
+  });
+
+  it('refuses a threshold in the wrong dimension at resolve time, before anything is evaluated', () => {
+    const document = sweptArea(
+      selectNode('cross', 'crossing', { threshold: { value: 50, unit: 'mm' }, direction: 'any' }),
+      [wire('area.A', 'cross.value'), wire('d.value', 'cross.along')],
+    );
+    expect(() => resolveGraph(document, catalogues)).toThrow(/same dimension/u);
+  });
+});
+
+describe('Best Design outputs', () => {
+  /**
+   * `A = d · h` swept along `d`, with two checks bounding it from both
+   * sides and `A` itself as the objective — small enough to read by eye.
+   */
+  const study = (output: JsonObject, extraNodes: readonly JsonObject[] = []) =>
+    documentOf(
+      [
+        input('d', linear(10, 50, 5, 'mm'), { axisLabel: 'diameter' }),
+        input('h', scalar(2, 'mm')),
+        formulaNode('area', refTo('area')),
+        outputNode('floor', { kind: 'check', comparison: '>=', threshold: { value: 50, unit: 'mm²' } }),
+        outputNode('ceiling', { kind: 'check', comparison: '<=', threshold: { value: 90, unit: 'mm²' } }),
+        ...extraNodes,
+        outputNode('best', output),
+      ],
+      [
+        wire('d.value', 'area.w'),
+        wire('h.value', 'area.h'),
+        wire('area.A', 'floor.value'),
+        wire('area.A', 'ceiling.value'),
+        wire('area.A', 'best.objective'),
+      ],
+    );
+
+  const cardOf = (document: ReturnType<typeof documentOf>): BestDesignResult => {
+    const evaluation = evaluateDocument(document, catalogues);
+    return evaluation.outputs.find((entry) => entry.nodeId === 'best') as BestDesignResult;
+  };
+
+  it('picks the smallest objective among the cells every check passes at', () => {
+    const card = cardOf(study({ kind: 'bestDesign', checks: ['floor', 'ceiling'], direction: 'minimize' }));
+    // A = 20, 40, 60, 80, 100 mm². Feasible (≥50 and ≤90) is [F,F,T,T,F].
+    expect(card.feasible).toEqual([false, false, true, true, false]);
+    expect(card.feasibleCount).toBe(2);
+    expect(card.winner?.cell).toBe(2);
+    expect(card.winner?.objective).toBe(60);
+    expect(card.winner?.at.map((entry) => [entry.axis.label, entry.value])).toEqual([['diameter', 30]]);
+  });
+
+  it('maximises when told to, over the same feasible set', () => {
+    const card = cardOf(study({ kind: 'bestDesign', checks: ['floor', 'ceiling'], direction: 'maximize' }));
+    expect(card.winner?.objective).toBe(80);
+    expect(card.winner?.at[0]?.value).toBe(40);
+  });
+
+  it('names the least-margin check as governing when two are close', () => {
+    // At A = 60 mm²: the floor (≥50) has (60−50)/50 = 20 % of room, the
+    // ceiling (≤90) has −(60−90)/90 = 33 %. The floor governs.
+    const card = cardOf(study({ kind: 'bestDesign', checks: ['floor', 'ceiling'], direction: 'minimize' }));
+    expect(card.winner?.governing?.checkId).toBe('floor');
+    expect(card.winner?.governing?.margin).toBeCloseTo(0.2, 10);
+    expect(card.winner?.margins.map((entry) => entry.checkId)).toEqual(['floor', 'ceiling']);
+  });
+
+  it('leaves an equality check and a zero-threshold check out of the ranking, and says so', () => {
+    const document = study(
+      { kind: 'bestDesign', checks: ['floor', 'exact', 'zero'], direction: 'minimize' },
+      [
+        outputNode('exact', { kind: 'check', comparison: '==', threshold: { value: 60, unit: 'mm²' } }),
+        outputNode('zero', { kind: 'check', comparison: '>=', threshold: { value: 0, unit: 'mm²' } }),
+      ],
+    );
+    const wired = {
+      ...document,
+      edges: [
+        ...document.edges,
+        { id: 'area.A->exact.value', from: { node: 'area', port: 'A' }, to: { node: 'exact', port: 'value' } },
+        { id: 'area.A->zero.value', from: { node: 'area', port: 'A' }, to: { node: 'zero', port: 'value' } },
+      ],
+    };
+    const evaluation = evaluateDocument(wired, catalogues);
+    const card = evaluation.outputs.find((entry) => entry.nodeId === 'best') as BestDesignResult;
+    // `==` asserts equality rather than a bound, and a zero threshold has no
+    // scale to measure a ratio against — neither can be ranked, so only the
+    // floor is left to govern.
+    expect(card.winner?.margins.map((entry) => entry.checkId)).toEqual(['floor']);
+    expect(evaluation.warnings.some((entry) => entry.kind === 'bestDesignUnrankable')).toBe(true);
+  });
+
+  it('reports no feasible candidate as an answer, naming the check that fails most', () => {
+    const document = study({ kind: 'bestDesign', checks: ['floor', 'impossible'], direction: 'minimize' }, [
+      outputNode('impossible', { kind: 'check', comparison: '>=', threshold: { value: 500, unit: 'mm²' } }),
+    ]);
+    const wired = {
+      ...document,
+      edges: [
+        ...document.edges,
+        {
+          id: 'area.A->impossible.value',
+          from: { node: 'area', port: 'A' },
+          to: { node: 'impossible', port: 'value' },
+        },
+      ],
+    };
+    const evaluation = evaluateDocument(wired, catalogues);
+    const card = evaluation.outputs.find((entry) => entry.nodeId === 'best') as BestDesignResult;
+    expect(card.winner).toBeUndefined();
+    expect(card.feasibleCount).toBe(0);
+    // `impossible` fails at all five points, `floor` at two.
+    expect(card.blocking).toEqual({ checkId: 'impossible', failures: 5 });
+    expect(evaluation.warnings.some((entry) => entry.kind === 'bestDesignInfeasible')).toBe(true);
+  });
+
+  it('treats an empty `checks` list as an unconstrained minimum, not an error', () => {
+    const card = cardOf(study({ kind: 'bestDesign', checks: [], direction: 'minimize' }));
+    expect(card.feasible).toEqual([true, true, true, true, true]);
+    expect(card.winner?.objective).toBe(20);
+    expect(card.winner?.governing).toBeUndefined();
+  });
+
+  it('evaluates correctly however the Best Design node is ordered relative to its checks', () => {
+    const document = documentOf(
+      [
+        outputNode('best', { kind: 'bestDesign', checks: ['floor'], direction: 'minimize' }),
+        input('d', linear(10, 50, 5, 'mm'), { axisLabel: 'diameter' }),
+        input('h', scalar(2, 'mm')),
+        formulaNode('area', refTo('area')),
+        outputNode('floor', { kind: 'check', comparison: '>=', threshold: { value: 50, unit: 'mm²' } }),
+      ],
+      [
+        wire('d.value', 'area.w'),
+        wire('h.value', 'area.h'),
+        wire('area.A', 'floor.value'),
+        wire('area.A', 'best.objective'),
+      ],
+    );
+    const card = cardOf(document);
+    expect(card.winner?.objective).toBe(60);
+  });
+
+  it('warns that a flat objective makes the choice arbitrary', () => {
+    const document = documentOf(
+      [
+        input('d', linear(10, 50, 5, 'mm'), { axisLabel: 'diameter' }),
+        input('h', scalar(2, 'mm')),
+        input('c', scalar(7, '')),
+        formulaNode('area', refTo('area')),
+        outputNode('floor', { kind: 'check', comparison: '>=', threshold: { value: 50, unit: 'mm²' } }),
+        outputNode('best', { kind: 'bestDesign', checks: ['floor'], direction: 'minimize' }),
+      ],
+      [
+        wire('d.value', 'area.w'),
+        wire('h.value', 'area.h'),
+        wire('area.A', 'floor.value'),
+        wire('c.value', 'best.objective'),
+      ],
+    );
+    // The check varies along `diameter`, so the study has three feasible
+    // candidates — and the objective is the same constant at every one of
+    // them. Nothing here makes one better than another, and the card says so
+    // rather than presenting the first as a decision.
+    const evaluation = evaluateDocument(document, catalogues);
+    const card = evaluation.outputs.find((entry) => entry.nodeId === 'best') as BestDesignResult;
+    expect(card.feasibleCount).toBe(3);
+    expect(card.winner?.objective).toBe(7);
+    expect(evaluation.warnings.some((entry) => entry.kind === 'bestDesignFlat')).toBe(true);
+  });
+
+  it('refuses a referenced id that is not a Check node', () => {
+    const document = study({ kind: 'bestDesign', checks: ['readout'], direction: 'minimize' }, [
+      outputNode('readout', { kind: 'print' }),
+    ]);
+    const wired = {
+      ...document,
+      edges: [
+        ...document.edges,
+        { id: 'area.A->readout.value', from: { node: 'area', port: 'A' }, to: { node: 'readout', port: 'value' } },
+      ],
+    };
+    expect(() => evaluateDocument(wired, catalogues)).toThrow(
+      /a Best Design node can only reference checks/u,
+    );
   });
 });

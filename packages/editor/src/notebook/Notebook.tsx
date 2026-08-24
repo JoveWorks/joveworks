@@ -57,6 +57,7 @@ import { display, displayNumber } from '../model/quantity';
 import { checkVerdict, summarise, summariseCheck } from '../model/values';
 import { CheckReading } from '../CheckReading';
 import { MonteCarloReceiverPlayback } from '../canvas/MonteCarloReceiverPlayback';
+import { BestDesignCard } from './BestDesignCard';
 import { FeasibilityFigure } from './FeasibilityFigure';
 import { PlotFigure } from './PlotFigure';
 import { SensitivityFigure } from './SensitivityFigure';
@@ -362,6 +363,22 @@ function Result({ result, node }: { readonly result: OutputResult; readonly node
           <OutputTitle node={node} />
         </span>
         <SensitivityFigure result={result} />
+      </div>
+    );
+  }
+
+  if (result.kind === 'bestDesign') {
+    // Same label fallback the feasibility tip uses — a check's own row and
+    // this card should name it identically.
+    const checkLabels = Object.fromEntries(
+      result.checks.map((id) => [id, document.nodes.find((candidate) => candidate.id === id)?.label ?? id]),
+    );
+    return (
+      <div className="result plot">
+        <span className="label">
+          <OutputTitle node={node} />
+        </span>
+        <BestDesignCard result={result} checkLabels={checkLabels} format={format} />
       </div>
     );
   }

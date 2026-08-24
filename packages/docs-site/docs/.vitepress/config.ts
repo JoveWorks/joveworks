@@ -29,6 +29,7 @@ export default defineConfig({
       {
         text: "Examples",
         items: [
+          { text: "Choosing a shaft size", link: "/examples/choosing-a-shaft-size" },
           { text: "Pocket milling — power envelope", link: "/examples/milling-power-envelope" },
         ],
       },

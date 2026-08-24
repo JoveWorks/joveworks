@@ -9,7 +9,7 @@
 
 import { canonicalUnit, type Series } from '@joveworks/kernel';
 import { DIMENSIONLESS, PLAIN_NUMBER_FORMAT, type NumberFormat, type Unit } from '@joveworks/units';
-import { VALUE_PORT, type GraphNode } from '@joveworks/schema';
+import { AT_PORT, VALUE_PORT, type GraphNode } from '@joveworks/schema';
 
 import type { Analysis } from './analysis';
 import { display } from './quantity';
@@ -26,6 +26,9 @@ export interface Reading {
  */
 export function outputPort(analysis: Analysis, node: GraphNode): string | undefined {
   if (node.kind === 'input' || node.kind === 'monteCarloGenerator') return VALUE_PORT;
+  // `at` and not `best`: the coordinate is the headline answer of every
+  // selection mode, and the only output all four of them have.
+  if (node.kind === 'select') return AT_PORT;
   if (node.kind === 'output' || node.kind === 'monteCarloReceiver') return undefined;
   return analysis.formulas.get(node.id)?.outputs[0]?.name;
 }

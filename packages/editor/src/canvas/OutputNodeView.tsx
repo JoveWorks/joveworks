@@ -29,6 +29,7 @@ import { parseExpression, toLatex } from '@joveworks/kernel';
 import { parseUnit } from '@joveworks/units';
 import {
   COMPARISONS,
+  OBJECTIVE_PORT,
   THRESHOLD_PORT,
   VALUE_PORT,
   axes as documentAxes,
@@ -116,6 +117,64 @@ function AxisPicker({
   );
 }
 
+/**
+ * The Check nodes an output references by id, as checkboxes.
+ *
+ * No wire connects these — Feasibility and Best Design both reference
+ * existing Check nodes by id, the same "name it, don't wire it" pattern a
+ * plot's axis picker already uses for range nodes. Hovering a row highlights
+ * the Check node it names on the canvas (and lights back up here if that
+ * Check is hovered from its own notebook entry instead), so the reference
+ * stays visible even without a wire.
+ */
+function CheckPicker({
+  checkNodes,
+  checks,
+  hovered,
+  setHovered,
+  onChange,
+}: {
+  readonly checkNodes: readonly OutputNode[];
+  readonly checks: readonly string[];
+  readonly hovered: ReadonlySet<string>;
+  readonly setHovered: (update: (current: ReadonlySet<string>) => ReadonlySet<string>) => void;
+  readonly onChange: (checks: readonly string[]) => void;
+}): ReactElement {
+  return (
+    <label className="wide">
+      checks
+      <ul className="check-list nodrag">
+        {checkNodes.length === 0 ? (
+          <li className="check-list-empty">no Check nodes in this document yet</li>
+        ) : (
+          checkNodes.map((checkNode) => (
+            <li key={checkNode.id}>
+              <label
+                className={`check-list-item${hovered.has(checkNode.id) ? ' check-list-item-active' : ''}`}
+                onMouseEnter={() => setHovered(() => new Set([checkNode.id]))}
+                onMouseLeave={() => setHovered(() => new Set())}
+              >
+                <input
+                  type="checkbox"
+                  checked={checks.includes(checkNode.id)}
+                  onChange={(event) =>
+                    onChange(
+                      event.target.checked
+                        ? [...checks, checkNode.id]
+                        : checks.filter((entry) => entry !== checkNode.id),
+                    )
+                  }
+                />
+                <span className="check-list-label">{checkNode.label ?? checkNode.id}</span>
+              </label>
+            </li>
+          ))
+        )}
+      </ul>
+    </label>
+  );
+}
+
 /** What the node shows when the kernel has an answer for it. */
 function Verdict({ nodeId }: { readonly nodeId: string }): ReactElement | null {
   const { analysis } = useGraph();
@@ -164,6 +223,14 @@ function Verdict({ nodeId }: { readonly nodeId: string }): ReactElement | null {
   if (result.kind === 'sensitivity') {
     const top = result.rankings[0];
     return <span className="badge plot">{top === undefined ? 'no candidates' : `top driver: ${top.label}`}</span>;
+  }
+
+  if (result.kind === 'bestDesign') {
+    if (result.winner === undefined) return <span className="badge fail">nothing feasible</span>;
+    const where = result.winner.at
+      .map((entry) => (typeof entry.value === 'number' ? `${entry.axis.label} ${display(entry.value, entry.unit)}` : entry.value))
+      .join(', ');
+    return <span className="badge pass">{where.length === 0 ? 'chosen' : where}</span>;
   }
 
   return null;
@@ -223,7 +290,13 @@ export function OutputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>
     (candidate): candidate is OutputNode => candidate.kind === 'output' && candidate.output.kind === 'check',
   );
   const ports =
-    output.kind === 'table' ? output.columns : output.kind === 'feasibility' ? [] : [VALUE_PORT];
+    output.kind === 'table'
+      ? output.columns
+      : output.kind === 'feasibility'
+        ? []
+        : output.kind === 'bestDesign'
+          ? [OBJECTIVE_PORT]
+          : [VALUE_PORT];
   const wired = new Set(
     document.edges.filter((edge) => edge.to.node === id).map((edge) => edge.to.port),
   );
@@ -269,6 +342,7 @@ export function OutputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>
               <option value="equation">equation</option>
               <option value="feasibility">feasibility</option>
               <option value="sensitivity">sensitivity</option>
+              <option value="bestDesign">best design</option>
             </select>
           </label>
 
@@ -383,45 +457,44 @@ export function OutputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>
             </>
           ) : null}
 
+          {output.kind === 'bestDesign' ? (
+            <>
+              <label>
+                wants the
+                <select
+                  className="nodrag"
+                  value={output.direction}
+                  onChange={(event) =>
+                    setOutput({ ...output, direction: event.target.value as 'minimize' | 'maximize' })
+                  }
+                >
+                  <option value="minimize">smallest</option>
+                  <option value="maximize">largest</option>
+                </select>
+              </label>
+              {/* The same picker Feasibility uses, and deliberately so: the
+                  bounds a student already built are the constraints here
+                  too. Unlike Feasibility, an empty list is legal — it means
+                  an unconstrained min or max. */}
+              <CheckPicker
+                checkNodes={checkNodes}
+                checks={output.checks}
+                hovered={hovered}
+                setHovered={setHovered}
+                onChange={(checks) => setOutput({ ...output, checks })}
+              />
+            </>
+          ) : null}
+
           {output.kind === 'feasibility' ? (
             <>
-              <label className="wide">
-                checks
-                {/* No wire connects these — a Feasibility node references
-                    existing Check nodes by id, the same "name it, don't
-                    wire it" pattern a plot's axis picker already uses for
-                    range nodes. Hovering a row highlights the Check node it
-                    names on the canvas (and lights back up here if that
-                    Check is hovered from its own notebook entry instead),
-                    so the reference is still visible even without a wire. */}
-                <ul className="check-list nodrag">
-                  {checkNodes.length === 0 ? (
-                    <li className="check-list-empty">no Check nodes in this document yet</li>
-                  ) : (
-                    checkNodes.map((checkNode) => (
-                      <li key={checkNode.id}>
-                        <label
-                          className={`check-list-item${hovered.has(checkNode.id) ? ' check-list-item-active' : ''}`}
-                          onMouseEnter={() => setHovered(() => new Set([checkNode.id]))}
-                          onMouseLeave={() => setHovered(() => new Set())}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={output.checks.includes(checkNode.id)}
-                            onChange={(event) => {
-                              const checks = event.target.checked
-                                ? [...output.checks, checkNode.id]
-                                : output.checks.filter((entry) => entry !== checkNode.id);
-                              setOutput({ ...output, checks });
-                            }}
-                          />
-                          <span className="check-list-label">{checkNode.label ?? checkNode.id}</span>
-                        </label>
-                      </li>
-                    ))
-                  )}
-                </ul>
-              </label>
+              <CheckPicker
+                checkNodes={checkNodes}
+                checks={output.checks}
+                hovered={hovered}
+                setHovered={setHovered}
+                onChange={(checks) => setOutput({ ...output, checks })}
+              />
               <AxisPicker
                 name="x axis"
                 value={output.x}
@@ -671,7 +744,10 @@ export function OutputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>
           ) : (
             <Equation latex={toLatex(parseExpression(equationResult.expression))} displayMode={false} />
           )
-        ) : output.kind === 'table' || output.kind === 'feasibility' || output.kind === 'sensitivity' ? null : (
+        ) : output.kind === 'table' ||
+          output.kind === 'feasibility' ||
+          output.kind === 'sensitivity' ||
+          output.kind === 'bestDesign' ? null : (
           <>
             <span className="reading">
               {value === undefined ? (
