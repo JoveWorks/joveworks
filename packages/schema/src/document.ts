@@ -66,6 +66,11 @@ export const MIN_PORT = 'min';
 export const MAX_PORT = 'max';
 export const MEAN_PORT = 'mean';
 export const STDDEV_PORT = 'stddev';
+export const MODE_PORT = 'mode';
+export const VALUES_PORT = 'values';
+export const WEIGHTS_PORT = 'weights';
+export const PERCENTILE_PORT = 'percentile';
+export const STATISTIC_RESULT_PORT = 'result';
 
 /** A closure node's one output port — its inputs are whatever its expression mentions. */
 export const CLOSURE_RESULT_PORT = 'result';
@@ -247,6 +252,27 @@ export interface BestDesignOutput {
   readonly direction: 'minimize' | 'maximize';
 }
 
+export const DISTRIBUTION_VIEWS = ['histogram', 'cdf'] as const;
+export type DistributionView = (typeof DISTRIBUTION_VIEWS)[number];
+
+/** A stable report figure over samples: a histogram or empirical CDF. */
+export interface DistributionOutput {
+  readonly kind: 'distribution';
+  readonly view: DistributionView;
+  readonly bins?: number;
+  readonly percentiles?: readonly number[];
+  readonly over?: string;
+  readonly facet?: string;
+  readonly fit?: boolean;
+}
+
+/** Failure probability and reliability index for referenced Check outputs. */
+export interface ReliabilityOutput {
+  readonly kind: 'reliability';
+  readonly checks: readonly string[];
+  readonly confidence?: number;
+}
+
 export type Output =
   | PrintOutput
   | CheckOutput
@@ -255,7 +281,9 @@ export type Output =
   | EquationOutput
   | FeasibilityOutput
   | SensitivityOutput
-  | BestDesignOutput;
+  | BestDesignOutput
+  | DistributionOutput
+  | ReliabilityOutput;
 
 export const OUTPUT_KINDS = [
   'print',
@@ -266,6 +294,8 @@ export const OUTPUT_KINDS = [
   'feasibility',
   'sensitivity',
   'bestDesign',
+  'distribution',
+  'reliability',
 ] as const;
 export type OutputKind = (typeof OUTPUT_KINDS)[number];
 
@@ -376,6 +406,42 @@ export interface ExtremumSelectNode extends SelectNodeBase {
  */
 export type SelectNode = CrossingSelectNode | PassingSelectNode | ExtremumSelectNode;
 
+export const STATISTICS = [
+  'mean',
+  'median',
+  'stddev',
+  'min',
+  'max',
+  'percentile',
+  'probability',
+  'count',
+] as const;
+export type Statistic = (typeof STATISTICS)[number];
+
+interface StatisticNodeBase extends NodeBase {
+  readonly kind: 'statistic';
+  readonly running?: boolean;
+}
+
+export interface PercentileStatisticNode extends StatisticNodeBase {
+  readonly statistic: 'percentile';
+  readonly percentile: number;
+}
+
+export interface ProbabilityStatisticNode extends StatisticNodeBase {
+  readonly statistic: 'probability';
+  readonly match: string;
+}
+
+export interface PlainStatisticNode extends StatisticNodeBase {
+  readonly statistic: 'mean' | 'median' | 'stddev' | 'min' | 'max' | 'count';
+}
+
+export type StatisticNode =
+  | PercentileStatisticNode
+  | ProbabilityStatisticNode
+  | PlainStatisticNode;
+
 /**
  * A student-authored equation: the expression is embedded directly (the
  * never-embed rule protects R&M content from leaving the repository boundary —
@@ -434,7 +500,13 @@ export interface UnpackNode extends NodeBase {
 }
 
 /** The value port every generator produces and every receiver consumes from — reuses `VALUE_PORT`. */
-export const MONTE_CARLO_DISTRIBUTIONS = ['uniform', 'normal'] as const;
+export const MONTE_CARLO_DISTRIBUTIONS = [
+  'uniform',
+  'normal',
+  'triangular',
+  'lognormal',
+  'discrete',
+] as const;
 export type MonteCarloDistribution = (typeof MONTE_CARLO_DISTRIBUTIONS)[number];
 
 interface MonteCarloGeneratorBase extends NodeBase {
@@ -467,9 +539,20 @@ export interface UniformMonteCarloGeneratorNode extends MonteCarloGeneratorBase 
  * `CompareNode.threshold` shape.
  */
 export interface NormalMonteCarloGeneratorNode extends MonteCarloGeneratorBase {
-  readonly distribution: 'normal';
+  readonly distribution: 'normal' | 'lognormal';
   readonly mean: number;
   readonly stddev: number;
+}
+
+export interface TriangularMonteCarloGeneratorNode extends MonteCarloGeneratorBase {
+  readonly distribution: 'triangular';
+  readonly min: number;
+  readonly mode: number;
+  readonly max: number;
+}
+
+export interface DiscreteMonteCarloGeneratorNode extends MonteCarloGeneratorBase {
+  readonly distribution: 'discrete';
 }
 
 /**
@@ -486,7 +569,11 @@ export interface NormalMonteCarloGeneratorNode extends MonteCarloGeneratorBase {
  * reshuffles ones already drawn — the property the receiver's playback
  * depends on.
  */
-export type MonteCarloGeneratorNode = UniformMonteCarloGeneratorNode | NormalMonteCarloGeneratorNode;
+export type MonteCarloGeneratorNode =
+  | UniformMonteCarloGeneratorNode
+  | NormalMonteCarloGeneratorNode
+  | TriangularMonteCarloGeneratorNode
+  | DiscreteMonteCarloGeneratorNode;
 
 /** The one input port a Monte Carlo receiver consumes — a wired series to accumulate. */
 export const MONTE_CARLO_SAMPLE_PORT = 'sample';
@@ -589,6 +676,7 @@ export type GraphNode =
   | OutputNode
   | CompareNode
   | SelectNode
+  | StatisticNode
   | ClosureNode
   | WaypointNode
   | PackNode
@@ -747,6 +835,39 @@ function parseOutput(value: JsonValue, path: string): Output {
           'maximize',
         ] as const),
       };
+
+    case 'distribution': {
+      const percentiles = optional(object, 'percentiles', path, (value, valuePath) =>
+        readArray(value, valuePath).map((entry, index) => {
+          const percentile = readNumber(entry, `${valuePath}[${index}]`);
+          if (percentile < 0 || percentile > 100) {
+            fail(`${valuePath}[${index}]`, 'must be between 0 and 100');
+          }
+          return percentile;
+        }),
+      );
+      return {
+        kind,
+        view: readEnum(required(object, 'view', path), join(path, 'view'), DISTRIBUTION_VIEWS),
+        ...put('bins', optional(object, 'bins', path, (value, valuePath) => readInteger(value, valuePath, 1))),
+        ...put('percentiles', percentiles),
+        ...put('over', optional(object, 'over', path, readName)),
+        ...put('facet', optional(object, 'facet', path, readName)),
+        ...put('fit', optional(object, 'fit', path, readBoolean)),
+      };
+    }
+
+    case 'reliability': {
+      const confidence = optional(object, 'confidence', path, readNumber);
+      if (confidence !== undefined && (confidence <= 0 || confidence >= 1)) {
+        fail(join(path, 'confidence'), 'must be between 0 and 1');
+      }
+      return {
+        kind,
+        checks: readStringArray(required(object, 'checks', path), join(path, 'checks')),
+        ...put('confidence', confidence),
+      };
+    }
   }
 }
 
@@ -798,6 +919,22 @@ function serializeOutput(output: Output): JsonObject {
       return { kind: output.kind };
     case 'bestDesign':
       return { kind: output.kind, checks: [...output.checks], direction: output.direction };
+    case 'distribution':
+      return {
+        kind: output.kind,
+        view: output.view,
+        ...put('bins', output.bins),
+        ...put('percentiles', output.percentiles === undefined ? undefined : [...output.percentiles]),
+        ...put('over', output.over),
+        ...put('facet', output.facet),
+        ...put('fit', output.fit),
+      };
+    case 'reliability':
+      return {
+        kind: output.kind,
+        checks: [...output.checks],
+        ...put('confidence', output.confidence),
+      };
   }
 }
 
@@ -840,6 +977,7 @@ export const NODE_KINDS = [
   'output',
   'compare',
   'select',
+  'statistic',
   'closure',
   'waypoint',
   'pack',
@@ -963,6 +1101,27 @@ function parseNode(value: JsonValue, path: string): GraphNode {
       }
       return { ...base, kind, mode };
     }
+    case 'statistic': {
+      const statistic = readEnum(required(object, 'statistic', path), join(path, 'statistic'), STATISTICS);
+      const running = put('running', optional(object, 'running', path, readBoolean));
+      if (statistic === 'percentile') {
+        const percentile = readNumber(required(object, 'percentile', path), join(path, 'percentile'));
+        if (percentile < 0 || percentile > 100) {
+          fail(join(path, 'percentile'), 'must be between 0 and 100');
+        }
+        return { ...base, kind, statistic, percentile, ...running };
+      }
+      if (statistic === 'probability') {
+        return {
+          ...base,
+          kind,
+          statistic,
+          match: optional(object, 'match', path, readString) ?? 'pass',
+          ...running,
+        };
+      }
+      return { ...base, kind, statistic, ...running };
+    }
     case 'closure':
       return {
         ...base,
@@ -991,9 +1150,21 @@ function parseNode(value: JsonValue, path: string): GraphNode {
         if (min >= max) fail(path, 'a uniform generator needs its low end below its high end');
         return { ...base, kind, distribution, min, max, count, unit, ...axisLabel };
       }
+      if (distribution === 'triangular') {
+        const min = readNumber(required(object, 'min', path), join(path, 'min'));
+        const mode = readNumber(required(object, 'mode', path), join(path, 'mode'));
+        const max = readNumber(required(object, 'max', path), join(path, 'max'));
+        if (min >= max) fail(path, 'a triangular generator needs its low end below its high end');
+        if (mode < min || mode > max) fail(join(path, 'mode'), 'must lie between min and max');
+        return { ...base, kind, distribution, min, mode, max, count, unit, ...axisLabel };
+      }
+      if (distribution === 'discrete') {
+        return { ...base, kind, distribution, count, unit, ...axisLabel };
+      }
       const mean = readNumber(required(object, 'mean', path), join(path, 'mean'));
       const stddev = readNumber(required(object, 'stddev', path), join(path, 'stddev'));
       if (stddev <= 0) fail(join(path, 'stddev'), 'must be above zero');
+      if (distribution === 'lognormal' && mean <= 0) fail(join(path, 'mean'), 'must be above zero');
       return { ...base, kind, distribution, mean, stddev, count, unit, ...axisLabel };
     }
     case 'monteCarloReceiver': {
@@ -1069,6 +1240,14 @@ function serializeNode(node: GraphNode): JsonObject {
             direction: node.direction,
           }
         : { ...base, mode: node.mode };
+    case 'statistic':
+      return {
+        ...base,
+        statistic: node.statistic,
+        ...(node.statistic === 'percentile' ? { percentile: node.percentile } : {}),
+        ...(node.statistic === 'probability' ? { match: node.match } : {}),
+        ...put('running', node.running),
+      };
     case 'closure':
       return {
         ...base,
@@ -1080,8 +1259,8 @@ function serializeNode(node: GraphNode): JsonObject {
     case 'unpack':
       return base;
     case 'monteCarloGenerator':
-      return node.distribution === 'uniform'
-        ? {
+      if (node.distribution === 'uniform') {
+        return {
             ...base,
             distribution: node.distribution,
             min: node.min,
@@ -1089,8 +1268,30 @@ function serializeNode(node: GraphNode): JsonObject {
             count: node.count,
             unit: node.unit.symbol,
             ...put('axisLabel', node.axisLabel),
-          }
-        : {
+          };
+      }
+      if (node.distribution === 'triangular') {
+        return {
+          ...base,
+          distribution: node.distribution,
+          min: node.min,
+          mode: node.mode,
+          max: node.max,
+          count: node.count,
+          unit: node.unit.symbol,
+          ...put('axisLabel', node.axisLabel),
+        };
+      }
+      if (node.distribution === 'discrete') {
+        return {
+          ...base,
+          distribution: node.distribution,
+          count: node.count,
+          unit: node.unit.symbol,
+          ...put('axisLabel', node.axisLabel),
+        };
+      }
+      return {
             ...base,
             distribution: node.distribution,
             mean: node.mean,

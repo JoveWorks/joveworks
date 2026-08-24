@@ -2,6 +2,7 @@ export const EXAMPLE_IDS = [
   'platform-footprint',
   'pad-pressure',
   'monte-carlo-clearance',
+  'reliability-load-strength',
   'belt-lab',
   'pressfit-lab',
   'cantilever-hollow-sections',

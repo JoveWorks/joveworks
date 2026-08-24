@@ -216,6 +216,9 @@ shape while the graph is built rather than being discovered at export time.
 The **check** node is what makes the notebook a *dimensioning report* rather
 than a list of numbers: it is the scalar counterpart of the threshold line on a
 swept curve, and a section full of green checks is the actual deliverable.
+With Monte Carlo inputs, the NodeBook can also report how often a design fails,
+with a confidence interval and reliability index, rather than only whether one
+sample passed.
 
 ### Exporting
 

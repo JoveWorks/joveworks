@@ -20,6 +20,7 @@ export default defineConfig({
         items: [
           { text: "What this is", link: "/guide/getting-started" },
           { text: "Sweeps", link: "/guide/sweeps" },
+          { text: "Reliability studies", link: "/guide/reliability" },
           { text: "Units", link: "/guide/units" },
           { text: "Tips and tricks", link: "/guide/tips-and-tricks" },
           { text: "Node reference", link: "/guide/node-reference" },
@@ -31,6 +32,7 @@ export default defineConfig({
         items: [
           { text: "Choosing an aperture", link: "/examples/choosing-an-aperture" },
           { text: "Pocket milling — power envelope", link: "/examples/milling-power-envelope" },
+          { text: "Load against strength", link: "/examples/load-against-strength" },
         ],
       },
     ],

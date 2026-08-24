@@ -294,6 +294,8 @@ export function OutputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>
       ? output.columns
       : output.kind === 'feasibility'
         ? []
+        : output.kind === 'reliability'
+          ? []
         : output.kind === 'bestDesign'
           ? [OBJECTIVE_PORT]
           : [VALUE_PORT];
@@ -343,6 +345,8 @@ export function OutputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>
               <option value="feasibility">feasibility</option>
               <option value="sensitivity">sensitivity</option>
               <option value="bestDesign">best design</option>
+              <option value="distribution">distribution</option>
+              <option value="reliability">reliability</option>
             </select>
           </label>
 
@@ -528,6 +532,44 @@ export function OutputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>
                   setOutput(chosen === undefined ? rest : { ...rest, facet: chosen });
                 }}
               />
+            </>
+          ) : null}
+
+          {output.kind === 'distribution' ? (
+            <>
+              <label>view
+                <select value={output.view} onChange={(event) => setOutput({ ...output, view: event.target.value as 'histogram' | 'cdf' })}>
+                  <option value="histogram">histogram</option>
+                  <option value="cdf">CDF</option>
+                </select>
+              </label>
+              <label>bins
+                <NumberField value={output.bins ?? 20} integer minimum={1} onCommit={(bins) => setOutput({ ...output, bins })} />
+              </label>
+              <label>percentiles
+                <TextField value={(output.percentiles ?? []).join(', ')} placeholder="5, 50, 95" onCommit={(text) => {
+                  const percentiles = text.split(',').map(Number).filter((value) => Number.isFinite(value) && value >= 0 && value <= 100);
+                  setOutput({ ...output, percentiles });
+                }} />
+              </label>
+              <AxisPicker name="over" value={output.over} automatic="auto (trial)" ranges={ranges} excluded={[output.facet]} onChange={(chosen) => {
+                const { over: _dropped, ...rest } = output;
+                setOutput(chosen === undefined ? rest : { ...rest, over: chosen });
+              }} />
+              <AxisPicker name="facet" value={output.facet} automatic="none" ranges={ranges} excluded={[output.over]} onChange={(chosen) => {
+                const { facet: _dropped, ...rest } = output;
+                setOutput(chosen === undefined ? rest : { ...rest, facet: chosen });
+              }} />
+              <label><input type="checkbox" checked={output.fit ?? false} onChange={(event) => setOutput({ ...output, fit: event.target.checked })} /> normal fit</label>
+            </>
+          ) : null}
+
+          {output.kind === 'reliability' ? (
+            <>
+              <CheckPicker checkNodes={checkNodes} checks={output.checks} hovered={hovered} setHovered={setHovered} onChange={(checks) => setOutput({ ...output, checks })} />
+              <label>confidence
+                <NumberField value={(output.confidence ?? 0.95) * 100} minimum={1} onCommit={(confidence) => setOutput({ ...output, confidence: Math.min(99.99, confidence) / 100 })} />%
+              </label>
             </>
           ) : null}
 
@@ -747,7 +789,8 @@ export function OutputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>
         ) : output.kind === 'table' ||
           output.kind === 'feasibility' ||
           output.kind === 'sensitivity' ||
-          output.kind === 'bestDesign' ? null : (
+          output.kind === 'bestDesign' ||
+          output.kind === 'reliability' ? null : (
           <>
             <span className="reading">
               {value === undefined ? (

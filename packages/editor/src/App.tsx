@@ -113,6 +113,7 @@ import {
   millingPowerEnvelope,
   depthOfField,
   monteCarloClearance,
+  reliabilityLoadStrength,
   padPressure,
   platformFootprint,
   provides,
@@ -166,6 +167,7 @@ function exampleDocument(
   if (id === 'pad-pressure') return padPressure(catalogues, locale);
   if (id === 'platform-footprint') return platformFootprint(catalogues, locale);
   if (id === 'monte-carlo-clearance') return monteCarloClearance(catalogues, locale);
+  if (id === 'reliability-load-strength') return reliabilityLoadStrength(catalogues, locale);
   if (id === 'belt-lab') return beltLab(catalogues, locale);
   if (id === 'pressfit-lab') return pressfitLab(catalogues, locale);
   if (id === 'cantilever-hollow-sections') return cantileverHollowSections(catalogues, locale);
@@ -887,6 +889,15 @@ function AppShell(): ReactElement {
           openExample('monte-carlo-clearance');
           setShowNotebook(true);
           setTutorial({ kind: 'example', id: 'monte-carlo-clearance' });
+        }),
+    },
+    {
+      label: t('Load against strength'),
+      onClick: () =>
+        guardDiscard(() => {
+          openExample('reliability-load-strength');
+          setShowNotebook(true);
+          setTutorial({ kind: 'example', id: 'reliability-load-strength' });
         }),
     },
     {

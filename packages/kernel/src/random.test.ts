@@ -58,4 +58,36 @@ describe('Monte Carlo sampling', () => {
     expect(Math.sqrt(variance)).toBeGreaterThan(3);
     expect(Math.sqrt(variance)).toBeLessThan(7);
   });
+
+  for (const draw of [
+    { distribution: 'triangular', min: 0, mode: 4, max: 10 } as const,
+    { distribution: 'lognormal', mean: 10, stddev: 2 } as const,
+    { distribution: 'discrete', values: [1, 2, 5], weights: [1, 2, 1] } as const,
+  ]) {
+    it(`keeps sample i stable for ${draw.distribution}`, () => {
+      expect(monteCarloSamples('doc-1', 'draw', draw, 30).slice(0, 11)).toEqual(
+        monteCarloSamples('doc-1', 'draw', draw, 11),
+      );
+    });
+  }
+
+  it('draws triangular moments within sampling tolerance', () => {
+    const samples = monteCarloSamples('doc-1', 'triangle', { distribution: 'triangular', min: 0, mode: 4, max: 10 }, 20_000);
+    const mean = samples.reduce((sum, value) => sum + value, 0) / samples.length;
+    expect(mean).toBeCloseTo(14 / 3, 1);
+  });
+
+  it('parameterises lognormal by the variable mean and standard deviation', () => {
+    const samples = monteCarloSamples('doc-1', 'lognormal', { distribution: 'lognormal', mean: 10, stddev: 2 }, 20_000);
+    const mean = samples.reduce((sum, value) => sum + value, 0) / samples.length;
+    const spread = Math.sqrt(samples.reduce((sum, value) => sum + (value - mean) ** 2, 0) / samples.length);
+    expect(mean).toBeCloseTo(10, 1);
+    expect(spread).toBeCloseTo(2, 1);
+  });
+
+  it('draws a weighted discrete distribution', () => {
+    const samples = monteCarloSamples('doc-1', 'discrete', { distribution: 'discrete', values: [0, 10], weights: [3, 1] }, 20_000);
+    const mean = samples.reduce((sum, value) => sum + value, 0) / samples.length;
+    expect(mean).toBeCloseTo(2.5, 1);
+  });
 });

@@ -30,7 +30,7 @@ import {
   type NodeChange,
 } from '@xyflow/react';
 
-import { adaptInputUnit, canConnect, resolveGraph, selectPortNames, typesConnect } from '@joveworks/kernel';
+import { adaptInputUnit, canConnect, resolveGraph, selectPortNames, statisticPortNames, typesConnect } from '@joveworks/kernel';
 import { parseUnit } from '@joveworks/units';
 import {
   ALONG_PORT,
@@ -88,6 +88,7 @@ import { FormulaNodeView } from './FormulaNodeView';
 import { FrameView } from './FrameView';
 import { InputNodeView } from './InputNodeView';
 import { MonteCarloGeneratorNodeView } from './MonteCarloGeneratorNodeView';
+import { StatisticNodeView } from './StatisticNodeView';
 import { MonteCarloReceiverNodeView } from './MonteCarloReceiverNodeView';
 import type { CanvasNodeData, HoveredCanvasPort } from './node-data';
 import { OutputNodeView } from './OutputNodeView';
@@ -160,6 +161,8 @@ function searchPorts(document: GraphDocument, formulas: ReadonlyMap<string, Form
         ? node.output.columns
         : node.output.kind === 'bestDesign'
           ? [OBJECTIVE_PORT]
+          : node.output.kind === 'feasibility' || node.output.kind === 'reliability'
+            ? []
           : [VALUE_PORT];
     return node.output.kind === 'plot' || node.output.kind === 'check'
       ? [...valuePorts, THRESHOLD_PORT]
@@ -168,6 +171,10 @@ function searchPorts(document: GraphDocument, formulas: ReadonlyMap<string, Form
   if (node.kind === 'compare') return [VALUE_PORT, THRESHOLD_PORT, VERDICT_PORT];
   if (node.kind === 'select') {
     const { inputs, outputs } = selectPortNames(node);
+    return [...inputs, ...outputs];
+  }
+  if (node.kind === 'statistic') {
+    const { inputs, outputs } = statisticPortNames(node);
     return [...inputs, ...outputs];
   }
   if (node.kind === 'closure') {
@@ -239,7 +246,10 @@ function existingCandidates(
             ? NEW_COLUMN
             : node.output.kind === 'bestDesign'
               ? OBJECTIVE_PORT
+              : node.output.kind === 'feasibility' || node.output.kind === 'reliability'
+                ? undefined
               : VALUE_PORT;
+        if (port === undefined) continue;
         candidates.push({
           nodeId: node.id,
           label: nodeLabel(node),
@@ -268,6 +278,10 @@ function existingCandidates(
             port,
             ...replacesField(occupantOf(document, formulas, { node: node.id, port })),
           });
+        }
+      } else if (node.kind === 'statistic') {
+        for (const port of [VALUE_PORT, ALONG_PORT]) {
+          candidates.push({ nodeId: node.id, label: nodeLabel(node), subtitle: `${node.statistic} (${port})`, port, ...replacesField(occupantOf(document, formulas, { node: node.id, port })) });
         }
       }
       continue;
@@ -300,6 +314,8 @@ function existingCandidates(
       for (const port of selectPortNames(node).outputs) {
         candidates.push({ nodeId: node.id, label: nodeLabel(node), subtitle: `${node.mode} (${port})`, port });
       }
+    } else if (node.kind === 'statistic') {
+      candidates.push({ nodeId: node.id, label: nodeLabel(node), subtitle: node.statistic, port: 'result' });
     }
   }
   return candidates;
@@ -413,6 +429,7 @@ const NODE_TYPES = {
   'joveworks-output': OutputNodeView,
   compare: CompareNodeView,
   select: SelectNodeView,
+  statistic: StatisticNodeView,
   closure: ClosureNodeView,
   waypoint: WaypointNodeView,
   pack: PackNodeView,

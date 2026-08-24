@@ -61,6 +61,8 @@ import { BestDesignCard } from './BestDesignCard';
 import { FeasibilityFigure } from './FeasibilityFigure';
 import { PlotFigure } from './PlotFigure';
 import { SensitivityFigure } from './SensitivityFigure';
+import { DistributionFigure } from './DistributionFigure';
+import { ReliabilityCard } from './ReliabilityCard';
 import { phrase, ui } from '../i18n';
 
 /**
@@ -381,6 +383,15 @@ function Result({ result, node }: { readonly result: OutputResult; readonly node
         <BestDesignCard result={result} checkLabels={checkLabels} format={format} />
       </div>
     );
+  }
+
+  if (result.kind === 'distribution') {
+    return <div className="result plot"><span className="label"><OutputTitle node={node} /></span><DistributionFigure result={result} /></div>;
+  }
+
+  if (result.kind === 'reliability') {
+    const checkLabels = Object.fromEntries(result.checks.map(({ checkId }) => [checkId, document.nodes.find((candidate) => candidate.id === checkId)?.label ?? checkId]));
+    return <div className="result plot"><span className="label"><OutputTitle node={node} /></span><ReliabilityCard result={result} checkLabels={checkLabels} /></div>;
   }
 
   return (

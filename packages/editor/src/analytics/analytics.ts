@@ -19,7 +19,7 @@ export type SweepKind =
   | 'tableColumn'
   | 'categoricalList';
 
-export type CourseMaterial = 'platform' | 'pad' | 'cantilever' | 'milling';
+export type CourseMaterial = 'platform' | 'pad' | 'cantilever' | 'milling' | 'reliability';
 
 export type AnalyticsEvent =
   | { readonly name: 'catalogue_loaded' | 'example_opened' | 'graph_created' | 'nodes_connected' | 'document_saved' | 'notebook_exported' }

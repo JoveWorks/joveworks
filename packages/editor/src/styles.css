@@ -3293,6 +3293,25 @@ aside.right {
   margin: 20mm;
 }
 
+.histogram-bars {
+  display: flex;
+  align-items: end;
+  gap: 1px;
+  height: 12rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.histogram-bars > span {
+  flex: 1;
+  min-width: 2px;
+  background: var(--accent);
+}
+
+.ecdf { width: 100%; height: 12rem; }
+.reliability-card { overflow-x: auto; }
+.reliability-card table { width: 100%; border-collapse: collapse; }
+.reliability-card th, .reliability-card td { padding: 0.3rem 0.5rem; text-align: left; border-bottom: 1px solid var(--border); }
+
 @media print {
   /* A submittable document is always light/ink-on-paper, regardless of the
      screen theme — force every token back to its light value. */

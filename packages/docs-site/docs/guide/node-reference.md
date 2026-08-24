@@ -361,6 +361,10 @@ pull out just the first reading for a spot check — all three read the
 same spectrum, in the same single evaluation, rather than each triggering
 their own run of the graph.
 
+Do not confuse these with [Statistic](#statistic): Array nodes consume a
+spectrum whole, while Statistic reduces one or more labelled swept axes and
+can keep the other axes in the result.
+
 `minimum`/`maximum` also take a spectrum input but live under
 [Base nodes](#base-nodes) instead — they read as ordinary arithmetic
 (comparing an open set of same-dimension values) rather than as a
@@ -411,6 +415,29 @@ exported or logged outside the graphs that use it, and this reference
 intentionally says nothing about what any specific restricted catalogue
 contains — that's the textbook's material, not this editor's.
 
+## Statistics
+
+### Statistic
+
+Reduces a swept series to a wireable number. Available statistics are mean,
+median, sample standard deviation (n − 1), minimum, maximum, percentile,
+probability, and count. Percentiles use linear interpolation between order
+statistics (R type 7, also NumPy's default).
+
+Leave `along` unwired to collapse every axis the value varies along. Wire a
+range or generator into `along` to reduce only that axis and keep every other
+axis. In a diameter × trial study, wire any generator's `value` to `along` to
+obtain one result per diameter. Leaving it unwired pools diameter and trial
+into one meaningless number, so JoveWorks warns and names the pooled axes.
+
+Turn on `running` to emit the statistic over the first 1, 2, … samples while
+keeping the reduced axis. Plot that result against the trial generator to see
+whether a mean or failure probability has settled. Running mode requires
+exactly one reduced axis.
+
+`probability` reads categorical verdicts, normally a Compare node. Its `match`
+field defaults to `pass`; set it to `fail` for a wireable failure probability.
+
 ## Analysis
 
 Graph-level tools that look across several other nodes already on the
@@ -428,7 +455,16 @@ input moves a result the most.
 
 Draws a value from a distribution, sample by sample, instead of taking
 one you typed — a **uniform** draw between a low and high bound, or a
-**normal** draw around a mean with a standard deviation. It introduces a
+**normal** draw around a mean with a standard deviation. It also supports:
+
+- **triangular**, with minimum, most-likely mode, and maximum;
+- **lognormal**, parameterised by the mean and standard deviation of the
+  variable itself—not the mean and standard deviation of its logarithm;
+- **discrete**, with a spectrum of values and optional weights. Unwired
+  weights mean equal weighting, which is also empirical resampling of a
+  measured dataset.
+
+It introduces a
 sweepable axis exactly like a range input does: everything wired
 downstream becomes a series over its samples, with no separate "trial"
 node to add. The sample count is the axis length, and (unusually) is
@@ -697,3 +733,29 @@ tornado ranks which of the five is worth tightening a tolerance on or
 measuring more carefully; a narrow bar for material strength but a wide
 one for fillet radius says the stress concentration, not the material
 choice, is what's actually driving the design's margin.
+
+### Distribution
+
+A report-stable histogram or empirical cumulative distribution function
+(ECDF) over a sampled value. The `over` axis defaults to the shared Monte Carlo
+trial axis; `facet` makes one panel per value of a second axis. Further axes are
+never silently pooled: a warning says which were dropped.
+
+Histogram bins default to the Freedman–Diaconis rule, falling back to Sturges
+when the interquartile range is zero. This is intentionally independent of
+canvas pixel width, so a report looks the same on screen and in print. The CDF
+is an empirical step curve. Requested percentile rules use the exact same
+type-7 calculation as a Statistic node, and an optional fitted normal curve
+can be overlaid in either view.
+
+### Reliability
+
+References existing Check nodes and reports trials, observed failures, failure
+probability Pf, a Wilson confidence interval, reliability index β, and a
+convergence indication for each check and their combined AND. Wilson intervals
+remain informative at zero observed failures.
+
+Zero failures never means zero risk: with n trials the report says `Pf < 1/n`
+and `β > Φ⁻¹(1 − 1/n)` instead of infinity. If the checks do not vary along the
+trial axis, the card says that nothing in the study is random rather than
+presenting a confident but meaningless Pf of zero or one.

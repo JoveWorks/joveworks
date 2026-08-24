@@ -99,6 +99,16 @@ const EXAMPLE_COPY = {
     studyBody: 'The receiver plays the clearance back sample by sample and accumulates a running mean and histogram — press play and watch it settle rather than reading one final number.',
     resultBody: 'The printed clearance and the interference check both read the same wired difference the receiver is watching — nothing about the calculation itself depends on playback.',
   },
+  'reliability-load-strength': {
+    title: 'Reliability — load against strength',
+    opening: 'This example estimates the chance that a variable load exceeds a variable strength, then reports both the failure probability and its sampling uncertainty.',
+    inputTarget: '[data-tour="monteCarloGenerator-load"]',
+    inputTitle: 'Load and strength share one trial axis',
+    inputBody: 'Each generator draws one value per trial. Pairing those draws on the shared trial axis makes every comparison one simulated load case, rather than a Cartesian product of unrelated samples.',
+    studyTitle: 'The graph turns trials into evidence',
+    studyBody: 'A margin calculation and check classify each trial. Statistics show the running failure rate, while the distribution view shows how the margin is spread.',
+    resultBody: 'The reliability card reports failures, trials, probability, confidence interval and convergence together. A zero-failure run still has a finite upper bound instead of claiming impossible certainty.',
+  },
   'belt-lab': {
     title: 'Belt lab',
     opening: 'This worked example turns the belt-drive assignment into a forward calculation from the given motor, pulley and belt data.',

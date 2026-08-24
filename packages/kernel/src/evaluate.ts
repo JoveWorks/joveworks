@@ -32,6 +32,11 @@ import {
   MAX_PORT,
   MEAN_PORT,
   STDDEV_PORT,
+  MODE_PORT,
+  VALUES_PORT,
+  WEIGHTS_PORT,
+  PERCENTILE_PORT,
+  STATISTIC_RESULT_PORT,
   appliesWhenOf,
   domainMember,
   expressionOf,
@@ -40,6 +45,7 @@ import {
   type Catalogue,
   type CompareNode,
   type SelectNode,
+  type StatisticNode,
   type Edge,
   type FileNode,
   type GraphDocument,
@@ -64,6 +70,9 @@ import { assertEvaluable, compileClosureFormula, compileFormula } from './formul
 import { canonicalUnit, endpointKey, resolveGraph, type PortType, type Resolution } from './graph.js';
 import { evaluateSensitivity, type SensitivityRankingResult } from './sensitivity.js';
 import { select, type SelectResult } from './select.js';
+import { reduceAlong } from './statistics.js';
+import { buildDistribution, type DistributionPanel } from './distribution.js';
+import { inverseNormal, wilsonInterval } from './normal.js';
 import {
   LARGE_GRID,
   broadcastBoolean,
@@ -241,6 +250,33 @@ export interface BestDesignResult extends OutputBase {
   readonly feasibleCount: number;
 }
 
+export interface DistributionResult extends OutputBase {
+  readonly kind: 'distribution';
+  readonly view: 'histogram' | 'cdf';
+  readonly unit: Unit;
+  readonly over: Axis;
+  readonly facet?: Axis;
+  readonly panels: readonly DistributionPanel[];
+}
+
+export interface ReliabilityEstimate {
+  readonly checkId: string;
+  readonly trials: number;
+  readonly failures: number;
+  readonly probability: number;
+  readonly interval: readonly [number, number];
+  readonly beta: number;
+  readonly unresolved: boolean;
+  readonly converged: boolean;
+}
+
+export interface ReliabilityResult extends OutputBase {
+  readonly kind: 'reliability';
+  readonly confidence: number;
+  readonly checks: readonly ReliabilityEstimate[];
+  readonly combined?: ReliabilityEstimate;
+}
+
 export type OutputResult =
   | PrintResult
   | CheckResult
@@ -249,7 +285,9 @@ export type OutputResult =
   | EquationResult
   | FeasibilityResult
   | SensitivityResult
-  | BestDesignResult;
+  | BestDesignResult
+  | DistributionResult
+  | ReliabilityResult;
 
 export interface Evaluation {
   readonly document: GraphDocument;
@@ -318,7 +356,7 @@ export function evaluateDocument(
       case 'monteCarloGenerator':
         values.set(
           endpointKey(node.id, VALUE_PORT),
-          generatorValue(node, axisByNode, resolution.document.id, resolution, values),
+          generatorValue(node, axisByNode, resolution.document.id, resolution, values, warnings),
         );
         break;
 
@@ -377,8 +415,15 @@ export function evaluateDocument(
         break;
       }
 
+      case 'statistic': {
+        const found = evaluateStatistic(node, resolution, values);
+        values.set(endpointKey(node.id, STATISTIC_RESULT_PORT), found.result);
+        warnings.push(...found.warnings);
+        break;
+      }
+
       case 'output':
-        if (node.output.kind === 'feasibility' || node.output.kind === 'bestDesign') {
+        if (node.output.kind === 'feasibility' || node.output.kind === 'bestDesign' || node.output.kind === 'reliability') {
           deferredOutputs.push(node);
           break;
         }
@@ -459,6 +504,7 @@ function generatorValue(
   documentId: string,
   resolution: Resolution,
   values: ReadonlyMap<string, PortValue>,
+  warnings: Warning[],
 ): NumericSeries {
   const axis = axes.get(node.id);
   if (axis === undefined) {
@@ -471,8 +517,34 @@ function generatorValue(
           min: generatorParam(node, MIN_PORT, node.min, resolution, values),
           max: generatorParam(node, MAX_PORT, node.max, resolution, values),
         }
+      : node.distribution === 'triangular'
+        ? {
+            distribution: 'triangular' as const,
+            min: generatorParam(node, MIN_PORT, node.min, resolution, values),
+            mode: generatorParam(node, MODE_PORT, node.mode, resolution, values),
+            max: generatorParam(node, MAX_PORT, node.max, resolution, values),
+          }
+      : node.distribution === 'discrete'
+        ? (() => {
+            const valuesKey = endpointKey(node.id, VALUES_PORT);
+            const valueEdge = resolution.incoming.get(valuesKey)?.[0];
+            if (valueEdge === undefined) throw new KernelError("'values' is not connected", valuesKey);
+            const choices = valueAtEdge(valueEdge, valuesKey, values);
+            if (choices.kind !== 'spectrum' || choices.values.length === 0) throw new KernelError("'values' needs a non-empty spectrum", valuesKey);
+            const weightsKey = endpointKey(node.id, WEIGHTS_PORT);
+            const weightEdge = resolution.incoming.get(weightsKey)?.[0];
+            const weights = weightEdge === undefined ? undefined : valueAtEdge(weightEdge, weightsKey, values);
+            if (weights !== undefined && weights.kind !== 'spectrum') throw new KernelError("'weights' needs a spectrum", weightsKey);
+            const invalid = weights !== undefined && (weights.values.length !== choices.values.length || weights.values.some((value) => value < 0) || weights.values.every((value) => value === 0));
+            if (invalid) warnings.push({
+              kind: 'monteCarloDiscreteWeights',
+              nodeId: node.id,
+              message: 'discrete weights must match values, be non-negative, and contain a positive weight — equal weights were used',
+            });
+            return { distribution: 'discrete' as const, values: choices.values, ...(weights === undefined || invalid ? {} : { weights: weights.values }) };
+          })()
       : {
-          distribution: 'normal' as const,
+          distribution: node.distribution,
           mean: generatorParam(node, MEAN_PORT, node.mean, resolution, values),
           // `toCanonical` is a pure scale factor (`convert.ts`) — every
           // internal unit is a plain multiple, never an offset scale — so
@@ -480,6 +552,18 @@ function generatorValue(
           // converting the mean.
           stddev: generatorParam(node, STDDEV_PORT, node.stddev, resolution, values),
         };
+  if (draw.distribution === 'uniform' && draw.min >= draw.max) {
+    throw new KernelError('a uniform generator needs min below max', node.id);
+  }
+  if (draw.distribution === 'triangular' && (draw.min >= draw.max || draw.mode < draw.min || draw.mode > draw.max)) {
+    throw new KernelError('a triangular generator needs min ≤ mode ≤ max, with min below max', node.id);
+  }
+  if ((draw.distribution === 'normal' || draw.distribution === 'lognormal') && draw.stddev <= 0) {
+    throw new KernelError('a distribution standard deviation must be above zero', node.id);
+  }
+  if (draw.distribution === 'lognormal' && draw.mean <= 0) {
+    throw new KernelError('a lognormal mean must be above zero', node.id);
+  }
   return {
     kind: 'numeric',
     axes: [axis],
@@ -1260,6 +1344,44 @@ function evaluateSelect(
   return select({ ...common, mode: node.mode, threshold, direction: node.direction });
 }
 
+function evaluateStatistic(
+  node: StatisticNode,
+  resolution: Resolution,
+  values: ReadonlyMap<string, PortValue>,
+) {
+  const valueKey = endpointKey(node.id, VALUE_PORT);
+  const valueEdge = resolution.incoming.get(valueKey)?.[0];
+  if (valueEdge === undefined) throw new KernelError("'value' is not connected", valueKey);
+  const value = valueAtEdge(valueEdge, valueKey, values);
+  if (!isSeries(value)) throw new KernelError(`'value' is a ${value.kind}, which has no axis to reduce`, valueKey);
+
+  const alongKey = endpointKey(node.id, ALONG_PORT);
+  const alongEdge = resolution.incoming.get(alongKey)?.[0];
+  const along = alongEdge === undefined ? undefined : valueAtEdge(alongEdge, alongKey, values);
+  if (along !== undefined && along.kind !== 'numeric') throw new KernelError("'along' needs a numeric swept coordinate", alongKey);
+
+  let percentile = node.statistic === 'percentile' ? node.percentile : undefined;
+  if (node.statistic === 'percentile') {
+    const percentileKey = endpointKey(node.id, PERCENTILE_PORT);
+    const edge = resolution.incoming.get(percentileKey)?.[0];
+    if (edge !== undefined) {
+      const wired = valueAtEdge(edge, percentileKey, values);
+      if (wired.kind !== 'numeric' || wired.data.length !== 1) throw new KernelError("'percentile' needs one numeric value", percentileKey);
+      percentile = wired.data[0] as number;
+    }
+    if (percentile === undefined || percentile < 0 || percentile > 100) throw new KernelError('percentile must be between 0 and 100', percentileKey);
+  }
+  return reduceAlong({
+    statistic: node.statistic,
+    value,
+    ...(along === undefined ? {} : { along }),
+    ...(percentile === undefined ? {} : { percentile }),
+    ...(node.statistic === 'probability' ? { match: node.match } : {}),
+    ...(node.running === undefined ? {} : { running: node.running }),
+    nodeId: node.id,
+  });
+}
+
 // --- waypoint, pack, unpack ---------------------------------------------
 
 /** Literal passthrough of the first wired input — not a reduction, unlike `minimum`/`sum`. */
@@ -1446,6 +1568,31 @@ function feasibleMask(
       ? new Array<boolean>(gridSize(target)).fill(true)
       : perCheck.reduce((acc, next) => acc.map((value, i) => value && (next[i] as boolean)));
   return { perCheck, mask };
+}
+
+function reliabilityEstimate(
+  checkId: string,
+  verdicts: readonly boolean[],
+  confidence: number,
+): ReliabilityEstimate {
+  const trials = verdicts.length;
+  const failures = verdicts.filter((passed) => !passed).length;
+  const probability = trials === 0 ? Number.NaN : failures / trials;
+  const interval = wilsonInterval(failures, trials, confidence);
+  const unresolved = failures === 0 && trials > 0;
+  const resolvedProbability = unresolved ? 1 / trials : probability;
+  const beta = inverseNormal(1 - resolvedProbability);
+  const halfWidth = (interval[1] - interval[0]) / 2;
+  return {
+    checkId,
+    trials,
+    failures,
+    probability,
+    interval,
+    beta,
+    unresolved,
+    converged: !unresolved && halfWidth <= Math.max(0.01, probability * 0.2),
+  };
 }
 
 /**
@@ -1713,6 +1860,67 @@ function outputResult(
         ...(governing === undefined ? {} : { governing }),
         margins,
       },
+    };
+  }
+
+  if (output.kind === 'reliability') {
+    const confidence = output.confidence ?? 0.95;
+    const checkResults = referencedChecks(output.checks, node.id, 'Reliability', outputsSoFar);
+    const generator = resolution.document.nodes.find((candidate) => candidate.kind === 'monteCarloGenerator');
+    const trialAxis = generator === undefined ? undefined : axes.get(generator.id);
+    const hasTrials = trialAxis !== undefined && checkResults.some((check) => check.series.axes.some((axis) => axis.id === trialAxis.id));
+    if (!hasTrials) warnings.push({
+      kind: 'reliabilityNoTrials',
+      nodeId: node.id,
+      message: 'nothing in this study is random — referenced checks do not vary along the trial axis',
+    });
+    const checks = checkResults.map((check) => reliabilityEstimate(check.nodeId, check.results, confidence));
+    const studyAxes = unionAxes(...checkResults.map((check) => check.series.axes));
+    const combinedVerdicts = checkResults.length === 0
+      ? []
+      : feasibleMask(checkResults, studyAxes).mask;
+    const combined = checkResults.length === 0 ? undefined : reliabilityEstimate('all', combinedVerdicts, confidence);
+    if ([...checks, ...(combined === undefined ? [] : [combined])].some((estimate) => estimate.unresolved)) {
+      warnings.push({
+        kind: 'reliabilityUnresolved',
+        nodeId: node.id,
+        message: `zero failures were observed — report Pf < 1/n and a lower bound on beta, not zero risk`,
+      });
+    }
+    return {
+      ...base,
+      kind: 'reliability',
+      confidence,
+      checks,
+      ...(combined === undefined ? {} : { combined }),
+    };
+  }
+
+  if (output.kind === 'distribution') {
+    const { value, unit } = sourceOf(node, VALUE_PORT, resolution, values);
+    if (value.kind !== 'numeric') throw new KernelError('a Distribution output needs numeric samples', node.id);
+    const generator = resolution.document.nodes.find((candidate) => candidate.kind === 'monteCarloGenerator');
+    const overNode = output.over ?? generator?.id;
+    const over = overNode === undefined ? undefined : axes.get(overNode);
+    if (over === undefined || !value.axes.some((axis) => axis.id === over.id)) {
+      throw new KernelError('a Distribution output needs a sampled axis; connect a Monte Carlo study or choose over', node.id);
+    }
+    const facet = output.facet === undefined ? undefined : axes.get(output.facet);
+    if (output.facet !== undefined && facet === undefined) throw new KernelError(`'${output.facet}' is not an axis`, node.id);
+    const built = buildDistribution(value, over, facet, node.id, {
+      ...(output.bins === undefined ? {} : { bins: output.bins }),
+      ...(output.percentiles === undefined ? {} : { percentiles: output.percentiles }),
+      ...(output.fit === undefined ? {} : { fit: output.fit }),
+    });
+    warnings.push(...built.warnings);
+    return {
+      ...base,
+      kind: 'distribution',
+      view: output.view,
+      unit,
+      over,
+      ...(facet === undefined ? {} : { facet }),
+      panels: built.panels,
     };
   }
 

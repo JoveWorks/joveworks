@@ -32,6 +32,7 @@ import {
   packChannelIndices,
   resolveGraph,
   selectPortNames,
+  statisticPortNames,
   waypointChannelIndices,
   type Evaluation,
   type Resolution,
@@ -225,7 +226,21 @@ function readiness(
       continue;
     }
 
-    if (node.kind === 'input' || node.kind === 'monteCarloGenerator') {
+    if (node.kind === 'input' || (node.kind === 'monteCarloGenerator' && node.distribution !== 'discrete')) {
+      ready.add(node.id);
+      continue;
+    }
+
+    if (node.kind === 'monteCarloGenerator') {
+      if (!isWired(node.id, 'values')) {
+        states.set(node.id, 'incomplete');
+        problems.set(node.id, notConnected(['values']));
+        continue;
+      }
+      if (!upstreamReady(node.id, 'values') || (isWired(node.id, 'weights') && !upstreamReady(node.id, 'weights'))) {
+        states.set(node.id, 'blocked');
+        continue;
+      }
       ready.add(node.id);
       continue;
     }
@@ -315,6 +330,21 @@ function readiness(
       continue;
     }
 
+    if (node.kind === 'statistic') {
+      if (!isWired(node.id, VALUE_PORT)) {
+        states.set(node.id, 'incomplete');
+        problems.set(node.id, notConnected([VALUE_PORT]));
+        continue;
+      }
+      const inputs = statisticPortNames(node).inputs;
+      if (inputs.some((port) => isWired(node.id, port) && !upstreamReady(node.id, port))) {
+        states.set(node.id, 'blocked');
+        continue;
+      }
+      ready.add(node.id);
+      continue;
+    }
+
     if (node.kind === 'waypoint') {
       const channels = waypointChannelIndices(document, node.id);
       const inputs = channels.map((channel) => `in${channel}`);
@@ -376,7 +406,7 @@ function readiness(
     // inherited from theirs directly rather than from any wire. Deferred to
     // the second pass below, after every other node (including every Check)
     // has been decided.
-    if (node.output.kind === 'feasibility' || node.output.kind === 'bestDesign') {
+    if (node.output.kind === 'feasibility' || node.output.kind === 'bestDesign' || node.output.kind === 'reliability') {
       deferredOutputs.push(node);
       continue;
     }
@@ -430,7 +460,7 @@ function readiness(
       ready.add(node.id);
       continue;
     }
-    if (output.kind !== 'feasibility') continue; // narrows for TS; always true here
+    if (output.kind !== 'feasibility' && output.kind !== 'reliability') continue;
     if (output.checks.length === 0) {
       states.set(node.id, 'incomplete');
       problems.set(node.id, 'choose at least one check');
