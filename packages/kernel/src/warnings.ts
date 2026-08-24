@@ -20,6 +20,8 @@ export const WARNING_KINDS = [
   'plotAxisDropped',
   /** A contoured plot also has a facet axis, which the contour path ignores. */
   'plotContourFacet',
+  /** A contoured plot has lost the second axis a contour needs, so it draws as a line. */
+  'plotContourFlat',
   /** A Sensitivity candidate could not be evaluated at its low/high bound — skipped, not fatal. */
   'sensitivityCandidateSkipped',
 ] as const;

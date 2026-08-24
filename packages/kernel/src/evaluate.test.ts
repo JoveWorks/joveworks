@@ -1446,6 +1446,28 @@ describe('output nodes', () => {
     expect(plot.facet).toBeUndefined();
   });
 
+  it('keeps the contour choice but says it has no second axis to contour over', () => {
+    // What is left when the range that fed `b` is unwired and a value typed
+    // on the port instead: one swept axis, and a plot still set to contour.
+    const swept = documentOf(
+      [
+        input('a', list([1, 2], ''), { axisLabel: 'a' }),
+        formulaNode('y', refTo('addTwo'), {
+          inputValues: { b: { kind: 'scalar', value: 3, unit: '' } },
+        }),
+        outputNode('plot', { kind: 'plot', contour: true }),
+      ],
+      [wire('a.value', 'y.a'), wire('y.sum', 'plot.value')],
+    );
+    const evaluation = evaluateDocument(swept, catalogues);
+    expect(evaluation.warnings.map((w) => w.kind)).toContain('plotContourFlat');
+    const plot = evaluation.outputs[0] as PlotResult;
+    // The choice survives — restoring the range restores the contour — while
+    // `series2` says there is nothing to draw one over yet.
+    expect(plot.contour).toBe(true);
+    expect(plot.series2).toBeUndefined();
+  });
+
   it('lays a table out as columns over a shared axis', () => {
     const swept = documentOf(
       [

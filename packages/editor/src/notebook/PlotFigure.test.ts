@@ -11,7 +11,7 @@ import { describe, expect, it } from 'vitest';
 import type { Axis, PlotResult } from '@joveworks/kernel';
 import { PLAIN_NUMBER_FORMAT, parseUnit, type NumberFormat } from '@joveworks/units';
 
-import { plotValueLabel, plotYLabel, rows, siAxisUnit, siResult } from './PlotFigure';
+import { drawsContour, plotValueLabel, plotYLabel, rows, siAxisUnit, siResult } from './PlotFigure';
 
 const mm = parseUnit('mm');
 
@@ -165,5 +165,39 @@ describe("the 'si' number format", () => {
       { x: 20, y: 200 },
       { x: 30, y: 300 },
     ]);
+  });
+});
+
+describe('a plot set to contour that has lost its second axis', () => {
+  const flat: PlotResult = {
+    ...base,
+    contour: true,
+    series: { kind: 'numeric', axes: [axisW], data: [1, 2, 3] },
+    x: {
+      axis: axisW,
+      coordinates: { kind: 'numeric', axes: [axisW], data: [10, 20, 30] },
+      unit: mm,
+    },
+  };
+
+  it('draws as a line, since a contour needs two swept axes', () => {
+    expect(drawsContour(flat)).toBe(false);
+    // The y axis is the value again, not the second axis a contour puts there.
+    expect(plotYLabel(flat)).toBe(plotValueLabel(flat));
+  });
+
+  it('contours again as soon as a second axis is back — the choice was never cleared', () => {
+    const axisH: Axis = { id: 'h', label: 'h', length: 2, order: 1 };
+    expect(
+      drawsContour({
+        ...flat,
+        series: { kind: 'numeric', axes: [axisW, axisH], data: [1, 2, 3, 4, 5, 6] },
+        series2: {
+          axis: axisH,
+          coordinates: { kind: 'numeric', axes: [axisH], data: [1, 2] },
+          unit: mm,
+        },
+      }),
+    ).toBe(true);
   });
 });

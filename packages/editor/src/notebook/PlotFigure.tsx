@@ -143,12 +143,28 @@ export function plotValueLabel(result: PlotResult): string {
 }
 
 /**
+ * Whether this actually draws as a contour. A contour is a value over *two*
+ * swept axes, so the request alone is not enough — the second axis has to be
+ * there.
+ *
+ * It can stop being there while the plot is open: unwire the range feeding one
+ * input and type a value on the port instead, and the plotted value now varies
+ * along one axis. The stored `contour` choice is deliberately left alone
+ * (`OutputNodeView` hides the checkbox in this state rather than clearing it),
+ * so rewiring the range brings the contour straight back — what changes is
+ * only what is drawable right now, which is a line.
+ */
+export function drawsContour(result: PlotResult): boolean {
+  return result.contour && result.series2 !== undefined;
+}
+
+/**
  * The chart's y axis title. A contour plots the value as color, not
  * position, so its y axis is the second swept axis instead — using the
  * value's own label there mislabels the axis as the colorbar.
  */
 export function plotYLabel(result: PlotResult): string {
-  return result.contour && result.series2 !== undefined ? axisLabel(result.series2) : plotValueLabel(result);
+  return drawsContour(result) ? axisLabel(result.series2 as PlotAxis) : plotValueLabel(result);
 }
 
 interface Props {
@@ -304,10 +320,11 @@ export function PlotFigure({ result: rawResult, document: graph, format }: Props
     // A second axis makes separate curves. Even when its coordinates are
     // numeric (for example, one curve per pad length), it is a discrete
     // selection of lines rather than a continuous value map.
-    const lineSeries = !result.contour ? result.series2 : undefined;
+    const contouring = drawsContour(result);
+    const lineSeries = contouring ? undefined : result.series2;
 
     const marks: Plot.Markish[] = [];
-    if (result.contour && result.series2 !== undefined) {
+    if (contouring && result.series2 !== undefined) {
       // A grid the kernel already computed, redrawn as isolines. The rectangle
       // is taken from the axis extremes, so a non-uniformly spaced axis — a log
       // range, an explicit list — is stretched onto a uniform one.
@@ -371,8 +388,8 @@ export function PlotFigure({ result: rawResult, document: graph, format }: Props
         ...(isLogAxis(graph, result.x.axis.id) ? { type: 'log' as const } : {}),
       },
       y: { label: yLabel, grid: true },
-      ...(result.contour || lineSeries !== undefined ? { figure: false } : {}),
-      ...(result.contour
+      ...(contouring || lineSeries !== undefined ? { figure: false } : {}),
+      ...(contouring
         ? {
             color: {
               scheme: contourPalette,
@@ -392,7 +409,7 @@ export function PlotFigure({ result: rawResult, document: graph, format }: Props
     });
 
     let rendered: Element;
-    if (result.contour) {
+    if (contouring) {
       const wrapper = document.createElement('div');
       wrapper.className = 'contour-figure';
       wrapper.append(chart, contourColorbar(result, valueLabel, contourPalette, titleMathRendering));
@@ -418,7 +435,7 @@ export function PlotFigure({ result: rawResult, document: graph, format }: Props
         xLabel,
         yLabel,
         valueLabel,
-        ...(result.contour || result.series2 === undefined ? [] : [result.series2.axis.label]),
+        ...(contouring || result.series2 === undefined ? [] : [result.series2.axis.label]),
         ...(result.facet === undefined ? [] : [result.facet.axis.label]),
       ]);
     }

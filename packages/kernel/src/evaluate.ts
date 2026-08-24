@@ -1492,6 +1492,18 @@ function outputResult(
   const facetId = picked.facet;
 
   const contour = output.contour ?? false;
+  // A contour is a value over two swept axes, and one of them can go away
+  // under a plot that is already set to contour — unwire the range feeding an
+  // input and type a value on the port instead. The choice is kept rather than
+  // cleared, so restoring the range restores the contour; until then the
+  // figure draws the one axis it does have, as a line.
+  if (contour && seriesId === undefined) {
+    warnings.push({
+      kind: 'plotContourFlat',
+      nodeId: node.id,
+      message: 'a contour needs a second swept axis — this is drawn as a line until it has one',
+    });
+  }
   if (contour && facetId !== undefined) {
     warnings.push({
       kind: 'plotContourFacet',
