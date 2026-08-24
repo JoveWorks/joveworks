@@ -86,6 +86,7 @@ const DUTCH_PHRASES: Readonly<Record<string, string>> = {
   'The low end. Type a unit here too (10 mm ... 1 m) to re-express both bounds in it.': 'De ondergrens. Typ hier ook een eenheid (10 mm ... 1 m) om beide grenzen daarin uit te drukken.',
   'The high end.': 'De bovengrens.', 'Preferred numbers (ISO 3) — the standard sizes a part actually comes in.': 'Voorkeursgetallen (ISO 3) — de standaardmaten waarin een onderdeel werkelijk verkrijgbaar is.',
   'Standard sizes — the range that answers which part to buy.': 'Standaardmaten — het bereik dat antwoord geeft op welk onderdeel te kopen.',
+  'Typed here — unless a wire supplies it.': 'Hier getypt — tenzij een draad de waarde levert.',
 };
 
 export function phrase(locale: AppLocale, english: string): string {

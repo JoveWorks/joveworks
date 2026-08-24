@@ -111,6 +111,7 @@ const study: JsonObject = {
       label: 'a student equation',
       position: { x: 260, y: 480 },
       expression: 'p + q',
+      inputValues: { q: { kind: 'scalar', value: 4, unit: 'mm' } },
     },
     {
       kind: 'file',
@@ -170,6 +171,16 @@ describe('round-tripping (the verification docs/PLAN.md asks for)', () => {
 
   it('does carry a closure node’s own expression — it is the student’s content, not R&M’s', () => {
     expect(saveDocument(parseDocument(study))).toMatch(/p \+ q/);
+  });
+
+  it('keeps a closure node’s typed-in port values, as a formula node’s are kept', () => {
+    const document = parseDocument(study);
+    const closure = document.nodes.find((node) => node.id === 'eq');
+    expect(closure?.kind === 'closure' && closure.inputValues?.q).toEqual({
+      kind: 'scalar',
+      value: 4,
+      unit: expect.objectContaining({ symbol: 'mm' }),
+    });
   });
 
   it('accepts an empty expression — a freshly dropped closure node, not yet written', () => {

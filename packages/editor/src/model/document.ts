@@ -20,6 +20,7 @@ import {
   type ClosureNode,
   type Edge,
   type Endpoint,
+  type FormulaNode,
   type Frame,
   type GraphDocument,
   type GraphNode,
@@ -27,6 +28,7 @@ import {
   type OutputKind,
   type OutputNode,
   type Position,
+  type ValueSpec,
 } from '@joveworks/schema';
 
 import { GAP, NODE_HEIGHT, NODE_WIDTH } from './layout-constants';
@@ -128,6 +130,27 @@ export function updateNode<T extends GraphNode>(
     ...document,
     nodes: document.nodes.map((node) => (node.id === id ? change(node as T) : node)),
   };
+}
+
+/**
+ * One port's typed-in value set, or cleared away entirely.
+ *
+ * Clearing removes the key rather than storing an empty one, and drops the map
+ * with its last entry: a port that was typed into and then emptied must be
+ * indistinguishable from one never touched, or the catalogue's own default
+ * would stay overridden by a value nobody can see.
+ */
+export function withInputValue<T extends FormulaNode | ClosureNode>(
+  node: T,
+  port: string,
+  value: ValueSpec | undefined,
+): T {
+  const next = { ...node.inputValues };
+  if (value === undefined) delete next[port];
+  else next[port] = value;
+  if (Object.keys(next).length > 0) return { ...node, inputValues: next };
+  const { inputValues: _cleared, ...rest } = node;
+  return rest as T;
 }
 
 export function moveNode(document: GraphDocument, id: string, position: Position): GraphDocument {

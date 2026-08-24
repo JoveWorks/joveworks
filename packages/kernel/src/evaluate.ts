@@ -42,6 +42,7 @@ import {
   type MonteCarloGeneratorNode,
   type MonteCarloReceiverNode,
   type OutputNode,
+  type ClosureNode,
   type Comparison,
   type Formula,
   type FormulaNode,
@@ -550,7 +551,7 @@ function valueAtEdge(edge: Edge, key: string, values: ReadonlyMap<string, PortVa
 
 /** A non-spectrum port takes exactly one edge (`oneEdge` in graph.ts already refused a second). */
 function inputPortValue(
-  node: FormulaNode | { readonly id: string },
+  node: FormulaNode | ClosureNode | { readonly id: string },
   port: Port,
   resolution: Resolution,
   values: ReadonlyMap<string, PortValue>,
@@ -619,7 +620,7 @@ function spectrumEdgeValues(
 }
 
 function evaluateFormula(
-  node: FormulaNode | { readonly id: string },
+  node: FormulaNode | ClosureNode | { readonly id: string },
   formula: Formula,
   resolution: Resolution,
   values: ReadonlyMap<string, PortValue>,

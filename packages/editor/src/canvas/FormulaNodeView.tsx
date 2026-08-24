@@ -31,7 +31,7 @@ import type { Unit } from '@joveworks/units';
 import { useGraph } from '../graph-context';
 import { useSettings } from '../settings-context';
 import { toUnitsFormat } from '../model/numberFormat';
-import { reframe, removeNodes, renameNode, updateNode } from '../model/document';
+import { reframe, removeNodes, renameNode, updateNode, withInputValue } from '../model/document';
 import { Equation } from '../Equation';
 import { Symbol } from '../Symbol';
 import { ParameterLabel, UnitInLabel } from '../ParameterLabel';
@@ -42,8 +42,7 @@ import type { CanvasFlowNode } from './node-data';
 import { slotHandleId } from './spectrumSlots';
 import { TitleField, TitleText } from './TitleField';
 import { DisplayUnitPicker } from './DisplayUnitPicker';
-import { TextField } from './fields';
-import { formatAuthored, parseAuthored } from '../model/quantity';
+import { PORT_VALUE_HINT, PortValueField, UNCHOSEN } from './PortValueField';
 
 export function FormulaNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>): ReactElement | null {
   const { document, analysis, edit, expanded, toggleExpanded, hovered } = useGraph();
@@ -127,10 +126,18 @@ export function FormulaNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
     return resolved ?? (isGenericPort(port) ? undefined : (port.preferredUnit ?? port.unit) as Unit);
   };
 
-  const missing = (port: Port): boolean =>
-    !wired.has(port.name) &&
-    !(port.kind === 'numeric' && port.default !== undefined && !isGenericPort(port)) &&
-    !(port.kind === 'categorical' && port.default !== undefined);
+  /**
+   * Nothing to evaluate this port with — no wire, nothing typed on the node,
+   * no declared default. The same rule `analysis.tsx` decides `incomplete` by,
+   * so the red handle and the node's own state always agree.
+   */
+  const missing = (port: Port): boolean => {
+    if (wired.has(port.name)) return false;
+    if (node.inputValues?.[port.name] !== undefined) return false;
+    if (port.kind === 'numeric') return port.default === undefined || isGenericPort(port);
+    if (port.kind === 'categorical') return port.default === undefined;
+    return true;
+  };
 
   const outputUnitOf = (name: string): Unit | undefined =>
     analysis.resolution?.sources.get(`${id}.${name}`)?.unit;
@@ -141,12 +148,10 @@ export function FormulaNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
         displayUnits: { ...entry.displayUnits, [name]: unit },
       })),
     );
-  const setInputValue = (name: string, value: ValueSpec): void =>
+  /** `undefined` clears the typed value: the catalogue default applies again, or nothing does. */
+  const setInputValue = (name: string, value: ValueSpec | undefined): void =>
     edit((current) =>
-      updateNode<FormulaNode>(current, id, (entry) => ({
-        ...entry,
-        inputValues: { ...entry.inputValues, [name]: value },
-      })),
+      updateNode<FormulaNode>(current, id, (entry) => withInputValue(entry, name, value)),
     );
 
   // The title is the friendly name: a student's own label, else the catalogue's
@@ -309,30 +314,38 @@ export function FormulaNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
                   ) : (
                     <select
                       className="nodrag port-default"
+                      aria-label={port.name}
                       value={
                         authored?.kind === 'categorical'
                           ? authored.value
-                          : port.default ?? port.domain[0]
+                          : port.default ?? UNCHOSEN
                       }
-                      onChange={(event) => setInputValue(port.name, { kind: 'categorical', value: event.target.value })}
+                      onChange={(event) =>
+                        setInputValue(
+                          port.name,
+                          event.target.value === UNCHOSEN
+                            ? undefined
+                            : { kind: 'categorical', value: event.target.value },
+                        )
+                      }
                     >
+                      {/* Only while nothing has been chosen and the catalogue
+                          named no default: a dropdown showing the first entry
+                          of its domain would otherwise read as a decision the
+                          graph has not actually made. */}
+                      {port.default === undefined ? <option value={UNCHOSEN}>—</option> : null}
                       {port.domain.map((choice) => <option key={choice} value={choice}>{choice}</option>)}
                     </select>
                   )
                 ) : null}
-                {port.kind === 'numeric' && !wired.has(port.name) && port.default !== undefined && !isGenericPort(port) ? (
-                  <TextField
-                    className="quantity port-default"
-                    autoSize={5}
-                    value={
-                      authored?.kind === 'scalar'
-                        ? formatAuthored(authored, format)
-                        : formatAuthored({ value: port.default, unit: port.unit as Unit }, format)
-                    }
-                    onCommit={(text) => {
-                      const quantity = parseAuthored(text, format);
-                      setInputValue(port.name, { kind: 'scalar', ...quantity });
-                    }}
+                {port.kind === 'numeric' && !wired.has(port.name) ? (
+                  <PortValueField
+                    port={port}
+                    authored={authored}
+                    unit={portUnit(port)}
+                    format={format}
+                    title={phrase(locale, PORT_VALUE_HINT)}
+                    onCommit={(value) => setInputValue(port.name, value)}
                   />
                 ) : null}
               </li>

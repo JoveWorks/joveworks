@@ -137,8 +137,15 @@ Three kinds (`packages/schema/src/port.ts`):
   `validRange` is load-bearing — it bounds sweeps, not just a UI
   hint — so set it wherever a formula only makes physical sense over part of
   the number line (`F >= 0`, an angle in `[0, pi]`).
+  `default` is what the port's field on the node starts at while nothing is
+  wired to it. Every numeric port takes a value typed there whether or not you
+  declare one, so declare it only where a conventional starting value exists (a
+  sharpness divisor of 1500, a friction coefficient) — never merely to make the
+  port editable.
 - **categorical** — `{ kind, name, domain, default? }`. An enumerated set of
-  strings, e.g. `["H7", "H8", "K7"]`. Sweeps by explicit list only.
+  strings, e.g. `["H7", "H8", "K7"]`. Sweeps by explicit list only. Its
+  `default` reads the same way: with none declared, the port's dropdown starts
+  on no choice rather than silently on the domain's first entry.
 - **spectrum** — `{ kind, name, unit }`, input-only. A whole series consumed
   at once by `sum`/`prod`/`least`/`greatest` — you will not need this
   for straightforward single-value formulas.

@@ -15,14 +15,27 @@ import { phrase } from '../i18n';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 
 import { parseExpression, toLatex } from '@joveworks/kernel';
-import { CLOSURE_RESULT_PORT, type OutputPort, type Port } from '@joveworks/schema';
+import {
+  CLOSURE_RESULT_PORT,
+  type ClosureNode,
+  type OutputPort,
+  type Port,
+  type ValueSpec,
+} from '@joveworks/schema';
 
 import type { Unit } from '@joveworks/units';
 
 import { useGraph } from '../graph-context';
 import { useSettings } from '../settings-context';
 import { toUnitsFormat } from '../model/numberFormat';
-import { reframe, removeNodes, renameNode, setClosureExpression, updateNode } from '../model/document';
+import {
+  reframe,
+  removeNodes,
+  renameNode,
+  setClosureExpression,
+  updateNode,
+  withInputValue,
+} from '../model/document';
 import { Equation } from '../Equation';
 import { Symbol } from '../Symbol';
 import { ParameterLabel, UnitInLabel } from '../ParameterLabel';
@@ -33,6 +46,7 @@ import type { CanvasFlowNode } from './node-data';
 import { slotHandleId } from './spectrumSlots';
 import { DisplayUnitPicker } from './DisplayUnitPicker';
 import { TextField } from './fields';
+import { PORT_VALUE_HINT, PortValueField } from './PortValueField';
 import { TitleField, TitleText } from './TitleField';
 
 export function ClosureNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>): ReactElement | null {
@@ -58,6 +72,12 @@ export function ClosureNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
     document.edges.filter((edge) => edge.to.node === id && edge.to.port === portName).length;
 
   const portUnit = (port: Port) => analysis.resolution?.targets.get(`${id}.${port.name}`)?.unit;
+
+  /** `undefined` clears the typed value — a closure port has no default to fall back to. */
+  const setInputValue = (name: string, value: ValueSpec | undefined): void =>
+    edit((current) =>
+      updateNode<ClosureNode>(current, id, (entry) => withInputValue(entry, name, value)),
+    );
 
   const value = formula === undefined ? undefined : reading(analysis, id, (formula.outputs[0] as OutputPort).name);
   const outputUnit =
@@ -110,7 +130,9 @@ export function ClosureNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
           // Same shape FormulaNodeView draws a spectrum port in: one slot
           // per edge already joined, plus a trailing open one.
           if (port.kind !== 'spectrum') {
-            const missing = !wired.has(port.name);
+            // Typed on the node counts as supplied, exactly as it does for a
+            // catalogue formula's port — a closure's names are ports too.
+            const missing = !wired.has(port.name) && node.inputValues?.[port.name] === undefined;
             return (
               <li
                 key={port.name}
@@ -130,6 +152,16 @@ export function ClosureNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
                   nameClassName="port-name"
                   unitClassName="port-unit"
                 />
+                {port.kind === 'numeric' && !wired.has(port.name) ? (
+                  <PortValueField
+                    port={port}
+                    authored={node.inputValues?.[port.name]}
+                    unit={portUnit(port)}
+                    format={format}
+                    title={phrase(locale, PORT_VALUE_HINT)}
+                    onCommit={(value) => setInputValue(port.name, value)}
+                  />
+                ) : null}
               </li>
             );
           }

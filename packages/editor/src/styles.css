@@ -1284,6 +1284,34 @@ aside.right {
   text-align: right;
 }
 
+/* Every numeric port carries one of these, so at rest it must read as the
+   value itself and nothing more — no box, no chrome. The outline appears
+   under the pointer to say it can be typed in; an outline rather than a
+   border because a border would shift the row by its own width. */
+.node .port-default:hover,
+.node .port-default:focus {
+  border-radius: 4px;
+  outline: 1px solid var(--line);
+  background: var(--paper);
+}
+
+/* An em-dash where no value has been given — a port that has not been
+   answered, which is not the same statement as a value of zero. */
+.node .port-default::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
+
+/* The field follows the unit label, whose own `margin-left: auto` pushes the
+   pair to the right. A generic port has no unit to show until something binds
+   it, and so no auto margin to ride on — the field takes the free space
+   itself there and keeps its box against the same right edge. */
+.node .port > .field {
+  flex: 1;
+  align-items: flex-end;
+  min-width: 0;
+}
+
 .node .port-unit-picker {
   width: auto;
   max-width: 7.5em;

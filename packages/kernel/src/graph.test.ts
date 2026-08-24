@@ -628,6 +628,50 @@ describe('generic signatures bind per node instance', () => {
     expect(resolution.sources.get(endpointKey('sum', 'sum'))?.dimension).toBeUndefined();
   });
 
+  it('binds a generic port from a value typed on the node, exactly as a wire would', () => {
+    const document = documentOf(
+      [
+        input('d', scalar(20, 'mm')),
+        formulaNode('m', refTo('multiplyTwo'), {
+          inputValues: { a: { kind: 'scalar', value: 100, unit: 'N' } },
+        }),
+      ],
+      [wire('d.value', 'm.b')],
+    );
+    const resolution = resolveGraph(document, catalogues);
+    expect(resolution.bindings.get('m')?.get('A')).toEqual(FORCE);
+    expect(resolution.sources.get(endpointKey('m', 'product'))?.dimension).toEqual(TORQUE);
+  });
+
+  it('refuses a typed value that binds one variable to a second dimension', () => {
+    const document = documentOf(
+      [
+        input('F', scalar(100, 'N')),
+        formulaNode('sum', refTo('addTwo'), {
+          inputValues: { b: { kind: 'scalar', value: 20, unit: 'mm' } },
+        }),
+      ],
+      [wire('F.value', 'sum.a')],
+    );
+    expect(() => resolveGraph(document, catalogues)).toThrow(/bound twice/u);
+  });
+
+  it('lets a wire override the typed value it stands in for, dimension included', () => {
+    // `a` is typed in newtons and wired in millimetres: the wire wins, so
+    // `$A` binds to the wire's dimension and the sum is a length.
+    const document = documentOf(
+      [
+        input('d', scalar(20, 'mm')),
+        formulaNode('sum', refTo('addTwo'), {
+          inputValues: { a: { kind: 'scalar', value: 100, unit: 'N' } },
+        }),
+      ],
+      [wire('d.value', 'sum.a'), wire('d.value', 'sum.b')],
+    );
+    const resolution = resolveGraph(document, catalogues);
+    expect(resolution.sources.get(endpointKey('sum', 'sum'))?.dimension).toEqual(LENGTH);
+  });
+
   it('checks a check node against the value it is wired to', () => {
     const document = documentOf(
       [
@@ -664,6 +708,37 @@ describe('closure nodes', () => {
     const document = documentOf(
       [input('F', scalar(10, 'N')), input('d', scalar(20, 'mm')), closureNode('eq', 'a + b')],
       [wire('F.value', 'eq.a'), wire('d.value', 'eq.b')],
+    );
+    expect(() => resolveGraph(document, catalogues)).toThrow(/cannot add/u);
+  });
+
+  it('proves it from typed values too — a closure with nothing wired still resolves', () => {
+    const document = documentOf(
+      [
+        closureNode('eq', 'a + b', {
+          inputValues: {
+            a: { kind: 'scalar', value: 10, unit: 'N' },
+            b: { kind: 'scalar', value: 20, unit: 'N' },
+          },
+        }),
+      ],
+      [],
+    );
+    const resolution = resolveGraph(document, catalogues);
+    expect(resolution.sources.get(endpointKey('eq', 'result'))?.dimension).toEqual(FORCE);
+  });
+
+  it('holds typed values to the same dimension rules a wire is held to', () => {
+    const document = documentOf(
+      [
+        closureNode('eq', 'a + b', {
+          inputValues: {
+            a: { kind: 'scalar', value: 10, unit: 'N' },
+            b: { kind: 'scalar', value: 20, unit: 'mm' },
+          },
+        }),
+      ],
+      [],
     );
     expect(() => resolveGraph(document, catalogues)).toThrow(/cannot add/u);
   });

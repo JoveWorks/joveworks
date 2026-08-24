@@ -282,6 +282,12 @@ export interface ClosureNode extends NodeBase {
   readonly kind: 'closure';
   /** May be empty — a freshly dropped node that has not been written yet. */
   readonly expression: string;
+  /**
+   * Per-port fallbacks used only while that input is unwired, exactly as
+   * `FormulaNode.inputValues` — the ports are derived rather than declared,
+   * but a name in the expression is as typeable as a catalogue port is.
+   */
+  readonly inputValues?: Readonly<Record<string, ValueSpec>>;
 }
 
 /**
@@ -719,6 +725,36 @@ export const NODE_KINDS = [
   'monteCarloReceiver',
 ] as const;
 
+/**
+ * The per-port fallbacks a formula or closure node carries. Both kinds store
+ * the same map for the same reason — a value typed on the node itself, standing
+ * in until a wire arrives — so neither the reading nor the writing of it is
+ * worth having twice.
+ */
+function parseInputValues(
+  object: JsonObject,
+  path: string,
+): Readonly<Record<string, ValueSpec>> | undefined {
+  return optional(object, 'inputValues', path, (entry, entryPath) => {
+    const values = readObject(entry, entryPath);
+    return Object.fromEntries(
+      Object.entries(values).map(([name, spec]) => [
+        readName(name, entryPath),
+        parseValueSpec(spec, join(entryPath, name)),
+      ]),
+    );
+  });
+}
+
+function serializeInputValues(
+  values: Readonly<Record<string, ValueSpec>> | undefined,
+): JsonObject | undefined {
+  if (values === undefined) return undefined;
+  return Object.fromEntries(
+    Object.entries(values).map(([name, spec]) => [name, serializeValueSpec(spec)]),
+  );
+}
+
 function parseNode(value: JsonValue, path: string): GraphNode {
   const object = readObject(value, path);
   const base = {
@@ -764,18 +800,7 @@ function parseNode(value: JsonValue, path: string): GraphNode {
         ...base,
         kind,
         formula: parseFormulaRef(required(object, 'formula', path), join(path, 'formula')),
-        ...put(
-          'inputValues',
-          optional(object, 'inputValues', path, (entry, entryPath) => {
-            const values = readObject(entry, entryPath);
-            return Object.fromEntries(
-              Object.entries(values).map(([name, spec]) => [
-                readName(name, entryPath),
-                parseValueSpec(spec, join(entryPath, name)),
-              ]),
-            );
-          }),
-        ),
+        ...put('inputValues', parseInputValues(object, path)),
       };
     case 'output':
       return {
@@ -800,6 +825,7 @@ function parseNode(value: JsonValue, path: string): GraphNode {
         ...base,
         kind,
         expression: readString(required(object, 'expression', path), join(path, 'expression')),
+        ...put('inputValues', parseInputValues(object, path)),
       };
     case 'waypoint':
       return { ...base, kind };
@@ -881,14 +907,7 @@ function serializeNode(node: GraphNode): JsonObject {
       return {
         ...base,
         formula: serializeFormulaRef(node.formula),
-        ...put(
-          'inputValues',
-          node.inputValues === undefined
-            ? undefined
-            : Object.fromEntries(
-                Object.entries(node.inputValues).map(([name, spec]) => [name, serializeValueSpec(spec)]),
-              ),
-        ),
+        ...put('inputValues', serializeInputValues(node.inputValues)),
       };
     case 'output':
       return { ...base, output: serializeOutput(node.output), ...put('caption', node.caption) };
@@ -899,7 +918,11 @@ function serializeNode(node: GraphNode): JsonObject {
         threshold: serializeQuantity(node.threshold),
       };
     case 'closure':
-      return { ...base, expression: node.expression };
+      return {
+        ...base,
+        expression: node.expression,
+        ...put('inputValues', serializeInputValues(node.inputValues)),
+      };
     case 'waypoint':
     case 'pack':
     case 'unpack':

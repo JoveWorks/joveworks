@@ -117,10 +117,18 @@ export function lookupCatalogue(catalogues: readonly Catalogue[], id: string): C
   return catalogues.find((catalogue) => findFormula(catalogue, id) !== undefined);
 }
 
-/** Whether an unwired input port can stand in for itself (the kernel's rule). */
-function hasDefault(port: Port): boolean {
-  if (port.kind === 'categorical') return port.default !== undefined;
+/**
+ * Whether an unwired input port already has a value to stand in with — the
+ * kernel's own order (`inputPortValue`): a value typed on the node first, the
+ * catalogue's declared default second. Typed beats declared, and a generic
+ * port's declared default is unusable (there is no unit to read it in), which
+ * is exactly why it takes a typed one.
+ */
+function hasValue(node: GraphNode, port: Port): boolean {
+  const authored = 'inputValues' in node ? node.inputValues?.[port.name] : undefined;
   if (port.kind === 'spectrum' || port.kind === 'bundle') return false;
+  if (port.kind === 'categorical') return authored !== undefined || port.default !== undefined;
+  if (authored !== undefined) return true;
   return port.default !== undefined && !isGenericPort(port);
 }
 
@@ -246,7 +254,7 @@ function readiness(
         continue;
       }
       const missing = formula.inputs.filter(
-        (port) => !hasDefault(port) && !isWired(node.id, port.name),
+        (port) => !hasValue(node, port) && !isWired(node.id, port.name),
       );
       if (missing.length > 0) {
         states.set(node.id, 'incomplete');

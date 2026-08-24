@@ -115,6 +115,62 @@ describe('analysing a graph mid-build', () => {
     expect(text(analysis.problems.get('half'))).toContain('not connected');
   });
 
+  it('counts a value typed on the node as supplying that port — no wire needed', () => {
+    // `b` has no declared default, so before values could be typed on any
+    // port this node had no way to be complete but a second input node.
+    const document = graph(
+      [
+        scalar('a', 2),
+        {
+          ...formulaNode('sum', 'inv.sum'),
+          inputValues: { b: { kind: 'scalar' as const, value: 3, unit: parseUnit('mm') } },
+        },
+      ],
+      [wire('e1', ['a', 'value'], ['sum', 'a'])],
+    );
+    const analysis = analyse(document, CATALOGUES);
+
+    expect(analysis.states.get('sum')).toBe('ok');
+    expect(analysis.evaluation?.values.get('sum.y')).toMatchObject({ data: [5] });
+  });
+
+  it('counts one typed on a closure node too, whose ports never have a declared default', () => {
+    const document = graph(
+      [
+        {
+          ...closureNode('eq', 'p + q'),
+          inputValues: {
+            p: { kind: 'scalar' as const, value: 2, unit: parseUnit('mm') },
+            q: { kind: 'scalar' as const, value: 3, unit: parseUnit('mm') },
+          },
+        },
+      ],
+      [],
+    );
+    const analysis = analyse(document, CATALOGUES);
+
+    expect(analysis.states.get('eq')).toBe('ok');
+    expect(analysis.evaluation?.values.get('eq.result')).toMatchObject({ data: [5] });
+  });
+
+  it('still marks a port with nothing wired and nothing typed', () => {
+    const document = graph(
+      [
+        scalar('a', 2),
+        {
+          ...formulaNode('sum', 'inv.sum'),
+          inputValues: { b: { kind: 'scalar' as const, value: 3, unit: parseUnit('mm') } },
+        },
+      ],
+      [],
+    );
+    const analysis = analyse(document, CATALOGUES);
+
+    expect(analysis.states.get('sum')).toBe('incomplete');
+    expect(text(analysis.problems.get('sum'))).toContain('a');
+    expect(text(analysis.problems.get('sum'))).not.toContain('b');
+  });
+
   it('carries the owning catalogue alongside each formula node, so the canvas can show provenance', () => {
     const document = graph(
       [scalar('a', 2), scalar('b', 3), formulaNode('sum', 'inv.sum'), closureNode('eq', 'a + b')],

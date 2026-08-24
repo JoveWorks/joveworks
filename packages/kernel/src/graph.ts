@@ -36,6 +36,7 @@ import {
   resolveGeneric,
   unit as makeUnit,
   type Dimension,
+  type GenericDimension,
   type Unit,
 } from '@joveworks/units';
 import {
@@ -65,6 +66,7 @@ import {
   type OutputPort,
   type Port,
   type PortKind,
+  type ValueSpec,
 } from '@joveworks/schema';
 
 import { packChannelIndices, waypointChannelIndices } from './bundle.js';
@@ -468,29 +470,66 @@ export function resolveGraph(
   };
 
   /**
-   * Bind a node's generic variables from what is wired in, then check every
-   * edge against the port it arrives at. An input's signature is a bare
-   * variable, so this is an assignment and never an equation — shared by a
-   * `formula` node (whose ports may deliberately reuse one variable, as
-   * `add`'s two inputs both do with `$A`) and a `closure` node (whose ports
-   * never do, each free name having its own).
+   * Bind a node's generic variables from what is wired in — or, where nothing
+   * is, from what was typed on the node itself — then check every edge against
+   * the port it arrives at. An input's signature is a bare variable, so this is
+   * an assignment and never an equation — shared by a `formula` node (whose
+   * ports may deliberately reuse one variable, as `add`'s two inputs both do
+   * with `$A`) and a `closure` node (whose ports never do, each free name
+   * having its own).
+   *
+   * An inline value binds exactly as an edge does. It has to: a generic port
+   * has no dimension of its own, so `add` with `5 mm` typed into `a` would
+   * otherwise leave `$A` unbound and never resolve its own output — and a
+   * closure node, whose every port is generic, would not resolve at all until
+   * every last name had a wire.
    */
-  const bindInputs = (nodeId: string, formula: Formula): Map<string, Dimension> => {
+  const bindInputs = (
+    nodeId: string,
+    formula: Formula,
+    inputValues: Readonly<Record<string, ValueSpec>> | undefined,
+  ): Map<string, Dimension> => {
     const bound = new Map<string, Dimension>();
+    const bindVariable = (unit: GenericDimension, dimension: Dimension, key: string): void => {
+      const variable = bareVariable(unit) as string;
+      const already = bound.get(variable);
+      if (already === undefined) bound.set(variable, dimension);
+      else {
+        assertSameDimension(
+          already,
+          dimension,
+          `'$${variable}' is bound twice on this node and must be one dimension`,
+          key,
+        );
+      }
+    };
+
     for (const port of formula.inputs) {
       const key = endpointKey(nodeId, port.name);
+      const generic =
+        port.kind !== 'categorical' && port.kind !== 'bundle' && isGenericDimension(port.unit)
+          ? port.unit
+          : undefined;
       // A spectrum port takes one edge per collected value; every
       // other kind takes exactly one, which `oneEdge` throws on if not true.
       const edges = port.kind === 'spectrum' ? (incoming.get(key) ?? []) : oneEdgeArray(key);
-      if (edges.length === 0) continue;
+      if (edges.length === 0) {
+        // A spectrum port collects wires and takes no inline value
+        // (`inputValues` is validated as scalar-or-categorical below), so
+        // there is nothing here to bind from.
+        const authored = inputValues?.[port.name];
+        if (generic !== undefined && (authored?.kind === 'scalar' || authored?.kind === 'slider')) {
+          bindVariable(generic, authored.unit.dimension, key);
+        }
+        continue;
+      }
       const declared = portType(port, bound);
 
       for (const edge of edges) {
         const source = sourceType(edge);
         checkKind(source, declared, key);
 
-        if (port.kind !== 'categorical' && port.kind !== 'bundle' && isGenericDimension(port.unit)) {
-          const variable = bareVariable(port.unit) as string;
+        if (generic !== undefined) {
           const dimension = source.dimension;
           if (dimension === undefined) {
             throw new KernelError(
@@ -499,16 +538,7 @@ export function resolveGraph(
               key,
             );
           }
-          const already = bound.get(variable);
-          if (already === undefined) bound.set(variable, dimension);
-          else {
-            assertSameDimension(
-              already,
-              dimension,
-              `'$${variable}' is bound twice on this node and must be one dimension`,
-              key,
-            );
-          }
+          bindVariable(generic, dimension, key);
           continue;
         }
 
@@ -518,6 +548,35 @@ export function resolveGraph(
       }
     }
     return bound;
+  };
+
+  /**
+   * A value typed on the node in place of a wire, checked against the port it
+   * stands in for. Generic ports are exempt from the dimension check for the
+   * same reason an edge into one is: the value is what *gives* the port its
+   * dimension (`bindInputs`), so there is nothing yet to disagree with.
+   */
+  const checkInputValues = (
+    nodeId: string,
+    formula: Formula,
+    inputValues: Readonly<Record<string, ValueSpec>> | undefined,
+  ): void => {
+    for (const [name, authored] of Object.entries(inputValues ?? {})) {
+      const port = formula.inputs.find((candidate) => candidate.name === name);
+      const key = endpointKey(nodeId, name);
+      if (port === undefined) throw new KernelError(`'${name}' is not an input of '${formula.id}'`, key);
+      if (port.kind === 'categorical') {
+        if (authored.kind !== 'categorical') throw new KernelError(`'${name}' needs a categorical fallback`, key);
+        if (!port.domain.includes(authored.value)) {
+          throw new KernelError(`'${authored.value}' is not in '${name}'s declared domain`, key);
+        }
+        continue;
+      }
+      if (port.kind !== 'numeric' || (authored.kind !== 'scalar' && authored.kind !== 'slider')) {
+        throw new KernelError(`'${name}' needs a scalar numeric fallback`, key);
+      }
+      if (!isGenericDimension(port.unit)) assertConnectable(authored.unit.dimension, port.unit.dimension, key);
+    }
   };
 
   for (const node of order) {
@@ -582,23 +641,8 @@ export function resolveGraph(
     if (node.kind === 'formula') {
       const formula = lookupFormula(index, node.formula, node.id, warnings);
       formulas.set(node.id, formula);
-      for (const [name, authored] of Object.entries(node.inputValues ?? {})) {
-        const port = formula.inputs.find((candidate) => candidate.name === name);
-        const key = endpointKey(node.id, name);
-        if (port === undefined) throw new KernelError(`'${name}' is not an input of '${formula.id}'`, key);
-        if (port.kind === 'categorical') {
-          if (authored.kind !== 'categorical') throw new KernelError(`'${name}' needs a categorical fallback`, key);
-          if (!port.domain.includes(authored.value)) {
-            throw new KernelError(`'${authored.value}' is not in '${name}'s declared domain`, key);
-          }
-          continue;
-        }
-        if (port.kind !== 'numeric' || (authored.kind !== 'scalar' && authored.kind !== 'slider')) {
-          throw new KernelError(`'${name}' needs a scalar numeric fallback`, key);
-        }
-        if (!isGenericDimension(port.unit)) assertConnectable(authored.unit.dimension, port.unit.dimension, key);
-      }
-      const bound = bindInputs(node.id, formula);
+      checkInputValues(node.id, formula, node.inputValues);
+      const bound = bindInputs(node.id, formula, node.inputValues);
       bindings.set(node.id, bound);
       for (const port of formula.inputs) {
         targets.set(
@@ -628,7 +672,8 @@ export function resolveGraph(
         throw error instanceof KernelError ? new KernelError(error.message, node.id) : error;
       }
       formulas.set(node.id, formula);
-      const bound = bindInputs(node.id, formula);
+      checkInputValues(node.id, formula, node.inputValues);
+      const bound = bindInputs(node.id, formula, node.inputValues);
       bindings.set(node.id, bound);
       for (const port of formula.inputs) {
         targets.set(
