@@ -41,7 +41,7 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
     target: '[data-tour="value-kind-select"]',
     expandIds: ['w'],
     title: 'Turning an input into a range',
-    body: "This dropdown is how w became a sweep. Pick linear, logarithmic, a slider or a list here to turn any plain input into a range, the same way — F and L could sweep too if there were a reason to.",
+    body: "This dropdown is how w became a sweep. Linear, logarithmic and list values introduce sweep axes; a slider stays one scalar value but makes it quick to nudge. F and L could become sliders or sweeps too if there were a reason to.",
     placement: 'right',
   },
   {

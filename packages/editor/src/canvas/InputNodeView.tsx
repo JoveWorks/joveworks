@@ -12,6 +12,8 @@ import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { VALUE_PORT, isRange, type InputNode } from '@joveworks/schema';
 
 import { useGraph } from '../graph-context';
+import { useSettings } from '../settings-context';
+import { phrase } from '../i18n';
 import { nodeLabel, reframe, removeNodes, syncColumnLabels, updateNode } from '../model/document';
 import { axisLabel, reading } from '../model/values';
 import { NodeShell } from './NodeShell';
@@ -21,7 +23,8 @@ import { TitleField, TitleText } from './TitleField';
 import { ValueFields, ValueKindSelect, ValuePointsField, ValueSliderBoundsFields } from './ValueEditor';
 
 export function InputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>): ReactElement | null {
-  const { document, analysis, edit, expanded, toggleExpanded, hovered } = useGraph();
+  const { document, analysis, edit, editLive, commitEdit, expanded, toggleExpanded, hovered } = useGraph();
+  const { locale } = useSettings();
   const node = document.nodes.find((candidate) => candidate.id === id);
   if (node === undefined || node.kind !== 'input') return null;
 
@@ -29,7 +32,13 @@ export function InputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>)
   const value = reading(analysis, id, VALUE_PORT);
   const swept = isRange(node.value);
   const setValue = (next: InputNode['value']): void =>
-    edit((current) => updateNode<InputNode>(current, id, (input) => ({ ...input, value: next })));
+    edit((current) => updateNode<InputNode>(current, id, (input) => {
+      if (next.kind === 'slider') return { ...input, value: next };
+      const { exposeInNotebook: _exposure, ...rest } = input;
+      return { ...rest, value: next };
+    }));
+  const setSliderLive = (next: InputNode['value']): void =>
+    editLive((current) => updateNode<InputNode>(current, id, (input) => ({ ...input, value: next })));
 
   return (
     <NodeShell
@@ -71,6 +80,24 @@ export function InputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>)
           <ValueKindSelect value={node.value} onChange={setValue} />
           <ValuePointsField value={node.value} onChange={setValue} />
           <ValueSliderBoundsFields value={node.value} onChange={setValue} />
+          {node.value.kind === 'slider' ? (
+            <label className="points-field notebook-exposure-field">
+              <input
+                type="checkbox"
+                className="nodrag"
+                checked={node.exposeInNotebook ?? false}
+                onChange={(event) => {
+                  const exposed = event.target.checked;
+                  edit((current) => updateNode<InputNode>(current, id, (input) => {
+                    if (exposed) return { ...input, exposeInNotebook: true };
+                    const { exposeInNotebook: _exposure, ...rest } = input;
+                    return rest;
+                  }));
+                }}
+              />
+              {phrase(locale, 'Expose in NodeBook')}
+            </label>
+          ) : null}
         </>
       }
     >
@@ -88,7 +115,12 @@ export function InputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>)
               onMouseLeave: () => data?.onPortHover?.(),
             })}
       >
-        <ValueFields value={node.value} onChange={setValue} />
+        <ValueFields
+          value={node.value}
+          onChange={setValue}
+          onSliderChange={setSliderLive}
+          onSliderCommit={commitEdit}
+        />
         {swept ? null : (
           <Handle
             type="source"

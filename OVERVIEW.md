@@ -201,6 +201,15 @@ canvas                              notebook panel
 It lives in a **collapsible side panel and updates live**, so the document takes
 shape while the graph is built rather than being discovered at export time.
 
+**Important slider inputs can be exposed in the NodeBook.** Turn on `Expose in
+NodeBook` in a slider node's expanded controls and every result that depends on
+it gets a compact slider and exact-value field beneath it. These are synchronized
+views of the original input, not copied nodes: changing any one updates the
+canvas slider, every other occurrence, and all downstream results immediately.
+The separate course viewer keeps changes for the current visit and offers a
+reset to the authored values. PDF export records the current value as text and
+omits the interactive control.
+
 ### Kinds of output node
 
 | Kind | What it does |

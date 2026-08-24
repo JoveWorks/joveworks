@@ -578,6 +578,23 @@ describe('labelled axes', () => {
 });
 
 describe('group frames as notebook sections', () => {
+  it('round-trips an optional exposed-slider marker without changing older inputs', () => {
+    const exposed = {
+      ...study,
+      nodes: (study['nodes'] as JsonObject[]).map((node) =>
+        node['id'] === 'load'
+          ? {
+              ...node,
+              value: { kind: 'slider', value: 12, min: 5, max: 20, unit: 'kN' },
+              exposeInNotebook: true,
+            }
+          : node,
+      ),
+    };
+    expect(serializeDocument(parseDocument(exposed))).toEqual(exposed);
+    expect(serializeDocument(parseDocument(study))).toEqual(study);
+  });
+
   it('collects the nodes of a section', () => {
     const document = parseDocument(study);
     expect(nodesInFrame(document, 'sizing').map((node) => node.id)).toEqual(['d', 'n1', 'o-value']);

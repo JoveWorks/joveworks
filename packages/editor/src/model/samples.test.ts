@@ -24,10 +24,12 @@ import { GAP } from './layout-constants';
 import {
   apertureDecision,
   beltLab,
+  cantileverHollowSections,
   depthOfField,
   millingPowerEnvelope,
   monteCarloClearance,
   padPressure,
+  platformFootprint,
   pressfitLab,
 } from './samples';
 
@@ -76,6 +78,43 @@ describe('the samples the editor opens with', () => {
 
   it('offers the milling power-envelope study from the bundled public catalogue', () => {
     expect(millingPowerEnvelope(PUBLIC_CATALOGUES)).toBeDefined();
+  });
+
+  it('exposes a curated set of sliders and evaluates every travel endpoint', () => {
+    const examples = [
+      padPressure(PUBLIC_CATALOGUES),
+      platformFootprint(PUBLIC_CATALOGUES),
+      cantileverHollowSections(PUBLIC_CATALOGUES),
+      millingPowerEnvelope(PUBLIC_CATALOGUES),
+    ];
+    const expected = [
+      ['F', 'L'],
+      ['load', 'length'],
+      ['t', 'F'],
+      ['a_p', 'eta'],
+    ];
+
+    examples.forEach((example, exampleIndex) => {
+      expect(example).toBeDefined();
+      const exposed = (example?.nodes ?? []).filter(
+        (node) => node.kind === 'input' && node.value.kind === 'slider' && node.exposeInNotebook === true,
+      );
+      expect(exposed.map((node) => node.id)).toEqual(expected[exampleIndex]);
+      for (const slider of exposed) {
+        if (slider.kind !== 'input' || slider.value.kind !== 'slider' || example === undefined) continue;
+        for (const value of [slider.value.min, slider.value.max]) {
+          const atEndpoint: GraphDocument = {
+            ...example,
+            nodes: example.nodes.map((node) =>
+              node.id === slider.id && node.kind === 'input' && node.value.kind === 'slider'
+                ? { ...node, value: { ...node.value, value } }
+                : node,
+            ),
+          };
+          expect(analyse(atEndpoint, PUBLIC_CATALOGUES).message).toBeUndefined();
+        }
+      }
+    });
   });
 
   it('snaps example nodes and sections to the canvas grid', () => {

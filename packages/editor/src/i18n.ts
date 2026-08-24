@@ -92,6 +92,7 @@ const DUTCH_PHRASES: Readonly<Record<string, string>> = {
   'The value. The unit is the field beside it, and does not need retyping.': 'De waarde. De eenheid staat in het veld ernaast en hoeft niet opnieuw getypt te worden.',
   'Blank is dimensionless — that is a value, not a gap to fill in.': 'Leeg is dimensieloos — dat is een waarde, geen veld dat nog ingevuld moet worden.',
   'Drag for a feel of the effect — type the field for an exact value.': 'Sleep om het effect te voelen — typ in het veld voor een exacte waarde.',
+  'Expose in NodeBook': 'Tonen in NodeBook', 'Reset inputs': 'Invoer herstellen',
   'The low end. Type a unit here too (10 mm ... 1 m) to re-express both bounds in it.': 'De ondergrens. Typ hier ook een eenheid (10 mm ... 1 m) om beide grenzen daarin uit te drukken.',
   'The high end.': 'De bovengrens.', 'Preferred numbers (ISO 3) — the standard sizes a part actually comes in.': 'Voorkeursgetallen (ISO 3) — de standaardmaten waarin een onderdeel werkelijk verkrijgbaar is.',
   'Standard sizes — the range that answers which part to buy.': 'Standaardmaten — het bereik dat antwoord geeft op welk onderdeel te kopen.',

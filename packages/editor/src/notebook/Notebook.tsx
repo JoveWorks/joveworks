@@ -27,7 +27,7 @@ import {
 } from 'react';
 
 import { parseExpression, toLatex, type OutputResult } from '@joveworks/kernel';
-import type { Frame, GraphDocument, MonteCarloReceiverNode, OutputNode, Position } from '@joveworks/schema';
+import type { Frame, GraphDocument, MonteCarloReceiverNode, OutputNode } from '@joveworks/schema';
 
 import type { NumberFormat } from '@joveworks/units';
 
@@ -63,7 +63,9 @@ import { PlotFigure } from './PlotFigure';
 import { SensitivityFigure } from './SensitivityFigure';
 import { DistributionFigure } from './DistributionFigure';
 import { ReliabilityCard } from './ReliabilityCard';
+import { NotebookSliderControl } from './NotebookSliderControl';
 import { phrase, ui } from '../i18n';
+import { exposedSlidersFor, readingOrder, withSliderValue } from '../model/notebook';
 
 /**
  * Enter finishes the field (blurs it, same as `fields.tsx`'s `TextField`);
@@ -439,6 +441,40 @@ function Caption({
   );
 }
 
+function ControlsFor({ nodeId }: { readonly nodeId: string }): ReactElement | null {
+  const { document, edit, editLive, commitEdit, setHovered } = useGraph();
+  const { numberFormat } = useSettings();
+  const format = toUnitsFormat(numberFormat);
+  const controls = exposedSlidersFor(document, nodeId);
+  if (controls.length === 0) return null;
+
+  const change = (sliderId: string, value: number, live: boolean): void => {
+    const apply = (current: GraphDocument): GraphDocument => withSliderValue(current, sliderId, value);
+    if (live) editLive(apply);
+    else edit(apply);
+  };
+
+  return (
+    <div className="notebook-controls">
+      {controls.map((slider) => (
+        <div
+          key={slider.id}
+          onMouseEnter={() => setHovered(() => new Set([slider.id]))}
+          onMouseLeave={() => setHovered(() => new Set())}
+        >
+          <NotebookSliderControl
+            node={slider}
+            format={format}
+            onLiveChange={(value) => change(slider.id, value, true)}
+            onCommit={commitEdit}
+            onExactChange={(value) => change(slider.id, value, false)}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /** The key `frame === undefined`'s pseudo-section collapses under — no frame id to key it by. */
 const UNGROUPED = '__ungrouped__';
 
@@ -668,6 +704,7 @@ function Section({
                   <Result result={result} node={node} />
                 )}
                 <Caption node={node} {...captionProps} />
+                <ControlsFor nodeId={node.id} />
               </div>
             );
           })}
@@ -685,6 +722,7 @@ function Section({
                 </span>
                 <MonteCarloReceiverPlayback receiverId={node.id} size="large" />
               </div>
+              <ControlsFor nodeId={node.id} />
             </div>
           ))}
         </>
@@ -693,19 +731,7 @@ function Section({
   );
 }
 
-/**
- * Two nodes within this many px of vertical distance read as the same "row" —
- * ordered by x instead of the (functionally arbitrary) sub-pixel difference
- * in y a hand-placed layout is full of. Roughly a node's own height, the
- * same order of magnitude `frameAround` (`model/document.ts`) assumes.
- */
-const ROW_TOLERANCE = 100;
-
-/** Top-to-bottom, then left-to-right on near-ties — comic-book reading order. */
-export function readingOrder(a: { readonly position: Position }, b: { readonly position: Position }): number {
-  const dy = a.position.y - b.position.y;
-  return Math.abs(dy) > ROW_TOLERANCE ? dy : a.position.x - b.position.x;
-}
+export { readingOrder } from '../model/notebook';
 
 function outputsOf(document: GraphDocument, frameId: string | undefined): readonly OutputNode[] {
   return document.nodes

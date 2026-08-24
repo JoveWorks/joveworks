@@ -184,8 +184,8 @@ export function padPressure(catalogues: readonly Catalogue[], locale: AppLocale 
   const stress = parseUnit('Pa');
 
   const nodes: GraphNode[] = [
-    input('F', 'Pad load F', { kind: 'scalar', value: 12, unit: parseUnit('kN') }, at(0, 0)),
-    input('L', 'Pad length L', { kind: 'scalar', value: 40, unit: mm }, at(0, 150)),
+    { ...input('F', 'Pad load F', { kind: 'slider', value: 12, min: 5, max: 20, unit: parseUnit('kN') }, at(0, 0)), exposeInNotebook: true },
+    { ...input('L', 'Pad length L', { kind: 'slider', value: 40, min: 20, max: 80, unit: mm }, at(0, 150)), exposeInNotebook: true },
     {
       ...input('w', 'Pad width w', { kind: 'linear', start: 10, stop: 60, points: 26, unit: mm }, at(0, 300)),
       axisLabel: 'pad width w (mm)',
@@ -224,8 +224,9 @@ export function padPressure(catalogues: readonly Catalogue[], locale: AppLocale 
       id: 'sizing',
       title: 'Pad sizing',
       note:
-        'A 12 kN load on a 40 mm pad, swept across pad widths from 10 to 60 mm. The pressure ' +
-        'limit is 2 MPa, and the plot says where the sweep crosses it.',
+        'The authored case starts at a 12 kN load and 40 mm pad length. Use the controls below ' +
+        'each result to test those assumptions while pad width remains the 10 to 60 mm sweep; ' +
+        'the pressure limit is 2 MPa.',
       position: at(960, -80),
       size: { width: 400, height: 620 },
     },
@@ -255,8 +256,8 @@ export function platformFootprint(catalogues: readonly Catalogue[], locale: AppL
   const mm = parseUnit('mm');
   const stress = parseUnit('Pa');
   const nodes: GraphNode[] = [
-    input('load', 'Equipment load', { kind: 'scalar', value: 12, unit: parseUnit('kN') }, at(0, 0)),
-    input('length', 'Platform length', { kind: 'scalar', value: 1000, unit: mm }, at(0, 150)),
+    { ...input('load', 'Equipment load', { kind: 'slider', value: 12, min: 5, max: 20, unit: parseUnit('kN') }, at(0, 0)), exposeInNotebook: true },
+    { ...input('length', 'Platform length', { kind: 'slider', value: 1000, min: 500, max: 2000, unit: mm }, at(0, 150)), exposeInNotebook: true },
     {
       ...input('width', 'Platform width to compare', { kind: 'linear', start: 200, stop: 1200, points: 26, unit: mm }, at(0, 300)),
       axisLabel: 'platform width (mm)',
@@ -293,9 +294,9 @@ export function platformFootprint(catalogues: readonly Catalogue[], locale: AppL
       id: 'decision',
       title: 'A decision at a glance',
       note:
-        'We compare platform widths for a fixed 12 kN equipment load. The line shows the ' +
-        'pressure on the floor; the threshold marks the widths that meet the agreed limit. ' +
-        'The same live graph supplies the value, the check, and the chart in this report.',
+        'The authored case starts at a 12 kN equipment load and 1000 mm platform length. ' +
+        'Use the controls below a result to see its value, check, and chart update together; ' +
+        'the width sweep and agreed floor-load threshold remain fixed.',
       position: at(960, -80),
       size: { width: 430, height: 620 },
     },
@@ -731,14 +732,14 @@ export function cantileverHollowSections(catalogues: readonly Catalogue[], local
 
   const nodes: GraphNode[] = [
     { ...input('d_o', 'Outer diameter d_o', { kind: 'list', values: [30, 40, 50, 60, 80], unit: mm }, at(0, 0)), axisLabel: 'd_o' },
-    input('t', 'Wall thickness t', { kind: 'scalar', value: 3, unit: mm }, at(0, 180)),
+    { ...input('t', 'Wall thickness t', { kind: 'slider', value: 3, min: 1, max: 10, unit: mm }, at(0, 180)), exposeInNotebook: true },
     input('two', '2 (wall thickness on both sides)', { kind: 'scalar', value: 2, unit: parseUnit('') }, at(0, 320)),
 
     formulaNode('twice_t', formula('multiply'), at(280, 180)),
     formulaNode('d_i', formula('subtract'), at(520, 90)),
     formulaNode('I', formula('basic.beam.moment-of-inertia-hollow-circle'), at(760, 0)),
 
-    input('F', 'Tip load F', { kind: 'scalar', value: 500, unit: parseUnit('N') }, at(0, 460)),
+    { ...input('F', 'Tip load F', { kind: 'slider', value: 500, min: 100, max: 1000, unit: parseUnit('N') }, at(0, 460)), exposeInNotebook: true },
     input('L', 'Beam length L', { kind: 'scalar', value: 1000, unit: mm }, at(0, 600)),
     input('E', "Young's modulus E (steel)", { kind: 'scalar', value: 210000, unit: parseUnit('MPa') }, at(0, 740)),
     formulaNode('delta', formula('basic.beam.cantilever-deflection'), at(1000, 360)),
@@ -786,9 +787,9 @@ export function cantileverHollowSections(catalogues: readonly Catalogue[], local
       id: 'sections',
       title: 'Cantilever beam — hollow circular sections',
       note:
-        'Tip deflection of a steel cantilever (F = 500 N, L = 1000 mm) for five standard ' +
-        'outer diameters at a fixed 3 mm wall thickness. The L/300 = 3.33 mm serviceability ' +
-        'limit is crossed between 60 and 80 mm.',
+        'The authored case uses a 500 N tip load and 3 mm wall thickness across five standard ' +
+        'outer diameters. Use the controls to test both assumptions. Beam length stays fixed at ' +
+        '1000 mm, so the displayed L/300 = 3.33 mm serviceability limit remains consistent.',
       position: at(1180, -80),
       size: { width: 420, height: 700 },
     },
@@ -849,12 +850,12 @@ export function millingPowerEnvelope(catalogues: readonly Catalogue[], locale: A
       ...input('a_e', 'Radial engagement a_e', { kind: 'list', values: [10, 20, 30, 40], unit: mm }, at(0, 700)),
       axisLabel: 'radial engagement a_e (mm)',
     },
-    input('a_p', 'Axial depth a_p', { kind: 'scalar', value: 4, unit: mm }, at(0, 860)),
+    { ...input('a_p', 'Axial depth a_p', { kind: 'slider', value: 4, min: 1, max: 8, unit: mm }, at(0, 860)), exposeInNotebook: true },
     formulaNode('removal_rate', formula('machining.milling.removal-rate'), at(700, 560)),
 
     input('k_c', 'Specific cutting force k_c', { kind: 'scalar', value: 1800, unit: parseUnit('N/mm²') }, at(360, 780)),
     formulaNode('cutting_power', formula('machining.power.from-removal-rate'), at(980, 560)),
-    input('eta', 'Machine efficiency eta', { kind: 'scalar', value: 0.85, unit: parseUnit('') }, at(700, 820)),
+    { ...input('eta', 'Machine efficiency eta', { kind: 'slider', value: 0.85, min: 0.6, max: 0.95, unit: parseUnit('') }, at(700, 820)), exposeInNotebook: true },
     formulaNode('machine_power', formula('machining.power.machine-input'), at(1240, 480)),
     formulaNode('cutting_torque', formula('machining.torque.from-power'), at(1240, 700)),
 
@@ -961,8 +962,8 @@ export function millingPowerEnvelope(catalogues: readonly Catalogue[], locale: A
       id: 'productivity',
       title: '2. Productivity study',
       note:
-        'Chip load and radial engagement are swept together. Axial depth stays at 4 mm; ' +
-        'the removal-rate contour shows the productivity gained by moving across the grid.',
+        'Chip load and radial engagement are swept together. Axial depth starts at 4 mm and ' +
+        'can be changed below the result; the contour shows how productivity moves across the grid.',
       position: at(1620, 240),
       size: { width: 440, height: 360 },
     },
@@ -973,7 +974,8 @@ export function millingPowerEnvelope(catalogues: readonly Catalogue[], locale: A
         'The 5.5 kW input-power and 35 Nm cutting-torque limits cut different boundaries ' +
         'through the grid. A failed overall check means some candidates fail, not that every ' +
         'candidate does; use the contours to find the feasible region — or read it directly off ' +
-        'the shaded feasibility below, which is both limits at once.',
+        'the shaded feasibility below, which is both limits at once. Axial depth and machine ' +
+        'efficiency start at their authored values and can be varied below the affected results.',
       position: at(1620, 620),
       size: { width: 440, height: 980 },
     },
@@ -981,7 +983,7 @@ export function millingPowerEnvelope(catalogues: readonly Catalogue[], locale: A
       id: 'selection',
       title: '4. Candidate operating point',
       note:
-        'The most productive point in this discrete grid that clears both limits is ' +
+        'At the authored input values, the most productive point in this discrete grid that clears both limits is ' +
         'f_z = 0.24 mm/tooth and a_e = 30 mm, giving Q = 132 cm³/min. This is an initial ' +
         'power-envelope result with constant k_c—not a production recommendation. Tool ' +
         'deflection, chatter, chip thinning, workholding, and manufacturer limits remain to check.',

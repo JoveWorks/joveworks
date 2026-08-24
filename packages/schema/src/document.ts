@@ -315,6 +315,8 @@ export interface InputNode extends NodeBase {
   readonly value: ValueSpec;
   /** What the axis is called when this node holds a range. Defaults to `label`. */
   readonly axisLabel?: string;
+  /** Show a slider as an interactive control beneath every NodeBook result it influences. */
+  readonly exposeInNotebook?: boolean;
 }
 
 export interface FormulaNode extends NodeBase {
@@ -1034,6 +1036,7 @@ function parseNode(value: JsonValue, path: string): GraphNode {
         kind,
         value: parseValueSpec(required(object, 'value', path), join(path, 'value')),
         ...put('axisLabel', optional(object, 'axisLabel', path, readString)),
+        ...put('exposeInNotebook', optional(object, 'exposeInNotebook', path, readBoolean)),
       };
     case 'file': {
       const sources = readArray(required(object, 'sources', path), join(path, 'sources')).map(
@@ -1200,6 +1203,7 @@ function serializeNode(node: GraphNode): JsonObject {
         ...base,
         value: serializeValueSpec(node.value),
         ...put('axisLabel', node.axisLabel),
+        ...put('exposeInNotebook', node.exposeInNotebook),
       };
     case 'file':
       return {

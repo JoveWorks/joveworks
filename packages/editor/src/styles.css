@@ -324,6 +324,21 @@ body {
   font-size: 22px;
 }
 
+.course-report-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.course-report-title-row h1 {
+  min-width: 0;
+}
+
+.course-report-title-row button {
+  flex: 0 0 auto;
+}
+
 .course-note,
 .course-caption,
 .viewer-pending {
@@ -380,6 +395,10 @@ body {
 .viewer-plot > div { max-width: 100%; }
 .viewer-plot p { margin: 0; color: var(--muted); }
 
+.viewer-controls {
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+}
+
 @media (max-width: 560px) {
   .course-viewer-header,
   .course-viewer-intro,
@@ -387,6 +406,7 @@ body {
   .course-report { width: min(100% - 24px, 900px); }
   .course-example-list { grid-template-columns: 1fr; }
   .course-report { padding: 22px; }
+  .course-report-title-row { align-items: flex-start; flex-direction: column; }
 }
 
 button {
@@ -1960,6 +1980,10 @@ aside.right {
   gap: 6px;
 }
 
+.notebook-exposure-field {
+  cursor: pointer;
+}
+
 .points-field .number {
   width: 3.5em;
 }
@@ -2888,6 +2912,70 @@ aside.right {
   margin-bottom: 10px;
 }
 
+.notebook-controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+  margin-top: 7px;
+}
+
+.notebook-control {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 3px 8px;
+  padding: 7px 8px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--accent-wash);
+}
+
+.notebook-control-label {
+  min-width: 0;
+  color: var(--muted);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.notebook-control-track {
+  grid-column: 1 / -1;
+}
+
+.notebook-control-reading {
+  display: flex;
+  align-items: baseline;
+  justify-self: end;
+  gap: 3px;
+  font-variant-numeric: tabular-nums;
+}
+
+.notebook-control-reading input {
+  max-width: 8em;
+  padding: 0 2px;
+  border-color: transparent;
+  background: transparent;
+  font-weight: 600;
+  text-align: right;
+}
+
+.notebook-control-reading input:hover,
+.notebook-control-reading input:focus {
+  border-color: var(--line);
+  background: var(--paper);
+}
+
+.notebook-control-reading .unit {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.notebook-control-print {
+  display: none;
+  justify-self: end;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
 .notebook .result {
   display: flex;
   gap: 8px;
@@ -3387,5 +3475,14 @@ aside.right {
 
   .notebook-section {
     break-inside: avoid;
+  }
+
+  .notebook-control-track,
+  .notebook-control-reading {
+    display: none !important;
+  }
+
+  .notebook-control-print {
+    display: inline;
   }
 }

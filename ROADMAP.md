@@ -258,8 +258,6 @@ which already turns a range into an axis (see `packages/kernel/src/series.ts` an
 the `isRange` value spec) — is this a second face on that same machinery or a
 genuinely new node kind?
 
-**54. Feature: interactive inputs in a notebook frame** Sliders can be exposed in the notebook.
-
 **55. Reliability reports for Monte Carlo.** Shipped as planned in
 `docs/reliability-reports-plan.md`: wireable statistics reduce a labelled swept
 axis (or scan it for convergence), Distribution outputs render report-stable

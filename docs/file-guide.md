@@ -42,7 +42,7 @@ No evaluation logic lives here — just types, parsing (untrusted JSON → typed
 - `src/port.ts` — `Port` (numeric/categorical/spectrum/bundle), `PortUnit`, `ValidRange`, `portDimension`, generic-signature rules (`asInputPort`/`asOutputPort`). Edit when adding a new port kind or changing what a formula's inputs/outputs can declare.
 - `src/value.ts` — `ValueSpec`: everything an input node can hold — scalar, slider, categorical, spectrum, and the range kinds (`linear`, `logarithmic`, `list`, `renard`, `tableColumn`, `categoricalList`). Edit when adding a new sweep/range kind.
 - `src/formula.ts` — `Formula`, `FormulaLookup` (table-backed evaluators), `Catalogue`, `FormulaRef`/`matchRef` (how a graph references a formula by id+version+hash without embedding it), `formulaHash`. Edit when changing what a catalogue record can carry (status, `appliesWhen`, `variantOf`, lookup tables, etc.).
-- `src/document.ts` — `GraphDocument` and every `GraphNode` kind (input, formula, output, compare, closure, waypoint, pack, unpack, monteCarloGenerator, monteCarloReceiver), `Output` variants (print/check/plot/table/equation), `Frame`, `Edge`, plus `parseDocument`/`serializeDocument` and structural reference checks. **The biggest file to know** — edit when adding a new node kind or output kind.
+- `src/document.ts` — `GraphDocument` and every `GraphNode` kind (input, formula, output, compare, closure, waypoint, pack, unpack, monteCarloGenerator, monteCarloReceiver), including an input slider's optional `exposeInNotebook` marker; `Output` variants (print/check/plot/table/equation), `Frame`, `Edge`, plus `parseDocument`/`serializeDocument` and structural reference checks. **The biggest file to know** — edit when adding a new node kind or output kind.
 - `src/io.ts` — the four public entry points: `loadDocument`/`saveDocument`/`loadCatalogue`/`saveCatalogue` (text ↔ typed record). No `fs`/`fetch` — that's the editor's job.
 - `src/index.ts` — the package's public export surface. Update when you add an export elsewhere in this package.
 - `src/*.test.ts` — one test file per module above (`document.test.ts`, `formula.test.ts`, `port.test.ts`, `value.test.ts`), exercising parse/serialize round-trips and validation errors with invented (non-R&M) fixtures.
@@ -142,6 +142,7 @@ The React app. Largest package by far. `AGENTS.md`: desktop-only, no properties 
 - `model/node-sizes.ts` — `NodeSize`/`NodeSizes` type, populated from React Flow's measured DOM boxes.
 - `model/selection-layout.ts` — selection-only commands: align, space evenly, arrange-selection — scoped to never cross a section (frame) boundary.
 - `model/history.ts` — generic undo/redo stack (`pushEdit` for discrete steps, `pushLiveEdit`/`commitPending` for drag/keystroke gestures folded into one undo step).
+- `model/notebook.ts` — shared NodeBook derivation rules: canvas reading order, the transitive dependency walk that finds exposed sliders for each result (including referenced Check outputs), and the single-value update every synchronized control uses.
 - `model/editorSettings.ts` — small standalone `localStorage`-backed preferences: locale, minimap, canvas-controls visibility, snap-to-grid, panel widths, title-math rendering, theme, contour palette.
 - `model/numberFormat.ts` — how numbers are displayed/typed app-wide (thousands/decimal style, notation), persisted separately from `editorSettings.ts`.
 - `model/quantity.ts` — the field-level authored↔canonical boundary: `parseAuthored`/`formatAuthored` (what a document stores), `display`/`displayNumber` (what a node/table shows).
@@ -162,7 +163,7 @@ The React app. Largest package by far. `AGENTS.md`: desktop-only, no properties 
 - `canvas/NodeShell.tsx` — shared chrome every node kind uses: title, state badge/colour, expand/collapse, pin-open, delete/help buttons.
 - `canvas/node-data.ts` — `CanvasNodeData`/`CanvasFlowNode` types (highlight state, port-hover callback) threaded through React Flow's generic node type.
 - `canvas/fields.tsx` — the small editable field primitives (`TextField`, `NumberField`) every node's value editing is built from — commit-on-blur/Enter, hold-while-typing.
-- `canvas/InputNodeView.tsx` — the input node: literal or range value editor, sparkline when swept.
+- `canvas/InputNodeView.tsx` — the input node: scalar/slider/range value editor, sparkline when swept, and the slider-only `Expose in NodeBook` authoring checkbox.
 - `canvas/FormulaNodeView.tsx` — a catalogue-formula node: ports, citation, per-input inline fallback values, output reading. Deliberately never shows the expression.
 - `canvas/OutputNodeView.tsx` — all four output kinds (print/check/plot/table) in one component; switching kind goes through `changeOutputKind` to adapt existing wires.
 - `canvas/CompareNodeView.tsx` — the `compare` node: wireable pass/fail verdict against a typed-or-wired threshold.
@@ -183,13 +184,14 @@ The React app. Largest package by far. `AGENTS.md`: desktop-only, no properties 
 - `canvas/CanvasFind.tsx` — the find-in-canvas search bar (title/id/port match, highlights matches).
 - `canvas/DisplayUnitPicker.tsx` — the per-port unit-choice `<select>`, filtered to units of the port's own dimension.
 - `canvas/TitleField.tsx` — node/frame title editor that keeps raw text but typesets recognizable math tokens (`typesetTitle`/`typesetTitleHtml`, shared with the notebook).
-- `canvas/ValueEditor.tsx` — the input-node value-kind editor: switching between scalar/slider/linear/logarithmic/list/renard/categorical/tableColumn, the range-kind picker, points/bounds fields. **This is the sweep control** — the core UX of the whole app.
+- `canvas/ValueEditor.tsx` — the input-node value-kind editor: switching between scalar/slider/linear/logarithmic/list/renard/categorical/tableColumn, the range-kind picker, points/bounds fields. A slider remains a scalar with travel bounds; the range kinds introduce sweep axes. **This is the sweep control** — the core UX of the whole app.
 - `canvas/Sparkline.tsx` — the small inline chart a swept value shows on a node body (not the plot node — no axes/interaction, just "this varies").
 - `canvas/*.test.ts`/`.test.tsx` — `Canvas.test.ts`, `QuickAddMenu.test.ts`, `Sparkline.test.ts`, `spectrumSlots.test.ts`, `TitleField.test.tsx`, `ValueEditor.test.ts`, `bundleLabels.test.ts` — unit tests for the modules above.
 
 ### `src/notebook/` — the notebook side panel
 
-- `notebook/Notebook.tsx` — the view-over-the-graph panel: renders group frames as sections (title/note prose, then their output nodes' results in reading order), section reordering, table-column editing (order/figures/marks), print-to-PDF export via `@media print`. Read this to understand how canvas layout becomes the exported document.
+- `notebook/Notebook.tsx` — the view-over-the-graph panel: renders group frames as sections (title/note prose, then their output nodes' results in reading order), dependency-derived exposed-slider controls beneath affected results, section reordering, table-column editing (order/figures/marks), print-to-PDF export via `@media print`. Read this to understand how canvas layout becomes the exported document.
+- `notebook/NotebookSliderControl.tsx` — the shared synchronized slider/exact-value view used by the editor NodeBook and course viewer; print replaces its interactive fields with the current static value.
 - `notebook/PlotFigure.tsx` — the Observable-Plot rendering of a `PlotResult`: log axes when the range is logarithmic, threshold reference line, contour mode, faceting, SI-prefixed axis labels. All computation is already done by the kernel; this file only draws.
 - `notebook/DistributionFigure.tsx` — renders kernel-prepared histograms and ECDFs, percentile rules, facets, and fitted-normal summaries.
 - `notebook/ReliabilityCard.tsx` — renders Pf, Wilson intervals, β, resolution floors, and convergence state for referenced checks.
