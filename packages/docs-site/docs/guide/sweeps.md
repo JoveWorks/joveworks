@@ -40,6 +40,13 @@ draws it from a distribution instead of a designed sequence — reach for one
 when the question is "how sensitive is this to scatter in an input" rather
 than "what happens across this design space."
 
+Every generator in a NodeBook shares one paired trial axis. Sample 37 from a
+load generator combines with sample 37 from a strength generator; the two do
+not form a load × strength cross-product. That trial axis broadcasts with
+ordinary design ranges, so a diameter sweep crossed with Monte Carlo trials is
+a diameter × trial grid and can be reduced to one failure probability per
+diameter.
+
 ## Turning a sweep into an answer
 
 Reading "somewhere around f/6" off a curve by eye leaves the answer stuck in

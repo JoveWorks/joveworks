@@ -14,6 +14,7 @@ import {
   type SensitivityResult,
   type TableResult,
   type PrintResult,
+  type ReliabilityResult,
 } from './evaluate.js';
 import { KernelError } from './errors.js';
 import { resolveGraph } from './graph.js';
@@ -115,6 +116,71 @@ describe('a scalar graph', () => {
       [wire('h.value', 'area.h')],
     );
     expect(() => evaluateDocument(partial, catalogues)).toThrow(/not connected and has no default/u);
+  });
+});
+
+describe('Reliability outputs', () => {
+  const study = (threshold: number) => documentOf(
+    [
+      monteCarloGeneratorNode('draw', uniformDraw(0, 1), 4, ''),
+      outputNode('check', { kind: 'check', comparison: '>=', threshold: { value: threshold, unit: '' } }),
+      outputNode('reliability', { kind: 'reliability', checks: ['check'], confidence: 0.95 }),
+    ],
+    [wire('draw.value', 'check.value')],
+  );
+
+  it('reports Pf, a Wilson interval, and beta over a known verdict grid', () => {
+    const evaluation = evaluateDocument(study(0.5), catalogues);
+    const report = evaluation.outputs.find((entry) => entry.nodeId === 'reliability') as ReliabilityResult;
+    expect(report.combined).toMatchObject({ trials: 4, failures: 3, probability: 0.75, unresolved: false });
+    expect(report.combined?.interval[0]).toBeCloseTo(0.3006418, 6);
+    expect(report.combined?.interval[1]).toBeCloseTo(0.9544127, 6);
+    expect(report.combined?.beta).toBeCloseTo(-0.67448975, 6);
+  });
+
+  it('keeps zero failures finite and reports the resolution floor', () => {
+    const evaluation = evaluateDocument(study(0), catalogues);
+    const report = evaluation.outputs.find((entry) => entry.nodeId === 'reliability') as ReliabilityResult;
+    expect(report.combined?.failures).toBe(0);
+    expect(report.combined?.interval[1]).toBeGreaterThan(0);
+    expect(report.combined?.beta).toBeCloseTo(0.67448975, 6);
+    expect(report.combined?.unresolved).toBe(true);
+    expect(Number.isFinite(report.combined?.beta ?? Infinity)).toBe(true);
+    expect(evaluation.warnings.some((warning) => warning.kind === 'reliabilityUnresolved')).toBe(true);
+  });
+
+  it('warns when referenced checks do not vary along the trial axis', () => {
+    const document = documentOf(
+      [
+        monteCarloGeneratorNode('draw', uniformDraw(0, 1), 4, ''),
+        input('fixed', scalar(1, '')),
+        outputNode('check', { kind: 'check', comparison: '>=', threshold: { value: 0, unit: '' } }),
+        outputNode('reliability', { kind: 'reliability', checks: ['check'] }),
+      ],
+      [wire('fixed.value', 'check.value')],
+    );
+    expect(evaluateDocument(document, catalogues).warnings.some((warning) => warning.kind === 'reliabilityNoTrials')).toBe(true);
+  });
+
+  it('allows an empty check list as an unfinished report', () => {
+    const document = documentOf([outputNode('reliability', { kind: 'reliability', checks: [] })], []);
+    const report = evaluateDocument(document, catalogues).outputs[0] as ReliabilityResult;
+    expect(report.checks).toEqual([]);
+    expect(report.combined).toBeUndefined();
+  });
+
+  it('warns and falls back to equal discrete weights when lengths differ', () => {
+    const document = documentOf(
+      [
+        input('choices', { kind: 'spectrum', values: [1, 2, 3], unit: 'mm' }),
+        input('weights', { kind: 'spectrum', values: [1, 2], unit: '' }),
+        monteCarloGeneratorNode('draw', { distribution: 'discrete' }, 10, 'mm'),
+      ],
+      [wire('choices.value', 'draw.values'), wire('weights.value', 'draw.weights')],
+    );
+    const evaluation = evaluateDocument(document, catalogues);
+    expect(numeric(valueAt(evaluation, 'draw', 'value')).data).toHaveLength(10);
+    expect(evaluation.warnings.some((warning) => warning.kind === 'monteCarloDiscreteWeights')).toBe(true);
   });
 });
 

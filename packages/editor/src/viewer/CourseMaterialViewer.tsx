@@ -21,6 +21,7 @@ import {
   millingPowerEnvelope,
   padPressure,
   platformFootprint,
+  reliabilityLoadStrength,
 } from '../model/samples';
 import { display, displayNumber } from '../model/quantity';
 import { checkVerdict, summarise, summariseCheck } from '../model/values';
@@ -29,6 +30,8 @@ import { BestDesignCard } from '../notebook/BestDesignCard';
 import { FeasibilityFigure } from '../notebook/FeasibilityFigure';
 import { PlotFigure } from '../notebook/PlotFigure';
 import { SensitivityFigure } from '../notebook/SensitivityFigure';
+import { DistributionFigure } from '../notebook/DistributionFigure';
+import { ReliabilityCard } from '../notebook/ReliabilityCard';
 import { SettingsContext, type SettingsContextValue } from '../settings-context';
 import { analytics, type CourseMaterial } from '../analytics/analytics';
 
@@ -145,6 +148,12 @@ function Result({ result, node, document }: { readonly result: OutputResult; rea
     );
   }
 
+  if (result.kind === 'distribution') return <div className="viewer-result viewer-plot"><strong>{title}</strong><DistributionFigure result={result} /></div>;
+  if (result.kind === 'reliability') {
+    const checkLabels = Object.fromEntries(result.checks.map(({ checkId }) => [checkId, document.nodes.find((candidate) => candidate.id === checkId)?.label ?? checkId]));
+    return <div className="viewer-result viewer-plot"><strong>{title}</strong><ReliabilityCard result={result} checkLabels={checkLabels} /></div>;
+  }
+
   return (
     <div className="viewer-result viewer-plot">
       <strong>{title}</strong>
@@ -211,6 +220,7 @@ export function CourseMaterialViewer(): ReactElement {
       ['pad', 'Pad pressure sweep', 'See a range propagate to a design limit.', padPressure],
       ['cantilever', 'Cantilever — hollow sections', 'Compare a public mechanics catalogue study.', cantileverHollowSections],
       ['milling', 'Pocket milling — power envelope', 'A multi-output machining study.', millingPowerEnvelope],
+      ['reliability', 'Load against strength', 'Pf, interval, beta, distribution, and convergence.', reliabilityLoadStrength],
     ] as const;
     return candidates.flatMap(([id, title, summary, make]) => {
       const document = make(catalogues, 'en');

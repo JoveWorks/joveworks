@@ -253,6 +253,36 @@ describe('round-tripping (the verification docs/PLAN.md asks for)', () => {
     expect(serializeDocument(document)).toEqual(withGenerator);
   });
 
+  it('round-trips triangular, lognormal and discrete Monte Carlo generators', () => {
+    const nodes = [
+      { kind: 'monteCarloGenerator', id: 'tri', position: { x: 0, y: 0 }, distribution: 'triangular', min: 1, mode: 2, max: 4, count: 10, unit: 'mm' },
+      { kind: 'monteCarloGenerator', id: 'log', position: { x: 0, y: 0 }, distribution: 'lognormal', mean: 10, stddev: 2, count: 10, unit: 'N' },
+      { kind: 'monteCarloGenerator', id: 'disc', position: { x: 0, y: 0 }, distribution: 'discrete', count: 10, unit: 'mm' },
+    ];
+    const document = { ...study, nodes, edges: [] };
+    expect(serializeDocument(parseDocument(document))).toEqual(document);
+  });
+
+  it('round-trips every statistic and rejects an unknown one', () => {
+    const nodes = [
+      ...['mean', 'median', 'stddev', 'min', 'max', 'count'].map((statistic, index) => ({ kind: 'statistic', id: `s${index}`, position: { x: 0, y: 0 }, statistic, running: true })),
+      { kind: 'statistic', id: 'percentile', position: { x: 0, y: 0 }, statistic: 'percentile', percentile: 95 },
+      { kind: 'statistic', id: 'probability', position: { x: 0, y: 0 }, statistic: 'probability', match: 'fail' },
+    ];
+    const document = { ...study, nodes, edges: [] };
+    expect(serializeDocument(parseDocument(document))).toEqual(document);
+    expect(() => parseDocument({ ...study, nodes: [{ kind: 'statistic', id: 'bad', position: { x: 0, y: 0 }, statistic: 'variance' }], edges: [] })).toThrow(/statistic/u);
+  });
+
+  it('round-trips Distribution and Reliability outputs', () => {
+    const nodes = [
+      { kind: 'output', id: 'distribution', position: { x: 0, y: 0 }, output: { kind: 'distribution', view: 'cdf', bins: 12, percentiles: [5, 50, 95], over: 'trial', facet: 'd', fit: true } },
+      { kind: 'output', id: 'reliability', position: { x: 0, y: 0 }, output: { kind: 'reliability', checks: ['check'], confidence: 0.9 } },
+    ];
+    const document = { ...study, nodes, edges: [] };
+    expect(serializeDocument(parseDocument(document))).toEqual(document);
+  });
+
   it('round-trips a Feasibility output, including an empty `checks` list — a freshly-dropped node has none yet', () => {
     const withFeasibility = {
       ...study,

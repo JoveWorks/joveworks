@@ -6,6 +6,7 @@ import {
   formulaRef,
   MONTE_CARLO_SAMPLE_PORT,
   OBJECTIVE_PORT,
+  STATISTIC_RESULT_PORT,
   VALUE_PORT,
   VERDICT_PORT,
   type Formula,
@@ -23,10 +24,11 @@ export type QuickAddChoice =
   | { readonly kind: 'input' }
   | {
       readonly kind: 'output';
-      readonly outputKind: 'print' | 'check' | 'plot' | 'table' | 'sensitivity' | 'bestDesign';
+      readonly outputKind: 'print' | 'check' | 'plot' | 'table' | 'sensitivity' | 'bestDesign' | 'distribution';
     }
   | { readonly kind: 'compare' }
   | { readonly kind: 'select'; readonly mode: SelectMode }
+  | { readonly kind: 'statistic' }
   | { readonly kind: 'closure' }
   | { readonly kind: 'waypoint' }
   | { readonly kind: 'pack' }
@@ -143,6 +145,12 @@ export function quickAddNodeSpec(document: GraphDocument, choice: QuickAddCandid
                 ...labelField(label),
               }
             : { kind: 'select', id, mode: choice.mode, position, ...labelField(label) },
+      };
+    case 'statistic':
+      return {
+        idPrefix: 'mean',
+        ports: { source: [VALUE_PORT, ALONG_PORT], target: [STATISTIC_RESULT_PORT] },
+        make: (id, position, label) => ({ kind: 'statistic', id, statistic: 'mean', position, ...labelField(label) }),
       };
     case 'closure':
       return {

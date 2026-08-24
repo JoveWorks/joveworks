@@ -82,6 +82,9 @@ The half of the project that "has to be right." No React, no formula content —
 - `src/graph.ts` — `resolveGraph`: the whole "what's wired to what, and is it allowed" pass — port typing, generic-variable binding per node instance, topological order (`topologicalOrder`, cycle rejection `wouldCycle`), `canConnect` (the connect-time authority the editor calls), `typesConnect` (the cheap editor-side approximation while dragging a wire). **The single most load-bearing file for "why can't I wire this."**
 - `src/evaluate.ts` — `evaluateDocument`: walks the resolved graph in order and produces actual numbers — per-node-kind evaluation (input, formula, closure, compare, waypoint, pack, unpack, output), unit conversion at the boundary, `appliesWhen`/`largeGrid`/`plotAxis` warnings. Edit here to change what a specific node kind computes or what an output result looks like.
 - `src/random.ts` — deterministic Monte Carlo sampling (`monteCarloSamples`), seeded from document id + node id so playback never reshuffles already-revealed samples.
+- `src/statistics.ts` — axis reductions and running statistics; open it for percentile semantics, sample deviation, `along`, or convergence calculations.
+- `src/distribution.ts` — report-stable histogram/ECDF data preparation; open it for binning, percentile rules, faceting, or normal-fit data.
+- `src/normal.ts` — normal CDF/inverse, reliability-index conversion, and Wilson intervals.
 - `src/toLatex.ts` — `Expr` → LaTeX string, for the equation output node's typeset rendering (duplicates `editor/src/Symbol.tsx`'s name-rendering rules rather than sharing, since the kernel can't depend on the editor).
 - `src/warnings.ts` — `Warning`/`WarningKind`: the non-fatal things the kernel reports (formula changed, large grid, `appliesWhen` violated, plot axis flat/dropped/facet-ignored).
 - `src/invented.fixtures.ts` — test-only builders (`catalogueOf`, `documentOf`, invented formulas like `AREA`/`PRESSURE`/`COMBINE`) that go through the real parser so tests exercise the same path a loaded file does. **Every formula here is invented — no R&M content, per `AGENTS.md`.**
@@ -168,6 +171,7 @@ The React app. Largest package by far. `AGENTS.md`: desktop-only, no properties 
 - `canvas/PackNodeView.tsx` — bundles any number of independently-dimensioned wires into one `bundle` output.
 - `canvas/UnpackNodeView.tsx` — inverse of pack: spreads a wired bundle back onto `out0..outN`.
 - `canvas/MonteCarloGeneratorNodeView.tsx` — uniform/normal distribution sampler node, an axis-introducing node like input but drawing from a distribution.
+- `canvas/StatisticNodeView.tsx` — the wireable swept-axis statistic node, including `along`, percentile, match, and running controls.
 - `canvas/MonteCarloReceiverNodeView.tsx` — canvas chrome (settings, ports) around the shared playback widget.
 - `canvas/MonteCarloReceiverPlayback.tsx` — the actual playback widget (histogram, running mean, transport controls), shared verbatim between the canvas node and its notebook entry.
 - `canvas/FrameView.tsx` — a titled group frame (notebook section) drawn on the canvas; membership is decided by node position (`reframe`), not a parent/child link.
@@ -187,6 +191,8 @@ The React app. Largest package by far. `AGENTS.md`: desktop-only, no properties 
 
 - `notebook/Notebook.tsx` — the view-over-the-graph panel: renders group frames as sections (title/note prose, then their output nodes' results in reading order), section reordering, table-column editing (order/figures/marks), print-to-PDF export via `@media print`. Read this to understand how canvas layout becomes the exported document.
 - `notebook/PlotFigure.tsx` — the Observable-Plot rendering of a `PlotResult`: log axes when the range is logarithmic, threshold reference line, contour mode, faceting, SI-prefixed axis labels. All computation is already done by the kernel; this file only draws.
+- `notebook/DistributionFigure.tsx` — renders kernel-prepared histograms and ECDFs, percentile rules, facets, and fitted-normal summaries.
+- `notebook/ReliabilityCard.tsx` — renders Pf, Wilson intervals, β, resolution floors, and convergence state for referenced checks.
 - `notebook/*.test.ts` — `Notebook.test.ts`, `PlotFigure.test.ts`.
 
 ### `src/palette/`
@@ -243,8 +249,9 @@ Public docs served at `/docs/` under the editor's own origin in production (sepa
 
 - `docs/.vitepress/config.ts` — VitePress site config: nav, sidebar structure, base path.
 - `docs/index.md` — the docs-site landing page.
-- `docs/guide/getting-started.md`, `docs/guide/sweeps.md`, `docs/guide/units.md`, `docs/guide/tips-and-tricks.md`, `docs/guide/node-reference.md`, `docs/guide/catalogue-authoring.md` — the guide pages linked from `packages/editor/src/help-links.ts`'s per-node "?" buttons and the palette's help links. `tips-and-tricks.md` is UI mechanics (shortcuts, canvas/palette interactions, panel-specific settings) rather than product concepts — those stay in `getting-started`/`sweeps`/`units`.
+- `docs/guide/getting-started.md`, `docs/guide/sweeps.md`, `docs/guide/reliability.md`, `docs/guide/units.md`, `docs/guide/tips-and-tricks.md`, `docs/guide/node-reference.md`, `docs/guide/catalogue-authoring.md` — the guide pages linked from the editor and sidebar; `reliability.md` teaches the full Monte Carlo study method.
 - `docs/examples/milling-power-envelope.md` — walkthrough for the bundled milling sample.
+- `docs/examples/load-against-strength.md` — walkthrough for reading a reliability report, its interval, β, distribution, and convergence plot.
 - `docs/public/favicon.svg`.
 - `package.json` — `vitepress dev/build/preview` scripts.
 - (`.vitepress/cache/` is build cache, not source — ignore it.)
@@ -310,6 +317,13 @@ Public scripts that **parse** the private predecessor Python source with stdlib 
 - `docs/analytics.md` — what the alpha Plausible analytics integration does and doesn't collect; the product-facing complement to `packages/editor/src/analytics/analytics.ts`.
 - `docs/authoring-catalogues.md` — how to hand-write a catalogue JSON file when there's no extraction script to run; the guide behind `packages/schema/src/formula.ts`/`port.ts`.
 - `docs/password-shared-catalogues.md` — a design note (roadmap #28) for password-based restricted-catalogue sharing; not yet built.
+- `docs/feature-review.md` — cross-domain feature review and prioritisation source.
+- `docs/selection-and-best-design-plan.md` — implementation plan retained for the landed selection/decision pass.
+- `docs/pareto-and-candidate-marking-plan.md` — plan for Pareto and candidate-marking work.
+- `docs/reliability-reports-plan.md` — implementation contract for swept statistics, distributions, reliability reporting, and additional random distributions.
+- `docs/catalogue-diagrams-plan.md` — plan for catalogue-provided diagrams.
+- `docs/locking-catalogues.md` — design record for locked catalogue handling.
+- `docs/REVIEW-2026-08.md` — dated repository review.
 
 ## Not covered here
 

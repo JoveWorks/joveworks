@@ -355,3 +355,17 @@ Deliberately deferred, and not started:
   objective; "light *and* stiff" is a different question and a different
   figure, and folding a second objective into this node would make its answer
   a set rather than a decision.
+
+**54. Reliability reports for Monte Carlo.** Shipped as planned in
+`docs/reliability-reports-plan.md`: wireable statistics reduce a labelled swept
+axis (or scan it for convergence), Distribution outputs render report-stable
+histograms and ECDFs, and Reliability cards report Pf, Wilson intervals, β, and
+the finite resolution floor when no failures were observed. Triangular,
+lognormal, and weighted/equal-weight discrete generators join uniform and
+normal; lognormal parameters are the physical variable's own mean and standard
+deviation.
+
+Deliberately deferred: correlation groups, because dependent quantities need a
+joint draw rather than another generator option; an empirical distribution as
+its own kind, because discrete with equal weights already resamples measured
+data; and rainflow counting, which remains a later specialist fatigue extension.

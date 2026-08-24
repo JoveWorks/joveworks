@@ -19,6 +19,7 @@ export const NODE_HELP_URLS: Readonly<Record<NodeKind, string>> = {
   output: `${DOCS_BASE_URL}/guide/node-reference#output`,
   compare: `${DOCS_BASE_URL}/guide/node-reference#compare`,
   select: `${DOCS_BASE_URL}/guide/node-reference#select`,
+  statistic: `${DOCS_BASE_URL}/guide/node-reference#statistic`,
   closure: `${DOCS_BASE_URL}/guide/node-reference#closure`,
   waypoint: `${DOCS_BASE_URL}/guide/node-reference#waypoint`,
   pack: `${DOCS_BASE_URL}/guide/node-reference#pack`,
@@ -38,7 +39,7 @@ export const NODE_HELP_URLS: Readonly<Record<NodeKind, string>> = {
  */
 export const OUTPUT_HELP_URLS: Readonly<
   Record<
-    'print' | 'check' | 'plot' | 'table' | 'equation' | 'feasibility' | 'sensitivity' | 'bestDesign',
+    'print' | 'check' | 'plot' | 'table' | 'equation' | 'feasibility' | 'sensitivity' | 'bestDesign' | 'distribution' | 'reliability',
     string
   >
 > = {
@@ -50,4 +51,6 @@ export const OUTPUT_HELP_URLS: Readonly<
   feasibility: `${DOCS_BASE_URL}/guide/node-reference#feasibility`,
   sensitivity: `${DOCS_BASE_URL}/guide/node-reference#sensitivity`,
   bestDesign: `${DOCS_BASE_URL}/guide/node-reference#best-design`,
+  distribution: `${DOCS_BASE_URL}/guide/node-reference#distribution`,
+  reliability: `${DOCS_BASE_URL}/guide/node-reference#reliability`,
 };

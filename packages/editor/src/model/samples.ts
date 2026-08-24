@@ -456,6 +456,44 @@ export function monteCarloClearance(catalogues: readonly Catalogue[], locale: Ap
   );
 }
 
+// --- reliability: load against strength --------------------------------------
+
+/** A complete public reliability report built only from the base catalogue. */
+export function reliabilityLoadStrength(catalogues: readonly Catalogue[], locale: AppLocale = 'en'): GraphDocument | undefined {
+  const subtract = lookup(catalogues, 'subtract');
+  if (subtract === undefined) return undefined;
+  const stress = parseUnit('N/mm²');
+  const count = 2_000;
+  const nodes: GraphNode[] = [
+    { kind: 'monteCarloGenerator', id: 'load', label: 'Applied stress', distribution: 'lognormal', mean: 180, stddev: 25, count, unit: stress, position: at(0, 0) },
+    { kind: 'monteCarloGenerator', id: 'strength', label: 'Material strength', distribution: 'lognormal', mean: 260, stddev: 30, count, unit: stress, position: at(0, 220) },
+    formulaNode('margin', subtract, at(360, 100)),
+    { kind: 'compare', id: 'margin_verdict', label: 'Margin verdict', comparison: '>=', threshold: { value: 0, unit: stress }, position: at(700, 0) },
+    { kind: 'statistic', id: 'running_pf', label: 'Running failure probability', statistic: 'probability', match: 'fail', running: true, position: at(700, 220) },
+    output('margin_check', 'Strength exceeds load', { kind: 'check', comparison: '>=', threshold: { value: 0, unit: stress } }, at(1040, 0)),
+    output('margin_distribution', 'Strength margin distribution', { kind: 'distribution', view: 'histogram', percentiles: [5, 50, 95], fit: true }, at(1040, 180)),
+    output('reliability', 'Reliability report', { kind: 'reliability', checks: ['margin_check'], confidence: 0.95 }, at(1040, 360)),
+    output('convergence', 'Failure probability convergence', { kind: 'plot', x: 'load' }, at(1040, 540)),
+  ];
+  const edges = [
+    wire('strength.value', 'margin.a'),
+    wire('load.value', 'margin.b'),
+    wire('margin.difference', 'margin_verdict.value'),
+    wire('margin_verdict.verdict', 'running_pf.value'),
+    wire('load.value', 'running_pf.along'),
+    wire('margin.difference', 'margin_check.value'),
+    wire('margin.difference', 'margin_distribution.value'),
+    wire('running_pf.result', 'convergence.value'),
+  ];
+  const reportOutputs = nodes.filter((node): node is OutputNode => node.kind === 'output');
+  const frame = {
+    ...frameAround('report', 'Load against strength', reportOutputs, 50),
+    note: 'The histogram shows the margin distribution; Pf, its interval and beta state the reliability, and the running estimate shows whether the sample count was enough.',
+  };
+  const withFrame = nodes.map((node) => node.kind === 'output' ? { ...node, frameId: 'report' } : node);
+  return localizeExample(document('reliability-load-strength', 'Load against strength — reliability', withFrame, edges, [frame]), locale);
+}
+
 // --- the belt lab, which needs its catalogue ---------------------------------
 
 /**

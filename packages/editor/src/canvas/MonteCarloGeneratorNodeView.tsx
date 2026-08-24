@@ -14,13 +14,14 @@ import {
   MAX_PORT,
   MEAN_PORT,
   MIN_PORT,
+  MODE_PORT,
+  VALUES_PORT,
+  WEIGHTS_PORT,
   MONTE_CARLO_DISTRIBUTIONS,
   STDDEV_PORT,
   VALUE_PORT,
   type MonteCarloDistribution,
   type MonteCarloGeneratorNode,
-  type NormalMonteCarloGeneratorNode,
-  type UniformMonteCarloGeneratorNode,
 } from '@joveworks/schema';
 
 import { useGraph } from '../graph-context';
@@ -97,16 +98,29 @@ function ParamPort({
  * some fixed default, so a student tuning a uniform range and then trying
  * normal instead starts from roughly the same place.
  */
-function toUniform(node: MonteCarloGeneratorNode): UniformMonteCarloGeneratorNode {
-  if (node.distribution === 'uniform') return node;
-  const { mean, stddev, ...rest } = node;
-  return { ...rest, distribution: 'uniform', min: mean - stddev, max: mean + stddev };
-}
-
-function toNormal(node: MonteCarloGeneratorNode): NormalMonteCarloGeneratorNode {
-  if (node.distribution === 'normal') return node;
-  const { min, max, ...rest } = node;
-  return { ...rest, distribution: 'normal', mean: (min + max) / 2, stddev: Math.max((max - min) / 4, 1e-6) };
+function changeDistribution(node: MonteCarloGeneratorNode, distribution: MonteCarloDistribution): MonteCarloGeneratorNode {
+  if (node.distribution === distribution) return node;
+  const centre = node.distribution === 'uniform'
+    ? (node.min + node.max) / 2
+    : node.distribution === 'triangular'
+      ? node.mode
+      : node.distribution === 'discrete' ? 1 : node.mean;
+  const spread = node.distribution === 'uniform'
+    ? (node.max - node.min) / 4
+    : node.distribution === 'triangular'
+      ? (node.max - node.min) / 4
+      : node.distribution === 'discrete' ? 0.1 : node.stddev;
+  const common = {
+    kind: node.kind, id: node.id, position: node.position, count: node.count, unit: node.unit,
+    ...(node.frameId === undefined ? {} : { frameId: node.frameId }),
+    ...(node.label === undefined ? {} : { label: node.label }),
+    ...(node.displayUnits === undefined ? {} : { displayUnits: node.displayUnits }),
+    ...(node.axisLabel === undefined ? {} : { axisLabel: node.axisLabel }),
+  };
+  if (distribution === 'uniform') return { ...common, distribution, min: centre - spread, max: centre + spread };
+  if (distribution === 'triangular') return { ...common, distribution, min: centre - spread, mode: centre, max: centre + spread };
+  if (distribution === 'discrete') return { ...common, distribution };
+  return { ...common, distribution, mean: Math.max(distribution === 'lognormal' ? 1e-6 : -Infinity, centre), stddev: Math.max(spread, 1e-6) };
 }
 
 export function MonteCarloGeneratorNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>): ReactElement | null {
@@ -125,13 +139,15 @@ export function MonteCarloGeneratorNodeView({ id, selected, data }: NodeProps<Ca
     edit((current) => updateNode<MonteCarloGeneratorNode>(current, id, change));
 
   const setMin = (min: number): void =>
-    setNode((current) => (current.distribution === 'uniform' ? { ...current, min } : current));
+    setNode((current) => (current.distribution === 'uniform' || current.distribution === 'triangular' ? { ...current, min } : current));
   const setMax = (max: number): void =>
-    setNode((current) => (current.distribution === 'uniform' ? { ...current, max } : current));
+    setNode((current) => (current.distribution === 'uniform' || current.distribution === 'triangular' ? { ...current, max } : current));
   const setMean = (mean: number): void =>
-    setNode((current) => (current.distribution === 'normal' ? { ...current, mean } : current));
+    setNode((current) => (current.distribution === 'normal' || current.distribution === 'lognormal' ? { ...current, mean } : current));
   const setStddev = (stddev: number): void =>
-    setNode((current) => (current.distribution === 'normal' ? { ...current, stddev } : current));
+    setNode((current) => (current.distribution === 'normal' || current.distribution === 'lognormal' ? { ...current, stddev } : current));
+  const setMode = (mode: number): void =>
+    setNode((current) => current.distribution === 'triangular' ? { ...current, mode } : current);
 
   return (
     <NodeShell
@@ -169,7 +185,7 @@ export function MonteCarloGeneratorNodeView({ id, selected, data }: NodeProps<Ca
               value={node.distribution}
               onChange={(event) => {
                 const distribution = event.target.value as MonteCarloDistribution;
-                setNode((current) => (distribution === 'uniform' ? toUniform(current) : toNormal(current)));
+                setNode((current) => changeDistribution(current, distribution));
               }}
             >
               {MONTE_CARLO_DISTRIBUTIONS.map((distribution) => (
@@ -200,7 +216,7 @@ export function MonteCarloGeneratorNodeView({ id, selected, data }: NodeProps<Ca
           edge and needs that row spanning the node's full width to land at
           the card's edge rather than partway across it. */}
       <ul className="ports">
-        {node.distribution === 'uniform' ? (
+        {node.distribution === 'uniform' || node.distribution === 'triangular' ? (
           <>
             <ParamPort
               name={MIN_PORT}
@@ -212,6 +228,18 @@ export function MonteCarloGeneratorNodeView({ id, selected, data }: NodeProps<Ca
               onHover={onPortHover(MIN_PORT)}
               onHoverEnd={onPortHoverEnd}
             />
+            {node.distribution === 'triangular' ? (
+              <ParamPort
+                name={MODE_PORT}
+                value={node.mode}
+                unit={node.unit}
+                wired={wired.has(MODE_PORT)}
+                highlighted={highlightedPorts.has(MODE_PORT)}
+                onCommit={setMode}
+                onHover={onPortHover(MODE_PORT)}
+                onHoverEnd={onPortHoverEnd}
+              />
+            ) : null}
             <ParamPort
               name={MAX_PORT}
               value={node.max}
@@ -223,7 +251,7 @@ export function MonteCarloGeneratorNodeView({ id, selected, data }: NodeProps<Ca
               onHoverEnd={onPortHoverEnd}
             />
           </>
-        ) : (
+        ) : node.distribution === 'normal' || node.distribution === 'lognormal' ? (
           <>
             <ParamPort
               name={MEAN_PORT}
@@ -246,6 +274,16 @@ export function MonteCarloGeneratorNodeView({ id, selected, data }: NodeProps<Ca
               onHover={onPortHover(STDDEV_PORT)}
               onHoverEnd={onPortHoverEnd}
             />
+          </>
+        ) : (
+          <>
+            {[VALUES_PORT, WEIGHTS_PORT].map((port) => (
+              <li key={port} className={`port${highlightedPorts.has(port) ? ' port-highlighted' : ''}`}>
+                <Handle type="target" position={Position.Left} id={slotHandleId(port, 0)} />
+                <span className="port-name">{port}</span>
+                <span className="port-unit">spectrum{port === WEIGHTS_PORT ? ' (optional)' : ''}</span>
+              </li>
+            ))}
           </>
         )}
       </ul>
