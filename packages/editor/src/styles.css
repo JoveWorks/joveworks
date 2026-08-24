@@ -1414,12 +1414,18 @@ aside.right {
 }
 
 /* The node's own equation, when the detail panel renders one as its first
-   line (ClosureNodeView.tsx, FormulaNodeView.tsx) — centered like a
-   textbook display equation, with room before the text that follows it. */
-.node .node-detail > .equation {
+   line(s) (ClosureNodeView.tsx, one <p class="formula-equation"> per output
+   in FormulaNodeView.tsx) — centered like a textbook display equation, with
+   room before the text that follows it. */
+.node .node-detail > .equation,
+.node .node-detail > .formula-equation {
   display: block;
   margin-bottom: 8px;
   text-align: center;
+}
+
+.node .node-detail > .formula-equation + .formula-equation {
+  margin-top: -4px;
 }
 
 .node .description,
