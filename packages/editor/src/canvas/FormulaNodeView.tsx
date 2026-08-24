@@ -363,48 +363,53 @@ export function FormulaNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
       </ul>
 
       {/* One row per declared output: a table-backed node answering with a
-          camera's whole spec sheet draws a reading and a pin per property. */}
-      {formula.outputs.map((output) => {
-        const value = reading(analysis, id, output.name);
-        const outputUnit = outputUnitOf(output.name);
-        const highlighted = highlightedPorts.has(output.name);
-        return (
-          <div
-            key={output.name}
-            className="node-value"
-            // On the whole row, not only on the symbol at its right end: a
-            // node answering with a camera's whole spec sheet is a stack of
-            // one-letter names, and the row is what the pointer is over.
-            {...(output.description === undefined
-              ? {}
-              : { title: localize(output.description, locale) })}
-            onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: output.name })}
-            onMouseLeave={() => data?.onPortHover?.()}
-          >
-            <span className={`reading${highlighted ? ' port-highlighted' : ''}`}>
-              {value === undefined ? '—' : summarise(value, 4, format)}
-            </span>
-            {value === undefined ? null : <Sparkline reading={value} />}
-            {value === undefined ? null : (
-              <span className={`axis${highlighted ? ' port-highlighted' : ''}`}>
-                <TitleText value={axisLabel(value) ?? ''} />
+          camera's whole spec sheet draws a reading and a pin per property.
+          Several of them read as one list — a rule above the group instead
+          of between every pair, and each row on a single line — since seven
+          properties otherwise cost seven dividers and fourteen lines. */}
+      <div className={formula.outputs.length > 1 ? 'node-values' : undefined}>
+        {formula.outputs.map((output) => {
+          const value = reading(analysis, id, output.name);
+          const outputUnit = outputUnitOf(output.name);
+          const highlighted = highlightedPorts.has(output.name);
+          return (
+            <div
+              key={output.name}
+              className="node-value"
+              // On the whole row, not only on the symbol at its right end: a
+              // node answering with a camera's whole spec sheet is a stack of
+              // one-letter names, and the row is what the pointer is over.
+              {...(output.description === undefined
+                ? {}
+                : { title: localize(output.description, locale) })}
+              onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: output.name })}
+              onMouseLeave={() => data?.onPortHover?.()}
+            >
+              <span className={`reading${highlighted ? ' port-highlighted' : ''}`}>
+                {value === undefined ? '—' : summarise(value, 4, format)}
               </span>
-            )}
-            <span className={`port-out${highlighted ? ' port-highlighted' : ''}`}>
-              <ParameterLabel name={output.name} />
-              {outputUnit === undefined ? null : (
-                <DisplayUnitPicker unit={outputUnit} onChange={(unit) => setOutputDisplayUnit(output.name, unit)} />
+              {value === undefined ? null : <Sparkline reading={value} />}
+              {value === undefined ? null : (
+                <span className={`axis${highlighted ? ' port-highlighted' : ''}`}>
+                  <TitleText value={axisLabel(value) ?? ''} />
+                </span>
               )}
-            </span>
-            <Handle
-              type="source"
-              position={Position.Right}
-              id={output.name}
-              className={highlighted ? 'port-highlighted' : ''}
-            />
-          </div>
-        );
-      })}
+              <span className={`port-out${highlighted ? ' port-highlighted' : ''}`}>
+                <ParameterLabel name={output.name} />
+                {outputUnit === undefined ? null : (
+                  <DisplayUnitPicker unit={outputUnit} onChange={(unit) => setOutputDisplayUnit(output.name, unit)} />
+                )}
+              </span>
+              <Handle
+                type="source"
+                position={Position.Right}
+                id={output.name}
+                className={highlighted ? 'port-highlighted' : ''}
+              />
+            </div>
+          );
+        })}
+      </div>
     </NodeShell>
   );
 }

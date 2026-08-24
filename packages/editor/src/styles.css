@@ -1010,6 +1010,46 @@ aside.right {
   gap: 6px;
 }
 
+/* Several outputs on one node — a camera's spec sheet, a photograph's
+   settings — read as a list rather than as a stack of separate results: one
+   rule above the whole group, and one line per property with the value on
+   the left and its name, unit and pin on the right. A single-output node
+   keeps the roomier two-line treatment, where the name has the row to
+   itself and nothing is competing for the space. */
+.node .node-values {
+  margin-top: 4px;
+  padding-top: 2px;
+  border-top: 1px solid var(--line);
+}
+
+.node .node-values .node-value {
+  margin-top: 0;
+  padding-top: 0;
+  min-height: 18px;
+  border-top: none;
+  flex-wrap: nowrap;
+  gap: 4px;
+}
+
+/* Off the second line and onto the end of the first. */
+.node .node-values .port-out {
+  flex-basis: auto;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+/* Every row of one node shares the same axis, so naming it per row is the
+   same sentence ten times over — the sparkline already says it is swept. */
+.node .node-values .axis {
+  display: none;
+}
+
+.node .node-values .reading {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .node .reading {
   font-variant-numeric: tabular-nums;
   font-weight: 600;

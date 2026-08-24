@@ -161,52 +161,57 @@ export function FileNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>):
         </button>
       </div>
 
-      {node.fields.map((field) => {
-        const value = reading(analysis, id, field.name);
-        const unit = analysis.resolution?.sources.get(`${id}.${field.name}`)?.unit;
-        const highlighted = highlightedPorts.has(field.name);
-        const missing = field.values.some((entry) => entry === null);
-        // What the field means, and — where a file left it out — why the row
-        // reads as nothing. Same hover target a formula node's outputs have:
-        // the whole row, not the one-letter name at its right end.
-        const description = [
-          reader.descriptions.get(field.name),
-          missing ? 'This file did not record it.' : undefined,
-        ]
-          .filter((part) => part !== undefined)
-          .join(' ');
-        return (
-          <div
-            key={field.name}
-            className="node-value"
-            {...(description === '' ? {} : { title: description })}
-            onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: field.name })}
-            onMouseLeave={() => data?.onPortHover?.()}
-          >
-            <span className={`reading${highlighted ? ' port-highlighted' : ''}`}>
-              {value === undefined ? '—' : summarise(value, 4, format)}
-            </span>
-            {value === undefined ? null : <Sparkline reading={value} />}
-            {value === undefined ? null : (
-              <span className={`axis${highlighted ? ' port-highlighted' : ''}`}>
-                <TitleText value={axisLabel(value) ?? ''} />
+      {/* Every field as one condensed list: a rule above the group
+          rather than between every pair, each row on a single line. Ten
+          of them otherwise cost ten dividers and twenty lines. */}
+      <div className={node.fields.length > 1 ? 'node-values' : undefined}>
+        {node.fields.map((field) => {
+          const value = reading(analysis, id, field.name);
+          const unit = analysis.resolution?.sources.get(`${id}.${field.name}`)?.unit;
+          const highlighted = highlightedPorts.has(field.name);
+          const missing = field.values.some((entry) => entry === null);
+          // What the field means, and — where a file left it out — why the row
+          // reads as nothing. Same hover target a formula node's outputs have:
+          // the whole row, not the one-letter name at its right end.
+          const description = [
+            reader.descriptions.get(field.name),
+            missing ? 'This file did not record it.' : undefined,
+          ]
+            .filter((part) => part !== undefined)
+            .join(' ');
+          return (
+            <div
+              key={field.name}
+              className="node-value"
+              {...(description === '' ? {} : { title: description })}
+              onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: field.name })}
+              onMouseLeave={() => data?.onPortHover?.()}
+            >
+              <span className={`reading${highlighted ? ' port-highlighted' : ''}`}>
+                {value === undefined ? '—' : summarise(value, 4, format)}
               </span>
-            )}
-            <span className={`port-out${highlighted ? ' port-highlighted' : ''}`}>
-              <ParameterLabel name={field.name} />
-              {unit === undefined ? null : (
-                <DisplayUnitPicker unit={unit} onChange={(next) => setDisplayUnit(field.name, next)} />
+              {value === undefined ? null : <Sparkline reading={value} />}
+              {value === undefined ? null : (
+                <span className={`axis${highlighted ? ' port-highlighted' : ''}`}>
+                  <TitleText value={axisLabel(value) ?? ''} />
+                </span>
               )}
-            </span>
-            <Handle
-              type="source"
-              position={Position.Right}
-              id={field.name}
-              className={highlighted ? 'port-highlighted' : ''}
-            />
-          </div>
-        );
-      })}
+              <span className={`port-out${highlighted ? ' port-highlighted' : ''}`}>
+                <ParameterLabel name={field.name} />
+                {unit === undefined ? null : (
+                  <DisplayUnitPicker unit={unit} onChange={(next) => setDisplayUnit(field.name, next)} />
+                )}
+              </span>
+              <Handle
+                type="source"
+                position={Position.Right}
+                id={field.name}
+                className={highlighted ? 'port-highlighted' : ''}
+              />
+            </div>
+          );
+        })}
+      </div>
     </NodeShell>
   );
 }
