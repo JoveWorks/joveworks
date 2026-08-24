@@ -52,6 +52,26 @@ const LENS_MODEL = 0xa434;
 const MM = parseUnit('mm');
 const SECOND = parseUnit('s');
 
+/** What each field means, on the node itself — see `FileReaderDefinition.descriptions`. */
+export const EXIF_DESCRIPTIONS: ReadonlyMap<string, string> = new Map([
+  ['f', 'Focal length the frame was taken at.'],
+  ['N', 'Aperture the frame was taken at, as an f-number.'],
+  ['t', 'Exposure time.'],
+  ['ISO', 'Sensitivity the frame was recorded at.'],
+  ['px', 'Horizontal pixel count of the recorded frame.'],
+  ['py', 'Vertical pixel count of the recorded frame.'],
+  [
+    'w',
+    'Sensor width. Derived from the focal-plane resolution rather than recorded outright, so it is close but not exact — the camera library answers the same question from published figures.',
+  ],
+  [
+    'h',
+    'Sensor height. Derived from the focal-plane resolution rather than recorded outright, so it is close but not exact.',
+  ],
+  ['camera', 'The name the body writes for itself. Wires into the camera library, which knows that name.'],
+  ['lens', 'The name the body writes for the lens it was taken with. Wires into the lens library.'],
+]);
+
 /** Millimetres per unit of `FocalPlaneResolutionUnit`: inches unless told otherwise. */
 function millimetresPer(code: number | undefined): number {
   if (code === 3) return 10; // centimetres

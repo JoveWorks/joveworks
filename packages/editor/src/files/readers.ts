@@ -17,7 +17,7 @@
 import type { FileField } from '@joveworks/schema';
 import type { Unit } from '@joveworks/units';
 
-import { readExif } from './exif';
+import { EXIF_DESCRIPTIONS, readExif } from './exif';
 
 /** One field, as a reader answers for a single file. */
 export interface ReadField {
@@ -34,6 +34,16 @@ export interface FileReaderDefinition {
   readonly label: string;
   /** The extensions this reader understands, as the open node lists them. */
   readonly extensions: readonly string[];
+  /**
+   * What each field means, keyed by field name — the node's own hover text.
+   *
+   * It lives on the reader rather than on the node because it is the same
+   * sentence for every file ever read this way, and a document has no
+   * business carrying a copy of it. A reader whose fields come out of the
+   * file itself (a spreadsheet's column headers) would need this per field
+   * instead, and can grow it then.
+   */
+  readonly descriptions: ReadonlyMap<string, string>;
   /**
    * How much of the file usually holds everything this reader wants.
    *
@@ -52,6 +62,7 @@ export const FILE_READERS: readonly FileReaderDefinition[] = [
     id: 'exif',
     label: 'photograph',
     extensions: ['.cr3'],
+    descriptions: EXIF_DESCRIPTIONS,
     // Canon writes `moov` — and so the metadata — immediately after `ftyp`,
     // well inside the first megabyte; 8 covers a wide margin.
     prefixBytes: 8 * 1024 * 1024,

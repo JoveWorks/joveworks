@@ -33,6 +33,7 @@ describe('reading as little of a file as the reader needs', () => {
     id: 'test',
     label: 'test file',
     extensions: ['.test'],
+    descriptions: new Map<string, string>(),
     prefixBytes: 8,
     read: (bytes: ArrayBuffer): readonly ReadField[] => {
       if (bytes.byteLength < 32) throw new Error('not enough of it');

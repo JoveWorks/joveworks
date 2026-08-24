@@ -372,6 +372,12 @@ export function FormulaNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
           <div
             key={output.name}
             className="node-value"
+            // On the whole row, not only on the symbol at its right end: a
+            // node answering with a camera's whole spec sheet is a stack of
+            // one-letter names, and the row is what the pointer is over.
+            {...(output.description === undefined
+              ? {}
+              : { title: localize(output.description, locale) })}
             onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: output.name })}
             onMouseLeave={() => data?.onPortHover?.()}
           >
@@ -384,12 +390,7 @@ export function FormulaNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
                 <TitleText value={axisLabel(value) ?? ''} />
               </span>
             )}
-            <span
-              className={`port-out${highlighted ? ' port-highlighted' : ''}`}
-              {...(output.description === undefined
-                ? {}
-                : { title: localize(output.description, locale) })}
-            >
+            <span className={`port-out${highlighted ? ' port-highlighted' : ''}`}>
               <ParameterLabel name={output.name} />
               {outputUnit === undefined ? null : (
                 <DisplayUnitPicker unit={outputUnit} onChange={(unit) => setOutputDisplayUnit(output.name, unit)} />

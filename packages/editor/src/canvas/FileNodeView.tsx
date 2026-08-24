@@ -166,13 +166,22 @@ export function FileNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>):
         const unit = analysis.resolution?.sources.get(`${id}.${field.name}`)?.unit;
         const highlighted = highlightedPorts.has(field.name);
         const missing = field.values.some((entry) => entry === null);
+        // What the field means, and — where a file left it out — why the row
+        // reads as nothing. Same hover target a formula node's outputs have:
+        // the whole row, not the one-letter name at its right end.
+        const description = [
+          reader.descriptions.get(field.name),
+          missing ? 'This file did not record it.' : undefined,
+        ]
+          .filter((part) => part !== undefined)
+          .join(' ');
         return (
           <div
             key={field.name}
             className="node-value"
+            {...(description === '' ? {} : { title: description })}
             onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: field.name })}
             onMouseLeave={() => data?.onPortHover?.()}
-            {...(missing ? { title: 'This file did not record it.' } : {})}
           >
             <span className={`reading${highlighted ? ' port-highlighted' : ''}`}>
               {value === undefined ? '—' : summarise(value, 4, format)}

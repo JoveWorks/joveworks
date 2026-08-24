@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { readExif } from './exif';
+import { EXIF_DESCRIPTIONS, readExif } from './exif';
 import type { ReadField } from './readers';
 
 /**
@@ -197,6 +197,12 @@ describe('reading a photograph', () => {
     const fields = readExif(frame);
     expect(fields.map((field) => field.value)).not.toContain(123_456_789);
     expect(fields.map((field) => field.value)).not.toContain(50.87);
+  });
+
+  it('describes every field it answers with, so no port hovers blank', () => {
+    for (const field of readExif(frame)) {
+      expect(EXIF_DESCRIPTIONS.get(field.name)).toBeTruthy();
+    }
   });
 
   it('says so when the bytes are not a Canon raw at all', () => {
