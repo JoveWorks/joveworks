@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.13.1](https://github.com/ThomasVanRiel/joveworks/compare/v0.13.0...v0.13.1) (2026-08-24)
+
+### Features
+
+* **editor:** read the focus distance a photograph was taken at ([338e57f](https://github.com/ThomasVanRiel/joveworks/commit/338e57f9505946ef24aaf57aa081e5a937faf8b2))
+* **schema:** let one formula answer with several expressions, merge the depth-of-field nodes ([8761b7d](https://github.com/ThomasVanRiel/joveworks/commit/8761b7dca1d199414f5785cbc6eafc454efbaae5))
 ## [0.13.0](https://github.com/ThomasVanRiel/joveworks/compare/v0.12.2...v0.13.0) (2026-08-24)
 
 ### Features
