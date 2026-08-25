@@ -204,9 +204,10 @@ numbers.
   Eight read as a scatter plot with extra steps — at which point the figure
   you want is a [Pareto front](/guide/node-reference#pareto), not more
   marks.
-- **A mark is part of the report.** It is saved with the NodeBook and drawn
-  in the exported PDF, so a section note can refer to "candidate B" and
-  trust the reader will find it.
+- **A mark is part of the report.** It is saved with the NodeBook, drawn in
+  the exported PDF, and drawn again for anyone reading a published
+  NodeBook — so a section note can refer to "candidate B" and trust the
+  reader will find it.
 - **Marks survive a rename, not a rewire.** They are keyed to the axis
   *node*, so retitling an input keeps them; deleting the input that
   introduced the axis is what makes a mark stale, and the NodeBook says so

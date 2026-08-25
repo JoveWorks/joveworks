@@ -30,6 +30,7 @@ import {
   candidateAt,
   parseExpression,
   toLatex,
+  type Axis,
   type AxisReadout,
   type OutputResult,
 } from '@joveworks/kernel';
@@ -71,7 +72,8 @@ import { CheckReading } from '../CheckReading';
 import { MonteCarloReceiverPlayback } from '../canvas/MonteCarloReceiverPlayback';
 import { BestDesignCard } from './BestDesignCard';
 import { FeasibilityFigure, feasibilityGrid } from './FeasibilityFigure';
-import { NO_MARKS, resolveMarks, type FigureMarking, type MarkIndex } from './marks';
+import { marksOver as resolveMarksOver, type FigureMarking, type MarkIndex } from './marks';
+import { CandidateReadings } from './CandidateReadings';
 import { ParetoFigure } from './ParetoFigure';
 import { PlotFigure, plotGrid } from './PlotFigure';
 import { SensitivityFigure } from './SensitivityFigure';
@@ -216,41 +218,20 @@ function Result({ result, node }: { readonly result: OutputResult; readonly node
   // pins one cell of a scatter and a whole column of a map is the same
   // candidate, decided by one rule rather than five renderers' guesses.
   const readouts: ReadonlyMap<string, AxisReadout> = analysis.evaluation?.axisReadouts ?? new Map();
-  const marksOver = (axes: Parameters<typeof resolveMarks>[1]): MarkIndex =>
-    axes.length === 0 ? NO_MARKS : resolveMarks(document, axes, readouts);
+  const marksOver = (axes: readonly Axis[]): MarkIndex => resolveMarksOver(document, axes, readouts);
   const markCandidate = (candidate: Candidate): void => edit((current) => toggleCandidate(current, candidate));
-  const markingOver = (axes: Parameters<typeof resolveMarks>[1]): FigureMarking => ({
+  const markingOver = (axes: readonly Axis[]): FigureMarking => ({
     marks: marksOver(axes),
     readouts,
     toggle: markCandidate,
     hover: setHoveredCandidate,
   });
 
-  /**
-   * A marked design's own value on this result, as a lettered line under it.
-   *
-   * Only where a mark pins **exactly one** cell of this result's grid. A mark
-   * that names fewer axes than this result varies along identifies a whole row
-   * of them, and there is no single number to print for it — saying nothing is
-   * right, where averaging or picking the first would be inventing a reading.
-   */
+  /** This result's readings for each mark that pins one of its cells — see `CandidateReadings`. */
   const candidateReadings = (
-    axes: Parameters<typeof resolveMarks>[1],
+    axes: readonly Axis[],
     read: (cell: number) => ReactElement | string,
-  ): ReactElement | null => {
-    const found = marksOver(axes).marks.filter((entry) => entry.cells.length === 1);
-    if (found.length === 0) return null;
-    return (
-      <span className="candidate-readings">
-        {found.map((entry) => (
-          <span className="candidate-reading" key={entry.index}>
-            <span className="mark-letter">{entry.letter}</span>
-            {read(entry.cells[0] as number)}
-          </span>
-        ))}
-      </span>
-    );
-  };
+  ): ReactElement | null => <CandidateReadings marks={marksOver(axes)} read={read} />;
 
   if (result.kind === 'print') {
     return (

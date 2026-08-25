@@ -40,10 +40,11 @@ export interface MarkIndex {
 /**
  * Everything a figure needs to take part in marking, in one prop.
  *
- * Optional at every call site on purpose: the read-only course viewer renders
- * the same figures with no way to change the document, and passing it nothing
- * is how a figure becomes non-interactive — rather than each figure growing its
- * own `readOnly` flag to remember to honour.
+ * Optional at every call site on purpose: a figure can be rendered before an
+ * evaluation exists, and passing it nothing is how a figure draws no marks at
+ * all — rather than each figure growing its own flag to remember to honour. A
+ * published NodeBook is *not* that case: it draws the marks it was published
+ * with and refuses the gestures, which is `readOnlyMarking` below.
  */
 export interface FigureMarking {
   readonly marks: MarkIndex;
@@ -57,6 +58,43 @@ const NONE: readonly ResolvedMark[] = [];
 
 /** Nothing marked, nothing to look up — for a figure rendered before evaluation lands. */
 export const NO_MARKS: MarkIndex = { marks: [], at: () => NONE, any: false };
+
+/**
+ * The document's marks against one surface's axes, with the empty-grid case
+ * handled: a result that varies along nothing shares no axis with any mark, and
+ * `candidateMask` over no axes is vacuously true — every mark would match, and a
+ * scalar print would highlight for a candidate it knows nothing about.
+ */
+export function marksOver(
+  document: GraphDocument,
+  axes: readonly Axis[],
+  readouts: ReadonlyMap<string, AxisReadout>,
+): MarkIndex {
+  return axes.length === 0 ? NO_MARKS : resolveMarks(document, axes, readouts);
+}
+
+/** Accepts the gesture and does nothing with it — see `readOnlyMarking`. */
+const IGNORE = (): void => {};
+
+/**
+ * Marking for a published NodeBook: the marks draw, and nothing can change
+ * them.
+ *
+ * The read-only viewer used to pass no marking at all, which reads as "this
+ * viewer has no marks" — and drew none, so a report published with candidate A
+ * on four figures arrived with A on none of them. What is actually true is
+ * narrower: the marks are part of what was published, and the reader has
+ * nowhere to write a change back to. That is one no-op pair rather than a
+ * `readOnly` flag threaded through every figure, and it keeps the figures
+ * themselves ignorant of which surface they are drawn on.
+ */
+export function readOnlyMarking(
+  document: GraphDocument,
+  axes: readonly Axis[],
+  readouts: ReadonlyMap<string, AxisReadout>,
+): FigureMarking {
+  return { marks: marksOver(document, axes, readouts), readouts, toggle: IGNORE, hover: IGNORE };
+}
 
 /**
  * Resolve every mark against `axes`.

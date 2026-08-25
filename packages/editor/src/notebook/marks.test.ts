@@ -13,7 +13,7 @@ import { describe, expect, it } from 'vitest';
 import type { AxisReadout } from '@joveworks/kernel';
 import type { GraphDocument } from '@joveworks/schema';
 
-import { resolveMarks } from './marks';
+import { marksOver, readOnlyMarking, resolveMarks } from './marks';
 
 const axis = (id: string, length: number, order: number) => ({ id, label: id, length, order });
 const UNIT = { symbol: '', dimension: {}, scale: 1, offset: 0 } as unknown as AxisReadout['unit'];
@@ -105,5 +105,32 @@ describe('the per-cell lookup', () => {
     const index = resolveMarks(documentWith([{ at: { d: 20 } }]), [d], elsewhere);
     expect(index.marks[0]?.cells).toEqual([]);
     expect(index.any).toBe(false);
+  });
+});
+
+describe('a published NodeBook', () => {
+  const document = documentWith([{ at: { d: 20, T: 80 } }]);
+
+  // The bug this guards: the read-only viewer passed no marking at all, so a
+  // report published with candidate A on four figures arrived with A on none.
+  it('draws the marks it was published with', () => {
+    const marking = readOnlyMarking(document, [d, T], readouts);
+    expect(marking.marks.marks[0]?.letter).toBe('A');
+    expect(marking.marks.at(3).map((mark) => mark.letter)).toEqual(['A']);
+  });
+
+  it('accepts a click and changes nothing — the reader has nowhere to write to', () => {
+    const marking = readOnlyMarking(document, [d, T], readouts);
+    expect(() => marking.toggle({ at: { d: 10 } })).not.toThrow();
+    expect(() => marking.hover(undefined)).not.toThrow();
+    expect(marksOver(document, [d, T], readouts).marks[0]?.cells).toEqual([3]);
+  });
+
+  it('marks nothing on a result that varies along no axis', () => {
+    // A scalar shares no axis with any candidate, and `candidateMask` over no
+    // axes is vacuously true — so an unguarded resolve would highlight a print
+    // for a design it knows nothing about.
+    expect(marksOver(document, [], readouts).any).toBe(false);
+    expect(resolveMarks(document, [], readouts).marks[0]?.cells).toEqual([0]);
   });
 });

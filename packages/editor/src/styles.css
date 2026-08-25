@@ -392,6 +392,45 @@ body {
 
 .viewer-table th { font-size: 12px; }
 .viewer-table small { color: var(--muted); font-weight: 400; }
+
+/*
+ * A published mark. The same badge and the same row wash the editor's notebook
+ * draws (`.notebook .mark-letter`), repeated here rather than shared because
+ * the two surfaces share no ancestor class — what has to match is what the
+ * reader sees, since a candidate letter is worthless if A looks like one thing
+ * in the editor and another in the report.
+ */
+.viewer-table tbody tr.marked {
+  background: var(--accent-wash);
+  font-weight: 600;
+}
+
+.course-report .mark-letter {
+  display: inline-block;
+  min-width: 1.1em;
+  margin-right: 6px;
+  padding: 0 3px;
+  border-radius: 3px;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+  vertical-align: baseline;
+}
+
+.course-report .candidate-readings {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.course-report .candidate-reading .mark-letter {
+  margin-right: 4px;
+}
 .viewer-plot > div { max-width: 100%; }
 .viewer-plot p { margin: 0; color: var(--muted); }
 

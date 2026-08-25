@@ -192,16 +192,14 @@ The React app. Largest package by far. `AGENTS.md`: desktop-only, no properties 
 
 ### `src/notebook/` — the notebook side panel
 
-- `notebook/Notebook.tsx` — the view-over-the-graph panel: renders group frames as sections (title/note prose, then their output nodes' results in reading order), dependency-derived exposed-slider controls once per section, between its prose and its results, section reordering, table-column editing (order/figures/marks), print-to-PDF export via `@media print`. Read this to understand how canvas layout becomes the exported document.
+- `notebook/Notebook.tsx` — the view-over-the-graph panel: renders group frames as sections (title/note prose, then their output nodes' results in reading order), dependency-derived exposed-slider controls once per section between its prose and its results, section reordering, table-column editing (order and per-column figures), click-a-row-to-mark, print-to-PDF export via `@media print`. Read this to understand how canvas layout becomes the exported document.
 - `notebook/NotebookSliderControl.tsx` — the shared synchronized slider/exact-value view used by the editor NodeBook and course viewer; print replaces its interactive fields with the current static value.
-- `notebook/PlotFigure.tsx` — the Observable-Plot rendering of a `PlotResult`: log axes when the range is logarithmic, threshold reference line, contour mode, faceting, SI-prefixed axis labels. All computation is already done by the kernel; this file only draws.
+- `notebook/PlotFigure.tsx` — the Observable-Plot rendering of a `PlotResult`: log axes when the range is logarithmic, the threshold (a rule on a line, an isoline on a contour), contour mode, faceting, SI-prefixed axis labels, the mark overlay, and the pointer that turns a click into a mark. All computation is already done by the kernel; this file only draws.
+- `notebook/ParetoFigure.tsx` — the two-objective scatter: front / dominated / infeasible drawn three ways, the staircase joining the front, and click-to-mark. Read this for why the step turns the way it does.
 - `notebook/DistributionFigure.tsx` — renders kernel-prepared histograms and ECDFs, percentile rules, facets, and fitted-normal summaries.
 - `notebook/ReliabilityCard.tsx` — renders Pf, Wilson intervals, β, resolution floors, and convergence state for referenced checks.
-- `notebook/*.test.ts` — `Notebook.test.ts`, `PlotFigure.test.ts`.
-- `notebook/Notebook.tsx` — the view-over-the-graph panel: renders group frames as sections (title/note prose, then their output nodes' results in reading order), section reordering, table-column editing (order and per-column figures), click-a-row-to-mark, the per-candidate readings under a check or print, print-to-PDF export via `@media print`. Read this to understand how canvas layout becomes the exported document.
-- `notebook/PlotFigure.tsx` — the Observable-Plot rendering of a `PlotResult`: log axes when the range is logarithmic, threshold reference line, contour mode, faceting, SI-prefixed axis labels, and the mark overlay. All computation is already done by the kernel; this file only draws.
-- `notebook/ParetoFigure.tsx` — the two-objective scatter: front / dominated / infeasible drawn three ways, the staircase joining the front, and click-to-mark. Read this for why the step turns the way it does.
-- `notebook/marks.ts` — the editor side of marking: resolves `document.marks` against one figure's axes into cells and A/B/C letters, and carries the `FigureMarking` prop every figure takes (absent in the read-only viewer). One resolver, so five figures cannot drift.
+- `notebook/marks.ts` — the editor side of marking: resolves `document.marks` against one figure's axes into cells and A/B/C letters, carries the `FigureMarking` prop every figure takes, and builds the read-only marking a published NodeBook draws from. One resolver, so five figures cannot drift.
+- `notebook/CandidateReadings.tsx` — the lettered per-candidate line under a check or print, shared by the notebook and the published viewer. Only draws for a mark that pins exactly one cell.
 - `notebook/*.test.ts` — `Notebook.test.ts`, `PlotFigure.test.ts`, `FeasibilityFigure.test.ts`, `ParetoFigure.test.ts`, `marks.test.ts`, `BestDesignCard.test.ts`.
 
 ### `src/palette/`
@@ -221,7 +219,7 @@ The React app. Largest package by far. `AGENTS.md`: desktop-only, no properties 
 
 ### `src/viewer/`
 
-- `viewer/CourseMaterialViewer.tsx` — a small read-only viewer (`?view=course`) over the bundled example documents, for sharing finished output without the full editor — not an alternate editor.
+- `viewer/CourseMaterialViewer.tsx` — a small read-only viewer (`?view=course`) over the bundled example documents, for sharing finished output without the full editor — not an alternate editor. It draws the marks the document was published with (`readOnlyMarking`) and refuses every gesture that would change them.
 
 ### `src/io/` — file/storage adapters
 

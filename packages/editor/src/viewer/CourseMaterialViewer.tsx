@@ -10,7 +10,7 @@
 
 import { useEffect, useMemo, useState, type ReactElement } from 'react';
 
-import type { OutputResult } from '@joveworks/kernel';
+import type { Axis, AxisReadout, OutputResult } from '@joveworks/kernel';
 import type { GraphDocument, OutputNode } from '@joveworks/schema';
 
 import { analyse } from '../model/analysis';
@@ -27,9 +27,11 @@ import { display, displayNumber } from '../model/quantity';
 import { checkVerdict, summarise, summariseCheck } from '../model/values';
 import { CheckReading } from '../CheckReading';
 import { BestDesignCard } from '../notebook/BestDesignCard';
-import { FeasibilityFigure } from '../notebook/FeasibilityFigure';
+import { CandidateReadings } from '../notebook/CandidateReadings';
+import { FeasibilityFigure, feasibilityGrid } from '../notebook/FeasibilityFigure';
+import { marksOver, readOnlyMarking, type FigureMarking, type MarkIndex } from '../notebook/marks';
 import { ParetoFigure } from '../notebook/ParetoFigure';
-import { PlotFigure } from '../notebook/PlotFigure';
+import { PlotFigure, plotGrid } from '../notebook/PlotFigure';
 import { SensitivityFigure } from '../notebook/SensitivityFigure';
 import { DistributionFigure } from '../notebook/DistributionFigure';
 import { ReliabilityCard } from '../notebook/ReliabilityCard';
@@ -62,12 +64,45 @@ function outputsOf(document: GraphDocument, frameId: string | undefined): readon
     .sort(readingOrder);
 }
 
-function Result({ result, node, document }: { readonly result: OutputResult; readonly node: OutputNode; readonly document: GraphDocument }): ReactElement | null {
+function Result({
+  result,
+  node,
+  document,
+  readouts,
+}: {
+  readonly result: OutputResult;
+  readonly node: OutputNode;
+  readonly document: GraphDocument;
+  /** Axis id → coordinates, for resolving the marks this NodeBook was published with. */
+  readonly readouts: ReadonlyMap<string, AxisReadout>;
+}): ReactElement | null {
   const format = toUnitsFormat(DEFAULT_NUMBER_FORMAT_SETTINGS);
   const title = node.label ?? node.id;
+  // The marks are part of what was published — a report whose prose argues for
+  // candidate B has to arrive with B drawn on it. Nothing here can *change*
+  // them, which is what `readOnlyMarking` says and the figures never have to
+  // ask about.
+  const marks = (axes: readonly Axis[]): MarkIndex => marksOver(document, axes, readouts);
+  const marking = (axes: readonly Axis[]): FigureMarking => readOnlyMarking(document, axes, readouts);
 
   if (result.kind === 'print') {
-    return <p className="viewer-result viewer-print"><strong>{title}</strong>{summarise(result, result.figures, format)}</p>;
+    return (
+      <p className="viewer-result viewer-print">
+        <strong>{title}</strong>
+        {summarise(result, result.figures, format)}
+        <CandidateReadings
+          marks={marks(result.series.axes)}
+          read={(cell) => {
+            const value = result.series.data[cell];
+            return value === undefined
+              ? ''
+              : typeof value === 'number'
+                ? displayNumber(value, result.unit, result.figures, format)
+                : value;
+          }}
+        />
+      </p>
+    );
   }
 
   if (result.kind === 'check') {
@@ -86,12 +121,25 @@ function Result({ result, node, document }: { readonly result: OutputResult; rea
           </span>
           {result.results.length > 1 && verdict !== 'pass' ? ` · fails at ${failures} of ${result.results.length} points` : ''}
         </span>
+        <CandidateReadings
+          marks={marks(result.series.axes)}
+          read={(cell) => (
+            <>
+              {displayNumber(result.series.data[cell] as number, result.unit, 4, format)}{' '}
+              {result.results[cell] === true ? '✓' : '✗'}
+            </>
+          )}
+        />
       </div>
     );
   }
 
   if (result.kind === 'table') {
     const rows = Math.max(...result.columns.map((column) => column.series.data.length));
+    // Row index is cell index here exactly as in the editor's notebook: every
+    // column is broadcast onto `result.axes` before it is drawn, so a row is a
+    // design and a marked design is a highlighted row.
+    const rowMarks = marks(result.axes);
     return (
       <div className="viewer-result viewer-table">
         <strong>{title}</strong>
@@ -99,9 +147,15 @@ function Result({ result, node, document }: { readonly result: OutputResult; rea
           <table>
             <thead><tr>{result.columns.map((column) => <th key={column.name}>{column.name} <small>{column.unit.symbol}</small></th>)}</tr></thead>
             <tbody>{Array.from({ length: rows }, (_unused, row) => (
-              <tr key={row}>{result.columns.map((column) => {
+              <tr key={row} className={rowMarks.at(row).length > 0 ? 'marked' : undefined}>{result.columns.map((column, columnIndex) => {
                 const cell = column.series.data[row];
-                return <td key={column.name}>{cell === undefined ? '' : typeof cell === 'number' ? displayNumber(cell, column.unit, 4, format) : cell}</td>;
+                const letters = columnIndex === 0 ? rowMarks.at(row) : [];
+                return (
+                  <td key={column.name}>
+                    {letters.map((entry) => <span className="mark-letter" key={entry.index}>{entry.letter}</span>)}
+                    {cell === undefined ? '' : typeof cell === 'number' ? displayNumber(cell, column.unit, 4, format) : cell}
+                  </td>
+                );
               })}</tr>
             ))}</tbody>
           </table>
@@ -121,7 +175,7 @@ function Result({ result, node, document }: { readonly result: OutputResult; rea
     return (
       <div className="viewer-result viewer-plot">
         <strong>{title}</strong>
-        <FeasibilityFigure result={result} checkLabels={checkLabels} />
+        <FeasibilityFigure result={result} checkLabels={checkLabels} marking={marking(feasibilityGrid(result))} />
       </div>
     );
   }
@@ -148,13 +202,10 @@ function Result({ result, node, document }: { readonly result: OutputResult; rea
   }
 
   if (result.kind === 'pareto') {
-    // No `marking`: this viewer renders a published NodeBook that nobody can
-    // edit, so a click has nothing to write to. Marks already in the document
-    // still draw — they are part of what was published.
     return (
       <div className="viewer-result viewer-plot">
         <strong>{title}</strong>
-        <ParetoFigure result={result} format={format} />
+        <ParetoFigure result={result} format={format} marking={marking(result.axes)} />
       </div>
     );
   }
@@ -168,7 +219,7 @@ function Result({ result, node, document }: { readonly result: OutputResult; rea
   return (
     <div className="viewer-result viewer-plot">
       <strong>{title}</strong>
-      <PlotFigure result={result} document={document} format={format} />
+      <PlotFigure result={result} document={document} format={format} marking={marking(plotGrid(result))} />
       {result.threshold === undefined ? null : <p>Threshold at {display(result.threshold, result.unit, 4, format)}</p>}
     </div>
   );
@@ -216,6 +267,7 @@ function ExampleReport({
 }): ReactElement {
   const analysis = useMemo(() => analyse(document, [baseCatalogue(), ...bundledCatalogues()]), [document]);
   const results = new Map((analysis.evaluation?.outputs ?? []).map((result) => [result.nodeId, result] as const));
+  const readouts = analysis.evaluation?.axisReadouts ?? new Map<string, AxisReadout>();
   const hasControls = document.nodes.some(
     (node) => node.kind === 'input' && node.value.kind === 'slider' && node.exposeInNotebook === true,
   );
@@ -247,7 +299,7 @@ function ExampleReport({
               const result = results.get(node.id);
               return (
                 <div className="course-output" key={node.id}>
-                  {result === undefined ? <p className="viewer-pending">This result is not available.</p> : <Result result={result} node={node} document={document} />}
+                  {result === undefined ? <p className="viewer-pending">This result is not available.</p> : <Result result={result} node={node} document={document} readouts={readouts} />}
                   {node.caption === undefined ? null : <p className="course-caption">{node.caption}</p>}
                 </div>
               );
