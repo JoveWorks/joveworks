@@ -1,0 +1,218 @@
+schemaVersion: 1
+id: public-running
+name:
+  en: Running
+restricted: false
+formulas:
+  - id: running.pace.from-time
+    version: 1
+    output:
+      kind: numeric
+      name: p
+      unit: min/km
+      validRange:
+        min: 0
+    inputs:
+      - kind: numeric
+        name: t
+        unit: min
+        validRange:
+          min: 0
+      - kind: numeric
+        name: d
+        unit: km
+        validRange:
+          min: 0
+    expression: t / d
+    description:
+      en: Average running pace from elapsed time and distance.
+    variantOf: running.pace-time-distance
+    status: verified
+
+  - id: running.time.from-pace
+    version: 1
+    output:
+      kind: numeric
+      name: t
+      unit: min
+      validRange:
+        min: 0
+    inputs:
+      - kind: numeric
+        name: p
+        unit: min/km
+        validRange:
+          min: 0
+      - kind: numeric
+        name: d
+        unit: km
+        validRange:
+          min: 0
+    expression: p * d
+    description:
+      en: Elapsed time for a distance at a constant pace.
+    variantOf: running.pace-time-distance
+    status: verified
+
+  - id: running.speed.from-pace
+    version: 1
+    output:
+      kind: numeric
+      name: v
+      unit: km/h
+      validRange:
+        min: 0
+    inputs:
+      - kind: numeric
+        name: p
+        unit: min/km
+        validRange:
+          min: 0
+    expression: 1 / p
+    description:
+      en: Average speed corresponding to a running pace.
+    variantOf: running.pace-speed
+    status: verified
+
+  - id: running.pace.from-speed
+    version: 1
+    output:
+      kind: numeric
+      name: p
+      unit: min/km
+      validRange:
+        min: 0
+    inputs:
+      - kind: numeric
+        name: v
+        unit: km/h
+        validRange:
+          min: 0
+    expression: 1 / v
+    description:
+      en: Running pace corresponding to an average speed.
+    variantOf: running.pace-speed
+    status: verified
+
+  - id: running.race.project-time
+    version: 1
+    output:
+      kind: numeric
+      name: t_2
+      unit: min
+      validRange:
+        min: 0
+    inputs:
+      - kind: numeric
+        name: t_1
+        unit: min
+        validRange:
+          min: 0
+      - kind: numeric
+        name: d_1
+        unit: km
+        validRange:
+          min: 0
+      - kind: numeric
+        name: d_2
+        unit: km
+        validRange:
+          min: 0
+      - kind: numeric
+        name: k
+        unit: ""
+        default: 1.06
+        validRange:
+          min: 1
+          max: 1.2
+    expression: t_1 * (d_2 / d_1) ^ k
+    description:
+      en: >-
+        Estimated race time over a new distance using a prior result and a
+        fatigue exponent. The common starting estimate is k = 1.06; individual
+        endurance, terrain, and conditions can make the projection optimistic
+        or conservative.
+    citation: P. S. Riegel, Athletic Records and Human Endurance, American Scientist 69(3), 1981
+    status: verified
+
+  - id: running.route.adjusted-time
+    version: 1
+    output:
+      kind: numeric
+      name: t
+      unit: min
+      validRange:
+        min: 0
+    inputs:
+      - kind: numeric
+        name: d
+        unit: km
+        validRange:
+          min: 0
+      - kind: numeric
+        name: p_flat
+        unit: min/km
+        validRange:
+          min: 0
+      - kind: numeric
+        name: ascent
+        unit: km
+        preferredUnit: m
+        validRange:
+          min: 0
+      - kind: numeric
+        name: p_climb
+        unit: min/km
+        default: 10
+        validRange:
+          min: 0
+    expression: d * p_flat + ascent * p_climb
+    description:
+      en: >-
+        Simple route-time estimate: flat-distance time plus an independently
+        chosen time allowance per vertical kilometre climbed.
+    status: verified
+
+  - id: running.route.average-grade
+    version: 1
+    output:
+      kind: numeric
+      name: grade
+      unit: "%"
+    inputs:
+      - kind: numeric
+        name: rise
+        unit: m
+      - kind: numeric
+        name: run
+        unit: km
+        validRange:
+          min: 0
+    expression: rise / run
+    description:
+      en: Average route grade from vertical rise divided by horizontal run.
+    status: verified
+
+  - id: running.route.vertical-speed
+    version: 1
+    output:
+      kind: numeric
+      name: v_vertical
+      unit: m/h
+      validRange:
+        min: 0
+    inputs:
+      - kind: numeric
+        name: ascent
+        unit: m
+        validRange:
+          min: 0
+      - kind: numeric
+        name: t
+        unit: h
+        validRange:
+          min: 0
+    expression: ascent / t
+    description:
+      en: Average climbing rate from accumulated ascent and elapsed time.
+    status: verified

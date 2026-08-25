@@ -46,6 +46,8 @@ input syntax over the same catalogue schema, not a second data model. JoveWorks
 uses YAML 1.2, requires unique string keys, and rejects custom tags, merge keys,
 anchors, and aliases. Quote a scalar when YAML punctuation could change its
 meaning—expressions containing `#` or `:`, for example.
+`packages/editor/src/catalogues/running.yaml` is a complete bundled example
+covering pace, race-time projection, grade, and climbing rate.
 
 `restricted` is a statement of intent inside the app — the app refuses
 to export a restricted catalogue's expressions. Set it `false` only for

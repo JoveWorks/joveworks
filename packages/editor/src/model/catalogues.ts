@@ -59,6 +59,12 @@ const bundledCatalogueModules = import.meta.glob<JsonValue>('../catalogues/*.jso
   import: 'default',
 });
 
+const bundledYamlCatalogueModules = import.meta.glob<string>('../catalogues/*.{yaml,yml}', {
+  eager: true,
+  import: 'default',
+  query: '?raw',
+});
+
 /**
  * Every catalogue that ships with the app alongside the base nodes: files
  * dropped in `src/catalogues/` — textbook-independent, `restricted: false`,
@@ -68,7 +74,10 @@ const bundledCatalogueModules = import.meta.glob<JsonValue>('../catalogues/*.jso
  * import them by hand.
  */
 export function bundledCatalogues(): readonly Catalogue[] {
-  return Object.values(bundledCatalogueModules).map((data) => parseCatalogue(data));
+  return [
+    ...Object.values(bundledCatalogueModules).map((data) => parseCatalogue(data)),
+    ...Object.values(bundledYamlCatalogueModules).map((text) => loadCatalogue(text, 'yaml')),
+  ];
 }
 
 const lockedCatalogueModules = import.meta.glob<JsonValue>('../catalogues/locked/*.json', {
