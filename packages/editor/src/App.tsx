@@ -109,7 +109,6 @@ import {
   MILLING_STUDY_FORMULAS,
   DEPTH_OF_FIELD_FORMULAS,
   APERTURE_DECISION_FORMULAS,
-  WILDLIFE_CAMERA_COMPARISON_FORMULAS,
   beltLab,
   pressfitLab,
   cantileverHollowSections,
@@ -707,7 +706,6 @@ function AppShell(): ReactElement {
   const millingAvailable = provides(catalogues, MILLING_STUDY_FORMULAS);
   const depthOfFieldAvailable = provides(catalogues, DEPTH_OF_FIELD_FORMULAS);
   const apertureDecisionAvailable = provides(catalogues, APERTURE_DECISION_FORMULAS);
-  const wildlifeCameraComparisonAvailable = provides(catalogues, WILDLIFE_CAMERA_COMPARISON_FORMULAS);
 
   const loadCatalogueFile = async (): Promise<void> => {
     const file = await openTextFile();
@@ -972,16 +970,6 @@ function AppShell(): ReactElement {
           openExample('aperture-decision');
           setShowNotebook(true);
           setTutorial({ kind: 'example', id: 'aperture-decision' });
-        }),
-    },
-    {
-      label: t('Wildlife camera comparison'),
-      disabled: !wildlifeCameraComparisonAvailable,
-      onClick: () =>
-        guardDiscard(() => {
-          openExample('wildlife-camera-comparison');
-          setShowNotebook(true);
-          setTutorial({ kind: 'example', id: 'wildlife-camera-comparison' });
         }),
     },
   ];
