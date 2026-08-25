@@ -2,11 +2,13 @@ export const EXAMPLE_IDS = [
   'platform-footprint',
   'pad-pressure',
   'monte-carlo-clearance',
+  'reliability-load-strength',
   'belt-lab',
   'pressfit-lab',
   'cantilever-hollow-sections',
   'milling-power-envelope',
   'depth-of-field',
+  'aperture-decision',
 ] as const;
 
 export type ExampleId = (typeof EXAMPLE_IDS)[number];

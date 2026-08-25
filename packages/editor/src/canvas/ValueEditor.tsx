@@ -42,7 +42,7 @@ function unitOf(value: ValueSpec): Unit {
  * — rounded to `figures` significant figures before it reaches the document,
  * so the field beside the slider reads like something a student would enter.
  */
-function roundToFigures(value: number, figures: number): number {
+export function roundToFigures(value: number, figures: number): number {
   return value === 0 || !Number.isFinite(value) ? value : Number(value.toPrecision(figures));
 }
 
@@ -145,6 +145,9 @@ export function rescaleRange(range: Range, text: string): Range {
 interface Props {
   readonly value: ValueSpec;
   readonly onChange: (value: ValueSpec) => void;
+  /** Continuous slider ticks, kept separate so a whole drag can be one undo step. */
+  readonly onSliderChange?: (value: ValueSpec) => void;
+  readonly onSliderCommit?: () => void;
 }
 
 /**
@@ -252,7 +255,7 @@ function useValueFormat(): NumberFormat {
 }
 
 /** The value itself — always visible on the card, not just on hover. */
-export function ValueFields({ value, onChange }: Props): ReactElement {
+export function ValueFields({ value, onChange, onSliderChange, onSliderCommit }: Props): ReactElement {
   const unit = unitOf(value);
   const format = useValueFormat();
   const { catalogues } = useGraph();
@@ -381,11 +384,15 @@ export function ValueFields({ value, onChange }: Props): ReactElement {
             value={Math.min(Math.max(value.value, value.min), value.max)}
             title="Drag for a feel of the effect — type the field for an exact value."
             onChange={(event) =>
-              onChange({
+              (onSliderChange ?? onChange)({
                 ...value,
                 value: roundToFigures(Number(event.target.value), value.figures ?? DEFAULT_SLIDER_FIGURES),
               })
             }
+            onPointerUp={onSliderCommit}
+            onPointerCancel={onSliderCommit}
+            onKeyUp={onSliderCommit}
+            onBlur={onSliderCommit}
           />
           <div className="quantity-split">
             <NumberField

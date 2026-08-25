@@ -361,6 +361,10 @@ pull out just the first reading for a spot check — all three read the
 same spectrum, in the same single evaluation, rather than each triggering
 their own run of the graph.
 
+Do not confuse these with [Statistic](#statistic): Array nodes consume a
+spectrum whole, while Statistic reduces one or more labelled swept axes and
+can keep the other axes in the result.
+
 `minimum`/`maximum` also take a spectrum input but live under
 [Base nodes](#base-nodes) instead — they read as ordinary arithmetic
 (comparing an open set of same-dimension values) rather than as a
@@ -411,6 +415,29 @@ exported or logged outside the graphs that use it, and this reference
 intentionally says nothing about what any specific restricted catalogue
 contains — that's the textbook's material, not this editor's.
 
+## Statistics
+
+### Statistic
+
+Reduces a swept series to a wireable number. Available statistics are mean,
+median, sample standard deviation (n − 1), minimum, maximum, percentile,
+probability, and count. Percentiles use linear interpolation between order
+statistics (R type 7, also NumPy's default).
+
+Leave `along` unwired to collapse every axis the value varies along. Wire a
+range or generator into `along` to reduce only that axis and keep every other
+axis. In a diameter × trial study, wire any generator's `value` to `along` to
+obtain one result per diameter. Leaving it unwired pools diameter and trial
+into one meaningless number, so JoveWorks warns and names the pooled axes.
+
+Turn on `running` to emit the statistic over the first 1, 2, … samples while
+keeping the reduced axis. Plot that result against the trial generator to see
+whether a mean or failure probability has settled. Running mode requires
+exactly one reduced axis.
+
+`probability` reads categorical verdicts, normally a Compare node. Its `match`
+field defaults to `pass`; set it to `fail` for a wireable failure probability.
+
 ## Analysis
 
 Graph-level tools that look across several other nodes already on the
@@ -428,7 +455,16 @@ input moves a result the most.
 
 Draws a value from a distribution, sample by sample, instead of taking
 one you typed — a **uniform** draw between a low and high bound, or a
-**normal** draw around a mean with a standard deviation. It introduces a
+**normal** draw around a mean with a standard deviation. It also supports:
+
+- **triangular**, with minimum, most-likely mode, and maximum;
+- **lognormal**, parameterised by the mean and standard deviation of the
+  variable itself—not the mean and standard deviation of its logarithm;
+- **discrete**, with a spectrum of values and optional weights. Unwired
+  weights mean equal weighting, which is also empirical resampling of a
+  measured dataset.
+
+It introduces a
 sweepable axis exactly like a range input does: everything wired
 downstream becomes a series over its samples, with no separate "trial"
 node to add. The sample count is the axis length, and (unusually) is
@@ -507,10 +543,14 @@ back — add a [Best Design](#best-design) output over the same checks.
 ### Select
 
 Reads an answer *off* a sweep instead of leaving you to read it off the
-curve by eye. A plot can show that deflection crosses its limit somewhere
-around 38 mm; a Select node turns that into `38.2 mm` as a **value on a
-wire** — one you can print, compare, feed into another formula, or record
-in the notebook as the size you chose.
+curve by eye. A plot can show that depth of field reaches what you need
+somewhere around f/6; a Select node turns that into `f/6.186` as a
+**value on a wire** — one you can print, compare, feed into another
+formula, or record in the notebook as the setting you chose.
+
+Worked end to end in
+[Choosing an aperture](/examples/choosing-an-aperture), which every
+example below is drawn from.
 
 Nothing here solves anything. It searches the points the graph has
 already evaluated, in the order they were swept, exactly as
@@ -526,16 +566,16 @@ a crossing interpolates between them; every other mode lands on a sample.
 
 `along` is what makes this node work, and it is the one wire people
 forget. A Select node has no dropdown asking which axis you mean: the
-wire says it. Wire the diameter range into `along` and the answer is a
-diameter, in millimetres; wire the temperature range in instead and the
-same `value` gives you a temperature. If you type a plain number on
-`along` instead of wiring a range, the node says so — "wire the swept
-range into `along`" — rather than guessing.
+wire says it. Wire the f-stop range into `along` and the answer is an
+f-number; wire a subject-distance range in instead and the same `value`
+gives you a distance. If you type a plain number on `along` instead of
+wiring a range, the node says so — "wire the swept range into `along`" —
+rather than guessing.
 
 Because the axis comes from a wire, the **`at`** output carries `along`'s
-dimension, never `value`'s. Searching an *area* for where it crosses
-`50 mm²`, with a *diameter* wired into `along`, gives you a length —
-which is the whole point.
+dimension, never `value`'s. Searching a *depth of field* for where it
+crosses `300 mm`, with an *aperture* wired into `along`, gives you a
+dimensionless f-number — which is the whole point.
 
 #### Four modes, one node
 
@@ -543,25 +583,31 @@ Switch mode from the node's own panel; `value` and `along` stay wired
 across the switch, so trying a different question costs nothing.
 
 - **threshold crossing** — where a value meets a bound, interpolated
-  between the two samples that bracket it. *Sweep a shaft diameter, wire
-  the computed deflection into `value` and the diameter range into
-  `along`, set the threshold to the allowable deflection: the answer is
-  the smallest diameter that just satisfies it.* A `direction` setting
-  ("either way", "rising", "falling") picks which way the value has to be
-  travelling through the bound to count — useful when a curve dips below
-  a limit and comes back.
+  between the two samples that bracket it. *Sweep the aperture, wire the
+  computed depth of field into `value` and the f-stop input into `along`,
+  set the threshold to the depth the shot needs: the answer is f/6.186.*
+  A `direction` setting ("either way", "rising", "falling") picks which
+  way the value has to be travelling through the bound to count — useful
+  when a curve dips below a limit and comes back.
 - **first passing size** — the first coordinate where a wired verdict
   reads `pass`, taken **from the samples, never between them**. That is
-  exactly what makes it a *standard size*: build a **Renard** or **list**
-  input of the sizes actually stocked, run them through a
-  [Compare](#compare) against your acceptance criterion, and the answer
-  is one of the sizes you can buy — `40 mm`, not `38.2 mm`.
+  exactly what makes it a *settable* answer: f/6.186 is not a stop on any
+  lens. Build a **list** (or **Renard**) input of the values you can
+  actually set, run them through a [Compare](#compare) against your
+  acceptance criterion, and the answer is one of them — `f/8`, not
+  `f/6.186`.
 - **smallest at** / **largest at** — where a value reaches its minimum or
   maximum along the axis, plus a second output, **`best`**, carrying the
-  value it takes there. *Sweep a wall thickness and wire mass into
-  `value`: `at` is the thickness where mass is least, `best` is that
-  mass.* Ties go to the first point in sweep order, so the answer never
-  moves between re-evaluations.
+  value it takes there. *Wire depth of field into `value` and maximise:
+  `at` is the stop with the most depth, `best` is that depth.* Ties go to
+  the first point in sweep order, so the answer never moves between
+  re-evaluations.
+
+  Watch for an answer landing on the **end** of the sweep. Depth of field
+  only grows as you stop down, so "largest at" alone answers f/22 — the
+  last point, not a peak. That is not a fault: it is the node telling you
+  the objective on its own does not decide this, and a constraint has to.
+  [Best Design](#best-design) is where that goes.
 
 #### What it tells you when the answer is doubtful
 
@@ -584,11 +630,11 @@ across the switch, so trying a different question costs nothing.
 #### Two swept inputs
 
 A Select node collapses only the axis wired into `along`, and keeps every
-other axis intact. Sweep diameter *and* temperature, wire diameter into
-`along`, and the answer is a **crossing diameter per temperature** — a
-series you can plot against temperature like any other, not a single
-number. That is the same broadcasting rule the rest of the editor uses;
-nothing about a Select node is special-cased for one dimension.
+other axis intact. Sweep aperture *and* subject distance, wire aperture
+into `along`, and the answer is a **required f-number per distance** — a
+series you can plot against distance like any other, not a single number.
+That is the same broadcasting rule the rest of the editor uses; nothing
+about a Select node is special-cased for one dimension.
 
 ### Best Design
 
@@ -605,30 +651,33 @@ answer.
 Wiring it takes one wire and one checklist:
 
 - **`objective`** — the quantity being minimised or maximised: mass,
-  cost, deflection, diameter. Set the direction ("smallest" / "largest")
+  cost, depth of field, blur. Set the direction ("smallest" / "largest")
   in the node's panel.
 - **checks** — tick the existing **Check** nodes that define feasibility,
   from the same checklist [Feasibility](#feasibility) uses, and for the
   same reason: the bounds you already built *are* the constraints, and
   retyping them here would be a second copy that drifts.
 
-A worked shape: sweep a shaft diameter over stocked sizes, build a Check
-for "safety factor ≥ 1.5" and another for "deflection ≤ 0.5 mm", wire the
-shaft's **mass** into `objective`, tick both checks, and set the
-direction to smallest. The card reads:
+A worked shape, from
+[Choosing an aperture](/examples/choosing-an-aperture): sweep the f-stops
+a lens can be set to, build a Check for "depth of field ≥ 300 mm" and
+another for "diffraction blur ≤ the circle of confusion", wire **depth of
+field** into `objective`, tick both checks, and set the direction to
+largest. The card reads:
 
-> **diameter 40 mm — smallest at 2.47 kg.**
-> 3 of 9 candidates feasible, governed by safety factor at 4.1% margin.
+> **f-number 11 — largest at 538.9 mm.**
+> 2 of 7 candidates feasible, governed by sharp enough at 4.7% margin.
 
 The last clause is the one that earns the node. **Governing** means the
 check with the least *normalised* margin at the winning point —
 `(value − threshold) / |threshold|`, sign-corrected so more room is
 always a bigger number. Normalising is what makes the comparison mean
-anything: a safety factor 0.02 above 1.5 and a pressure 4 N/mm² below 200
-are not comparable as raw differences, and are as percentages. A
-governing margin of 4.1% says the design is genuinely up against that
-constraint; one of 60% says the winner is limited by something else, or
-by the sweep's own bounds.
+anything: at f/11 the blur has 0.72 µm of room and the depth of field has
+239 mm of it, and only as percentages (4.7% against 80%) do those two say
+anything about each other. A governing margin of 4.7% says the design is
+genuinely up against that constraint — this shot is diffraction-limited,
+so stopping down further will not buy usable depth. One of 60% would say
+the winner is limited by something else, or by the sweep's own bounds.
 
 Two kinds of check are left out of that ranking and reported as being
 left out: `==` and `!=` assert equality rather than a bound, so there is
@@ -642,13 +691,13 @@ constraint is impossible is a real finding worth recording, and it lands
 in the notebook like any other.
 
 **No checks at all is legal too**, and means a plain unconstrained
-minimum or maximum: "the lightest of these nine sizes", with nothing
-saying whether any of them work.
+minimum or maximum: "the deepest of these seven stops", with nothing
+saying whether any of them is usable.
 
 Notice there is no `along` port here, unlike [Select](#select). A
 selection reduces one named axis; a decision reports the winning
-coordinate on *every* axis the study varies along — sweep diameter and
-material and the card names both — so there is no single wire that could
+coordinate on *every* axis the study varies along — sweep aperture and
+subject distance and the card names both — so there is no single wire that could
 say which one to answer with.
 
 ### Pareto
@@ -738,3 +787,29 @@ tornado ranks which of the five is worth tightening a tolerance on or
 measuring more carefully; a narrow bar for material strength but a wide
 one for fillet radius says the stress concentration, not the material
 choice, is what's actually driving the design's margin.
+
+### Distribution
+
+A report-stable histogram or empirical cumulative distribution function
+(ECDF) over a sampled value. The `over` axis defaults to the shared Monte Carlo
+trial axis; `facet` makes one panel per value of a second axis. Further axes are
+never silently pooled: a warning says which were dropped.
+
+Histogram bins default to the Freedman–Diaconis rule, falling back to Sturges
+when the interquartile range is zero. This is intentionally independent of
+canvas pixel width, so a report looks the same on screen and in print. The CDF
+is an empirical step curve. Requested percentile rules use the exact same
+type-7 calculation as a Statistic node, and an optional fitted normal curve
+can be overlaid in either view.
+
+### Reliability
+
+References existing Check nodes and reports trials, observed failures, failure
+probability Pf, a Wilson confidence interval, reliability index β, and a
+convergence indication for each check and their combined AND. Wilson intervals
+remain informative at zero observed failures.
+
+Zero failures never means zero risk: with n trials the report says `Pf < 1/n`
+and `β > Φ⁻¹(1 − 1/n)` instead of infinity. If the checks do not vary along the
+trial axis, the card says that nothing in the study is random rather than
+presenting a confident but meaningless Pf of zero or one.

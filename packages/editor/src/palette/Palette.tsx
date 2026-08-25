@@ -23,10 +23,12 @@ import {
   localize,
   axes as documentAxes,
   formulaRef,
+  STATISTICS,
   type Formula,
   type Output,
   type Position,
   type SelectMode,
+  type Statistic,
   type ValueSpec,
 } from '@joveworks/schema';
 
@@ -51,6 +53,7 @@ const GENERAL = '__general__';
 const USER = '__user__';
 const FAVOURITES = '__favourites__';
 const ANALYSIS = '__analysis__';
+const STOCHASTIC = '__stochastic__';
 
 interface PaletteAction {
   /** Stable across translated labels: this is what the local preference stores. */
@@ -193,6 +196,17 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
             }
           : { kind: 'select', id, label: id, mode, position: position() },
       );
+    });
+
+  const addStatistic = (statistic: Statistic): void =>
+    edit((current) => {
+      const id = uniqueId(current, statistic);
+      const common = { kind: 'statistic' as const, id, label: id, position: position() };
+      return addNode(current, statistic === 'percentile'
+        ? { ...common, statistic, percentile: 95 }
+        : statistic === 'probability'
+          ? { ...common, statistic, match: 'pass' }
+          : { ...common, statistic });
     });
 
   const addClosure = (): void =>
@@ -358,14 +372,11 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
   const generalActions = actions.filter((action) => action.id.startsWith('builtin:general:'));
   const outputActions = actions.filter((action) => action.id.startsWith('builtin:output:'));
 
-  // A separate catalogue-styled section, not part of General — the
-  // umbrella for graph-level analysis tools generally, not just per-node
-  // results: Monte Carlo generator/receiver (their own node kinds with
-  // their own concerns — playback, distributions — distinct enough from
-  // routing nodes like waypoint/pack to earn their own heading) alongside
-  // Feasibility and Sensitivity, placed right after the built-in node
-  // library rather than folded into it or into the general Output section.
-  const analysisActions: readonly PaletteAction[] = [
+  // Sampling, reductions over a trial axis, and the report outputs that turn
+  // those samples into evidence belong together. Keeping this separate from
+  // general design-space analysis also prevents the Analysis section becoming
+  // a catch-all as reliability work grows.
+  const stochasticActions: readonly PaletteAction[] = [
     {
       id: 'builtin:montecarlo:generator',
       label: copy.monteCarloGenerator,
@@ -378,6 +389,27 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
       summary: copy.monteCarloReceiverSummary,
       insert: addMonteCarloReceiver,
     },
+    {
+      id: 'builtin:output:distribution',
+      label: phrase(locale, 'distribution'),
+      summary: phrase(locale, 'histogram or CDF over a trial axis'),
+      insert: () => addOutput('distribution'),
+    },
+    {
+      id: 'builtin:output:reliability',
+      label: phrase(locale, 'reliability'),
+      summary: phrase(locale, 'failure probability, interval, and reliability index'),
+      insert: () => addOutput('reliability'),
+    },
+    ...STATISTICS.map((statistic): PaletteAction => ({
+      id: `builtin:statistic:${statistic}`,
+      label: phrase(locale, statistic),
+      summary: phrase(locale, 'statistic over a swept axis'),
+      insert: () => addStatistic(statistic),
+    })),
+  ];
+
+  const analysisActions: readonly PaletteAction[] = [
     {
       id: 'builtin:output:feasibility',
       label: copy.feasibility,
@@ -433,7 +465,7 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
 
   const favouriteEntries = all.filter(({ formula }) => favourites.has(formula.id));
   const favouriteUserEquations = userEquations.filter((equation) => favourites.has(`user:${equation.id}`));
-  const favouriteActions = [...actions, ...analysisActions].filter((action) => favourites.has(action.id));
+  const favouriteActions = [...actions, ...stochasticActions, ...analysisActions].filter((action) => favourites.has(action.id));
 
   const actionEntry = (action: PaletteAction, keyPrefix = ''): ReactElement => (
     <li key={`${keyPrefix}${action.id}`} onContextMenu={(event) => {
@@ -616,6 +648,18 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
 
         {builtInGroup === undefined ? null : catalogueSection(builtInGroup)}
         {arrayGroup === undefined ? null : catalogueSection(arrayGroup)}
+
+        {query.trim().length === 0 ? (
+          <section>
+            <h3><button type="button" className="section-toggle" onClick={() => toggleCollapsed(STOCHASTIC)}>
+              <span className="section-toggle-title">{copy.stochasticAnalysis}{collapsed.has(STOCHASTIC) ? ` (${stochasticActions.length})` : ''}</span>
+              <span className="chevron" aria-hidden="true">{collapsed.has(STOCHASTIC) ? '▸' : '▾'}</span>
+            </button></h3>
+            {collapsed.has(STOCHASTIC) ? null : <ul>
+              {stochasticActions.map((action) => actionEntry(action))}
+            </ul>}
+          </section>
+        ) : null}
 
         {query.trim().length === 0 ? (
           <section>

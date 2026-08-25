@@ -2,6 +2,32 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.16.0](https://github.com/ThomasVanRiel/joveworks/compare/v0.15.0...v0.16.0) (2026-08-24)
+
+### Features
+
+* add Monte Carlo reliability reports ([9a587b7](https://github.com/ThomasVanRiel/joveworks/commit/9a587b72401da0c5703a18b8e1cb7b5cd2421409))
+* expose interactive inputs in NodeBooks ([454d8ad](https://github.com/ThomasVanRiel/joveworks/commit/454d8ad3015dcae28ef4692bcf8492f9b5e8a566))
+* merge reliability reports ([80bb079](https://github.com/ThomasVanRiel/joveworks/commit/80bb079b11734b96edef67869753ca5b257ce117))
+
+### Documentation
+
+* Roadmap items. ([91e3233](https://github.com/ThomasVanRiel/joveworks/commit/91e3233f5052f738a90a1f71a4fe9ff5fa3460c1))
+## [0.15.0](https://github.com/ThomasVanRiel/joveworks/compare/v0.14.0...v0.15.0) (2026-08-24)
+
+### Features
+
+* **editor:** add aperture decision example ([00ff34a](https://github.com/ThomasVanRiel/joveworks/commit/00ff34abccb9c560082965999ae181d88d3f373f))
+* selection nodes and the Best Design card ([b86799f](https://github.com/ThomasVanRiel/joveworks/commit/b86799f7a3439b116f3c07d9271256c7c80491c2))
+
+### Fixes
+
+* **editor:** stop a first visit autosaving a document nobody touched ([bd62d85](https://github.com/ThomasVanRiel/joveworks/commit/bd62d854168d1e49e29b0ffdd64f60258bf7b8ca))
+
+### Documentation
+
+* feature planning ([33b56d0](https://github.com/ThomasVanRiel/joveworks/commit/33b56d0de6cc4b64199adfeb0517fd66a34f75cc))
+* plan selection nodes and the Best Design card ([28b8db8](https://github.com/ThomasVanRiel/joveworks/commit/28b8db80975ccfd7d45cd7a069dc8c7e4a4c0dc0))
 ## [0.14.0](https://github.com/ThomasVanRiel/joveworks/compare/v0.13.1...v0.14.0) (2026-08-24)
 
 ### Features

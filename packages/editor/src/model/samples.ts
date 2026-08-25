@@ -185,8 +185,8 @@ export function padPressure(catalogues: readonly Catalogue[], locale: AppLocale 
   const stress = parseUnit('Pa');
 
   const nodes: GraphNode[] = [
-    input('F', 'Pad load F', { kind: 'scalar', value: 12, unit: parseUnit('kN') }, at(0, 0)),
-    input('L', 'Pad length L', { kind: 'scalar', value: 40, unit: mm }, at(0, 150)),
+    { ...input('F', 'Pad load F', { kind: 'slider', value: 12, min: 5, max: 20, unit: parseUnit('kN') }, at(0, 0)), exposeInNotebook: true },
+    { ...input('L', 'Pad length L', { kind: 'slider', value: 40, min: 20, max: 80, unit: mm }, at(0, 150)), exposeInNotebook: true },
     {
       ...input('w', 'Pad width w', { kind: 'linear', start: 10, stop: 60, points: 26, unit: mm }, at(0, 300)),
       axisLabel: 'pad width w (mm)',
@@ -225,8 +225,9 @@ export function padPressure(catalogues: readonly Catalogue[], locale: AppLocale 
       id: 'sizing',
       title: 'Pad sizing',
       note:
-        'A 12 kN load on a 40 mm pad, swept across pad widths from 10 to 60 mm. The pressure ' +
-        'limit is 2 MPa, and the plot says where the sweep crosses it.',
+        'The authored case starts at a 12 kN load and 40 mm pad length. Use the controls below ' +
+        'to test those assumptions while pad width remains the 10 to 60 mm sweep; ' +
+        'the pressure limit is 2 MPa.',
       position: at(960, -80),
       size: { width: 400, height: 620 },
     },
@@ -256,8 +257,8 @@ export function platformFootprint(catalogues: readonly Catalogue[], locale: AppL
   const mm = parseUnit('mm');
   const stress = parseUnit('Pa');
   const nodes: GraphNode[] = [
-    input('load', 'Equipment load', { kind: 'scalar', value: 12, unit: parseUnit('kN') }, at(0, 0)),
-    input('length', 'Platform length', { kind: 'scalar', value: 1000, unit: mm }, at(0, 150)),
+    { ...input('load', 'Equipment load', { kind: 'slider', value: 12, min: 5, max: 20, unit: parseUnit('kN') }, at(0, 0)), exposeInNotebook: true },
+    { ...input('length', 'Platform length', { kind: 'slider', value: 1000, min: 500, max: 2000, unit: mm }, at(0, 150)), exposeInNotebook: true },
     {
       ...input('width', 'Platform width to compare', { kind: 'linear', start: 200, stop: 1200, points: 26, unit: mm }, at(0, 300)),
       axisLabel: 'platform width (mm)',
@@ -294,9 +295,9 @@ export function platformFootprint(catalogues: readonly Catalogue[], locale: AppL
       id: 'decision',
       title: 'A decision at a glance',
       note:
-        'We compare platform widths for a fixed 12 kN equipment load. The line shows the ' +
-        'pressure on the floor; the threshold marks the widths that meet the agreed limit. ' +
-        'The same live graph supplies the value, the check, and the chart in this report.',
+        'The authored case starts at a 12 kN equipment load and 1000 mm platform length. ' +
+        'Use the controls below to see the value, check, and chart update together; ' +
+        'the width sweep and agreed floor-load threshold remain fixed.',
       position: at(960, -80),
       size: { width: 430, height: 620 },
     },
@@ -455,6 +456,44 @@ export function monteCarloClearance(catalogues: readonly Catalogue[], locale: Ap
     document('monte-carlo-clearance', 'Clearance-fit stack-up', withFrames, edges, frames),
     locale,
   );
+}
+
+// --- reliability: load against strength --------------------------------------
+
+/** A complete public reliability report built only from the base catalogue. */
+export function reliabilityLoadStrength(catalogues: readonly Catalogue[], locale: AppLocale = 'en'): GraphDocument | undefined {
+  const subtract = lookup(catalogues, 'subtract');
+  if (subtract === undefined) return undefined;
+  const stress = parseUnit('N/mm²');
+  const count = 2_000;
+  const nodes: GraphNode[] = [
+    { kind: 'monteCarloGenerator', id: 'load', label: 'Applied stress', distribution: 'lognormal', mean: 180, stddev: 25, count, unit: stress, position: at(0, 0) },
+    { kind: 'monteCarloGenerator', id: 'strength', label: 'Material strength', distribution: 'lognormal', mean: 260, stddev: 30, count, unit: stress, position: at(0, 220) },
+    formulaNode('margin', subtract, at(360, 100)),
+    { kind: 'compare', id: 'margin_verdict', label: 'Margin verdict', comparison: '>=', threshold: { value: 0, unit: stress }, position: at(700, 0) },
+    { kind: 'statistic', id: 'running_pf', label: 'Running failure probability', statistic: 'probability', match: 'fail', running: true, position: at(700, 220) },
+    output('margin_check', 'Strength exceeds load', { kind: 'check', comparison: '>=', threshold: { value: 0, unit: stress } }, at(1040, 0)),
+    output('margin_distribution', 'Strength margin distribution', { kind: 'distribution', view: 'histogram', percentiles: [5, 50, 95], fit: true }, at(1040, 180)),
+    output('reliability', 'Reliability report', { kind: 'reliability', checks: ['margin_check'], confidence: 0.95 }, at(1040, 360)),
+    output('convergence', 'Failure probability convergence', { kind: 'plot', x: 'load' }, at(1040, 540)),
+  ];
+  const edges = [
+    wire('strength.value', 'margin.a'),
+    wire('load.value', 'margin.b'),
+    wire('margin.difference', 'margin_verdict.value'),
+    wire('margin_verdict.verdict', 'running_pf.value'),
+    wire('load.value', 'running_pf.along'),
+    wire('margin.difference', 'margin_check.value'),
+    wire('margin.difference', 'margin_distribution.value'),
+    wire('running_pf.result', 'convergence.value'),
+  ];
+  const reportOutputs = nodes.filter((node): node is OutputNode => node.kind === 'output');
+  const frame = {
+    ...frameAround('report', 'Load against strength', reportOutputs, 50),
+    note: 'The histogram shows the margin distribution; Pf, its interval and beta state the reliability, and the running estimate shows whether the sample count was enough.',
+  };
+  const withFrame = nodes.map((node) => node.kind === 'output' ? { ...node, frameId: 'report' } : node);
+  return localizeExample(document('reliability-load-strength', 'Load against strength — reliability', withFrame, edges, [frame]), locale);
 }
 
 // --- the belt lab, which needs its catalogue ---------------------------------
@@ -694,6 +733,10 @@ export function cantileverHollowSections(catalogues: readonly Catalogue[], local
 
   const nodes: GraphNode[] = [
     { ...input('d_o', 'Outer diameter d_o', { kind: 'list', values: [30, 40, 50, 60, 80], unit: mm }, at(0, 0)), axisLabel: 'd_o' },
+    // Swept, not a slider: the second axis is what gives the trade-off a real
+    // front rather than a single monotonic curve. The tip load below keeps the
+    // notebook control, and is the better one to drag anyway — it moves the
+    // whole front instead of walking along it.
     { ...input('t', 'Wall thickness t', { kind: 'list', values: [2, 3, 4, 5], unit: mm }, at(0, 180)), axisLabel: 't' },
     input('two', '2 (wall thickness on both sides)', { kind: 'scalar', value: 2, unit: parseUnit('') }, at(0, 320)),
 
@@ -711,7 +754,7 @@ export function cantileverHollowSections(catalogues: readonly Catalogue[], local
     formulaNode('sq_diff', formula('subtract'), at(760, 960)),
     formulaNode('area', formula('multiply'), at(1000, 1040)),
 
-    input('F', 'Tip load F', { kind: 'scalar', value: 500, unit: parseUnit('N') }, at(0, 460)),
+    { ...input('F', 'Tip load F', { kind: 'slider', value: 500, min: 100, max: 1000, unit: parseUnit('N') }, at(0, 460)), exposeInNotebook: true },
     input('L', 'Beam length L', { kind: 'scalar', value: 1000, unit: mm }, at(0, 600)),
     input('E', "Young's modulus E (steel)", { kind: 'scalar', value: 210000, unit: parseUnit('MPa') }, at(0, 740)),
     formulaNode('delta', formula('basic.beam.cantilever-deflection'), at(1000, 360)),
@@ -777,16 +820,18 @@ export function cantileverHollowSections(catalogues: readonly Catalogue[], local
       id: 'sections',
       title: 'Cantilever beam — hollow circular sections',
       note:
-        'Tip deflection of a steel cantilever (F = 500 N, L = 1000 mm) over five outer ' +
-        'diameters and four wall thicknesses. Cross-section area stands in for mass: one ' +
-        'material, one length, so the section that uses less metal is the lighter beam. ' +
-        'Only six of the twenty sections meet the L/300 = 3.33 mm serviceability limit; the ' +
+        'Tip deflection of a steel cantilever over five outer diameters and four wall ' +
+        'thicknesses. Cross-section area stands in for mass: one material, one length, so the ' +
+        'section that uses less metal is the lighter beam. Only six of the twenty sections ' +
+        'meet the L/300 = 3.33 mm serviceability limit at the authored 500 N tip load; the ' +
         'rest are drawn hollow on the front and never compete. Of the six, four are worth ' +
         'arguing about and two are simply beaten — an 80 mm tube with a 2 mm wall (candidate ' +
         'A) is both lighter and stiffer than a 60 mm tube with a 4 mm wall, which is the ' +
         'reason bicycles and aircraft are built from large thin tubes rather than small ' +
         'thick ones. Along the front itself there is no such free lunch: past candidate A ' +
-        'every millimetre of deflection costs metal.',
+        'every millimetre of deflection costs metal. Drag the tip load to test that ' +
+        'assumption — the front moves with it, and the marked candidate can stop passing. ' +
+        'Beam length stays fixed at 1000 mm, so the displayed limit remains consistent.',
       position: at(1180, -80),
       size: { width: 420, height: 980 },
     },
@@ -854,12 +899,12 @@ export function millingPowerEnvelope(catalogues: readonly Catalogue[], locale: A
       ...input('a_e', 'Radial engagement a_e', { kind: 'list', values: [10, 20, 30, 40], unit: mm }, at(0, 700)),
       axisLabel: 'radial engagement a_e (mm)',
     },
-    input('a_p', 'Axial depth a_p', { kind: 'scalar', value: 4, unit: mm }, at(0, 860)),
+    { ...input('a_p', 'Axial depth a_p', { kind: 'slider', value: 4, min: 1, max: 8, unit: mm }, at(0, 860)), exposeInNotebook: true },
     formulaNode('removal_rate', formula('machining.milling.removal-rate'), at(700, 560)),
 
     input('k_c', 'Specific cutting force k_c', { kind: 'scalar', value: 1800, unit: parseUnit('N/mm²') }, at(360, 780)),
     formulaNode('cutting_power', formula('machining.power.from-removal-rate'), at(980, 560)),
-    input('eta', 'Machine efficiency eta', { kind: 'scalar', value: 0.85, unit: parseUnit('') }, at(700, 820)),
+    { ...input('eta', 'Machine efficiency eta', { kind: 'slider', value: 0.85, min: 0.6, max: 0.95, unit: parseUnit('') }, at(700, 820)), exposeInNotebook: true },
     formulaNode('machine_power', formula('machining.power.machine-input'), at(1240, 480)),
     formulaNode('cutting_torque', formula('machining.torque.from-power'), at(1240, 700)),
 
@@ -966,8 +1011,8 @@ export function millingPowerEnvelope(catalogues: readonly Catalogue[], locale: A
       id: 'productivity',
       title: '2. Productivity study',
       note:
-        'Chip load and radial engagement are swept together. Axial depth stays at 4 mm; ' +
-        'the removal-rate contour shows the productivity gained by moving across the grid.',
+        'Chip load and radial engagement are swept together. Axial depth starts at 4 mm and ' +
+        'can be changed with the controls below; the contour shows how productivity moves across the grid.',
       position: at(1620, 240),
       size: { width: 440, height: 360 },
     },
@@ -978,7 +1023,8 @@ export function millingPowerEnvelope(catalogues: readonly Catalogue[], locale: A
         'The 5.5 kW input-power and 35 Nm cutting-torque limits cut different boundaries ' +
         'through the grid. A failed overall check means some candidates fail, not that every ' +
         'candidate does; use the contours to find the feasible region — or read it directly off ' +
-        'the shaded feasibility below, which is both limits at once.',
+        'the shaded feasibility below, which is both limits at once. Axial depth and machine ' +
+        'efficiency start at their authored values and can be varied with the controls below.',
       position: at(1620, 620),
       size: { width: 440, height: 980 },
     },
@@ -986,14 +1032,15 @@ export function millingPowerEnvelope(catalogues: readonly Catalogue[], locale: A
       id: 'selection',
       title: '4. Candidate operating point',
       note:
-        'Candidate A is marked at f_z = 0.24 mm/tooth and a_e = 30 mm, giving Q = 132 cm³/min: ' +
-        'the most productive point in this discrete grid that clears both limits. It carries ' +
-        'the same letter on every figure above, so the row below and the shaded map are ' +
-        'talking about the same cut. Note there is no trade-off to weigh here — removal rate, ' +
-        'power and torque all rise together with f_z·a_e, so the only thing holding ' +
-        'productivity back is the spindle limits. This is an initial power-envelope result ' +
-        'with constant k_c—not a production recommendation. Tool deflection, chatter, chip ' +
-        'thinning, workholding, and manufacturer limits remain to check.',
+        'At the authored input values, candidate A is marked at f_z = 0.24 mm/tooth and ' +
+        'a_e = 30 mm, giving Q = 132 cm³/min: the most productive point in this discrete ' +
+        'grid that clears both limits. It carries the same letter on every figure above, so ' +
+        'the row below and the shaded map are talking about the same cut. Note there is no ' +
+        'trade-off to weigh here — removal rate, power and torque all rise together with ' +
+        'f_z·a_e, so the only thing holding productivity back is the spindle limits. This is ' +
+        'an initial power-envelope result with constant k_c—not a production recommendation. ' +
+        'Tool deflection, chatter, chip thinning, workholding, and manufacturer limits ' +
+        'remain to check.',
       position: at(1620, 1640),
       size: { width: 440, height: 600 },
     },
@@ -1160,4 +1207,170 @@ export function depthOfField(catalogues: readonly Catalogue[], locale: AppLocale
   });
 
   return localizeExample(document('depth-of-field', 'Depth of field — aperture and focal length', withFrames, edges, frames), locale);
+}
+
+// --- choose an aperture, from the public Photography catalogue --------------
+
+export const APERTURE_DECISION_FORMULAS = [
+  'photography.camera.properties',
+  'photography.dof.circle-of-confusion-pixels',
+  'photography.dof.hyperfocal-distance',
+  'photography.dof.limits',
+  'photography.diffraction.blur-diameter',
+] as const;
+
+/**
+ * Pick a real f-stop that gives at least 300 mm of depth of field without
+ * letting diffraction blur exceed a three-pixel circle of confusion.
+ *
+ * The Best Design output is the point of this example: it maximises depth of
+ * field only among candidates that pass both checks, so it selects f/11 rather
+ * than the unconstrained maximum at f/22.
+ */
+export function apertureDecision(catalogues: readonly Catalogue[], locale: AppLocale = 'en'): GraphDocument | undefined {
+  if (!provides(catalogues, APERTURE_DECISION_FORMULAS)) return undefined;
+  const formula = (id: string): Formula => lookup(catalogues, id) as Formula;
+
+  const dimensionless = parseUnit('');
+  const mm = parseUnit('mm');
+  const micrometre = parseUnit('µm');
+
+  const nodes: GraphNode[] = [
+    input('f', 'Focal length', { kind: 'scalar', value: 50, unit: mm }, at(330, -55)),
+    {
+      ...input(
+        'N',
+        'Available apertures',
+        { kind: 'list', values: [2.8, 4, 5.6, 8, 11, 16, 22], unit: dimensionless },
+        at(330, 55),
+      ),
+      axisLabel: 'aperture (f-number)',
+    },
+    input('s', 'Focus distance', { kind: 'scalar', value: 2, unit: parseUnit('m') }, at(330, -165)),
+    formulaNode('camera', formula('photography.camera.properties'), at(330, 330)),
+    input(
+      'blurPixels',
+      'Acceptable blur circle',
+      { kind: 'scalar', value: 3, unit: dimensionless },
+      at(330, 770),
+    ),
+
+    formulaNode('coc', formula('photography.dof.circle-of-confusion-pixels'), at(715, 550)),
+    formulaNode('hyperfocal', formula('photography.dof.hyperfocal-distance'), at(1155, 55)),
+    formulaNode('diffraction', formula('photography.diffraction.blur-diameter'), at(1155, 330)),
+    formulaNode('dof', formula('photography.dof.limits'), at(1540, -55)),
+
+    {
+      ...output('dofPlot', 'Depth of field by aperture', { kind: 'plot', x: 'N', unit: mm }, at(2145, 110)),
+      caption: 'Stopping down increases the distance range that appears acceptably sharp.',
+    },
+    {
+      ...output(
+        'diffractionPlot',
+        'Diffraction blur by aperture',
+        { kind: 'plot', x: 'N', unit: micrometre },
+        at(2145, 330),
+      ),
+      caption: 'The threshold is the camera-specific three-pixel blur circle; lower is sharper.',
+    },
+    {
+      ...output(
+        'enoughDepth',
+        'At least 300 mm of depth of field',
+        { kind: 'check', comparison: '>=', threshold: { value: 300, unit: mm } },
+        at(2145, 715),
+      ),
+      caption: 'Reject apertures that leave less than 300 mm of the scene acceptably sharp.',
+    },
+    {
+      ...output(
+        'sharpEnough',
+        'Diffraction stays within the blur limit',
+        { kind: 'check', comparison: '<=', threshold: { value: 15, unit: micrometre } },
+        at(2145, 935),
+      ),
+      caption: 'The limit is wired from the selected camera and the three-pixel criterion above.',
+    },
+    {
+      ...output(
+        'bestAperture',
+        'Best aperture for maximum usable depth',
+        { kind: 'bestDesign', checks: ['enoughDepth', 'sharpEnough'], direction: 'maximize' },
+        at(2145, 1265),
+      ),
+      caption: 'Choose the greatest depth of field among the f-stops that pass both checks.',
+    },
+  ];
+
+  const edges = [
+    wire('camera.p', 'coc.p'),
+    wire('blurPixels.value', 'coc.n'),
+
+    wire('f.value', 'hyperfocal.f'),
+    wire('N.value', 'hyperfocal.N'),
+    wire('coc.c', 'hyperfocal.c'),
+
+    wire('hyperfocal.H', 'dof.H'),
+    wire('f.value', 'dof.f'),
+    wire('s.value', 'dof.s'),
+
+    wire('N.value', 'diffraction.N'),
+
+    wire('dof.DoF', 'dofPlot.value'),
+    wire('diffraction.b', 'diffractionPlot.value'),
+    wire('coc.c', 'diffractionPlot.threshold'),
+
+    wire('dof.DoF', 'enoughDepth.value'),
+    wire('diffraction.b', 'sharpEnough.value'),
+    wire('coc.c', 'sharpEnough.threshold'),
+    wire('dof.DoF', 'bestAperture.objective'),
+  ];
+
+  const frames = [
+    {
+      id: 'tradeoff',
+      title: '1. The aperture trade-off',
+      note:
+        'For a 50 mm lens focused at 2 m, stopping down increases depth of field but also ' +
+        'increases diffraction blur. The blur threshold comes from three pixels on the selected ' +
+        'camera, so it follows the camera choice instead of being copied by hand.',
+      position: at(2090, 55),
+      size: { width: 330, height: 550 },
+    },
+    {
+      id: 'requirements',
+      title: '2. Which f-stops are usable?',
+      note:
+        'A candidate must provide at least 300 mm of depth of field and keep diffraction blur ' +
+        'within the three-pixel limit. Only f/8 and f/11 satisfy both requirements.',
+      position: at(2090, 660),
+      size: { width: 330, height: 495 },
+    },
+    {
+      id: 'decision',
+      title: '3. Choose the best feasible aperture',
+      note:
+        'Best Design maximises depth of field only among candidates that pass both checks. It ' +
+        'selects f/11: f/16 and f/22 give more depth, but their diffraction blur is too large.',
+      position: at(2090, 1210),
+      size: { width: 330, height: 275 },
+    },
+  ];
+
+  const frameForOutput: Readonly<Record<string, string>> = {
+    dofPlot: 'tradeoff',
+    diffractionPlot: 'tradeoff',
+    enoughDepth: 'requirements',
+    sharpEnough: 'requirements',
+    bestAperture: 'decision',
+  };
+  const withFrames = nodes.map((node) => {
+    const frameId = frameForOutput[node.id];
+    return node.kind === 'output' && frameId !== undefined ? { ...node, frameId } : node;
+  });
+
+  return localizeExample(
+    document('aperture-decision', 'Choose an aperture — depth versus diffraction', withFrames, edges, frames),
+    locale,
+  );
 }

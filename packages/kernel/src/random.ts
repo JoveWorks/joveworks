@@ -53,12 +53,25 @@ export interface UniformDraw {
 }
 
 export interface NormalDraw {
-  readonly distribution: 'normal';
+  readonly distribution: 'normal' | 'lognormal';
   readonly mean: number;
   readonly stddev: number;
 }
 
-export type MonteCarloDraw = UniformDraw | NormalDraw;
+export interface TriangularDraw {
+  readonly distribution: 'triangular';
+  readonly min: number;
+  readonly mode: number;
+  readonly max: number;
+}
+
+export interface DiscreteDraw {
+  readonly distribution: 'discrete';
+  readonly values: readonly number[];
+  readonly weights?: readonly number[];
+}
+
+export type MonteCarloDraw = UniformDraw | NormalDraw | TriangularDraw | DiscreteDraw;
 
 /**
  * `count` samples from `draw`, seeded from `documentId`/`nodeId`. Draws
@@ -78,10 +91,42 @@ export function monteCarloSamples(
     return Array.from({ length: count }, () => min + next() * (max - min));
   }
 
+  if (draw.distribution === 'triangular') {
+    const { min, mode, max } = draw;
+    const split = (mode - min) / (max - min);
+    return Array.from({ length: count }, () => {
+      const value = next();
+      return value < split
+        ? min + Math.sqrt(value * (max - min) * (mode - min))
+        : max - Math.sqrt((1 - value) * (max - min) * (max - mode));
+    });
+  }
+
+  if (draw.distribution === 'discrete') {
+    const weights = draw.weights ?? draw.values.map(() => 1);
+    const total = weights.reduce((sum, value) => sum + value, 0);
+    const cumulative: number[] = [];
+    weights.reduce((sum, value) => {
+      cumulative.push(sum + value);
+      return sum + value;
+    }, 0);
+    return Array.from({ length: count }, () => {
+      const target = next() * total;
+      const index = cumulative.findIndex((value) => target < value);
+      return draw.values[Math.max(0, index)] as number;
+    });
+  }
+
   // Box-Muller, drawn in pairs so that sample `i` only ever depends on the
   // pair `floor(i / 2)` — never on `count`, which is what keeps a growing
   // playback batch from reshuffling samples already revealed.
-  const { mean, stddev } = draw;
+  let { mean, stddev } = draw;
+  const lognormal = draw.distribution === 'lognormal';
+  if (lognormal) {
+    const variance = Math.log(1 + (stddev / mean) ** 2);
+    mean = Math.log(mean) - variance / 2;
+    stddev = Math.sqrt(variance);
+  }
   const values: number[] = [];
   const pairs = Math.ceil(count / 2);
   for (let pair = 0; pair < pairs; pair += 1) {
@@ -89,8 +134,10 @@ export function monteCarloSamples(
     const u2 = next();
     const radius = Math.sqrt(-2 * Math.log(u1));
     const angle = 2 * Math.PI * u2;
-    values.push(mean + stddev * radius * Math.cos(angle));
-    values.push(mean + stddev * radius * Math.sin(angle));
+    const first = mean + stddev * radius * Math.cos(angle);
+    const second = mean + stddev * radius * Math.sin(angle);
+    values.push(lognormal ? Math.exp(first) : first);
+    values.push(lognormal ? Math.exp(second) : second);
   }
   return values.slice(0, count);
 }

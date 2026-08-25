@@ -112,11 +112,18 @@ export {
   outputPortNames,
   resolveGraph,
   selectPortNames,
+  statisticPortNames,
   topologicalOrder,
   typesConnect,
   wouldCycle,
 } from './graph.js';
 export type { ChannelType, ConnectionCheck, PortType, Resolution } from './graph.js';
+
+export { percentile, reduceAlong, scanAlong } from './statistics.js';
+export type { StatisticRequest, StatisticResult } from './statistics.js';
+export { buildDistribution, distributionBinCount, ecdf, histogram } from './distribution.js';
+export type { DistributionPanel, HistogramBin, EcdfPoint, NormalFit } from './distribution.js';
+export { inverseNormal, normalCdf, wilsonInterval } from './normal.js';
 
 export { COARSE_SWEEP_TOLERANCE, select } from './select.js';
 export type { SelectRequest, SelectResult } from './select.js';
@@ -137,6 +144,9 @@ export type {
   Evaluation,
   EvaluationOptions,
   FeasibilityResult,
+  DistributionResult,
+  ReliabilityEstimate,
+  ReliabilityResult,
   OutputResult,
   ParetoPoint,
   ParetoResult,

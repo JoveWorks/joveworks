@@ -201,6 +201,17 @@ canvas                              notebook panel
 It lives in a **collapsible side panel and updates live**, so the document takes
 shape while the graph is built rather than being discovered at export time.
 
+**Important slider inputs can be exposed in the NodeBook.** Turn on `Expose in
+NodeBook` in a slider node's expanded controls and every section holding a
+result that depends on it gets a compact slider and exact-value field, placed
+once between the section's prose and its results rather than repeated under
+each result. These are synchronized views of the original input, not copied
+nodes: changing any one updates the canvas slider, every other occurrence, and
+all downstream results immediately.
+The separate course viewer keeps changes for the current visit and offers a
+reset to the authored values. PDF export records the current value as text and
+omits the interactive control.
+
 **A study can also name the design you chose.** Click a design on any figure and
 it is marked across the whole NodeBook — the same lettered candidate on the
 plot, the table row, the feasibility map and the Pareto front. A mark is stored
@@ -222,6 +233,9 @@ range and reads correctly in the report: *candidate A: d = 40 mm, 2.47 kg*.
 The **check** node is what makes the notebook a *dimensioning report* rather
 than a list of numbers: it is the scalar counterpart of the threshold line on a
 swept curve, and a section full of green checks is the actual deliverable.
+With Monte Carlo inputs, the NodeBook can also report how often a design fails,
+with a confidence interval and reliability index, rather than only whether one
+sample passed.
 
 ### Exporting
 

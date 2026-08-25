@@ -23,9 +23,12 @@ import {
   OBJECTIVE_PORT,
   X_PORT,
   Y_PORT,
+  PERCENTILE_PORT,
   type ClosureNode,
   type SelectMode,
   type SelectNode,
+  type Statistic,
+  type StatisticNode,
   type Edge,
   type Endpoint,
   type FormulaNode,
@@ -654,6 +657,10 @@ export function defaultOutput(kind: OutputKind, contextUnit?: Unit): Output {
       // mass against cost, and a student who wants "more is better" on one axis
       // says so with one click.
       return { kind, checks: [], xDirection: 'minimize', yDirection: 'minimize' };
+    case 'distribution':
+      return { kind, view: 'histogram', percentiles: [5, 50, 95] };
+    case 'reliability':
+      return { kind, checks: [], confidence: 0.95 };
   }
 }
 
@@ -699,11 +706,17 @@ export function changeOutputKind(document: GraphDocument, nodeId: string, next: 
     return renameColumn(named.document, nodeId, VALUE_PORT, named.column);
   }
 
-  // The kinds whose port set is not `value`(+`threshold`): feasibility has none
-  // at all, bestDesign renames its one to `objective`, and pareto takes two
-  // named for the chart axes. Each prunes whatever the old kind had wired, the
-  // same way leaving `table` prunes everything but its adopted first column.
-  if (next.kind === 'feasibility' || next.kind === 'bestDesign' || next.kind === 'pareto') {
+  // The kinds whose port set is not `value`(+`threshold`): feasibility and
+  // reliability have none at all, bestDesign renames its one to `objective`,
+  // and pareto takes two named for the chart axes. Each prunes whatever the old
+  // kind had wired, the same way leaving `table` prunes everything but its
+  // adopted first column.
+  if (
+    next.kind === 'feasibility' ||
+    next.kind === 'reliability' ||
+    next.kind === 'bestDesign' ||
+    next.kind === 'pareto'
+  ) {
     // Entering pareto from a single-value kind adopts that wire as `x`: it is
     // the quantity the student was already looking at, and making them redraw it
     // to see it traded against something else is friction for nothing.
@@ -738,6 +751,31 @@ export function changeOutputKind(document: GraphDocument, nodeId: string, next: 
   }
 
   return updateNode<OutputNode>(document, nodeId, (entry) => ({ ...entry, output: next }));
+}
+
+export function changeStatistic(
+  document: GraphDocument,
+  nodeId: string,
+  statistic: Statistic,
+): GraphDocument {
+  const node = document.nodes.find((entry) => entry.id === nodeId);
+  if (node?.kind !== 'statistic' || node.statistic === statistic) return document;
+  const common = {
+    kind: 'statistic' as const,
+    id: node.id,
+    position: node.position,
+    ...(node.frameId === undefined ? {} : { frameId: node.frameId }),
+    ...(node.label === undefined ? {} : { label: node.label }),
+    ...(node.displayUnits === undefined ? {} : { displayUnits: node.displayUnits }),
+    ...(node.running === undefined ? {} : { running: node.running }),
+  };
+  const next: StatisticNode = statistic === 'percentile'
+    ? { ...common, statistic, percentile: node.statistic === 'percentile' ? node.percentile : 95 }
+    : statistic === 'probability'
+      ? { ...common, statistic, match: node.statistic === 'probability' ? node.match : 'pass' }
+      : { ...common, statistic };
+  const kept = new Set([VALUE_PORT, ALONG_PORT, ...(statistic === 'percentile' ? [PERCENTILE_PORT] : [])]);
+  return updateNode<StatisticNode>(pruneEdgesTo(document, nodeId, kept), nodeId, () => next);
 }
 
 /**

@@ -186,10 +186,13 @@ function collapseAxis(node: AxisNode, tableColumn: ResolvedTableColumn | undefin
     };
   }
   if (node.kind === 'monteCarloGenerator') {
+    if (node.distribution === 'discrete') return { ...node, count: 1 };
     const value: ValueSpec =
       node.distribution === 'uniform'
         ? { kind: 'scalar', value: (node.min + node.max) / 2, unit: node.unit }
-        : { kind: 'scalar', value: node.mean, unit: node.unit };
+        : node.distribution === 'triangular'
+          ? { kind: 'scalar', value: node.mode, unit: node.unit }
+          : { kind: 'scalar', value: node.mean, unit: node.unit };
     return {
       kind: 'input',
       id: node.id,

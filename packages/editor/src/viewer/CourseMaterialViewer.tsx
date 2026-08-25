@@ -21,6 +21,7 @@ import {
   millingPowerEnvelope,
   padPressure,
   platformFootprint,
+  reliabilityLoadStrength,
 } from '../model/samples';
 import { display, displayNumber } from '../model/quantity';
 import { checkVerdict, summarise, summariseCheck } from '../model/values';
@@ -30,8 +31,13 @@ import { FeasibilityFigure } from '../notebook/FeasibilityFigure';
 import { ParetoFigure } from '../notebook/ParetoFigure';
 import { PlotFigure } from '../notebook/PlotFigure';
 import { SensitivityFigure } from '../notebook/SensitivityFigure';
+import { DistributionFigure } from '../notebook/DistributionFigure';
+import { ReliabilityCard } from '../notebook/ReliabilityCard';
 import { SettingsContext, type SettingsContextValue } from '../settings-context';
 import { analytics, type CourseMaterial } from '../analytics/analytics';
+import { exposedSlidersFor, readingOrder, withSliderValue } from '../model/notebook';
+import { NotebookSliderControl } from '../notebook/NotebookSliderControl';
+import { phrase } from '../i18n';
 
 interface CourseExample {
   readonly id: CourseMaterial;
@@ -48,11 +54,6 @@ const comparisonText: Readonly<Record<string, string>> = {
   '==': '=',
   '!=': '≠',
 };
-
-function readingOrder(a: { readonly position: { readonly x: number; readonly y: number } }, b: { readonly position: { readonly x: number; readonly y: number } }): number {
-  const vertical = a.position.y - b.position.y;
-  return Math.abs(vertical) > 100 ? vertical : a.position.x - b.position.x;
-}
 
 function outputsOf(document: GraphDocument, frameId: string | undefined): readonly OutputNode[] {
   return document.nodes
@@ -158,6 +159,12 @@ function Result({ result, node, document }: { readonly result: OutputResult; rea
     );
   }
 
+  if (result.kind === 'distribution') return <div className="viewer-result viewer-plot"><strong>{title}</strong><DistributionFigure result={result} /></div>;
+  if (result.kind === 'reliability') {
+    const checkLabels = Object.fromEntries(result.checks.map(({ checkId }) => [checkId, document.nodes.find((candidate) => candidate.id === checkId)?.label ?? checkId]));
+    return <div className="viewer-result viewer-plot"><strong>{title}</strong><ReliabilityCard result={result} checkLabels={checkLabels} /></div>;
+  }
+
   return (
     <div className="viewer-result viewer-plot">
       <strong>{title}</strong>
@@ -167,28 +174,80 @@ function Result({ result, node, document }: { readonly result: OutputResult; rea
   );
 }
 
-function ExampleReport({ example }: { readonly example: CourseExample }): ReactElement {
-  const analysis = useMemo(() => analyse(example.document, [baseCatalogue(), ...bundledCatalogues()]), [example.document]);
+/** One set of controls per section, above its results — not one per result. */
+function ViewerControls({
+  document,
+  resultNodeIds,
+  onChange,
+}: {
+  readonly document: GraphDocument;
+  readonly resultNodeIds: readonly string[];
+  readonly onChange: (sliderId: string, value: number) => void;
+}): ReactElement | null {
+  const controls = exposedSlidersFor(document, resultNodeIds);
+  if (controls.length === 0) return null;
+  const format = toUnitsFormat(DEFAULT_NUMBER_FORMAT_SETTINGS);
+  return (
+    <div className="notebook-controls viewer-controls">
+      {controls.map((slider) => (
+        <NotebookSliderControl
+          key={slider.id}
+          node={slider}
+          format={format}
+          onLiveChange={(value) => onChange(slider.id, value)}
+          onCommit={() => {}}
+          onExactChange={(value) => onChange(slider.id, value)}
+        />
+      ))}
+    </div>
+  );
+}
+
+function ExampleReport({
+  document,
+  dirty,
+  onSliderChange,
+  onReset,
+}: {
+  readonly document: GraphDocument;
+  readonly dirty: boolean;
+  readonly onSliderChange: (sliderId: string, value: number) => void;
+  readonly onReset: () => void;
+}): ReactElement {
+  const analysis = useMemo(() => analyse(document, [baseCatalogue(), ...bundledCatalogues()]), [document]);
   const results = new Map((analysis.evaluation?.outputs ?? []).map((result) => [result.nodeId, result] as const));
+  const hasControls = document.nodes.some(
+    (node) => node.kind === 'input' && node.value.kind === 'slider' && node.exposeInNotebook === true,
+  );
 
   return (
     <article className="course-report">
       <header className="course-report-header">
-        <p className="course-report-kicker">Course material · read-only NodeBook</p>
-        <h1>{example.document.title}</h1>
+        <p className="course-report-kicker">Course material · interactive NodeBook</p>
+        <div className="course-report-title-row">
+          <h1>{document.title}</h1>
+          {hasControls ? (
+            <button type="button" disabled={!dirty} onClick={onReset}>{phrase('en', 'Reset inputs')}</button>
+          ) : null}
+        </div>
       </header>
-      {example.document.frames.map((frame) => {
-        const outputs = outputsOf(example.document, frame.id);
+      {document.frames.map((frame) => {
+        const outputs = outputsOf(document, frame.id);
         if (outputs.length === 0) return null;
         return (
           <section className="course-section" key={frame.id}>
             <h2>{frame.title}</h2>
             {frame.note === undefined ? null : <p className="course-note">{frame.note}</p>}
+            <ViewerControls
+              document={document}
+              resultNodeIds={outputs.map((node) => node.id)}
+              onChange={onSliderChange}
+            />
             {outputs.map((node) => {
               const result = results.get(node.id);
               return (
                 <div className="course-output" key={node.id}>
-                  {result === undefined ? <p className="viewer-pending">This result is not available.</p> : <Result result={result} node={node} document={example.document} />}
+                  {result === undefined ? <p className="viewer-pending">This result is not available.</p> : <Result result={result} node={node} document={document} />}
                   {node.caption === undefined ? null : <p className="course-caption">{node.caption}</p>}
                 </div>
               );
@@ -224,6 +283,7 @@ export function CourseMaterialViewer(): ReactElement {
       ['pad', 'Pad pressure sweep', 'See a range propagate to a design limit.', padPressure],
       ['cantilever', 'Cantilever — hollow sections', 'Compare a public mechanics catalogue study.', cantileverHollowSections],
       ['milling', 'Pocket milling — power envelope', 'A multi-output machining study.', millingPowerEnvelope],
+      ['reliability', 'Load against strength', 'Pf, interval, beta, distribution, and convergence.', reliabilityLoadStrength],
     ] as const;
     return candidates.flatMap(([id, title, summary, make]) => {
       const document = make(catalogues, 'en');
@@ -231,7 +291,9 @@ export function CourseMaterialViewer(): ReactElement {
     });
   }, []);
   const [selectedId, setSelectedId] = useState(examples[0]?.id);
+  const [editedDocuments, setEditedDocuments] = useState<Partial<Record<CourseMaterial, GraphDocument>>>({});
   const selected = examples.find((example) => example.id === selectedId) ?? examples[0];
+  const selectedDocument = selected === undefined ? undefined : editedDocuments[selected.id] ?? selected.document;
 
   useEffect(() => {
     analytics.track({
@@ -266,7 +328,24 @@ export function CourseMaterialViewer(): ReactElement {
           </button>
         ))}
       </nav>
-      <ExampleReport example={selected} />
+      <ExampleReport
+        document={selectedDocument as GraphDocument}
+        dirty={editedDocuments[selected.id] !== undefined}
+        onSliderChange={(sliderId, value) => {
+          setEditedDocuments((current) => {
+            const source = current[selected.id] ?? selected.document;
+            return {
+              ...current,
+              [selected.id]: withSliderValue(source, sliderId, value),
+            };
+          });
+        }}
+        onReset={() => setEditedDocuments((current) => {
+          const next = { ...current };
+          delete next[selected.id];
+          return next;
+        })}
+      />
     </main>
     </SettingsContext.Provider>
   );

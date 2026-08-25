@@ -101,7 +101,7 @@ row-index based for now, not axis-value based, so a sweep that changes shape
 can leave a mark pointing at the wrong row — an accepted gap until this is
 unified with the plot's own version below.
 
-Both halves of marking are now closed by item 54 below: marks moved off the
+Both halves of marking are now closed by item 56 below: marks moved off the
 table node onto the document as axis *coordinates*, shared by the table, the
 plot, the feasibility map and the Pareto chart, so a re-sampled range can no
 longer leave a mark pointing at the wrong design. Still open on the plot side:
@@ -259,12 +259,19 @@ which already turns a range into an axis (see `packages/kernel/src/series.ts` an
 the `isRange` value spec) — is this a second face on that same machinery or a
 genuinely new node kind?
 
-**52. Feature: a node that reads a file and exposes what is in it.** Shipped for
-photographs: a `file` node kind, a reader for Canon CR3, and ten fields wired
-straight into the photography catalogue — `f`, `N`, `t`, `ISO`, `px`/`py`,
-derived `w`/`h`, and the names the body writes for itself and its lens. Several
-files at once make the node an axis, one point per frame, so a bracket plots
-from the files themselves.
+**55. Reliability reports for Monte Carlo.** Shipped as planned in
+`docs/reliability-reports-plan.md`: wireable statistics reduce a labelled swept
+axis (or scan it for convergence), Distribution outputs render report-stable
+histograms and ECDFs, and Reliability cards report Pf, Wilson intervals, β, and
+the finite resolution floor when no failures were observed. Triangular,
+lognormal, and weighted/equal-weight discrete generators join uniform and
+normal; lognormal parameters are the physical variable's own mean and standard
+deviation.
+
+Deliberately deferred: correlation groups, because dependent quantities need a
+joint draw rather than another generator option; an empirical distribution as
+its own kind, because discrete with equal weights already resamples measured
+data; and rainflow counting, which remains a later specialist fatigue extension.
 
 The shape worth remembering: **the file never enters the document, the values
 do.** A raw frame is tens of megabytes against an autosave slot measured in
@@ -303,114 +310,26 @@ Open, in rough order of appetite:
 - **CR2 and other TIFF-based raws.** The IFD parser already handles them; only
   the container walk is CR3-specific.
 
-**53. Feature: selection nodes and the Best Design card.** Shipped, as planned
-in `docs/selection-and-best-design-plan.md` — the top item of
-`docs/feature-review.md`'s own list. The gap it closed was architectural as
-much as it was a feature: the kernel could reduce over a *spectrum*
-(`arrayNodes`) but had no way to reduce **along a labelled axis** and recover
-the coordinate at which something happened. `packages/kernel/src/select.ts` is
-that primitive, and all four features share it.
 
-What landed:
+**56. Feature: Pareto output and document-wide candidate marking.** Shipped as
+planned in `docs/pareto-and-candidate-marking-plan.md`: a `pareto` output draws
+every candidate over two objectives and joins the ones nothing beats on both,
+referencing Check nodes the way Feasibility and Best Design already do.
+Domination is sort-and-sweep rather than pairwise, checked against a brute-force
+reference. `TableOutput.marks` is gone — marks are now `GraphDocument.marks`,
+axis *coordinates* rather than row indices, so one marked design carries the same
+A/B/C letter on the Pareto chart, plots, tables and feasibility maps, and a
+re-sampled range can no longer leave a mark pointing at the wrong design. That
+closes the index-vs-value question backlog item 1 left open.
 
-- A `select` node kind, one node with four modes (`crossing`, `firstPassing`,
-  `argMin`/`argMax`), which learns its reduce axis from a swept range wired
-  into an `along` port rather than from an axis id in a dropdown — so `at`
-  takes `along`'s dimension, resolved by the same edge-driven typing
-  `CompareNode.threshold` already uses. Ports are stable across modes, so
-  switching mode strands no wire.
-- Every crossing is found, not an arbitrary one: the first is what is wired
-  (respecting `direction`), the rest ride on `Evaluation.selections` for the
-  canvas readout, with a `selectExtraCrossings` warning. A coarse-sweep check
-  compares the linear interpolation against a quadratic through one extra
-  neighbouring sample — a real numerical criterion, not a point count.
-- A `bestDesign` output kind: the feasible min/max of a wired `objective`, the
-  winning coordinate on *every* axis the study varies along, and the governing
-  constraint as the least normalised margin at the winner. No feasible cell is
-  a first-class answer that names the check failing at the most candidates.
-- The feasible-mask construction is now one helper both `feasibility` and
-  `bestDesign` call, and the deferred second pass in `evaluateDocument` covers
-  both kinds (one pass suffices: both reference only checks, and checks are
-  never deferred).
+Deliberately deferred: N-objective domination, because a front whose dominance
+the picture cannot explain is worse than no picture; a wireable front mask,
+which is a small later addition since `onFront` is already series-shaped; and
+marking on the canvas, which stays a notebook concern.
 
-Two small deviations from the plan, both deliberate:
-
-- A seventh warning kind, `bestDesignUnrankable`, was added. The plan listed
-  six and said `==`/`!=` and zero-threshold checks are "excluded and warned
-  about" from the governing ranking — none of the six named that, and a card
-  that silently drops a constraint from the ranking is exactly what this
-  project warns about rather than hides.
-- An empty `checks` list now yields an all-true mask over the target grid
-  rather than an empty array, so `bestDesign`'s unconstrained min/max composes.
-  A zero-check Feasibility node is marked `incomplete` and never reaches the
-  kernel, so nothing observable changed there.
-
-Deliberately deferred, and not started:
-
-- **Per-point governing constraint** as a wireable value. It needs margin and
-  utilisation to exist as nodes first — a `margin` node emitting
-  `(value − threshold)/|threshold|` per cell, and something to pick the least
-  of several — at which point "governing" is an ordinary graph, not a card
-  field. Today it is reported in the Best Design card only.
-- **Pareto fronts** for two competing objectives. Best Design ranks one
-  objective; "light *and* stiff" is a different question and a different
-  figure, and folding a second objective into this node would make its answer
-  a set rather than a decision. *Shipped since, as item 54 below.*
-
-**54. Feature: Pareto output and document-wide candidate marking.** Shipped, as
-planned in `docs/pareto-and-candidate-marking-plan.md` — the second item of
-`docs/feature-review.md`'s list. Two halves, and the marking is the larger one.
-
-What landed:
-
-- A `pareto` output kind: two objective ports (`x`, `y`), a direction each, and
-  the same reference-checks-by-id list `feasibility` and `bestDesign` use — the
-  fourth caller of the shared feasible-mask helper, and the third kind in the
-  deferred pass. Domination is sort-and-sweep rather than pairwise
-  (`packages/kernel/src/pareto.ts`), because a grid may hold `LARGE_GRID`
-  cells; a test asserts it against a brute-force reference on random grids.
-  Duplicates both survive, and infeasible candidates are drawn but never
-  compete.
-- **`TableOutput.marks` is gone.** Marks are now `GraphDocument.marks`: a list
-  of `Candidate`s, each a coordinate per axis node id. This closes the
-  index-vs-value question item 1 above left open, in favour of coordinates, for
-  the plot and the table at once — and closes the plot half of backlog item 1.
-- `packages/kernel/src/candidates.ts` holds the one matching rule: *a figure
-  highlights every cell consistent with the candidate on the axes they share*.
-  That is what lets one mark pin a design on a scatter that knows every axis
-  and a slice on a 1-D plot, with no special case for either.
-- Marks are drawn with A/B/C letters on the Pareto chart, plots, tables and
-  feasibility maps, and add a per-candidate reading under a check or print
-  where the mark pins exactly one cell. Hovering a point lights the same design
-  everywhere (`hoveredCandidate`, session-local beside `hovered`).
-- `Evaluation.axisReadouts` exposes every axis's coordinates and unit, because
-  a table carries axes but no coordinates of its own and still has to resolve a
-  mark. `PlotAxis` and `BestDesignCoordinate` became aliases of the shapes in
-  `candidates.ts` rather than near-duplicates of them.
-- The bundled cantilever sample gained a wall-thickness axis, a cross-section
-  area composed from base nodes as a mass proxy, and a Pareto over the two —
-  four sections on the front, two feasible but beaten, fourteen infeasible.
-  `docs-site` gained `guide/candidates.md` and `examples/lighter-or-stiffer.md`.
-
-One deviation from the plan, and one thing the plan got wrong:
-
-- The plan's snapping rule ("within one sample gap") was replaced by "within
-  the axis's own span". The gap rule let a mark at 40 mm snap onto a range now
-  running 100–300 mm, which is not a re-sampled design, it is a different one.
-- The plan named the milling sample as the host for the Pareto figure. It is
-  the wrong host: `Q`, `P_m` and `M_c` there are all proportional to
-  `f_z · a_e`, so every feasible point would sit on the front and the chart
-  would teach nothing. That study is a *constrained single-objective* problem —
-  Best Design's shape, not this one. The cantilever has a real trade-off, so it
-  got the figure; the milling sample keeps a mark on its chosen operating
-  point, which is the half of this feature that does apply to it.
-
-Deliberately deferred, and not started:
-
-- **N-objective domination.** Two is what a scatter can show, and a front whose
-  dominance the picture cannot explain is worse than no picture.
-- **A wireable front mask.** `onFront` is one boolean per cell, so it is
-  already series-shaped: a `pareto` *node* feeding a selection node's `value`
-  ("the smallest front design") is a small later addition, not a redesign.
-- **Marking on the canvas.** Marks are a notebook/report concern today; the
-  canvas shows no letters.
+Worth recording, because the plan got it wrong: the milling sample is the wrong
+host for a Pareto. Its `Q`, `P_m` and `M_c` are all proportional to `f_z·a_e`,
+so every feasible point sits on the front and the chart teaches nothing — that
+study is constrained single-objective, which is Best Design's shape. The
+cantilever gained a wall-thickness axis and an area-as-mass proxy instead, and
+has a real front; milling keeps only a mark on its chosen operating point.

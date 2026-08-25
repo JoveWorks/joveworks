@@ -142,6 +142,7 @@ export function QuickAddMenu({
       { label: t('first passing size'), choice: { kind: 'select', mode: 'firstPassing' } },
       { label: t('smallest at'), choice: { kind: 'select', mode: 'argMin' } },
       { label: t('largest at'), choice: { kind: 'select', mode: 'argMax' } },
+      { label: t('statistic over sweep'), choice: { kind: 'statistic' } },
       { label: t('print output'), choice: { kind: 'output', outputKind: 'print' } },
       { label: t('check output'), choice: { kind: 'output', outputKind: 'check' } },
       {
@@ -150,6 +151,7 @@ export function QuickAddMenu({
         disabled: !canPlot,
       },
       { label: t('table output'), choice: { kind: 'output', outputKind: 'table' } },
+      { label: t('distribution output'), choice: { kind: 'output', outputKind: 'distribution' } },
       { label: t('Monte Carlo receiver'), choice: { kind: 'monteCarloReceiver' } },
       // `feasibility` is deliberately excluded — it has no port for a
       // dragged wire to complete (it references existing Check nodes by

@@ -39,7 +39,6 @@ import type {
   GraphDocument,
   MonteCarloReceiverNode,
   OutputNode,
-  Position,
 } from '@joveworks/schema';
 
 import type { NumberFormat } from '@joveworks/units';
@@ -76,7 +75,11 @@ import { NO_MARKS, resolveMarks, type FigureMarking, type MarkIndex } from './ma
 import { ParetoFigure } from './ParetoFigure';
 import { PlotFigure, plotGrid } from './PlotFigure';
 import { SensitivityFigure } from './SensitivityFigure';
+import { DistributionFigure } from './DistributionFigure';
+import { ReliabilityCard } from './ReliabilityCard';
+import { NotebookSliderControl } from './NotebookSliderControl';
 import { phrase, ui } from '../i18n';
+import { exposedSlidersFor, readingOrder, withSliderValue } from '../model/notebook';
 
 /**
  * Enter finishes the field (blurs it, same as `fields.tsx`'s `TextField`);
@@ -484,6 +487,15 @@ function Result({ result, node }: { readonly result: OutputResult; readonly node
     );
   }
 
+  if (result.kind === 'distribution') {
+    return <div className="result plot"><span className="label"><OutputTitle node={node} /></span><DistributionFigure result={result} /></div>;
+  }
+
+  if (result.kind === 'reliability') {
+    const checkLabels = Object.fromEntries(result.checks.map(({ checkId }) => [checkId, document.nodes.find((candidate) => candidate.id === checkId)?.label ?? checkId]));
+    return <div className="result plot"><span className="label"><OutputTitle node={node} /></span><ReliabilityCard result={result} checkLabels={checkLabels} /></div>;
+  }
+
   return (
     <div className="result plot">
       <span className="label">
@@ -531,6 +543,45 @@ function Caption({
       }}
       onBlur={() => commitEdit()}
     />
+  );
+}
+
+/**
+ * One set of controls for a whole section, not one per result: a slider that
+ * drives three of a section's results used to appear three times, and the
+ * reader had to guess whether those were the same input or different ones.
+ */
+function ControlsFor({ nodeIds }: { readonly nodeIds: readonly string[] }): ReactElement | null {
+  const { document, edit, editLive, commitEdit, setHovered } = useGraph();
+  const { numberFormat } = useSettings();
+  const format = toUnitsFormat(numberFormat);
+  const controls = exposedSlidersFor(document, nodeIds);
+  if (controls.length === 0) return null;
+
+  const change = (sliderId: string, value: number, live: boolean): void => {
+    const apply = (current: GraphDocument): GraphDocument => withSliderValue(current, sliderId, value);
+    if (live) editLive(apply);
+    else edit(apply);
+  };
+
+  return (
+    <div className="notebook-controls">
+      {controls.map((slider) => (
+        <div
+          key={slider.id}
+          onMouseEnter={() => setHovered(() => new Set([slider.id]))}
+          onMouseLeave={() => setHovered(() => new Set())}
+        >
+          <NotebookSliderControl
+            node={slider}
+            format={format}
+            onLiveChange={(value) => change(slider.id, value, true)}
+            onCommit={commitEdit}
+            onExactChange={(value) => change(slider.id, value, false)}
+          />
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -737,6 +788,8 @@ function Section({
             />
           )}
 
+          <ControlsFor nodeIds={[...outputs, ...receivers].map((node) => node.id)} />
+
           {outputs.map((node) => {
             const result = results.get(node.id);
             const captionProps =
@@ -788,19 +841,7 @@ function Section({
   );
 }
 
-/**
- * Two nodes within this many px of vertical distance read as the same "row" —
- * ordered by x instead of the (functionally arbitrary) sub-pixel difference
- * in y a hand-placed layout is full of. Roughly a node's own height, the
- * same order of magnitude `frameAround` (`model/document.ts`) assumes.
- */
-const ROW_TOLERANCE = 100;
-
-/** Top-to-bottom, then left-to-right on near-ties — comic-book reading order. */
-export function readingOrder(a: { readonly position: Position }, b: { readonly position: Position }): number {
-  const dy = a.position.y - b.position.y;
-  return Math.abs(dy) > ROW_TOLERANCE ? dy : a.position.x - b.position.x;
-}
+export { readingOrder } from '../model/notebook';
 
 function outputsOf(document: GraphDocument, frameId: string | undefined): readonly OutputNode[] {
   return document.nodes

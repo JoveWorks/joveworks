@@ -41,7 +41,7 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
     target: '[data-tour="value-kind-select"]',
     expandIds: ['w'],
     title: 'Turning an input into a range',
-    body: "This dropdown is how w became a sweep. Pick linear, logarithmic, a slider or a list here to turn any plain input into a range, the same way — F and L could sweep too if there were a reason to.",
+    body: "This dropdown is how w became a sweep. Linear, logarithmic and list values introduce sweep axes; a slider stays one scalar value but makes it quick to nudge. F and L could become sliders or sweeps too if there were a reason to.",
     placement: 'right',
   },
   {
@@ -99,6 +99,16 @@ const EXAMPLE_COPY = {
     studyBody: 'The receiver plays the clearance back sample by sample and accumulates a running mean and histogram — press play and watch it settle rather than reading one final number.',
     resultBody: 'The printed clearance and the interference check both read the same wired difference the receiver is watching — nothing about the calculation itself depends on playback.',
   },
+  'reliability-load-strength': {
+    title: 'Reliability — load against strength',
+    opening: 'This example estimates the chance that a variable load exceeds a variable strength, then reports both the failure probability and its sampling uncertainty.',
+    inputTarget: '[data-tour="monteCarloGenerator-load"]',
+    inputTitle: 'Load and strength share one trial axis',
+    inputBody: 'Each generator draws one value per trial. Pairing those draws on the shared trial axis makes every comparison one simulated load case, rather than a Cartesian product of unrelated samples.',
+    studyTitle: 'The graph turns trials into evidence',
+    studyBody: 'A margin calculation and check classify each trial. Statistics show the running failure rate, while the distribution view shows how the margin is spread.',
+    resultBody: 'The reliability card reports failures, trials, probability, confidence interval and convergence together. A zero-failure run still has a finite upper bound instead of claiming impossible certainty.',
+  },
   'belt-lab': {
     title: 'Belt lab',
     opening: 'This worked example turns the belt-drive assignment into a forward calculation from the given motor, pulley and belt data.',
@@ -149,6 +159,16 @@ const EXAMPLE_COPY = {
     studyBody: 'Hyperfocal distance, near limit, far limit and total depth of field are evaluated for every focal-length × aperture pair in the grid.',
     resultBody: 'The 0.5 m check turns the contour into a decision: the wide end clears it at almost any aperture, while the 105 mm end never does in this grid — the sensitivity tornado says which dial moves the result more.',
   },
+  'aperture-decision': {
+    title: 'Choose an aperture — depth versus diffraction',
+    opening: 'This example chooses one real f-stop by balancing the depth gained from stopping down against the diffraction blur that stopping down also introduces.',
+    inputTarget: '[data-tour="input-N"]',
+    inputTitle: 'Compare settings the lens actually offers',
+    inputBody: 'The aperture input lists seven full-stop settings from f/2.8 to f/22. Each setting produces both a depth-of-field result and a diffraction-blur result.',
+    studyTitle: 'Two requirements define what is usable',
+    studyBody: 'A candidate must provide at least 300 mm of depth of field while keeping diffraction blur within a camera-specific three-pixel blur circle. The checks pull in opposite directions.',
+    resultBody: 'Best Design considers only candidates that pass both checks, then maximises depth of field. It selects f/11—not f/22—because the smaller stops fail the diffraction limit.',
+  },
 } as const satisfies Readonly<Record<string, ExampleTutorialCopy>>;
 
 export type TutorialExampleId = keyof typeof EXAMPLE_COPY;
@@ -157,7 +177,11 @@ export type TutorialExampleId = keyof typeof EXAMPLE_COPY;
  * the canvas/report relationship explicit, while the study steps explain what
  * is distinctive about each graph. */
 export function exampleTutorialSteps(id: TutorialExampleId): readonly TutorialStep[] {
-  const copy = EXAMPLE_COPY[id];
+  // Hot replacement can preserve the App's tutorial state while this module's
+  // copy table is being replaced. Treat that brief mismatch like a closed
+  // example tutorial instead of crashing the whole editor.
+  const copy = (EXAMPLE_COPY as Partial<Record<string, ExampleTutorialCopy>>)[id];
+  if (copy === undefined) return TUTORIAL_STEPS;
   return [
     { title: copy.title, body: copy.opening, placement: 'center' },
     {

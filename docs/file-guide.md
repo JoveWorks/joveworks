@@ -42,7 +42,7 @@ No evaluation logic lives here — just types, parsing (untrusted JSON → typed
 - `src/port.ts` — `Port` (numeric/categorical/spectrum/bundle), `PortUnit`, `ValidRange`, `portDimension`, generic-signature rules (`asInputPort`/`asOutputPort`). Edit when adding a new port kind or changing what a formula's inputs/outputs can declare.
 - `src/value.ts` — `ValueSpec`: everything an input node can hold — scalar, slider, categorical, spectrum, and the range kinds (`linear`, `logarithmic`, `list`, `renard`, `tableColumn`, `categoricalList`). Edit when adding a new sweep/range kind.
 - `src/formula.ts` — `Formula`, `FormulaLookup` (table-backed evaluators), `Catalogue`, `FormulaRef`/`matchRef` (how a graph references a formula by id+version+hash without embedding it), `formulaHash`. Edit when changing what a catalogue record can carry (status, `appliesWhen`, `variantOf`, lookup tables, etc.).
-- `src/document.ts` — `GraphDocument` and every `GraphNode` kind (input, formula, output, compare, closure, waypoint, pack, unpack, monteCarloGenerator, monteCarloReceiver), `Output` variants (print/check/plot/table/equation), `Frame`, `Edge`, plus `parseDocument`/`serializeDocument` and structural reference checks. **The biggest file to know** — edit when adding a new node kind or output kind.
+- `src/document.ts` — `GraphDocument` and every `GraphNode` kind (input, formula, output, compare, closure, waypoint, pack, unpack, monteCarloGenerator, monteCarloReceiver), including an input slider's optional `exposeInNotebook` marker; `Output` variants (print/check/plot/table/equation), `Frame`, `Edge`, plus `parseDocument`/`serializeDocument` and structural reference checks. **The biggest file to know** — edit when adding a new node kind or output kind.
 - `src/io.ts` — the four public entry points: `loadDocument`/`saveDocument`/`loadCatalogue`/`saveCatalogue` (text ↔ typed record). No `fs`/`fetch` — that's the editor's job.
 - `src/index.ts` — the package's public export surface. Update when you add an export elsewhere in this package.
 - `src/*.test.ts` — one test file per module above (`document.test.ts`, `formula.test.ts`, `port.test.ts`, `value.test.ts`), exercising parse/serialize round-trips and validation errors with invented (non-R&M) fixtures.
@@ -84,6 +84,9 @@ The half of the project that "has to be right." No React, no formula content —
 - `src/candidates.ts` — what a marked design *is*: a coordinate per axis, plus the conversion both ways between a grid cell and a `Candidate`. Read this for the one matching rule ("a figure matches on the axes they share") and for how a mark that no longer lands on a sample is snapped or reported.
 - `src/pareto.ts` — two-objective domination, sort-and-sweep rather than pairwise. Read this for what "on the front" means, including why duplicates both survive.
 - `src/random.ts` — deterministic Monte Carlo sampling (`monteCarloSamples`), seeded from document id + node id so playback never reshuffles already-revealed samples.
+- `src/statistics.ts` — axis reductions and running statistics; open it for percentile semantics, sample deviation, `along`, or convergence calculations.
+- `src/distribution.ts` — report-stable histogram/ECDF data preparation; open it for binning, percentile rules, faceting, or normal-fit data.
+- `src/normal.ts` — normal CDF/inverse, reliability-index conversion, and Wilson intervals.
 - `src/toLatex.ts` — `Expr` → LaTeX string, for the equation output node's typeset rendering (duplicates `editor/src/Symbol.tsx`'s name-rendering rules rather than sharing, since the kernel can't depend on the editor).
 - `src/warnings.ts` — `Warning`/`WarningKind`: the non-fatal things the kernel reports (formula changed, large grid, `appliesWhen` violated, plot axis flat/dropped/facet-ignored).
 - `src/invented.fixtures.ts` — test-only builders (`catalogueOf`, `documentOf`, invented formulas like `AREA`/`PRESSURE`/`COMBINE`) that go through the real parser so tests exercise the same path a loaded file does. **Every formula here is invented — no R&M content, per `AGENTS.md`.**
@@ -141,6 +144,7 @@ The React app. Largest package by far. `AGENTS.md`: desktop-only, no properties 
 - `model/node-sizes.ts` — `NodeSize`/`NodeSizes` type, populated from React Flow's measured DOM boxes.
 - `model/selection-layout.ts` — selection-only commands: align, space evenly, arrange-selection — scoped to never cross a section (frame) boundary.
 - `model/history.ts` — generic undo/redo stack (`pushEdit` for discrete steps, `pushLiveEdit`/`commitPending` for drag/keystroke gestures folded into one undo step).
+- `model/notebook.ts` — shared NodeBook derivation rules: canvas reading order, the transitive dependency walk that finds exposed sliders for one or more results at once (including referenced Check outputs), and the single-value update every synchronized control uses.
 - `model/editorSettings.ts` — small standalone `localStorage`-backed preferences: locale, minimap, canvas-controls visibility, snap-to-grid, panel widths, title-math rendering, theme, contour palette.
 - `model/numberFormat.ts` — how numbers are displayed/typed app-wide (thousands/decimal style, notation), persisted separately from `editorSettings.ts`.
 - `model/quantity.ts` — the field-level authored↔canonical boundary: `parseAuthored`/`formatAuthored` (what a document stores), `display`/`displayNumber` (what a node/table shows).
@@ -151,7 +155,7 @@ The React app. Largest package by far. `AGENTS.md`: desktop-only, no properties 
 - `model/userEquations.ts` — student-saved closure equations: parse/serialize a small JSON file format, `localStorage` persistence, id generation.
 - `model/monteCarloPlayback.ts` — `useMonteCarloPlayback` hook: one shared playback position/timer for the whole document (every generator shares one trial axis, so playback is document-wide, not per-receiver).
 - `model/monteCarlo.ts` — Monte Carlo editor-only support: finding generators upstream of a receiver, linked sample-count/limit helpers, ramp-up batch sizing.
-- `model/samples.ts` — the bundled example documents: `padPressure`, `platformFootprint`, `monteCarloClearance` (base-nodes-only, always available), `beltLab`/`pressfitLab`/`cantileverHollowSections`/`millingPowerEnvelope` (need specific catalogues loaded — `provides()` checks). **Edit here to add or change a Help-menu example.**
+- `model/samples.ts` — the bundled example documents: `padPressure`, `platformFootprint`, `monteCarloClearance` (base-nodes-only, always available), `depthOfField`/`apertureDecision` (bundled Photography catalogue), and `beltLab`/`pressfitLab`/`cantileverHollowSections`/`millingPowerEnvelope` (need their catalogue formulas — guarded by `provides()` checks). **Edit here to add or change a Help-menu example.**
 - `model/sample-translations.json` — Dutch translations of sample-document text (looked up by English string).
 - `model/*.test.ts`/`.test.tsx` — one test file per module above (`document.test.ts`, `analysis.test.tsx`, `catalogues.test.ts`, `layout.test.ts`, `editorSettings.test.ts`, `fuzzy.test.ts`, `history.test.ts`, `platform.test.ts`, `samples.test.ts`, `selection-layout.test.ts`, `userEquations.test.ts`, `values.test.ts`, `monteCarlo.test.ts`).
 
@@ -161,7 +165,7 @@ The React app. Largest package by far. `AGENTS.md`: desktop-only, no properties 
 - `canvas/NodeShell.tsx` — shared chrome every node kind uses: title, state badge/colour, expand/collapse, pin-open, delete/help buttons.
 - `canvas/node-data.ts` — `CanvasNodeData`/`CanvasFlowNode` types (highlight state, port-hover callback) threaded through React Flow's generic node type.
 - `canvas/fields.tsx` — the small editable field primitives (`TextField`, `NumberField`) every node's value editing is built from — commit-on-blur/Enter, hold-while-typing.
-- `canvas/InputNodeView.tsx` — the input node: literal or range value editor, sparkline when swept.
+- `canvas/InputNodeView.tsx` — the input node: scalar/slider/range value editor, sparkline when swept, and the slider-only `Expose in NodeBook` authoring checkbox.
 - `canvas/FormulaNodeView.tsx` — a catalogue-formula node: ports, citation, per-input inline fallback values, output reading. Deliberately never shows the expression.
 - `canvas/OutputNodeView.tsx` — all four output kinds (print/check/plot/table) in one component; switching kind goes through `changeOutputKind` to adapt existing wires.
 - `canvas/CompareNodeView.tsx` — the `compare` node: wireable pass/fail verdict against a typed-or-wired threshold.
@@ -170,6 +174,7 @@ The React app. Largest package by far. `AGENTS.md`: desktop-only, no properties 
 - `canvas/PackNodeView.tsx` — bundles any number of independently-dimensioned wires into one `bundle` output.
 - `canvas/UnpackNodeView.tsx` — inverse of pack: spreads a wired bundle back onto `out0..outN`.
 - `canvas/MonteCarloGeneratorNodeView.tsx` — uniform/normal distribution sampler node, an axis-introducing node like input but drawing from a distribution.
+- `canvas/StatisticNodeView.tsx` — the wireable swept-axis statistic node, including `along`, percentile, match, and running controls.
 - `canvas/MonteCarloReceiverNodeView.tsx` — canvas chrome (settings, ports) around the shared playback widget.
 - `canvas/MonteCarloReceiverPlayback.tsx` — the actual playback widget (histogram, running mean, transport controls), shared verbatim between the canvas node and its notebook entry.
 - `canvas/FrameView.tsx` — a titled group frame (notebook section) drawn on the canvas; membership is decided by node position (`reframe`), not a parent/child link.
@@ -181,12 +186,18 @@ The React app. Largest package by far. `AGENTS.md`: desktop-only, no properties 
 - `canvas/CanvasFind.tsx` — the find-in-canvas search bar (title/id/port match, highlights matches).
 - `canvas/DisplayUnitPicker.tsx` — the per-port unit-choice `<select>`, filtered to units of the port's own dimension.
 - `canvas/TitleField.tsx` — node/frame title editor that keeps raw text but typesets recognizable math tokens (`typesetTitle`/`typesetTitleHtml`, shared with the notebook).
-- `canvas/ValueEditor.tsx` — the input-node value-kind editor: switching between scalar/slider/linear/logarithmic/list/renard/categorical/tableColumn, the range-kind picker, points/bounds fields. **This is the sweep control** — the core UX of the whole app.
+- `canvas/ValueEditor.tsx` — the input-node value-kind editor: switching between scalar/slider/linear/logarithmic/list/renard/categorical/tableColumn, the range-kind picker, points/bounds fields. A slider remains a scalar with travel bounds; the range kinds introduce sweep axes. **This is the sweep control** — the core UX of the whole app.
 - `canvas/Sparkline.tsx` — the small inline chart a swept value shows on a node body (not the plot node — no axes/interaction, just "this varies").
 - `canvas/*.test.ts`/`.test.tsx` — `Canvas.test.ts`, `QuickAddMenu.test.ts`, `Sparkline.test.ts`, `spectrumSlots.test.ts`, `TitleField.test.tsx`, `ValueEditor.test.ts`, `bundleLabels.test.ts` — unit tests for the modules above.
 
 ### `src/notebook/` — the notebook side panel
 
+- `notebook/Notebook.tsx` — the view-over-the-graph panel: renders group frames as sections (title/note prose, then their output nodes' results in reading order), dependency-derived exposed-slider controls once per section, between its prose and its results, section reordering, table-column editing (order/figures/marks), print-to-PDF export via `@media print`. Read this to understand how canvas layout becomes the exported document.
+- `notebook/NotebookSliderControl.tsx` — the shared synchronized slider/exact-value view used by the editor NodeBook and course viewer; print replaces its interactive fields with the current static value.
+- `notebook/PlotFigure.tsx` — the Observable-Plot rendering of a `PlotResult`: log axes when the range is logarithmic, threshold reference line, contour mode, faceting, SI-prefixed axis labels. All computation is already done by the kernel; this file only draws.
+- `notebook/DistributionFigure.tsx` — renders kernel-prepared histograms and ECDFs, percentile rules, facets, and fitted-normal summaries.
+- `notebook/ReliabilityCard.tsx` — renders Pf, Wilson intervals, β, resolution floors, and convergence state for referenced checks.
+- `notebook/*.test.ts` — `Notebook.test.ts`, `PlotFigure.test.ts`.
 - `notebook/Notebook.tsx` — the view-over-the-graph panel: renders group frames as sections (title/note prose, then their output nodes' results in reading order), section reordering, table-column editing (order and per-column figures), click-a-row-to-mark, the per-candidate readings under a check or print, print-to-PDF export via `@media print`. Read this to understand how canvas layout becomes the exported document.
 - `notebook/PlotFigure.tsx` — the Observable-Plot rendering of a `PlotResult`: log axes when the range is logarithmic, threshold reference line, contour mode, faceting, SI-prefixed axis labels, and the mark overlay. All computation is already done by the kernel; this file only draws.
 - `notebook/ParetoFigure.tsx` — the two-objective scatter: front / dominated / infeasible drawn three ways, the staircase joining the front, and click-to-mark. Read this for why the step turns the way it does.
@@ -247,10 +258,11 @@ Public docs served at `/docs/` under the editor's own origin in production (sepa
 
 - `docs/.vitepress/config.ts` — VitePress site config: nav, sidebar structure, base path.
 - `docs/index.md` — the docs-site landing page.
-- `docs/guide/getting-started.md`, `docs/guide/sweeps.md`, `docs/guide/candidates.md`, `docs/guide/units.md`, `docs/guide/tips-and-tricks.md`, `docs/guide/node-reference.md`, `docs/guide/catalogue-authoring.md` — the guide pages linked from `packages/editor/src/help-links.ts`'s per-node "?" buttons and the palette's help links. `candidates.md` is the one cross-cutting concept with no node of its own: what a marked design is and why it is a coordinate rather than a row number. `tips-and-tricks.md` is UI mechanics (shortcuts, canvas/palette interactions, panel-specific settings) rather than product concepts — those stay in `getting-started`/`sweeps`/`units`.
+- `docs/guide/getting-started.md`, `docs/guide/sweeps.md`, `docs/guide/candidates.md`, `docs/guide/reliability.md`, `docs/guide/units.md`, `docs/guide/tips-and-tricks.md`, `docs/guide/node-reference.md`, `docs/guide/catalogue-authoring.md` — the guide pages linked from `packages/editor/src/help-links.ts`'s per-node "?" buttons and the palette's help links. `candidates.md` and `reliability.md` are the two cross-cutting concepts with no node of their own: what a marked design is and why it is a coordinate rather than a row number, and the full Monte Carlo study method. `tips-and-tricks.md` is UI mechanics (shortcuts, canvas/palette interactions, panel-specific settings) rather than product concepts — those stay in `getting-started`/`sweeps`/`units`.
 - `docs/examples/milling-power-envelope.md` — walkthrough for the bundled milling sample.
 - `docs/examples/lighter-or-stiffer.md` — walkthrough for the bundled cantilever sample, and the one place the *reading* of a Pareto front is taught rather than defined.
-- `docs/examples/choosing-a-shaft-size.md` — a build-it-yourself walkthrough of the selection nodes and the Best Design card.
+- `docs/examples/load-against-strength.md` — walkthrough for reading a reliability report, its interval, β, distribution, and convergence plot.
+- `docs/examples/choosing-an-aperture.md` — a walkthrough of the selection nodes and the Best Design card.
 - `docs/public/favicon.svg`.
 - `package.json` — `vitepress dev/build/preview` scripts.
 - (`.vitepress/cache/` is build cache, not source — ignore it.)
@@ -316,6 +328,13 @@ Public scripts that **parse** the private predecessor Python source with stdlib 
 - `docs/analytics.md` — what the alpha Plausible analytics integration does and doesn't collect; the product-facing complement to `packages/editor/src/analytics/analytics.ts`.
 - `docs/authoring-catalogues.md` — how to hand-write a catalogue JSON file when there's no extraction script to run; the guide behind `packages/schema/src/formula.ts`/`port.ts`.
 - `docs/password-shared-catalogues.md` — a design note (roadmap #28) for password-based restricted-catalogue sharing; not yet built.
+- `docs/feature-review.md` — cross-domain feature review and prioritisation source.
+- `docs/selection-and-best-design-plan.md` — implementation plan retained for the landed selection/decision pass.
+- `docs/pareto-and-candidate-marking-plan.md` — plan for Pareto and candidate-marking work.
+- `docs/reliability-reports-plan.md` — implementation contract for swept statistics, distributions, reliability reporting, and additional random distributions.
+- `docs/catalogue-diagrams-plan.md` — plan for catalogue-provided diagrams.
+- `docs/locking-catalogues.md` — design record for locked catalogue handling.
+- `docs/REVIEW-2026-08.md` — dated repository review.
 - `docs/feature-review.md` — exploratory product ideas beyond what is built, with a priority order at the end. A review, not a status file.
 - `docs/selection-and-best-design-plan.md` — the plan behind the selection nodes and the Best Design card (review item 1).
 - `docs/pareto-and-candidate-marking-plan.md` — the plan behind the Pareto output and document-wide candidate marking (review item 2).

@@ -22,12 +22,14 @@ import { analyse } from './analysis';
 import { baseCatalogue, bundledCatalogues } from './catalogues';
 import { GAP } from './layout-constants';
 import {
+  apertureDecision,
   beltLab,
   cantileverHollowSections,
   depthOfField,
   millingPowerEnvelope,
   monteCarloClearance,
   padPressure,
+  platformFootprint,
   pressfitLab,
 } from './samples';
 
@@ -76,6 +78,46 @@ describe('the samples the editor opens with', () => {
 
   it('offers the milling power-envelope study from the bundled public catalogue', () => {
     expect(millingPowerEnvelope(PUBLIC_CATALOGUES)).toBeDefined();
+  });
+
+  it('exposes a curated set of sliders and evaluates every travel endpoint', () => {
+    const examples = [
+      padPressure(PUBLIC_CATALOGUES),
+      platformFootprint(PUBLIC_CATALOGUES),
+      cantileverHollowSections(PUBLIC_CATALOGUES),
+      millingPowerEnvelope(PUBLIC_CATALOGUES),
+    ];
+    const expected = [
+      ['F', 'L'],
+      ['load', 'length'],
+      // The cantilever's wall thickness became a swept axis, so the tip load is
+      // its one exposed control — and the better one to drag: it moves the whole
+      // Pareto front rather than walking along it.
+      ['F'],
+      ['a_p', 'eta'],
+    ];
+
+    examples.forEach((example, exampleIndex) => {
+      expect(example).toBeDefined();
+      const exposed = (example?.nodes ?? []).filter(
+        (node) => node.kind === 'input' && node.value.kind === 'slider' && node.exposeInNotebook === true,
+      );
+      expect(exposed.map((node) => node.id)).toEqual(expected[exampleIndex]);
+      for (const slider of exposed) {
+        if (slider.kind !== 'input' || slider.value.kind !== 'slider' || example === undefined) continue;
+        for (const value of [slider.value.min, slider.value.max]) {
+          const atEndpoint: GraphDocument = {
+            ...example,
+            nodes: example.nodes.map((node) =>
+              node.id === slider.id && node.kind === 'input' && node.value.kind === 'slider'
+                ? { ...node, value: { ...node.value, value } }
+                : node,
+            ),
+          };
+          expect(analyse(atEndpoint, PUBLIC_CATALOGUES).message).toBeUndefined();
+        }
+      }
+    });
   });
 
   it('snaps example nodes and sections to the canvas grid', () => {
@@ -191,6 +233,27 @@ describe('the depth-of-field study through the editor', () => {
     expect(table?.kind).toBe('table');
     if (table?.kind !== 'table') throw new Error('missing depth-of-field table');
     expect(table.axes.map((axis) => axis.id)).toEqual(['f', 'N']);
+  });
+});
+
+describe('the aperture decision through the editor', () => {
+  it('selects the deepest f-stop that passes both depth and diffraction checks', () => {
+    const document = apertureDecision(PUBLIC_CATALOGUES);
+    expect(document).toBeDefined();
+    const analysis = analyse(document as NonNullable<typeof document>, PUBLIC_CATALOGUES);
+
+    expect(analysis.message).toBeUndefined();
+    expect([...analysis.states.values()].every((state) => state === 'ok')).toBe(true);
+
+    const result = analysis.evaluation?.outputs.find((entry) => entry.nodeId === 'bestAperture');
+    expect(result?.kind).toBe('bestDesign');
+    if (result?.kind !== 'bestDesign') throw new Error('missing aperture decision');
+
+    expect(result.feasibleCount).toBe(2);
+    expect(result.winner?.at.map((entry) => [entry.axis.label, entry.value])).toEqual([
+      ['aperture (f-number)', 11],
+    ]);
+    expect(result.winner?.governing?.checkId).toBe('sharpEnough');
   });
 });
 

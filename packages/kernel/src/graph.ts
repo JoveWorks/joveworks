@@ -24,6 +24,7 @@
 
 import {
   DIMENSIONLESS_UNIT,
+  DIMENSIONLESS,
   FREQUENCY,
   bareVariable,
   dimensionsEqual,
@@ -54,6 +55,11 @@ import {
   MAX_PORT,
   MEAN_PORT,
   STDDEV_PORT,
+  MODE_PORT,
+  VALUES_PORT,
+  WEIGHTS_PORT,
+  PERCENTILE_PORT,
+  STATISTIC_RESULT_PORT,
   axes as documentAxes,
   hasUnit,
   isRange,
@@ -63,6 +69,7 @@ import {
   type Catalogue,
   type CompareNode,
   type SelectNode,
+  type StatisticNode,
   type Edge,
   type Formula,
   type FormulaRef,
@@ -269,7 +276,7 @@ export function outputPortNames(node: GraphNode): readonly string[] {
   if (node.output.kind === 'plot' || node.output.kind === 'check') return [VALUE_PORT, THRESHOLD_PORT];
   // A Feasibility output references existing Check nodes by id rather than
   // taking a wire — it is the one output kind with zero ports.
-  if (node.output.kind === 'feasibility') return [];
+  if (node.output.kind === 'feasibility' || node.output.kind === 'reliability') return [];
   // A Best Design output references its checks the same way, and takes one
   // wire for the quantity being optimised. Named `objective` rather than
   // `value` because that is what it is: the thing ranked, not the thing shown.
@@ -294,6 +301,18 @@ export function selectPortNames(node: SelectNode): {
   return {
     inputs: node.mode === 'crossing' ? [VALUE_PORT, ALONG_PORT, THRESHOLD_PORT] : [VALUE_PORT, ALONG_PORT],
     outputs: node.mode === 'argMin' || node.mode === 'argMax' ? [AT_PORT, BEST_PORT] : [AT_PORT],
+  };
+}
+
+export function statisticPortNames(node: StatisticNode): {
+  readonly inputs: readonly string[];
+  readonly outputs: readonly string[];
+} {
+  return {
+    inputs: node.statistic === 'percentile'
+      ? [VALUE_PORT, ALONG_PORT, PERCENTILE_PORT]
+      : [VALUE_PORT, ALONG_PORT],
+    outputs: [STATISTIC_RESULT_PORT],
   };
 }
 
@@ -645,8 +664,30 @@ export function resolveGraph(
       // `unit` (unlike threshold, which infers its dimension from whatever
       // `value` is wired to — here there is no `value` input to infer from,
       // so the target type never needs to wait on anything).
+      if (node.distribution === 'discrete') {
+        const valuesKey = endpointKey(node.id, VALUES_PORT);
+        const weightsKey = endpointKey(node.id, WEIGHTS_PORT);
+        targets.set(valuesKey, { kind: 'spectrum', dimension: node.unit.dimension, unit: node.unit });
+        targets.set(weightsKey, { kind: 'spectrum', dimension: DIMENSIONLESS, unit: DIMENSIONLESS_UNIT });
+        for (const key of [valuesKey, weightsKey]) {
+          const edge = oneEdge(key);
+          if (edge !== undefined) {
+            const source = sourceType(edge);
+            const target = targets.get(key) as PortType;
+            checkKind(source, target, key);
+            if (source.dimension !== undefined && target.dimension !== undefined) {
+              assertConnectable(source.dimension, target.dimension, key);
+            }
+          }
+        }
+        continue;
+      }
       const paramType: PortType = { kind: 'numeric', dimension: node.unit.dimension, unit: node.unit };
-      const paramPorts = node.distribution === 'uniform' ? [MIN_PORT, MAX_PORT] : [MEAN_PORT, STDDEV_PORT];
+      const paramPorts = node.distribution === 'uniform'
+        ? [MIN_PORT, MAX_PORT]
+        : node.distribution === 'triangular'
+          ? [MIN_PORT, MODE_PORT, MAX_PORT]
+          : [MEAN_PORT, STDDEV_PORT];
       for (const name of paramPorts) {
         const key = endpointKey(node.id, name);
         targets.set(key, paramType);
@@ -958,6 +999,39 @@ export function resolveGraph(
           );
         }
       }
+      continue;
+    }
+
+    if (node.kind === 'statistic') {
+      const valueKey = endpointKey(node.id, VALUE_PORT);
+      const valueEdge = oneEdge(valueKey);
+      const fallbackKind = node.statistic === 'probability' ? 'categorical' : 'numeric';
+      const valueType: PortType = valueEdge === undefined ? { kind: fallbackKind } : sourceType(valueEdge);
+      if (node.statistic === 'probability') checkKind(valueType, { kind: 'categorical' }, valueKey);
+      else if (node.statistic !== 'count') checkKind(valueType, { kind: 'numeric' }, valueKey);
+      targets.set(valueKey, valueType);
+
+      const alongKey = endpointKey(node.id, ALONG_PORT);
+      const alongEdge = oneEdge(alongKey);
+      const alongType: PortType = alongEdge === undefined ? { kind: 'numeric' } : sourceType(alongEdge);
+      checkKind(alongType, { kind: 'numeric' }, alongKey);
+      targets.set(alongKey, alongType);
+
+      if (node.statistic === 'percentile') {
+        const percentileKey = endpointKey(node.id, PERCENTILE_PORT);
+        const percentileEdge = oneEdge(percentileKey);
+        const percentileType: PortType = { kind: 'numeric', dimension: DIMENSIONLESS, unit: DIMENSIONLESS_UNIT };
+        targets.set(percentileKey, percentileType);
+        if (percentileEdge !== undefined) {
+          const source = sourceType(percentileEdge);
+          checkKind(source, percentileType, percentileKey);
+          if (source.dimension !== undefined) assertConnectable(source.dimension, DIMENSIONLESS, percentileKey);
+        }
+      }
+      const resultType = node.statistic === 'probability' || node.statistic === 'count'
+        ? { kind: 'numeric' as const, dimension: DIMENSIONLESS, unit: DIMENSIONLESS_UNIT }
+        : { ...valueType, kind: 'numeric' as const };
+      sources.set(endpointKey(node.id, STATISTIC_RESULT_PORT), resultType);
       continue;
     }
 

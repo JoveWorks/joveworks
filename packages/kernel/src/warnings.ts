@@ -44,6 +44,20 @@ export const WARNING_KINDS = [
    * thing this project warns about rather than hides.
    */
   'bestDesignUnrankable',
+  /** An unwired Statistic collapsed multiple axes into one pooled answer. */
+  'statisticPooledAxes',
+  /** Sample standard deviation needs at least two samples. */
+  'statisticTooFewSamples',
+  /** A Distribution figure omitted axes beyond its over/facet slots. */
+  'distributionAxisDropped',
+  /** A Distribution figure received no finite samples. */
+  'distributionEmpty',
+  /** Referenced checks do not vary along the Monte Carlo trial axis. */
+  'reliabilityNoTrials',
+  /** No failures were observed, so only the trial-resolution bound is known. */
+  'reliabilityUnresolved',
+  /** Discrete values and weights could not form a valid probability mass. */
+  'monteCarloDiscreteWeights',
   /** No candidate satisfies every referenced check, so the front is empty. */
   'paretoInfeasible',
   /** A candidate's objective did not evaluate to a number, so it cannot compete. */

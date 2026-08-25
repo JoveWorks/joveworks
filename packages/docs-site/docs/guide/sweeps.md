@@ -40,27 +40,34 @@ draws it from a distribution instead of a designed sequence — reach for one
 when the question is "how sensitive is this to scatter in an input" rather
 than "what happens across this design space."
 
+Every generator in a NodeBook shares one paired trial axis. Sample 37 from a
+load generator combines with sample 37 from a strength generator; the two do
+not form a load × strength cross-product. That trial axis broadcasts with
+ordinary design ranges, so a diameter sweep crossed with Monte Carlo trials is
+a diameter × trial grid and can be reduced to one failure probability per
+diameter.
+
 ## Turning a sweep into an answer
 
-Reading "roughly 38 mm" off a curve by eye leaves the answer stuck in the
-picture: it never becomes data, never gets wired onward, and never appears
-in the notebook as a decision. Four nodes close that gap, all of them
+Reading "somewhere around f/6" off a curve by eye leaves the answer stuck in
+the picture: it never becomes data, never gets wired onward, and never
+appears in the notebook as a decision. Four modes close that gap, all of them
 searching the points the sweep has *already* evaluated:
 
 | You want | Reach for |
 |---|---|
-| The size where a value meets its limit | [Select](/guide/node-reference#select) — **threshold crossing** |
-| The first standard size that passes | [Select](/guide/node-reference#select) — **first passing size** |
+| The coordinate where a value meets its limit | [Select](/guide/node-reference#select) — **threshold crossing** |
+| The first *settable* value that passes | [Select](/guide/node-reference#select) — **first passing size** |
 | Where a value is least or greatest | [Select](/guide/node-reference#select) — **smallest at** / **largest at** |
 | Which candidate to build, and what governs it | [Best Design](/guide/node-reference#best-design) |
 
 A Select node learns *which* axis to search by having the swept range
 wired into its `along` port — so the answer comes back in that range's own
-unit, and a two-axis study collapses only the axis you wired, leaving a
-crossing size per temperature rather than a single number.
+unit, and a two-axis study collapses only the axis you wired, leaving one
+answer per coordinate of the other rather than a single number.
 
 Worked end to end in
-[Choosing a shaft size](/examples/choosing-a-shaft-size).
+[Choosing an aperture](/examples/choosing-an-aperture).
 
 When two answers pull against each other — lighter *or* stiffer — there is no
 single best point to read off, and a [Pareto](/guide/node-reference#pareto)

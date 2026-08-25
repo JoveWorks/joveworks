@@ -189,16 +189,21 @@ These would be public mechanics visualizations, not R&M formula content.
 
 ### Notebook controls
 
-Selected inputs could appear in the notebook as interactive controls:
+The first slice has shipped: a slider input can be marked `Expose in NodeBook`,
+and then appears once in every section whose results it influences, between the
+section's prose and those results. Controls repeated across sections are
+synchronized views of the same graph input; the course viewer can vary them
+for the visit and reset to the authored values.
 
-- sliders;
+Possible later control kinds remain:
+
 - categorical switches;
 - standard-size steppers;
 - scenario selectors;
 - nominal, worst-case, and measured-value toggles.
 
-This would create a presentation mode in which an instructor or reviewer can
-change the important assumptions without navigating the calculation graph.
+Together these would broaden the presentation mode in which an instructor or
+reviewer changes important assumptions without navigating the calculation graph.
 
 ### Coordinated candidate selection
 
