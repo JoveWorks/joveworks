@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.17.0](https://github.com/ThomasVanRiel/joveworks/compare/v0.16.0...v0.17.0) (2026-08-25)
+
+### Features
+
+* Pareto output and document-wide candidate marking ([fb684c1](https://github.com/ThomasVanRiel/joveworks/commit/fb684c183e936348bc374ef9d8876bf5d91f6df9))
+* show NodeBook controls once per section ([2b5ae17](https://github.com/ThomasVanRiel/joveworks/commit/2b5ae177ecf91bc09db4e04066930d079c34f194))
+
+### Fixes
+
+* **editor:** a contour's threshold is an isoline, and a plot can be clicked ([41d716c](https://github.com/ThomasVanRiel/joveworks/commit/41d716cf6f42c008607bec00864136ea326660b0))
+* place contour marks on the second swept axis, and document marking ([84c6775](https://github.com/ThomasVanRiel/joveworks/commit/84c67754a16dd298dc2690daa8ad998f3c4351fc))
 ## [0.16.0](https://github.com/ThomasVanRiel/joveworks/compare/v0.15.0...v0.16.0) (2026-08-24)
 
 ### Features
