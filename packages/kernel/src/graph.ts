@@ -60,6 +60,9 @@ import {
   WEIGHTS_PORT,
   PERCENTILE_PORT,
   STATISTIC_RESULT_PORT,
+  START_PORT,
+  STOP_PORT,
+  COUNT_PORT,
   axes as documentAxes,
   hasUnit,
   isRange,
@@ -409,9 +412,26 @@ export function wouldCycle(document: GraphDocument, candidate: Edge): boolean {
  * (`Resolution.axes`'s own doc comment) — undefined only when the document
  * has no generator at all, in which case this branch never runs.
  */
-function axisOf(node: AxisNode, order: number, tableColumn: ResolvedTableColumn | undefined, mcTrialId: string | undefined): Axis {
+function axisOf(
+  node: AxisNode,
+  order: number,
+  tableColumn: ResolvedTableColumn | undefined,
+  mcTrialId: string | undefined,
+  rangeLengths: ReadonlyMap<string, number> | undefined,
+): Axis {
   if (node.kind === 'monteCarloGenerator') {
     return { id: mcTrialId ?? node.id, label: node.axisLabel ?? node.label ?? node.id, length: node.count, order };
+  }
+  if (node.kind === 'range') {
+    // `count`'s literal field is this axis's length whenever its port is
+    // unwired — and also its provisional length for any caller (a
+    // compatibility check while dragging a wire, say) that resolves the
+    // graph without first running the `count`-resolving pass in
+    // `evaluate.ts`. Only that pass's own `resolveGraph` call, with the
+    // real evaluated value in `rangeLengths`, produces the axis a study
+    // actually sweeps over.
+    const length = rangeLengths?.get(node.id) ?? node.count;
+    return { id: node.id, label: node.axisLabel ?? node.label ?? node.id, length, order };
   }
   if (node.kind === 'file') {
     // One point per file read, in the order they were picked — the axis is
@@ -437,6 +457,14 @@ function axisOf(node: AxisNode, order: number, tableColumn: ResolvedTableColumn 
 export function resolveGraph(
   document: GraphDocument,
   catalogues: readonly Catalogue[],
+  /**
+   * A wired `RangeNode`'s resolved point count, by node id — computed by
+   * the pre-resolution pass in `evaluate.ts`. Absent (the default) for any
+   * caller that only needs types/dimensions, not a correct study grid — a
+   * range node whose `count` is wired then falls back to its own literal
+   * `count` field as a provisional length (`axisOf`'s own comment).
+   */
+  rangeLengths?: ReadonlyMap<string, number>,
 ): Resolution {
   const warnings: Warning[] = [];
   const index = indexFormulas(catalogues);
@@ -464,7 +492,9 @@ export function resolveGraph(
   const axisNodes = documentAxes(document);
   const mcTrialId = axisNodes.find((node) => node.kind === 'monteCarloGenerator')?.id;
   const axes = new Map(
-    axisNodes.map((node, i) => [node.id, axisOf(node, i, tableColumns.get(node.id), mcTrialId)] as const),
+    axisNodes.map(
+      (node, i) => [node.id, axisOf(node, i, tableColumns.get(node.id), mcTrialId, rangeLengths)] as const,
+    ),
   );
   const formulas = new Map<string, Formula>();
   const sources = new Map<string, PortType>();
@@ -696,6 +726,80 @@ export function resolveGraph(
         const source = sourceType(edge);
         checkKind(source, paramType, key);
         if (source.dimension !== undefined) assertConnectable(source.dimension, node.unit.dimension, key);
+      }
+      continue;
+    }
+
+    if (node.kind === 'range') {
+      // `start` and `stop` are generic until wiring — or the node's own
+      // typed `unit` — pins them, the same "unbound until an edge or a
+      // typed default supplies one" state `CompareNode.value` sits in. The
+      // dimension follows whichever of the two is wired, both having to
+      // agree if both are; `unit` applies only once neither is, and is
+      // itself ignored while it is left at its dimensionless default — a
+      // freshly dropped range is open to a wire of any dimension rather
+      // than refusing every one of them for disagreeing with a unit
+      // nobody chose yet.
+      const startKey = endpointKey(node.id, START_PORT);
+      const stopKey = endpointKey(node.id, STOP_PORT);
+      const startEdge = oneEdge(startKey);
+      const stopEdge = oneEdge(stopKey);
+      const startSource = startEdge === undefined ? undefined : sourceType(startEdge);
+      const stopSource = stopEdge === undefined ? undefined : sourceType(stopEdge);
+      if (startSource !== undefined) checkKind(startSource, { kind: 'numeric' }, startKey);
+      if (stopSource !== undefined) checkKind(stopSource, { kind: 'numeric' }, stopKey);
+      if (startSource?.dimension !== undefined && stopSource?.dimension !== undefined) {
+        assertSameDimension(
+          startSource.dimension,
+          stopSource.dimension,
+          'a range needs the same dimension at both ends',
+          stopKey,
+        );
+      }
+
+      const wiredDimension = startSource?.dimension ?? stopSource?.dimension;
+      const dimension = wiredDimension ?? (isDimensionless(node.unit.dimension) ? undefined : node.unit.dimension);
+      const boundType: PortType =
+        dimension === undefined
+          ? { kind: 'numeric' }
+          : {
+              kind: 'numeric',
+              dimension,
+              // The node's own typed unit while it is what pinned the
+              // dimension; the wire's own canonical unit once a wire did,
+              // so the port reads in whatever the wire is naturally in
+              // rather than a unit typed for a since-overridden default.
+              unit: wiredDimension === undefined ? node.unit : canonicalUnit(dimension),
+            };
+      targets.set(startKey, boundType);
+      targets.set(stopKey, boundType);
+      if (dimension !== undefined) {
+        if (startSource?.dimension !== undefined) assertConnectable(startSource.dimension, dimension, startKey);
+        if (stopSource?.dimension !== undefined) assertConnectable(stopSource.dimension, dimension, stopKey);
+      }
+
+      sources.set(
+        endpointKey(node.id, VALUE_PORT),
+        dimension === undefined
+          ? { kind: 'numeric' }
+          : displayOverride(node, VALUE_PORT, { kind: 'numeric', dimension, unit: boundType.unit as Unit }),
+      );
+
+      // `count` is dimensionless regardless of `unit` — it is a number of
+      // points, not a quantity — and unlike the other two, a wire into it
+      // is not resolved here at all: it is the one port whose *value* has
+      // to be known before this very pass can size the axis, which is
+      // what the pre-resolution round in `evaluate.ts` is for. Typing it
+      // here is still correct and harmless — it only checks that whatever
+      // is wired is a dimensionless numeric, not what it evaluates to.
+      const countType: PortType = { kind: 'numeric', dimension: DIMENSIONLESS, unit: DIMENSIONLESS_UNIT };
+      const countKey = endpointKey(node.id, COUNT_PORT);
+      targets.set(countKey, countType);
+      const countEdge = oneEdge(countKey);
+      if (countEdge !== undefined) {
+        const source = sourceType(countEdge);
+        checkKind(source, countType, countKey);
+        if (source.dimension !== undefined) assertConnectable(source.dimension, DIMENSIONLESS, countKey);
       }
       continue;
     }

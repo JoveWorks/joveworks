@@ -39,6 +39,9 @@ import {
   WEIGHTS_PORT,
   PERCENTILE_PORT,
   STATISTIC_RESULT_PORT,
+  START_PORT,
+  STOP_PORT,
+  COUNT_PORT,
   appliesWhenOf,
   domainMember,
   expressionOf,
@@ -63,6 +66,7 @@ import {
   type NumericPort,
   type ObjectiveDirection,
   type Port,
+  type RangeNode,
   type SpectrumPort,
 } from '@joveworks/schema';
 import {
@@ -389,7 +393,95 @@ export function evaluateDocument(
   catalogues: readonly Catalogue[],
   options: EvaluationOptions = {},
 ): Evaluation {
-  const resolution = resolveGraph(document, catalogues);
+  const largeGrid = options.largeGrid ?? LARGE_GRID;
+  const rangeLengths = resolveWiredRangeLengths(document, catalogues, largeGrid);
+  const resolution = resolveGraph(document, catalogues, rangeLengths);
+  return runEvaluation(document, catalogues, resolution, options);
+}
+
+/**
+ * A wired `RangeNode`'s resolved point count, by node id — `undefined` (not
+ * an empty map) when the document has none, so `resolveGraph`'s own
+ * literal-fallback default (`axisOf`'s comment) is what every ordinary
+ * document still gets, with zero extra work.
+ *
+ * `count` is the one `RangeNode` port that cannot simply be read during the
+ * real evaluation pass the way `start`/`stop` are (`rangeParam`, used from
+ * `rangeValue` below): it *is* the axis length, and `resolution.axes` has to
+ * be complete before that pass starts, not partway through it. So this runs
+ * a self-contained evaluation first, restricted (via the existing `skip`
+ * option) to exactly the nodes upstream of every wired `count` port — which,
+ * being upstream, need no axis-length knowledge of their own to resolve
+ * (or, if one of them is itself axis-introducing, resolves anyway, just
+ * tagged as swept, which is exactly the signal the refusal below reads).
+ */
+function resolveWiredRangeLengths(
+  document: GraphDocument,
+  catalogues: readonly Catalogue[],
+  largeGrid: number,
+): ReadonlyMap<string, number> | undefined {
+  const wired = document.nodes.filter(
+    (node): node is RangeNode =>
+      node.kind === 'range' &&
+      document.edges.some((edge) => edge.to.node === node.id && edge.to.port === COUNT_PORT),
+  );
+  if (wired.length === 0) return undefined;
+
+  const incomingByTarget = new Map<string, Edge[]>();
+  for (const edge of document.edges) {
+    const list = incomingByTarget.get(edge.to.node);
+    if (list === undefined) incomingByTarget.set(edge.to.node, [edge]);
+    else list.push(edge);
+  }
+  const ancestors = new Set<string>();
+  const queue = wired.map((node) => node.id);
+  while (queue.length > 0) {
+    const id = queue.pop() as string;
+    for (const edge of incomingByTarget.get(id) ?? []) {
+      if (ancestors.has(edge.from.node)) continue;
+      ancestors.add(edge.from.node);
+      queue.push(edge.from.node);
+    }
+  }
+  const skip = new Set(document.nodes.map((node) => node.id).filter((id) => !ancestors.has(id)));
+
+  const preResolution = resolveGraph(document, catalogues);
+  const pre = runEvaluation(document, catalogues, preResolution, { largeGrid, skip });
+
+  const lengths = new Map<string, number>();
+  for (const node of wired) {
+    const key = endpointKey(node.id, COUNT_PORT);
+    const edge = preResolution.incoming.get(key)?.[0] as Edge;
+    const wire = pre.values.get(endpointKey(edge.from.node, edge.from.port));
+    if (wire === undefined) throw new KernelError("this range's point count could not be resolved", key);
+    if (wire.kind !== 'numeric') {
+      throw new KernelError("'count' needs a numeric value, not a categorical one", key);
+    }
+    if (wire.axes.length > 0) {
+      throw new KernelError(
+        "a range's point count cannot depend on something that itself varies across a sweep — " +
+          'the axis being sized cannot size itself',
+        key,
+      );
+    }
+    if (wire.data.length !== 1) {
+      throw new KernelError("'count' needs a single value", key);
+    }
+    const raw = wire.data[0] as number;
+    if (!Number.isInteger(raw) || raw < 2) {
+      throw new KernelError(`a range needs at least 2 points, not ${raw}`, key);
+    }
+    lengths.set(node.id, raw);
+  }
+  return lengths;
+}
+
+function runEvaluation(
+  document: GraphDocument,
+  catalogues: readonly Catalogue[],
+  resolution: Resolution,
+  options: EvaluationOptions,
+): Evaluation {
   const warnings: Warning[] = [...resolution.warnings];
   const values = new Map<string, PortValue>(options.seed ?? []);
   const outputs: OutputResult[] = [];
@@ -415,6 +507,10 @@ export function evaluateDocument(
     switch (node.kind) {
       case 'input':
         values.set(endpointKey(node.id, VALUE_PORT), inputValue(node, axisByNode, resolution));
+        break;
+
+      case 'range':
+        values.set(endpointKey(node.id, VALUE_PORT), rangeValue(node, axisByNode, resolution, values));
         break;
 
       case 'file':
@@ -747,6 +843,76 @@ function generatorValue(
     axes: [axis],
     data: monteCarloSamples(documentId, node.id, draw, axis.length),
   };
+}
+
+/**
+ * One `RangeNode` bound's value — `generatorParam`'s pattern exactly, just
+ * worded for a range rather than a generator, since a Monte Carlo draw and a
+ * linear/logarithmic sweep are not the same kind of "axis" to a student
+ * reading a refusal about one.
+ */
+function rangeParam(
+  node: RangeNode,
+  name: string,
+  literal: number,
+  resolution: Resolution,
+  values: ReadonlyMap<string, PortValue>,
+): number {
+  const key = endpointKey(node.id, name);
+  const edge = resolution.incoming.get(key)?.[0];
+  if (edge === undefined) {
+    // The port's own resolved unit, not necessarily `node.unit` — the
+    // *other* bound may be wired and have pinned the dimension this one's
+    // bare literal is read in, `resolveGraph`'s `range` branch's own
+    // "bare default adopts the wired dimension" rule (`evaluateCompare`'s
+    // threshold does the same from `value`).
+    return toCanonical(literal, resolution.targets.get(key)?.unit ?? node.unit);
+  }
+  const wired = valueAtEdge(edge, key, values);
+  if (wired.kind !== 'numeric') {
+    throw new KernelError(`'${name}' needs a numeric value, not a categorical one`, key);
+  }
+  if (wired.data.length !== 1) {
+    throw new KernelError(
+      `'${name}' needs a single value, not a swept series of ${wired.data.length} — ` +
+        'nothing on the axis this range introduces exists yet to line up against',
+      key,
+    );
+  }
+  return wired.data[0] as number;
+}
+
+/**
+ * A wired range's points, converted into canonical units — `inputValue`'s
+ * own `'linear'`/`'logarithmic'` cases, just reading `start`/`stop` off
+ * wired ports (`rangeParam`) instead of a literal `ValueSpec`, and reading
+ * `count` off `axis.length`, already resolved by the pre-pass in
+ * `resolveWiredRangeLengths` (or, unwired, by `axisOf`'s own literal
+ * fallback — the same axis either way).
+ */
+function rangeValue(
+  node: RangeNode,
+  axes: ReadonlyMap<string, Axis>,
+  resolution: Resolution,
+  values: ReadonlyMap<string, PortValue>,
+): NumericSeries {
+  const axis = axes.get(node.id);
+  if (axis === undefined) {
+    throw new KernelError('a range node introduces an axis, and this one has none', node.id);
+  }
+  const start = rangeParam(node, START_PORT, node.start, resolution, values);
+  const stop = rangeParam(node, STOP_PORT, node.stop, resolution, values);
+  if (node.spacing === 'logarithmic' && (start <= 0 || stop <= 0)) {
+    throw new KernelError('a logarithmic range needs both endpoints above zero', node.id);
+  }
+  const last = axis.length - 1;
+  const data =
+    node.spacing === 'logarithmic'
+      ? Array.from({ length: axis.length }, (_, i) => start * Math.exp((Math.log(stop / start) * i) / last))
+      : // Both endpoints included, and the last point is `stop` exactly rather
+        // than the accumulation of `points - 1` additions.
+        Array.from({ length: axis.length }, (_, i) => start + ((stop - start) * i) / last);
+  return { kind: 'numeric', axes: [axis], data };
 }
 
 /**

@@ -264,6 +264,39 @@ describe('round-tripping (the verification docs/PLAN.md asks for)', () => {
     expect(serializeDocument(parseDocument(document))).toEqual(document);
   });
 
+  it('round-trips a linear range node', () => {
+    const withRange = {
+      ...study,
+      nodes: [
+        {
+          kind: 'range',
+          id: 'sweep',
+          position: { x: 0, y: 0 },
+          spacing: 'linear',
+          start: 10,
+          stop: 20,
+          count: 5,
+          unit: 'mm',
+          axisLabel: 'bore diameter',
+        },
+      ],
+      edges: [],
+    };
+    const document = parseDocument(withRange);
+    expect(serializeDocument(document)).toEqual(withRange);
+  });
+
+  it('rejects a logarithmic range node whose literal endpoints are not both above zero', () => {
+    const withRange = {
+      ...study,
+      nodes: [
+        { kind: 'range', id: 'sweep', position: { x: 0, y: 0 }, spacing: 'logarithmic', start: 0, stop: 20, count: 5, unit: 'mm' },
+      ],
+      edges: [],
+    };
+    expect(() => parseDocument(withRange)).toThrow(/above zero/);
+  });
+
   it('round-trips every statistic and rejects an unknown one', () => {
     const nodes = [
       ...['mean', 'median', 'stddev', 'min', 'max', 'count'].map((statistic, index) => ({ kind: 'statistic', id: `s${index}`, position: { x: 0, y: 0 }, statistic, running: true })),
@@ -526,6 +559,22 @@ describe('labelled axes', () => {
       'fit',
       'frames',
       'draw',
+    ]);
+  });
+
+  it('counts every range node as an axis, regardless of whether its bounds are wired', () => {
+    const withRange = {
+      ...study,
+      nodes: [
+        ...(study['nodes'] as JsonObject[]),
+        { kind: 'range', id: 'sweep', position: { x: 0, y: 360 }, spacing: 'linear', start: 0, stop: 1, count: 5, unit: '' },
+      ],
+    };
+    expect(axes(parseDocument(withRange)).map((node) => node.id)).toEqual([
+      'd',
+      'fit',
+      'frames',
+      'sweep',
     ]);
   });
 

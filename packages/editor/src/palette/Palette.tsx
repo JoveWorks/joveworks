@@ -152,6 +152,22 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
       });
     });
 
+  const addRange = (): void =>
+    edit((current) => {
+      const id = uniqueId(current, 'range');
+      return addNode(current, {
+        kind: 'range',
+        id,
+        label: id,
+        spacing: 'linear',
+        start: 0,
+        stop: 1,
+        count: 5,
+        unit: parseUnit(''),
+        position: position(),
+      });
+    });
+
   const ranges = documentAxes(document);
 
   const addOutput = (kind: Output['kind']): void =>
@@ -345,6 +361,12 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
   const actions: readonly PaletteAction[] = [
     { id: 'builtin:input:value', label: copy.value, summary: copy.singleNumber, insert: () => addInput('scalar') },
     { id: 'builtin:input:range', label: copy.range, summary: copy.rangeSummary, insert: () => addInput('linear') },
+    {
+      id: 'builtin:input:computedRange',
+      label: copy.computedRange,
+      summary: copy.computedRangeSummary,
+      insert: addRange,
+    },
     { id: 'builtin:input:list', label: copy.list, summary: copy.listSummary, insert: () => addInput('list') },
     { id: 'builtin:input:spectrum', label: 'spectrum', summary: 'consumed whole, not swept', insert: () => addInput('spectrum') },
     { id: 'builtin:input:category', label: 'category', summary: 'a named choice', insert: () => addInput('categorical') },

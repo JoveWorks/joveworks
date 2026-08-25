@@ -72,6 +72,18 @@ export const WEIGHTS_PORT = 'weights';
 export const PERCENTILE_PORT = 'percentile';
 export const STATISTIC_RESULT_PORT = 'result';
 
+/**
+ * A range node's three ports, `CompareNode.threshold`-shaped like the Monte
+ * Carlo parameters just above: each is also a literal field on the node,
+ * which is what applies while its port is unwired. `count` is not just a
+ * convenience default like the other two — it *is* the axis length, the same
+ * way `MonteCarloGeneratorNode.count` is, so a wired `count` has to be
+ * resolved before the rest of the graph can be (`packages/kernel/src/evaluate.ts`).
+ */
+export const START_PORT = 'start';
+export const STOP_PORT = 'stop';
+export const COUNT_PORT = 'count';
+
 /** A closure node's one output port — its inputs are whatever its expression mentions. */
 export const CLOSURE_RESULT_PORT = 'result';
 
@@ -355,6 +367,34 @@ export interface InputNode extends NodeBase {
   readonly axisLabel?: string;
   /** Show a slider as an interactive control in every NodeBook section whose results it influences. */
   readonly exposeInNotebook?: boolean;
+}
+
+export const RANGE_SPACINGS = ['linear', 'logarithmic'] as const;
+export type RangeSpacing = (typeof RANGE_SPACINGS)[number];
+
+/**
+ * An axis-introducing node like `InputNode` holding a `linear`/`logarithmic`
+ * range, except `start`, `stop` and `count` are also wireable — a range
+ * computed from other nodes' outputs (a part's bore and its mating shaft's
+ * clearance, say) instead of retyped by hand whenever an upstream dimension
+ * changes. Each literal field is that port's own default, overridden the
+ * instant something is wired to it — see `START_PORT`/`STOP_PORT`/`COUNT_PORT`'s
+ * own comment for why `count` is not quite like the other two.
+ *
+ * Deliberately its own node kind rather than a further `RangeSpec` on
+ * `InputNode`, the same reasoning `MonteCarloGeneratorNode`'s own doc comment
+ * gives: an `InputNode`'s value-kind switch does not have to grow wiring
+ * concerns alongside every other literal value shape.
+ */
+export interface RangeNode extends NodeBase {
+  readonly kind: 'range';
+  readonly spacing: RangeSpacing;
+  readonly start: number;
+  readonly stop: number;
+  readonly count: number;
+  readonly unit: Unit;
+  /** What the axis is called. Defaults to `label`, like `InputNode`'s. */
+  readonly axisLabel?: string;
 }
 
 export interface FormulaNode extends NodeBase {
@@ -711,6 +751,7 @@ export interface FileNode extends NodeBase {
 
 export type GraphNode =
   | InputNode
+  | RangeNode
   | FileNode
   | FormulaNode
   | OutputNode
@@ -789,16 +830,18 @@ export interface GraphDocument {
 }
 
 /**
- * Every axis in the document, in node order: a range input node, a Monte
- * Carlo generator, or a file node reading more than one file — several
- * frames are a sweep over the frames, the same way a list of sizes is.
+ * Every axis in the document, in node order: a range input node, a range
+ * node, a Monte Carlo generator, or a file node reading more than one file —
+ * several frames are a sweep over the frames, the same way a list of sizes
+ * is.
  */
-export type AxisNode = InputNode | FileNode | MonteCarloGeneratorNode;
+export type AxisNode = InputNode | RangeNode | FileNode | MonteCarloGeneratorNode;
 
 export function axes(document: GraphDocument): readonly AxisNode[] {
   return document.nodes.filter(
     (node): node is AxisNode =>
       (node.kind === 'input' && isRange(node.value)) ||
+      node.kind === 'range' ||
       (node.kind === 'file' && node.sources.length > 1) ||
       node.kind === 'monteCarloGenerator',
   );
@@ -1055,6 +1098,7 @@ function parseFileField(value: JsonValue, path: string, sources: number): FileFi
 
 export const NODE_KINDS = [
   'input',
+  'range',
   'file',
   'formula',
   'output',
@@ -1119,6 +1163,25 @@ function parseNode(value: JsonValue, path: string): GraphNode {
         ...put('axisLabel', optional(object, 'axisLabel', path, readString)),
         ...put('exposeInNotebook', optional(object, 'exposeInNotebook', path, readBoolean)),
       };
+    case 'range': {
+      const spacing = readEnum(required(object, 'spacing', path), join(path, 'spacing'), RANGE_SPACINGS);
+      const start = readNumber(required(object, 'start', path), join(path, 'start'));
+      const stop = readNumber(required(object, 'stop', path), join(path, 'stop'));
+      const count = readInteger(required(object, 'count', path), join(path, 'count'), 2);
+      if (spacing === 'logarithmic' && (start <= 0 || stop <= 0)) {
+        fail(path, 'a logarithmic range needs both endpoints above zero');
+      }
+      return {
+        ...base,
+        kind,
+        spacing,
+        start,
+        stop,
+        count,
+        unit: parseUnitField(required(object, 'unit', path), join(path, 'unit')),
+        ...put('axisLabel', optional(object, 'axisLabel', path, readString)),
+      };
+    }
     case 'file': {
       const sources = readArray(required(object, 'sources', path), join(path, 'sources')).map(
         (entry, i) => parseFileSource(entry, `${join(path, 'sources')}[${i}]`),
@@ -1285,6 +1348,16 @@ function serializeNode(node: GraphNode): JsonObject {
         value: serializeValueSpec(node.value),
         ...put('axisLabel', node.axisLabel),
         ...put('exposeInNotebook', node.exposeInNotebook),
+      };
+    case 'range':
+      return {
+        ...base,
+        spacing: node.spacing,
+        start: node.start,
+        stop: node.stop,
+        count: node.count,
+        unit: node.unit.symbol,
+        ...put('axisLabel', node.axisLabel),
       };
     case 'file':
       return {

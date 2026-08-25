@@ -149,6 +149,23 @@ Pick several files at once and the node becomes a sweep: one point per
 file, and every field an axis you can plot against — how depth of field
 moved across a bracket, straight from the frames.
 
+### Range
+
+Like the linear/logarithmic range on an Input node, except `start`, `stop`
+and `count` are also ports: wire in numbers computed elsewhere in the graph
+instead of retyping them by hand whenever an upstream dimension changes.
+Each is still a typed field too — that is what applies while its port is
+unwired, and what a wire overrides the moment one is attached, the same
+shape a Monte Carlo generator's own draw parameters use.
+
+`count` is not quite like the other two: it decides how many points the
+sweep it introduces actually has, so whatever feeds it has to settle to one
+plain number before the graph can be swept at all — it cannot itself come
+from something that is already varying across a sweep. Wiring `count` from
+something that traces back to another range, a Monte Carlo generator, or a
+multi-file node is refused for exactly that reason: the axis being sized
+cannot size itself. `start` and `stop` carry no such restriction.
+
 ## Output
 
 Where a graph's result surfaces — in the node itself, and as an entry in

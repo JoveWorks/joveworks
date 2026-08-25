@@ -45,6 +45,9 @@ import {
   localize,
   ALONG_PORT,
   MONTE_CARLO_SAMPLE_PORT,
+  START_PORT,
+  STOP_PORT,
+  COUNT_PORT,
   OBJECTIVE_PORT,
   X_PORT,
   Y_PORT,
@@ -240,6 +243,20 @@ function readiness(
         continue;
       }
       if (!upstreamReady(node.id, 'values') || (isWired(node.id, 'weights') && !upstreamReady(node.id, 'weights'))) {
+        states.set(node.id, 'blocked');
+        continue;
+      }
+      ready.add(node.id);
+      continue;
+    }
+
+    if (node.kind === 'range') {
+      // Every port has a literal default, the same as an ordinary input or
+      // a non-discrete Monte Carlo generator's own parameters — so nothing
+      // here is ever "not connected", only "blocked" on a wire that is
+      // itself not ready yet.
+      const ports = [START_PORT, STOP_PORT, COUNT_PORT];
+      if (ports.some((port) => isWired(node.id, port) && !upstreamReady(node.id, port))) {
         states.set(node.id, 'blocked');
         continue;
       }

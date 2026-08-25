@@ -120,6 +120,18 @@ export const normalDraw = (mean: number, stddev: number): JsonObject => ({
   stddev,
 });
 
+export function rangeNode(
+  id: string,
+  spacing: 'linear' | 'logarithmic',
+  start: number,
+  stop: number,
+  count: number,
+  unit: string,
+  extra: JsonObject = {},
+): JsonObject {
+  return { kind: 'range', id, position: { x: 0, y: 0 }, spacing, start, stop, count, unit, ...extra };
+}
+
 export function monteCarloReceiverNode(id: string, sampleLimit: number, extra: JsonObject = {}): JsonObject {
   return { kind: 'monteCarloReceiver', id, position: { x: 0, y: 0 }, sampleLimit, ...extra };
 }

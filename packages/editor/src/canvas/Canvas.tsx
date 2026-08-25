@@ -90,6 +90,7 @@ import { FormulaNodeView } from './FormulaNodeView';
 import { FrameView } from './FrameView';
 import { InputNodeView } from './InputNodeView';
 import { MonteCarloGeneratorNodeView } from './MonteCarloGeneratorNodeView';
+import { RangeNodeView } from './RangeNodeView';
 import { StatisticNodeView } from './StatisticNodeView';
 import { MonteCarloReceiverNodeView } from './MonteCarloReceiverNodeView';
 import type { CanvasNodeData, HoveredCanvasPort } from './node-data';
@@ -435,6 +436,7 @@ function flowType(kind: NodeKind): string {
 
 const NODE_TYPES = {
   'joveworks-input': InputNodeView,
+  range: RangeNodeView,
   file: FileNodeView,
   formula: FormulaNodeView,
   'joveworks-output': OutputNodeView,

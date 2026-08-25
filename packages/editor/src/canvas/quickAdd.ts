@@ -7,6 +7,9 @@ import {
   MONTE_CARLO_SAMPLE_PORT,
   OBJECTIVE_PORT,
   X_PORT,
+  START_PORT,
+  STOP_PORT,
+  COUNT_PORT,
   STATISTIC_RESULT_PORT,
   VALUE_PORT,
   VERDICT_PORT,
@@ -23,6 +26,7 @@ import { monteCarloSampleCount, monteCarloSampleLimit } from '../model/monteCarl
 export type QuickAddChoice =
   | { readonly kind: 'formula'; readonly formula: Formula; readonly port: string }
   | { readonly kind: 'input' }
+  | { readonly kind: 'range' }
   | {
       readonly kind: 'output';
       readonly outputKind:
@@ -97,6 +101,27 @@ export function quickAddNodeSpec(document: GraphDocument, choice: QuickAddCandid
           kind: 'input',
           id,
           value: { kind: 'scalar', value: 1, unit: parseUnit('') },
+          position,
+          ...labelField(label),
+        }),
+      };
+    case 'range':
+      return {
+        idPrefix: 'range',
+        // A range's own `VALUE_PORT` output is what a dragged *target*
+        // completes onto (the reverse mapping every spec here uses); a
+        // dragged *source* lands on whichever of its three input ports —
+        // `start`, `stop`, `count` — the kernel's own compatibility check
+        // in `compatibleQuickAddPort` picks as connectable.
+        ports: { source: [START_PORT, STOP_PORT, COUNT_PORT], target: [VALUE_PORT] },
+        make: (id, position, label) => ({
+          kind: 'range',
+          id,
+          spacing: 'linear',
+          start: 0,
+          stop: 1,
+          count: 5,
+          unit: parseUnit(''),
           position,
           ...labelField(label),
         }),

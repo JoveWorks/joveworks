@@ -36,6 +36,7 @@ import {
   monteCarloReceiverNode,
   normalDraw,
   outputNode,
+  rangeNode,
   refTo,
   renard,
   scalar,
@@ -1058,6 +1059,117 @@ describe('sweeps', () => {
   });
 });
 
+describe('range nodes — bounds and count from wired ports', () => {
+  it('behaves exactly like a literal linear range when nothing is wired', () => {
+    const document = documentOf([rangeNode('r', 'linear', 20, 60, 21, 'mm')], []);
+    const series = numeric(valueAt(evaluateDocument(document, catalogues), 'r', 'value'));
+    expect(series.data).toHaveLength(21);
+    expect(series.data[0]).toBe(20);
+    expect(series.data[20]).toBe(60);
+  });
+
+  it('adopts a wired dimension for a freshly dropped range left at its dimensionless default', () => {
+    // A fresh range's `unit` defaults to dimensionless — it should not
+    // refuse an mm wire for disagreeing with a unit nobody chose.
+    const document = documentOf(
+      [input('lo', scalar(20, 'mm')), rangeNode('r', 'linear', 0, 1, 5, '')],
+      [wire('lo.value', 'r.start')],
+    );
+    const resolution = resolveGraph(document, catalogues);
+    expect(resolution.targets.get('r.start')?.unit?.symbol).toBe('mm');
+  });
+
+  it('reads an unwired bound in the dimension the other, wired bound established', () => {
+    const document = documentOf(
+      [input('lo', scalar(20, 'mm')), rangeNode('r', 'linear', 0, 60, 3, '')],
+      [wire('lo.value', 'r.start')],
+    );
+    // `stop` is left at its literal `60`, unwired and read in mm — the
+    // dimension `start`'s wire established, not the node's own
+    // dimensionless default.
+    const series = numeric(valueAt(evaluateDocument(document, catalogues), 'r', 'value'));
+    expect(series.data).toEqual([20, 40, 60]);
+  });
+
+  it('refuses start and stop wired to two different dimensions', () => {
+    const document = documentOf(
+      [input('lo', scalar(20, 'mm')), input('hi', scalar(60, 'N')), rangeNode('r', 'linear', 0, 1, 5, '')],
+      [wire('lo.value', 'r.start'), wire('hi.value', 'r.stop')],
+    );
+    expect(() => resolveGraph(document, catalogues)).toThrow(/same dimension at both ends/);
+  });
+
+  it('reads start and stop off wired ports, unlike an input range', () => {
+    const document = documentOf(
+      [
+        input('lo', scalar(20, 'mm')),
+        input('hi', scalar(60, 'mm')),
+        rangeNode('r', 'linear', 0, 1, 5, 'mm'),
+      ],
+      [wire('lo.value', 'r.start'), wire('hi.value', 'r.stop')],
+    );
+    const series = numeric(valueAt(evaluateDocument(document, catalogues), 'r', 'value'));
+    expect(series.data).toEqual([20, 30, 40, 50, 60]);
+  });
+
+  it('spaces logarithmically the same way a literal logarithmic range does', () => {
+    const document = documentOf(
+      [input('lo', scalar(1, '')), input('hi', scalar(1000, '')), rangeNode('r', 'logarithmic', 1, 1, 4, '')],
+      [wire('lo.value', 'r.start'), wire('hi.value', 'r.stop')],
+    );
+    const series = numeric(valueAt(evaluateDocument(document, catalogues), 'r', 'value'));
+    expect(series.data.map((value) => Math.round(value))).toEqual([1, 10, 100, 1000]);
+  });
+
+  it('sizes the axis from a wired count, and drives a downstream formula across it with no rewiring', () => {
+    const document = documentOf(
+      [
+        input('n', scalar(5, '')),
+        rangeNode('w', 'linear', 10, 50, 2, 'mm'),
+        input('h', scalar(2, 'mm')),
+        formulaNode('area', refTo('area')),
+      ],
+      [wire('n.value', 'w.count'), wire('w.value', 'area.w'), wire('h.value', 'area.h')],
+    );
+    const series = numeric(valueAt(evaluateDocument(document, catalogues), 'area', 'A'));
+    expect(series.data).toEqual([20, 40, 60, 80, 100]);
+  });
+
+  it('refuses a count wired from something that itself varies across a sweep', () => {
+    const document = documentOf(
+      [input('n', linear(2, 6, 3, '')), rangeNode('r', 'linear', 0, 1, 5, '')],
+      [wire('n.value', 'r.count')],
+    );
+    expect(() => evaluateDocument(document, catalogues)).toThrow(/cannot depend on something that itself varies/);
+  });
+
+  it('refuses a wired count that is not a whole number of at least 2', () => {
+    const document = documentOf(
+      [input('n', scalar(1.5, '')), rangeNode('r', 'linear', 0, 1, 5, '')],
+      [wire('n.value', 'r.count')],
+    );
+    expect(() => evaluateDocument(document, catalogues)).toThrow(/at least 2 points/);
+  });
+
+  it('does not disturb an ordinary sweep elsewhere in the same document', () => {
+    // The pre-resolution pass this adds only ever runs for the nodes
+    // upstream of a wired `count` — an unrelated range in the same graph
+    // should sweep exactly as it would with no range node present at all.
+    const document = documentOf(
+      [
+        input('n', scalar(3, '')),
+        rangeNode('r', 'linear', 0, 1, 5, ''),
+        input('w', linear(10, 30, 3, 'mm')),
+        input('h', scalar(2, 'mm')),
+        formulaNode('area', refTo('area')),
+      ],
+      [wire('n.value', 'r.count'), wire('w.value', 'area.w'), wire('h.value', 'area.h')],
+    );
+    const series = numeric(valueAt(evaluateDocument(document, catalogues), 'area', 'A'));
+    expect(series.data).toEqual([20, 40, 60]);
+  });
+});
+
 describe('the Monte Carlo generator and receiver (roadmap #27)', () => {
   it('behaves like any other range: an axis, one value per draw, a formula wired downstream', () => {
     const document = documentOf(
@@ -2018,6 +2130,28 @@ describe('sensitivity outputs', () => {
     expect(ranking?.lowValue).toBeCloseTo(20);
     expect(ranking?.highValue).toBeCloseTo(100);
     expect(ranking?.swing).toBeCloseTo(80);
+  });
+
+  it('collapses an unrelated range node to its midpoint while ranking a different candidate', () => {
+    // `collapseAxis` (sensitivity.ts) has to handle every `AxisNode` kind it
+    // is asked to hold fixed, `RangeNode` included, or a document with one
+    // anywhere in it would fail every sensitivity ranking, not just one
+    // that happens to involve it.
+    const document = documentOf(
+      [
+        input('d', linear(10, 50, 3, 'mm'), { axisLabel: 'diameter' }),
+        rangeNode('h', 'linear', 2, 4, 3, 'mm'),
+        formulaNode('area', refTo('area')),
+        outputNode('sens', { kind: 'sensitivity' }),
+      ],
+      [wire('d.value', 'area.w'), wire('h.value', 'area.h'), wire('area.A', 'sens.value')],
+    );
+    const evaluation = evaluateDocument(document, catalogues);
+    const sens = evaluation.outputs.find((entry) => entry.nodeId === 'sens') as SensitivityResult;
+    const ranking = sens.rankings.find((entry) => entry.nodeId === 'd');
+    // h collapses to its midpoint, (2 + 4) / 2 = 3mm.
+    expect(ranking?.lowValue).toBeCloseTo(30);
+    expect(ranking?.highValue).toBeCloseTo(150);
   });
 
   it('finds a candidate from a scalar input whose wired port declares a validRange — the first real consumer of it', () => {

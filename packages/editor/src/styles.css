@@ -911,6 +911,7 @@ aside.right {
 }
 
 .node-input::before,
+.node-range::before,
 .node-file::before,
 .node-monteCarloGenerator::before,
 .node-picker::before {

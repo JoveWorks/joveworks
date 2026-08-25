@@ -17,7 +17,7 @@
 
 import { useMemo, useState, type ReactElement } from 'react';
 
-import { soleExpression, type Catalogue, type GraphNode } from '@joveworks/schema';
+import { soleExpression, type Catalogue, type Formula, type GraphNode } from '@joveworks/schema';
 import { parseExpression, toLatex } from '@joveworks/kernel';
 
 import { entries, search } from '../model/catalogues';
@@ -117,19 +117,46 @@ export function QuickAddMenu({
   // render slice below), not on every fuzzy match. Running it on every match
   // was the quick-add slowdown: a common query matches most of the
   // catalogue, and each one was paying for a full graph resolution.
-  const formulas = useMemo(() => {
-    const matches = search(entries(catalogues), query)
+  // A formula that lands on the dragged port's own name — hyperfocal
+  // distance's `H` for a wire pulled out of a `dof.limits` node's unwired
+  // `H` input, say — is split into its own `preferredFormulas` list and
+  // rendered ahead of *everything* else in "Add new", specials included:
+  // sorting it to the top of `formulas` alone was not enough, since every
+  // special node kind (`input`, `equation`, …) still rendered above the
+  // whole formula list regardless.
+  //
+  // It is found by scanning the *full*, unsliced catalogue rather than the
+  // `formulas` list below — an empty query leaves `search` unranked
+  // (`fuzzySearch`'s own doc comment: "unfiltered and unranked when blank"),
+  // so a formula named exactly `preferredPort` could sit anywhere in
+  // catalogue order and easily miss `MAX_FORMULA_RESULTS`'s cutoff before
+  // ever reaching the boost that was meant to surface it. Cheap regardless
+  // of catalogue size: the port-name filter narrows to a handful of
+  // candidates with no kernel call at all, before `compatiblePort` (a full
+  // `resolveGraph`) ever runs on any of them.
+  const { preferredFormulas, formulas } = useMemo(() => {
+    const all = entries(catalogues);
+    const preferredFormulas = search(
+      all.filter(
+        ({ formula }) =>
+          formula.inputs.some((port) => port.name === preferredPort) ||
+          formula.outputs.some((port) => port.name === preferredPort),
+      ),
+      query,
+    ).flatMap(({ formula, ...match }) => {
+      const port = compatiblePort({ kind: 'formula', formula });
+      return port === preferredPort ? [{ formula, ...match, port }] : [];
+    });
+    const preferredIds = new Set(preferredFormulas.map((entry) => entry.formula.id));
+
+    const formulas = search(all, query)
       .slice(0, MAX_FORMULA_RESULTS)
       .flatMap(({ formula, ...match }) => {
+        if (preferredIds.has(formula.id)) return [];
         const port = compatiblePort({ kind: 'formula', formula });
         return port === undefined ? [] : [{ formula, ...match, port }];
       });
-    // A formula that lands on the dragged port's own name is its obvious
-    // producer or consumer — stable-sorted first, ahead of the rest, which
-    // keep the fuzzy ranking `search` already gave them.
-    return [...matches].sort(
-      (a, b) => Number(b.port === preferredPort) - Number(a.port === preferredPort),
-    );
+    return { preferredFormulas, formulas };
   }, [catalogues, compatiblePort, preferredPort, query]);
   const matchingExisting = useMemo(
     () => fuzzySearch(query, existing, (candidate) => candidate.label),
@@ -142,6 +169,7 @@ export function QuickAddMenu({
     readonly disabled?: boolean;
   }[] = [
       { label: t('input'), choice: { kind: 'input' } },
+      { label: t('range'), choice: { kind: 'range' } },
       { label: t('Monte Carlo generator'), choice: { kind: 'monteCarloGenerator' } },
       { label: t('equation'), choice: { kind: 'closure' } },
       { label: t('waypoint'), choice: { kind: 'waypoint' } },
@@ -186,19 +214,52 @@ export function QuickAddMenu({
     onClose();
   };
 
-  // What Enter would pick — "Add new" before "On this canvas", matching this
-  // menu's own render order — so the same row can be highlighted as selected.
+  const formulaButton = (formula: Formula, port: string): ReactElement => (
+    <button
+      key={formula.id}
+      type="button"
+      className={
+        'quick-add-formula' + (selected?.kind === 'formula' && selected.key === formula.id ? ' selected' : '')
+      }
+      onClick={() => pick({ kind: 'formula', formula, port })}
+    >
+      <span className="quick-add-formula-heading">
+        <span className="entry-id">{formula.citation ?? formula.id}</span>
+        <span className="entry-output">
+          {formula.outputs.map((output, i) => (
+            <span key={output.name}>
+              {i === 0 ? null : ', '}
+              <Symbol name={output.name} />
+            </span>
+          ))}
+        </span>
+      </span>
+      {/* Only where there is one: a record answering with several has no
+          single equation to preview, and the output symbols above already
+          say what it produces. */}
+      {soleExpression(formula) === undefined ? null : (
+        <Equation latex={toLatex(parseExpression(soleExpression(formula) as string))} displayMode={false} />
+      )}
+    </button>
+  );
+
+  // What Enter would pick — the preferred formula, then "Add new", then "On
+  // this canvas", matching this menu's own render order — so the same row
+  // can be highlighted as selected.
+  const topPreferred = preferredFormulas[0];
   const topSpecial = matchingSpecials.find((entry) => entry.disabled !== true);
   const topFormula = formulas[0];
   const topExisting = matchingExisting[0];
   const selected: { readonly kind: 'special' | 'formula' | 'existing'; readonly key: string } | undefined =
-    topSpecial !== undefined
-      ? { kind: 'special', key: topSpecial.label }
-      : topFormula !== undefined
-        ? { kind: 'formula', key: topFormula.formula.id }
-        : topExisting !== undefined
-          ? { kind: 'existing', key: topExisting.nodeId }
-          : undefined;
+    topPreferred !== undefined
+      ? { kind: 'formula', key: topPreferred.formula.id }
+      : topSpecial !== undefined
+        ? { kind: 'special', key: topSpecial.label }
+        : topFormula !== undefined
+          ? { kind: 'formula', key: topFormula.formula.id }
+          : topExisting !== undefined
+            ? { kind: 'existing', key: topExisting.nodeId }
+            : undefined;
 
   return (
     <>
@@ -215,7 +276,9 @@ export function QuickAddMenu({
             if (event.key === 'Enter') {
               // Picking with Enter lands on whichever row is highlighted as
               // `selected` above.
-              if (topSpecial !== undefined) pick(topSpecial.choice);
+              if (topPreferred !== undefined) {
+                pick({ kind: 'formula', formula: topPreferred.formula, port: topPreferred.port });
+              } else if (topSpecial !== undefined) pick(topSpecial.choice);
               else if (topFormula !== undefined) pick({ kind: 'formula', formula: topFormula.formula, port: topFormula.port });
               else if (topExisting !== undefined) {
                 pick({ kind: 'existing', nodeId: topExisting.nodeId, port: topExisting.port });
@@ -224,9 +287,10 @@ export function QuickAddMenu({
           }}
         />
         <div className="quick-add-list">
-          {matchingSpecials.length === 0 && formulas.length === 0 ? null : (
+          {preferredFormulas.length === 0 && matchingSpecials.length === 0 && formulas.length === 0 ? null : (
             <>
               <div className="quick-add-heading">{t('Add new')}</div>
+              {preferredFormulas.map(({ formula, port }) => formulaButton(formula, port))}
               {matchingSpecials.map(({ label, choice, disabled }) => (
                 <button
                   key={label}
@@ -241,38 +305,7 @@ export function QuickAddMenu({
                   {label}
                 </button>
               ))}
-              {formulas.map(({ formula, port }) => (
-                <button
-                  key={formula.id}
-                  type="button"
-                  className={
-                    'quick-add-formula' +
-                    (selected?.kind === 'formula' && selected.key === formula.id ? ' selected' : '')
-                  }
-                  onClick={() => pick({ kind: 'formula', formula, port })}
-                >
-                  <span className="quick-add-formula-heading">
-                    <span className="entry-id">{formula.citation ?? formula.id}</span>
-                    <span className="entry-output">
-                      {formula.outputs.map((output, i) => (
-                        <span key={output.name}>
-                          {i === 0 ? null : ', '}
-                          <Symbol name={output.name} />
-                        </span>
-                      ))}
-                    </span>
-                  </span>
-                  {/* Only where there is one: a record answering with
-                      several has no single equation to preview, and the
-                      output symbols above already say what it produces. */}
-                  {soleExpression(formula) === undefined ? null : (
-                    <Equation
-                      latex={toLatex(parseExpression(soleExpression(formula) as string))}
-                      displayMode={false}
-                    />
-                  )}
-                </button>
-              ))}
+              {formulas.map(({ formula, port }) => formulaButton(formula, port))}
             </>
           )}
           {matchingExisting.length === 0 ? null : (

@@ -13,6 +13,7 @@ import {
   type ClosureNode,
   type FormulaNode,
   type GraphDocument,
+  type GraphNode,
   type InputNode,
   type OutputNode,
   type PackNode,
@@ -54,6 +55,17 @@ const input = (id: string, x: number, y: number): InputNode => ({
   id,
   position: { x, y },
   value: { kind: 'scalar', value: 1, unit: parseUnit('mm') },
+});
+
+const range = (id: string, x: number, y: number): GraphNode => ({
+  kind: 'range',
+  id,
+  position: { x, y },
+  spacing: 'linear',
+  start: 0,
+  stop: 1,
+  count: 5,
+  unit: parseUnit(''),
 });
 
 const printOutput = (id: string, x: number, y: number): OutputNode => ({
@@ -181,6 +193,17 @@ describe('document edits', () => {
 
     const duplicatedSource = duplicateNode(wired, 'a');
     expect(duplicatedSource.edges).toEqual(wired.edges);
+  });
+
+  it('duplicating a range node reconnects its wired count port to the same source, kind-agnostic like every other node', () => {
+    const withRange = addNode(base, range('r', 200, 0));
+    const wired = connect(withRange, { node: 'a', port: 'value' }, { node: 'r', port: 'count' });
+    const duplicated = duplicateNode(wired, 'r');
+    expect(duplicated.edges.at(-1)).toEqual({
+      id: 'a.value->r2.count',
+      from: { node: 'a', port: 'value' },
+      to: { node: 'r2', port: 'count' },
+    });
   });
 
   it('drops the edges of a node it removes', () => {

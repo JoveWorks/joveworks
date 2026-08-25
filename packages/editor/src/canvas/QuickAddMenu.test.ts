@@ -56,6 +56,27 @@ describe('compatibleQuickAddPort', () => {
     expect(compatibleQuickAddPort(document, catalogues, target, { kind: 'monteCarloReceiver' })).toBeUndefined();
   });
 
+  it('offers a fresh range node its start/stop/count for a dragged numeric source, and its value port for a dragged numeric target', () => {
+    // A fresh range defaults to a dimensionless unit (`quickAdd.ts`), the
+    // same reason the Monte Carlo generator test above drags from a print
+    // output's generic port rather than an mm one — `start`/`stop` are
+    // fixed to the node's own unit, not generic like a closure's ports.
+    const document = addNode(emptyDocument('study', 'Study'), {
+      kind: 'input',
+      id: 'source',
+      value: { kind: 'scalar', value: 1, unit: parseUnit('') },
+      position: { x: 0, y: 0 },
+    });
+    const fromSource = { x: 0, y: 0, from: { nodeId: 'source', port: VALUE_PORT, type: 'source' as const } };
+    expect(compatibleQuickAddPort(document, catalogues, fromSource, { kind: 'range' })).toBe('start');
+
+    const withSink = addNode(document, {
+      kind: 'output', id: 'sink', output: { kind: 'print' }, position: { x: 0, y: 0 },
+    });
+    const fromTarget = { x: 0, y: 0, from: { nodeId: 'sink', port: VALUE_PORT, type: 'target' as const } };
+    expect(compatibleQuickAddPort(withSink, catalogues, fromTarget, { kind: 'range' })).toBe(VALUE_PORT);
+  });
+
   it('offers a pack, and hides numeric-only kinds, for a fresh bundle input', () => {
     const document = addNode(emptyDocument('study', 'Study'), {
       kind: 'unpack', id: 'sink', position: { x: 0, y: 0 },

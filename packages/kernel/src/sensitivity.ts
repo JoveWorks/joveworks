@@ -203,6 +203,27 @@ function collapseAxis(node: AxisNode, tableColumn: ResolvedTableColumn | undefin
       ...(node.displayUnits === undefined ? {} : { displayUnits: node.displayUnits }),
     };
   }
+  if (node.kind === 'range') {
+    // Same spirit as the Monte Carlo collapse just above: always the node's
+    // own literal `start`/`stop`/`spacing`, even when wired — there is no
+    // evaluated `values` map here to read a live wire from, and it becomes
+    // an ordinary scalar `input` node for the same reason a generator does,
+    // range-specific ports and all.
+    const value: ValueSpec = {
+      kind: 'scalar',
+      value: node.spacing === 'logarithmic' ? Math.sqrt(node.start * node.stop) : (node.start + node.stop) / 2,
+      unit: node.unit,
+    };
+    return {
+      kind: 'input',
+      id: node.id,
+      position: node.position,
+      value,
+      ...(node.frameId === undefined ? {} : { frameId: node.frameId }),
+      ...(node.label === undefined ? {} : { label: node.label }),
+      ...(node.displayUnits === undefined ? {} : { displayUnits: node.displayUnits }),
+    };
+  }
   // `documentAxes` only ever includes an `input` node here when its value is
   // a range — the same invariant `axisOf` in graph.ts relies on.
   if (!isRange(node.value)) throw new KernelError('not a range node', node.id);

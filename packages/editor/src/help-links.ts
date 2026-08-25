@@ -14,6 +14,7 @@ export const DOCS_BASE_URL = import.meta.env.DEV
 
 export const NODE_HELP_URLS: Readonly<Record<NodeKind, string>> = {
   input: `${DOCS_BASE_URL}/guide/node-reference#input`,
+  range: `${DOCS_BASE_URL}/guide/node-reference#range`,
   file: `${DOCS_BASE_URL}/guide/node-reference#file`,
   formula: `${DOCS_BASE_URL}/guide/node-reference#formula`,
   output: `${DOCS_BASE_URL}/guide/node-reference#output`,
