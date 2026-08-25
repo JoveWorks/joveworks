@@ -11,7 +11,7 @@ import { describe, expect, it } from 'vitest';
 import type { Axis, PlotResult } from '@joveworks/kernel';
 import { PLAIN_NUMBER_FORMAT, parseUnit, type NumberFormat } from '@joveworks/units';
 
-import { drawsContour, plotValueLabel, plotYLabel, rows, siAxisUnit, siResult } from './PlotFigure';
+import { drawsContour, markY, plotValueLabel, plotYLabel, rows, siAxisUnit, siResult } from './PlotFigure';
 
 const mm = parseUnit('mm');
 
@@ -121,6 +121,19 @@ describe('a contour plot', () => {
 
   it('still labels a non-contour plot with the plotted value', () => {
     expect(plotYLabel({ ...result, contour: false })).toBe('stress (mm)');
+  });
+
+  // The same bug in position rather than in text: a mark drawn at the row's
+  // value landed at the right x and an arbitrary height, because the contour's
+  // y axis carries the second swept axis and not the colour-mapped value.
+  it('places a mark at the second swept axis, not at the plotted value', () => {
+    const y = markY(result);
+    expect(rows(result).map(y)).toEqual([100, 200, 100, 200, 100, 200]);
+  });
+
+  it('places a mark at the plotted value when the same result draws as a line', () => {
+    const line = { ...result, contour: false };
+    expect(rows(line).map(markY(line))).toEqual([1, 2, 3, 4, 5, 6]);
   });
 });
 

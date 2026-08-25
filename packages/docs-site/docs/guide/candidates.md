@@ -101,3 +101,113 @@ Check and Print add their per-candidate line only when the mark pins
 **exactly one** point of that result. A mark that identifies a whole row
 has no single number to report, so nothing is printed — averaging it or
 taking the first would be making a reading up.
+
+## Marking from a table
+
+A table row *is* a design. Every column is broadcast onto the same grid
+before the table is drawn, so row 3 is one cell of the study with each
+wired value read out beside it — which is why clicking a row can mark
+anything at all.
+
+Clicking one does three things at once: the row is highlighted, its letter
+appears in the **first column**, and the same design is called out on every
+other figure in the NodeBook. Click it again to unmark.
+
+A table is the most precise place to mark from, and that is not a
+preference — its rows know **every** swept axis in the study, so a mark
+made here pins exactly one design. Two consequences follow, and they are
+the practical reason to reach for the table:
+
+- A mark that pins one design is the only kind that produces a
+  **per-candidate reading** under a Check or Print output (`A: S = 1.8 ✓`).
+  Mark from a one-axis plot and no line appears, because there is no single
+  number to report.
+- It is the mark you want in a report. *Candidate A: d = 40 mm, 2.47 kg,
+  S = 1.8* is a sentence. A marked column of temperatures is not.
+
+Two small things worth doing on purpose:
+
+- **Put the swept axis in the first column.** The letter badge is drawn
+  there, so the mark sits directly beside the value that identifies it —
+  `A 40 mm` reads as one thing.
+- **Drag the columns you are comparing next to each other** (drag a header
+  left or right in the notebook). A marked row is read across, and the
+  argument for a design is usually two columns wide: mass against safety
+  factor, cost against life.
+
+## Marking from a plot
+
+Click any point on the curve. The design under the cursor is marked with a
+ring and its letter, and — this is the part that matters — the same letter
+appears on every other figure that shares an axis with it. That is the link
+between the picture and the numbers: the point you pointed at on the curve
+is the highlighted row in the table below it.
+
+What a plot mark **records** is only the axes that plot sweeps. A curve of
+deflection against diameter can only tell you `d = 40`, so that is what the
+mark says. On a feasibility map over diameter and temperature, that mark
+lights the whole `d = 40` column — every temperature at that diameter,
+which is exactly what you marked. Nothing is wrong there; it is the one
+rule doing its job. If you wanted one design, mark it from a table, a
+feasibility map or a Pareto front.
+
+**On a contour**, the ring sits at the grid point it identifies: x from the
+first swept axis, y from the **second** one. A contour puts the plotted
+value on colour rather than on the y axis, so the marked design's value is
+the colour under the ring, read against the colourbar — or, better, read
+off a marked table row beside it. Height on a contour is the second swept
+axis, never the result — so a ring sitting somewhere the colour does not
+justify is the figure being read wrong, not the mark being in the wrong
+place.
+
+## Use cases
+
+**"Which stocked size do I actually buy?"** — sweep a list of stock
+diameters, table the results, click the row you would order. The letter now
+appears on the deflection plot and beside every check, so the report's
+"we chose 40 mm" is visible in every figure rather than asserted once in
+the prose.
+
+**"Why this one and not the next one up?"** — mark two. Candidates A and B
+each get their own lettered line under every Check and Print, so the two
+margins sit under each other and the comparison is a reading rather than an
+argument. A report that compares A with B is doing engineering; one that
+shows only A is announcing a conclusion.
+
+**"It passes here and fails there."** — mark the cell on the
+[feasibility map](/guide/node-reference#feasibility), which knows every
+axis, then look at the contour plot: same design, same letter, one view
+showing *whether* it passes and the other *by how much*.
+
+**"What happens at 40 mm?"**, asked while someone is looking over your
+shoulder — one click answers it on every figure at once, and the mark is
+saved with the NodeBook, so the answer is in the document you hand in
+rather than something the reader has to find again.
+
+**"I widened the range after I wrote the text."** — the mark is a
+coordinate, so it either still lands on a sample, snaps to the nearest one
+and says so, or is reported as no longer reachable. In all three cases the
+NodeBook tells you, which is the entire argument for coordinates over row
+numbers.
+
+## Tips and tricks
+
+- **Mark where the axes are.** Table, feasibility map and Pareto front know
+  the whole grid and pin one design; a one-axis plot pins a slice. Both are
+  correct — only one of them prints a number under your checks.
+- **Click again to unmark.** Marking is a toggle, everywhere.
+- **Letters follow position.** Marks are lettered in the order you made
+  them, so a *new* mark is always the next letter — but removing one
+  re-letters everything after it. If a section note already names candidate
+  C, unmark from the end, or re-read the note afterwards.
+- **Keep it to a few.** Three rings and three letters read as a comparison.
+  Eight read as a scatter plot with extra steps — at which point the figure
+  you want is a [Pareto front](/guide/node-reference#pareto), not more
+  marks.
+- **A mark is part of the report.** It is saved with the NodeBook and drawn
+  in the exported PDF, so a section note can refer to "candidate B" and
+  trust the reader will find it.
+- **Marks survive a rename, not a rewire.** They are keyed to the axis
+  *node*, so retitling an input keeps them; deleting the input that
+  introduced the axis is what makes a mark stale, and the NodeBook says so
+  rather than quietly drawing something else.

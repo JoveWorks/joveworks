@@ -193,12 +193,38 @@ Reading *where* the curve meets that line is a job for a
 [Select](#select) node, which turns "somewhere around 38 mm" into a value
 on a wire instead of a number read off the picture by eye.
 
+**Click the curve to mark a design.** The point under the cursor becomes a
+[candidate](./candidates): a ring and a letter here, the same letter on
+every other figure in the NodeBook, and a highlighted row in every table
+that shares an axis with it. Click it again to unmark. On a contour the
+ring sits at the grid point it identifies — x from the first swept axis, y
+from the *second*, since a contour puts the plotted value on colour rather
+than on the y axis — so the marked design's value is the colour under the
+ring, read against the colourbar or off a table row beside it.
+
+One thing is worth knowing before you mark from a plot: a mark records only
+the axes **this plot** sweeps. Mark a point on a curve of deflection against
+diameter and you have marked a diameter, not a design — a feasibility map
+over diameter *and* temperature will light that whole column, correctly.
+Mark from a [Table](#table), [Feasibility](#feasibility) or
+[Pareto](#pareto) figure when you want one design pinned.
+
 ### Table
 
 Several swept series as rows, one column per wire — the natural home for
 an explicit-list sweep: stock diameters down the left column, the
 resulting safety factor and mass in the columns beside them, so a
 student can read off which stocked size to actually buy.
+
+**Click a row to mark it.** A row *is* a design — every column is broadcast
+onto the same grid before the table is drawn — so clicking one highlights
+the row, puts its letter in the first column, and calls the same design out
+on every plot, feasibility map and Pareto front in the document. Click again
+to unmark. A table is the most precise place to mark from, because its rows
+know every swept axis in the study: a mark made here pins one design rather
+than a slice of the grid, which is also what makes a per-candidate reading
+appear under your [Check](#check) and [Print](#print) outputs. See
+[Candidates and marks](./candidates) for the whole of it.
 
 ### Equation
 

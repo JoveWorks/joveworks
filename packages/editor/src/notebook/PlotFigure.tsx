@@ -179,6 +179,19 @@ export function plotYLabel(result: PlotResult): string {
   return drawsContour(result) ? axisLabel(result.series2 as PlotAxis) : plotValueLabel(result);
 }
 
+/**
+ * Where a point sits vertically, for the marks drawn *on top of* the chart.
+ *
+ * The same distinction `plotYLabel` makes, in position rather than in text: a
+ * contour maps the plotted value to colour, so its y axis carries the second
+ * swept axis, and a mark placed at the row's value lands at the right x and an
+ * arbitrary height. `Row.y` is the value and `Row.series` the second axis's
+ * coordinate, so a contour reads the mark's height off the latter.
+ */
+export function markY(result: PlotResult): (row: Row) => number {
+  return drawsContour(result) ? (row) => Number(row.series) : (row) => row.y;
+}
+
 interface Props {
   readonly result: PlotResult;
   readonly document: GraphDocument;
@@ -383,11 +396,12 @@ export function PlotFigure({ result: rawResult, document: graph, format, marking
     // series axis, and a mark that competes with that reads as another curve.
     const marked = data.filter((row) => (marking?.marks ?? NO_MARKS).at(row.cell).length > 0);
     if (marked.length > 0) {
+      const y = markY(result);
       marks.push(
-        Plot.dot(marked as Row[], { x: 'x', y: 'y', r: 7, stroke: 'currentColor', strokeWidth: 1.5 }),
+        Plot.dot(marked as Row[], { x: 'x', y, r: 7, stroke: 'currentColor', strokeWidth: 1.5 }),
         Plot.text(marked as Row[], {
           x: 'x',
-          y: 'y',
+          y,
           text: (row: Row) => (marking?.marks ?? NO_MARKS).at(row.cell)[0]?.letter ?? '',
           dy: -14,
           fontWeight: 'bold',

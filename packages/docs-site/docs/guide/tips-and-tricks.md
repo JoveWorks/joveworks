@@ -114,6 +114,41 @@ empty "ghost" slot and a column is created and named after whatever you
 wired, on the spot. Rewiring a column later relabels it to match, and
 columns can be dragged left/right in the notebook to reorder them.
 
+Each column header also carries its own decimal-figure box, so a mass
+column can read to two places while a safety factor reads to one, without
+touching the number format for the rest of the app.
+
+## Marking a design, and the link between table and plot
+
+Clicking a table row or a point on a plot marks that design **everywhere**
+— every figure in the NodeBook calls it out with the same letter. It's the
+fastest way to make a report say *why this one*, and the full story is on
+[Candidates and marks](/guide/candidates). The parts worth knowing before
+you go looking:
+
+- **A table row is a design**, not a row number. Click it: the row
+  highlights, its letter lands in the first column, and the matching point
+  is ringed on every plot, feasibility map and Pareto front that shares an
+  axis with it. Click again to unmark.
+- **Marking from a table pins one design; marking from a one-axis plot pins
+  a slice.** A plot of deflection against diameter can only record
+  `d = 40`, so a two-axis feasibility map will light that entire column —
+  correct, and rarely what you wanted. Mark from the table, the feasibility
+  map or the Pareto front when you want *one* design.
+- **That's also what makes the numbers appear.** A mark that pins exactly
+  one design adds a lettered reading under each Check and Print output
+  (`A: S = 1.8 ✓`). No line under your checks means the mark identifies a
+  whole row, and there's no single number to print.
+- **Mark two, not one.** A and B side by side under every check turns "we
+  chose this" into a comparison the reader can check.
+- **On a contour the ring sits on the second swept axis** — a contour puts
+  the plotted value on colour, so the ring's height is the other input, and
+  its value is the colour under it.
+- **Marks are saved with the document** and print in the exported PDF, so a
+  section note can say "candidate B" and rely on it. Removing a mark
+  re-letters the ones after it, so unmark from the end if your prose
+  already names letters.
+
 ## Password-locked catalogues
 
 A restricted catalogue can ship with the app locked, showing only its name
