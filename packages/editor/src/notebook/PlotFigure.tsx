@@ -12,7 +12,10 @@
  *   line a student is meant to recognise on a Wöhler or bearing-life plot is only
  *   straight on log-log.
  * - **The threshold is the point.** A curve crossing `S = 1.5` is what turns a
- *   plot into an answer, so it is drawn as a rule with the value on it.
+ *   plot into an answer, so it is drawn as a rule with the value on it. On a
+ *   contour the same fact is a *curve* — the isoline at that level, with the
+ *   level marked on the colorbar — because a contour's y axis is the second
+ *   swept input and a rule across it would say nothing.
  *
  * The contour path is drawn from the kernel's grid, and it wants verifying
  * against the key-design case before it is trusted — it renders here, and that
@@ -192,6 +195,32 @@ export function markY(result: PlotResult): (row: Row) => number {
   return drawsContour(result) ? (row) => Number(row.series) : (row) => row.y;
 }
 
+/** A swept coordinate as a reader would say it — four significant figures, its own locale. */
+function readout(value: number | string): string {
+  return typeof value === 'number' ? value.toLocaleString(undefined, { maximumSignificantDigits: 4 }) : value;
+}
+
+/**
+ * What the hover tip says: every coordinate of the pointed design, then its
+ * value.
+ *
+ * A contour needs this more than a line does — its y axis is the second swept
+ * axis and its value is a colour, so "which design is this and what does it
+ * come to" is otherwise a two-step read off the colorbar.
+ */
+export function tipTitle(result: PlotResult, row: Row, xLabel: string, valueLabel: string): string {
+  return [
+    `${xLabel}: ${readout(row.x)}`,
+    ...(result.series2 === undefined || row.series === undefined
+      ? []
+      : [`${axisLabel(result.series2)}: ${readout(row.series)}`]),
+    ...(result.facet === undefined || row.facet === undefined
+      ? []
+      : [`${axisLabel(result.facet)}: ${readout(row.facet)}`]),
+    `${valueLabel}: ${readout(row.y)}`,
+  ].join('\n');
+}
+
 interface Props {
   readonly result: PlotResult;
   readonly document: GraphDocument;
@@ -247,6 +276,50 @@ export function chartTip<T>(data: readonly T[], bias: 'x' | 'y', options: Plot.T
   return Plot.tip(data, pointer({ ...(panel === '' ? {} : { fill: panel }), ...options }));
 }
 
+/** The colour a threshold is drawn in, wherever it appears: the rule, its label, the isoline. */
+const THRESHOLD_COLOR = '#c2410c';
+
+/**
+ * The kernel's grid as the dense row-major array `Plot.contour` wants, with
+ * the rectangle it spans.
+ *
+ * Built once and drawn twice — as the filled field, and (when there is one) as
+ * the threshold's own isoline — because both are the *same* grid at different
+ * levels, and recomputing it for the second would be inviting them to disagree.
+ *
+ * The rectangle is taken from the axis extremes, so a non-uniformly spaced
+ * axis — a log range, an explicit list — is stretched onto a uniform one.
+ */
+export function contourGrid(result: PlotResult, series2: PlotAxis): {
+  readonly values: readonly number[];
+  readonly rectangle: { width: number; height: number; x1: number; x2: number; y1: number; y2: number };
+} {
+  const xs = coordinates(result.x).map(Number);
+  const ys = coordinates(series2).map(Number);
+  const values = new Array<number>(xs.length * ys.length).fill(Number.NaN);
+  const target = plotGrid(result);
+  const valueAt = indexer(result.series, target);
+  const xAt = indexer(result.x.coordinates, target);
+  const yAt = indexer(series2.coordinates, target);
+  for (let cell = 0; cell < gridSize(target); cell += 1) {
+    values[yAt(cell) * xs.length + xAt(cell)] = fromCanonical(
+      result.series.data[valueAt(cell)] as number,
+      result.unit,
+    );
+  }
+  return {
+    values,
+    rectangle: {
+      width: xs.length,
+      height: ys.length,
+      x1: Math.min(...xs),
+      x2: Math.max(...xs),
+      y1: Math.min(...ys),
+      y2: Math.max(...ys),
+    },
+  };
+}
+
 /** A compact vertical key keeps the contour itself large enough to read. */
 function contourColorbar(
   result: PlotResult,
@@ -282,6 +355,25 @@ function contourColorbar(
   values.append(Object.assign(document.createElement('span'), { textContent: format(minimum) }));
   const ramp = document.createElement('i');
   ramp.className = 'contour-colorbar-ramp';
+
+  // The level the threshold isoline is drawn at, marked on the key that reads
+  // levels. Without it the reader gets an orange curve across the field and no
+  // way to say which value it is — the line plot prints its threshold beside
+  // the rule for exactly the same reason.
+  const threshold = result.threshold === undefined ? undefined : fromCanonical(result.threshold, result.unit);
+  if (threshold !== undefined && threshold > minimum && threshold < maximum) {
+    const height = `${((threshold - minimum) / (maximum - minimum)) * 100}%`;
+    const tick = document.createElement('i');
+    tick.className = 'contour-colorbar-threshold';
+    tick.style.bottom = height;
+    ramp.append(tick);
+    const reading = document.createElement('span');
+    reading.className = 'contour-colorbar-threshold-value';
+    reading.style.bottom = height;
+    reading.textContent = format(threshold);
+    values.append(reading);
+  }
+
   scale.append(values, ramp);
   colorbar.append(title, scale);
   return colorbar;
@@ -352,35 +444,32 @@ export function PlotFigure({ result: rawResult, document: graph, format, marking
 
     const marks: Plot.Markish[] = [];
     if (contouring && result.series2 !== undefined) {
-      // A grid the kernel already computed, redrawn as isolines. The rectangle
-      // is taken from the axis extremes, so a non-uniformly spaced axis — a log
-      // range, an explicit list — is stretched onto a uniform one.
-      const xs = coordinates(result.x).map(Number);
-      const ys = coordinates(result.series2).map(Number);
-      const values = new Array<number>(xs.length * ys.length).fill(Number.NaN);
-      const target = plotGrid(result);
-      const valueAt = indexer(result.series, target);
-      const xAt = indexer(result.x.coordinates, target);
-      const yAt = indexer(result.series2.coordinates, target);
-      for (let cell = 0; cell < gridSize(target); cell += 1) {
-        values[yAt(cell) * xs.length + xAt(cell)] = fromCanonical(
-          result.series.data[valueAt(cell)] as number,
-          result.unit,
-        );
-      }
+      // A grid the kernel already computed, redrawn as isolines.
+      const { values, rectangle } = contourGrid(result, result.series2);
       marks.push(
         Plot.contour(values, {
-          width: xs.length,
-          height: ys.length,
-          x1: Math.min(...xs),
-          x2: Math.max(...xs),
-          y1: Math.min(...ys),
-          y2: Math.max(...ys),
+          ...rectangle,
           fill: Plot.identity,
           stroke: 'currentColor',
           strokeOpacity: 0.4,
         }),
       );
+      // A threshold is a *level of the plotted value*, and on a contour a level
+      // is a curve rather than a height: `S = 1.5` is the isoline where the
+      // design first passes, which is the same thing the rule means on a line
+      // plot. Drawing the rule here instead would put a horizontal line at 1.5
+      // of the *second axis's* units — °C, mm — which is not a fact about
+      // anything.
+      if (threshold !== undefined) {
+        marks.push(
+          Plot.contour(values, {
+            ...rectangle,
+            thresholds: [threshold],
+            stroke: THRESHOLD_COLOR,
+            strokeWidth: 2,
+          }),
+        );
+      }
     } else {
       const stroke = result.series2 === undefined ? undefined : 'series';
       const fx = result.facet === undefined ? undefined : 'facet';
@@ -409,19 +498,35 @@ export function PlotFigure({ result: rawResult, document: graph, format, marking
       );
     }
 
-    if (threshold !== undefined) {
+    // The rule is the *line plot's* threshold — the contour drew its own, above.
+    if (threshold !== undefined && !contouring) {
       marks.push(
-        Plot.ruleY([threshold], { stroke: '#c2410c', strokeDasharray: '4 3' }),
+        Plot.ruleY([threshold], { stroke: THRESHOLD_COLOR, strokeDasharray: '4 3' }),
         Plot.text([threshold], {
           x: () => data[0]?.x ?? 0,
           y: (value) => value,
           text: [`${threshold}`],
           textAnchor: 'start',
           dy: -6,
-          fill: '#c2410c',
+          fill: THRESHOLD_COLOR,
         }),
       );
     }
+
+    // The tip is also the *pointer*: Observable Plot's pointer transform is what
+    // publishes the datum under the cursor as the chart's own `value`, which is
+    // what the click below reads. Without it a plot draws marks it can never
+    // gain — every click finds `value` undefined — so this mark is load-bearing
+    // rather than decoration, exactly as in `FeasibilityFigure` and
+    // `ParetoFigure`. It goes last so the box sits above the curve.
+    marks.push(
+      chartTip(data, 'x', {
+        x: 'x',
+        y: markY(result),
+        title: (row: Row) => tipTitle(result, row, xLabel, valueLabel),
+        ...(result.facet === undefined || contouring ? {} : { fx: 'facet' }),
+      }),
+    );
 
     const chart = Plot.plot({
       width: result.facet === undefined ? 360 : Math.min(180 * result.facet.axis.length, 1080),

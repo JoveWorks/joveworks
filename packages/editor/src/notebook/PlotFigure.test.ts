@@ -8,10 +8,22 @@
 
 import { describe, expect, it } from 'vitest';
 
-import type { Axis, PlotResult } from '@joveworks/kernel';
+import type { Axis, PlotAxis, PlotResult } from '@joveworks/kernel';
 import { PLAIN_NUMBER_FORMAT, parseUnit, type NumberFormat } from '@joveworks/units';
 
-import { drawsContour, markY, plotValueLabel, plotYLabel, rows, siAxisUnit, siResult } from './PlotFigure';
+import {
+  axisLabel,
+  contourGrid,
+  drawsContour,
+  markY,
+  plotValueLabel,
+  plotYLabel,
+  rows,
+  siAxisUnit,
+  siResult,
+  tipTitle,
+  type Row,
+} from './PlotFigure';
 
 const mm = parseUnit('mm');
 
@@ -134,6 +146,22 @@ describe('a contour plot', () => {
   it('places a mark at the plotted value when the same result draws as a line', () => {
     const line = { ...result, contour: false };
     expect(rows(line).map(markY(line))).toEqual([1, 2, 3, 4, 5, 6]);
+  });
+
+  // The grid the field and the threshold's isoline are both drawn from: one
+  // build, so the level can never be drawn against a different field than the
+  // colours are.
+  it('lays the kernel grid out row-major over the second axis, spanning the axis extremes', () => {
+    const { values, rectangle } = contourGrid(result, result.series2 as PlotAxis);
+    expect(values).toEqual([1, 3, 5, 2, 4, 6]);
+    expect(rectangle).toEqual({ width: 3, height: 2, x1: 10, x2: 30, y1: 100, y2: 200 });
+  });
+
+  it('names every coordinate of the pointed design in the tip, then its value', () => {
+    const [first] = rows(result);
+    expect(tipTitle(result, first as Row, axisLabel(result.x), plotValueLabel(result))).toBe(
+      'w (mm): 10\nh (N): 100\nstress (mm): 1',
+    );
   });
 });
 

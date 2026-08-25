@@ -3181,11 +3181,36 @@ aside.right {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  position: relative;
   text-align: center;
 }
 
 .notebook .contour-colorbar-ramp {
   background: linear-gradient(to top, #440154, #3b528b, #21918c, #5ec962, #fde725);
+  position: relative;
+}
+
+/*
+ * The threshold's level on the key, at the same height in the ramp as the
+ * isoline it labels — the colorbar's answer to the value printed beside a line
+ * plot's threshold rule. Positioned from the bottom, since the ramp runs
+ * minimum-up.
+ */
+.notebook .contour-colorbar-threshold {
+  position: absolute;
+  left: -2px;
+  right: -2px;
+  height: 2px;
+  background: #c2410c;
+}
+
+.notebook .contour-colorbar-threshold-value {
+  position: absolute;
+  left: 0;
+  right: 0;
+  transform: translateY(50%);
+  color: #c2410c;
+  font-weight: 600;
 }
 
 .notebook .contour-colorbar[data-palette='cividis'] .contour-colorbar-ramp {
