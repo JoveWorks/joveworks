@@ -1,6 +1,12 @@
 import { useMemo, useState } from 'react';
 
-import { loadCatalogue, saveCatalogue, SchemaError, type Catalogue } from '@joveworks/schema';
+import {
+  catalogueFormatFromFileName,
+  loadCatalogue,
+  saveCatalogue,
+  SchemaError,
+  type Catalogue,
+} from '@joveworks/schema';
 
 import { CatalogueMetaForm } from './components/CatalogueMetaForm';
 import { FormulaForm } from './components/FormulaForm';
@@ -30,10 +36,13 @@ export function App() {
   const selectedValidation = validation.formulas.find((formula) => formula.key === selectedKey);
 
   async function handleImport() {
-    const picked = await openTextFile();
+    const picked = await openTextFile('application/json,.json,application/yaml,text/yaml,.yaml,.yml');
     if (picked === undefined) return;
     try {
-      const loaded: Catalogue = loadCatalogue(picked.text);
+      const loaded: Catalogue = loadCatalogue(
+        picked.text,
+        catalogueFormatFromFileName(picked.name),
+      );
       const draft = draftCatalogueFromReal(loaded);
       setCatalogue(draft);
       setSelectedKey(draft.formulas[0]?.key);

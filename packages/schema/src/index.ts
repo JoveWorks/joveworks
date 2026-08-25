@@ -209,7 +209,14 @@ export type {
   Comparison,
 } from './document.js';
 
-export { loadDocument, saveDocument, loadCatalogue, saveCatalogue } from './io.js';
+export {
+  loadDocument,
+  saveDocument,
+  loadCatalogue,
+  saveCatalogue,
+  catalogueFormatFromFileName,
+} from './io.js';
+export type { CatalogueFormat } from './io.js';
 export { localize, parseLocalizedText, serializeLocalizedText } from './localization.js';
 export type { LocalizedText } from './localization.js';
 

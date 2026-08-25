@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Encrypt a catalogue JSON file into the locked-catalogue format the editor
+ * Encrypt a catalogue JSON or YAML file into the locked-catalogue format the editor
  * unlocks with a password (docs/password-shared-catalogues.md,
  * packages/schema/src/lockedCatalogue.ts). Run once per course offering by
  * whoever holds the catalogue and the password — typically from the private
@@ -8,7 +8,7 @@
  * lives there. Requires `pnpm build` to have produced packages/schema/dist.
  *
  * Usage:
- *   node tools/encrypt-catalogue/encrypt-catalogue.mjs <in.json> <out.json>
+ *   node tools/encrypt-catalogue/encrypt-catalogue.mjs <in.json|yaml> <out.json>
  *
  * The password is read from the JOVEWORKS_CATALOGUE_PASSWORD environment
  * variable, never from an argument — arguments end up in shell history and
@@ -17,12 +17,17 @@
 
 import { readFile, writeFile } from 'node:fs/promises';
 
-import { encryptCatalogue, loadCatalogue, saveLockedCatalogue } from '../../packages/schema/dist/index.js';
+import {
+  catalogueFormatFromFileName,
+  encryptCatalogue,
+  loadCatalogue,
+  saveLockedCatalogue,
+} from '../../packages/schema/dist/index.js';
 
 const [, , inPath, outPath] = process.argv;
 
 if (inPath === undefined || outPath === undefined) {
-  console.error('Usage: node encrypt-catalogue.mjs <in.json> <out.json>');
+  console.error('Usage: node encrypt-catalogue.mjs <in.json|yaml> <out.json>');
   process.exit(1);
 }
 
@@ -32,7 +37,10 @@ if (password === undefined || password.length === 0) {
   process.exit(1);
 }
 
-const catalogue = loadCatalogue(await readFile(inPath, 'utf8'));
+const catalogue = loadCatalogue(
+  await readFile(inPath, 'utf8'),
+  catalogueFormatFromFileName(inPath),
+);
 const locked = await encryptCatalogue(catalogue, password);
 await writeFile(outPath, saveLockedCatalogue(locked));
 console.log(`Wrote ${outPath} — locked catalogue '${locked.id}', ${catalogue.formulas.length} formulas.`);

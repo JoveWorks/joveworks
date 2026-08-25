@@ -15,7 +15,7 @@ catalogues.
 
 Any file `loadCatalogue` accepts — see `docs/authoring-catalogues.md` or a
 `tools/extract/*.py` script's output. Validate it first the normal way
-(`JOVEWORKS_CATALOGUE=/path/to/file.json pnpm test`) — encrypting a broken
+(`JOVEWORKS_CATALOGUE=/path/to/file.yaml pnpm test`) — encrypting a broken
 catalogue just produces a broken catalogue nobody can read the error from.
 
 ## 2. Pick a password for this course offering
@@ -33,7 +33,7 @@ the palette.
 
 ```sh
 pnpm build   # packages/schema/dist must exist — the CLI imports the built package
-JOVEWORKS_CATALOGUE_PASSWORD='…' pnpm encrypt-catalogue path/to/catalogue.json out/rm-2026-fall.json
+JOVEWORKS_CATALOGUE_PASSWORD='…' pnpm encrypt-catalogue path/to/catalogue.yaml out/rm-2026-fall.json
 ```
 
 The password comes from the `JOVEWORKS_CATALOGUE_PASSWORD` environment

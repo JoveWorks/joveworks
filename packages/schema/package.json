@@ -12,6 +12,7 @@
     }
   },
   "dependencies": {
-    "@joveworks/units": "workspace:*"
+    "@joveworks/units": "workspace:*",
+    "yaml": "^2.9.0"
   }
 }

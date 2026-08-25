@@ -37,6 +37,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 import {
+  catalogueFormatFromFileName,
   SCHEMA_VERSION,
   formulaRef,
   loadCatalogue,
@@ -57,7 +58,10 @@ const present = path !== undefined && path.length > 0 && existsSync(path);
 const BASE: Catalogue = loadCatalogue(baseCatalogueJson());
 
 const BELT: Catalogue = present
-  ? loadCatalogue(readFileSync(path as string, 'utf8'))
+  ? loadCatalogue(
+      readFileSync(path as string, 'utf8'),
+      catalogueFormatFromFileName(path as string),
+    )
   : { schemaVersion: SCHEMA_VERSION, id: 'absent', name: 'absent', restricted: true, formulas: [] };
 
 const CATALOGUES: readonly Catalogue[] = [BASE, BELT];

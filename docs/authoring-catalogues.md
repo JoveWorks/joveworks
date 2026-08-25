@@ -1,6 +1,6 @@
 # Authoring a formula catalogue by hand
 
-A catalogue is a JSON file of `Formula` records read by `@joveworks/schema`
+A catalogue is a JSON or YAML file of `Formula` records read by `@joveworks/schema`
 (`packages/schema/src/formula.ts`, `port.ts`). This is a guide to writing one
 directly, for the cases where there is no source script to extract from — an
 invented or textbook-independent catalogue, a demo, a course pack from a
@@ -27,6 +27,25 @@ This guide is for catalogues with no such source.
   "formulas": [ /* Formula records */ ]
 }
 ```
+
+The same record may be written as YAML when that is easier to edit:
+
+```yaml
+schemaVersion: 1
+id: my-catalogue
+name:
+  en: Human-readable name
+  nl: Leesbare naam
+restricted: false
+formulas: []
+```
+
+The editor and catalogue-author app accept `.yaml` and `.yml` files as well as
+`.json`. JSON remains the canonical export and browser-cache format; YAML is an
+input syntax over the same catalogue schema, not a second data model. JoveWorks
+uses YAML 1.2, requires unique string keys, and rejects custom tags, merge keys,
+anchors, and aliases. Quote a scalar when YAML punctuation could change its
+meaning—expressions containing `#` or `:`, for example.
 
 `restricted` is a statement of intent inside the app — the app refuses
 to export a restricted catalogue's expressions. Set it `false` only for
@@ -192,7 +211,7 @@ expression actually produces. Point `test/catalogue-check.test.ts` at your
 file:
 
 ```
-JOVEWORKS_CATALOGUE=/path/to/your-catalogue.json pnpm test
+JOVEWORKS_CATALOGUE=/path/to/your-catalogue.yaml pnpm test
 ```
 
 It parses the file, runs the dimension check over every non-quarantined

@@ -16,6 +16,7 @@ import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { ReactFlowProvider, useReactFlow } from '@xyflow/react';
 
 import {
+  catalogueFormatFromFileName,
   emptyDocument,
   decryptCatalogue,
   loadCatalogue,
@@ -708,12 +709,14 @@ function AppShell(): ReactElement {
   const apertureDecisionAvailable = provides(catalogues, APERTURE_DECISION_FORMULAS);
 
   const loadCatalogueFile = async (): Promise<void> => {
-    const file = await openTextFile();
+    const file = await openTextFile('application/json,.json,application/yaml,text/yaml,.yaml,.yml');
     if (file === undefined) return;
     try {
-      const loaded = loadCatalogue(file.text);
+      const loaded = loadCatalogue(file.text, catalogueFormatFromFileName(file.name));
       setCatalogues((current) => withCatalogue(current, loaded));
-      cacheCatalogue(loaded.id, file.text);
+      // Browser storage is an internal cache, not the author's source file.
+      // Canonical JSON means startup never needs to remember its input syntax.
+      cacheCatalogue(loaded.id, saveCatalogue(loaded));
       analytics.track({ name: 'catalogue_loaded' });
       pushNotice(`Loaded ${localize(loaded.name, locale)} — ${loaded.formulas.length} formulas.`);
     } catch (error) {

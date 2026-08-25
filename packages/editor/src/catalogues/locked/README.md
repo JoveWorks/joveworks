@@ -16,7 +16,7 @@ is the format and the crypto; the CLI is a thin wrapper over it):
 
 ```sh
 pnpm build   # so packages/schema/dist exists
-JOVEWORKS_CATALOGUE_PASSWORD='…' pnpm encrypt-catalogue path/to/catalogue.json packages/editor/src/catalogues/locked/<id>.json
+JOVEWORKS_CATALOGUE_PASSWORD='…' pnpm encrypt-catalogue path/to/catalogue.yaml packages/editor/src/catalogues/locked/<id>.json
 ```
 
 This usually runs from the private catalogue repository, since that is

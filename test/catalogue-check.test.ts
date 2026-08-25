@@ -2,7 +2,13 @@ import { existsSync, readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
-import { loadCatalogue, isEvaluable, type Catalogue, type Formula } from '@joveworks/schema';
+import {
+  catalogueFormatFromFileName,
+  loadCatalogue,
+  isEvaluable,
+  type Catalogue,
+  type Formula,
+} from '@joveworks/schema';
 import { KernelError, checkFormulaDimensions } from '@joveworks/kernel';
 
 /**
@@ -29,7 +35,10 @@ const present = path !== undefined && path.length > 0 && existsSync(path);
 
 let loaded: Catalogue | undefined;
 function catalogue(): Catalogue {
-  loaded ??= loadCatalogue(readFileSync(path as string, 'utf8'));
+  loaded ??= loadCatalogue(
+    readFileSync(path as string, 'utf8'),
+    catalogueFormatFromFileName(path as string),
+  );
   return loaded;
 }
 

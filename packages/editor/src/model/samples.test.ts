@@ -15,7 +15,12 @@ import { existsSync, readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
-import { loadCatalogue, type Catalogue, type GraphDocument } from '@joveworks/schema';
+import {
+  catalogueFormatFromFileName,
+  loadCatalogue,
+  type Catalogue,
+  type GraphDocument,
+} from '@joveworks/schema';
 import { fromCanonical, parseUnit } from '@joveworks/units';
 
 import { analyse } from './analysis';
@@ -39,7 +44,13 @@ const present = path !== undefined && path.length > 0 && existsSync(path);
 
 const PUBLIC_CATALOGUES: readonly Catalogue[] = [baseCatalogue(), ...bundledCatalogues()];
 const CATALOGUES: readonly Catalogue[] = present
-  ? [...PUBLIC_CATALOGUES, loadCatalogue(readFileSync(path as string, 'utf8'))]
+  ? [
+      ...PUBLIC_CATALOGUES,
+      loadCatalogue(
+        readFileSync(path as string, 'utf8'),
+        catalogueFormatFromFileName(path as string),
+      ),
+    ]
   : PUBLIC_CATALOGUES;
 const catalogueFormulaIds = new Set(CATALOGUES.flatMap((catalogue) => catalogue.formulas.map((formula) => formula.id)));
 const beltPresent = catalogueFormulaIds.has('rm.16.19A');

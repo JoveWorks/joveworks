@@ -11,7 +11,46 @@
 
 import { parseCatalogue, serializeCatalogue, type Catalogue } from './formula.js';
 import { parseDocument, serializeDocument, type GraphDocument } from './document.js';
-import { readJsonText } from './json.js';
+import { fail, readJsonText, type JsonValue } from './json.js';
+import { parseDocument as parseYamlDocument, visit } from 'yaml';
+
+export type CatalogueFormat = 'json' | 'yaml';
+
+/** File-name policy lives here so every catalogue-loading surface agrees. */
+export function catalogueFormatFromFileName(fileName: string): CatalogueFormat {
+  return /\.ya?ml$/i.test(fileName) ? 'yaml' : 'json';
+}
+
+function readYamlText(text: string): JsonValue {
+  const document = parseYamlDocument(text, {
+    schema: 'core',
+    version: '1.2',
+    customTags: [],
+    resolveKnownTags: false,
+    merge: false,
+    stringKeys: true,
+    uniqueKeys: true,
+    strict: true,
+  });
+  const problem = document.errors[0] ?? document.warnings[0];
+  if (problem !== undefined) {
+    fail('', `is not valid YAML — ${problem.message}`);
+  }
+  let anchor: string | undefined;
+  visit(document, {
+    Node: (_key, node) => {
+      if (node.anchor !== undefined) anchor = node.anchor;
+    },
+  });
+  if (anchor !== undefined) fail('', `is not valid YAML — anchor '${anchor}' is not allowed`);
+  try {
+    // Catalogue YAML is data, not a macro language. Disallow aliases so a
+    // record always has one visible, reviewable spelling in the source file.
+    return document.toJS({ maxAliasCount: 0 }) as JsonValue;
+  } catch (error) {
+    fail('', `is not valid YAML — ${(error as Error).message}`);
+  }
+}
 
 export function loadDocument(text: string): GraphDocument {
   return parseDocument(readJsonText(text));
@@ -22,8 +61,8 @@ export function saveDocument(document: GraphDocument): string {
   return `${JSON.stringify(serializeDocument(document), null, 2)}\n`;
 }
 
-export function loadCatalogue(text: string): Catalogue {
-  return parseCatalogue(readJsonText(text));
+export function loadCatalogue(text: string, format: CatalogueFormat = 'json'): Catalogue {
+  return parseCatalogue(format === 'yaml' ? readYamlText(text) : readJsonText(text));
 }
 
 export function saveCatalogue(catalogue: Catalogue): string {
