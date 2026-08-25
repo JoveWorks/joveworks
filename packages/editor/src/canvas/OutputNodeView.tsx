@@ -26,7 +26,7 @@ import { useEffect, type MouseEvent, type ReactElement } from 'react';
 import { Handle, Position, useUpdateNodeInternals, type NodeProps } from '@xyflow/react';
 
 import { parseExpression, toLatex } from '@joveworks/kernel';
-import { parseUnit } from '@joveworks/units';
+import { parseUnit, type NumberFormat, type Unit } from '@joveworks/units';
 import {
   COMPARISONS,
   OBJECTIVE_PORT,
@@ -61,7 +61,7 @@ import { Equation } from '../Equation';
 import { Symbol } from '../Symbol';
 import { ParameterLabel } from '../ParameterLabel';
 import { display, formatAuthored, parseAuthored, unitLabel } from '../model/quantity';
-import { checkVerdict, reading, summarise, summariseCheck } from '../model/values';
+import { checkVerdict, reading, summarise, summariseCheck, type Reading } from '../model/values';
 import { CheckReading } from '../CheckReading';
 import { NodeShell } from './NodeShell';
 import { Sparkline } from './Sparkline';
@@ -74,6 +74,17 @@ type Range = ReturnType<typeof documentAxes>[number];
 
 function rangeLabel(range: Range): string {
   return range.axisLabel ?? range.label ?? range.id;
+}
+
+/** What a Check or Plot threshold field reads while a wire overrides its stored fallback. */
+export function thresholdFieldText(
+  wired: boolean,
+  supplied: Reading | undefined,
+  fallback: { readonly value: number; readonly unit: Unit } | undefined,
+  format: NumberFormat,
+): string {
+  if (wired) return supplied === undefined ? '' : summarise(supplied, 4, format);
+  return fallback === undefined ? '' : formatAuthored(fallback, format);
 }
 
 /** Native option elements cannot contain KaTeX markup, so axis choices use a small HTML menu. */
@@ -317,6 +328,12 @@ export function OutputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>
     document.edges.filter((edge) => edge.to.node === id).map((edge) => edge.to.port),
   );
   const thresholdWired = (output.kind === 'plot' || output.kind === 'check') && wired.has(THRESHOLD_PORT);
+  const thresholdSource = document.edges.find(
+    (edge) => edge.to.node === id && edge.to.port === THRESHOLD_PORT,
+  );
+  const suppliedThreshold = thresholdSource === undefined
+    ? undefined
+    : reading(analysis, thresholdSource.from.node, thresholdSource.from.port);
 
   return (
     <NodeShell
@@ -763,13 +780,7 @@ export function OutputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>
               <TextField
                 className="quantity"
                 value={
-                  thresholdWired
-                    ? plotResult?.threshold === undefined
-                      ? ''
-                      : display(plotResult.threshold, plotResult.unit)
-                    : output.threshold === undefined
-                      ? ''
-                      : formatAuthored(output.threshold, format)
+                  thresholdFieldText(thresholdWired, suppliedThreshold, output.threshold, format)
                 }
                 placeholder="none"
                 // Sized to its own content, same as compare's threshold
@@ -817,12 +828,13 @@ export function OutputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>
             <span className="quantity-split port-quantity">
               <TextField
                 className="quantity"
-                value={formatAuthored(output.threshold, format)}
+                value={thresholdFieldText(thresholdWired, suppliedThreshold, output.threshold, format)}
                 placeholder="1.5"
                 autoSize={4}
+                disabled={thresholdWired}
                 title={
                   thresholdWired
-                    ? 'Overridden by the wire — this is what applies when it is removed.'
+                    ? 'Set by the wire — unplug it to type one by hand again.'
                     : 'A number a student types, with its unit, unless something is wired in.'
                 }
                 onCommit={(text) => {

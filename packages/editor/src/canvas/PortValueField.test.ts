@@ -6,6 +6,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { PLAIN_NUMBER_FORMAT, UnitError, parseGenericDimension, parseUnit } from '@joveworks/units';
+import type { Series } from '@joveworks/kernel';
 import type { NumericPort } from '@joveworks/schema';
 
 import { portFieldText, portFieldValue } from './PortValueField';
@@ -36,6 +37,26 @@ describe('what a port field shows', () => {
   it('reads a slider back as the number it currently holds', () => {
     const slider = { kind: 'slider' as const, value: 12, unit: parseUnit('mm'), min: 0, max: 20 };
     expect(portFieldText(millimetres, slider, format)).toBe('12 mm');
+  });
+
+  it('shows the value supplied by a wire instead of the stored default', () => {
+    const supplied = {
+      series: { kind: 'numeric', data: [72], axes: [] } as Series,
+      unit: parseUnit('mm'),
+    };
+    expect(portFieldText(withDefault, undefined, format, supplied)).toBe('72 mm');
+  });
+
+  it('shows the extent supplied by a swept wire', () => {
+    const supplied = {
+      series: {
+        kind: 'numeric',
+        data: [20, 30, 40],
+        axes: [{ id: 'd', label: 'diameter', values: [20, 30, 40], length: 3 }],
+      } as Series,
+      unit: parseUnit('mm'),
+    };
+    expect(portFieldText(withDefault, undefined, format, supplied)).toBe('20 mm … 40 mm');
   });
 });
 

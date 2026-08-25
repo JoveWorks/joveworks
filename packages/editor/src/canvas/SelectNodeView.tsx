@@ -89,6 +89,12 @@ export function SelectNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>
   );
   const targetType = (port: string): PortType | undefined => analysis.resolution?.targets.get(`${id}.${port}`);
   const impliedUnit = impliedThresholdUnit(node, targetType(VALUE_PORT));
+  const thresholdEdge = document.edges.find(
+    (edge) => edge.to.node === id && edge.to.port === THRESHOLD_PORT,
+  );
+  const suppliedThreshold = thresholdEdge === undefined
+    ? undefined
+    : reading(analysis, thresholdEdge.from.node, thresholdEdge.from.port);
 
   const setThreshold = (change: Partial<Pick<CrossingSelectNode, 'threshold' | 'direction'>>): void =>
     edit((current) =>
@@ -135,12 +141,17 @@ export function SelectNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>
         <span className="quantity-split port-quantity">
           <TextField
             className="quantity"
-            value={formatAuthored(node.threshold, format)}
+            value={
+              wired.has(THRESHOLD_PORT)
+                ? suppliedThreshold === undefined ? '' : summarise(suppliedThreshold, 4, format)
+                : formatAuthored(node.threshold, format)
+            }
             placeholder="1.5"
             autoSize={4}
+            disabled={wired.has(THRESHOLD_PORT)}
             title={
               wired.has(THRESHOLD_PORT)
-                ? 'Overridden by the wire — this is what applies when it is removed.'
+                ? 'Set by the wire — unplug it to type one by hand again.'
                 : 'The bound the value has to cross. A wire overrides it.'
             }
             onCommit={(text) => {
@@ -152,7 +163,7 @@ export function SelectNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>
               setThreshold({ threshold });
             }}
           />
-          {impliedUnit === undefined ? null : (
+          {impliedUnit === undefined || wired.has(THRESHOLD_PORT) ? null : (
             <span
               className="unit implied"
               title="No unit typed — taken from the value's own unit. Type one to fix it instead."

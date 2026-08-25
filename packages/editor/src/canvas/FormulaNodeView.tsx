@@ -112,6 +112,10 @@ export function FormulaNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
     const names = [...new Set(series.data)];
     return names.length > 2 ? `${names.length} choices` : names.join(' | ');
   };
+  const supplied = (portName: string) => {
+    const edge = document.edges.find((entry) => entry.to.node === id && entry.to.port === portName);
+    return edge === undefined ? undefined : reading(analysis, edge.from.node, edge.from.port);
+  };
   /** Every edge already arriving at one port — more than one only for a spectrum port. */
   const edgesAt = (portName: string): number =>
     document.edges.filter((edge) => edge.to.node === id && edge.to.port === portName).length;
@@ -338,13 +342,15 @@ export function FormulaNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
                     </select>
                   )
                 ) : null}
-                {port.kind === 'numeric' && !wired.has(port.name) ? (
+                {port.kind === 'numeric' ? (
                   <PortValueField
                     port={port}
                     authored={authored}
                     unit={portUnit(port)}
                     format={format}
                     title={phrase(locale, PORT_VALUE_HINT)}
+                    supplied={supplied(port.name)}
+                    wired={wired.has(port.name)}
                     onCommit={(value) => setInputValue(port.name, value)}
                   />
                 ) : null}

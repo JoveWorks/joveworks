@@ -91,6 +91,12 @@ export function CompareNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
   const valueUnit = analysis.resolution?.targets.get(`${id}.${VALUE_PORT}`)?.unit;
   const thresholdUnit = analysis.resolution?.targets.get(`${id}.${THRESHOLD_PORT}`)?.unit;
   const impliedUnit = impliedThresholdUnit(node, analysis.resolution?.targets.get(`${id}.${VALUE_PORT}`));
+  const thresholdEdge = document.edges.find(
+    (edge) => edge.to.node === id && edge.to.port === THRESHOLD_PORT,
+  );
+  const suppliedThreshold = thresholdEdge === undefined
+    ? undefined
+    : reading(analysis, thresholdEdge.from.node, thresholdEdge.from.port);
 
   const setNode = (change: Partial<Pick<CompareNode, 'comparison' | 'threshold'>>): void =>
     edit((current) =>
@@ -179,15 +185,20 @@ export function CompareNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
           <span className="quantity-split port-quantity">
             <TextField
               className="quantity"
-              value={formatAuthored(node.threshold, format)}
+              value={
+                wired.has(THRESHOLD_PORT)
+                  ? suppliedThreshold === undefined ? '' : summarise(suppliedThreshold, 4, format)
+                  : formatAuthored(node.threshold, format)
+              }
               placeholder="1.5"
               // Sized to its own content, not `.output-editor .quantity`'s
               // width: 100% — that assumed a full-width label row, and this
               // now sits inline on the port row instead.
               autoSize={4}
+              disabled={wired.has(THRESHOLD_PORT)}
               title={
                 wired.has(THRESHOLD_PORT)
-                  ? 'Overridden by the wire — this is what applies when it is removed.'
+                  ? 'Set by the wire — unplug it to type one by hand again.'
                   : 'A number a student types, with its unit, unless something is wired in.'
               }
               onCommit={(text) => {
@@ -202,7 +213,7 @@ export function CompareNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
                 setNode({ threshold });
               }}
             />
-            {impliedUnit === undefined ? null : (
+            {impliedUnit === undefined || wired.has(THRESHOLD_PORT) ? null : (
               <span
                 className="unit implied"
                 title="No unit typed — taken from the value's own unit. Type one to fix it instead."

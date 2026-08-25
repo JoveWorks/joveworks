@@ -496,6 +496,7 @@ export function Canvas({
   const clipboard = useRef<{ document: GraphDocument; selected: ReadonlySet<string> } | undefined>(
     undefined,
   );
+  const cursor = useRef<{ readonly x: number; readonly y: number } | undefined>(undefined);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
@@ -526,7 +527,16 @@ export function Canvas({
 
       const source = key === 'v' ? clipboard.current : { document, selected };
       if (source === undefined) return;
-      const duplicated = duplicateSelection(document, source.document, source.selected, key === 'd');
+      const pasteAt = key === 'v' && cursor.current !== undefined
+        ? flow.screenToFlowPosition(cursor.current)
+        : undefined;
+      const duplicated = duplicateSelection(
+        document,
+        source.document,
+        source.selected,
+        key === 'd',
+        pasteAt,
+      );
       if (duplicated.ids.size === 0) return;
       event.preventDefault();
       edit(() => duplicated.document);
@@ -537,7 +547,7 @@ export function Canvas({
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [document, edit, selected, setSelected]);
+  }, [document, edit, flow, selected, setSelected]);
 
   /**
    * How big each node turned out to be, once drawn.
@@ -1294,6 +1304,9 @@ export function Canvas({
   return (
     <div className="canvas">
       <ReactFlow
+        onPointerMove={(event) => {
+          cursor.current = { x: event.clientX, y: event.clientY };
+        }}
         nodes={nodes}
         edges={edges}
         nodeTypes={NODE_TYPES}

@@ -19,6 +19,7 @@ import { isDimensionless, type NumberFormat, type Unit } from '@joveworks/units'
 import { isGenericPort, type NumericPort, type ValueSpec } from '@joveworks/schema';
 
 import { formatAuthored, parseAuthored } from '../model/quantity';
+import { summarise, type Reading } from '../model/values';
 import { TextField } from './fields';
 
 /** What a port row's field says it is for, on hover. */
@@ -43,16 +44,21 @@ interface Props {
   readonly unit: Unit | undefined;
   readonly format: NumberFormat;
   readonly title: string;
+  /** A wire is supplying this reading instead of the typed/catalogue fallback. */
+  readonly supplied?: Reading | undefined;
+  readonly wired?: boolean;
   /** `undefined` clears the typed value, falling back to the declared default. */
   readonly onCommit: (value: ValueSpec | undefined) => void;
 }
 
-/** The text the field shows: what was typed, else the catalogue's default, else nothing. */
+/** The text the field shows: a wire's reading, then what was typed, then the catalogue default. */
 export function portFieldText(
   port: NumericPort,
   authored: ValueSpec | undefined,
   format: NumberFormat,
+  supplied?: Reading,
 ): string {
+  if (supplied !== undefined) return summarise(supplied, 4, format);
   if (authored?.kind === 'scalar' || authored?.kind === 'slider') {
     return formatAuthored({ value: authored.value, unit: authored.unit }, format);
   }
@@ -91,6 +97,8 @@ export function PortValueField({
   unit,
   format,
   title,
+  supplied,
+  wired = false,
   onCommit,
 }: Props): ReactElement {
   return (
@@ -100,8 +108,9 @@ export function PortValueField({
       // An em-dash, not "0": the port has no value, which is a different
       // statement from a value that happens to be zero.
       placeholder="—"
-      title={title}
-      value={portFieldText(port, authored, format)}
+      title={wired ? 'Set by the wire — unplug it to type a default again.' : title}
+      value={portFieldText(port, authored, format, supplied)}
+      disabled={wired}
       onCommit={(text) => onCommit(portFieldValue(text, unit, format))}
     />
   );

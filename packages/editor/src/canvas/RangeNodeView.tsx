@@ -30,7 +30,7 @@ import { useSettings } from '../settings-context';
 import { toUnitsFormat } from '../model/numberFormat';
 import { nodeLabel, reframe, removeNodes, syncColumnLabels, updateNode } from '../model/document';
 import { formatAuthored, parseAuthored } from '../model/quantity';
-import { axisLabel, reading } from '../model/values';
+import { axisLabel, reading, summarise } from '../model/values';
 import { ParameterLabel } from '../ParameterLabel';
 import { NodeShell } from './NodeShell';
 import { NumberField, TextField } from './fields';
@@ -51,6 +51,14 @@ export function RangeNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>)
   const wired = new Set(document.edges.filter((edge) => edge.to.node === id).map((edge) => edge.to.port));
   const onPortHover = (port: string) => () => data?.onPortHover?.({ nodeId: id, port });
   const onPortHoverEnd = () => data?.onPortHover?.();
+  const supplied = (port: string) => {
+    const edge = document.edges.find((entry) => entry.to.node === id && entry.to.port === port);
+    return edge === undefined ? undefined : reading(analysis, edge.from.node, edge.from.port);
+  };
+  const suppliedText = (port: string): string => {
+    const value = supplied(port);
+    return value === undefined ? '' : summarise(value, 4, format);
+  };
   const setNode = (change: (current: RangeNode) => RangeNode): void =>
     edit((current) => updateNode<RangeNode>(current, id, change));
 
@@ -143,17 +151,24 @@ export function RangeNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>)
               className={highlightedPorts.has(port) ? 'port-highlighted' : ''}
             />
             <ParameterLabel name={port} unit={resolvedUnit(port)} nameClassName="port-name" unitClassName="port-unit" />
-            {wired.has(port) ? null : (
-              <span className="quantity-split port-quantity">
-                <TextField
-                  className="quantity"
-                  value={formatAuthored({ value: node[port === START_PORT ? 'start' : 'stop'], unit: node.unit }, format)}
-                  autoSize={4}
-                  title="Overridden by the wire — this is what applies when it is removed."
-                  onCommit={(text) => setBound(port === START_PORT ? 'start' : 'stop', text)}
-                />
-              </span>
-            )}
+            <span className="quantity-split port-quantity">
+              <TextField
+                className="quantity"
+                value={
+                  wired.has(port)
+                    ? suppliedText(port)
+                    : formatAuthored({ value: node[port === START_PORT ? 'start' : 'stop'], unit: node.unit }, format)
+                }
+                autoSize={4}
+                disabled={wired.has(port)}
+                title={
+                  wired.has(port)
+                    ? 'Set by the wire — unplug it to type one by hand again.'
+                    : 'A number, unless something is wired in.'
+                }
+                onCommit={(text) => setBound(port === START_PORT ? 'start' : 'stop', text)}
+              />
+            </span>
           </li>
         ))}
         <li
@@ -168,7 +183,18 @@ export function RangeNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>)
             className={highlightedPorts.has(COUNT_PORT) ? 'port-highlighted' : ''}
           />
           <ParameterLabel name={COUNT_PORT} nameClassName="port-name" unitClassName="port-unit" />
-          {wired.has(COUNT_PORT) ? null : (
+          {wired.has(COUNT_PORT) ? (
+            <span className="quantity-split port-quantity">
+              <TextField
+                className="quantity"
+                value={suppliedText(COUNT_PORT)}
+                autoSize={4}
+                disabled
+                title="Set by the wire — unplug it to type one by hand again."
+                onCommit={() => {}}
+              />
+            </span>
+          ) : (
             <span className="quantity-split port-quantity">
               <NumberField
                 className="quantity"
@@ -176,7 +202,7 @@ export function RangeNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>)
                 integer
                 minimum={2}
                 autoSize={4}
-                title="Overridden by the wire — this is what applies when it is removed."
+                title="A number, unless something is wired in."
                 onCommit={(count) => setNode((current) => ({ ...current, count }))}
               />
             </span>

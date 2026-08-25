@@ -70,6 +70,10 @@ export function ClosureNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
   );
   const edgesAt = (portName: string): number =>
     document.edges.filter((edge) => edge.to.node === id && edge.to.port === portName).length;
+  const supplied = (portName: string) => {
+    const edge = document.edges.find((entry) => entry.to.node === id && entry.to.port === portName);
+    return edge === undefined ? undefined : reading(analysis, edge.from.node, edge.from.port);
+  };
 
   const portUnit = (port: Port) => analysis.resolution?.targets.get(`${id}.${port.name}`)?.unit;
 
@@ -152,13 +156,15 @@ export function ClosureNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
                   nameClassName="port-name"
                   unitClassName="port-unit"
                 />
-                {port.kind === 'numeric' && !wired.has(port.name) ? (
+                {port.kind === 'numeric' ? (
                   <PortValueField
                     port={port}
                     authored={node.inputValues?.[port.name]}
                     unit={portUnit(port)}
                     format={format}
                     title={phrase(locale, PORT_VALUE_HINT)}
+                    supplied={supplied(port.name)}
+                    wired={wired.has(port.name)}
                     onCommit={(value) => setInputValue(port.name, value)}
                   />
                 ) : null}

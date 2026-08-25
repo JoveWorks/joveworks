@@ -9,7 +9,7 @@
 import type { ReactElement } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 
-import { parseUnit, type Unit } from '@joveworks/units';
+import { parseUnit, type NumberFormat, type Unit } from '@joveworks/units';
 import {
   MAX_PORT,
   MEAN_PORT,
@@ -25,9 +25,11 @@ import {
 } from '@joveworks/schema';
 
 import { useGraph } from '../graph-context';
+import { useSettings } from '../settings-context';
+import { toUnitsFormat } from '../model/numberFormat';
 import { nodeLabel, reframe, removeNodes, syncColumnLabels, updateNode } from '../model/document';
 import { setMonteCarloSampleCount } from '../model/monteCarlo';
-import { axisLabel, reading } from '../model/values';
+import { axisLabel, reading, summarise, type Reading } from '../model/values';
 import { ParameterLabel } from '../ParameterLabel';
 import { NodeShell } from './NodeShell';
 import { NumberField, TextField } from './fields';
@@ -40,9 +42,9 @@ import { TitleField, TitleText } from './TitleField';
  * One distribution-parameter port row — `mean`/`stddev` or `min`/`max`,
  * whichever pair matches the node's current distribution. The same
  * wireable-with-typed-default shape `CompareNodeView.threshold` and the
- * check/plot output's own threshold row use: always editable, a wire (if
- * any) overriding it at evaluation time (`packages/kernel/src/evaluate.ts`'s
- * `generatorParam`), not this field.
+ * check/plot output's own threshold row use: the stored default is editable
+ * until a wire supplies the live value (`packages/kernel/src/evaluate.ts`'s
+ * `generatorParam`).
  */
 function ParamPort({
   name,
@@ -50,6 +52,8 @@ function ParamPort({
   unit,
   minimum,
   wired,
+  supplied,
+  format,
   highlighted,
   onCommit,
   onHover,
@@ -60,6 +64,8 @@ function ParamPort({
   readonly unit: Unit;
   readonly minimum?: number;
   readonly wired: boolean;
+  readonly supplied?: Reading | undefined;
+  readonly format: NumberFormat;
   readonly highlighted: boolean;
   readonly onCommit: (value: number) => void;
   readonly onHover: () => void;
@@ -75,18 +81,25 @@ function ParamPort({
       />
       <ParameterLabel name={name} unit={unit} nameClassName="port-name" unitClassName="port-unit" />
       <span className="quantity-split port-quantity">
-        <NumberField
-          className="quantity"
-          value={value}
-          autoSize={4}
-          {...(minimum === undefined ? {} : { minimum })}
-          title={
-            wired
-              ? 'Overridden by the wire — this is what applies when it is removed.'
-              : 'A number, unless something is wired in.'
-          }
-          onCommit={onCommit}
-        />
+        {wired ? (
+          <TextField
+            className="quantity"
+            value={supplied === undefined ? '' : summarise(supplied, 4, format)}
+            autoSize={4}
+            disabled
+            title="Set by the wire — unplug it to type one by hand again."
+            onCommit={() => {}}
+          />
+        ) : (
+          <NumberField
+            className="quantity"
+            value={value}
+            autoSize={4}
+            {...(minimum === undefined ? {} : { minimum })}
+            title="A number, unless something is wired in."
+            onCommit={onCommit}
+          />
+        )}
       </span>
     </li>
   );
@@ -125,6 +138,8 @@ function changeDistribution(node: MonteCarloGeneratorNode, distribution: MonteCa
 
 export function MonteCarloGeneratorNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>): ReactElement | null {
   const { document, analysis, edit, expanded, toggleExpanded, hovered } = useGraph();
+  const { numberFormat } = useSettings();
+  const format = toUnitsFormat(numberFormat);
   const node = document.nodes.find((candidate) => candidate.id === id);
   if (node === undefined || node.kind !== 'monteCarloGenerator') return null;
 
@@ -133,6 +148,10 @@ export function MonteCarloGeneratorNodeView({ id, selected, data }: NodeProps<Ca
   const wired = new Set(
     document.edges.filter((edge) => edge.to.node === id).map((edge) => edge.to.port),
   );
+  const supplied = (port: string): Reading | undefined => {
+    const edge = document.edges.find((entry) => entry.to.node === id && entry.to.port === port);
+    return edge === undefined ? undefined : reading(analysis, edge.from.node, edge.from.port);
+  };
   const onPortHover = (port: string) => () => data?.onPortHover?.({ nodeId: id, port });
   const onPortHoverEnd = () => data?.onPortHover?.();
   const setNode = (change: (current: MonteCarloGeneratorNode) => MonteCarloGeneratorNode): void =>
@@ -223,6 +242,8 @@ export function MonteCarloGeneratorNodeView({ id, selected, data }: NodeProps<Ca
               value={node.min}
               unit={node.unit}
               wired={wired.has(MIN_PORT)}
+              supplied={supplied(MIN_PORT)}
+              format={format}
               highlighted={highlightedPorts.has(MIN_PORT)}
               onCommit={setMin}
               onHover={onPortHover(MIN_PORT)}
@@ -234,6 +255,8 @@ export function MonteCarloGeneratorNodeView({ id, selected, data }: NodeProps<Ca
                 value={node.mode}
                 unit={node.unit}
                 wired={wired.has(MODE_PORT)}
+                supplied={supplied(MODE_PORT)}
+                format={format}
                 highlighted={highlightedPorts.has(MODE_PORT)}
                 onCommit={setMode}
                 onHover={onPortHover(MODE_PORT)}
@@ -245,6 +268,8 @@ export function MonteCarloGeneratorNodeView({ id, selected, data }: NodeProps<Ca
               value={node.max}
               unit={node.unit}
               wired={wired.has(MAX_PORT)}
+              supplied={supplied(MAX_PORT)}
+              format={format}
               highlighted={highlightedPorts.has(MAX_PORT)}
               onCommit={setMax}
               onHover={onPortHover(MAX_PORT)}
@@ -258,6 +283,8 @@ export function MonteCarloGeneratorNodeView({ id, selected, data }: NodeProps<Ca
               value={node.mean}
               unit={node.unit}
               wired={wired.has(MEAN_PORT)}
+              supplied={supplied(MEAN_PORT)}
+              format={format}
               highlighted={highlightedPorts.has(MEAN_PORT)}
               onCommit={setMean}
               onHover={onPortHover(MEAN_PORT)}
@@ -269,6 +296,8 @@ export function MonteCarloGeneratorNodeView({ id, selected, data }: NodeProps<Ca
               unit={node.unit}
               minimum={1e-6}
               wired={wired.has(STDDEV_PORT)}
+              supplied={supplied(STDDEV_PORT)}
+              format={format}
               highlighted={highlightedPorts.has(STDDEV_PORT)}
               onCommit={setStddev}
               onHover={onPortHover(STDDEV_PORT)}

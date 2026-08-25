@@ -146,11 +146,34 @@ describe('document edits', () => {
 
     expect([...duplicated.ids]).toEqual(['a2', 'b2']);
     expect(duplicated.document.nodes.map((node) => node.id)).toEqual(['a', 'b', 'a2', 'b2']);
+    expect(duplicated.document.nodes.slice(-2).map((node) => node.position)).toEqual([
+      { x: 32, y: 32 },
+      { x: 432, y: 32 },
+    ]);
     expect(duplicated.document.edges.at(-1)).toEqual({
       id: 'a2.value->b2.x',
       from: { node: 'a2', port: 'value' },
       to: { node: 'b2', port: 'x' },
     });
+  });
+
+  it('pastes a selection at an anchor while preserving its relative layout', () => {
+    const spaced = {
+      ...base,
+      nodes: [input('a', 100, 80), input('b', 260, 200)],
+    };
+    const pasted = duplicateSelection(
+      spaced,
+      spaced,
+      new Set(['a', 'b']),
+      false,
+      { x: 500, y: 400 },
+    );
+
+    expect(pasted.document.nodes.slice(-2).map((node) => node.position)).toEqual([
+      { x: 500, y: 400 },
+      { x: 660, y: 520 },
+    ]);
   });
 
   it('leaves edges alone when duplicating a node with no incoming wire', () => {

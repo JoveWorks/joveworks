@@ -119,16 +119,31 @@ export interface DuplicatedSelection {
  * selection is never copied: that target's input already has an edge, and
  * duplicating never steals it from the original. Frames are deliberately
  * not copied: a pasted cluster is free-standing until its new position puts
- * it into a section again.
+ * it into a section again. When `at` is supplied, the selection's top-left
+ * source position lands there; without it Duplicate keeps the familiar 32 px
+ * cascade away from the originals.
  */
 export function duplicateSelection(
   document: GraphDocument,
   source: GraphDocument,
   selected: ReadonlySet<string>,
   reconnectExternalInputs = false,
+  at?: Position,
 ): DuplicatedSelection {
   const sources = source.nodes.filter((node) => selected.has(node.id));
-  if (sources.length === 0) return { document, ids: new Set() };
+  const [first, ...rest] = sources;
+  if (first === undefined) return { document, ids: new Set() };
+
+  const sourceOrigin = rest.reduce(
+    (origin, node) => ({
+      x: Math.min(origin.x, node.position.x),
+      y: Math.min(origin.y, node.position.y),
+    }),
+    first.position,
+  );
+  const offset = at === undefined
+    ? { x: 32, y: 32 }
+    : { x: at.x - sourceOrigin.x, y: at.y - sourceOrigin.y };
 
   let next = document;
   const ids = new Map<string, string>();
@@ -138,7 +153,7 @@ export function duplicateSelection(
     next = addNode(next, {
       ...withoutAxisLabel(withoutFrame(node)),
       id,
-      position: { x: node.position.x + 32, y: node.position.y + 32 },
+      position: { x: node.position.x + offset.x, y: node.position.y + offset.y },
     });
   }
 

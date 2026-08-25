@@ -1355,11 +1355,16 @@ aside.right {
    value itself and nothing more — no box, no chrome. The outline appears
    under the pointer to say it can be typed in; an outline rather than a
    border because a border would shift the row by its own width. */
-.node .port-default:hover,
+.node .port-default:not(:disabled):hover,
 .node .port-default:focus {
   border-radius: 4px;
   outline: 1px solid var(--line);
   background: var(--paper);
+}
+
+.node .port-default:disabled {
+  color: var(--ink);
+  opacity: 1;
 }
 
 /* An em-dash where no value has been given — a port that has not been
