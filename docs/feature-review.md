@@ -190,7 +190,8 @@ These would be public mechanics visualizations, not R&M formula content.
 ### Notebook controls
 
 The first slice has shipped: a slider input can be marked `Expose in NodeBook`,
-and then appears beneath every result it influences. Repeated controls are
+and then appears once in every section whose results it influences, between the
+section's prose and those results. Controls repeated across sections are
 synchronized views of the same graph input; the course viewer can vary them
 for the visit and reset to the authored values.
 

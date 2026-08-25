@@ -142,7 +142,7 @@ The React app. Largest package by far. `AGENTS.md`: desktop-only, no properties 
 - `model/node-sizes.ts` — `NodeSize`/`NodeSizes` type, populated from React Flow's measured DOM boxes.
 - `model/selection-layout.ts` — selection-only commands: align, space evenly, arrange-selection — scoped to never cross a section (frame) boundary.
 - `model/history.ts` — generic undo/redo stack (`pushEdit` for discrete steps, `pushLiveEdit`/`commitPending` for drag/keystroke gestures folded into one undo step).
-- `model/notebook.ts` — shared NodeBook derivation rules: canvas reading order, the transitive dependency walk that finds exposed sliders for each result (including referenced Check outputs), and the single-value update every synchronized control uses.
+- `model/notebook.ts` — shared NodeBook derivation rules: canvas reading order, the transitive dependency walk that finds exposed sliders for one or more results at once (including referenced Check outputs), and the single-value update every synchronized control uses.
 - `model/editorSettings.ts` — small standalone `localStorage`-backed preferences: locale, minimap, canvas-controls visibility, snap-to-grid, panel widths, title-math rendering, theme, contour palette.
 - `model/numberFormat.ts` — how numbers are displayed/typed app-wide (thousands/decimal style, notation), persisted separately from `editorSettings.ts`.
 - `model/quantity.ts` — the field-level authored↔canonical boundary: `parseAuthored`/`formatAuthored` (what a document stores), `display`/`displayNumber` (what a node/table shows).
@@ -190,7 +190,7 @@ The React app. Largest package by far. `AGENTS.md`: desktop-only, no properties 
 
 ### `src/notebook/` — the notebook side panel
 
-- `notebook/Notebook.tsx` — the view-over-the-graph panel: renders group frames as sections (title/note prose, then their output nodes' results in reading order), dependency-derived exposed-slider controls beneath affected results, section reordering, table-column editing (order/figures/marks), print-to-PDF export via `@media print`. Read this to understand how canvas layout becomes the exported document.
+- `notebook/Notebook.tsx` — the view-over-the-graph panel: renders group frames as sections (title/note prose, then their output nodes' results in reading order), dependency-derived exposed-slider controls once per section, between its prose and its results, section reordering, table-column editing (order/figures/marks), print-to-PDF export via `@media print`. Read this to understand how canvas layout becomes the exported document.
 - `notebook/NotebookSliderControl.tsx` — the shared synchronized slider/exact-value view used by the editor NodeBook and course viewer; print replaces its interactive fields with the current static value.
 - `notebook/PlotFigure.tsx` — the Observable-Plot rendering of a `PlotResult`: log axes when the range is logarithmic, threshold reference line, contour mode, faceting, SI-prefixed axis labels. All computation is already done by the kernel; this file only draws.
 - `notebook/DistributionFigure.tsx` — renders kernel-prepared histograms and ECDFs, percentile rules, facets, and fitted-normal summaries.

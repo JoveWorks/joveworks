@@ -34,7 +34,7 @@ function referencedChecks(node: GraphNode): readonly string[] {
 }
 
 /**
- * Exposed slider inputs that structurally influence one rendered result.
+ * Exposed slider inputs that structurally influence the given results.
  *
  * Ordinary dependencies are graph edges. Composite report outputs additionally
  * reference Check outputs by id, so those references join the walk exactly as
@@ -42,14 +42,20 @@ function referencedChecks(node: GraphNode): readonly string[] {
  * may feed the formula they display, but changing it does not change the
  * rendered expression and presenting a control there would promise an effect
  * the reader cannot see.
+ *
+ * Several results can be asked about at once — a section presents one set of
+ * controls above its results rather than repeating a slider under each result
+ * it happens to drive — and the union is deduplicated by node id.
  */
 export function exposedSlidersFor(
   document: GraphDocument,
-  resultNodeId: string,
+  resultNodeIds: string | readonly string[],
 ): readonly ExposedSliderInput[] {
   const nodes = new Map(document.nodes.map((node) => [node.id, node] as const));
-  const target = nodes.get(resultNodeId);
-  if (target?.kind === 'output' && target.output.kind === 'equation') return [];
+  const seeds = (typeof resultNodeIds === 'string' ? [resultNodeIds] : resultNodeIds).filter((id) => {
+    const target = nodes.get(id);
+    return !(target?.kind === 'output' && target.output.kind === 'equation');
+  });
 
   const incoming = new Map<string, string[]>();
   for (const edge of document.edges) {
@@ -60,7 +66,7 @@ export function exposedSlidersFor(
 
   const found = new Map<string, ExposedSliderInput>();
   const seen = new Set<string>();
-  const pending = [resultNodeId];
+  const pending = [...seeds];
   while (pending.length > 0) {
     const id = pending.pop() as string;
     if (seen.has(id)) continue;

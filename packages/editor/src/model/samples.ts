@@ -225,7 +225,7 @@ export function padPressure(catalogues: readonly Catalogue[], locale: AppLocale 
       title: 'Pad sizing',
       note:
         'The authored case starts at a 12 kN load and 40 mm pad length. Use the controls below ' +
-        'each result to test those assumptions while pad width remains the 10 to 60 mm sweep; ' +
+        'to test those assumptions while pad width remains the 10 to 60 mm sweep; ' +
         'the pressure limit is 2 MPa.',
       position: at(960, -80),
       size: { width: 400, height: 620 },
@@ -295,7 +295,7 @@ export function platformFootprint(catalogues: readonly Catalogue[], locale: AppL
       title: 'A decision at a glance',
       note:
         'The authored case starts at a 12 kN equipment load and 1000 mm platform length. ' +
-        'Use the controls below a result to see its value, check, and chart update together; ' +
+        'Use the controls below to see the value, check, and chart update together; ' +
         'the width sweep and agreed floor-load threshold remain fixed.',
       position: at(960, -80),
       size: { width: 430, height: 620 },
@@ -963,7 +963,7 @@ export function millingPowerEnvelope(catalogues: readonly Catalogue[], locale: A
       title: '2. Productivity study',
       note:
         'Chip load and radial engagement are swept together. Axial depth starts at 4 mm and ' +
-        'can be changed below the result; the contour shows how productivity moves across the grid.',
+        'can be changed with the controls below; the contour shows how productivity moves across the grid.',
       position: at(1620, 240),
       size: { width: 440, height: 360 },
     },
@@ -975,7 +975,7 @@ export function millingPowerEnvelope(catalogues: readonly Catalogue[], locale: A
         'through the grid. A failed overall check means some candidates fail, not that every ' +
         'candidate does; use the contours to find the feasible region — or read it directly off ' +
         'the shaded feasibility below, which is both limits at once. Axial depth and machine ' +
-        'efficiency start at their authored values and can be varied below the affected results.',
+        'efficiency start at their authored values and can be varied with the controls below.',
       position: at(1620, 620),
       size: { width: 440, height: 980 },
     },

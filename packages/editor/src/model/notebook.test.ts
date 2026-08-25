@@ -73,12 +73,37 @@ describe('exposed NodeBook sliders', () => {
     },
   );
 
-  it('does not offer controls beneath an Equation output whose visible expression cannot change', () => {
+  it('does not offer controls for an Equation output whose visible expression cannot change', () => {
     const document = graph(
       [slider('assumption', 0), output('equation', 'equation')],
       [{ id: 'edge', from: { node: 'assumption', port: 'value' }, to: { node: 'equation', port: 'value' } }],
     );
     expect(exposedSlidersFor(document, 'equation')).toEqual([]);
+  });
+
+  it('offers a section\u2019s results one deduplicated set of controls in reading order', () => {
+    const document = graph(
+      [slider('right', 200), slider('left', 0), output('first'), output('second')],
+      [
+        { id: 'left-first', from: { node: 'left', port: 'value' }, to: { node: 'first', port: 'value' } },
+        { id: 'left-second', from: { node: 'left', port: 'value' }, to: { node: 'second', port: 'value' } },
+        { id: 'right-second', from: { node: 'right', port: 'value' }, to: { node: 'second', port: 'other' } },
+      ],
+    );
+
+    expect(exposedSlidersFor(document, ['first', 'second']).map((node) => node.id)).toEqual(['left', 'right']);
+  });
+
+  it('skips an Equation among a section\u2019s results without dropping the rest', () => {
+    const document = graph(
+      [slider('shown', 0), slider('hidden-by-equation', 200), output('print'), output('equation', 'equation')],
+      [
+        { id: 'to-print', from: { node: 'shown', port: 'value' }, to: { node: 'print', port: 'value' } },
+        { id: 'to-equation', from: { node: 'hidden-by-equation', port: 'value' }, to: { node: 'equation', port: 'value' } },
+      ],
+    );
+
+    expect(exposedSlidersFor(document, ['print', 'equation']).map((node) => node.id)).toEqual(['shown']);
   });
 
   it('updates the one slider value shared by every rendered clone', () => {

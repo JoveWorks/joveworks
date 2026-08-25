@@ -315,7 +315,7 @@ export interface InputNode extends NodeBase {
   readonly value: ValueSpec;
   /** What the axis is called when this node holds a range. Defaults to `label`. */
   readonly axisLabel?: string;
-  /** Show a slider as an interactive control beneath every NodeBook result it influences. */
+  /** Show a slider as an interactive control in every NodeBook section whose results it influences. */
   readonly exposeInNotebook?: boolean;
 }
 

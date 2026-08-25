@@ -441,11 +441,16 @@ function Caption({
   );
 }
 
-function ControlsFor({ nodeId }: { readonly nodeId: string }): ReactElement | null {
+/**
+ * One set of controls for a whole section, not one per result: a slider that
+ * drives three of a section's results used to appear three times, and the
+ * reader had to guess whether those were the same input or different ones.
+ */
+function ControlsFor({ nodeIds }: { readonly nodeIds: readonly string[] }): ReactElement | null {
   const { document, edit, editLive, commitEdit, setHovered } = useGraph();
   const { numberFormat } = useSettings();
   const format = toUnitsFormat(numberFormat);
-  const controls = exposedSlidersFor(document, nodeId);
+  const controls = exposedSlidersFor(document, nodeIds);
   if (controls.length === 0) return null;
 
   const change = (sliderId: string, value: number, live: boolean): void => {
@@ -678,6 +683,8 @@ function Section({
             />
           )}
 
+          <ControlsFor nodeIds={[...outputs, ...receivers].map((node) => node.id)} />
+
           {outputs.map((node) => {
             const result = results.get(node.id);
             const captionProps =
@@ -704,7 +711,6 @@ function Section({
                   <Result result={result} node={node} />
                 )}
                 <Caption node={node} {...captionProps} />
-                <ControlsFor nodeId={node.id} />
               </div>
             );
           })}
@@ -722,7 +728,6 @@ function Section({
                 </span>
                 <MonteCarloReceiverPlayback receiverId={node.id} size="large" />
               </div>
-              <ControlsFor nodeId={node.id} />
             </div>
           ))}
         </>

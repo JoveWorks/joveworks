@@ -161,16 +161,17 @@ function Result({ result, node, document }: { readonly result: OutputResult; rea
   );
 }
 
+/** One set of controls per section, above its results — not one per result. */
 function ViewerControls({
   document,
-  resultNodeId,
+  resultNodeIds,
   onChange,
 }: {
   readonly document: GraphDocument;
-  readonly resultNodeId: string;
+  readonly resultNodeIds: readonly string[];
   readonly onChange: (sliderId: string, value: number) => void;
 }): ReactElement | null {
-  const controls = exposedSlidersFor(document, resultNodeId);
+  const controls = exposedSlidersFor(document, resultNodeIds);
   if (controls.length === 0) return null;
   const format = toUnitsFormat(DEFAULT_NUMBER_FORMAT_SETTINGS);
   return (
@@ -224,13 +225,17 @@ function ExampleReport({
           <section className="course-section" key={frame.id}>
             <h2>{frame.title}</h2>
             {frame.note === undefined ? null : <p className="course-note">{frame.note}</p>}
+            <ViewerControls
+              document={document}
+              resultNodeIds={outputs.map((node) => node.id)}
+              onChange={onSliderChange}
+            />
             {outputs.map((node) => {
               const result = results.get(node.id);
               return (
                 <div className="course-output" key={node.id}>
                   {result === undefined ? <p className="viewer-pending">This result is not available.</p> : <Result result={result} node={node} document={document} />}
                   {node.caption === undefined ? null : <p className="course-caption">{node.caption}</p>}
-                  <ViewerControls document={document} resultNodeId={node.id} onChange={onSliderChange} />
                 </div>
               );
             })}

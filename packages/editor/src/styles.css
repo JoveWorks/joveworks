@@ -440,6 +440,12 @@ textarea {
   padding: 1px 4px;
 }
 
+/* The generic input border boxed in the range track once the NodeBook
+   control around it lost its own frame. */
+input.slider-track {
+  border: none;
+}
+
 input[aria-invalid='true'] {
   border-color: var(--state-error);
 }
@@ -2912,22 +2918,22 @@ aside.right {
   margin-bottom: 10px;
 }
 
+/* Sits between a section's prose and its results, so it needs room below as
+   well as above — it reads as part of the prose otherwise. */
 .notebook-controls {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 8px;
-  margin-top: 7px;
+  gap: 10px 18px;
+  margin: 7px 0 14px;
 }
 
+/* Deliberately unboxed: several controls one after another turned into a wall
+   of tinted panels competing with the results they drive. */
 .notebook-control {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 3px 8px;
-  padding: 7px 8px;
-  border: 1px solid var(--line);
-  border-radius: 5px;
-  background: var(--accent-wash);
 }
 
 .notebook-control-label {
