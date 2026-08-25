@@ -11,6 +11,9 @@ describe('example notebook URLs', () => {
     expect(exampleIdFromUrl(new URL('https://example.test/?example=platform-footprint'))).toBe(
       'platform-footprint',
     );
+    expect(exampleIdFromUrl(new URL('https://example.test/?example=wildlife-camera-comparison'))).toBe(
+      'wildlife-camera-comparison',
+    );
   });
 
   it('ignores unknown example names', () => {

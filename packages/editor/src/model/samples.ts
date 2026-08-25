@@ -20,6 +20,7 @@ import { parseUnit, type Unit } from '@joveworks/units';
 import {
   SCHEMA_VERSION,
   formulaRef,
+  loadDocument,
   type Catalogue,
   type Formula,
   type FormulaNode,
@@ -39,6 +40,7 @@ import { edgeId, frameAround as frameAroundExact } from './document';
 import { GAP as CANVAS_GRID_SIZE } from './layout-constants';
 import { type AppLocale } from '../i18n';
 import dutchText from './sample-translations.json';
+import wildlifeCameraComparisonSource from './wildlife-camera-comparison.json';
 
 const snapExampleCoordinate = (value: number): number =>
   Math.round(value / CANVAS_GRID_SIZE) * CANVAS_GRID_SIZE;
@@ -1373,4 +1375,41 @@ export function apertureDecision(catalogues: readonly Catalogue[], locale: AppLo
     document('aperture-decision', 'Choose an aperture — depth versus diffraction', withFrames, edges, frames),
     locale,
   );
+}
+
+// --- compare wildlife camera systems, from the public Photography catalogue -
+
+export const WILDLIFE_CAMERA_COMPARISON_FORMULAS = [
+  'photography.camera.properties',
+  'photography.lens.properties',
+  'photography.format.equivalent-focal-length',
+  'photography.format.equivalent-aperture',
+  'photography.format.crop-factor',
+  'photography.dof.limits',
+  'photography.dof.hyperfocal-distance',
+  'photography.dof.circle-of-confusion-pixels',
+  'photography.diffraction.blur-diameter',
+  'photography.lens.magnification-from-focal',
+] as const;
+
+/**
+ * Compare a full-frame wildlife setup with an APS-C alternative over each
+ * lens's focal-length and aperture ranges. The imported NodeBook is the
+ * authored example; formula references are refreshed from the catalogue at
+ * open time so a bundled catalogue update cannot leave its hashes stale.
+ */
+export function wildlifeCameraComparison(
+  catalogues: readonly Catalogue[],
+  locale: AppLocale = 'en',
+): GraphDocument | undefined {
+  if (!provides(catalogues, WILDLIFE_CAMERA_COMPARISON_FORMULAS)) return undefined;
+
+  const source = loadDocument(JSON.stringify(wildlifeCameraComparisonSource));
+  const nodes = source.nodes.map((node) => {
+    if (node.kind !== 'formula') return node;
+    const current = lookup(catalogues, node.formula.id);
+    return current === undefined ? node : { ...node, formula: formulaRef(current) };
+  });
+
+  return localizeExample({ ...source, nodes }, locale);
 }

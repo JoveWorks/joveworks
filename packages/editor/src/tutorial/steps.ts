@@ -169,6 +169,16 @@ const EXAMPLE_COPY = {
     studyBody: 'A candidate must provide at least 300 mm of depth of field while keeping diffraction blur within a camera-specific three-pixel blur circle. The checks pull in opposite directions.',
     resultBody: 'Best Design considers only candidates that pass both checks, then maximises depth of field. It selects f/11—not f/22—because the smaller stops fail the diffraction limit.',
   },
+  'wildlife-camera-comparison': {
+    title: 'Wildlife camera comparison',
+    opening: 'This example compares a full-frame Canon RF wildlife setup with an APS-C Canon and Tamron alternative at the same subject distance and acceptance limits.',
+    inputTarget: '[data-tour="input-input"]',
+    inputTitle: 'Start with the shooting distance',
+    inputBody: 'Subject distance is shared by both branches. The blur allowance, minimum depth of field and required magnification are shared too, so the comparison applies one brief to both systems.',
+    studyTitle: 'Compare both systems on equivalent terms',
+    studyBody: 'Each lens sweeps its own focal-length and aperture ranges. The APS-C branch converts focal length and aperture to full-frame equivalents before calculating depth of field, diffraction and magnification.',
+    resultBody: 'Each Best Design output first rejects candidates that miss depth, blur or magnification requirements, then selects the feasible settings with the greatest depth of field.',
+  },
 } as const satisfies Readonly<Record<string, ExampleTutorialCopy>>;
 
 export type TutorialExampleId = keyof typeof EXAMPLE_COPY;

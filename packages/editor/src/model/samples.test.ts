@@ -26,6 +26,7 @@ import {
   beltLab,
   cantileverHollowSections,
   depthOfField,
+  wildlifeCameraComparison,
   millingPowerEnvelope,
   monteCarloClearance,
   padPressure,
@@ -78,6 +79,19 @@ describe('the samples the editor opens with', () => {
 
   it('offers the milling power-envelope study from the bundled public catalogue', () => {
     expect(millingPowerEnvelope(PUBLIC_CATALOGUES)).toBeDefined();
+  });
+
+  it('opens the wildlife camera comparison from the bundled public catalogue', () => {
+    const example = wildlifeCameraComparison(PUBLIC_CATALOGUES);
+    expect(example).toBeDefined();
+    expect(example?.id).toBe('wildlife-camera-comparison');
+    expect(example?.nodes).toHaveLength(35);
+    expect(example?.edges).toHaveLength(54);
+    expect(example?.frames.map((frame) => frame.note)).toHaveLength(2);
+
+    const analysis = analyse(example as GraphDocument, PUBLIC_CATALOGUES);
+    expect(analysis.message).toBeUndefined();
+    expect([...analysis.states.values()].every((state) => state === 'ok')).toBe(true);
   });
 
   it('exposes a curated set of sliders and evaluates every travel endpoint', () => {

@@ -1,0 +1,1179 @@
+{
+  "schemaVersion": 1,
+  "id": "wildlife-camera-comparison",
+  "title": "Wildlife camera comparison — depth of field, diffraction, and reach",
+  "nodes": [
+    {
+      "kind": "formula",
+      "id": "photography.camera.properties",
+      "position": {
+        "x": 1705,
+        "y": 715
+      },
+      "formula": {
+        "id": "photography.camera.properties",
+        "version": 1,
+        "hash": "54036428d23d8606"
+      }
+    },
+    {
+      "kind": "formula",
+      "id": "photography.lens.properties",
+      "position": {
+        "x": 1705,
+        "y": 1100
+      },
+      "formula": {
+        "id": "photography.lens.properties",
+        "version": 1,
+        "hash": "3b0efed8c8d46ffb"
+      },
+      "inputValues": {
+        "lens": {
+          "kind": "categorical",
+          "value": "Canon RF 100-500mm F4.5-7.1 L IS USM"
+        }
+      }
+    },
+    {
+      "kind": "formula",
+      "id": "photography.camera.properties2",
+      "position": {
+        "x": 1705,
+        "y": 1485
+      },
+      "formula": {
+        "id": "photography.camera.properties",
+        "version": 1,
+        "hash": "54036428d23d8606"
+      },
+      "inputValues": {
+        "camera": {
+          "kind": "categorical",
+          "value": "Canon EOS 1200D"
+        }
+      }
+    },
+    {
+      "kind": "formula",
+      "id": "photography.lens.properties2",
+      "position": {
+        "x": 1705,
+        "y": 1870
+      },
+      "formula": {
+        "id": "photography.lens.properties",
+        "version": 1,
+        "hash": "3b0efed8c8d46ffb"
+      },
+      "inputValues": {
+        "lens": {
+          "kind": "categorical",
+          "value": "Tamron 18-270mm F3.5-6.3 Di II VC PZD"
+        }
+      }
+    },
+    {
+      "kind": "formula",
+      "id": "photography.format.equivalent_focal_length",
+      "position": {
+        "x": 2805,
+        "y": 1815
+      },
+      "formula": {
+        "id": "photography.format.equivalent-focal-length",
+        "version": 1,
+        "hash": "296dd1b612a26f86"
+      }
+    },
+    {
+      "kind": "formula",
+      "id": "photography.format.equivalent_aperture",
+      "position": {
+        "x": 2805,
+        "y": 2035
+      },
+      "formula": {
+        "id": "photography.format.equivalent-aperture",
+        "version": 1,
+        "hash": "5fba0afcb3566d50"
+      }
+    },
+    {
+      "kind": "formula",
+      "id": "photography.format.crop_factor",
+      "position": {
+        "x": 2420,
+        "y": 2255
+      },
+      "formula": {
+        "id": "photography.format.crop-factor",
+        "version": 1,
+        "hash": "2543bada23d20abd"
+      }
+    },
+    {
+      "kind": "input",
+      "id": "input",
+      "position": {
+        "x": 1705,
+        "y": -220
+      },
+      "label": "Subject distance",
+      "value": {
+        "kind": "slider",
+        "value": 18.977,
+        "min": 0.5,
+        "max": 20,
+        "unit": "m"
+      },
+      "exposeInNotebook": true
+    },
+    {
+      "kind": "formula",
+      "id": "photography.dof.limits",
+      "position": {
+        "x": 4015,
+        "y": 660
+      },
+      "formula": {
+        "id": "photography.dof.limits",
+        "version": 1,
+        "hash": "4ece95272a0db1e0"
+      }
+    },
+    {
+      "kind": "formula",
+      "id": "photography.dof.hyperfocal_distance",
+      "position": {
+        "x": 3465,
+        "y": 660
+      },
+      "formula": {
+        "id": "photography.dof.hyperfocal-distance",
+        "version": 1,
+        "hash": "767f9e7aff6a8390"
+      }
+    },
+    {
+      "kind": "input",
+      "id": "input2",
+      "position": {
+        "x": 1705,
+        "y": 605
+      },
+      "label": "Unused input (not part of study)",
+      "value": {
+        "kind": "linear",
+        "start": 0,
+        "stop": 1,
+        "points": 10,
+        "unit": ""
+      }
+    },
+    {
+      "kind": "formula",
+      "id": "photography.dof.hyperfocal_distance2",
+      "position": {
+        "x": 3410,
+        "y": 2035
+      },
+      "label": "H_B",
+      "formula": {
+        "id": "photography.dof.hyperfocal-distance",
+        "version": 1,
+        "hash": "767f9e7aff6a8390"
+      }
+    },
+    {
+      "kind": "formula",
+      "id": "photography.dof.circle_of_confusion_pixels",
+      "position": {
+        "x": 3025,
+        "y": 1045
+      },
+      "label": "CoC_A",
+      "formula": {
+        "id": "photography.dof.circle-of-confusion-pixels",
+        "version": 1,
+        "hash": "de1d61c60247da3e"
+      }
+    },
+    {
+      "kind": "formula",
+      "id": "photography.dof.circle_of_confusion_pixels2",
+      "position": {
+        "x": 2805,
+        "y": 1595
+      },
+      "label": "CoC_B",
+      "formula": {
+        "id": "photography.dof.circle-of-confusion-pixels",
+        "version": 1,
+        "hash": "de1d61c60247da3e"
+      }
+    },
+    {
+      "kind": "range",
+      "id": "range",
+      "position": {
+        "x": 3025,
+        "y": 660
+      },
+      "label": "Setup A focal length",
+      "spacing": "linear",
+      "start": 0,
+      "stop": 1,
+      "count": 5,
+      "unit": ""
+    },
+    {
+      "kind": "input",
+      "id": "input3",
+      "position": {
+        "x": 1705,
+        "y": 0
+      },
+      "label": "Acceptable blur (pixels)",
+      "value": {
+        "kind": "slider",
+        "value": 2,
+        "min": 1,
+        "max": 4,
+        "unit": "",
+        "figures": 0
+      },
+      "exposeInNotebook": true
+    },
+    {
+      "kind": "input",
+      "id": "input32",
+      "position": {
+        "x": 1705,
+        "y": 440
+      },
+      "label": "Sweep samples",
+      "value": {
+        "kind": "slider",
+        "value": 10,
+        "min": 1,
+        "max": 20,
+        "unit": "",
+        "figures": 0
+      }
+    },
+    {
+      "kind": "range",
+      "id": "range2",
+      "position": {
+        "x": 2420,
+        "y": 1815
+      },
+      "label": "Setup B focal length",
+      "spacing": "linear",
+      "start": 0,
+      "stop": 1,
+      "count": 5,
+      "unit": ""
+    },
+    {
+      "kind": "range",
+      "id": "range22",
+      "position": {
+        "x": 2420,
+        "y": 2035
+      },
+      "label": "Setup B aperture",
+      "spacing": "linear",
+      "start": 0,
+      "stop": 1,
+      "count": 5,
+      "unit": ""
+    },
+    {
+      "kind": "range",
+      "id": "range3",
+      "position": {
+        "x": 3025,
+        "y": 825
+      },
+      "label": "Setup A aperture",
+      "spacing": "linear",
+      "start": 0,
+      "stop": 1,
+      "count": 5,
+      "unit": ""
+    },
+    {
+      "kind": "formula",
+      "id": "photography.dof.limits2",
+      "position": {
+        "x": 4015,
+        "y": 1485
+      },
+      "formula": {
+        "id": "photography.dof.limits",
+        "version": 1,
+        "hash": "4ece95272a0db1e0"
+      }
+    },
+    {
+      "kind": "formula",
+      "id": "photography.diffraction.blur_diameter",
+      "position": {
+        "x": 4015,
+        "y": 990
+      },
+      "formula": {
+        "id": "photography.diffraction.blur-diameter",
+        "version": 1,
+        "hash": "ab9d9c835404d1b9"
+      }
+    },
+    {
+      "kind": "formula",
+      "id": "photography.diffraction.blur_diameter2",
+      "position": {
+        "x": 4015,
+        "y": 1815
+      },
+      "formula": {
+        "id": "photography.diffraction.blur-diameter",
+        "version": 1,
+        "hash": "ab9d9c835404d1b9"
+      }
+    },
+    {
+      "kind": "output",
+      "id": "check",
+      "position": {
+        "x": 4730,
+        "y": 797.5
+      },
+      "frameId": "section",
+      "label": "Meets minimum depth of field?",
+      "output": {
+        "kind": "check",
+        "comparison": ">=",
+        "threshold": {
+          "value": 1,
+          "unit": ""
+        }
+      }
+    },
+    {
+      "kind": "input",
+      "id": "input4",
+      "position": {
+        "x": 1705,
+        "y": -110
+      },
+      "label": "Minimum depth of field",
+      "value": {
+        "kind": "slider",
+        "value": 383.8,
+        "min": 1,
+        "max": 500,
+        "unit": "mm",
+        "figures": 1
+      },
+      "exposeInNotebook": true
+    },
+    {
+      "kind": "output",
+      "id": "check2",
+      "position": {
+        "x": 4730,
+        "y": 990
+      },
+      "frameId": "section",
+      "label": "Diffraction within blur limit?",
+      "output": {
+        "kind": "check",
+        "comparison": "<=",
+        "threshold": {
+          "value": 1,
+          "unit": ""
+        }
+      }
+    },
+    {
+      "kind": "output",
+      "id": "bestDesign",
+      "position": {
+        "x": 5225,
+        "y": 1017.5
+      },
+      "frameId": "section",
+      "label": "Best feasible settings",
+      "output": {
+        "kind": "bestDesign",
+        "checks": [
+          "check",
+          "check2",
+          "check4"
+        ],
+        "direction": "maximize"
+      }
+    },
+    {
+      "kind": "output",
+      "id": "check22",
+      "position": {
+        "x": 4730,
+        "y": 1870
+      },
+      "frameId": "section2",
+      "label": "Diffraction within blur limit?",
+      "output": {
+        "kind": "check",
+        "comparison": "<=",
+        "threshold": {
+          "value": 1,
+          "unit": ""
+        }
+      }
+    },
+    {
+      "kind": "output",
+      "id": "check3",
+      "position": {
+        "x": 4730,
+        "y": 1622.5
+      },
+      "frameId": "section2",
+      "label": "Meets minimum depth of field?",
+      "output": {
+        "kind": "check",
+        "comparison": ">=",
+        "threshold": {
+          "value": 1,
+          "unit": ""
+        }
+      }
+    },
+    {
+      "kind": "output",
+      "id": "bestDesign2",
+      "position": {
+        "x": 5225,
+        "y": 1897.5
+      },
+      "frameId": "section2",
+      "label": "Best feasible settings",
+      "output": {
+        "kind": "bestDesign",
+        "checks": [
+          "check22",
+          "check3",
+          "check42"
+        ],
+        "direction": "maximize"
+      }
+    },
+    {
+      "kind": "formula",
+      "id": "photography.lens.magnification_from_focal",
+      "position": {
+        "x": 4015,
+        "y": 2200
+      },
+      "formula": {
+        "id": "photography.lens.magnification-from-focal",
+        "version": 1,
+        "hash": "f06a2db206e3465a"
+      }
+    },
+    {
+      "kind": "formula",
+      "id": "photography.lens.magnification_from_focal2",
+      "position": {
+        "x": 4015,
+        "y": 1265
+      },
+      "formula": {
+        "id": "photography.lens.magnification-from-focal",
+        "version": 1,
+        "hash": "f06a2db206e3465a"
+      }
+    },
+    {
+      "kind": "output",
+      "id": "check4",
+      "position": {
+        "x": 4730,
+        "y": 1210
+      },
+      "frameId": "section",
+      "label": "Meets required magnification?",
+      "output": {
+        "kind": "check",
+        "comparison": ">=",
+        "threshold": {
+          "value": 0.04,
+          "unit": ""
+        }
+      }
+    },
+    {
+      "kind": "input",
+      "id": "input5",
+      "position": {
+        "x": 1705,
+        "y": 165
+      },
+      "label": "Required magnification",
+      "value": {
+        "kind": "slider",
+        "value": 0.0157,
+        "min": 0,
+        "max": 0.1,
+        "unit": "",
+        "figures": 4
+      },
+      "exposeInNotebook": true
+    },
+    {
+      "kind": "output",
+      "id": "check42",
+      "position": {
+        "x": 4730,
+        "y": 2090
+      },
+      "frameId": "section2",
+      "label": "Meets required magnification?",
+      "output": {
+        "kind": "check",
+        "comparison": ">=",
+        "threshold": {
+          "value": 0.04,
+          "unit": ""
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "photography.camera.properties2.d->photography.format.crop_factor.d_sensor",
+      "from": {
+        "node": "photography.camera.properties2",
+        "port": "d"
+      },
+      "to": {
+        "node": "photography.format.crop_factor",
+        "port": "d_sensor"
+      }
+    },
+    {
+      "id": "photography.format.crop_factor.c->photography.format.equivalent_focal_length.c",
+      "from": {
+        "node": "photography.format.crop_factor",
+        "port": "c"
+      },
+      "to": {
+        "node": "photography.format.equivalent_focal_length",
+        "port": "c"
+      }
+    },
+    {
+      "id": "photography.format.crop_factor.c->photography.format.equivalent_aperture.c",
+      "from": {
+        "node": "photography.format.crop_factor",
+        "port": "c"
+      },
+      "to": {
+        "node": "photography.format.equivalent_aperture",
+        "port": "c"
+      }
+    },
+    {
+      "id": "photography.camera.properties.d->photography.format.crop_factor.d_ref",
+      "from": {
+        "node": "photography.camera.properties",
+        "port": "d"
+      },
+      "to": {
+        "node": "photography.format.crop_factor",
+        "port": "d_ref"
+      }
+    },
+    {
+      "id": "photography.dof.hyperfocal_distance.H->photography.dof.limits.H",
+      "from": {
+        "node": "photography.dof.hyperfocal_distance",
+        "port": "H"
+      },
+      "to": {
+        "node": "photography.dof.limits",
+        "port": "H"
+      }
+    },
+    {
+      "id": "input.value->photography.dof.limits.s",
+      "from": {
+        "node": "input",
+        "port": "value"
+      },
+      "to": {
+        "node": "photography.dof.limits",
+        "port": "s"
+      }
+    },
+    {
+      "id": "photography.camera.properties.p->photography.dof.circle_of_confusion_pixels.p",
+      "from": {
+        "node": "photography.camera.properties",
+        "port": "p"
+      },
+      "to": {
+        "node": "photography.dof.circle_of_confusion_pixels",
+        "port": "p"
+      }
+    },
+    {
+      "id": "photography.dof.circle_of_confusion_pixels.c->photography.dof.hyperfocal_distance.c",
+      "from": {
+        "node": "photography.dof.circle_of_confusion_pixels",
+        "port": "c"
+      },
+      "to": {
+        "node": "photography.dof.hyperfocal_distance",
+        "port": "c"
+      }
+    },
+    {
+      "id": "photography.camera.properties2.p->photography.dof.circle_of_confusion_pixels2.p",
+      "from": {
+        "node": "photography.camera.properties2",
+        "port": "p"
+      },
+      "to": {
+        "node": "photography.dof.circle_of_confusion_pixels2",
+        "port": "p"
+      }
+    },
+    {
+      "id": "photography.dof.circle_of_confusion_pixels2.c->photography.dof.hyperfocal_distance2.c",
+      "from": {
+        "node": "photography.dof.circle_of_confusion_pixels2",
+        "port": "c"
+      },
+      "to": {
+        "node": "photography.dof.hyperfocal_distance2",
+        "port": "c"
+      }
+    },
+    {
+      "id": "input3.value->photography.dof.circle_of_confusion_pixels.n",
+      "from": {
+        "node": "input3",
+        "port": "value"
+      },
+      "to": {
+        "node": "photography.dof.circle_of_confusion_pixels",
+        "port": "n"
+      }
+    },
+    {
+      "id": "input3.value->photography.dof.circle_of_confusion_pixels2.n",
+      "from": {
+        "node": "input3",
+        "port": "value"
+      },
+      "to": {
+        "node": "photography.dof.circle_of_confusion_pixels2",
+        "port": "n"
+      }
+    },
+    {
+      "id": "photography.lens.properties.f_min->range.start",
+      "from": {
+        "node": "photography.lens.properties",
+        "port": "f_min"
+      },
+      "to": {
+        "node": "range",
+        "port": "start"
+      }
+    },
+    {
+      "id": "photography.lens.properties.f_max->range.stop",
+      "from": {
+        "node": "photography.lens.properties",
+        "port": "f_max"
+      },
+      "to": {
+        "node": "range",
+        "port": "stop"
+      }
+    },
+    {
+      "id": "input32.value->range.count",
+      "from": {
+        "node": "input32",
+        "port": "value"
+      },
+      "to": {
+        "node": "range",
+        "port": "count"
+      }
+    },
+    {
+      "id": "input32.value->range2.count",
+      "from": {
+        "node": "input32",
+        "port": "value"
+      },
+      "to": {
+        "node": "range2",
+        "port": "count"
+      }
+    },
+    {
+      "id": "input32.value->range22.count",
+      "from": {
+        "node": "input32",
+        "port": "value"
+      },
+      "to": {
+        "node": "range22",
+        "port": "count"
+      }
+    },
+    {
+      "id": "input32.value->range3.count",
+      "from": {
+        "node": "input32",
+        "port": "value"
+      },
+      "to": {
+        "node": "range3",
+        "port": "count"
+      }
+    },
+    {
+      "id": "photography.lens.properties.N_wide->range3.start",
+      "from": {
+        "node": "photography.lens.properties",
+        "port": "N_wide"
+      },
+      "to": {
+        "node": "range3",
+        "port": "start"
+      }
+    },
+    {
+      "id": "photography.lens.properties.N_tele->range3.stop",
+      "from": {
+        "node": "photography.lens.properties",
+        "port": "N_tele"
+      },
+      "to": {
+        "node": "range3",
+        "port": "stop"
+      }
+    },
+    {
+      "id": "range.value->photography.dof.hyperfocal_distance.f",
+      "from": {
+        "node": "range",
+        "port": "value"
+      },
+      "to": {
+        "node": "photography.dof.hyperfocal_distance",
+        "port": "f"
+      }
+    },
+    {
+      "id": "range3.value->photography.dof.hyperfocal_distance.N",
+      "from": {
+        "node": "range3",
+        "port": "value"
+      },
+      "to": {
+        "node": "photography.dof.hyperfocal_distance",
+        "port": "N"
+      }
+    },
+    {
+      "id": "range.value->photography.dof.limits.f",
+      "from": {
+        "node": "range",
+        "port": "value"
+      },
+      "to": {
+        "node": "photography.dof.limits",
+        "port": "f"
+      }
+    },
+    {
+      "id": "input.value->photography.dof.limits2.s",
+      "from": {
+        "node": "input",
+        "port": "value"
+      },
+      "to": {
+        "node": "photography.dof.limits2",
+        "port": "s"
+      }
+    },
+    {
+      "id": "photography.dof.hyperfocal_distance2.H->photography.dof.limits2.H",
+      "from": {
+        "node": "photography.dof.hyperfocal_distance2",
+        "port": "H"
+      },
+      "to": {
+        "node": "photography.dof.limits2",
+        "port": "H"
+      }
+    },
+    {
+      "id": "range3.value->photography.diffraction.blur_diameter.N",
+      "from": {
+        "node": "range3",
+        "port": "value"
+      },
+      "to": {
+        "node": "photography.diffraction.blur_diameter",
+        "port": "N"
+      }
+    },
+    {
+      "id": "photography.dof.limits.DoF->check.value",
+      "from": {
+        "node": "photography.dof.limits",
+        "port": "DoF"
+      },
+      "to": {
+        "node": "check",
+        "port": "value"
+      }
+    },
+    {
+      "id": "input4.value->check.threshold",
+      "from": {
+        "node": "input4",
+        "port": "value"
+      },
+      "to": {
+        "node": "check",
+        "port": "threshold"
+      }
+    },
+    {
+      "id": "photography.diffraction.blur_diameter.b->check2.value",
+      "from": {
+        "node": "photography.diffraction.blur_diameter",
+        "port": "b"
+      },
+      "to": {
+        "node": "check2",
+        "port": "value"
+      }
+    },
+    {
+      "id": "photography.dof.circle_of_confusion_pixels.c->check2.threshold",
+      "from": {
+        "node": "photography.dof.circle_of_confusion_pixels",
+        "port": "c"
+      },
+      "to": {
+        "node": "check2",
+        "port": "threshold"
+      }
+    },
+    {
+      "id": "photography.dof.limits.DoF->bestDesign.objective",
+      "from": {
+        "node": "photography.dof.limits",
+        "port": "DoF"
+      },
+      "to": {
+        "node": "bestDesign",
+        "port": "objective"
+      }
+    },
+    {
+      "id": "photography.dof.circle_of_confusion_pixels2.c->check22.threshold",
+      "from": {
+        "node": "photography.dof.circle_of_confusion_pixels2",
+        "port": "c"
+      },
+      "to": {
+        "node": "check22",
+        "port": "threshold"
+      }
+    },
+    {
+      "id": "photography.diffraction.blur_diameter2.b->check22.value",
+      "from": {
+        "node": "photography.diffraction.blur_diameter2",
+        "port": "b"
+      },
+      "to": {
+        "node": "check22",
+        "port": "value"
+      }
+    },
+    {
+      "id": "input4.value->check3.threshold",
+      "from": {
+        "node": "input4",
+        "port": "value"
+      },
+      "to": {
+        "node": "check3",
+        "port": "threshold"
+      }
+    },
+    {
+      "id": "photography.dof.limits2.DoF->check3.value",
+      "from": {
+        "node": "photography.dof.limits2",
+        "port": "DoF"
+      },
+      "to": {
+        "node": "check3",
+        "port": "value"
+      }
+    },
+    {
+      "id": "photography.dof.limits2.DoF->bestDesign2.objective",
+      "from": {
+        "node": "photography.dof.limits2",
+        "port": "DoF"
+      },
+      "to": {
+        "node": "bestDesign2",
+        "port": "objective"
+      }
+    },
+    {
+      "id": "photography.lens.properties2.f_min->range2.start",
+      "from": {
+        "node": "photography.lens.properties2",
+        "port": "f_min"
+      },
+      "to": {
+        "node": "range2",
+        "port": "start"
+      }
+    },
+    {
+      "id": "photography.lens.properties2.f_max->range2.stop",
+      "from": {
+        "node": "photography.lens.properties2",
+        "port": "f_max"
+      },
+      "to": {
+        "node": "range2",
+        "port": "stop"
+      }
+    },
+    {
+      "id": "range2.value->photography.format.equivalent_focal_length.f",
+      "from": {
+        "node": "range2",
+        "port": "value"
+      },
+      "to": {
+        "node": "photography.format.equivalent_focal_length",
+        "port": "f"
+      }
+    },
+    {
+      "id": "photography.format.equivalent_focal_length.f_eq->photography.dof.hyperfocal_distance2.f",
+      "from": {
+        "node": "photography.format.equivalent_focal_length",
+        "port": "f_eq"
+      },
+      "to": {
+        "node": "photography.dof.hyperfocal_distance2",
+        "port": "f"
+      }
+    },
+    {
+      "id": "photography.format.equivalent_focal_length.f_eq->photography.dof.limits2.f",
+      "from": {
+        "node": "photography.format.equivalent_focal_length",
+        "port": "f_eq"
+      },
+      "to": {
+        "node": "photography.dof.limits2",
+        "port": "f"
+      }
+    },
+    {
+      "id": "photography.lens.properties2.N_wide->range22.start",
+      "from": {
+        "node": "photography.lens.properties2",
+        "port": "N_wide"
+      },
+      "to": {
+        "node": "range22",
+        "port": "start"
+      }
+    },
+    {
+      "id": "photography.lens.properties2.N_tele->range22.stop",
+      "from": {
+        "node": "photography.lens.properties2",
+        "port": "N_tele"
+      },
+      "to": {
+        "node": "range22",
+        "port": "stop"
+      }
+    },
+    {
+      "id": "range22.value->photography.format.equivalent_aperture.N",
+      "from": {
+        "node": "range22",
+        "port": "value"
+      },
+      "to": {
+        "node": "photography.format.equivalent_aperture",
+        "port": "N"
+      }
+    },
+    {
+      "id": "photography.format.equivalent_aperture.N_eq->photography.diffraction.blur_diameter2.N",
+      "from": {
+        "node": "photography.format.equivalent_aperture",
+        "port": "N_eq"
+      },
+      "to": {
+        "node": "photography.diffraction.blur_diameter2",
+        "port": "N"
+      }
+    },
+    {
+      "id": "photography.format.equivalent_aperture.N_eq->photography.dof.hyperfocal_distance2.N",
+      "from": {
+        "node": "photography.format.equivalent_aperture",
+        "port": "N_eq"
+      },
+      "to": {
+        "node": "photography.dof.hyperfocal_distance2",
+        "port": "N"
+      }
+    },
+    {
+      "id": "input.value->photography.lens.magnification_from_focal.d_o",
+      "from": {
+        "node": "input",
+        "port": "value"
+      },
+      "to": {
+        "node": "photography.lens.magnification_from_focal",
+        "port": "d_o"
+      }
+    },
+    {
+      "id": "photography.format.equivalent_focal_length.f_eq->photography.lens.magnification_from_focal.f",
+      "from": {
+        "node": "photography.format.equivalent_focal_length",
+        "port": "f_eq"
+      },
+      "to": {
+        "node": "photography.lens.magnification_from_focal",
+        "port": "f"
+      }
+    },
+    {
+      "id": "range.value->photography.lens.magnification_from_focal2.f",
+      "from": {
+        "node": "range",
+        "port": "value"
+      },
+      "to": {
+        "node": "photography.lens.magnification_from_focal2",
+        "port": "f"
+      }
+    },
+    {
+      "id": "input.value->photography.lens.magnification_from_focal2.d_o",
+      "from": {
+        "node": "input",
+        "port": "value"
+      },
+      "to": {
+        "node": "photography.lens.magnification_from_focal2",
+        "port": "d_o"
+      }
+    },
+    {
+      "id": "photography.lens.magnification_from_focal2.m->check4.value",
+      "from": {
+        "node": "photography.lens.magnification_from_focal2",
+        "port": "m"
+      },
+      "to": {
+        "node": "check4",
+        "port": "value"
+      }
+    },
+    {
+      "id": "input5.value->check4.threshold",
+      "from": {
+        "node": "input5",
+        "port": "value"
+      },
+      "to": {
+        "node": "check4",
+        "port": "threshold"
+      }
+    },
+    {
+      "id": "input5.value->check42.threshold",
+      "from": {
+        "node": "input5",
+        "port": "value"
+      },
+      "to": {
+        "node": "check42",
+        "port": "threshold"
+      }
+    },
+    {
+      "id": "photography.lens.magnification_from_focal.m->check42.value",
+      "from": {
+        "node": "photography.lens.magnification_from_focal",
+        "port": "m"
+      },
+      "to": {
+        "node": "check42",
+        "port": "value"
+      }
+    }
+  ],
+  "frames": [
+    {
+      "id": "section",
+      "title": "Setup A — Canon EOS R6 Mark III with RF 100–500 mm",
+      "note": "This full-frame setup is evaluated across the lens's focal-length and aperture ranges at the shared subject distance. A candidate is feasible only when it provides at least the required depth of field and magnification while keeping diffraction blur within the acceptable circle of confusion. From the feasible candidates, the reported settings maximize depth of field.",
+      "position": {
+        "x": 4675,
+        "y": 715
+      },
+      "size": {
+        "width": 825,
+        "height": 715
+      }
+    },
+    {
+      "id": "section2",
+      "title": "Setup B — Canon EOS 1200D with Tamron 18–270 mm",
+      "note": "This APS-C setup is compared on the same full-frame-equivalent basis: crop factor converts its focal length and aperture before the depth-of-field, diffraction, and magnification calculations. It uses the same subject distance and acceptance limits as Setup A. The reported settings are the feasible candidate with the greatest depth of field, making the two sections directly comparable.",
+      "position": {
+        "x": 4675,
+        "y": 1540
+      },
+      "size": {
+        "width": 825,
+        "height": 770
+      }
+    }
+  ]
+}

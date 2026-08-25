@@ -9,6 +9,7 @@ export const EXAMPLE_IDS = [
   'milling-power-envelope',
   'depth-of-field',
   'aperture-decision',
+  'wildlife-camera-comparison',
 ] as const;
 
 export type ExampleId = (typeof EXAMPLE_IDS)[number];
