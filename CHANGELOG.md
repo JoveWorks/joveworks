@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.18.0](https://github.com/ThomasVanRiel/joveworks/compare/v0.17.0...v0.18.0) (2026-08-25)
+
+### Features
+
+* add a range node whose bounds and count can be wired ([32905d7](https://github.com/ThomasVanRiel/joveworks/commit/32905d7c358106cb4774e71bc4f53482d94fa989))
+* **catalogues:** add Canon EOS R7, EF-S 18-55mm and Tamron 18-270mm ([408145d](https://github.com/ThomasVanRiel/joveworks/commit/408145d7e44fc76c08a76abd3ee7f07d684f8332))
+* **editor:** add wildlife camera comparison example ([fe7bef9](https://github.com/ThomasVanRiel/joveworks/commit/fe7bef9e652ca42e686236934df8fb1c4376dc1f))
+* **editor:** surface a port's obvious producer at the top of Quick Add ([93c518c](https://github.com/ThomasVanRiel/joveworks/commit/93c518cfbc0c61e32ad7710c5684d171e345ca0d))
+
+### Fixes
+
+* **editor:** draw a published NodeBook's marks in the read-only viewer ([d99dcb9](https://github.com/ThomasVanRiel/joveworks/commit/d99dcb93e00e9eb2bcf3452513f891a1e1d49c6a))
+* **editor:** duplicating a node reconnects its incoming wires ([4f0e285](https://github.com/ThomasVanRiel/joveworks/commit/4f0e2857f2c5eabeccc0e2974b38d14e856374e8))
+* **editor:** hide wildlife example from help menu ([6d12922](https://github.com/ThomasVanRiel/joveworks/commit/6d12922760d04a24142ba26cad5058ccff8ccb4d))
+* **editor:** place pastes and show wired values ([296b324](https://github.com/ThomasVanRiel/joveworks/commit/296b3244f224276e1a46b2d3b8092ba69aaadfaa))
+* **editor:** round slider values by decimal places ([76b45b5](https://github.com/ThomasVanRiel/joveworks/commit/76b45b57c0d0f5b9214c9e0c96c1415096a4776e))
 ## [0.17.0](https://github.com/ThomasVanRiel/joveworks/compare/v0.16.0...v0.17.0) (2026-08-25)
 
 ### Features
