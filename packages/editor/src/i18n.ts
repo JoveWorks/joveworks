@@ -88,7 +88,7 @@ const DUTCH_PHRASES: Readonly<Record<string, string>> = {
   'Cancel': 'Annuleren', 'Discard': 'Verwerpen', 'Confirm': 'Bevestigen',
   'Point count is the control, not step size.': 'Het aantal punten is de instelling, niet de stapgrootte.',
   'The low end of the slider\'s travel.': 'De ondergrens van het bereik van de schuifregelaar.', 'The high end of the slider\'s travel.': 'De bovengrens van het bereik van de schuifregelaar.',
-  'How many significant figures a drag rounds to — typing a value directly is never rounded.': 'Het aantal significante cijfers waarop slepen afrondt — rechtstreeks getypte waarden worden nooit afgerond.',
+  'How many digits after the decimal point a drag rounds to — 0 gives whole numbers. Typing a value directly is never rounded.': 'Het aantal cijfers na de komma waarop slepen afrondt — 0 geeft gehele getallen. Rechtstreeks getypte waarden worden nooit afgerond.',
   'The value. The unit is the field beside it, and does not need retyping.': 'De waarde. De eenheid staat in het veld ernaast en hoeft niet opnieuw getypt te worden.',
   'Blank is dimensionless — that is a value, not a gap to fill in.': 'Leeg is dimensieloos — dat is een waarde, geen veld dat nog ingevuld moet worden.',
   'Drag for a feel of the effect — type the field for an exact value.': 'Sleep om het effect te voelen — typ in het veld voor een exacte waarde.',

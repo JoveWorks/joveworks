@@ -57,6 +57,11 @@ describe('slider values', () => {
     const withoutFigures = { kind: 'slider', value: 20, min: 0, max: 60, unit: 'mm' } as const;
     expect(roundTrip(withoutFigures)).toEqual(withoutFigures);
   });
+
+  it('allows zero figures to request whole-number slider values', () => {
+    const integerSlider = { kind: 'slider', value: 20, min: 0, max: 60, unit: 'mm', figures: 0 } as const;
+    expect(roundTrip(integerSlider)).toEqual(integerSlider);
+  });
 });
 
 describe('range kinds', () => {

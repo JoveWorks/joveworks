@@ -67,10 +67,10 @@ export interface ScalarValue {
  * rather than silently clamped.
  *
  * `figures`: a drag reports a value at float precision no student typed —
- * rounded to this many significant figures (default `DEFAULT_SLIDER_FIGURES`)
- * before it ever reaches the document, the same "figures" concept a print
- * output already has, just applied at write time instead of display time,
- * since a slider's value is meant to be read off directly.
+ * rounded to this many digits after the decimal point (default
+ * `DEFAULT_SLIDER_FIGURES`) before it ever reaches the document. The persisted
+ * field keeps its original name for document compatibility; unlike a print
+ * output's figures, zero is meaningful here and rounds to whole numbers.
  */
 export interface SliderValue {
   readonly kind: 'slider';
@@ -280,7 +280,7 @@ export function parseValueSpec(value: JsonValue, path: string): ValueSpec {
       const min = readNumber(required(object, 'min', path), join(path, 'min'));
       const max = readNumber(required(object, 'max', path), join(path, 'max'));
       if (min >= max) fail(path, 'a slider needs its low end below its high end');
-      const figures = optional(object, 'figures', path, (v, p) => readInteger(v, p, 1));
+      const figures = optional(object, 'figures', path, readInteger);
       return {
         kind,
         value: readNumber(required(object, 'value', path), join(path, 'value')),

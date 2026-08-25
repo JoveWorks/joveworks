@@ -39,11 +39,12 @@ function unitOf(value: ValueSpec): Unit {
 
 /**
  * A drag reports a value at float precision no student typed (`23.847291…`)
- * — rounded to `figures` significant figures before it reaches the document,
- * so the field beside the slider reads like something a student would enter.
+ * — rounded to `figures` digits after the decimal point before it reaches the
+ * document, so zero produces integers and the field beside the slider reads
+ * like something a student would enter.
  */
-export function roundToFigures(value: number, figures: number): number {
-  return value === 0 || !Number.isFinite(value) ? value : Number(value.toPrecision(figures));
+export function roundToDecimalFigures(value: number, figures: number): number {
+  return value === 0 || !Number.isFinite(value) ? value : Number(value.toFixed(figures));
 }
 
 /** The smallest bound already on the value, so a switch never throws away the one number worth keeping. */
@@ -235,12 +236,12 @@ export function ValueSliderBoundsFields({ value, onChange }: Props): ReactElemen
         />
       </span>
       <span className="points-field-item">
-        figures
+        decimals
         <NumberField
           value={value.figures ?? DEFAULT_SLIDER_FIGURES}
           integer
-          minimum={1}
-          title="How many significant figures a drag rounds to — typing a value directly is never rounded."
+          minimum={0}
+          title="How many digits after the decimal point a drag rounds to — 0 gives whole numbers. Typing a value directly is never rounded."
           onCommit={(figures) => onChange({ ...value, figures })}
         />
       </span>
@@ -386,7 +387,7 @@ export function ValueFields({ value, onChange, onSliderChange, onSliderCommit }:
             onChange={(event) =>
               (onSliderChange ?? onChange)({
                 ...value,
-                value: roundToFigures(Number(event.target.value), value.figures ?? DEFAULT_SLIDER_FIGURES),
+                value: roundToDecimalFigures(Number(event.target.value), value.figures ?? DEFAULT_SLIDER_FIGURES),
               })
             }
             onPointerUp={onSliderCommit}

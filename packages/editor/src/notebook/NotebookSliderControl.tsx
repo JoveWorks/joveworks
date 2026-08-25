@@ -8,7 +8,7 @@ import {
 import { formatPlainNumber, type NumberFormat } from '@joveworks/units';
 
 import { NumberField } from '../canvas/fields';
-import { roundToFigures } from '../canvas/ValueEditor';
+import { roundToDecimalFigures } from '../canvas/ValueEditor';
 import { TitleText } from '../canvas/TitleField';
 
 export type ExposedSliderNode = InputNode & { readonly value: SliderValue };
@@ -57,7 +57,7 @@ export function NotebookSliderControl({
         aria-valuetext={shown}
         onChange={(event) =>
           onLiveChange(
-            roundToFigures(Number(event.target.value), value.figures ?? DEFAULT_SLIDER_FIGURES),
+            roundToDecimalFigures(Number(event.target.value), value.figures ?? DEFAULT_SLIDER_FIGURES),
           )
         }
         onPointerUp={onCommit}

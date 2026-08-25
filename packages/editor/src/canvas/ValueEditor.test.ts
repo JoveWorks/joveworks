@@ -2,9 +2,20 @@ import { describe, expect, it } from 'vitest';
 
 import { parseUnit } from '@joveworks/units';
 
-import { converted, rescaleRange } from './ValueEditor';
+import { converted, rescaleRange, roundToDecimalFigures } from './ValueEditor';
 
 const mm = parseUnit('mm');
+
+describe('rounding slider drags', () => {
+  it('treats figures as digits after the decimal point', () => {
+    expect(roundToDecimalFigures(23.847291, 2)).toBe(23.85);
+    expect(roundToDecimalFigures(1234.567, 2)).toBe(1234.57);
+  });
+
+  it('rounds to whole numbers when figures is zero', () => {
+    expect(roundToDecimalFigures(23.847291, 0)).toBe(24);
+  });
+});
 
 describe('switching an input value between kinds', () => {
   it('takes the smallest limit of a range as the value, not a hardcoded guess', () => {
