@@ -1454,6 +1454,7 @@ export function Canvas({
             catalogues={catalogues}
             existing={quickAddExisting}
             canPlot={documentAxes(document).length > 0}
+            preferredPort={quickAdd.from.port}
             compatiblePort={quickAddCompatiblePort}
             onPick={(choice) => pickQuickAdd(quickAdd, choice)}
             onClose={() => setQuickAdd(undefined)}

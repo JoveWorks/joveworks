@@ -78,6 +78,14 @@ interface Props {
   readonly existing: readonly ExistingCandidate[];
   /** Whether a plot has a range to plot against (Canvas already knows). */
   readonly canPlot: boolean;
+  /**
+   * The dragged endpoint's own port name — `H` for a wire pulled out of a
+   * `dof.limits` node's unwired hyperfocal-distance input, say. A formula
+   * that would land on a port of this same name is its obvious producer (or
+   * consumer), so it is worth surfacing first rather than wherever the
+   * fuzzy ranking of an empty query happens to place it.
+   */
+  readonly preferredPort: string;
   /** Returns the fresh node port that can complete this drag, or no port when it cannot. */
   readonly compatiblePort: (choice: QuickAddCandidate) => string | undefined;
   readonly onPick: (choice: QuickAddChoice) => void;
@@ -90,6 +98,7 @@ export function QuickAddMenu({
   catalogues,
   existing,
   canPlot,
+  preferredPort,
   compatiblePort,
   onPick,
   onClose,
@@ -108,16 +117,20 @@ export function QuickAddMenu({
   // render slice below), not on every fuzzy match. Running it on every match
   // was the quick-add slowdown: a common query matches most of the
   // catalogue, and each one was paying for a full graph resolution.
-  const formulas = useMemo(
-    () =>
-      search(entries(catalogues), query)
-        .slice(0, MAX_FORMULA_RESULTS)
-        .flatMap(({ formula, ...match }) => {
-          const port = compatiblePort({ kind: 'formula', formula });
-          return port === undefined ? [] : [{ formula, ...match, port }];
-        }),
-    [catalogues, compatiblePort, query],
-  );
+  const formulas = useMemo(() => {
+    const matches = search(entries(catalogues), query)
+      .slice(0, MAX_FORMULA_RESULTS)
+      .flatMap(({ formula, ...match }) => {
+        const port = compatiblePort({ kind: 'formula', formula });
+        return port === undefined ? [] : [{ formula, ...match, port }];
+      });
+    // A formula that lands on the dragged port's own name is its obvious
+    // producer or consumer — stable-sorted first, ahead of the rest, which
+    // keep the fuzzy ranking `search` already gave them.
+    return [...matches].sort(
+      (a, b) => Number(b.port === preferredPort) - Number(a.port === preferredPort),
+    );
+  }, [catalogues, compatiblePort, preferredPort, query]);
   const matchingExisting = useMemo(
     () => fuzzySearch(query, existing, (candidate) => candidate.label),
     [existing, query],
