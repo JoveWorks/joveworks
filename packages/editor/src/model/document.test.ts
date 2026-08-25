@@ -141,10 +141,46 @@ describe('document edits', () => {
     });
   });
 
-  it('copies only wires wholly inside the selection', () => {
+  it('leaves edges alone when duplicating a node with no incoming wire', () => {
     const wired = connect(base, { node: 'a', port: 'value' }, { node: 'b', port: 'x' });
-    const duplicated = duplicateSelection(wired, wired, new Set(['a']));
+    const duplicated = duplicateSelection(wired, wired, new Set(['a']), true);
     expect(duplicated.document.edges).toEqual(wired.edges);
+  });
+
+  it('leaves a pasted node unwired even though its source had an external input (paste is not duplicate)', () => {
+    const wired = connect(base, { node: 'a', port: 'value' }, { node: 'b', port: 'x' });
+    const duplicated = duplicateSelection(wired, wired, new Set(['b']));
+    expect(duplicated.document.edges).toEqual(wired.edges);
+  });
+
+  it('reconnects a duplicate to the same external source that feeds the original, only when asked to', () => {
+    const wired = connect(base, { node: 'a', port: 'value' }, { node: 'b', port: 'x' });
+    const duplicated = duplicateSelection(wired, wired, new Set(['b']), true);
+    expect(duplicated.document.edges.at(-1)).toEqual({
+      id: 'a.value->b2.x',
+      from: { node: 'a', port: 'value' },
+      to: { node: 'b2', port: 'x' },
+    });
+  });
+
+  it('does not reconnect to an external source absent from the target document', () => {
+    const wired = connect(base, { node: 'a', port: 'value' }, { node: 'b', port: 'x' });
+    const empty: GraphDocument = { ...base, nodes: [] };
+    const duplicated = duplicateSelection(empty, wired, new Set(['b']), true);
+    expect(duplicated.document.edges).toEqual([]);
+  });
+
+  it('duplicating a single node reconnects its incoming wire but not its outgoing one', () => {
+    const wired = connect(base, { node: 'a', port: 'value' }, { node: 'b', port: 'x' });
+    const duplicated = duplicateNode(wired, 'b');
+    expect(duplicated.edges.at(-1)).toEqual({
+      id: 'a.value->b2.x',
+      from: { node: 'a', port: 'value' },
+      to: { node: 'b2', port: 'x' },
+    });
+
+    const duplicatedSource = duplicateNode(wired, 'a');
+    expect(duplicatedSource.edges).toEqual(wired.edges);
   });
 
   it('drops the edges of a node it removes', () => {

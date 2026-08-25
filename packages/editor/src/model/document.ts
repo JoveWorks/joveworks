@@ -75,18 +75,26 @@ export function addNode(document: GraphDocument, node: GraphNode): GraphDocument
 
 /**
  * A copy of one node, offset so it does not sit exactly on top of the
- * original, and carrying none of its wires — a duplicate is a fresh node, not
- * a fork of one that is already wired into the graph.
+ * original, with the same inputs wired up as the source. Its outgoing wires
+ * are not copied: an input port takes only one edge, so reconnecting a
+ * downstream target to the duplicate would have to steal it from the
+ * original, which is never what "duplicate" means.
  */
 export function duplicateNode(document: GraphDocument, id: string): GraphDocument {
   const source = document.nodes.find((node) => node.id === id);
   if (source === undefined) return document;
+  const copyId = uniqueId(document, source.id);
   const copy: GraphNode = {
     ...withoutAxisLabel(withoutFrame(source)),
-    id: uniqueId(document, source.id),
+    id: copyId,
     position: { x: source.position.x + 32, y: source.position.y + 32 },
   };
-  return addNode(document, copy);
+  let next = addNode(document, copy);
+  for (const edge of document.edges) {
+    if (edge.to.node !== id) continue;
+    next = addSplicedEdge(next, edge.from, { ...edge.to, node: copyId });
+  }
+  return next;
 }
 
 export interface DuplicatedSelection {
@@ -95,15 +103,29 @@ export interface DuplicatedSelection {
 }
 
 /**
- * Copy selected nodes from one document into another, including only wires
- * whose two endpoints are in the selection. Frames are deliberately not
- * copied: a pasted cluster is free-standing until its new position puts it
- * into a section again.
+ * Copy selected nodes from one document into another. A wire whose two
+ * endpoints are both in the selection is copied between the two copies.
+ *
+ * With `reconnectExternalInputs`, a wire that only feeds a selected node
+ * from outside the selection is copied too, so each duplicate keeps the
+ * same inputs as its source — reconnected to that external node only if it
+ * still exists in the target document. That flag is for Duplicate
+ * specifically: Paste leaves such wires alone, since pasting is a distinct
+ * action from duplicating and a clipboard's source document is very often
+ * not the one being pasted into, where "the same external node" is either
+ * absent or, worse, a same-named stranger.
+ *
+ * Either way, a wire a selected node feeds *out* to something outside the
+ * selection is never copied: that target's input already has an edge, and
+ * duplicating never steals it from the original. Frames are deliberately
+ * not copied: a pasted cluster is free-standing until its new position puts
+ * it into a section again.
  */
 export function duplicateSelection(
   document: GraphDocument,
   source: GraphDocument,
   selected: ReadonlySet<string>,
+  reconnectExternalInputs = false,
 ): DuplicatedSelection {
   const sources = source.nodes.filter((node) => selected.has(node.id));
   if (sources.length === 0) return { document, ids: new Set() };
@@ -121,12 +143,14 @@ export function duplicateSelection(
   }
 
   for (const edge of source.edges) {
-    const fromNode = ids.get(edge.from.node);
     const toNode = ids.get(edge.to.node);
-    if (fromNode === undefined || toNode === undefined) continue;
-    const from = { ...edge.from, node: fromNode };
-    const to = { ...edge.to, node: toNode };
-    next = addSplicedEdge(next, from, to);
+    if (toNode === undefined) continue;
+    const fromNode = ids.get(edge.from.node);
+    if (fromNode !== undefined) {
+      next = addSplicedEdge(next, { ...edge.from, node: fromNode }, { ...edge.to, node: toNode });
+    } else if (reconnectExternalInputs && next.nodes.some((node) => node.id === edge.from.node)) {
+      next = addSplicedEdge(next, edge.from, { ...edge.to, node: toNode });
+    }
   }
 
   return { document: reframe(next), ids: new Set(ids.values()) };

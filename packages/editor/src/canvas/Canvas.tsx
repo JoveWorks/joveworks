@@ -524,7 +524,7 @@ export function Canvas({
 
       const source = key === 'v' ? clipboard.current : { document, selected };
       if (source === undefined) return;
-      const duplicated = duplicateSelection(document, source.document, source.selected);
+      const duplicated = duplicateSelection(document, source.document, source.selected, key === 'd');
       if (duplicated.ids.size === 0) return;
       event.preventDefault();
       edit(() => duplicated.document);
