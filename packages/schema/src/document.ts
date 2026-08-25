@@ -86,6 +86,18 @@ export const BEST_PORT = 'best';
 /** A Best Design output's one wired port: the quantity being minimised or maximised. */
 export const OBJECTIVE_PORT = 'objective';
 
+/**
+ * A Pareto output's two objective ports.
+ *
+ * Named for the chart axes they become rather than `objectiveA`/`objectiveB`:
+ * a scatter is what a two-objective front *is*, and a student wiring mass into
+ * `x` and safety into `y` is placing them on the picture they are about to
+ * read. Their directions live on the node (`xDirection`/`yDirection`), not on
+ * the wire.
+ */
+export const X_PORT = 'x';
+export const Y_PORT = 'y';
+
 export interface Position {
   readonly x: number;
   readonly y: number;
@@ -156,7 +168,7 @@ export interface PlotOutput {
  * A swept series as rows — standard sizes against results, an explicit-list
  * range at its natural home.
  *
- * `figures` and `marks` are edited in the notebook, where the rendered table
+ * `figures` is edited in the notebook, where the rendered table
  * is, rather than in this node's own panel — the same "complex settings live
  * where they're read" rule the notebook's captions and section notes already
  * follow. They still live on this node because the table's rendering is a
@@ -168,14 +180,6 @@ export interface TableOutput {
   readonly columns: readonly string[];
   /** Decimal-figure count per column, keyed by column name. Missing means the default (4). */
   readonly figures?: Readonly<Record<string, number>>;
-  /**
-   * Row indices a student has marked to call a value out. Indices, not axis
-   * values, so a sweep that changes shape (a different sample count, a
-   * reordered range) can leave a mark pointing at a different row than the
-   * one it was set on — an accepted gap until this is unified with the
-   * plot's own "mark a point on the curve" affordance.
-   */
-  readonly marks?: readonly number[];
 }
 
 /**
@@ -244,7 +248,39 @@ export interface BestDesignOutput {
   readonly kind: 'bestDesign';
   /** The ids of the Check output nodes whose verdicts define feasibility. */
   readonly checks: readonly string[];
-  readonly direction: 'minimize' | 'maximize';
+  readonly direction: ObjectiveDirection;
+}
+
+/**
+ * Which way a Pareto objective is better. Best Design's own `direction` is the
+ * same two words for the same reason, and shares this type.
+ */
+export const OBJECTIVE_DIRECTIONS = ['minimize', 'maximize'] as const;
+export type ObjectiveDirection = (typeof OBJECTIVE_DIRECTIONS)[number];
+
+/**
+ * The candidates no other candidate beats on both objectives at once — the
+ * answer to a design question that has two answers pulling against each other,
+ * which most of them do.
+ *
+ * Two objectives, not N. Two is the case a scatter can *show*, and a front
+ * whose dominance the picture cannot explain is a worse answer than no
+ * picture: every pair the feature review names (mass against safety, cost
+ * against lifetime, depth of field against diffraction) is two. Domination
+ * over more objectives is a later addition, not a deferred obligation.
+ *
+ * `checks` is `FeasibilityOutput`'s own field, for its own reason: a student
+ * who has already built "safety factor ≥ 1.5" should not retype it to keep
+ * failing designs out of the competition. An infeasible candidate is still
+ * drawn — seeing *why* the front stops where it does is most of the value —
+ * but it never dominates and never joins the front.
+ */
+export interface ParetoOutput {
+  readonly kind: 'pareto';
+  readonly xDirection: ObjectiveDirection;
+  readonly yDirection: ObjectiveDirection;
+  /** The ids of the Check output nodes a candidate must pass to compete. */
+  readonly checks: readonly string[];
 }
 
 export type Output =
@@ -255,7 +291,8 @@ export type Output =
   | EquationOutput
   | FeasibilityOutput
   | SensitivityOutput
-  | BestDesignOutput;
+  | BestDesignOutput
+  | ParetoOutput;
 
 export const OUTPUT_KINDS = [
   'print',
@@ -266,6 +303,7 @@ export const OUTPUT_KINDS = [
   'feasibility',
   'sensitivity',
   'bestDesign',
+  'pareto',
 ] as const;
 export type OutputKind = (typeof OUTPUT_KINDS)[number];
 
@@ -618,6 +656,28 @@ export interface Frame {
   readonly size: Size;
 }
 
+/**
+ * One design in the study, identified by *where it sits* rather than by which
+ * row of which figure happened to show it.
+ *
+ * A coordinate per axis node id — `40` on the diameter axis, `'steel'` on a
+ * material one, canonical like every other number the kernel holds. Row
+ * indices were the previous answer (`TableOutput.marks`, now gone) and they
+ * are wrong in the way that matters: re-sample a range and the mark silently
+ * points at a different design. A coordinate survives that, and it is also the
+ * only form that reads correctly in a report — "candidate A: d = 40 mm" rather
+ * than "row 7".
+ *
+ * A candidate names only the axes whoever marked it could determine. A figure
+ * highlights every cell consistent with it on the axes they share, so clicking
+ * a Pareto point (which knows the whole grid) pins one design, while clicking
+ * a 1-D plot pins a slice — both correct, one rule, no special cases.
+ */
+export interface Candidate {
+  /** Axis node id → the coordinate on that axis, canonical. */
+  readonly at: Readonly<Record<string, number | string>>;
+}
+
 export interface GraphDocument {
   readonly schemaVersion: number;
   readonly id: string;
@@ -627,6 +687,15 @@ export interface GraphDocument {
   readonly nodes: readonly GraphNode[];
   readonly edges: readonly Edge[];
   readonly frames: readonly Frame[];
+  /**
+   * Designs called out across every figure at once. Their order is their
+   * A/B/C labels, which is why this is a list and not a set.
+   *
+   * Document-level rather than per-output on purpose: a marked design is one
+   * identity the whole NodeBook agrees on, not a property of the figure it
+   * happened to be clicked in.
+   */
+  readonly marks?: readonly Candidate[];
 }
 
 /**
@@ -712,7 +781,6 @@ function parseOutput(value: JsonValue, path: string): Output {
         kind,
         columns,
         ...put('figures', optional(object, 'figures', path, parseTableFigures)),
-        ...put('marks', optional(object, 'marks', path, parseTableMarks)),
       };
     }
 
@@ -742,10 +810,17 @@ function parseOutput(value: JsonValue, path: string): Output {
       return {
         kind,
         checks: readStringArray(required(object, 'checks', path), join(path, 'checks')),
-        direction: readEnum(required(object, 'direction', path), join(path, 'direction'), [
-          'minimize',
-          'maximize',
-        ] as const),
+        direction: readEnum(required(object, 'direction', path), join(path, 'direction'), OBJECTIVE_DIRECTIONS),
+      };
+
+    case 'pareto':
+      // Same empty-`checks` reading as `feasibility` and `bestDesign`: with
+      // nothing referenced, every candidate competes.
+      return {
+        kind,
+        checks: readStringArray(required(object, 'checks', path), join(path, 'checks')),
+        xDirection: readEnum(required(object, 'xDirection', path), join(path, 'xDirection'), OBJECTIVE_DIRECTIONS),
+        yDirection: readEnum(required(object, 'yDirection', path), join(path, 'yDirection'), OBJECTIVE_DIRECTIONS),
       };
   }
 }
@@ -782,7 +857,6 @@ function serializeOutput(output: Output): JsonObject {
         kind: output.kind,
         columns: [...output.columns],
         ...put('figures', serializeTableFigures(output.figures)),
-        ...put('marks', output.marks === undefined || output.marks.length === 0 ? undefined : [...output.marks]),
       };
     case 'equation':
       return { kind: output.kind };
@@ -798,6 +872,13 @@ function serializeOutput(output: Output): JsonObject {
       return { kind: output.kind };
     case 'bestDesign':
       return { kind: output.kind, checks: [...output.checks], direction: output.direction };
+    case 'pareto':
+      return {
+        kind: output.kind,
+        checks: [...output.checks],
+        xDirection: output.xDirection,
+        yDirection: output.yDirection,
+      };
   }
 }
 
@@ -1137,10 +1218,6 @@ function serializeTableFigures(figures: Readonly<Record<string, number>> | undef
   return { ...figures };
 }
 
-function parseTableMarks(value: JsonValue, path: string): readonly number[] {
-  return readArray(value, path).map((entry, i) => readInteger(entry, `${path}[${i}]`, 0));
-}
-
 function parseEndpoint(value: JsonValue, path: string): Endpoint {
   const object = readObject(value, path);
   return {
@@ -1164,6 +1241,27 @@ function serializeEdge(edge: Edge): JsonObject {
     from: { node: edge.from.node, port: edge.from.port },
     to: { node: edge.to.node, port: edge.to.port },
   };
+}
+
+/**
+ * A marked candidate: one coordinate per axis node it names.
+ *
+ * A coordinate is numeric or categorical exactly as its axis is, so both are
+ * accepted here and neither is coerced — the same reading `parseFileField`
+ * takes of a cell. An empty `at` is refused: a candidate that names no axis
+ * identifies every cell of every figure, which is not a mark, it is a bug that
+ * would highlight the whole document.
+ */
+function parseCandidate(value: JsonValue, path: string): Candidate {
+  const object = readObject(value, path);
+  const at = readObject(required(object, 'at', path), join(path, 'at'));
+  const entries = Object.entries(at).map(([axisId, coordinate]) => {
+    const cellPath = join(join(path, 'at'), axisId);
+    if (typeof coordinate === 'number') return [axisId, readNumber(coordinate, cellPath)] as const;
+    return [axisId, readString(coordinate, cellPath)] as const;
+  });
+  if (entries.length === 0) fail(join(path, 'at'), 'names no axis, so it identifies every point rather than one');
+  return { at: Object.fromEntries(entries) };
 }
 
 function parseFrame(value: JsonValue, path: string): Frame {
@@ -1256,6 +1354,12 @@ export function parseDocument(value: JsonValue, path = ''): GraphDocument {
     frames: readArray(required(object, 'frames', path), join(path, 'frames')).map((entry, i) =>
       parseFrame(entry, `${join(path, 'frames')}[${i}]`),
     ),
+    ...put(
+      'marks',
+      optional(object, 'marks', path, (value, markPath) =>
+        readArray(value, markPath).map((entry, i) => parseCandidate(entry, `${markPath}[${i}]`)),
+      ),
+    ),
   };
   checkReferences(document, path);
   return document;
@@ -1270,6 +1374,12 @@ export function serializeDocument(document: GraphDocument): JsonObject {
     nodes: document.nodes.map(serializeNode),
     edges: document.edges.map(serializeEdge),
     frames: document.frames.map(serializeFrame),
+    ...put(
+      'marks',
+      document.marks === undefined || document.marks.length === 0
+        ? undefined
+        : document.marks.map((candidate) => ({ at: { ...candidate.at } })),
+    ),
   };
 }
 

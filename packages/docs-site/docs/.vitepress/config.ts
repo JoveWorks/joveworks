@@ -20,6 +20,7 @@ export default defineConfig({
         items: [
           { text: "What this is", link: "/guide/getting-started" },
           { text: "Sweeps", link: "/guide/sweeps" },
+          { text: "Candidates and marks", link: "/guide/candidates" },
           { text: "Units", link: "/guide/units" },
           { text: "Tips and tricks", link: "/guide/tips-and-tricks" },
           { text: "Node reference", link: "/guide/node-reference" },
@@ -31,6 +32,7 @@ export default defineConfig({
         items: [
           { text: "Choosing a shaft size", link: "/examples/choosing-a-shaft-size" },
           { text: "Pocket milling — power envelope", link: "/examples/milling-power-envelope" },
+          { text: "Lighter or stiffer — a cantilever", link: "/examples/lighter-or-stiffer" },
         ],
       },
     ],

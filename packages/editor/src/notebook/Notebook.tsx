@@ -26,8 +26,21 @@ import {
   type TextareaHTMLAttributes,
 } from 'react';
 
-import { parseExpression, toLatex, type OutputResult } from '@joveworks/kernel';
-import type { Frame, GraphDocument, MonteCarloReceiverNode, OutputNode, Position } from '@joveworks/schema';
+import {
+  candidateAt,
+  parseExpression,
+  toLatex,
+  type AxisReadout,
+  type OutputResult,
+} from '@joveworks/kernel';
+import type {
+  Candidate,
+  Frame,
+  GraphDocument,
+  MonteCarloReceiverNode,
+  OutputNode,
+  Position,
+} from '@joveworks/schema';
 
 import type { NumberFormat } from '@joveworks/units';
 
@@ -47,7 +60,7 @@ import {
   reorderColumn,
   reorderFrame,
   setColumnFigures,
-  toggleMark,
+  toggleCandidate,
   updateFrame,
   updateNode,
 } from '../model/document';
@@ -58,8 +71,10 @@ import { checkVerdict, summarise, summariseCheck } from '../model/values';
 import { CheckReading } from '../CheckReading';
 import { MonteCarloReceiverPlayback } from '../canvas/MonteCarloReceiverPlayback';
 import { BestDesignCard } from './BestDesignCard';
-import { FeasibilityFigure } from './FeasibilityFigure';
-import { PlotFigure } from './PlotFigure';
+import { FeasibilityFigure, feasibilityGrid } from './FeasibilityFigure';
+import { NO_MARKS, resolveMarks, type FigureMarking, type MarkIndex } from './marks';
+import { ParetoFigure } from './ParetoFigure';
+import { PlotFigure, plotGrid } from './PlotFigure';
 import { SensitivityFigure } from './SensitivityFigure';
 import { phrase, ui } from '../i18n';
 
@@ -181,7 +196,7 @@ function OutputTitle({ node }: { readonly node: OutputNode | MonteCarloReceiverN
 }
 
 function Result({ result, node }: { readonly result: OutputResult; readonly node: OutputNode }): ReactElement | null {
-  const { document, edit } = useGraph();
+  const { document, edit, analysis, setHoveredCandidate } = useGraph();
   const { numberFormat, locale } = useSettings();
   const notebookLocale = document.notebookLocale ?? locale;
   const t = (english: string): string => phrase(notebookLocale, english);
@@ -193,6 +208,47 @@ function Result({ result, node }: { readonly result: OutputResult; readonly node
     { readonly over: string; readonly position: 'before' | 'after' } | undefined
   >(undefined);
 
+  // The one place a figure and a mark meet. Every surface below resolves the
+  // document's marks against *its own* axes through this, so a candidate that
+  // pins one cell of a scatter and a whole column of a map is the same
+  // candidate, decided by one rule rather than five renderers' guesses.
+  const readouts: ReadonlyMap<string, AxisReadout> = analysis.evaluation?.axisReadouts ?? new Map();
+  const marksOver = (axes: Parameters<typeof resolveMarks>[1]): MarkIndex =>
+    axes.length === 0 ? NO_MARKS : resolveMarks(document, axes, readouts);
+  const markCandidate = (candidate: Candidate): void => edit((current) => toggleCandidate(current, candidate));
+  const markingOver = (axes: Parameters<typeof resolveMarks>[1]): FigureMarking => ({
+    marks: marksOver(axes),
+    readouts,
+    toggle: markCandidate,
+    hover: setHoveredCandidate,
+  });
+
+  /**
+   * A marked design's own value on this result, as a lettered line under it.
+   *
+   * Only where a mark pins **exactly one** cell of this result's grid. A mark
+   * that names fewer axes than this result varies along identifies a whole row
+   * of them, and there is no single number to print for it — saying nothing is
+   * right, where averaging or picking the first would be inventing a reading.
+   */
+  const candidateReadings = (
+    axes: Parameters<typeof resolveMarks>[1],
+    read: (cell: number) => ReactElement | string,
+  ): ReactElement | null => {
+    const found = marksOver(axes).marks.filter((entry) => entry.cells.length === 1);
+    if (found.length === 0) return null;
+    return (
+      <span className="candidate-readings">
+        {found.map((entry) => (
+          <span className="candidate-reading" key={entry.index}>
+            <span className="mark-letter">{entry.letter}</span>
+            {read(entry.cells[0] as number)}
+          </span>
+        ))}
+      </span>
+    );
+  };
+
   if (result.kind === 'print') {
     return (
       <p className="result print">
@@ -200,6 +256,14 @@ function Result({ result, node }: { readonly result: OutputResult; readonly node
           <OutputTitle node={node} />
         </span>
         <span className="number">{summarise(result, result.figures, format)}</span>
+        {candidateReadings(result.series.axes, (cell) => {
+          const value = result.series.data[cell];
+          return value === undefined
+            ? ''
+            : typeof value === 'number'
+              ? displayNumber(value, result.unit, result.figures, format)
+              : value;
+        })}
       </p>
     );
   }
@@ -233,6 +297,12 @@ function Result({ result, node }: { readonly result: OutputResult; readonly node
             </span>
           </span>
         </span>
+        {candidateReadings(result.series.axes, (cell) => (
+          <>
+            {displayNumber(result.series.data[cell] as number, result.unit, 4, format)}{' '}
+            <span className="mark">{result.results[cell] === true ? '✓' : '✗'}</span>
+          </>
+        ))}
         {swept && verdict !== 'pass' ? (
           <span className="count">
             {notebookLocale === 'nl' ? `faalt op ${failures} van ${result.results.length} punten` : `fails at ${failures} of ${result.results.length} points`}
@@ -259,7 +329,11 @@ function Result({ result, node }: { readonly result: OutputResult; readonly node
     const output = node.output;
     if (output.kind !== 'table') return null;
     const rows = Math.max(...result.columns.map((column) => column.series.data.length));
-    const marks = new Set(output.marks ?? []);
+    // Row index *is* cell index: every column is broadcast onto `result.axes`,
+    // row-major, before it gets here. So a row is a design, and marking one is
+    // marking that design everywhere — which is the whole reason this stopped
+    // being a list of row numbers on the node.
+    const marks = marksOver(result.axes);
     return (
       <div className="result table">
         <span className="label">
@@ -315,15 +389,23 @@ function Result({ result, node }: { readonly result: OutputResult; readonly node
             {Array.from({ length: rows }, (_unused, row) => (
               <tr
                 key={row}
-                className={marks.has(row) ? 'marked' : undefined}
-                title="Click to mark this row."
-                onClick={() => edit((current) => toggleMark(current, node.id, row))}
+                className={marks.at(row).length > 0 ? 'marked' : undefined}
+                title="Click to mark this design — it is called out on every figure."
+                onClick={() => markCandidate(candidateAt(result.axes, row, readouts))}
+                onPointerEnter={() => setHoveredCandidate(candidateAt(result.axes, row, readouts))}
+                onPointerLeave={() => setHoveredCandidate(undefined)}
               >
-                {result.columns.map((column) => {
+                {result.columns.map((column, columnIndex) => {
                   const cell = column.series.data[row];
                   const figures = output.figures?.[column.name] ?? 4;
+                  const letters = columnIndex === 0 ? marks.at(row) : [];
                   return (
                     <td key={column.name}>
+                      {letters.map((entry) => (
+                        <span className="mark-letter" key={entry.index}>
+                          {entry.letter}
+                        </span>
+                      ))}
                       {cell === undefined
                         ? ''
                         : typeof cell === 'number'
@@ -351,7 +433,11 @@ function Result({ result, node }: { readonly result: OutputResult; readonly node
         <span className="label">
           <OutputTitle node={node} />
         </span>
-        <FeasibilityFigure result={result} checkLabels={checkLabels} />
+        <FeasibilityFigure
+          result={result}
+          checkLabels={checkLabels}
+          marking={markingOver(feasibilityGrid(result))}
+        />
       </div>
     );
   }
@@ -383,12 +469,32 @@ function Result({ result, node }: { readonly result: OutputResult; readonly node
     );
   }
 
+  if (result.kind === 'pareto') {
+    return (
+      <div className="result plot">
+        <span className="label">
+          <OutputTitle node={node} />
+        </span>
+        <ParetoFigure result={result} format={format} marking={markingOver(result.axes)} />
+        <p className="threshold">
+          {result.frontCount} {t('of')} {result.feasibleCount}{' '}
+          {t('candidates are on the front — the rest are beaten on both objectives')}
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="result plot">
       <span className="label">
         <OutputTitle node={node} />
       </span>
-      <PlotFigure result={result} document={document} format={format} />
+      <PlotFigure
+        result={result}
+        document={document}
+        format={format}
+        marking={markingOver(plotGrid(result))}
+      />
       {result.threshold === undefined ? null : (
         <p className="threshold">
           {t('threshold at')} {display(result.threshold, result.unit, 4, format)} {t('— where the curve crosses it is the size that works')}

@@ -30,11 +30,14 @@ import { parseUnit } from '@joveworks/units';
 import {
   COMPARISONS,
   OBJECTIVE_PORT,
+  X_PORT,
+  Y_PORT,
   THRESHOLD_PORT,
   VALUE_PORT,
   axes as documentAxes,
   localize,
   type Comparison,
+  type ObjectiveDirection,
   type Output,
   type OutputNode,
 } from '@joveworks/schema';
@@ -225,6 +228,15 @@ function Verdict({ nodeId }: { readonly nodeId: string }): ReactElement | null {
     return <span className="badge plot">{top === undefined ? 'no candidates' : `top driver: ${top.label}`}</span>;
   }
 
+  if (result.kind === 'pareto') {
+    if (result.feasibleCount === 0) return <span className="badge fail">nothing feasible</span>;
+    return (
+      <span className="badge plot">
+        {result.frontCount} of {result.feasibleCount} on the front
+      </span>
+    );
+  }
+
   if (result.kind === 'bestDesign') {
     if (result.winner === undefined) return <span className="badge fail">nothing feasible</span>;
     const where = result.winner.at
@@ -296,7 +308,9 @@ export function OutputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>
         ? []
         : output.kind === 'bestDesign'
           ? [OBJECTIVE_PORT]
-          : [VALUE_PORT];
+          : output.kind === 'pareto'
+            ? [X_PORT, Y_PORT]
+            : [VALUE_PORT];
   const wired = new Set(
     document.edges.filter((edge) => edge.to.node === id).map((edge) => edge.to.port),
   );
@@ -343,6 +357,7 @@ export function OutputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>
               <option value="feasibility">feasibility</option>
               <option value="sensitivity">sensitivity</option>
               <option value="bestDesign">best design</option>
+              <option value="pareto">pareto</option>
             </select>
           </label>
 
@@ -476,6 +491,47 @@ export function OutputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>
                   bounds a student already built are the constraints here
                   too. Unlike Feasibility, an empty list is legal — it means
                   an unconstrained min or max. */}
+              <CheckPicker
+                checkNodes={checkNodes}
+                checks={output.checks}
+                hovered={hovered}
+                setHovered={setHovered}
+                onChange={(checks) => setOutput({ ...output, checks })}
+              />
+            </>
+          ) : null}
+
+          {output.kind === 'pareto' ? (
+            <>
+              <label>
+                x wants the
+                <select
+                  className="nodrag"
+                  value={output.xDirection}
+                  onChange={(event) =>
+                    setOutput({ ...output, xDirection: event.target.value as ObjectiveDirection })
+                  }
+                >
+                  <option value="minimize">smallest</option>
+                  <option value="maximize">largest</option>
+                </select>
+              </label>
+              <label>
+                y wants the
+                <select
+                  className="nodrag"
+                  value={output.yDirection}
+                  onChange={(event) =>
+                    setOutput({ ...output, yDirection: event.target.value as ObjectiveDirection })
+                  }
+                >
+                  <option value="minimize">smallest</option>
+                  <option value="maximize">largest</option>
+                </select>
+              </label>
+              {/* The same picker again — a candidate that fails a bound the
+                  student already wrote should not be allowed to win a
+                  trade-off. Empty is legal and means every candidate competes. */}
               <CheckPicker
                 checkNodes={checkNodes}
                 checks={output.checks}

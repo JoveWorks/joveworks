@@ -27,6 +27,7 @@ import { checkVerdict, summarise, summariseCheck } from '../model/values';
 import { CheckReading } from '../CheckReading';
 import { BestDesignCard } from '../notebook/BestDesignCard';
 import { FeasibilityFigure } from '../notebook/FeasibilityFigure';
+import { ParetoFigure } from '../notebook/ParetoFigure';
 import { PlotFigure } from '../notebook/PlotFigure';
 import { SensitivityFigure } from '../notebook/SensitivityFigure';
 import { SettingsContext, type SettingsContextValue } from '../settings-context';
@@ -141,6 +142,18 @@ function Result({ result, node, document }: { readonly result: OutputResult; rea
       <div className="viewer-result viewer-plot">
         <strong>{title}</strong>
         <BestDesignCard result={result} checkLabels={checkLabels} format={format} />
+      </div>
+    );
+  }
+
+  if (result.kind === 'pareto') {
+    // No `marking`: this viewer renders a published NodeBook that nobody can
+    // edit, so a click has nothing to write to. Marks already in the document
+    // still draw — they are part of what was published.
+    return (
+      <div className="viewer-result viewer-plot">
+        <strong>{title}</strong>
+        <ParetoFigure result={result} format={format} />
       </div>
     );
   }

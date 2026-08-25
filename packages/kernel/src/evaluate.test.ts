@@ -7,6 +7,7 @@ import {
   receiverSampleValue,
   valueAt,
   type BestDesignResult,
+  type ParetoResult,
   type CheckResult,
   type EquationResult,
   type FeasibilityResult,
@@ -2360,5 +2361,152 @@ describe('Best Design outputs', () => {
     expect(() => evaluateDocument(wired, catalogues)).toThrow(
       /a Best Design node can only reference checks/u,
     );
+  });
+});
+
+describe('Pareto outputs', () => {
+  /**
+   * Two objectives over one sweep, invented throughout: `A = d·h` and
+   * `p = F/A`, both to be minimised. Since `p` falls as `A` rises they pull
+   * against each other by construction — wanting a small area and a small
+   * pressure at once is exactly the shape a Pareto question has, and no single
+   * `d` gives both.
+   */
+  const study = (output: JsonObject, extraNodes: readonly JsonObject[] = []) =>
+    documentOf(
+      [
+        input('d', linear(10, 50, 5, 'mm'), { axisLabel: 'diameter' }),
+        input('h', scalar(2, 'mm')),
+        input('F', scalar(1000, 'N')),
+        formulaNode('area', refTo('area')),
+        formulaNode('press', refTo('pressure')),
+        outputNode('floor', { kind: 'check', comparison: '>=', threshold: { value: 50, unit: 'mm²' } }),
+        ...extraNodes,
+        outputNode('front', output),
+      ],
+      [
+        wire('d.value', 'area.w'),
+        wire('h.value', 'area.h'),
+        wire('F.value', 'press.F'),
+        wire('area.A', 'press.A'),
+        wire('area.A', 'floor.value'),
+        wire('area.A', 'front.x'),
+        wire('press.p', 'front.y'),
+      ],
+    );
+
+  const frontOf = (document: ReturnType<typeof documentOf>): ParetoResult => {
+    const evaluation = evaluateDocument(document, catalogues);
+    return evaluation.outputs.find((entry) => entry.nodeId === 'front') as ParetoResult;
+  };
+
+  const unconstrained: JsonObject = {
+    kind: 'pareto',
+    checks: [],
+    xDirection: 'minimize',
+    yDirection: 'minimize',
+  };
+
+  it('puts every candidate on the front when the two objectives are strictly opposed', () => {
+    // A = 20, 40, 60, 80, 100 mm²; p = 50, 25, 16.7, 12.5, 10 N/mm². Every step
+    // that improves p costs A, so nothing dominates anything.
+    const front = frontOf(study(unconstrained));
+    expect(front.points).toHaveLength(5);
+    expect(front.points.map((point) => point.onFront)).toEqual([true, true, true, true, true]);
+    expect(front.frontCount).toBe(5);
+  });
+
+  it('carries each point’s coordinates and its candidate, ready to mark', () => {
+    const front = frontOf(study(unconstrained));
+    expect(front.points[2]?.at.map((entry) => [entry.axis.label, entry.value])).toEqual([['diameter', 30]]);
+    expect(front.points[2]?.candidate).toEqual({ at: { d: 30 } });
+  });
+
+  it('keeps a failing candidate on the chart but out of the competition', () => {
+    // The floor (A ≥ 50 mm²) fails at d = 10 and 20 — the two cheapest points on
+    // pressure, and the reason the front starts where it does.
+    const front = frontOf(study({ ...unconstrained, checks: ['floor'] }));
+    expect(front.points.map((point) => point.feasible)).toEqual([false, false, true, true, true]);
+    expect(front.points.map((point) => point.onFront)).toEqual([false, false, true, true, true]);
+    expect(front.feasibleCount).toBe(3);
+    // Still five points: seeing why the front stops is most of the value.
+    expect(front.points).toHaveLength(5);
+  });
+
+  it('labels the axes from the wired nodes, and records both directions', () => {
+    const front = frontOf(study(unconstrained));
+    expect(front.xDirection).toBe('minimize');
+    expect(front.yDirection).toBe('minimize');
+    expect(front.xUnit.symbol).toBe('mm²');
+    expect(front.yUnit.symbol).toBe('N/mm²');
+  });
+
+  it('says so when no candidate passes, instead of drawing an empty chart silently', () => {
+    const document = study({ ...unconstrained, checks: ['impossible'] }, [
+      outputNode('impossible', { kind: 'check', comparison: '>=', threshold: { value: 1e6, unit: 'mm²' } }),
+    ]);
+    const wired = {
+      ...document,
+      edges: [
+        ...document.edges,
+        { id: 'area.A->impossible.value', from: { node: 'area', port: 'A' }, to: { node: 'impossible', port: 'value' } },
+      ],
+    };
+    const evaluation = evaluateDocument(wired, catalogues);
+    const front = evaluation.outputs.find((entry) => entry.nodeId === 'front') as ParetoResult;
+    expect(front.feasibleCount).toBe(0);
+    expect(front.frontCount).toBe(0);
+    expect(evaluation.warnings.some((entry) => entry.kind === 'paretoInfeasible')).toBe(true);
+  });
+
+  it('refuses a referenced id that is not a Check node', () => {
+    const document = study({ ...unconstrained, checks: ['readout'] }, [
+      outputNode('readout', { kind: 'print' }),
+    ]);
+    const wired = {
+      ...document,
+      edges: [
+        ...document.edges,
+        { id: 'area.A->readout.value', from: { node: 'area', port: 'A' }, to: { node: 'readout', port: 'value' } },
+      ],
+    };
+    expect(() => evaluateDocument(wired, catalogues)).toThrow(/a Pareto node can only reference checks/u);
+  });
+});
+
+describe('marks against the axes they were set on', () => {
+  const study = (marks: JsonObject[] | undefined) => {
+    const base = documentOf(
+      [input('d', linear(10, 50, 5, 'mm'), { axisLabel: 'diameter' }), outputNode('show', { kind: 'print' })],
+      [wire('d.value', 'show.value')],
+    );
+    return marks === undefined ? base : { ...base, marks };
+  };
+
+  it('exposes every axis’s coordinates, so any figure can resolve a mark', () => {
+    const evaluation = evaluateDocument(study(undefined), catalogues);
+    const readout = evaluation.axisReadouts.get('d');
+    expect(readout?.axis.label).toBe('diameter');
+    expect(readout?.coordinates.data).toEqual([10, 20, 30, 40, 50]);
+  });
+
+  it('says nothing about a mark that still lands on a sample', () => {
+    const evaluation = evaluateDocument(study([{ at: { d: 30 } }]), catalogues);
+    expect(evaluation.warnings.some((entry) => entry.kind === 'candidateStale')).toBe(false);
+  });
+
+  it('names the mark it had to snap, rather than moving it quietly', () => {
+    const evaluation = evaluateDocument(study([{ at: { d: 33 } }]), catalogues);
+    const stale = evaluation.warnings.filter((entry) => entry.kind === 'candidateStale');
+    expect(stale).toHaveLength(1);
+    expect(stale[0]?.message).toMatch(/candidate A was snapped/u);
+    expect(stale[0]?.message).toMatch(/diameter/u);
+  });
+
+  it('reports a mark the range no longer reaches, and letters marks in order', () => {
+    const evaluation = evaluateDocument(study([{ at: { d: 30 } }, { at: { d: 500 } }]), catalogues);
+    const stale = evaluation.warnings.filter((entry) => entry.kind === 'candidateStale');
+    expect(stale).toHaveLength(1);
+    expect(stale[0]?.message).toMatch(/candidate B no longer sits on any sampled point/u);
   });
 });

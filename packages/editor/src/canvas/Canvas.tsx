@@ -40,6 +40,8 @@ import {
   hasUnit,
   localize,
   OBJECTIVE_PORT,
+  X_PORT,
+  Y_PORT,
   THRESHOLD_PORT,
   VALUE_PORT,
   VERDICT_PORT,
@@ -160,7 +162,9 @@ function searchPorts(document: GraphDocument, formulas: ReadonlyMap<string, Form
         ? node.output.columns
         : node.output.kind === 'bestDesign'
           ? [OBJECTIVE_PORT]
-          : [VALUE_PORT];
+          : node.output.kind === 'pareto'
+            ? [X_PORT, Y_PORT]
+            : [VALUE_PORT];
     return node.output.kind === 'plot' || node.output.kind === 'check'
       ? [...valuePorts, THRESHOLD_PORT]
       : valuePorts;
@@ -239,7 +243,14 @@ function existingCandidates(
             ? NEW_COLUMN
             : node.output.kind === 'bestDesign'
               ? OBJECTIVE_PORT
-              : VALUE_PORT;
+              : // `x` first, then `y` — a Pareto node is the one output that
+                // wants two wires, and offering `x` again once it is taken
+                // would make the second one look like a replacement.
+                node.output.kind === 'pareto'
+                ? occupantOf(document, formulas, { node: node.id, port: X_PORT }) === undefined
+                  ? X_PORT
+                  : Y_PORT
+                : VALUE_PORT;
         candidates.push({
           nodeId: node.id,
           label: nodeLabel(node),

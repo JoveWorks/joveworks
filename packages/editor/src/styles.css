@@ -3266,6 +3266,45 @@ aside.right {
   font-weight: 600;
 }
 
+/*
+ * A marked candidate's letter. The same badge in a table cell, beside a print
+ * reading and under a check — one design carries one letter wherever it turns
+ * up, which is the whole point of marking being document-wide rather than
+ * per-figure. The figures draw their own letters into the SVG (they cannot
+ * borrow a DOM element), and match this deliberately.
+ */
+.notebook .mark-letter {
+  display: inline-block;
+  min-width: 1.1em;
+  margin-right: 6px;
+  padding: 0 3px;
+  border-radius: 3px;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+  vertical-align: baseline;
+}
+
+/* One line per marked design, under the reading it belongs to. */
+.notebook .candidate-readings {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.notebook .candidate-reading .mark-letter {
+  margin-right: 4px;
+}
+
+.notebook .figure.pareto {
+  cursor: pointer;
+}
+
 .notebook .caption {
   color: var(--muted);
   font-size: 11px;

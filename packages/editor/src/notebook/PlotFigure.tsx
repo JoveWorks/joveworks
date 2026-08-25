@@ -33,7 +33,15 @@
 import { useEffect, useMemo, useRef, type ReactElement } from 'react';
 import * as Plot from '@observablehq/plot';
 
-import { gridSize, indexer, unionAxes, type Axis, type PlotAxis, type PlotResult } from '@joveworks/kernel';
+import {
+  candidateAt,
+  gridSize,
+  indexer,
+  unionAxes,
+  type Axis,
+  type PlotAxis,
+  type PlotResult,
+} from '@joveworks/kernel';
 import {
   fromCanonical,
   prefixableAtomOf,
@@ -45,8 +53,11 @@ import type { GraphDocument } from '@joveworks/schema';
 
 import { typesetTitleHtml } from '../canvas/TitleField';
 import { useSettings } from '../settings-context';
+import { NO_MARKS, type FigureMarking } from './marks';
 
 export interface Row {
+  /** Which cell of `plotGrid` this point is — what turns a click into a mark. */
+  readonly cell: number;
   readonly x: number | string;
   readonly y: number;
   readonly series?: number | string;
@@ -74,7 +85,7 @@ function isLogAxis(document: GraphDocument, axisId: string): boolean {
  * which is exactly the "a series carries an axis the target grid does not"
  * crash this fixes.
  */
-function plotGrid(result: PlotResult): readonly Axis[] {
+export function plotGrid(result: PlotResult): readonly Axis[] {
   return unionAxes(
     result.series.axes,
     result.x.coordinates.axes,
@@ -94,6 +105,7 @@ export function rows(result: PlotResult): readonly Row[] {
   const facetValues = result.facet === undefined ? undefined : coordinates(result.facet);
 
   return Array.from({ length: gridSize(target) }, (_unused, cell) => ({
+    cell,
     x: xs[xAt(cell)] as number | string,
     y: fromCanonical(result.series.data[valueAt(cell)] as number, result.unit),
     ...(seriesAt === undefined || seriesValues === undefined
@@ -171,6 +183,8 @@ interface Props {
   readonly result: PlotResult;
   readonly document: GraphDocument;
   readonly format: NumberFormat;
+  /** Absent in the read-only viewer: the curve draws, but nothing can be marked. */
+  readonly marking?: FigureMarking;
 }
 
 /** Replace Observable's plain SVG text with KaTeX where an axis label needs it. */
@@ -302,7 +316,7 @@ function seriesLegend(label: string, values: readonly (number | string)[], types
   return legend;
 }
 
-export function PlotFigure({ result: rawResult, document: graph, format }: Props): ReactElement {
+export function PlotFigure({ result: rawResult, document: graph, format, marking }: Props): ReactElement {
   const host = useRef<HTMLDivElement>(null);
   const { contourPalette, titleMathRendering } = useSettings();
   const result = useMemo(() => siResult(rawResult, format), [rawResult, format]);
@@ -361,6 +375,23 @@ export function PlotFigure({ result: rawResult, document: graph, format }: Props
       marks.push(
         Plot.line(data as Row[], { x: 'x', y: 'y', ...channels }),
         Plot.dot(data as Row[], { x: 'x', y: 'y', r: 2, ...channels }),
+      );
+    }
+
+    // A marked design, on the curve. Drawn as a ring plus its letter rather than
+    // a differently-coloured point: a plot may already be using colour for a
+    // series axis, and a mark that competes with that reads as another curve.
+    const marked = data.filter((row) => (marking?.marks ?? NO_MARKS).at(row.cell).length > 0);
+    if (marked.length > 0) {
+      marks.push(
+        Plot.dot(marked as Row[], { x: 'x', y: 'y', r: 7, stroke: 'currentColor', strokeWidth: 1.5 }),
+        Plot.text(marked as Row[], {
+          x: 'x',
+          y: 'y',
+          text: (row: Row) => (marking?.marks ?? NO_MARKS).at(row.cell)[0]?.letter ?? '',
+          dy: -14,
+          fontWeight: 'bold',
+        }),
       );
     }
 
@@ -430,6 +461,30 @@ export function PlotFigure({ result: rawResult, document: graph, format }: Props
       rendered = chart;
     }
     container.append(rendered);
+
+    // Clicking the curve marks the design under the cursor. The pointer
+    // transform behind `chartTip` already publishes that datum as the chart's
+    // own `value`, so the tip and the click can never disagree about which
+    // point was meant — which they would if this re-derived "nearest" itself.
+    const grid = plotGrid(result);
+    const pointed = (): Row | undefined => (chart as { value?: Row }).value;
+    const handleInput = (): void => {
+      const row = pointed();
+      marking?.hover(row === undefined ? undefined : candidateAt(grid, row.cell, marking.readouts));
+    };
+    const handleClick = (): void => {
+      const row = pointed();
+      if (row !== undefined && marking !== undefined) {
+        marking.toggle(candidateAt(grid, row.cell, marking.readouts));
+      }
+    };
+    const handleLeave = (): void => marking?.hover(undefined);
+    if (marking !== undefined) {
+      chart.addEventListener('input', handleInput);
+      chart.addEventListener('click', handleClick);
+      chart.addEventListener('pointerleave', handleLeave);
+    }
+
     if (titleMathRendering && chart instanceof SVGSVGElement) {
       typesetChartLabels(chart, [
         xLabel,
@@ -439,8 +494,13 @@ export function PlotFigure({ result: rawResult, document: graph, format }: Props
         ...(result.facet === undefined ? [] : [result.facet.axis.label]),
       ]);
     }
-    return () => rendered.remove();
-  }, [graph, result, titleMathRendering]);
+    return () => {
+      chart.removeEventListener('input', handleInput);
+      chart.removeEventListener('click', handleClick);
+      chart.removeEventListener('pointerleave', handleLeave);
+      rendered.remove();
+    };
+  }, [graph, result, titleMathRendering, marking]);
 
   return <div className="figure" ref={host} />;
 }

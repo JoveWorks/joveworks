@@ -6,6 +6,7 @@ import {
   formulaRef,
   MONTE_CARLO_SAMPLE_PORT,
   OBJECTIVE_PORT,
+  X_PORT,
   VALUE_PORT,
   VERDICT_PORT,
   type Formula,
@@ -23,7 +24,7 @@ export type QuickAddChoice =
   | { readonly kind: 'input' }
   | {
       readonly kind: 'output';
-      readonly outputKind: 'print' | 'check' | 'plot' | 'table' | 'sensitivity' | 'bestDesign';
+      readonly outputKind: 'print' | 'check' | 'plot' | 'table' | 'sensitivity' | 'bestDesign' | 'pareto';
     }
   | { readonly kind: 'compare' }
   | { readonly kind: 'select'; readonly mode: SelectMode }
@@ -96,9 +97,18 @@ export function quickAddNodeSpec(document: GraphDocument, choice: QuickAddCandid
           ? NEW_COLUMN
           : choice.outputKind === 'bestDesign'
             ? OBJECTIVE_PORT
-            : VALUE_PORT;
+            : // A dragged wire lands on `x`, the first objective — `y` is drawn
+              // after, once there is something to trade against.
+              choice.outputKind === 'pareto'
+              ? X_PORT
+              : VALUE_PORT;
       return {
-        idPrefix: choice.outputKind === 'print' ? 'result' : choice.outputKind === 'bestDesign' ? 'best' : choice.outputKind,
+        idPrefix:
+          choice.outputKind === 'print'
+            ? 'result'
+            : choice.outputKind === 'bestDesign'
+              ? 'best'
+              : choice.outputKind,
         ports: { source: [port], target: [] },
         make: (id, position, label) => ({
           kind: 'output',

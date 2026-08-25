@@ -121,7 +121,13 @@ export type { ChannelType, ConnectionCheck, PortType, Resolution } from './graph
 export { COARSE_SWEEP_TOLERANCE, select } from './select.js';
 export type { SelectRequest, SelectResult } from './select.js';
 
-export { evaluateDocument, receiverSampleValue, valueAt } from './evaluate.js';
+export { candidateAt, candidateMask, coordinatesAt, sameCandidate } from './candidates.js';
+export type { AxisCoordinate, AxisReadout, CandidateMatch } from './candidates.js';
+
+export { paretoFront } from './pareto.js';
+export type { ParetoDirection } from './pareto.js';
+
+export { evaluateDocument, markLetter, receiverSampleValue, valueAt } from './evaluate.js';
 export type {
   BestDesignCoordinate,
   BestDesignMargin,
@@ -132,6 +138,8 @@ export type {
   EvaluationOptions,
   FeasibilityResult,
   OutputResult,
+  ParetoPoint,
+  ParetoResult,
   PlotAxis,
   PlotResult,
   SensitivityResult,

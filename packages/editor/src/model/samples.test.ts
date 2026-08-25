@@ -21,7 +21,15 @@ import { fromCanonical, parseUnit } from '@joveworks/units';
 import { analyse } from './analysis';
 import { baseCatalogue, bundledCatalogues } from './catalogues';
 import { GAP } from './layout-constants';
-import { beltLab, depthOfField, millingPowerEnvelope, monteCarloClearance, padPressure, pressfitLab } from './samples';
+import {
+  beltLab,
+  cantileverHollowSections,
+  depthOfField,
+  millingPowerEnvelope,
+  monteCarloClearance,
+  padPressure,
+  pressfitLab,
+} from './samples';
 
 const path = process.env['JOVEWORKS_CATALOGUE'];
 const present = path !== undefined && path.length > 0 && existsSync(path);
@@ -240,5 +248,46 @@ describe.runIf(pressfitPresent)('the press-fit lab through the editor', () => {
     for (const [nodeId, expected] of golden) {
       expect(Math.abs(shown(nodeId) - expected) / expected, nodeId).toBeLessThan(1e-3);
     }
+  });
+});
+
+describe('the cantilever study, as a trade-off', () => {
+  it('offers a real front: four candidates worth arguing about, two simply beaten', () => {
+    const document = cantileverHollowSections(PUBLIC_CATALOGUES);
+    expect(document).toBeDefined();
+    const analysis = analyse(document as NonNullable<typeof document>, PUBLIC_CATALOGUES);
+    expect(analysis.message).toBeUndefined();
+    expect([...analysis.states.values()].every((state) => state === 'ok')).toBe(true);
+
+    const front = (analysis.evaluation?.outputs ?? []).find((entry) => entry.nodeId === 'out_pareto');
+    if (front?.kind !== 'pareto') throw new Error('missing pareto output');
+    expect(front.axes.map((axis) => axis.id)).toEqual(['d_o', 't']);
+    expect(front.points).toHaveLength(20);
+
+    // The point of this sample. Fourteen sections miss the L/300 limit and
+    // never compete; of the six that pass, two are beaten outright — which is
+    // what makes the chart worth drawing rather than a straight line.
+    expect(front.feasibleCount).toBe(6);
+    expect(front.frontCount).toBe(4);
+
+    // Row-major over [d_o, t]: cell 16 is d_o = 80 mm with a 2 mm wall, and
+    // cell 14 is d_o = 60 mm with a 4 mm wall. The big thin tube is lighter
+    // *and* stiffer, so the small thick one is dominated — the classic result
+    // this study exists to show.
+    const at = (cell: number) => front.points[cell] as NonNullable<(typeof front.points)[number]>;
+    expect(at(16).onFront).toBe(true);
+    expect(at(14).feasible).toBe(true);
+    expect(at(14).onFront).toBe(false);
+    expect(at(16).x).toBeLessThan(at(14).x);
+    expect(at(16).y).toBeLessThan(at(14).y);
+  });
+
+  it('marks that candidate, and the mark still lands on a sample', () => {
+    const document = cantileverHollowSections(PUBLIC_CATALOGUES);
+    expect(document?.marks).toEqual([{ at: { d_o: 80, t: 2 } }]);
+    const analysis = analyse(document as NonNullable<typeof document>, PUBLIC_CATALOGUES);
+    // A mark shipped with a sample must not arrive stale — it would tell every
+    // reader the range had moved under a design nobody had touched.
+    expect(analysis.warnings.filter((entry) => entry.kind === 'candidateStale')).toEqual([]);
   });
 });

@@ -159,6 +159,9 @@ export function QuickAddMenu({
       // Unlike `feasibility`, this one *does* have a wire to complete — the
       // objective it ranks candidates by.
       { label: t('best design output'), choice: { kind: 'output', outputKind: 'bestDesign' } },
+      // Two wires to complete, but only the first can come from the drag — the
+      // second objective is drawn afterwards, which is why `x` is the landing port.
+      { label: t('pareto output'), choice: { kind: 'output', outputKind: 'pareto' } },
   ];
   const specials = possibleSpecials.filter(({ choice }) => compatiblePort(choice) !== undefined);
   const matchingSpecials = fuzzySearch(query, specials, (entry) => entry.label);

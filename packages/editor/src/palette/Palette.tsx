@@ -396,6 +396,12 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
       summary: copy.bestDesignSummary,
       insert: () => addOutput('bestDesign'),
     },
+    {
+      id: 'builtin:output:pareto',
+      label: copy.pareto,
+      summary: copy.paretoSummary,
+      insert: () => addOutput('pareto'),
+    },
     // The four selection modes sit here rather than in General: they search
     // a finished study rather than doing arithmetic on a value, which is the
     // same "graph-level analysis tool" this section already collects.

@@ -651,6 +651,60 @@ coordinate on *every* axis the study varies along — sweep diameter and
 material and the card names both — so there is no single wire that could
 say which one to answer with.
 
+### Pareto
+
+Some questions have two answers pulling against each other, and no single
+best design. Lighter or stiffer. Cheaper or longer-lived. Faster to
+machine or better finished. A Pareto output draws every candidate as a
+point and joins the ones **no other candidate beats on both objectives at
+once** — the front.
+
+That is the honest answer to a two-objective question: not "build this
+one", but "these six are worth arguing about, and the rest are simply
+worse". [Best Design](#best-design) answers the single-objective version;
+this answers the version where you have to choose.
+
+Wiring it takes two wires and one checklist:
+
+- **`x`** and **`y`** — the two objectives. Each gets its own direction
+  ("smallest" / "largest") in the node's panel, so *lighter and stiffer*
+  and *cheaper and longer-lived* are the same node with different
+  settings.
+- **checks** — the same checklist [Feasibility](#feasibility) and
+  [Best Design](#best-design) use. A candidate that fails a bound you
+  already wrote should not be allowed to win a trade-off.
+
+Every candidate is drawn, and how it is drawn says what happened to it:
+
+| Drawn as | Meaning |
+| --- | --- |
+| filled, joined by the line | on the front — nothing beats it on both |
+| faded | dominated: something is better on *both* objectives |
+| hollow | fails a referenced check, so it never competed |
+
+Keeping the beaten points visible is deliberate. Seeing *why* the front
+stops where it does is most of what the chart is for — and a front that
+runs into a wall of hollow points is telling you the constraint is what
+is limiting the design, not the trade-off.
+
+**The line is a staircase, not a straight join.** A straight line between
+two candidates would imply designs in between that were never evaluated.
+The step turns through the corner that is worse on both objectives, which
+is the actual boundary of the region the front dominates, and it keeps
+the front looking like what it is: a handful of discrete designs.
+
+**Two objectives, not more.** Two is what a scatter can show, and a front
+whose dominance the picture cannot explain is worse than no picture.
+
+**Ties both survive.** Two designs with identical scores beat each other
+on neither count, so both stay on the front. That is the right answer —
+dropping one would hide a real alternative.
+
+Click a point to mark it. That is the same document-wide mark every other
+figure understands, so the design you pick off the front is identified by
+letter on the plots, the table and the feasibility map too — see
+[Candidates and marks](./candidates.md).
+
 ### Sensitivity
 
 "Which input actually matters?" — a tornado diagram, without hand-sweeping

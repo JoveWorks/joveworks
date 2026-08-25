@@ -23,6 +23,7 @@ import {
   loadDocument,
   saveCatalogue,
   saveDocument,
+  type Candidate,
   type Catalogue,
   type GraphDocument,
   type LockedCatalogue,
@@ -375,6 +376,7 @@ function AppShell(): ReactElement {
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [hovered, setHovered] = useState<ReadonlySet<string>>(new Set());
+  const [hoveredCandidate, setHoveredCandidate] = useState<Candidate | undefined>(undefined);
   const [marqueeActive, setMarqueeActive] = useState(false);
   // Panel visibility is session-only: both panels start open on every load,
   // while their close buttons and the View menu make hiding them deliberate.
@@ -664,6 +666,8 @@ function AppShell(): ReactElement {
       setSelected,
       hovered,
       setHovered,
+      hoveredCandidate,
+      setHoveredCandidate,
       marqueeActive,
       setMarqueeActive,
       monteCarloPlayback,
@@ -680,6 +684,7 @@ function AppShell(): ReactElement {
       expanded,
       selected,
       hovered,
+      hoveredCandidate,
       marqueeActive,
       monteCarloPlayback,
       togglePlayback,

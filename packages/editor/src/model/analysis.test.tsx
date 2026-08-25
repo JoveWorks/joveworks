@@ -630,3 +630,58 @@ describe('the platform-footprint example', () => {
     });
   });
 });
+
+const paretoOutputNode = (id: string, checks: readonly string[]) => ({
+  kind: 'output' as const,
+  id,
+  position: { x: 0, y: 0 },
+  output: {
+    kind: 'pareto' as const,
+    checks,
+    xDirection: 'minimize' as const,
+    yDirection: 'minimize' as const,
+  },
+});
+
+describe('Pareto outputs', () => {
+  it('is ready with both objectives wired and no checks at all', () => {
+    const document = graph(
+      [paretoOutputNode('p', []), range('a', 1, 5, 3, 'mm')],
+      [wire('e1', ['a', 'value'], ['p', 'x']), wire('e2', ['a', 'value'], ['p', 'y'])],
+    );
+    expect(analyse(document, CATALOGUES).states.get('p')).toBe('ok');
+  });
+
+  it('is incomplete with only one objective — a front needs two things to trade', () => {
+    const document = graph(
+      [paretoOutputNode('p', []), range('a', 1, 5, 3, 'mm')],
+      [wire('e1', ['a', 'value'], ['p', 'x'])],
+    );
+    const analysis = analyse(document, CATALOGUES);
+    expect(analysis.states.get('p')).toBe('incomplete');
+    expect(text(analysis.problems.get('p'))).toContain('y');
+  });
+
+  it('is blocked while a check it references is not ready', () => {
+    const document = graph(
+      [paretoOutputNode('p', ['c1']), range('a', 1, 5, 3, 'mm'), checkOutputNode('c1', '>=', 1, 'mm')],
+      [wire('e1', ['a', 'value'], ['p', 'x']), wire('e2', ['a', 'value'], ['p', 'y'])],
+    );
+    // `c1` has nothing wired to it, so it is incomplete — and this inherits that.
+    expect(analyse(document, CATALOGUES).states.get('p')).toBe('blocked');
+  });
+
+  it('is ready however it is ordered relative to the checks it references', () => {
+    // The same deferral Feasibility and Best Design rely on: this node sits
+    // before its check in the array and must still resolve.
+    const document = graph(
+      [paretoOutputNode('p', ['c1']), range('a', 1, 5, 3, 'mm'), checkOutputNode('c1', '>=', 1, 'mm')],
+      [
+        wire('e1', ['a', 'value'], ['c1', 'value']),
+        wire('e2', ['a', 'value'], ['p', 'x']),
+        wire('e3', ['a', 'value'], ['p', 'y']),
+      ],
+    );
+    expect(analyse(document, CATALOGUES).states.get('p')).toBe('ok');
+  });
+});

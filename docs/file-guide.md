@@ -81,6 +81,8 @@ The half of the project that "has to be right." No React, no formula content —
 - `src/series.ts` — the sweep/broadcasting core: `Axis`, `NumericSeries`/`CategoricalSeries`/`Spectrum`/`BundleValue`, `unionAxes` (how two ranges combine into an `n × m` grid), `indexer`/`reader`/`broadcastSeries`, `LARGE_GRID` guard. Edit here to change how sweeps broadcast.
 - `src/graph.ts` — `resolveGraph`: the whole "what's wired to what, and is it allowed" pass — port typing, generic-variable binding per node instance, topological order (`topologicalOrder`, cycle rejection `wouldCycle`), `canConnect` (the connect-time authority the editor calls), `typesConnect` (the cheap editor-side approximation while dragging a wire). **The single most load-bearing file for "why can't I wire this."**
 - `src/evaluate.ts` — `evaluateDocument`: walks the resolved graph in order and produces actual numbers — per-node-kind evaluation (input, formula, closure, compare, waypoint, pack, unpack, output), unit conversion at the boundary, `appliesWhen`/`largeGrid`/`plotAxis` warnings. Edit here to change what a specific node kind computes or what an output result looks like.
+- `src/candidates.ts` — what a marked design *is*: a coordinate per axis, plus the conversion both ways between a grid cell and a `Candidate`. Read this for the one matching rule ("a figure matches on the axes they share") and for how a mark that no longer lands on a sample is snapped or reported.
+- `src/pareto.ts` — two-objective domination, sort-and-sweep rather than pairwise. Read this for what "on the front" means, including why duplicates both survive.
 - `src/random.ts` — deterministic Monte Carlo sampling (`monteCarloSamples`), seeded from document id + node id so playback never reshuffles already-revealed samples.
 - `src/toLatex.ts` — `Expr` → LaTeX string, for the equation output node's typeset rendering (duplicates `editor/src/Symbol.tsx`'s name-rendering rules rather than sharing, since the kernel can't depend on the editor).
 - `src/warnings.ts` — `Warning`/`WarningKind`: the non-fatal things the kernel reports (formula changed, large grid, `appliesWhen` violated, plot axis flat/dropped/facet-ignored).
@@ -185,9 +187,11 @@ The React app. Largest package by far. `AGENTS.md`: desktop-only, no properties 
 
 ### `src/notebook/` — the notebook side panel
 
-- `notebook/Notebook.tsx` — the view-over-the-graph panel: renders group frames as sections (title/note prose, then their output nodes' results in reading order), section reordering, table-column editing (order/figures/marks), print-to-PDF export via `@media print`. Read this to understand how canvas layout becomes the exported document.
-- `notebook/PlotFigure.tsx` — the Observable-Plot rendering of a `PlotResult`: log axes when the range is logarithmic, threshold reference line, contour mode, faceting, SI-prefixed axis labels. All computation is already done by the kernel; this file only draws.
-- `notebook/*.test.ts` — `Notebook.test.ts`, `PlotFigure.test.ts`.
+- `notebook/Notebook.tsx` — the view-over-the-graph panel: renders group frames as sections (title/note prose, then their output nodes' results in reading order), section reordering, table-column editing (order and per-column figures), click-a-row-to-mark, the per-candidate readings under a check or print, print-to-PDF export via `@media print`. Read this to understand how canvas layout becomes the exported document.
+- `notebook/PlotFigure.tsx` — the Observable-Plot rendering of a `PlotResult`: log axes when the range is logarithmic, threshold reference line, contour mode, faceting, SI-prefixed axis labels, and the mark overlay. All computation is already done by the kernel; this file only draws.
+- `notebook/ParetoFigure.tsx` — the two-objective scatter: front / dominated / infeasible drawn three ways, the staircase joining the front, and click-to-mark. Read this for why the step turns the way it does.
+- `notebook/marks.ts` — the editor side of marking: resolves `document.marks` against one figure's axes into cells and A/B/C letters, and carries the `FigureMarking` prop every figure takes (absent in the read-only viewer). One resolver, so five figures cannot drift.
+- `notebook/*.test.ts` — `Notebook.test.ts`, `PlotFigure.test.ts`, `FeasibilityFigure.test.ts`, `ParetoFigure.test.ts`, `marks.test.ts`, `BestDesignCard.test.ts`.
 
 ### `src/palette/`
 
@@ -243,8 +247,10 @@ Public docs served at `/docs/` under the editor's own origin in production (sepa
 
 - `docs/.vitepress/config.ts` — VitePress site config: nav, sidebar structure, base path.
 - `docs/index.md` — the docs-site landing page.
-- `docs/guide/getting-started.md`, `docs/guide/sweeps.md`, `docs/guide/units.md`, `docs/guide/tips-and-tricks.md`, `docs/guide/node-reference.md`, `docs/guide/catalogue-authoring.md` — the guide pages linked from `packages/editor/src/help-links.ts`'s per-node "?" buttons and the palette's help links. `tips-and-tricks.md` is UI mechanics (shortcuts, canvas/palette interactions, panel-specific settings) rather than product concepts — those stay in `getting-started`/`sweeps`/`units`.
+- `docs/guide/getting-started.md`, `docs/guide/sweeps.md`, `docs/guide/candidates.md`, `docs/guide/units.md`, `docs/guide/tips-and-tricks.md`, `docs/guide/node-reference.md`, `docs/guide/catalogue-authoring.md` — the guide pages linked from `packages/editor/src/help-links.ts`'s per-node "?" buttons and the palette's help links. `candidates.md` is the one cross-cutting concept with no node of its own: what a marked design is and why it is a coordinate rather than a row number. `tips-and-tricks.md` is UI mechanics (shortcuts, canvas/palette interactions, panel-specific settings) rather than product concepts — those stay in `getting-started`/`sweeps`/`units`.
 - `docs/examples/milling-power-envelope.md` — walkthrough for the bundled milling sample.
+- `docs/examples/lighter-or-stiffer.md` — walkthrough for the bundled cantilever sample, and the one place the *reading* of a Pareto front is taught rather than defined.
+- `docs/examples/choosing-a-shaft-size.md` — a build-it-yourself walkthrough of the selection nodes and the Best Design card.
 - `docs/public/favicon.svg`.
 - `package.json` — `vitepress dev/build/preview` scripts.
 - (`.vitepress/cache/` is build cache, not source — ignore it.)
@@ -310,6 +316,11 @@ Public scripts that **parse** the private predecessor Python source with stdlib 
 - `docs/analytics.md` — what the alpha Plausible analytics integration does and doesn't collect; the product-facing complement to `packages/editor/src/analytics/analytics.ts`.
 - `docs/authoring-catalogues.md` — how to hand-write a catalogue JSON file when there's no extraction script to run; the guide behind `packages/schema/src/formula.ts`/`port.ts`.
 - `docs/password-shared-catalogues.md` — a design note (roadmap #28) for password-based restricted-catalogue sharing; not yet built.
+- `docs/feature-review.md` — exploratory product ideas beyond what is built, with a priority order at the end. A review, not a status file.
+- `docs/selection-and-best-design-plan.md` — the plan behind the selection nodes and the Best Design card (review item 1).
+- `docs/pareto-and-candidate-marking-plan.md` — the plan behind the Pareto output and document-wide candidate marking (review item 2).
+- `docs/reliability-reports-plan.md` — the plan for Monte Carlo histograms, CDFs, percentiles and failure probability (review item 4); not yet built.
+- `docs/catalogue-diagrams-plan.md`, `docs/locking-catalogues.md`, `docs/REVIEW-2026-08.md` — further design notes.
 
 ## Not covered here
 

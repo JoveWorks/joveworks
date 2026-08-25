@@ -13,7 +13,7 @@
  * only how a permitted change is applied.
  */
 
-import { closureFormula, packChannelIndices, waypointChannelIndices } from '@joveworks/kernel';
+import { closureFormula, packChannelIndices, sameCandidate, waypointChannelIndices } from '@joveworks/kernel';
 import { parseUnit, type Unit } from '@joveworks/units';
 import {
   VALUE_PORT,
@@ -21,6 +21,8 @@ import {
   ALONG_PORT,
   BEST_PORT,
   OBJECTIVE_PORT,
+  X_PORT,
+  Y_PORT,
   type ClosureNode,
   type SelectMode,
   type SelectNode,
@@ -30,6 +32,7 @@ import {
   type Frame,
   type GraphDocument,
   type GraphNode,
+  type Candidate,
   type Output,
   type OutputKind,
   type OutputNode,
@@ -580,18 +583,26 @@ export function setColumnFigures(
   });
 }
 
-/** Toggle whether a table row is marked — a student calling out a specific swept value in the notebook. */
-export function toggleMark(document: GraphDocument, nodeId: string, row: number): GraphDocument {
-  return updateNode<OutputNode>(document, nodeId, (node) => {
-    if (node.output.kind !== 'table') return node;
-    const marks = node.output.marks ?? [];
-    const next = marks.includes(row) ? marks.filter((mark) => mark !== row) : [...marks, row];
-    const { marks: _dropped, ...withoutMarks } = node.output;
-    return {
-      ...node,
-      output: next.length === 0 ? withoutMarks : { ...withoutMarks, marks: next },
-    };
-  });
+/**
+ * Mark or unmark one design across the whole document.
+ *
+ * Document-level, not per-output: a marked candidate is one identity every
+ * figure agrees on, so clicking the same design in a table and on a plot must
+ * toggle *the same mark*, not two. Equality is by coordinate — `sameCandidate`
+ * — which is also why a re-sampled range cannot silently produce a second mark
+ * for a design that is already marked.
+ *
+ * Appending rather than inserting keeps the A/B/C letters stable: a reader who
+ * has been told "candidate B" should not find that B became C because something
+ * else was marked afterwards.
+ */
+export function toggleCandidate(document: GraphDocument, candidate: Candidate): GraphDocument {
+  const marks = document.marks ?? [];
+  const next = marks.some((mark) => sameCandidate(mark, candidate))
+    ? marks.filter((mark) => !sameCandidate(mark, candidate))
+    : [...marks, candidate];
+  const { marks: _dropped, ...withoutMarks } = document;
+  return next.length === 0 ? withoutMarks : { ...withoutMarks, marks: next };
 }
 
 /**
@@ -638,6 +649,11 @@ export function defaultOutput(kind: OutputKind, contextUnit?: Unit): Output {
       // Minimising is the default because the usual first question is "how
       // little material gets me there?" — the direction is one click away.
       return { kind, checks: [], direction: 'minimize' };
+    case 'pareto':
+      // Minimise both by default, for the same reason: the archetypal pair is
+      // mass against cost, and a student who wants "more is better" on one axis
+      // says so with one click.
+      return { kind, checks: [], xDirection: 'minimize', yDirection: 'minimize' };
   }
 }
 
@@ -683,13 +699,34 @@ export function changeOutputKind(document: GraphDocument, nodeId: string, next: 
     return renameColumn(named.document, nodeId, VALUE_PORT, named.column);
   }
 
-  // The two kinds whose port set is not `value`(+`threshold`): feasibility
-  // has none at all, and bestDesign renames its one to `objective`. Both
-  // prune whatever the old kind had wired, the same way leaving `table`
-  // prunes everything but its adopted first column.
-  if (next.kind === 'feasibility' || next.kind === 'bestDesign') {
-    const keep = next.kind === 'bestDesign' ? new Set([OBJECTIVE_PORT]) : new Set<string>();
-    const pruned = pruneEdgesTo(document, nodeId, keep);
+  // The kinds whose port set is not `value`(+`threshold`): feasibility has none
+  // at all, bestDesign renames its one to `objective`, and pareto takes two
+  // named for the chart axes. Each prunes whatever the old kind had wired, the
+  // same way leaving `table` prunes everything but its adopted first column.
+  if (next.kind === 'feasibility' || next.kind === 'bestDesign' || next.kind === 'pareto') {
+    // Entering pareto from a single-value kind adopts that wire as `x`: it is
+    // the quantity the student was already looking at, and making them redraw it
+    // to see it traded against something else is friction for nothing.
+    const adopted =
+      next.kind === 'pareto' && current.kind !== 'bestDesign'
+        ? renamePortEdges(document, nodeId, VALUE_PORT, X_PORT)
+        : next.kind === 'pareto'
+          ? renamePortEdges(document, nodeId, OBJECTIVE_PORT, X_PORT)
+          : document;
+    const keep =
+      next.kind === 'bestDesign'
+        ? new Set([OBJECTIVE_PORT])
+        : next.kind === 'pareto'
+          ? new Set([X_PORT, Y_PORT])
+          : new Set<string>();
+    const pruned = pruneEdgesTo(adopted, nodeId, keep);
+    return updateNode<OutputNode>(pruned, nodeId, (entry) => ({ ...entry, output: next }));
+  }
+
+  if (current.kind === 'pareto') {
+    // Back the other way: `x` is the quantity a single-value kind would show.
+    const adopted = renamePortEdges(document, nodeId, X_PORT, VALUE_PORT);
+    const pruned = pruneEdgesTo(adopted, nodeId, new Set([VALUE_PORT, THRESHOLD_PORT]));
     return updateNode<OutputNode>(pruned, nodeId, (entry) => ({ ...entry, output: next }));
   }
 

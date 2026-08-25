@@ -34,9 +34,9 @@ describe('a plotted value that does not vary along the x axis', () => {
     expect(() => rows(result)).not.toThrow();
     const data = rows(result);
     expect(data).toEqual([
-      { x: 10, y: 42 },
-      { x: 20, y: 42 },
-      { x: 30, y: 42 },
+      { cell: 0, x: 10, y: 42 },
+      { cell: 1, x: 20, y: 42 },
+      { cell: 2, x: 30, y: 42 },
     ]);
   });
 
@@ -52,9 +52,9 @@ describe('a plotted value that does not vary along the x axis', () => {
     };
 
     expect(rows(result)).toEqual([
-      { x: 10, y: 1 },
-      { x: 20, y: 2 },
-      { x: 30, y: 3 },
+      { cell: 0, x: 10, y: 1 },
+      { cell: 1, x: 20, y: 2 },
+      { cell: 2, x: 30, y: 3 },
     ]);
   });
 });
@@ -81,12 +81,12 @@ describe('a plot with a facet axis', () => {
     // Row-major over [axisW, axisG] with the last axis contiguous (series.ts):
     // facet (axisG, order 1) varies fastest, x (axisW, order 0) slowest.
     expect(rows(result)).toEqual([
-      { x: 10, y: 1, facet: 'low' },
-      { x: 10, y: 2, facet: 'high' },
-      { x: 20, y: 3, facet: 'low' },
-      { x: 20, y: 4, facet: 'high' },
-      { x: 30, y: 5, facet: 'low' },
-      { x: 30, y: 6, facet: 'high' },
+      { cell: 0, x: 10, y: 1, facet: 'low' },
+      { cell: 1, x: 10, y: 2, facet: 'high' },
+      { cell: 2, x: 20, y: 3, facet: 'low' },
+      { cell: 3, x: 20, y: 4, facet: 'high' },
+      { cell: 4, x: 30, y: 5, facet: 'low' },
+      { cell: 5, x: 30, y: 6, facet: 'high' },
     ]);
   });
 });
@@ -161,9 +161,9 @@ describe("the 'si' number format", () => {
     const scaled = siResult(result, si);
     expect(scaled.unit.symbol).toBe('MPa');
     expect(rows(scaled)).toEqual([
-      { x: 10, y: 100 },
-      { x: 20, y: 200 },
-      { x: 30, y: 300 },
+      { cell: 0, x: 10, y: 100 },
+      { cell: 1, x: 20, y: 200 },
+      { cell: 2, x: 30, y: 300 },
     ]);
   });
 });

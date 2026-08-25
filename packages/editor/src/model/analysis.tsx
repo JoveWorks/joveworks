@@ -45,6 +45,8 @@ import {
   ALONG_PORT,
   MONTE_CARLO_SAMPLE_PORT,
   OBJECTIVE_PORT,
+  X_PORT,
+  Y_PORT,
   THRESHOLD_PORT,
   VALUE_PORT,
   type Catalogue,
@@ -376,7 +378,11 @@ function readiness(
     // inherited from theirs directly rather than from any wire. Deferred to
     // the second pass below, after every other node (including every Check)
     // has been decided.
-    if (node.output.kind === 'feasibility' || node.output.kind === 'bestDesign') {
+    if (
+      node.output.kind === 'feasibility' ||
+      node.output.kind === 'bestDesign' ||
+      node.output.kind === 'pareto'
+    ) {
       deferredOutputs.push(node);
       continue;
     }
@@ -424,6 +430,26 @@ function readiness(
         continue;
       }
       if (!upstreamReady(node.id, OBJECTIVE_PORT) || !output.checks.every((id) => ready.has(id))) {
+        states.set(node.id, 'blocked');
+        continue;
+      }
+      ready.add(node.id);
+      continue;
+    }
+    if (output.kind === 'pareto') {
+      // Two objectives, both mandatory — a front needs something to trade
+      // against something. `checks: []` is legal for the same reason it is on
+      // Best Design: with nothing referenced, every candidate competes.
+      const unwired = [X_PORT, Y_PORT].filter((port) => !isWired(node.id, port));
+      if (unwired.length > 0) {
+        states.set(node.id, 'incomplete');
+        problems.set(node.id, notConnected(unwired));
+        continue;
+      }
+      if (
+        ![X_PORT, Y_PORT].every((port) => upstreamReady(node.id, port)) ||
+        !output.checks.every((id) => ready.has(id))
+      ) {
         states.set(node.id, 'blocked');
         continue;
       }

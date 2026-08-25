@@ -27,6 +27,8 @@ import {
   AT_PORT,
   BEST_PORT,
   OBJECTIVE_PORT,
+  X_PORT,
+  Y_PORT,
   MONTE_CARLO_SAMPLE_PORT,
   MIN_PORT,
   MAX_PORT,
@@ -37,6 +39,7 @@ import {
   expressionOf,
   isRange,
   renardValues,
+  type Candidate,
   type Catalogue,
   type CompareNode,
   type SelectNode,
@@ -52,9 +55,18 @@ import {
   type Formula,
   type FormulaNode,
   type NumericPort,
+  type ObjectiveDirection,
   type Port,
   type SpectrumPort,
 } from '@joveworks/schema';
+import {
+  candidateAt,
+  candidateMask,
+  coordinatesAt,
+  type AxisCoordinate,
+  type AxisReadout,
+} from './candidates.js';
+import { paretoFront } from './pareto.js';
 import { monteCarloSamples } from './random.js';
 
 import { packChannelIndices, waypointChannelIndices } from './bundle.js';
@@ -134,12 +146,13 @@ export interface CheckResult extends OutputBase {
   readonly passed: boolean;
 }
 
-export interface PlotAxis {
-  readonly axis: Axis;
-  /** The coordinates along it: the range node's own values. */
-  readonly coordinates: Series;
-  readonly unit: Unit;
-}
+/**
+ * An axis, its coordinates and its unit. Defined in `candidates.ts` as
+ * `AxisReadout` because a figure and a marked candidate want exactly the same
+ * three things about an axis; kept under this name because that is what every
+ * plot result has always called it.
+ */
+export type PlotAxis = AxisReadout;
 
 export interface PlotResult extends OutputBase {
   readonly kind: 'plot';
@@ -194,12 +207,12 @@ export interface SensitivityResult extends OutputBase {
 }
 
 /** One axis of the study, and the coordinate the winning cell sits at on it. */
-export interface BestDesignCoordinate {
-  readonly axis: Axis;
-  readonly value: number | string;
-  /** The axis node's own display unit — meaningless for a categorical coordinate. */
-  readonly unit: Unit;
-}
+/**
+ * One axis of the winner's position. `AxisCoordinate` from `candidates.ts` —
+ * the same "where is this cell" question a marked candidate asks, so the same
+ * shape answers both.
+ */
+export type BestDesignCoordinate = AxisCoordinate;
 
 /**
  * How much room a check still had at the winner, as a fraction of its own
@@ -241,6 +254,51 @@ export interface BestDesignResult extends OutputBase {
   readonly feasibleCount: number;
 }
 
+/** One candidate on a Pareto chart: its scores, its standing, and where it sits. */
+export interface ParetoPoint {
+  readonly cell: number;
+  /** Canonical, in the objective's own direction — not normalised. */
+  readonly x: number;
+  readonly y: number;
+  readonly feasible: boolean;
+  /** Feasible, and beaten by nothing on both objectives at once. */
+  readonly onFront: boolean;
+  /**
+   * The design this point *is*, ready to become a mark.
+   *
+   * Carried on the result rather than looked up when a point is clicked: the
+   * scatter already knows every axis of the union grid, so resolving it here
+   * once is both cheaper and the only place with the coordinates to hand.
+   */
+  readonly candidate: Candidate;
+  /** Its position on every axis of the study, ready to print in a tip. */
+  readonly at: readonly AxisCoordinate[];
+}
+
+/**
+ * The candidates worth arguing about, and the ones that were beaten.
+ *
+ * Every cell is returned, not just the front: an infeasible or dominated point
+ * is still drawn — muted, or hollow — because seeing *why* the front stops
+ * where it does is most of what the chart is for.
+ */
+export interface ParetoResult extends OutputBase {
+  readonly kind: 'pareto';
+  readonly checks: readonly string[];
+  /** The union of both objectives' axes and every referenced check's. */
+  readonly axes: readonly Axis[];
+  readonly points: readonly ParetoPoint[];
+  readonly xUnit: Unit;
+  readonly yUnit: Unit;
+  readonly xDirection: ObjectiveDirection;
+  readonly yDirection: ObjectiveDirection;
+  /** What to write on each axis: the wired source node's own label. */
+  readonly xLabel: string;
+  readonly yLabel: string;
+  readonly frontCount: number;
+  readonly feasibleCount: number;
+}
+
 export type OutputResult =
   | PrintResult
   | CheckResult
@@ -249,7 +307,8 @@ export type OutputResult =
   | EquationResult
   | FeasibilityResult
   | SensitivityResult
-  | BestDesignResult;
+  | BestDesignResult
+  | ParetoResult;
 
 export interface Evaluation {
   readonly document: GraphDocument;
@@ -264,6 +323,17 @@ export interface Evaluation {
    * per cell does not fit one), and the canvas readout wants it.
    */
   readonly selections: ReadonlyMap<string, SelectResult>;
+  /**
+   * Every axis in the document, keyed by axis id, with the coordinates and unit
+   * to read a position off it.
+   *
+   * Exposed because a marked candidate is a document-wide identity: the
+   * notebook has to resolve one against a table, which carries axes but no
+   * coordinates of its own, and against figures that each carry only the axes
+   * they happen to draw. One map, built once, is what lets every surface answer
+   * the same question the same way.
+   */
+  readonly axisReadouts: ReadonlyMap<string, AxisReadout>;
   readonly warnings: readonly Warning[];
 }
 
@@ -378,7 +448,11 @@ export function evaluateDocument(
       }
 
       case 'output':
-        if (node.output.kind === 'feasibility' || node.output.kind === 'bestDesign') {
+        if (
+          node.output.kind === 'feasibility' ||
+          node.output.kind === 'bestDesign' ||
+          node.output.kind === 'pareto'
+        ) {
           deferredOutputs.push(node);
           break;
         }
@@ -387,11 +461,112 @@ export function evaluateDocument(
     }
   }
 
+  const axisReadouts = readAxisReadouts(resolution, values);
+
   for (const node of deferredOutputs) {
     outputs.push(outputResult(node, resolution, values, axisByNode, warnings, catalogues, outputs));
   }
 
-  return { document, resolution, values, outputs, selections, warnings };
+  warnings.push(...staleMarkWarnings(document, axisReadouts));
+
+  return { document, resolution, values, outputs, selections, axisReadouts, warnings };
+}
+
+/**
+ * Every axis's coordinates and unit, keyed by axis id.
+ *
+ * Keyed by *axis* id rather than node id because that is what a figure and a
+ * marked candidate both name. The two normally coincide; they do not for Monte
+ * Carlo generators, which deliberately share one trial axis (`graph.ts`'s
+ * `mcTrialId`), so several nodes can map to one id. The first in document order
+ * wins, which is the same node `graph.ts` took the axis from.
+ *
+ * An axis whose node produced no plottable value is skipped rather than guessed
+ * at — that is already an error reported where it happened, and a fabricated
+ * coordinate here would turn it into a wrong answer.
+ */
+function readAxisReadouts(
+  resolution: Resolution,
+  values: ReadonlyMap<string, PortValue>,
+): ReadonlyMap<string, AxisReadout> {
+  const readouts = new Map<string, AxisReadout>();
+  for (const [nodeId, axis] of resolution.axes) {
+    if (readouts.has(axis.id)) continue;
+    const coordinates = values.get(endpointKey(nodeId, VALUE_PORT));
+    if (coordinates === undefined || !isSeries(coordinates)) continue;
+    readouts.set(axis.id, {
+      axis,
+      coordinates,
+      unit: displayUnit(resolution.sources.get(endpointKey(nodeId, VALUE_PORT))),
+    });
+  }
+  return readouts;
+}
+
+/**
+ * Marks that no longer land where they were set.
+ *
+ * A mark is a claim about one specific design. When the range under it moves,
+ * the honest options are to say the coordinate was snapped to a neighbour, or to
+ * say it has stopped describing anything — never to redraw it somewhere new and
+ * let it keep looking authoritative. Marks are named by their A/B/C letter,
+ * which is what the notebook draws.
+ */
+function staleMarkWarnings(
+  document: GraphDocument,
+  readouts: ReadonlyMap<string, AxisReadout>,
+): readonly Warning[] {
+  const warnings: Warning[] = [];
+  for (const [index, candidate] of (document.marks ?? []).entries()) {
+    const letter = markLetter(index);
+    const named = Object.keys(candidate.at);
+    const axes = named.flatMap((axisId) => {
+      const readout = readouts.get(axisId);
+      return readout === undefined ? [] : [readout.axis];
+    });
+    if (axes.length < named.length) {
+      warnings.push({
+        kind: 'candidateStale',
+        message:
+          `candidate ${letter} was marked on ${named.length - axes.length === 1 ? 'an axis' : 'axes'} ` +
+          'this document no longer has, so it is drawn against whatever axes remain',
+      });
+    }
+    if (axes.length === 0) continue;
+
+    const { approximate, missing } = candidateMask(axes, candidate, readouts);
+    const label = (id: string): string => `'${readouts.get(id)?.axis.label ?? id}'`;
+    if (missing.length > 0) {
+      warnings.push({
+        kind: 'candidateStale',
+        message:
+          `candidate ${letter} no longer sits on any sampled point of ${missing.map(label).join(', ')} — ` +
+          'the range moved under it, so it is not drawn',
+      });
+    } else if (approximate.length > 0) {
+      warnings.push({
+        kind: 'candidateStale',
+        message:
+          `candidate ${letter} was snapped to the nearest sample on ${approximate.map(label).join(', ')} — ` +
+          'the range changed since it was marked',
+      });
+    }
+  }
+  return warnings;
+}
+
+/**
+ * A mark's label: A, B, … Z, then AA. Position in `document.marks` is the
+ * identity a reader uses, so the letter is derived from it rather than stored.
+ */
+export function markLetter(index: number): string {
+  let letter = '';
+  let remaining = index;
+  do {
+    letter = String.fromCharCode(65 + (remaining % 26)) + letter;
+    remaining = Math.floor(remaining / 26) - 1;
+  } while (remaining >= 0);
+  return letter;
 }
 
 /**
@@ -1665,22 +1840,11 @@ function outputResult(
       });
     }
 
-    // The winning coordinate on *every* axis the study varies along, read
-    // from each axis node's own coordinate series — `axisFor` above does the
-    // same lookup for a figure, and this needs no `along` wire for the same
-    // reason: the axes are already in the result.
-    const at = studyAxes.flatMap((axis): readonly BestDesignCoordinate[] => {
-      const nodeId = [...axes.entries()].find(([, entry]) => entry.id === axis.id)?.[0];
-      if (nodeId === undefined) return [];
-      const coordinates = values.get(endpointKey(nodeId, VALUE_PORT));
-      if (coordinates === undefined || !isSeries(coordinates)) return [];
-      const placed = broadcastSeries(coordinates, studyAxes);
-      const found = placed.data[cell];
-      if (found === undefined) return [];
-      return [
-        { axis, value: found, unit: displayUnit(resolution.sources.get(endpointKey(nodeId, VALUE_PORT))) },
-      ];
-    });
+    // The winning coordinate on *every* axis the study varies along, read from
+    // each axis node's own coordinate series — no `along` wire needed, because
+    // the axes are already in the result. `coordinatesAt` is the same "where is
+    // this cell" question a marked candidate asks, so both use it.
+    const at = coordinatesAt(studyAxes, cell, readAxisReadouts(resolution, values));
 
     const unrankable: string[] = [];
     const margins = checkResults
@@ -1713,6 +1877,104 @@ function outputResult(
         ...(governing === undefined ? {} : { governing }),
         margins,
       },
+    };
+  }
+
+  if (output.kind === 'pareto') {
+    const checkResults = referencedChecks(output.checks, node.id, 'Pareto', outputsSoFar);
+    const objective = (port: string): { readonly series: NumericSeries; readonly unit: Unit } => {
+      const { value, unit } = sourceOf(node, port, resolution, values);
+      if (value.kind !== 'numeric') {
+        throw new KernelError(
+          `a Pareto objective needs a numeric value, not a categorical one`,
+          endpointKey(node.id, port),
+        );
+      }
+      return { series: value, unit };
+    };
+    const x = objective(X_PORT);
+    const y = objective(Y_PORT);
+    // A scatter with unlabelled axes says nothing about what is being traded,
+    // and the wired node already carries the name the student gave it.
+    const objectiveLabel = (port: string): string => {
+      const edge = resolution.incoming.get(endpointKey(node.id, port))?.[0];
+      if (edge === undefined) return port;
+      const source = resolution.document.nodes.find((entry) => entry.id === edge.from.node);
+      return source?.label ?? edge.from.port;
+    };
+
+    // The same union Best Design takes, and for the same reason: a check
+    // varying along a third axis genuinely narrows which cells are candidates,
+    // even where neither objective varies along it.
+    const studyAxes = unionAxes(x.series.axes, y.series.axes, ...checkResults.map((r) => r.series.axes));
+    const { mask: feasible } = feasibleMask(checkResults, studyAxes);
+    const xs = broadcastSeries(x.series, studyAxes);
+    const ys = broadcastSeries(y.series, studyAxes);
+
+    const { onFront, undefinedPoints } = paretoFront(
+      xs.data,
+      ys.data,
+      feasible,
+      output.xDirection,
+      output.yDirection,
+    );
+
+    const readouts = readAxisReadouts(resolution, values);
+    const points = Array.from({ length: gridSize(studyAxes) }, (_unused, cell): ParetoPoint => ({
+      cell,
+      x: xs.data[cell] as number,
+      y: ys.data[cell] as number,
+      feasible: feasible[cell] === true,
+      onFront: onFront[cell] === true,
+      candidate: candidateAt(studyAxes, cell, readouts),
+      at: coordinatesAt(studyAxes, cell, readouts),
+    }));
+
+    const feasibleCount = feasible.filter(Boolean).length;
+    const frontCount = onFront.filter(Boolean).length;
+
+    if (undefinedPoints > 0) {
+      warnings.push({
+        kind: 'paretoUndefinedPoint',
+        nodeId: node.id,
+        message:
+          `${undefinedPoints} candidate(s) have no value on one of the objectives, ` +
+          'so they cannot be compared and are left off the chart',
+      });
+    }
+    if (feasibleCount === 0 && points.length > 0) {
+      // Not a failure. A study whose checks nothing passes yet is the ordinary
+      // state of a design that has not been sized — and the chart still shows
+      // where the candidates sit, which is how you find out how far off they are.
+      warnings.push({
+        kind: 'paretoInfeasible',
+        nodeId: node.id,
+        message:
+          'no candidate satisfies every referenced check, so nothing competes — ' +
+          'every point is drawn, but the front is empty',
+      });
+    } else if (points.length === 1) {
+      warnings.push({
+        kind: 'paretoFlat',
+        nodeId: node.id,
+        message: 'this study has one candidate, so there is no trade-off to draw a front through',
+      });
+    }
+
+    return {
+      ...base,
+      kind: 'pareto',
+      checks: output.checks,
+      axes: studyAxes,
+      points,
+      xUnit: x.unit,
+      yUnit: y.unit,
+      xDirection: output.xDirection,
+      yDirection: output.yDirection,
+      xLabel: objectiveLabel(X_PORT),
+      yLabel: objectiveLabel(Y_PORT),
+      frontCount,
+      feasibleCount,
     };
   }
 

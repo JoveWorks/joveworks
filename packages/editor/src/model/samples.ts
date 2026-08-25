@@ -131,8 +131,9 @@ function document(
   nodes: readonly GraphNode[],
   edges: readonly { id: string; from: { node: string; port: string }; to: { node: string; port: string } }[],
   frames: GraphDocument['frames'] = [],
+  marks: GraphDocument['marks'] = undefined,
 ): GraphDocument {
-  return { schemaVersion: SCHEMA_VERSION, id, title, nodes, edges, frames };
+  return { schemaVersion: SCHEMA_VERSION, id, title, nodes, edges, frames, ...(marks === undefined ? {} : { marks }) };
 }
 
 /** Examples are templates, not student-authored content, so their visible
@@ -693,19 +694,29 @@ export function cantileverHollowSections(catalogues: readonly Catalogue[], local
 
   const nodes: GraphNode[] = [
     { ...input('d_o', 'Outer diameter d_o', { kind: 'list', values: [30, 40, 50, 60, 80], unit: mm }, at(0, 0)), axisLabel: 'd_o' },
-    input('t', 'Wall thickness t', { kind: 'scalar', value: 3, unit: mm }, at(0, 180)),
+    { ...input('t', 'Wall thickness t', { kind: 'list', values: [2, 3, 4, 5], unit: mm }, at(0, 180)), axisLabel: 't' },
     input('two', '2 (wall thickness on both sides)', { kind: 'scalar', value: 2, unit: parseUnit('') }, at(0, 320)),
 
     formulaNode('twice_t', formula('multiply'), at(280, 180)),
     formulaNode('d_i', formula('subtract'), at(520, 90)),
     formulaNode('I', formula('basic.beam.moment-of-inertia-hollow-circle'), at(760, 0)),
 
+    // Cross-section area stands in for mass: one material, one length, so the
+    // section that uses less metal is the lighter beam. There is no
+    // hollow-circle area formula in the public catalogue, so it is composed
+    // from base nodes — π/4 · (d_o² − d_i²) — which is what base nodes are for.
+    input('quarter_pi', 'π/4', { kind: 'scalar', value: Math.PI / 4, unit: parseUnit('') }, at(280, 1180)),
+    formulaNode('do_sq', formula('multiply'), at(520, 900)),
+    formulaNode('di_sq', formula('multiply'), at(520, 1040)),
+    formulaNode('sq_diff', formula('subtract'), at(760, 960)),
+    formulaNode('area', formula('multiply'), at(1000, 1040)),
+
     input('F', 'Tip load F', { kind: 'scalar', value: 500, unit: parseUnit('N') }, at(0, 460)),
     input('L', 'Beam length L', { kind: 'scalar', value: 1000, unit: mm }, at(0, 600)),
     input('E', "Young's modulus E (steel)", { kind: 'scalar', value: 210000, unit: parseUnit('MPa') }, at(0, 740)),
     formulaNode('delta', formula('basic.beam.cantilever-deflection'), at(1000, 360)),
 
-    output('out_table', 'Section results', { kind: 'table', columns: ['d_o', 'd_i', 'I', 'delta'] }, at(1240, 0)),
+    output('out_table', 'Section results', { kind: 'table', columns: ['d_o', 't', 'A', 'delta'] }, at(1240, 0)),
     output(
       'out_plot',
       'Deflection against outer diameter',
@@ -717,6 +728,12 @@ export function cantileverHollowSections(catalogues: readonly Catalogue[], local
       'Within the L/300 deflection limit',
       { kind: 'check', comparison: '<=', threshold: limit },
       at(1240, 410),
+    ),
+    output(
+      'out_pareto',
+      'Material against deflection',
+      { kind: 'pareto', xDirection: 'minimize', yDirection: 'minimize', checks: ['out_check'] },
+      at(1240, 600),
     ),
   ];
 
@@ -735,9 +752,21 @@ export function cantileverHollowSections(catalogues: readonly Catalogue[], local
     wire('E.value', 'delta.E'),
     wire('I.I', 'delta.I'),
 
+    wire('d_o.value', 'do_sq.a'),
+    wire('d_o.value', 'do_sq.b'),
+    wire('d_i.difference', 'di_sq.a'),
+    wire('d_i.difference', 'di_sq.b'),
+    wire('do_sq.product', 'sq_diff.a'),
+    wire('di_sq.product', 'sq_diff.b'),
+    wire('sq_diff.difference', 'area.a'),
+    wire('quarter_pi.value', 'area.b'),
+
+    wire('area.product', 'out_pareto.x'),
+    wire('delta.delta', 'out_pareto.y'),
+
     wire('d_o.value', 'out_table.d_o'),
-    wire('d_i.difference', 'out_table.d_i'),
-    wire('I.I', 'out_table.I'),
+    wire('t.value', 'out_table.t'),
+    wire('area.product', 'out_table.A'),
     wire('delta.delta', 'out_table.delta'),
     wire('delta.delta', 'out_plot.value'),
     wire('delta.delta', 'out_check.value'),
@@ -748,11 +777,18 @@ export function cantileverHollowSections(catalogues: readonly Catalogue[], local
       id: 'sections',
       title: 'Cantilever beam — hollow circular sections',
       note:
-        'Tip deflection of a steel cantilever (F = 500 N, L = 1000 mm) for five standard ' +
-        'outer diameters at a fixed 3 mm wall thickness. The L/300 = 3.33 mm serviceability ' +
-        'limit is crossed between 60 and 80 mm.',
+        'Tip deflection of a steel cantilever (F = 500 N, L = 1000 mm) over five outer ' +
+        'diameters and four wall thicknesses. Cross-section area stands in for mass: one ' +
+        'material, one length, so the section that uses less metal is the lighter beam. ' +
+        'Only six of the twenty sections meet the L/300 = 3.33 mm serviceability limit; the ' +
+        'rest are drawn hollow on the front and never compete. Of the six, four are worth ' +
+        'arguing about and two are simply beaten — an 80 mm tube with a 2 mm wall (candidate ' +
+        'A) is both lighter and stiffer than a 60 mm tube with a 4 mm wall, which is the ' +
+        'reason bicycles and aircraft are built from large thin tubes rather than small ' +
+        'thick ones. Along the front itself there is no such free lunch: past candidate A ' +
+        'every millimetre of deflection costs metal.',
       position: at(1180, -80),
-      size: { width: 420, height: 700 },
+      size: { width: 420, height: 980 },
     },
   ];
 
@@ -760,7 +796,14 @@ export function cantileverHollowSections(catalogues: readonly Catalogue[], local
     node.kind === 'output' ? { ...node, frameId: 'sections' } : node,
   );
 
-  return localizeExample(document('cantilever-hollow-sections', 'Cantilever — hollow sections', withFrames, edges, frames), locale);
+  // The lightest section that still meets the limit, and the corner of the front
+  // where the trade-off starts to cost something. Canonical mm.
+  const marks = [{ at: { d_o: 80, t: 2 } }];
+
+  return localizeExample(
+    document('cantilever-hollow-sections', 'Cantilever — hollow sections', withFrames, edges, frames, marks),
+    locale,
+  );
 }
 
 // --- milling parameter study, from the public machining catalogue ----------
@@ -943,12 +986,16 @@ export function millingPowerEnvelope(catalogues: readonly Catalogue[], locale: A
       id: 'selection',
       title: '4. Candidate operating point',
       note:
-        'The most productive point in this discrete grid that clears both limits is ' +
-        'f_z = 0.24 mm/tooth and a_e = 30 mm, giving Q = 132 cm³/min. This is an initial ' +
-        'power-envelope result with constant k_c—not a production recommendation. Tool ' +
-        'deflection, chatter, chip thinning, workholding, and manufacturer limits remain to check.',
+        'Candidate A is marked at f_z = 0.24 mm/tooth and a_e = 30 mm, giving Q = 132 cm³/min: ' +
+        'the most productive point in this discrete grid that clears both limits. It carries ' +
+        'the same letter on every figure above, so the row below and the shaded map are ' +
+        'talking about the same cut. Note there is no trade-off to weigh here — removal rate, ' +
+        'power and torque all rise together with f_z·a_e, so the only thing holding ' +
+        'productivity back is the spindle limits. This is an initial power-envelope result ' +
+        'with constant k_c—not a production recommendation. Tool deflection, chatter, chip ' +
+        'thinning, workholding, and manufacturer limits remain to check.',
       position: at(1620, 1640),
-      size: { width: 440, height: 520 },
+      size: { width: 440, height: 600 },
     },
   ];
 
@@ -967,7 +1014,15 @@ export function millingPowerEnvelope(catalogues: readonly Catalogue[], locale: A
     return node.kind === 'output' && frameId !== undefined ? { ...node, frameId } : node;
   });
 
-  return localizeExample(document('milling-power-envelope', 'Pocket milling — power envelope', withFrames, edges, frames), locale);
+  // The operating point the notebook argues for, marked so it is identified on
+  // the Pareto chart, both contour plots, the feasibility map and the table row
+  // at once — canonical mm, which is what the axis coordinates are in.
+  const marks = [{ at: { f_z: 0.24, a_e: 30 } }];
+
+  return localizeExample(
+    document('milling-power-envelope', 'Pocket milling — power envelope', withFrames, edges, frames, marks),
+    locale,
+  );
 }
 
 // --- depth of field, from the public Photography catalogue ------------------

@@ -47,6 +47,8 @@ import {
   AT_PORT,
   BEST_PORT,
   OBJECTIVE_PORT,
+  X_PORT,
+  Y_PORT,
   MONTE_CARLO_SAMPLE_PORT,
   MIN_PORT,
   MAX_PORT,
@@ -272,6 +274,11 @@ export function outputPortNames(node: GraphNode): readonly string[] {
   // wire for the quantity being optimised. Named `objective` rather than
   // `value` because that is what it is: the thing ranked, not the thing shown.
   if (node.output.kind === 'bestDesign') return [OBJECTIVE_PORT];
+  // A Pareto output references its checks the same way again, and takes one
+  // wire per objective. Named for the chart axes they become: a two-objective
+  // front *is* a scatter, and wiring mass into `x` is placing it on the
+  // picture about to be read.
+  if (node.output.kind === 'pareto') return [X_PORT, Y_PORT];
   return [VALUE_PORT];
 }
 

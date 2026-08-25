@@ -38,7 +38,15 @@ export const NODE_HELP_URLS: Readonly<Record<NodeKind, string>> = {
  */
 export const OUTPUT_HELP_URLS: Readonly<
   Record<
-    'print' | 'check' | 'plot' | 'table' | 'equation' | 'feasibility' | 'sensitivity' | 'bestDesign',
+    | 'print'
+    | 'check'
+    | 'plot'
+    | 'table'
+    | 'equation'
+    | 'feasibility'
+    | 'sensitivity'
+    | 'bestDesign'
+    | 'pareto',
     string
   >
 > = {
@@ -50,4 +58,5 @@ export const OUTPUT_HELP_URLS: Readonly<
   feasibility: `${DOCS_BASE_URL}/guide/node-reference#feasibility`,
   sensitivity: `${DOCS_BASE_URL}/guide/node-reference#sensitivity`,
   bestDesign: `${DOCS_BASE_URL}/guide/node-reference#best-design`,
+  pareto: `${DOCS_BASE_URL}/guide/node-reference#pareto`,
 };

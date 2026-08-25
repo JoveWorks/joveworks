@@ -201,6 +201,12 @@ canvas                              notebook panel
 It lives in a **collapsible side panel and updates live**, so the document takes
 shape while the graph is built rather than being discovered at export time.
 
+**A study can also name the design you chose.** Click a design on any figure and
+it is marked across the whole NodeBook — the same lettered candidate on the
+plot, the table row, the feasibility map and the Pareto front. A mark is stored
+as a coordinate (`d = 40 mm`), not a row number, so it survives re-sampling the
+range and reads correctly in the report: *candidate A: d = 40 mm, 2.47 kg*.
+
 ### Kinds of output node
 
 | Kind | What it does |

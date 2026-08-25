@@ -9,7 +9,7 @@ import {
 } from './document.js';
 import { loadDocument, saveDocument } from './io.js';
 import { SCHEMA_VERSION } from './version.js';
-import type { JsonObject } from './json.js';
+import type { JsonObject, JsonValue } from './json.js';
 
 /**
  * One document exercising every optional field, so the round-trip test below is
@@ -89,7 +89,7 @@ const study: JsonObject = {
       kind: 'output',
       id: 'o-table',
       position: { x: 520, y: 360 },
-      output: { kind: 'table', columns: ['d', 'S'], figures: { d: 1, S: 3 }, marks: [0, 5] },
+      output: { kind: 'table', columns: ['d', 'S'], figures: { d: 1, S: 3 } },
     },
     {
       kind: 'output',
@@ -147,6 +147,7 @@ const study: JsonObject = {
       size: { width: 700, height: 200 },
     },
   ],
+  marks: [{ at: { d: 40 } }],
 };
 
 describe('round-tripping (the verification docs/PLAN.md asks for)', () => {
@@ -638,5 +639,56 @@ describe('structural integrity', () => {
     expect(() => parseDocument({ ...study, schemaVersion: 99 })).toThrow(
       /this build reads version 1 only/,
     );
+  });
+});
+
+describe('Pareto outputs and document-wide marks', () => {
+  const base = (output: JsonValue): JsonObject => ({
+    schemaVersion: 1,
+    id: 'g',
+    title: 'T',
+    nodes: [{ kind: 'output', id: 'front', position: { x: 0, y: 0 }, output }],
+    edges: [],
+    frames: [],
+  });
+
+  it('round-trips both directions and an empty checks list', () => {
+    for (const xDirection of ['minimize', 'maximize']) {
+      for (const yDirection of ['minimize', 'maximize']) {
+        const study = base({ kind: 'pareto', checks: ['a', 'b'], xDirection, yDirection });
+        expect(serializeDocument(parseDocument(study))).toEqual(study);
+      }
+    }
+    const empty = base({ kind: 'pareto', checks: [], xDirection: 'minimize', yDirection: 'minimize' });
+    expect(serializeDocument(parseDocument(empty))).toEqual(empty);
+  });
+
+  it('refuses a direction it does not know', () => {
+    expect(() =>
+      parseDocument(base({ kind: 'pareto', checks: [], xDirection: 'smallest', yDirection: 'minimize' })),
+    ).toThrow(/xDirection/u);
+  });
+
+  it('round-trips marks with numeric and categorical coordinates', () => {
+    const study = {
+      ...base({ kind: 'print' }),
+      marks: [{ at: { d: 40 } }, { at: { d: 50, material: 'steel' } }],
+    };
+    expect(serializeDocument(parseDocument(study))).toEqual(study);
+  });
+
+  it('refuses a mark that names no axis, since it would identify every point', () => {
+    expect(() => parseDocument({ ...base({ kind: 'print' }), marks: [{ at: {} }] })).toThrow(/names no axis/u);
+  });
+
+  it('still loads a document written before marks moved off the table', () => {
+    // The row-index marks these carried were the unreliable thing being
+    // replaced, so they are dropped rather than migrated — but the document
+    // itself must keep opening, which is what makes the change additive.
+    const legacy = base({ kind: 'table', columns: ['d'], marks: [0, 5] });
+    const parsed = parseDocument(legacy);
+    const node = parsed.nodes[0];
+    expect(node?.kind === 'output' && node.output.kind === 'table' && 'marks' in node.output).toBe(false);
+    expect(parsed.marks).toBeUndefined();
   });
 });

@@ -44,7 +44,7 @@ import {
   setClosureExpression,
   setColumnFigures,
   syncColumnLabels,
-  toggleMark,
+  toggleCandidate,
   uniqueId,
   updateNode,
 } from './document';
@@ -319,14 +319,37 @@ describe('table output columns', () => {
     expect(removedNode.output.kind === 'table' && removedNode.output.figures).toBeUndefined();
   });
 
-  it('toggles a marked row on and off', () => {
-    const marked = toggleMark(withTable, 't', 3);
-    const node = marked.nodes.find((entry) => entry.id === 't') as OutputNode;
-    expect(node.output.kind === 'table' && node.output.marks).toEqual([3]);
+});
 
-    const unmarked = toggleMark(marked, 't', 3);
-    const unmarkedNode = unmarked.nodes.find((entry) => entry.id === 't') as OutputNode;
-    expect(unmarkedNode.output.kind === 'table' && unmarkedNode.output.marks).toBeUndefined();
+describe('toggleCandidate — one marked design, document-wide', () => {
+  const base: GraphDocument = { schemaVersion: 1, id: 'd', title: 'T', nodes: [], edges: [], frames: [] };
+
+  it('marks a candidate and unmarks the same one again', () => {
+    const marked = toggleCandidate(base, { at: { d: 40 } });
+    expect(marked.marks).toEqual([{ at: { d: 40 } }]);
+
+    // Removing the last mark drops the field rather than leaving an empty
+    // array behind, the same way every other optional field here is handled.
+    expect(toggleCandidate(marked, { at: { d: 40 } }).marks).toBeUndefined();
+  });
+
+  it('matches by coordinate, not by object identity', () => {
+    const marked = toggleCandidate(base, { at: { d: 40, T: 80 } });
+    // A different object, the same design — this is the case a per-figure mark
+    // could never get right, because each figure would hold its own copy.
+    expect(toggleCandidate(marked, { at: { T: 80, d: 40 } }).marks).toBeUndefined();
+  });
+
+  it('does not confuse a design with one that names more axes', () => {
+    const marked = toggleCandidate(base, { at: { d: 40 } });
+    const both = toggleCandidate(marked, { at: { d: 40, T: 80 } });
+    expect(both.marks).toHaveLength(2);
+  });
+
+  it('appends, so an earlier mark keeps its letter when a later one is added', () => {
+    const first = toggleCandidate(base, { at: { d: 40 } });
+    const second = toggleCandidate(first, { at: { d: 50 } });
+    expect(second.marks?.[0]).toEqual({ at: { d: 40 } });
   });
 });
 

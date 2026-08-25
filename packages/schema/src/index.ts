@@ -118,6 +118,9 @@ export {
   AT_PORT,
   BEST_PORT,
   OBJECTIVE_PORT,
+  X_PORT,
+  Y_PORT,
+  OBJECTIVE_DIRECTIONS,
   COMPARISONS,
   SELECT_MODES,
   SELECT_DIRECTIONS,
@@ -177,6 +180,9 @@ export type {
   FeasibilityOutput,
   SensitivityOutput,
   BestDesignOutput,
+  ParetoOutput,
+  ObjectiveDirection,
+  Candidate,
   Comparison,
 } from './document.js';
 

@@ -14,6 +14,7 @@ import * as Plot from '@observablehq/plot';
 
 import {
   broadcastBoolean,
+  candidateAt,
   gridSize,
   indexer,
   unionAxes,
@@ -25,14 +26,19 @@ import { fromCanonical } from '@joveworks/units';
 
 import { useSettings } from '../settings-context';
 import { chartTip, typesetChartLabels } from './PlotFigure';
+import { NO_MARKS, type FigureMarking, type MarkIndex } from './marks';
 
 interface Row {
+  /** Which cell of the drawn grid this is — what turns a click into a mark. */
+  readonly cell: number;
   readonly x: number | string;
   readonly series: number | string;
   readonly facet?: number | string;
   readonly mask: 'pass' | 'fail';
   /** Swept coordinates + verdict, prose for the hover tip — see `chartTip`. */
   readonly title: string;
+  /** A, B … when this cell is marked; absent otherwise. */
+  readonly letter?: string;
 }
 
 /** No band to sit a single-axis strip on — Observable Plot still wants a `y`. */
@@ -71,7 +77,7 @@ function failedChecksAt(
  * the "a series carries an axis the target grid does not" crash this avoids —
  * the same fix, for the same reason, as `PlotFigure`'s `plotGrid`.
  */
-function feasibilityGrid(result: FeasibilityResult): readonly Axis[] {
+export function feasibilityGrid(result: FeasibilityResult): readonly Axis[] {
   return unionAxes(
     result.axes,
     result.x.coordinates.axes,
@@ -80,7 +86,11 @@ function feasibilityGrid(result: FeasibilityResult): readonly Axis[] {
   );
 }
 
-export function rows(result: FeasibilityResult, checkLabels: Readonly<Record<string, string>>): readonly Row[] {
+export function rows(
+  result: FeasibilityResult,
+  checkLabels: Readonly<Record<string, string>>,
+  marks: MarkIndex = NO_MARKS,
+): readonly Row[] {
   const target = feasibilityGrid(result);
   // Onto that grid, so a mask that varies along fewer axes than the figure
   // draws repeats down the ones it does not.
@@ -112,12 +122,15 @@ export function rows(result: FeasibilityResult, checkLabels: Readonly<Record<str
       lines.push(`→ fail (${failed.join(', ')})`);
     }
 
+    const letter = marks.at(cell)[0]?.letter;
     return {
+      cell,
       x,
       series,
       ...(facet === undefined ? {} : { facet }),
       mask: verdict,
       title: lines.join('\n'),
+      ...(letter === undefined ? {} : { letter }),
     };
   });
 }
@@ -126,9 +139,11 @@ interface Props {
   readonly result: FeasibilityResult;
   /** Referenced Check node id → its display label, for the fail tip's breakdown. */
   readonly checkLabels: Readonly<Record<string, string>>;
+  /** Absent in the read-only viewer: the map draws, but nothing can be marked. */
+  readonly marking?: FigureMarking;
 }
 
-export function FeasibilityFigure({ result, checkLabels }: Props): ReactElement {
+export function FeasibilityFigure({ result, checkLabels, marking }: Props): ReactElement {
   const host = useRef<HTMLDivElement>(null);
   const { titleMathRendering } = useSettings();
 
@@ -136,7 +151,8 @@ export function FeasibilityFigure({ result, checkLabels }: Props): ReactElement 
     const container = host.current;
     if (container === null) return undefined;
 
-    const data = rows(result, checkLabels);
+    const data = rows(result, checkLabels, marking?.marks ?? NO_MARKS);
+    const marked = data.filter((row) => row.letter !== undefined);
     const xLabel = result.x.axis.label;
     const seriesLabel = result.series2?.axis.label ?? '';
     const fx = result.facet === undefined ? undefined : 'facet';
@@ -167,6 +183,15 @@ export function FeasibilityFigure({ result, checkLabels }: Props): ReactElement 
           fill: 'mask',
           ...(fx === undefined ? {} : { fx }),
         }),
+        // The letter alone, no ring: a cell is already a filled block, so a
+        // ring around it would read as a second, differently-shaped cell.
+        Plot.text(marked as Row[], {
+          x: 'x',
+          y: 'series',
+          text: 'letter',
+          fontWeight: 'bold',
+          ...(fx === undefined ? {} : { fx }),
+        }),
         chartTip(data, 'x', {
           x: 'x',
           y: 'series',
@@ -177,6 +202,26 @@ export function FeasibilityFigure({ result, checkLabels }: Props): ReactElement 
     });
 
     container.append(chart);
+
+    const grid = feasibilityGrid(result);
+    const pointed = (): Row | undefined => (chart as { value?: Row }).value;
+    const handleInput = (): void => {
+      const row = pointed();
+      marking?.hover(row === undefined ? undefined : candidateAt(grid, row.cell, marking.readouts));
+    };
+    const handleClick = (): void => {
+      const row = pointed();
+      if (row !== undefined && marking !== undefined) {
+        marking.toggle(candidateAt(grid, row.cell, marking.readouts));
+      }
+    };
+    const handleLeave = (): void => marking?.hover(undefined);
+    if (marking !== undefined) {
+      chart.addEventListener('input', handleInput);
+      chart.addEventListener('click', handleClick);
+      chart.addEventListener('pointerleave', handleLeave);
+    }
+
     // A categorical `color.legend` makes `Plot.plot` return an HTML
     // `<figure>` wrapping the chart and a separate legend swatch, not a bare
     // `<svg>` (unlike PlotFigure, which draws its own legend precisely to
@@ -186,8 +231,13 @@ export function FeasibilityFigure({ result, checkLabels }: Props): ReactElement 
     if (titleMathRendering && svg !== null) {
       typesetChartLabels(svg, [xLabel, seriesLabel, ...(result.facet === undefined ? [] : [result.facet.axis.label])]);
     }
-    return () => chart.remove();
-  }, [result, checkLabels, titleMathRendering]);
+    return () => {
+      chart.removeEventListener('input', handleInput);
+      chart.removeEventListener('click', handleClick);
+      chart.removeEventListener('pointerleave', handleLeave);
+      chart.remove();
+    };
+  }, [result, checkLabels, titleMathRendering, marking]);
 
   return <div className="figure" ref={host} />;
 }

@@ -44,6 +44,19 @@ export const WARNING_KINDS = [
    * thing this project warns about rather than hides.
    */
   'bestDesignUnrankable',
+  /** No candidate satisfies every referenced check, so the front is empty. */
+  'paretoInfeasible',
+  /** A candidate's objective did not evaluate to a number, so it cannot compete. */
+  'paretoUndefinedPoint',
+  /** The study has one candidate, so there is no trade-off to draw a front through. */
+  'paretoFlat',
+  /**
+   * A marked candidate no longer lands on a sample: the range moved under it.
+   * A mark is a claim about a specific design, so a mark that has quietly
+   * stopped describing one — or been snapped to a neighbour — is exactly the
+   * kind of thing to say out loud rather than redraw.
+   */
+  'candidateStale',
 ] as const;
 
 export type WarningKind = (typeof WARNING_KINDS)[number];

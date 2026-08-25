@@ -62,6 +62,13 @@ crossing size per temperature rather than a single number.
 Worked end to end in
 [Choosing a shaft size](/examples/choosing-a-shaft-size).
 
+When two answers pull against each other — lighter *or* stiffer — there is no
+single best point to read off, and a [Pareto](/guide/node-reference#pareto)
+output draws the candidates worth arguing about instead. Whichever one you
+settle on, click it: a marked design is identified by the same letter on every
+figure in the notebook. See [Candidates and marks](/guide/candidates), worked
+through in [Lighter or stiffer](/examples/lighter-or-stiffer).
+
 ## Why this replaces solving for an input
 
 The kernel only evaluates forwards; it never rearranges a formula to solve
