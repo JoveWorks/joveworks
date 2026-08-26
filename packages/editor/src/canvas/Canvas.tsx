@@ -63,8 +63,10 @@ import {
   duplicateNode,
   duplicateSelection,
   edgeId,
+  groupIntoGroup,
   groupIntoSection,
   moveNode,
+  moveFrameContents,
   NEW_COLUMN,
   nodeLabel,
   reframe,
@@ -694,40 +696,50 @@ export function Canvas({
   }, []);
 
   const nodes = useMemo<FlowNode<CanvasNodeData>[]>(
-    () => [
-      ...document.frames.map((frame) => ({
-        id: frame.id,
-        type: 'frame',
-        position: frame.position,
-        data: {},
-        selected: selected.has(frame.id),
-        ...sizeOf(measured, frame.id),
-        // Frames sit behind the nodes they group, and a click on one must not
-        // steal the node on top of it.
-        zIndex: -1,
-        style: { width: frame.size.width, height: frame.size.height },
-      })),
-      ...document.nodes.map((node) => {
-        const className = nodeClasses([
-          rejectedEndpointIds.has(node.id) ? 'connection-refused' : undefined,
-          matchedNodeIds.has(node.id) ? 'node-search-match' : undefined,
-        ]);
-        const data: CanvasNodeData = {
-          highlighted: connectedNodeIds.has(node.id),
-          highlightedPorts: highlightedPorts.get(node.id) ?? [],
-          onPortHover: setHoveredPort,
-        };
-        return {
-          id: node.id,
-          type: flowType(node.kind),
-          position: node.position,
-          data,
-          selected: selected.has(node.id),
-          ...(className === undefined ? {} : { className }),
-          ...sizeOf(measured, node.id),
-        };
-      }),
-    ],
+    () => {
+      // Frames are passive surfaces behind calculation nodes, but within that
+      // layer the smallest region is the most specific one. This lets a child
+      // group receive a click instead of its broad parent when they overlap.
+      const frameLayer = new Map(
+        [...document.frames]
+          .sort((a, b) => b.size.width * b.size.height - a.size.width * a.size.height)
+          .map((frame, index) => [frame.id, -document.frames.length + index] as const),
+      );
+      return [
+        ...document.frames.map((frame) => ({
+          id: frame.id,
+          type: 'frame',
+          position: frame.position,
+          data: {},
+          selected: selected.has(frame.id),
+          ...sizeOf(measured, frame.id),
+          // Frames sit behind the nodes they group, and a click on one must not
+          // steal the node on top of it.
+          zIndex: frameLayer.get(frame.id) ?? -document.frames.length,
+          style: { width: frame.size.width, height: frame.size.height },
+        })),
+        ...document.nodes.map((node) => {
+          const className = nodeClasses([
+            rejectedEndpointIds.has(node.id) ? 'connection-refused' : undefined,
+            matchedNodeIds.has(node.id) ? 'node-search-match' : undefined,
+          ]);
+          const data: CanvasNodeData = {
+            highlighted: connectedNodeIds.has(node.id),
+            highlightedPorts: highlightedPorts.get(node.id) ?? [],
+            onPortHover: setHoveredPort,
+          };
+          return {
+            id: node.id,
+            type: flowType(node.kind),
+            position: node.position,
+            data,
+            selected: selected.has(node.id),
+            ...(className === undefined ? {} : { className }),
+            ...sizeOf(measured, node.id),
+          };
+        }),
+      ];
+    },
     [connectedNodeIds, document, highlightedPorts, matchedNodeIds, measured, rejectedEndpointIds, selected],
   );
 
@@ -852,12 +864,7 @@ export function Canvas({
                 const dx = position.x - before.position.x;
                 const dy = position.y - before.position.y;
                 if (dx !== 0 || dy !== 0) {
-                  for (const member of next.nodes.filter((node) => node.frameId === change.id)) {
-                    next = moveNode(next, member.id, {
-                      x: member.position.x + dx,
-                      y: member.position.y + dy,
-                    });
-                  }
+                  next = moveFrameContents(next, change.id, dx, dy);
                 }
               }
             } else {
@@ -1070,6 +1077,11 @@ export function Canvas({
         onClick: () =>
           edit((current) => groupIntoSection(current, selected, flow.screenToFlowPosition(at))),
       },
+      {
+        label: t('Group into new group'),
+        onClick: () =>
+          edit((current) => groupIntoGroup(current, selected, flow.screenToFlowPosition(at))),
+      },
     ];
     if (target.kind === 'selection') return selectionActions(target);
     if (target.kind === 'node') {
@@ -1110,9 +1122,10 @@ export function Canvas({
     }
     if (target.kind === 'frame') {
       const { id } = target;
+      const frame = document.frames.find((candidate) => candidate.id === id);
       return [
         {
-          label: t('Delete section'),
+          label: t(frame?.kind === 'group' ? 'Delete group' : 'Delete section'),
           danger: true,
           onClick: () => edit((current) => reframe(removeNodes(current, new Set([id])))),
         },
@@ -1186,6 +1199,10 @@ export function Canvas({
       {
         label: t(sectionActionLabel(document, selected)),
         onClick: () => edit((current) => groupIntoSection(current, selected, at)),
+      },
+      {
+        label: t(selectedNodeCount(document, selected) === 0 ? 'Add new group' : 'Group into new group'),
+        onClick: () => edit((current) => groupIntoGroup(current, selected, at)),
       },
       {
         label: t('Auto-arrange'),

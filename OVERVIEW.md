@@ -30,8 +30,9 @@ constraint at once, and look at the result as a graph.
    converted at the boundary. An undeclared unit is an error, never a guess.
 6. **Turn an input into a range** and the whole graph becomes a study. See
    below — this is the part that matters.
-7. **Group related nodes into titled frames** and write a note on each. The
-   frames are the sections of your report, not just tidying.
+7. **Group related nodes into titled frames.** Section frames become the
+   sections of your report; lighter grouping frames annotate and organise the
+   canvas without adding a heading, and can nest inside sections or each other.
 8. **Export the notebook** — prose, values, checks and plots in reading order —
    as the thing you hand in. The graph itself saves separately, and autosaves.
 

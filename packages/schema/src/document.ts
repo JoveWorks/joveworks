@@ -778,9 +778,19 @@ export interface Edge {
   readonly to: Endpoint;
 }
 
-/** A titled group frame: a notebook section, with markdown prose. */
+/** What a frame contributes beyond grouping the canvas. */
+export type FrameKind = 'section' | 'group';
+
+/**
+ * A titled canvas frame. Sections become NodeBook sections; groups are
+ * transparent annotations. Missing `kind` means `section` for documents made
+ * before group frames existed. A group's `frameId` names its parent frame;
+ * positions remain absolute canvas coordinates.
+ */
 export interface Frame {
   readonly id: string;
+  readonly kind?: FrameKind;
+  readonly frameId?: string;
   readonly title: string;
   readonly note?: string;
   readonly position: Position;
@@ -1546,6 +1556,8 @@ function parseFrame(value: JsonValue, path: string): Frame {
   const object = readObject(value, path);
   return {
     id: readName(required(object, 'id', path), join(path, 'id')),
+    ...put('kind', optional(object, 'kind', path, (v, p) => readEnum(v, p, ['section', 'group'] as const))),
+    ...put('frameId', optional(object, 'frameId', path, readName)),
     title: readString(required(object, 'title', path), join(path, 'title')),
     ...put('notebookLocale', optional(object, 'notebookLocale', path, (v, p) => readEnum(v, p, ['en', 'nl'] as const))),
     ...put('note', optional(object, 'note', path, readString)),
@@ -1557,6 +1569,8 @@ function parseFrame(value: JsonValue, path: string): Frame {
 function serializeFrame(frame: Frame): JsonObject {
   return {
     id: frame.id,
+    ...put('kind', frame.kind),
+    ...put('frameId', frame.frameId),
     title: frame.title,
     ...put('note', frame.note),
     position: { x: frame.position.x, y: frame.position.y },
@@ -1582,6 +1596,22 @@ function checkReferences(document: GraphDocument, path: string): void {
       fail(`${join(path, 'frames')}[${i}].id`, `'${frame.id}' appears twice`);
     }
     frameIds.add(frame.id);
+  }
+
+  for (const [i, frame] of document.frames.entries()) {
+    if (frame.frameId !== undefined && !frameIds.has(frame.frameId)) {
+      fail(`${join(path, 'frames')}[${i}].frameId`, `no frame '${frame.frameId}' exists`);
+    }
+    if (frame.kind !== 'group' && frame.frameId !== undefined) {
+      fail(`${join(path, 'frames')}[${i}].frameId`, 'only group frames can be nested');
+    }
+    const seen = new Set([frame.id]);
+    let parentId = frame.frameId;
+    while (parentId !== undefined) {
+      if (seen.has(parentId)) fail(`${join(path, 'frames')}[${i}].frameId`, 'frame nesting contains a cycle');
+      seen.add(parentId);
+      parentId = document.frames.find((candidate) => candidate.id === parentId)?.frameId;
+    }
   }
 
   for (const [i, node] of document.nodes.entries()) {

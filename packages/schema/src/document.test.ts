@@ -660,6 +660,41 @@ describe('group frames as notebook sections', () => {
     };
     expect(() => parseDocument(broken)).toThrow(/frameId: no frame 'gone' exists/);
   });
+
+  it('round-trips a nested canvas-only group while older sections stay unchanged', () => {
+    const nested = {
+      ...study,
+      frames: [
+        ...(study['frames'] as JsonObject[]),
+        {
+          id: 'assumptions',
+          kind: 'group',
+          frameId: 'sizing',
+          title: 'Preliminary values',
+          position: { x: 0, y: 0 },
+          size: { width: 300, height: 120 },
+        },
+      ],
+    };
+    expect(serializeDocument(parseDocument(nested))).toEqual(nested);
+    expect(serializeDocument(parseDocument(study))).toEqual(study);
+  });
+
+  it('rejects missing parents, nested sections, and nesting cycles', () => {
+    const group = {
+      id: 'group', kind: 'group', title: 'Group',
+      position: { x: 0, y: 0 }, size: { width: 100, height: 100 },
+    };
+    expect(() => parseDocument({ ...study, frames: [{ ...group, frameId: 'gone' }] })).toThrow(/no frame 'gone'/);
+    expect(() => parseDocument({
+      ...study,
+      frames: [...(study['frames'] as JsonObject[]), { ...group, id: 'nested-section', kind: 'section', frameId: 'sizing' }],
+    })).toThrow(/only group frames can be nested/);
+    expect(() => parseDocument({
+      ...study,
+      frames: [{ ...group, id: 'one', frameId: 'two' }, { ...group, id: 'two', frameId: 'one' }],
+    })).toThrow(/nesting contains a cycle/);
+  });
 });
 
 describe('file nodes', () => {

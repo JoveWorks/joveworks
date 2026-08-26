@@ -54,7 +54,7 @@ import {
 } from './io/recentDocuments';
 import { analyse } from './model/analysis';
 import { arrayCatalogue, bundledCatalogues, baseCatalogue, lockedCatalogues, mechanicsCatalogue, withCatalogue } from './model/catalogues';
-import { groupIntoSection } from './model/document';
+import { groupIntoGroup, groupIntoSection } from './model/document';
 import { autoArrange } from './model/layout';
 import type { NodeSizes } from './model/node-sizes';
 import {
@@ -776,6 +776,11 @@ function AppShell(): ReactElement {
     edit((current) => groupIntoSection(current, selected, at));
   };
 
+  const addGroup = (): void => {
+    const at = flow.screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+    edit((current) => groupIntoGroup(current, selected, at));
+  };
+
   const arrangeGraph = (): void => {
     edit((current) => autoArrange(current, measuredNodeSizes(flow)));
   };
@@ -818,6 +823,7 @@ function AppShell(): ReactElement {
 
   const editMenuItems: readonly MenuItem[] = [
     { label: t('Group into new section'), onClick: addSection },
+    { label: t('Group into new group'), onClick: addGroup },
     { label: t('Auto-arrange'), onClick: arrangeGraph },
     { label: t('Undo'), disabled: !canUndo, onClick: undo },
     { label: t('Redo'), disabled: !canRedo, onClick: redo },

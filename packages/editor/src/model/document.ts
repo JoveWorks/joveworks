@@ -324,13 +324,20 @@ export function removeNodes(document: GraphDocument, ids: ReadonlySet<string>): 
         node.frameId !== undefined && ids.has(node.frameId) ? withoutFrame(node) : node,
       ),
     edges: spliced.edges.filter((edge) => !ids.has(edge.from.node) && !ids.has(edge.to.node)),
-    frames: spliced.frames.filter((frame) => !ids.has(frame.id)),
+    frames: spliced.frames
+      .filter((frame) => !ids.has(frame.id))
+      .map((frame) => frame.frameId !== undefined && ids.has(frame.frameId) ? withoutParentFrame(frame) : frame),
   });
 }
 
 function withoutFrame(node: GraphNode): GraphNode {
   const { frameId: _dropped, ...rest } = node;
   return rest as GraphNode;
+}
+
+function withoutParentFrame(frame: Frame): Frame {
+  const { frameId: _dropped, ...rest } = frame;
+  return rest;
 }
 
 /**
@@ -882,10 +889,16 @@ function renamePortEdges(
   };
 }
 
-// --- frames: the notebook's sections ------------------------------
+// --- nested canvas frames and notebook sections -------------------
 
 export function addFrame(document: GraphDocument, frame: Frame): GraphDocument {
-  return { ...document, frames: [...document.frames, frame] };
+  if (frame.kind === 'group') return { ...document, frames: [...document.frames, frame] };
+  const firstGroup = document.frames.findIndex((entry) => entry.kind === 'group');
+  if (firstGroup === -1) return { ...document, frames: [...document.frames, frame] };
+  return {
+    ...document,
+    frames: [...document.frames.slice(0, firstGroup), frame, ...document.frames.slice(firstGroup)],
+  };
 }
 
 export function updateFrame(
@@ -910,12 +923,13 @@ export function moveFrame(
   id: string,
   direction: 'up' | 'down',
 ): GraphDocument {
-  const index = document.frames.findIndex((frame) => frame.id === id);
-  const swapWith = direction === 'up' ? index - 1 : index + 1;
-  if (index === -1 || swapWith < 0 || swapWith >= document.frames.length) return document;
-  const frames = [...document.frames];
-  [frames[index], frames[swapWith]] = [frames[swapWith] as Frame, frames[index] as Frame];
-  return { ...document, frames };
+  const sections = document.frames.filter((frame) => frame.kind !== 'group');
+  const groups = document.frames.filter((frame) => frame.kind === 'group');
+  const sectionIndex = sections.findIndex((frame) => frame.id === id);
+  const swapSection = direction === 'up' ? sectionIndex - 1 : sectionIndex + 1;
+  if (sectionIndex === -1 || swapSection < 0 || swapSection >= sections.length) return document;
+  [sections[sectionIndex], sections[swapSection]] = [sections[swapSection] as Frame, sections[sectionIndex] as Frame];
+  return { ...document, frames: [...sections, ...groups] };
 }
 
 /**
@@ -930,15 +944,13 @@ export function reorderFrame(
   position: 'before' | 'after',
 ): GraphDocument {
   if (sourceId === targetId) return document;
-  const frames = [...document.frames];
-  const sourceIndex = frames.findIndex((frame) => frame.id === sourceId);
-  if (sourceIndex === -1 || !frames.some((frame) => frame.id === targetId)) return document;
-  const [moved] = frames.splice(sourceIndex, 1);
-  // Re-found after the source is removed, so a source that sat earlier in the
-  // list does not throw the target's index off by one.
-  const targetIndex = frames.findIndex((frame) => frame.id === targetId);
-  frames.splice(position === 'after' ? targetIndex + 1 : targetIndex, 0, moved as Frame);
-  return { ...document, frames };
+  const sections = document.frames.filter((frame) => frame.kind !== 'group');
+  const sourceIndex = sections.findIndex((frame) => frame.id === sourceId);
+  if (sourceIndex === -1 || !sections.some((frame) => frame.id === targetId)) return document;
+  const [moved] = sections.splice(sourceIndex, 1);
+  const targetIndex = sections.findIndex((frame) => frame.id === targetId);
+  sections.splice(position === 'after' ? targetIndex + 1 : targetIndex, 0, moved as Frame);
+  return { ...document, frames: [...sections, ...document.frames.filter((frame) => frame.kind === 'group')] };
 }
 
 function inside(position: Position, frame: Frame): boolean {
@@ -948,6 +960,25 @@ function inside(position: Position, frame: Frame): boolean {
     position.x <= frame.position.x + frame.size.width &&
     position.y <= frame.position.y + frame.size.height
   );
+}
+
+function frameInside(child: Frame, parent: Frame): boolean {
+  return (
+    child.id !== parent.id &&
+    child.position.x >= parent.position.x &&
+    child.position.y >= parent.position.y &&
+    child.position.x + child.size.width <= parent.position.x + parent.size.width &&
+    child.position.y + child.size.height <= parent.position.y + parent.size.height &&
+    child.size.width * child.size.height < parent.size.width * parent.size.height
+  );
+}
+
+/** The smallest containing region; later frames win when areas tie. */
+function innermost(frames: readonly Frame[]): Frame | undefined {
+  return frames.reduce<Frame | undefined>((best, frame) => {
+    if (best === undefined) return frame;
+    return frame.size.width * frame.size.height <= best.size.width * best.size.height ? frame : best;
+  }, undefined);
 }
 
 /**
@@ -964,13 +995,52 @@ export function reframe(document: GraphDocument): GraphDocument {
       : document;
   }
   let changed = false;
+  const frames = document.frames.map((frame) => {
+    if (frame.kind !== 'group') {
+      if (frame.frameId === undefined) return frame;
+      changed = true;
+      return withoutParentFrame(frame);
+    }
+    const containing = innermost(document.frames.filter((candidate) => frameInside(frame, candidate)));
+    if (containing?.id === frame.frameId) return frame;
+    changed = true;
+    return containing === undefined ? withoutParentFrame(frame) : { ...frame, frameId: containing.id };
+  });
   const nodes = document.nodes.map((node) => {
-    const containing = document.frames.filter((frame) => inside(node.position, frame)).at(-1);
+    const containing = innermost(frames.filter((frame) => inside(node.position, frame)));
     if (containing?.id === node.frameId) return node;
     changed = true;
     return containing === undefined ? withoutFrame(node) : { ...node, frameId: containing.id };
   });
-  return changed ? { ...document, nodes } : document;
+  return changed ? { ...document, nodes, frames } : document;
+}
+
+/** Move every nested group and node with its parent frame. */
+export function moveFrameContents(document: GraphDocument, frameId: string, dx: number, dy: number): GraphDocument {
+  const descendants = new Set([frameId]);
+  let found = true;
+  while (found) {
+    found = false;
+    for (const frame of document.frames) {
+      if (frame.frameId !== undefined && descendants.has(frame.frameId) && !descendants.has(frame.id)) {
+        descendants.add(frame.id);
+        found = true;
+      }
+    }
+  }
+  return {
+    ...document,
+    frames: document.frames.map((frame) =>
+      frame.id !== frameId && descendants.has(frame.id)
+        ? { ...frame, position: { x: frame.position.x + dx, y: frame.position.y + dy } }
+        : frame,
+    ),
+    nodes: document.nodes.map((node) =>
+      node.frameId !== undefined && descendants.has(node.frameId)
+        ? { ...node, position: { x: node.position.x + dx, y: node.position.y + dy } }
+        : node,
+    ),
+  };
 }
 
 /** A frame drawn around the given nodes, with room for their bodies. */
@@ -1015,5 +1085,19 @@ export function groupIntoSection(
     chosen.length > 0
       ? frameAround(id, 'New section', chosen)
       : { id, title: 'New section', position: at, size: { width: 320, height: 220 } };
-  return reframe({ ...document, frames: [...document.frames, frame] });
+  return reframe(addFrame(document, frame));
+}
+
+/** Group nodes for canvas readability without creating a NodeBook section. */
+export function groupIntoGroup(
+  document: GraphDocument,
+  selected: ReadonlySet<string>,
+  at: Position,
+): GraphDocument {
+  const id = uniqueId(document, 'group');
+  const chosen = document.nodes.filter((node) => selected.has(node.id));
+  const base = chosen.length > 0
+    ? frameAround(id, 'New group', chosen)
+    : { id, title: 'New group', position: at, size: { width: 320, height: 220 } };
+  return reframe(addFrame(document, { ...base, kind: 'group' }));
 }

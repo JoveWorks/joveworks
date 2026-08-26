@@ -21,6 +21,24 @@ export function readingOrder(
   return Math.abs(dy) > ROW_TOLERANCE ? dy : a.position.x - b.position.x;
 }
 
+/**
+ * The NodeBook section that owns a node. Group frames are transparent: walk
+ * through nested groups until a section is found. A top-level group therefore
+ * behaves like an unframed node in the NodeBook.
+ */
+export function notebookSectionId(document: GraphDocument, node: GraphNode): string | undefined {
+  let frameId = node.frameId;
+  const seen = new Set<string>();
+  while (frameId !== undefined && !seen.has(frameId)) {
+    seen.add(frameId);
+    const frame = document.frames.find((candidate) => candidate.id === frameId);
+    if (frame === undefined) return undefined;
+    if (frame.kind !== 'group') return frame.id;
+    frameId = frame.frameId;
+  }
+  return undefined;
+}
+
 function referencedChecks(node: GraphNode): readonly string[] {
   if (node.kind !== 'output') return [];
   switch (node.output.kind) {

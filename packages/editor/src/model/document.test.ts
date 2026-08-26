@@ -31,7 +31,10 @@ import {
   duplicateNode,
   duplicateSelection,
   frameAround,
+  groupIntoGroup,
   groupIntoSection,
+  moveFrameContents,
+  moveFrame,
   nodeLabel,
   pruneEdgesTo,
   reframe,
@@ -41,6 +44,7 @@ import {
   removeNodes,
   renameColumn,
   renameNode,
+  reorderFrame,
   reorderColumn,
   setClosureExpression,
   setColumnFigures,
@@ -284,6 +288,51 @@ describe('document edits', () => {
       expect(grouped.frames).toHaveLength(1);
       expect(grouped.frames[0]?.position).toEqual({ x: 123, y: 456 });
       expect(grouped.nodes.every((node) => node.frameId === undefined)).toBe(true);
+    });
+  });
+
+  describe('nested group frames', () => {
+    const section = {
+      id: 'section',
+      title: 'Section',
+      position: { x: -100, y: -100 },
+      size: { width: 800, height: 400 },
+    } as const;
+
+    it('puts a group and its nodes inside the surrounding section', () => {
+      const grouped = groupIntoGroup({ ...base, frames: [section] }, new Set(['a']), { x: 999, y: 999 });
+      const group = grouped.frames.find((frame) => frame.kind === 'group');
+      expect(group?.frameId).toBe('section');
+      expect(grouped.nodes.find((node) => node.id === 'a')?.frameId).toBe(group?.id);
+      expect(grouped.nodes.find((node) => node.id === 'b')?.frameId).toBe('section');
+    });
+
+    it('moves every nested group and node with a parent frame', () => {
+      const nested = groupIntoGroup({ ...base, frames: [section] }, new Set(['a']), { x: 999, y: 999 });
+      const group = nested.frames.find((frame) => frame.kind === 'group')!;
+      const moved = moveFrameContents(nested, 'section', 20, 30);
+      expect(moved.frames.find((frame) => frame.id === group.id)?.position).toEqual({
+        x: group.position.x + 20,
+        y: group.position.y + 30,
+      });
+      expect(moved.nodes.find((node) => node.id === 'a')?.position).toEqual({ x: 20, y: 30 });
+      expect(moved.nodes.find((node) => node.id === 'b')?.position).toEqual({ x: 420, y: 30 });
+    });
+
+    it('detaches nested groups when their parent section is deleted', () => {
+      const nested = groupIntoGroup({ ...base, frames: [section] }, new Set(['a']), { x: 999, y: 999 });
+      const remaining = removeNodes(nested, new Set(['section']));
+      expect(remaining.frames).toHaveLength(1);
+      expect(remaining.frames[0]?.frameId).toBeUndefined();
+    });
+
+    it('reorders sections without turning groups into notebook entries or burying their canvas layer', () => {
+      const second = { ...section, id: 'second', title: 'Second', position: { x: 800, y: -100 } };
+      const nested = groupIntoGroup({ ...base, frames: [section, second] }, new Set(['a']), { x: 999, y: 999 });
+      const moved = moveFrame(nested, 'section', 'down');
+      expect(moved.frames.map((frame) => frame.id)).toEqual(['second', 'section', 'group']);
+      const reordered = reorderFrame(moved, 'section', 'second', 'before');
+      expect(reordered.frames.map((frame) => frame.id)).toEqual(['section', 'second', 'group']);
     });
   });
 });

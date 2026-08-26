@@ -27,7 +27,7 @@ export function FrameView({ id, selected }: NodeProps): ReactElement | null {
 
   return (
     <div
-      className={`frame${highlighted ? ' highlighted' : ''}`}
+      className={`frame ${frame.kind ?? 'section'}${hovered ? ' hovered' : ''}${selected ? ' selected' : ''}${highlighted ? ' highlighted' : ''}`}
       style={{ width: frame.size.width, height: frame.size.height }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
@@ -47,6 +47,18 @@ export function FrameView({ id, selected }: NodeProps): ReactElement | null {
           commitEdit();
         }}
       />
+      {frame.kind === 'group' ? (
+        <span className="group-frame-outline" aria-hidden="true">
+          <span className="corner top-left" />
+          <span className="corner top-right" />
+          <span className="corner bottom-left" />
+          <span className="corner bottom-right" />
+          <span className="midpoint top" />
+          <span className="midpoint right" />
+          <span className="midpoint bottom" />
+          <span className="midpoint left" />
+        </span>
+      ) : null}
       <div className="frame-title">
         <TitleField
           value={frame.title}
