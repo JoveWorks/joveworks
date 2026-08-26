@@ -1031,8 +1031,8 @@ export function reframe(document: GraphDocument): GraphDocument {
   return changed ? { ...document, nodes, frames } : document;
 }
 
-/** Move every nested group and node with its parent frame. */
-export function moveFrameContents(document: GraphDocument, frameId: string, dx: number, dy: number): GraphDocument {
+/** A frame and every nested group beneath it, including the frame itself. */
+export function frameDescendantIds(document: GraphDocument, frameId: string): ReadonlySet<string> {
   const descendants = new Set([frameId]);
   let found = true;
   while (found) {
@@ -1044,6 +1044,12 @@ export function moveFrameContents(document: GraphDocument, frameId: string, dx: 
       }
     }
   }
+  return descendants;
+}
+
+/** Move every nested group and node with its parent frame. */
+export function moveFrameContents(document: GraphDocument, frameId: string, dx: number, dy: number): GraphDocument {
+  const descendants = frameDescendantIds(document, frameId);
   return {
     ...document,
     frames: document.frames.map((frame) =>

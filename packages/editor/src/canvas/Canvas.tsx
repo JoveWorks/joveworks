@@ -63,6 +63,7 @@ import {
   duplicateNode,
   duplicateSelection,
   edgeId,
+  frameDescendantIds,
   groupIntoGroup,
   groupIntoSection,
   moveNode,
@@ -866,6 +867,27 @@ export function Canvas({
           .filter((change) => frames.has(change.id) && !collapsedGroups.has(change.id))
           .map((change) => change.id),
       );
+      // React Flow can include stale position reports for hidden or selected
+      // descendants in the same batch as a parent drag. The parent already
+      // carries that subtree in `moveFrameContents`; accepting those reports
+      // afterward would put a child straight back where it was.
+      const carriedFrames = new Set<string>();
+      const carriedNodes = new Set<string>();
+      for (const change of changes) {
+        if (
+          change.type !== 'position' ||
+          change.position === undefined ||
+          !frames.has(change.id) ||
+          resizing.has(change.id)
+        ) continue;
+        const descendants = frameDescendantIds(document, change.id);
+        for (const descendant of descendants) {
+          if (descendant !== change.id) carriedFrames.add(descendant);
+        }
+        for (const node of document.nodes) {
+          if (node.frameId !== undefined && descendants.has(node.frameId)) carriedNodes.add(node.id);
+        }
+      }
       // NodeResizer only snaps the pointer driving the dragged corner
       // (@xyflow/react's own snapGrid/snapToGrid), not the resulting box —
       // the stationary corner is wherever it already was, so width/height
@@ -876,6 +898,7 @@ export function Canvas({
         let next = current;
         for (const change of changes) {
           if (change.type === 'position' && change.position !== undefined) {
+            if (carriedFrames.has(change.id) || carriedNodes.has(change.id)) continue;
             const position =
               frames.has(change.id) && resizing.has(change.id) && snapToGrid
                 ? { x: gridSnap(change.position.x), y: gridSnap(change.position.y) }
@@ -927,7 +950,7 @@ export function Canvas({
       // `onEdgesChange`'s, for the same keypress) has fully landed.
       if (removed.size > 0) queueMicrotask(() => commitEdit());
     },
-    [collapsedGroups, document.frames, editLive, commitEdit, snapToGrid, selected],
+    [collapsedGroups, document, editLive, commitEdit, snapToGrid, selected],
   );
 
   const onEdgesChange = useCallback(

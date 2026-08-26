@@ -31,6 +31,7 @@ import {
   duplicateNode,
   duplicateSelection,
   frameAround,
+  frameDescendantIds,
   groupIntoGroup,
   groupIntoSection,
   moveFrameContents,
@@ -317,6 +318,7 @@ describe('document edits', () => {
       });
       expect(moved.nodes.find((node) => node.id === 'a')?.position).toEqual({ x: 20, y: 30 });
       expect(moved.nodes.find((node) => node.id === 'b')?.position).toEqual({ x: 420, y: 30 });
+      expect(frameDescendantIds(nested, 'section')).toEqual(new Set(['section', group.id]));
     });
 
     it('detaches nested groups when their parent section is deleted', () => {
