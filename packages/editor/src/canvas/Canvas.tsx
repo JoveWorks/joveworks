@@ -81,6 +81,13 @@ import type { NodeSizes } from '../model/node-sizes';
 import { primaryModifierLabel } from '../model/platform';
 import { fuzzySearch } from '../model/fuzzy';
 import { alignSelection, arrangeSelection, spaceSelectionEvenly } from '../model/selection-layout';
+import {
+  collapsedGroupForNode,
+  collapsedGroupSize,
+  groupPortHandle,
+  groupPorts,
+  hiddenByCollapsedGroups,
+} from '../model/collapsedGroups';
 import { BundleEdge } from './BundleEdge';
 import { CanvasFind } from './CanvasFind';
 import { ClosureNodeView } from './ClosureNodeView';
@@ -473,6 +480,8 @@ export function Canvas({
     commitEdit,
     expanded,
     toggleExpanded,
+    collapsedGroups,
+    toggleGroupCollapsed,
     selected,
     setSelected,
     setMarqueeActive,
@@ -705,6 +714,12 @@ export function Canvas({
           .sort((a, b) => b.size.width * b.size.height - a.size.width * a.size.height)
           .map((frame, index) => [frame.id, -document.frames.length + index] as const),
       );
+      const hidden = hiddenByCollapsedGroups(document, collapsedGroups);
+      const portsByGroup = new Map(
+        document.frames
+          .filter((frame) => frame.kind === 'group' && collapsedGroups.has(frame.id))
+          .map((frame) => [frame.id, groupPorts(document, frame.id)] as const),
+      );
       return [
         ...document.frames.map((frame) => ({
           id: frame.id,
@@ -716,7 +731,12 @@ export function Canvas({
           // Frames sit behind the nodes they group, and a click on one must not
           // steal the node on top of it.
           zIndex: frameLayer.get(frame.id) ?? -document.frames.length,
-          style: { width: frame.size.width, height: frame.size.height },
+          ...(hidden.has(frame.id) ? { hidden: true } : {}),
+          style: (() => {
+            const ports = portsByGroup.get(frame.id);
+            const size = ports === undefined ? frame.size : collapsedGroupSize(ports);
+            return { width: size.width, height: size.height };
+          })(),
         })),
         ...document.nodes.map((node) => {
           const className = nodeClasses([
@@ -735,12 +755,13 @@ export function Canvas({
             data,
             selected: selected.has(node.id),
             ...(className === undefined ? {} : { className }),
+            ...(hidden.has(node.id) ? { hidden: true } : {}),
             ...sizeOf(measured, node.id),
           };
         }),
       ];
     },
-    [connectedNodeIds, document, highlightedPorts, matchedNodeIds, measured, rejectedEndpointIds, selected],
+    [collapsedGroups, connectedNodeIds, document, highlightedPorts, matchedNodeIds, measured, rejectedEndpointIds, selected],
   );
 
   const edges = useMemo<FlowEdge[]>(() => {
@@ -749,16 +770,23 @@ export function Canvas({
     // same slot FormulaNodeView assigned it: position among edges sharing this
     // (node, port), in document order, which is exactly how that view counts.
     const slotOf = new Map<string, number>();
-    return document.edges.map((edge) => {
+    return document.edges.flatMap((edge) => {
       const key = `${edge.to.node}.${edge.to.port}`;
       const slot = slotOf.get(key) ?? 0;
       slotOf.set(key, slot + 1);
+      const sourceGroup = collapsedGroupForNode(document, collapsedGroups, edge.from.node);
+      const targetGroup = collapsedGroupForNode(document, collapsedGroups, edge.to.node);
+      if (sourceGroup !== undefined && sourceGroup === targetGroup) return [];
       return {
         id: edge.id,
-        source: edge.from.node,
-        sourceHandle: edge.from.port,
-        target: edge.to.node,
-        targetHandle: slotHandleId(edge.to.port, slot),
+        source: sourceGroup ?? edge.from.node,
+        sourceHandle: sourceGroup === undefined
+          ? edge.from.port
+          : groupPortHandle('output', { nodeId: edge.from.node, port: edge.from.port, label: '' }),
+        target: targetGroup ?? edge.to.node,
+        targetHandle: targetGroup === undefined
+          ? slotHandleId(edge.to.port, slot)
+          : groupPortHandle('input', { nodeId: edge.to.node, port: edge.to.port, label: '' }),
         ...(document.nodes.find((node) => node.id === edge.from.node)?.kind === 'pack' && edge.from.port === 'bundle'
           ? { type: 'bundle' }
           : {}),
@@ -768,7 +796,7 @@ export function Canvas({
           : {}),
       };
     });
-  }, [document, hoveredEdgeId, hoveredPortEdges, selected]);
+  }, [collapsedGroups, document, hoveredEdgeId, hoveredPortEdges, selected]);
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
@@ -835,7 +863,7 @@ export function Canvas({
       const resizing = new Set(
         changes
           .filter((change) => change.type === 'dimensions')
-          .filter((change) => frames.has(change.id))
+          .filter((change) => frames.has(change.id) && !collapsedGroups.has(change.id))
           .map((change) => change.id),
       );
       // NodeResizer only snaps the pointer driving the dragged corner
@@ -875,7 +903,12 @@ export function Canvas({
           // which is measured, never authored) — NodeResizer reports it the
           // same way a drag reports position, live change by live change, so
           // this is the only way the resize preview is not frozen until drop.
-          if (change.type === 'dimensions' && change.dimensions !== undefined && frames.has(change.id)) {
+          if (
+            change.type === 'dimensions' &&
+            change.dimensions !== undefined &&
+            frames.has(change.id) &&
+            !collapsedGroups.has(change.id)
+          ) {
             const dimensions = snapToGrid
               ? { width: gridSnap(change.dimensions.width), height: gridSnap(change.dimensions.height) }
               : change.dimensions;
@@ -894,7 +927,7 @@ export function Canvas({
       // `onEdgesChange`'s, for the same keypress) has fully landed.
       if (removed.size > 0) queueMicrotask(() => commitEdit());
     },
-    [document.frames, editLive, commitEdit, snapToGrid, selected],
+    [collapsedGroups, document.frames, editLive, commitEdit, snapToGrid, selected],
   );
 
   const onEdgesChange = useCallback(
@@ -1124,6 +1157,10 @@ export function Canvas({
       const { id } = target;
       const frame = document.frames.find((candidate) => candidate.id === id);
       return [
+        ...(frame?.kind === 'group' ? [{
+          label: t(collapsedGroups.has(id) ? 'Expand group' : 'Collapse group'),
+          onClick: () => toggleGroupCollapsed(id),
+        }] : []),
         {
           label: t(frame?.kind === 'group' ? 'Delete group' : 'Delete section'),
           danger: true,

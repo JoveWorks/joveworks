@@ -2287,6 +2287,55 @@ aside.right {
   font-style: italic;
 }
 
+.frame.group.collapsed {
+  border: 1px solid var(--group-line);
+  background: color-mix(in srgb, var(--hover-bg) 28%, transparent);
+}
+
+.frame.group.collapsed .group-frame-outline { display: none; }
+
+.frame-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.frame-title .title {
+  flex: 1;
+  min-width: 0;
+}
+
+.group-collapse {
+  flex: none;
+  border: 0;
+  padding: 0 2px;
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+}
+
+.collapsed-group-ports {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: 24px;
+  font-size: 10px;
+}
+
+.collapsed-group-port-list { min-width: 0; }
+.collapsed-group-port-list.outputs { text-align: right; }
+
+.collapsed-group-port {
+  height: 24px;
+  padding: 4px 10px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  box-sizing: border-box;
+}
+
+.collapsed-group-port.output { padding-left: 4px; }
+
 .group-frame-outline {
   position: absolute;
   inset: -1px;

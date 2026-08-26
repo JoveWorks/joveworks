@@ -38,7 +38,7 @@ const DUTCH_PHRASES: Readonly<Record<string, string>> = {
   'Clearance-fit stack-up': 'Speling-stapeling', 'Belt lab': 'Riemlaboratorium', 'Cantilever — hollow sections': 'Uitkraging — holle profielen',
   'Pocket milling — power envelope': 'Pockets frezen — vermogensbereik',
   'Hide canvas controls': 'Canvasknoppen verbergen', 'Show canvas controls': 'Canvasknoppen tonen',
-  'Move up': 'Omhoog verplaatsen', 'Move down': 'Omlaag verplaatsen', 'Delete section': 'Sectie verwijderen', 'Delete group': 'Groep verwijderen',
+  'Move up': 'Omhoog verplaatsen', 'Move down': 'Omlaag verplaatsen', 'Delete section': 'Sectie verwijderen', 'Delete group': 'Groep verwijderen', 'Collapse group': 'Groep samenvouwen', 'Expand group': 'Groep uitvouwen',
   'Not in a section': 'Niet in een sectie', 'Worth a look': 'Even nakijken',
   'Click to edit the raw text': 'Klik om de onbewerkte tekst te bewerken',
   'what this section establishes': 'wat deze sectie vastlegt',
