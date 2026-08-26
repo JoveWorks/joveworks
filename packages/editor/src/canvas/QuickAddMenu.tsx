@@ -199,6 +199,7 @@ export function QuickAddMenu({
       // id, never by wire), unlike `sensitivity`, which has a `VALUE_PORT`
       // like print/check/plot.
       { label: t('sensitivity output'), choice: { kind: 'output', outputKind: 'sensitivity' } },
+      { label: t('assumption stress output'), choice: { kind: 'output', outputKind: 'stress' } },
       // Unlike `feasibility`, this one *does* have a wire to complete — the
       // objective it ranks candidates by.
       { label: t('best design output'), choice: { kind: 'output', outputKind: 'bestDesign' } },

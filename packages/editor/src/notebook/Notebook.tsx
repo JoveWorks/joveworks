@@ -77,6 +77,7 @@ import { CandidateReadings } from './CandidateReadings';
 import { ParetoFigure } from './ParetoFigure';
 import { PlotFigure, plotGrid } from './PlotFigure';
 import { SensitivityFigure } from './SensitivityFigure';
+import { StressFigure } from './StressFigure';
 import { DistributionFigure } from './DistributionFigure';
 import { ReliabilityCard } from './ReliabilityCard';
 import { NotebookSliderControl } from './NotebookSliderControl';
@@ -433,6 +434,18 @@ function Result({ result, node }: { readonly result: OutputResult; readonly node
           <OutputTitle node={node} />
         </span>
         <SensitivityFigure result={result} />
+      </div>
+    );
+  }
+
+  if (result.kind === 'stress') {
+    const checkLabels = Object.fromEntries(
+      result.checks.map((id) => [id, document.nodes.find((candidate) => candidate.id === id)?.label ?? id]),
+    );
+    return (
+      <div className="result plot">
+        <span className="label"><OutputTitle node={node} /></span>
+        <StressFigure result={result} document={document} readouts={readouts} checkLabels={checkLabels} format={format} />
       </div>
     );
   }

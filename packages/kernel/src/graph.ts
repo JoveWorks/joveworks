@@ -280,6 +280,9 @@ export function outputPortNames(node: GraphNode): readonly string[] {
   // A Feasibility output references existing Check nodes by id rather than
   // taking a wire — it is the one output kind with zero ports.
   if (node.output.kind === 'feasibility' || node.output.kind === 'reliability') return [];
+  // Stress references existing checks, and its one wire identifies the
+  // deterministic range that challenges the marked design.
+  if (node.output.kind === 'stress') return [ALONG_PORT];
   // A Best Design output references its checks the same way, and takes one
   // wire for the quantity being optimised. Named `objective` rather than
   // `value` because that is what it is: the thing ranked, not the thing shown.

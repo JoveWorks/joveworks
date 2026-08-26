@@ -33,6 +33,7 @@ import { marksOver, readOnlyMarking, type FigureMarking, type MarkIndex } from '
 import { ParetoFigure } from '../notebook/ParetoFigure';
 import { PlotFigure, plotGrid } from '../notebook/PlotFigure';
 import { SensitivityFigure } from '../notebook/SensitivityFigure';
+import { StressFigure } from '../notebook/StressFigure';
 import { DistributionFigure } from '../notebook/DistributionFigure';
 import { ReliabilityCard } from '../notebook/ReliabilityCard';
 import { SettingsContext, type SettingsContextValue } from '../settings-context';
@@ -187,6 +188,13 @@ function Result({
         <SensitivityFigure result={result} />
       </div>
     );
+  }
+
+  if (result.kind === 'stress') {
+    const checkLabels = Object.fromEntries(
+      result.checks.map((id) => [id, document.nodes.find((candidate) => candidate.id === id)?.label ?? id]),
+    );
+    return <div className="viewer-result viewer-plot"><strong>{title}</strong><StressFigure result={result} document={document} readouts={readouts} checkLabels={checkLabels} format={format} /></div>;
   }
 
   if (result.kind === 'bestDesign') {

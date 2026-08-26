@@ -831,6 +831,26 @@ measuring more carefully; a narrow bar for material strength but a wide
 one for fillet radius says the stress concentration, not the material
 choice, is what's actually driving the design's margin.
 
+### Assumption Stress
+
+Use this after selecting a design when the question is **how much room the
+assumption has**, not which input matters most. Wire one deterministic,
+monotonic range to **`along`** and select the existing Check nodes it should
+watch. The range's first point is the authored assumption; its later points
+challenge that assumption in order.
+
+For a marked design, the NodeBook overlays every one-sided Check as a
+normalised margin. Zero is failure, so a safety factor check `S ≥ 1.5` and a
+deflection check `δ ≤ 3 mm` can share one picture even though their raw units
+are different. The table keeps the raw readings visible: authored value,
+tested-end value, and the first failure coordinate.
+
+Sweep a load factor from 1.20 to 1.80, mark the diameter you chose, and the
+report can say “candidate A reaches the deflection limit at 1.46.” This is a
+deterministic robustness statement, not a failure probability. For the short
+comparison with Sensitivity, Best Design, and Reliability, see
+[Analysis](./analysis.md).
+
 ### Distribution
 
 A report-stable histogram or empirical cumulative distribution function

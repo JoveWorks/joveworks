@@ -47,6 +47,34 @@
   color-scheme: light;
 }
 
+.stress-report {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.stress-design + .stress-design {
+  border-top: 1px solid var(--border, #d7d7d7);
+  padding-top: 0.75rem;
+}
+
+.stress-headline,
+.stress-empty {
+  margin: 0.25rem 0;
+}
+
+.stress-summary {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9em;
+}
+
+.stress-summary th,
+.stress-summary td {
+  border-bottom: 1px solid var(--border, #d7d7d7);
+  padding: 0.28rem 0.4rem;
+  text-align: left;
+}
+
 /* Dark values follow the OS preference unless the user has explicitly chosen
    light (view menu); duplicated below rather than deduped, since this file
    has no build step to do that mechanically — keep the two blocks adjacent. */
