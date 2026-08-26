@@ -2273,8 +2273,17 @@ aside.right {
 .frame.group {
   --group-line: color-mix(in srgb, var(--muted) 72%, transparent);
   position: relative;
+  /* A nested group's empty interior must not cover its parent's title and
+   * collapse control. Its actual controls opt back in below. */
+  pointer-events: none;
   border-color: transparent;
   background-color: color-mix(in srgb, var(--hover-bg) 18%, transparent);
+}
+
+.frame.group .frame-title,
+.frame.group .react-flow__resize-control,
+.frame.group .collapsed-group-ports {
+  pointer-events: auto;
 }
 
 .frame.group.hovered,
