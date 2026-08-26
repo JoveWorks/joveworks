@@ -34,6 +34,7 @@ import {
   Y_PORT,
   THRESHOLD_PORT,
   VALUE_PORT,
+  ALONG_PORT,
   axes as documentAxes,
   localize,
   type Comparison,
@@ -239,6 +240,11 @@ function Verdict({ nodeId }: { readonly nodeId: string }): ReactElement | null {
     return <span className="badge plot">{top === undefined ? 'no candidates' : `top driver: ${top.label}`}</span>;
   }
 
+  if (result.kind === 'stress') {
+    const rankable = result.traces.filter((trace) => trace.rankable).length;
+    return <span className="badge plot">{rankable} margin trace{rankable === 1 ? '' : 's'}</span>;
+  }
+
   if (result.kind === 'pareto') {
     if (result.feasibleCount === 0) return <span className="badge fail">nothing feasible</span>;
     return (
@@ -319,6 +325,8 @@ export function OutputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>
         ? []
         : output.kind === 'reliability'
           ? []
+          : output.kind === 'stress'
+            ? [ALONG_PORT]
         : output.kind === 'bestDesign'
           ? [OBJECTIVE_PORT]
           : output.kind === 'pareto'
@@ -375,6 +383,7 @@ export function OutputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>
               <option value="equation">equation</option>
               <option value="feasibility">feasibility</option>
               <option value="sensitivity">sensitivity</option>
+              <option value="stress">assumption stress</option>
               <option value="bestDesign">best design</option>
               <option value="pareto">pareto</option>
               <option value="distribution">distribution</option>
@@ -491,6 +500,16 @@ export function OutputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>
                 </label>
               )}
             </>
+          ) : null}
+
+          {output.kind === 'stress' ? (
+            <CheckPicker
+              checkNodes={checkNodes}
+              checks={output.checks}
+              hovered={hovered}
+              setHovered={setHovered}
+              onChange={(checks) => setOutput({ ...output, checks })}
+            />
           ) : null}
 
           {output.kind === 'bestDesign' ? (
@@ -857,6 +876,7 @@ export function OutputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>
         ) : output.kind === 'table' ||
           output.kind === 'feasibility' ||
           output.kind === 'sensitivity' ||
+          output.kind === 'stress' ||
           output.kind === 'bestDesign' ||
           output.kind === 'reliability' ? null : (
           <>

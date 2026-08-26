@@ -244,6 +244,18 @@ export interface SensitivityOutput {
 }
 
 /**
+ * Challenge one explicit, deterministic assumption and show how a marked
+ * design's existing checks lose margin along it. `along` is a port rather
+ * than an axis id for the same reason it is on Select and Statistic: the
+ * wire makes both the studied coordinate and its unit unambiguous.
+ */
+export interface StressOutput {
+  readonly kind: 'stress';
+  /** Existing Check outputs — never retype the limits being stress-tested. */
+  readonly checks: readonly string[];
+}
+
+/**
  * The decision card: among the points where every referenced check passes,
  * the one where a wired objective is smallest (or largest) — and which check
  * is the reason it cannot go further.
@@ -329,6 +341,7 @@ export type Output =
   | EquationOutput
   | FeasibilityOutput
   | SensitivityOutput
+  | StressOutput
   | BestDesignOutput
   | ParetoOutput
   | DistributionOutput
@@ -342,6 +355,7 @@ export const OUTPUT_KINDS = [
   'equation',
   'feasibility',
   'sensitivity',
+  'stress',
   'bestDesign',
   'pareto',
   'distribution',
@@ -936,6 +950,12 @@ function parseOutput(value: JsonValue, path: string): Output {
     case 'sensitivity':
       return { kind };
 
+    case 'stress':
+      return {
+        kind,
+        checks: readStringArray(required(object, 'checks', path), join(path, 'checks')),
+      };
+
     case 'bestDesign':
       // An empty `checks` is an unconstrained min/max, allowed for the same
       // reason `feasibility`'s is: a node dropped from the palette has not
@@ -1036,6 +1056,8 @@ function serializeOutput(output: Output): JsonObject {
       };
     case 'sensitivity':
       return { kind: output.kind };
+    case 'stress':
+      return { kind: output.kind, checks: [...output.checks] };
     case 'bestDesign':
       return { kind: output.kind, checks: [...output.checks], direction: output.direction };
     case 'pareto':

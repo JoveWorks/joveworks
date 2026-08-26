@@ -20,6 +20,7 @@ export default defineConfig({
         items: [
           { text: "What this is", link: "/guide/getting-started" },
           { text: "Sweeps", link: "/guide/sweeps" },
+          { text: "Analysis", link: "/guide/analysis" },
           { text: "Candidates and marks", link: "/guide/candidates" },
           { text: "Reliability studies", link: "/guide/reliability" },
           { text: "Units", link: "/guide/units" },

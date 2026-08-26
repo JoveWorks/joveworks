@@ -169,7 +169,7 @@ function quadraticRoot(
 }
 
 /** Every crossing along one column, interpolated, in `along` order. */
-function crossingsAlong(
+export function crossingsAlong(
   values: readonly number[],
   coordinates: readonly number[],
   threshold: number,

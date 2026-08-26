@@ -333,3 +333,14 @@ so every feasible point sits on the front and the chart teaches nothing — that
 study is constrained single-objective, which is Best Design's shape. The
 cantilever gained a wall-thickness axis and an area-as-mass proxy instead, and
 has a real front; milling keeps only a mark on its chosen operating point.
+
+**57. Feature: Assumption Stress reports.** Shipped: an explicit deterministic
+range wired to `along` challenges a marked design while every other axis stays
+fixed as its design identity. Existing Checks become normalised margin traces
+with their raw readings retained in the NodeBook table; the report names the
+first failure and warns when a crossing is too coarse or a check later recovers.
+The range's first point is the authored assumption. A short student-facing
+Analysis guide now distinguishes this from Sensitivity, Best Design, and
+Reliability. Deliberately deferred: two-dimensional decision maps, automatic
+perturbation of scalar inputs, and reselecting Best Design at each challenge
+point.

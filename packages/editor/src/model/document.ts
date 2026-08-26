@@ -687,6 +687,8 @@ export function defaultOutput(kind: OutputKind, contextUnit?: Unit): Output {
       return { kind, checks: [] };
     case 'sensitivity':
       return { kind };
+    case 'stress':
+      return { kind, checks: [] };
     case 'bestDesign':
       // Minimising is the default because the usual first question is "how
       // little material gets me there?" — the direction is one click away.
@@ -753,6 +755,7 @@ export function changeOutputKind(document: GraphDocument, nodeId: string, next: 
   if (
     next.kind === 'feasibility' ||
     next.kind === 'reliability' ||
+    next.kind === 'stress' ||
     next.kind === 'bestDesign' ||
     next.kind === 'pareto'
   ) {
@@ -760,7 +763,13 @@ export function changeOutputKind(document: GraphDocument, nodeId: string, next: 
     // the quantity the student was already looking at, and making them redraw it
     // to see it traded against something else is friction for nothing.
     const adopted =
-      next.kind === 'pareto' && current.kind !== 'bestDesign'
+      next.kind === 'stress' && current.kind === 'bestDesign'
+        ? renamePortEdges(document, nodeId, OBJECTIVE_PORT, ALONG_PORT)
+        : next.kind === 'stress'
+          ? renamePortEdges(document, nodeId, VALUE_PORT, ALONG_PORT)
+        : next.kind === 'bestDesign' && current.kind === 'stress'
+          ? renamePortEdges(document, nodeId, ALONG_PORT, OBJECTIVE_PORT)
+        : next.kind === 'pareto' && current.kind !== 'bestDesign'
         ? renamePortEdges(document, nodeId, VALUE_PORT, X_PORT)
         : next.kind === 'pareto'
           ? renamePortEdges(document, nodeId, OBJECTIVE_PORT, X_PORT)
@@ -768,6 +777,8 @@ export function changeOutputKind(document: GraphDocument, nodeId: string, next: 
     const keep =
       next.kind === 'bestDesign'
         ? new Set([OBJECTIVE_PORT])
+        : next.kind === 'stress'
+          ? new Set([ALONG_PORT])
         : next.kind === 'pareto'
           ? new Set([X_PORT, Y_PORT])
           : new Set<string>();
@@ -786,6 +797,11 @@ export function changeOutputKind(document: GraphDocument, nodeId: string, next: 
     // Coming back the other way: the objective is the value the new kind
     // would show, so adopt the wire rather than making it be redrawn.
     const adopted = renamePortEdges(document, nodeId, OBJECTIVE_PORT, VALUE_PORT);
+    return updateNode<OutputNode>(adopted, nodeId, (entry) => ({ ...entry, output: next }));
+  }
+
+  if (current.kind === 'stress') {
+    const adopted = renamePortEdges(document, nodeId, ALONG_PORT, VALUE_PORT);
     return updateNode<OutputNode>(adopted, nodeId, (entry) => ({ ...entry, output: next }));
   }
 

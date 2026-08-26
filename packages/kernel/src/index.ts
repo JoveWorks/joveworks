@@ -153,6 +153,8 @@ export type {
   PlotAxis,
   PlotResult,
   SensitivityResult,
+  StressResult,
+  StressTrace,
   TableColumnResult,
   TableResult,
   PrintResult,

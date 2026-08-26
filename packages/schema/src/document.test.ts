@@ -335,6 +335,17 @@ describe('round-tripping (the verification docs/PLAN.md asks for)', () => {
     expect(serializeDocument(document)).toEqual(withFeasibility);
   });
 
+  it('round-trips an Assumption Stress output and its referenced checks', () => {
+    const withStress = {
+      ...study,
+      nodes: [
+        ...(study['nodes'] as JsonObject[]),
+        { kind: 'output', id: 'o-stress', position: { x: 0, y: 0 }, output: { kind: 'stress', checks: ['o-check'] } },
+      ],
+    };
+    expect(serializeDocument(parseDocument(withStress))).toEqual(withStress);
+  });
+
   it('round-trips a Best Design output, in both directions and with no checks at all', () => {
     // `checks: []` is legal here for a different reason than on a
     // Feasibility node: an unconstrained min or max is a real thing to ask

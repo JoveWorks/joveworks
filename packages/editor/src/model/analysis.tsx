@@ -427,6 +427,7 @@ function readiness(
     // has been decided.
     if (
       node.output.kind === 'feasibility' ||
+      node.output.kind === 'stress' ||
       node.output.kind === 'bestDesign' ||
       node.output.kind === 'pareto' ||
       node.output.kind === 'reliability'
@@ -498,6 +499,24 @@ function readiness(
         ![X_PORT, Y_PORT].every((port) => upstreamReady(node.id, port)) ||
         !output.checks.every((id) => ready.has(id))
       ) {
+        states.set(node.id, 'blocked');
+        continue;
+      }
+      ready.add(node.id);
+      continue;
+    }
+    if (output.kind === 'stress') {
+      if (!isWired(node.id, ALONG_PORT)) {
+        states.set(node.id, 'incomplete');
+        problems.set(node.id, notConnected([ALONG_PORT]));
+        continue;
+      }
+      if (output.checks.length === 0) {
+        states.set(node.id, 'incomplete');
+        problems.set(node.id, 'choose at least one check');
+        continue;
+      }
+      if (!upstreamReady(node.id, ALONG_PORT) || !output.checks.every((id) => ready.has(id))) {
         states.set(node.id, 'blocked');
         continue;
       }
