@@ -32,7 +32,8 @@ constraint at once, and look at the result as a graph.
    below — this is the part that matters.
 7. **Group related nodes into titled frames.** Section frames become the
    sections of your report; lighter grouping frames annotate and organise the
-   canvas without adding a heading, and can nest inside sections or each other.
+   canvas without adding a heading, can nest inside sections or each other,
+   and collapse into a compact view of their incoming and outgoing wires.
 8. **Export the notebook** — prose, values, checks and plots in reading order —
    as the thing you hand in. The graph itself saves separately, and autosaves.
 

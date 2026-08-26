@@ -12,7 +12,7 @@
  * the only way connect time and evaluation time cannot drift apart.
  */
 
-import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { ReactFlowProvider, useReactFlow } from '@xyflow/react';
 
 import {
@@ -55,6 +55,7 @@ import {
 import { analyse } from './model/analysis';
 import { arrayCatalogue, bundledCatalogues, baseCatalogue, lockedCatalogues, mechanicsCatalogue, withCatalogue } from './model/catalogues';
 import { groupIntoGroup, groupIntoSection } from './model/document';
+import { edgeTouchesHiddenNode, hiddenByCollapsedGroups } from './model/collapsedGroups';
 import { autoArrange } from './model/layout';
 import type { NodeSizes } from './model/node-sizes';
 import {
@@ -345,6 +346,7 @@ function AppShell(): ReactElement {
     lastInstrumentedDocument.current = next;
     setHistory(initHistory(next));
     setSavedSnapshot(saveDocument(next));
+    setCollapsedGroups(new Set());
     setFitRequest((current) => current + 1);
   };
   const openExample = (id: ExampleId): void => {
@@ -382,6 +384,7 @@ function AppShell(): ReactElement {
     else action();
   };
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
+  const [collapsedGroups, setCollapsedGroups] = useState<ReadonlySet<string>>(new Set());
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [hovered, setHovered] = useState<ReadonlySet<string>>(new Set());
   const [hoveredCandidate, setHoveredCandidate] = useState<Candidate | undefined>(undefined);
@@ -619,6 +622,23 @@ function AppShell(): ReactElement {
   const { playback: monteCarloPlayback, togglePlayback, stepPlayback, resetPlayback } =
     useMonteCarloPlayback(document);
 
+  const toggleGroupCollapsed = useCallback((id: string): void => {
+    const next = new Set(collapsedGroups);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setCollapsedGroups(next);
+    const hidden = hiddenByCollapsedGroups(document, next);
+    setSelected((current) =>
+      new Set(
+        [...current].filter((selectedId) => {
+          if (hidden.has(selectedId)) return false;
+          const edge = document.edges.find((candidate) => candidate.id === selectedId);
+          return edge === undefined || !edgeTouchesHiddenNode(edge, hidden);
+        }),
+      ),
+    );
+  }, [collapsedGroups, document]);
+
   /**
    * A student enters a password, once, for a catalogue that shipped with the
    * app locked. Success loads it exactly like a file dropped through the
@@ -669,7 +689,9 @@ function AppShell(): ReactElement {
           if (next.has(id)) next.delete(id);
           else next.add(id);
           return next;
-        }),
+      }),
+      collapsedGroups,
+      toggleGroupCollapsed,
       selected,
       setSelected,
       hovered,
@@ -690,6 +712,8 @@ function AppShell(): ReactElement {
       document,
       userEquations,
       expanded,
+      collapsedGroups,
+      toggleGroupCollapsed,
       selected,
       hovered,
       hoveredCandidate,
