@@ -136,13 +136,19 @@ import { useResizableWidth } from './useResizableWidth';
 import { phrase, ui } from './i18n';
 import { CourseMaterialViewer } from './viewer/CourseMaterialViewer';
 import { ConnectCourseDialog } from './course/ConnectCourseDialog';
+import { WorkspaceDialog } from './course/WorkspaceDialog';
 import {
   connectCourse,
+  createWorkspace,
   loadCatalogue as loadHubCatalogue,
   loadPublication as loadHubPublication,
+  loadWorkspace,
+  saveWorkspace,
   type HubCourse,
+  type HubWorkspace,
 } from './model/hub';
 import { loadCourseSources, saveCourseSources, withCourseSource } from './model/courseSources';
+import { loadWorkspaceEditToken, saveWorkspaceEditToken } from './model/workspaceAccess';
 
 /**
  * The base catalogue, the array-node catalogue, the bundled public
@@ -426,6 +432,8 @@ function AppShell(): ReactElement {
   const [showSettings, setShowSettings] = useState(false);
   const [showUnlockCatalogue, setShowUnlockCatalogue] = useState(false);
   const [showConnectCourse, setShowConnectCourse] = useState(false);
+  const [workspaceDialog, setWorkspaceDialog] = useState<'save' | 'open' | undefined>();
+  const [hubWorkspace, setHubWorkspace] = useState<HubWorkspace | undefined>();
 
   useEffect(() => {
     window.document.title = `JoveWorks | ${document.title}`;
@@ -529,6 +537,43 @@ function AppShell(): ReactElement {
     } catch (error) {
       pushNotice(`Could not open course material: ${messageOf(error)}`);
     }
+  };
+
+  const saveNewHubWorkspace = async (hubAddress: string): Promise<void> => {
+    const draft = { title: documentRef.current.title, document: documentRef.current };
+    const created = await createWorkspace(hubAddress, draft);
+    saveWorkspaceEditToken(created.workspace.hubUrl, created.workspace.id, created.editToken);
+    setHubWorkspace(created.workspace);
+    const text = saveDocument(documentRef.current);
+    recordRecentDocument(documentRef.current);
+    clearAutosaveSnapshot();
+    setSavedSnapshot(text);
+    pushNotice(`Saved to Hub workspace ${created.workspace.id}.`);
+  };
+
+  const saveToHub = async (): Promise<void> => {
+    if (hubWorkspace === undefined) throw new Error('Choose a Hub before saving this workspace.');
+    const draft = { title: documentRef.current.title, document: documentRef.current };
+    const token = loadWorkspaceEditToken(hubWorkspace.hubUrl, hubWorkspace.id);
+    if (token === undefined) {
+      throw new Error('This shared workspace is read-only in this browser. Choose “Save a copy to Hub…” to make your own.');
+    }
+    const saved = await saveWorkspace(hubWorkspace, draft, token);
+    setHubWorkspace(saved);
+    const text = saveDocument(documentRef.current);
+    recordRecentDocument(documentRef.current);
+    clearAutosaveSnapshot();
+    setSavedSnapshot(text);
+    pushNotice(`Saved to Hub workspace ${saved.id}.`);
+  };
+
+  const openHubWorkspace = async (hubAddress: string, workspaceId: string): Promise<void> => {
+    const workspace = await loadWorkspace(hubAddress, workspaceId.trim());
+    setHubWorkspace(workspace);
+    resetDocument(workspace.document);
+    recordRecentDocument(workspace.document);
+    clearAutosaveSnapshot();
+    pushNotice(`Opened ${workspace.title} from Hub workspace ${workspace.id}.`);
   };
 
   // A ref rather than a `document` dependency: restarting the interval on
@@ -877,6 +922,9 @@ function AppShell(): ReactElement {
     { label: t('New'), onClick: () => guardDiscard(newDocument) },
     { label: t('Open…'), onClick: () => guardDiscard(() => void openDocumentFile()) },
     { label: t('Save'), onClick: saveToFile },
+    { label: hubWorkspace === undefined ? t('Save to Hub…') : t('Save to Hub'), onClick: () => hubWorkspace === undefined ? setWorkspaceDialog('save') : void saveToHub().catch((error) => pushNotice(messageOf(error))) },
+    { label: t('Save a copy to Hub…'), onClick: () => setWorkspaceDialog('save') },
+    { label: t('Open Hub workspace…'), onClick: () => guardDiscard(() => setWorkspaceDialog('open')) },
     { heading: t('Recent') },
     ...(recentDocuments.length === 0
       ? [{ label: t('No recent documents'), disabled: true, onClick: () => undefined }]
@@ -1196,6 +1244,22 @@ function AppShell(): ReactElement {
             />
           )}
           {showConnectCourse ? <ConnectCourseDialog onConnect={connectToCourse} onClose={() => setShowConnectCourse(false)} /> : null}
+          {workspaceDialog === 'save' ? (
+            <WorkspaceDialog
+              kind="save"
+              initialHubUrl={hubWorkspace?.hubUrl ?? courseSources[0]?.hubUrl ?? ''}
+              onSubmit={saveNewHubWorkspace}
+              onClose={() => setWorkspaceDialog(undefined)}
+            />
+          ) : null}
+          {workspaceDialog === 'open' ? (
+            <WorkspaceDialog
+              kind="open"
+              initialHubUrl={hubWorkspace?.hubUrl ?? courseSources[0]?.hubUrl ?? ''}
+              onSubmit={openHubWorkspace}
+              onClose={() => setWorkspaceDialog(undefined)}
+            />
+          ) : null}
 
           <main>
             {/* Overlays the workspace instead of sitting in normal flow, so

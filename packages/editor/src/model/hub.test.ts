@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { emptyDocument, serializeDocument } from '@joveworks/schema';
 
-import { connectCourse, hubUrl, loadCatalogue, loadPublication } from './hub';
+import { connectCourse, createWorkspace, hubUrl, loadCatalogue, loadPublication, loadWorkspace, saveWorkspace } from './hub';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -69,5 +70,32 @@ describe('Hub API transport', () => {
     expect(fetch).toHaveBeenNthCalledWith(2, 'http://localhost:8080/api/v1/catalogues/course-catalogue/3', {
       headers: { 'X-JoveWorks-Course-Token': 'course-token' },
     });
+  });
+
+  it('creates, saves, and loads an editable workspace without putting its edit token in the URL', async () => {
+    const initial = emptyDocument('student-study', 'Student study');
+    const changed = { ...initial, title: 'Student study — revised' };
+    const saved = { id: 'Ab12Cd34Ef56', title: changed.title, document: serializeDocument(changed), updatedAt: '2026-08-27 12:00:00' };
+    const fetch = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: 'Ab12Cd34Ef56', editToken: 'edit-capability' })))
+      .mockResolvedValueOnce(new Response(JSON.stringify(saved)))
+      .mockResolvedValueOnce(new Response(JSON.stringify(saved)));
+    vi.stubGlobal('fetch', fetch);
+
+    const created = await createWorkspace('http://localhost:8080', { title: initial.title, document: initial });
+    expect(created.workspace).toMatchObject({ hubUrl: 'http://localhost:8080', id: 'Ab12Cd34Ef56', title: 'Student study' });
+    expect(created.editToken).toBe('edit-capability');
+
+    await expect(saveWorkspace(created.workspace, { title: changed.title, document: changed }, created.editToken)).resolves.toMatchObject({
+      id: 'Ab12Cd34Ef56', title: 'Student study — revised',
+    });
+    await expect(loadWorkspace('http://localhost:8080', 'Ab12Cd34Ef56')).resolves.toMatchObject({
+      id: 'Ab12Cd34Ef56', title: 'Student study — revised',
+    });
+    expect(fetch).toHaveBeenNthCalledWith(1, 'http://localhost:8080/api/v1/workspaces', expect.objectContaining({ method: 'POST' }));
+    expect(fetch).toHaveBeenNthCalledWith(2, 'http://localhost:8080/api/v1/workspaces/Ab12Cd34Ef56', expect.objectContaining({
+      method: 'PUT', headers: expect.objectContaining({ 'X-JoveWorks-Workspace-Token': 'edit-capability' }),
+    }));
+    expect(fetch).toHaveBeenNthCalledWith(3, 'http://localhost:8080/api/v1/workspaces/Ab12Cd34Ef56', expect.objectContaining({ method: 'GET' }));
   });
 });

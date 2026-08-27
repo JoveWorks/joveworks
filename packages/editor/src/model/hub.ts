@@ -8,7 +8,7 @@
  * itself is remembered, but a secret never joins localStorage.
  */
 
-import type { JsonValue } from '@joveworks/schema';
+import { loadDocument, serializeDocument, type GraphDocument, type JsonValue } from '@joveworks/schema';
 
 const PROTOCOL_VERSION = 1;
 
@@ -39,6 +39,29 @@ export interface HubPublication {
   readonly document: JsonValue;
   readonly catalogues: readonly HubCatalogueRef[];
 }
+
+/** A student-owned mutable workspace, identified by the Hub and protected by an edit capability. */
+export interface HubWorkspace {
+  readonly hubUrl: string;
+  readonly id: string;
+  readonly title: string;
+  readonly document: GraphDocument;
+  readonly updatedAt?: string;
+}
+
+export interface HubWorkspaceDraft {
+  readonly title: string;
+  readonly document: GraphDocument;
+}
+
+export interface CreatedHubWorkspace {
+  readonly workspace: HubWorkspace;
+  /** Store this capability locally; never put it in a shareable URL. */
+  readonly editToken: string;
+}
+
+/** The token is deliberately an argument, never included in a shareable workspace link. */
+const WORKSPACE_TOKEN_HEADER = 'X-JoveWorks-Workspace-Token';
 
 export function hubUrl(raw: string): string {
   let url: URL;
@@ -116,6 +139,58 @@ export async function loadCatalogue(
   return response.value;
 }
 
+export async function createWorkspace(
+  rawHubUrl: string,
+  draft: HubWorkspaceDraft,
+): Promise<CreatedHubWorkspace> {
+  const base = hubUrl(rawHubUrl);
+  const value = await requestJson(
+    resolve(base, '/api/v1/workspaces'),
+    'POST',
+    {
+      title: draft.title,
+      document: serializeDocument(draft.document),
+    },
+  );
+  if (!isObject(value) || typeof value.id !== 'string' || typeof value.editToken !== 'string') {
+    throw new Error('The Hub did not return an edit token for the new workspace.');
+  }
+  return {
+    workspace: { hubUrl: base, id: value.id, title: draft.title, document: draft.document },
+    editToken: value.editToken,
+  };
+}
+
+export async function loadWorkspace(
+  rawHubUrl: string,
+  workspaceId: string,
+): Promise<HubWorkspace> {
+  const base = hubUrl(rawHubUrl);
+  const value = await requestJson(
+    resolve(base, `/api/v1/workspaces/${encodeURIComponent(workspaceId)}`),
+    'GET',
+    undefined,
+  );
+  return parseWorkspace(base, value);
+}
+
+export async function saveWorkspace(
+  workspace: HubWorkspace,
+  draft: HubWorkspaceDraft,
+  workspaceToken: string,
+): Promise<HubWorkspace> {
+  const value = await requestJson(
+    resolve(workspace.hubUrl, `/api/v1/workspaces/${encodeURIComponent(workspace.id)}`),
+    'PUT',
+    {
+      title: draft.title,
+      document: serializeDocument(draft.document),
+    },
+    workspaceToken,
+  );
+  return parseWorkspace(workspace.hubUrl, value);
+}
+
 function resolve(base: string, path: string): string {
   return new URL(path.replace(/^\//, ''), `${base}/`).toString();
 }
@@ -149,6 +224,55 @@ async function getJsonResponse(url: string, courseToken?: string): Promise<JsonR
   } catch {
     throw new Error('The Hub returned invalid JSON.');
   }
+}
+
+async function requestJson(
+  url: string,
+  method: 'GET' | 'POST' | 'PUT',
+  body?: JsonValue,
+  workspaceToken?: string,
+): Promise<JsonValue> {
+  const headers: Record<string, string> = {};
+  if (workspaceToken !== undefined && workspaceToken.length > 0) headers[WORKSPACE_TOKEN_HEADER] = workspaceToken;
+  if (body !== undefined) headers['Content-Type'] = 'application/json';
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method,
+      headers,
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    });
+  } catch {
+    throw new Error('Could not reach that Hub. Check the address and your connection.');
+  }
+  if (response.status === 401) throw new Error('This workspace needs an access token.');
+  if (response.status === 404) throw new Error('That workspace was not found on this Hub.');
+  if (response.status === 409 || response.status === 412) throw new Error('This workspace changed elsewhere; reload it before saving.');
+  if (!response.ok) throw new Error(`The Hub could not complete this workspace request (${response.status}).`);
+  try {
+    return await response.json() as JsonValue;
+  } catch {
+    throw new Error('The Hub returned invalid workspace JSON.');
+  }
+}
+
+function parseWorkspace(hubUrl_: string, value: JsonValue): HubWorkspace {
+  if (!isObject(value) || typeof value.id !== 'string' || typeof value.title !== 'string' || !('document' in value)) {
+    throw new Error('The Hub returned an invalid workspace.');
+  }
+  let document: GraphDocument;
+  try {
+    document = loadDocument(JSON.stringify(value.document));
+  } catch {
+    throw new Error('The Hub returned an invalid workspace document.');
+  }
+  return {
+    hubUrl: hubUrl_,
+    id: value.id,
+    title: value.title,
+    document,
+    ...(typeof value.updatedAt === 'string' ? { updatedAt: value.updatedAt } : {}),
+  };
 }
 
 function parseCourse(hubUrl_: string, value: JsonValue): HubCourse {
