@@ -24,6 +24,7 @@ import { parseUnit } from '@joveworks/units';
 
 import {
   addNamedColumn,
+  addPlotMeasure,
   addNode,
   changeOutputKind,
   connect,
@@ -37,6 +38,7 @@ import {
   reframe,
   relabelColumn,
   removeColumn,
+  removePlotMeasure,
   removeEdges,
   removeNodes,
   renameColumn,
@@ -55,6 +57,60 @@ const input = (id: string, x: number, y: number): InputNode => ({
   id,
   position: { x, y },
   value: { kind: 'scalar', value: 1, unit: parseUnit('mm') },
+});
+
+describe('Plot measure port lifecycle', () => {
+  const plotNode = (): OutputNode => ({
+    kind: 'output', id: 'plot', position: { x: 200, y: 0 }, output: { kind: 'plot', measures: [] },
+  });
+
+  it('adds stable value ids while keeping reader labels separate', () => {
+    const document = { ...base, nodes: [...base.nodes, plotNode()] };
+    const first = addPlotMeasure(document, 'plot', 'stress');
+    const second = addPlotMeasure(first.document, 'plot', 'mass');
+    const plot = second.document.nodes.find((node) => node.id === 'plot') as OutputNode;
+    expect(plot.output.kind === 'plot' ? plot.output.measures : []).toEqual([
+      { id: 'value', label: 'stress' },
+      { id: 'value2', label: 'mass' },
+    ]);
+  });
+
+  it('removes both a measure and its paired threshold edge', () => {
+    const document = { ...base, nodes: [...base.nodes, plotNode()] };
+    const added = addPlotMeasure(addPlotMeasure(document, 'plot', 'stress').document, 'plot', 'mass').document;
+    const wired = connect(
+      connect(added, { node: 'a', port: 'value' }, { node: 'plot', port: 'value2' }),
+      { node: 'b', port: 'value' },
+      { node: 'plot', port: 'value2Threshold' },
+    );
+    const removed = removePlotMeasure(wired, 'plot', 'value2');
+    expect(removed.edges).toEqual([]);
+    const plot = removed.nodes.find((node) => node.id === 'plot') as OutputNode;
+    expect(plot.output.kind === 'plot' ? plot.output.measures : []).toEqual([{ id: 'value', label: 'stress' }]);
+  });
+
+  it('adopts one value when switching into Plot and prunes extras when leaving', () => {
+    const withOutput = { ...base, nodes: [...base.nodes, printOutput('result', 200, 0)] };
+    const wired = connect(withOutput, { node: 'a', port: 'value' }, { node: 'result', port: 'value' });
+    const plotted = changeOutputKind(wired, 'result', defaultOutput('plot'));
+    const plot = plotted.nodes.find((node) => node.id === 'result') as OutputNode;
+    expect(plot.output.kind === 'plot' ? plot.output.measures?.[0]?.id : undefined).toBe('value');
+    const withSecond = addPlotMeasure(plotted, 'result', 'second').document;
+    const multi = connect(withSecond, { node: 'b', port: 'value' }, { node: 'result', port: 'value2' });
+    const printed = changeOutputKind(multi, 'result', defaultOutput('print'));
+    expect(printed.edges.map((edge) => edge.to.port)).toEqual(['value']);
+  });
+
+  it('adopts the first remaining stable port after the original measure was removed', () => {
+    const document = { ...base, nodes: [...base.nodes, plotNode()] };
+    const added = addPlotMeasure(addPlotMeasure(document, 'plot', 'first').document, 'plot', 'second').document;
+    const wired = connect(added, { node: 'b', port: 'value' }, { node: 'plot', port: 'value2' });
+    const withoutFirst = removePlotMeasure(wired, 'plot', 'value');
+    const printed = changeOutputKind(withoutFirst, 'plot', defaultOutput('print'));
+    expect(printed.edges).toEqual([
+      { id: 'b.value->plot.value', from: { node: 'b', port: 'value' }, to: { node: 'plot', port: 'value' } },
+    ]);
+  });
 });
 
 const range = (id: string, x: number, y: number): GraphNode => ({

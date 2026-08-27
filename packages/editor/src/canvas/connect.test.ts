@@ -13,7 +13,7 @@ import {
 } from '@joveworks/schema';
 import { parseUnit } from '@joveworks/units';
 
-import { addNode, connect, edgeId, NEW_COLUMN } from '../model/document';
+import { connect, edgeId, NEW_COLUMN, NEW_PLOT_MEASURE } from '../model/document';
 import { connectResolvingTableColumn } from './connect';
 
 const input = (id: string, label = id): InputNode => ({
@@ -42,6 +42,24 @@ function edge(fromNode: string, fromPort: string, toNode: string, toPort: string
 }
 
 describe('connectResolvingTableColumn', () => {
+  it('turns a Plot ghost port into a stable named measure before validation', () => {
+    const plot: OutputNode = {
+      kind: 'output', id: 'plot', position: { x: 300, y: 0 }, output: { kind: 'plot', measures: [] },
+    };
+    const result = connectResolvingTableColumn(
+      documentWith(input('source', 'Measured width'), plot),
+      [],
+      edge('source', VALUE_PORT, 'plot', NEW_PLOT_MEASURE),
+      false,
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.document.nodes.find((node) => node.id === 'plot')).toMatchObject({
+      output: { kind: 'plot', measures: [{ id: 'value', label: 'Measured width' }] },
+    });
+    expect(result.document.edges).toEqual([edge('source', VALUE_PORT, 'plot', VALUE_PORT)]);
+  });
+
   it('names a ghost column after the source label and validates the resolved port', () => {
     const result = connectResolvingTableColumn(
       documentWith(input('source', 'Measured width'), table()),

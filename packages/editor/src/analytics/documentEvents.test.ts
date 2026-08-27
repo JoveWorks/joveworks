@@ -23,6 +23,28 @@ describe('documentEvents', () => {
     ]);
   });
 
+  it('records an intelligent plot as automatic unless its type is pinned', () => {
+    const automatic = {
+      ...base(),
+      nodes: [{ kind: 'output' as const, id: 'plot', output: { kind: 'plot' as const, measures: [] }, position: { x: 0, y: 0 } }],
+    };
+    expect(documentEvents(base(), automatic)).toEqual([
+      { name: 'node_added', props: { kind: 'output' } },
+      { name: 'plot_created', props: { mode: 'auto' } },
+    ]);
+
+    const pinned = {
+      ...automatic,
+      nodes: [{
+        ...automatic.nodes[0],
+        output: { kind: 'plot' as const, measures: [{ id: 'value', view: { type: 'heatmap' as const } }] },
+      }],
+    };
+    expect(documentEvents(automatic, pinned)).toEqual([
+      { name: 'plot_created', props: { mode: 'heatmap' } },
+    ]);
+  });
+
   it('records an input becoming a sweep and a new connection', () => {
     const before = {
       ...base(),

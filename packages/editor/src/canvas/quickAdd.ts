@@ -20,7 +20,7 @@ import {
   type SelectMode,
 } from '@joveworks/schema';
 
-import { defaultOutput, NEW_COLUMN } from '../model/document';
+import { defaultOutput, NEW_COLUMN, NEW_PLOT_MEASURE } from '../model/document';
 import { monteCarloSampleCount, monteCarloSampleLimit } from '../model/monteCarlo';
 
 export type QuickAddChoice =
@@ -130,6 +130,8 @@ export function quickAddNodeSpec(document: GraphDocument, choice: QuickAddCandid
       const port =
         choice.outputKind === 'table'
           ? NEW_COLUMN
+          : choice.outputKind === 'plot'
+            ? NEW_PLOT_MEASURE
           : choice.outputKind === 'bestDesign'
             ? OBJECTIVE_PORT
             : // A dragged wire lands on `x`, the first objective — `y` is drawn

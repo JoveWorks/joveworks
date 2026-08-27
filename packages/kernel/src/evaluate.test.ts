@@ -54,6 +54,89 @@ const numeric = (value: ReturnType<typeof valueAt>): NumericSeries => {
   return value;
 };
 
+describe('intelligent multi-measure plots', () => {
+  it('evaluates every named measure over its own axes and unit', () => {
+    const document = documentOf(
+      [
+        input('w', list([10, 20, 30], 'mm'), { label: 'width' }),
+        input('h', scalar(2, 'mm')),
+        formulaNode('area', refTo('area'), { label: 'area' }),
+        outputNode('plot', {
+          kind: 'plot',
+          measures: [
+            { id: 'value', label: 'width', unit: 'mm' },
+            { id: 'value2', label: 'area', unit: 'mm²' },
+          ],
+        }),
+      ],
+      [
+        wire('w.value', 'area.w'),
+        wire('h.value', 'area.h'),
+        wire('w.value', 'plot.value'),
+        wire('area.A', 'plot.value2'),
+      ],
+    );
+    const result = evaluateDocument(document, catalogues).outputs[0] as PlotResult;
+    expect(result.measures?.map((measure) => [measure.id, measure.label, measure.series.data])).toEqual([
+      ['value', 'width', [10, 20, 30]],
+      ['value2', 'area', [20, 40, 60]],
+    ]);
+    expect(result.measures?.every((measure) => measure.axes[0]?.axis.id === 'w')).toBe(true);
+  });
+
+  it('resolves an independent typed or wired threshold for each measure', () => {
+    const document = documentOf(
+      [
+        input('a', scalar(10, 'mm')),
+        input('b', scalar(20, 'mm')),
+        input('limit', scalar(18, 'mm')),
+        outputNode('plot', {
+          kind: 'plot',
+          measures: [
+            { id: 'value', label: 'a', threshold: { value: 12, unit: 'mm' } },
+            { id: 'value2', label: 'b', threshold: { value: 15, unit: 'mm' } },
+          ],
+        }),
+      ],
+      [
+        wire('a.value', 'plot.value'),
+        wire('b.value', 'plot.value2'),
+        wire('limit.value', 'plot.value2Threshold'),
+      ],
+    );
+    const result = evaluateDocument(document, catalogues).outputs[0] as PlotResult;
+    expect(result.measures?.map((measure) => measure.threshold)).toEqual([12, 18]);
+  });
+
+  it('keeps scalar measures axis-free for dot comparison inference', () => {
+    const document = documentOf(
+      [
+        input('a', scalar(10, 'mm')),
+        input('b', scalar(20, 'mm')),
+        outputNode('plot', {
+          kind: 'plot', measures: [{ id: 'value', label: 'a' }, { id: 'value2', label: 'b' }],
+        }),
+      ],
+      [wire('a.value', 'plot.value'), wire('b.value', 'plot.value2')],
+    );
+    const result = evaluateDocument(document, catalogues).outputs[0] as PlotResult;
+    expect(result.measures?.map((measure) => measure.axes)).toEqual([[], []]);
+  });
+
+  it('does not require the original value port after that measure is removed', () => {
+    const document = documentOf(
+      [
+        input('b', scalar(20, 'mm')),
+        outputNode('plot', { kind: 'plot', measures: [{ id: 'value2', label: 'b' }] }),
+      ],
+      [wire('b.value', 'plot.value2')],
+    );
+    const result = evaluateDocument(document, catalogues).outputs[0] as PlotResult;
+    expect(result.measures?.map((measure) => measure.id)).toEqual(['value2']);
+    expect(result.series.data).toEqual([20]);
+  });
+});
+
 describe('a scalar graph', () => {
   const document = documentOf(
     [

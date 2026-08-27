@@ -58,6 +58,7 @@ import { useSettings } from '../settings-context';
 import { phrase, type AppLocale } from '../i18n';
 import {
   addNamedColumn,
+  addPlotMeasure,
   addNode,
   connect,
   duplicateNode,
@@ -66,6 +67,7 @@ import {
   groupIntoSection,
   moveNode,
   NEW_COLUMN,
+  NEW_PLOT_MEASURE,
   nodeLabel,
   reframe,
   removeEdges,
@@ -249,6 +251,8 @@ function existingCandidates(
         const port =
           node.output.kind === 'table'
             ? NEW_COLUMN
+            : node.output.kind === 'plot'
+              ? NEW_PLOT_MEASURE
             : node.output.kind === 'bestDesign'
               ? OBJECTIVE_PORT
               : // `x` first, then `y` — a Pareto node is the one output that
@@ -267,7 +271,9 @@ function existingCandidates(
           label: nodeLabel(node),
           subtitle: node.output.kind,
           port,
-          ...(port === NEW_COLUMN ? {} : replacesField(occupantOf(document, formulas, { node: node.id, port }))),
+          ...(port === NEW_COLUMN || port === NEW_PLOT_MEASURE
+            ? {}
+            : replacesField(occupantOf(document, formulas, { node: node.id, port }))),
         });
       } else if (node.kind === 'compare') {
         candidates.push({
@@ -389,6 +395,10 @@ export function compatibleQuickAddPort(
       const named = addNamedColumn(next, id, target.from.port);
       next = named.document;
       freshEndpoint = { node: id, port: named.column };
+    } else if (port === NEW_PLOT_MEASURE) {
+      const named = addPlotMeasure(next, id, target.from.port);
+      next = named.document;
+      freshEndpoint = { node: id, port: named.measure.id };
     }
     const [from, to] = target.from.type === 'source'
       ? [dragEndpoint, freshEndpoint]
@@ -1168,17 +1178,14 @@ export function Canvas({
       },
       {
         label: t('Add plot output'),
-        disabled: documentAxes(document).length === 0,
         onClick: () =>
           edit((current) => {
             const id = uniqueId(current, 'plot');
-            const first = documentAxes(current).at(0);
-            if (first === undefined) return current;
             return addNode(current, {
               kind: 'output',
               id,
               label: id,
-              output: { kind: 'plot', x: first.id },
+              output: { kind: 'plot', measures: [] },
               position: at,
             });
           }),

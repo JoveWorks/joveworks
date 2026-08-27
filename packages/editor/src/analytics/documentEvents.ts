@@ -1,6 +1,6 @@
 /** Classify deliberate structural edits without inspecting graph content. */
 
-import { isRange, type GraphDocument, type GraphNode } from '@joveworks/schema';
+import { isRange, plotMeasures, type GraphDocument, type GraphNode } from '@joveworks/schema';
 
 import type { AnalyticsEvent, AnalyticsNodeKind } from './analytics';
 
@@ -10,7 +10,10 @@ function nodeKind(node: GraphNode): AnalyticsNodeKind {
 
 function outputEvent(node: GraphNode): AnalyticsEvent | undefined {
   if (node.kind !== 'output') return undefined;
-  if (node.output.kind === 'plot') return { name: 'plot_created', props: { mode: node.output.contour ? 'contour' : 'line' } };
+  if (node.output.kind === 'plot') {
+    const mode = plotMeasures(node.output)[0]?.view?.type ?? (node.output.measures === undefined ? 'line' : 'auto');
+    return { name: 'plot_created', props: { mode } };
+  }
   if (node.output.kind === 'table') return { name: 'table_created' };
   if (node.output.kind === 'check') return { name: 'check_created' };
   return undefined;

@@ -158,18 +158,75 @@ export interface CheckOutput {
   readonly threshold: Quantity;
 }
 
+export const PLOT_TYPES = ['line', 'dot', 'heatmap', 'contour'] as const;
+export type PlotType = (typeof PLOT_TYPES)[number];
+export const PLOT_SCALES = ['linear', 'log'] as const;
+export type PlotScale = (typeof PLOT_SCALES)[number];
+
+/** Focused presentation choices for one plotted measure. Missing means Auto. */
+export interface PlotViewOverride {
+  readonly type?: PlotType;
+  readonly x?: string;
+  readonly y?: string;
+  readonly series?: string;
+  readonly facet?: string;
+  readonly scales?: Readonly<Record<string, PlotScale>>;
+  readonly valueScale?: PlotScale;
+  readonly axisLabels?: Readonly<Record<string, string>>;
+  readonly valueLabel?: string;
+  readonly height?: number;
+}
+
 /**
- * Line or contour over swept inputs, with an optional threshold overlay.
- *
- * Up to three axes get a slot — `x`, `series` (color) and `facet` (small
- * multiples) — each naming the range input node that introduced it.
- * Any slot left unset is filled automatically at evaluate time from axes the
- * plotted value actually varies along (kernel `evaluate.ts`); a slot the
- * student *has* set is never touched. Leaving all three unset is the default
- * a new plot node starts in.
+ * One numeric layer accepted by a Plot output. `id` is a stable graph port;
+ * its reader-facing label is deliberately separate so renaming never rewires
+ * the graph. The matching threshold port is derived by `plotThresholdPort`.
+ */
+export interface PlotMeasure {
+  readonly id: string;
+  readonly label?: string;
+  readonly unit?: Unit;
+  readonly threshold?: Quantity;
+  readonly view?: PlotViewOverride;
+}
+
+/** The threshold port paired with a stable Plot measure port. */
+export function plotThresholdPort(measureId: string): string {
+  return measureId === VALUE_PORT ? THRESHOLD_PORT : `${measureId}Threshold`;
+}
+
+/** The effective measures of a legacy or redesigned Plot output. */
+export function plotMeasures(output: PlotOutput): readonly PlotMeasure[] {
+  if (output.measures !== undefined) return output.measures;
+  return [{
+    id: VALUE_PORT,
+    ...put('unit', output.unit),
+    ...put('threshold', output.threshold),
+    ...(
+      output.x === undefined && output.series === undefined && output.facet === undefined && !output.contour
+        ? {}
+        : {
+            view: {
+              ...put('type', output.contour ? 'contour' as const : undefined),
+              ...put('x', output.x),
+              ...(output.contour ? put('y', output.series) : put('series', output.series)),
+              ...put('facet', output.facet),
+            },
+          }
+    ),
+  }];
+}
+
+/**
+ * One intelligent figure containing any number of numeric measures. Measures
+ * with compatible study shapes share a panel; the editor turns unrelated
+ * shapes and dimensions into a small dashboard without dual axes.
  */
 export interface PlotOutput {
   readonly kind: 'plot';
+  /** New plots persist this. Absent is the legacy one-`value` shape. */
+  readonly measures?: readonly PlotMeasure[];
+  /** Legacy fields accepted for existing version-1 documents. */
   /** Axis for x — the id of the range input node that introduced it. Auto-assigned when absent. */
   readonly x?: string;
   /** A second axis, drawn as a colored series (or, with `contour`, the second grid axis). */
@@ -870,6 +927,55 @@ function parseSize(value: JsonValue, path: string): Size {
   };
 }
 
+function parsePlotScaleRecord(value: JsonValue, path: string): Readonly<Record<string, PlotScale>> {
+  const object = readObject(value, path);
+  return Object.fromEntries(
+    Object.entries(object).map(([axis, scale]) => [
+      readName(axis, `${path}.${axis}`),
+      readEnum(scale, `${path}.${axis}`, PLOT_SCALES),
+    ]),
+  );
+}
+
+function parsePlotLabelRecord(value: JsonValue, path: string): Readonly<Record<string, string>> {
+  const object = readObject(value, path);
+  return Object.fromEntries(
+    Object.entries(object).map(([axis, label]) => [
+      readName(axis, `${path}.${axis}`),
+      readString(label, `${path}.${axis}`),
+    ]),
+  );
+}
+
+function parsePlotView(value: JsonValue, path: string): PlotViewOverride {
+  const object = readObject(value, path);
+  const height = optional(object, 'height', path, (entry, at) => readInteger(entry, at, 160));
+  if (height !== undefined && height > 720) fail(join(path, 'height'), 'must be at most 720');
+  return {
+    ...put('type', optional(object, 'type', path, (entry, at) => readEnum(entry, at, PLOT_TYPES))),
+    ...put('x', optional(object, 'x', path, readName)),
+    ...put('y', optional(object, 'y', path, readName)),
+    ...put('series', optional(object, 'series', path, readName)),
+    ...put('facet', optional(object, 'facet', path, readName)),
+    ...put('scales', optional(object, 'scales', path, parsePlotScaleRecord)),
+    ...put('valueScale', optional(object, 'valueScale', path, (entry, at) => readEnum(entry, at, PLOT_SCALES))),
+    ...put('axisLabels', optional(object, 'axisLabels', path, parsePlotLabelRecord)),
+    ...put('valueLabel', optional(object, 'valueLabel', path, readString)),
+    ...put('height', height),
+  };
+}
+
+function parsePlotMeasure(value: JsonValue, path: string): PlotMeasure {
+  const object = readObject(value, path);
+  return {
+    id: readName(required(object, 'id', path), join(path, 'id')),
+    ...put('label', optional(object, 'label', path, readString)),
+    ...put('unit', optional(object, 'unit', path, parseUnitField)),
+    ...put('threshold', optional(object, 'threshold', path, parseQuantity)),
+    ...put('view', optional(object, 'view', path, parsePlotView)),
+  };
+}
+
 function parseOutput(value: JsonValue, path: string): Output {
   const object = readObject(value, path);
   const kind = readEnum(required(object, 'kind', path), join(path, 'kind'), OUTPUT_KINDS);
@@ -899,6 +1005,11 @@ function parseOutput(value: JsonValue, path: string): Output {
     case 'plot':
       return {
         kind,
+        ...put(
+          'measures',
+          optional(object, 'measures', path, (value, at) =>
+            readArray(value, at).map((entry, index) => parsePlotMeasure(entry, `${at}[${index}]`))),
+        ),
         ...put('x', optional(object, 'x', path, readName)),
         ...put('series', optional(object, 'series', path, readName)),
         ...put('facet', optional(object, 'facet', path, readName)),
@@ -991,6 +1102,32 @@ function parseOutput(value: JsonValue, path: string): Output {
   }
 }
 
+function serializePlotView(view: PlotViewOverride | undefined): JsonObject | undefined {
+  if (view === undefined) return undefined;
+  return {
+    ...put('type', view.type),
+    ...put('x', view.x),
+    ...put('y', view.y),
+    ...put('series', view.series),
+    ...put('facet', view.facet),
+    ...put('scales', view.scales === undefined ? undefined : { ...view.scales }),
+    ...put('valueScale', view.valueScale),
+    ...put('axisLabels', view.axisLabels === undefined ? undefined : { ...view.axisLabels }),
+    ...put('valueLabel', view.valueLabel),
+    ...put('height', view.height),
+  };
+}
+
+function serializePlotMeasure(measure: PlotMeasure): JsonObject {
+  return {
+    id: measure.id,
+    ...put('label', measure.label),
+    ...put('unit', measure.unit?.symbol),
+    ...put('threshold', measure.threshold === undefined ? undefined : serializeQuantity(measure.threshold)),
+    ...put('view', serializePlotView(measure.view)),
+  };
+}
+
 function serializeOutput(output: Output): JsonObject {
   switch (output.kind) {
     case 'print':
@@ -1008,6 +1145,7 @@ function serializeOutput(output: Output): JsonObject {
     case 'plot':
       return {
         kind: output.kind,
+        ...put('measures', output.measures?.map(serializePlotMeasure)),
         ...put('x', output.x),
         ...put('series', output.series),
         ...put('facet', output.facet),
@@ -1605,13 +1743,31 @@ function checkReferences(document: GraphDocument, path: string): void {
   for (const [i, node] of document.nodes.entries()) {
     if (node.kind !== 'output' || (node.output.kind !== 'plot' && node.output.kind !== 'feasibility')) continue;
     const at = `${join(path, 'nodes')}[${i}].output`;
-    for (const [key, axis] of [
+    const selectedAxes: readonly (readonly [string, string | undefined])[] = [
       ['x', node.output.x],
       ['series', node.output.series],
       ['facet', node.output.facet],
-    ] as const) {
+      ...(node.output.kind === 'plot'
+        ? plotMeasures(node.output).flatMap((measure, measureIndex) => [
+            [`measures[${measureIndex}].view.x`, measure.view?.x] as const,
+            [`measures[${measureIndex}].view.y`, measure.view?.y] as const,
+            [`measures[${measureIndex}].view.series`, measure.view?.series] as const,
+            [`measures[${measureIndex}].view.facet`, measure.view?.facet] as const,
+          ])
+        : []),
+    ];
+    for (const [key, axis] of selectedAxes) {
       if (axis !== undefined && !axisIds.has(axis)) {
         fail(`${at}.${key}`, `'${axis}' is not a range input node, so it introduces no axis`);
+      }
+    }
+    if (node.output.kind === 'plot') {
+      const measures = plotMeasures(node.output);
+      const ids = measures.map((measure) => measure.id);
+      if (new Set(ids).size !== ids.length) fail(`${at}.measures`, 'contains duplicate port ids');
+      const thresholds = measures.map((measure) => plotThresholdPort(measure.id));
+      if (thresholds.some((threshold) => ids.includes(threshold))) {
+        fail(`${at}.measures`, 'a measure id collides with a generated threshold port');
       }
     }
   }

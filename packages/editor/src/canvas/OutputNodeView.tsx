@@ -34,6 +34,8 @@ import {
   Y_PORT,
   THRESHOLD_PORT,
   VALUE_PORT,
+  plotMeasures,
+  plotThresholdPort,
   axes as documentAxes,
   localize,
   type Comparison,
@@ -50,8 +52,10 @@ import {
   changeOutputKind,
   defaultOutput,
   NEW_COLUMN,
+  NEW_PLOT_MEASURE,
   reframe,
   removeColumn,
+  removePlotMeasure,
   removeNodes,
   renameColumn,
   renameNode,
@@ -265,6 +269,9 @@ export function OutputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>
   const format = toUnitsFormat(numberFormat);
   const node = document.nodes.find((candidate) => candidate.id === id);
   const tableColumns = node?.kind === 'output' && node.output.kind === 'table' ? node.output.columns : undefined;
+  const plotMeasureIds = node?.kind === 'output' && node.output.kind === 'plot'
+    ? plotMeasures(node.output).map((measure) => measure.id)
+    : undefined;
   // React Flow only remeasures a handle's screen position on a node resize
   // (its ResizeObserver) — reordering a table's columns (Notebook.tsx) keeps
   // the same port count and node height, so nothing triggers that on its
@@ -274,8 +281,8 @@ export function OutputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>
   // its edge visibly disagree until something else forces a remeasure.
   const updateNodeInternals = useUpdateNodeInternals();
   useEffect(() => {
-    if (tableColumns !== undefined) updateNodeInternals(id);
-  }, [id, updateNodeInternals, JSON.stringify(tableColumns)]);
+    if (tableColumns !== undefined || plotMeasureIds !== undefined) updateNodeInternals(id);
+  }, [id, updateNodeInternals, JSON.stringify(tableColumns), JSON.stringify(plotMeasureIds)]);
   if (node === undefined || node.kind !== 'output') return null;
 
   const highlightedPorts = new Set(data?.highlightedPorts ?? []);
@@ -315,6 +322,8 @@ export function OutputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>
   const ports =
     output.kind === 'table'
       ? output.columns
+      : output.kind === 'plot'
+        ? plotMeasures(output).map((measure) => measure.id)
       : output.kind === 'feasibility'
         ? []
         : output.kind === 'reliability'
@@ -362,15 +371,12 @@ export function OutputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>
               value={output.kind}
               onChange={(event) => {
                 const kind = event.target.value as Output['kind'];
-                if (kind === 'plot' && ranges[0] === undefined) return;
                 edit((current) => changeOutputKind(current, id, defaultOutput(kind, shown?.unit)));
               }}
             >
               <option value="print">print</option>
               <option value="check">check</option>
-              <option value="plot" disabled={ranges.length === 0}>
-                plot
-              </option>
+              <option value="plot">plot</option>
               <option value="table">table</option>
               <option value="equation">equation</option>
               <option value="feasibility">feasibility</option>
@@ -434,64 +440,7 @@ export function OutputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>
             </label>
           ) : null}
 
-          {output.kind === 'plot' ? (
-            <>
-              {/* Each slot left unset (`''`, meaning `undefined` in the document)
-                  is filled automatically at evaluate time from axes the plotted
-                  value varies along — the "auto" option's own label shows what
-                  that resolved to, so leaving a slot alone is a legible choice,
-                  not a silent one. A slot the student does pick is pinned and
-                  the kernel never touches it. */}
-              <AxisPicker
-                name="x axis"
-                value={output.x}
-                automatic={`auto${plotResult === undefined ? '' : ` (${plotResult.x.axis.label})`}`}
-                ranges={ranges}
-                excluded={[output.series, output.facet]}
-                onChange={(chosen) => {
-                  const { x: _dropped, ...rest } = output;
-                  setOutput(chosen === undefined ? rest : { ...rest, x: chosen });
-                }}
-              />
-              <AxisPicker
-                name="series"
-                value={output.series}
-                automatic={`auto${plotResult?.series2 === undefined ? ' (none)' : ` (${plotResult.series2.axis.label})`}`}
-                ranges={ranges}
-                excluded={[output.x, output.facet]}
-                onChange={(chosen) => {
-                  const { series: _dropped, ...rest } = output;
-                  setOutput(chosen === undefined ? rest : { ...rest, series: chosen });
-                }}
-              />
-              <AxisPicker
-                name="facet"
-                value={output.facet}
-                automatic={`auto${plotResult?.facet === undefined ? ' (none)' : ` (${plotResult.facet.axis.label})`}`}
-                ranges={ranges}
-                excluded={[output.x, output.series]}
-                onChange={(chosen) => {
-                  const { facet: _dropped, ...rest } = output;
-                  setOutput(chosen === undefined ? rest : { ...rest, facet: chosen });
-                }}
-              />
-              {/* threshold now lives on the port row below, always visible —
-                  a typed default with a wire that can override it (the same
-                  reasoning CompareNodeView's threshold field states) rather
-                  than buried in this panel. */}
-              {output.series === undefined && plotResult?.series2 === undefined ? null : (
-                <label>
-                  contour
-                  <input
-                    className="nodrag"
-                    type="checkbox"
-                    checked={output.contour ?? false}
-                    onChange={(event) => setOutput({ ...output, contour: event.target.checked })}
-                  />
-                </label>
-              )}
-            </>
-          ) : null}
+          {output.kind === 'plot' ? <p>Axes, labels and plot types are inferred. Fine-tune them beside the NodeBook figure.</p> : null}
 
           {output.kind === 'bestDesign' ? (
             <>
@@ -734,12 +683,26 @@ export function OutputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>
                 id={slotHandleId(name, 0)}
                 className={highlightedPorts.has(name) ? 'port-highlighted' : ''}
               />
-              <ParameterLabel
-                name={name}
-                unit={analysis.resolution?.targets.get(`${id}.${name}`)?.unit}
-                nameClassName="port-name"
-                unitClassName="port-unit"
-              />
+              {output.kind === 'plot' ? (
+                <>
+                  <span className="port-name"><TitleText value={plotMeasures(output).find((measure) => measure.id === name)?.label ?? name} /></span>
+                  {expanded.has(id) ? (
+                    <button
+                      type="button"
+                      className="remove-column nodrag"
+                      title="Remove this plotted value"
+                      onClick={() => edit((current) => removePlotMeasure(current, id, name))}
+                    >×</button>
+                  ) : null}
+                </>
+              ) : (
+                <ParameterLabel
+                  name={name}
+                  unit={analysis.resolution?.targets.get(`${id}.${name}`)?.unit}
+                  nameClassName="port-name"
+                  unitClassName="port-unit"
+                />
+              )}
             </li>
           );
         })}
@@ -760,48 +723,58 @@ export function OutputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>
         ) : null}
         {output.kind === 'plot' ? (
           <li
-            className={`port${highlightedPorts.has(THRESHOLD_PORT) ? ' port-highlighted' : ''}`}
-            onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: THRESHOLD_PORT })}
+            className={`port port-open${highlightedPorts.has(NEW_PLOT_MEASURE) ? ' port-highlighted' : ''}`}
+            title="Wire a numeric value here to add it to this plot."
+            onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: NEW_PLOT_MEASURE })}
             onMouseLeave={() => data?.onPortHover?.()}
           >
             <Handle
               type="target"
               position={Position.Left}
-              id={slotHandleId(THRESHOLD_PORT, 0)}
-              className={highlightedPorts.has(THRESHOLD_PORT) ? 'port-highlighted' : ''}
+              id={slotHandleId(NEW_PLOT_MEASURE, 'open')}
+              className={highlightedPorts.has(NEW_PLOT_MEASURE) ? 'port-highlighted' : ''}
             />
-            <ParameterLabel
-              name={THRESHOLD_PORT}
-              unit={analysis.resolution?.targets.get(`${id}.${THRESHOLD_PORT}`)?.unit}
-              nameClassName="port-name"
-              unitClassName="port-unit"
-            />
-            <span className="quantity-split port-quantity">
-              <TextField
-                className="quantity"
-                value={
-                  thresholdFieldText(thresholdWired, suppliedThreshold, output.threshold, format)
-                }
-                placeholder="none"
-                // Sized to its own content, same as compare's threshold
-                // field on the same port-row layout — a full-width field
-                // wraps and pushes the row below it.
-                autoSize={4}
-                disabled={thresholdWired}
-                title={
-                  thresholdWired
-                    ? 'Set by the wire — unplug it to type one by hand again.'
-                    : 'A number a student types, with its unit, unless something is wired in.'
-                }
-                onCommit={(text) => {
-                  const { threshold: _dropped, ...rest } = output;
-                  setOutput(
-                    text.trim().length === 0 ? rest : { ...rest, threshold: parseAuthored(text, format) },
-                  );
-                }}
-              />
-            </span>
           </li>
+        ) : null}
+        {output.kind === 'plot' ? (
+          <>{plotMeasures(output).map((measure) => {
+            const thresholdPort = plotThresholdPort(measure.id);
+            const thresholdSourceForMeasure = document.edges.find(
+              (edge) => edge.to.node === id && edge.to.port === thresholdPort,
+            );
+            const wiredForMeasure = thresholdSourceForMeasure !== undefined;
+            const suppliedForMeasure = thresholdSourceForMeasure === undefined
+              ? undefined
+              : reading(analysis, thresholdSourceForMeasure.from.node, thresholdSourceForMeasure.from.port);
+            return (
+              <li
+                key={thresholdPort}
+                className={`port${highlightedPorts.has(thresholdPort) ? ' port-highlighted' : ''}`}
+                onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: thresholdPort })}
+                onMouseLeave={() => data?.onPortHover?.()}
+              >
+                <Handle type="target" position={Position.Left} id={slotHandleId(thresholdPort, 0)} />
+                <span className="port-name">{measure.label ?? measure.id} threshold</span>
+                <span className="quantity-split port-quantity">
+                  <TextField
+                    className="quantity"
+                    value={thresholdFieldText(wiredForMeasure, suppliedForMeasure, measure.threshold, format)}
+                    placeholder="none"
+                    autoSize={4}
+                    disabled={wiredForMeasure}
+                    onCommit={(text) => setOutput({
+                      kind: 'plot',
+                      measures: plotMeasures(output).map((entry) => {
+                        if (entry.id !== measure.id) return entry;
+                        const { threshold: _dropped, ...rest } = entry;
+                        return text.trim().length === 0 ? rest : { ...rest, threshold: parseAuthored(text, format) };
+                      }),
+                    })}
+                  />
+                </span>
+              </li>
+            );
+          })}</>
         ) : null}
         {output.kind === 'check' ? (
           <li

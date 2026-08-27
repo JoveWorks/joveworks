@@ -53,6 +53,8 @@ import {
   Y_PORT,
   THRESHOLD_PORT,
   VALUE_PORT,
+  plotMeasures,
+  plotThresholdPort,
   type Catalogue,
   type Formula,
   type GraphDocument,
@@ -439,7 +441,15 @@ function readiness(
     // columns), it is never mandatory — a plot's is optional and a check's
     // always has a typed default — so its own readiness is handled by the
     // "wired but not ready" check below instead of the "unwired" one here.
-    const names = outputPortNames(node).filter((name) => name !== THRESHOLD_PORT);
+    const optionalThresholds = node.output.kind === 'plot'
+      ? new Set(plotMeasures(node.output).map((measure) => plotThresholdPort(measure.id)))
+      : new Set([THRESHOLD_PORT]);
+    const names = outputPortNames(node).filter((name) => !optionalThresholds.has(name));
+    if (node.output.kind === 'plot' && names.length === 0) {
+      states.set(node.id, 'incomplete');
+      problems.set(node.id, 'wire at least one numeric value');
+      continue;
+    }
     const unwired = names.filter((name) => !isWired(node.id, name));
     if (unwired.length > 0) {
       states.set(node.id, 'incomplete');
@@ -454,11 +464,10 @@ function readiness(
     // has a typed default — either way it is never "not connected" like
     // `names` above, but a wire that is itself unready still blocks the node
     // the same way an unready `value` would.
-    if (
-      (node.output.kind === 'plot' || node.output.kind === 'check') &&
-      isWired(node.id, THRESHOLD_PORT) &&
-      !upstreamReady(node.id, THRESHOLD_PORT)
-    ) {
+    const blockedThreshold = [...optionalThresholds].some(
+      (name) => isWired(node.id, name) && !upstreamReady(node.id, name),
+    );
+    if ((node.output.kind === 'plot' || node.output.kind === 'check') && blockedThreshold) {
       states.set(node.id, 'blocked');
       continue;
     }

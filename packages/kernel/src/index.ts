@@ -152,6 +152,7 @@ export type {
   ParetoResult,
   PlotAxis,
   PlotResult,
+  PlotMeasureResult,
   SensitivityResult,
   TableColumnResult,
   TableResult,

@@ -28,7 +28,7 @@ export type AnalyticsEvent =
   | { readonly name: 'course_material_selected'; readonly props: { readonly material: CourseMaterial } }
   | { readonly name: 'node_added'; readonly props: { readonly kind: AnalyticsNodeKind } }
   | { readonly name: 'sweep_configured'; readonly props: { readonly kind: SweepKind } }
-  | { readonly name: 'plot_created'; readonly props: { readonly mode: 'line' | 'contour' } }
+  | { readonly name: 'plot_created'; readonly props: { readonly mode: 'auto' | 'line' | 'dot' | 'heatmap' | 'contour' } }
   | { readonly name: 'table_created' | 'check_created' }
   | { readonly name: 'catalogue_load_failed'; readonly props: { readonly reason: 'invalid_file' } }
   | { readonly name: 'document_load_failed'; readonly props: { readonly reason: 'invalid_file' } }

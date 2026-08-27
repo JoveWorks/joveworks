@@ -76,6 +76,8 @@ import { marksOver as resolveMarksOver, type FigureMarking, type MarkIndex } fro
 import { CandidateReadings } from './CandidateReadings';
 import { ParetoFigure } from './ParetoFigure';
 import { PlotFigure, plotGrid } from './PlotFigure';
+import { IntelligentPlotFigure } from './IntelligentPlotFigure';
+import { IntelligentPlotControls } from './IntelligentPlotControls';
 import { SensitivityFigure } from './SensitivityFigure';
 import { DistributionFigure } from './DistributionFigure';
 import { ReliabilityCard } from './ReliabilityCard';
@@ -482,15 +484,31 @@ function Result({ result, node }: { readonly result: OutputResult; readonly node
       <span className="label">
         <OutputTitle node={node} />
       </span>
-      <PlotFigure
-        result={result}
-        document={document}
-        format={format}
-        marking={markingOver(plotGrid(result))}
-      />
-      {result.threshold === undefined ? null : (
+      {result.measures === undefined ? (
+        <PlotFigure
+          result={result}
+          document={document}
+          format={format}
+          marking={markingOver(plotGrid(result))}
+        />
+      ) : (
+        <IntelligentPlotFigure
+          result={result}
+          document={document}
+          format={format}
+          markingFor={markingOver}
+        />
+      )}
+      {result.measures === undefined ? null : <IntelligentPlotControls node={node} result={result} />}
+      {result.measures === undefined && result.threshold !== undefined ? (
         <p className="threshold">
           {t('threshold at')} {display(result.threshold, result.unit, 4, format)} {t('— where the curve crosses it is the size that works')}
+        </p>
+      ) : result.measures?.every((measure) => measure.threshold === undefined) ?? true ? null : (
+        <p className="threshold">
+          {result.measures?.flatMap((measure) => measure.threshold === undefined
+            ? []
+            : [`${measure.label}: ${display(measure.threshold, measure.unit, 4, format)}`]).join(' · ')}
         </p>
       )}
     </div>

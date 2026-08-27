@@ -24,6 +24,8 @@ import {
   X_PORT,
   Y_PORT,
   PERCENTILE_PORT,
+  plotMeasures,
+  plotThresholdPort,
   type ClosureNode,
   type SelectMode,
   type SelectNode,
@@ -39,6 +41,7 @@ import {
   type Output,
   type OutputKind,
   type OutputNode,
+  type PlotMeasure,
   type Position,
   type ValueSpec,
 } from '@joveworks/schema';
@@ -381,19 +384,34 @@ export function connect(
  */
 function closeEmptyColumns(document: GraphDocument): GraphDocument {
   const wired = new Set(document.edges.map((edge) => `${edge.to.node}.${edge.to.port}`));
+  const keptPlotMeasures = new Map<string, readonly PlotMeasure[]>();
+  const nodes = document.nodes.map((node) => {
+    if (node.kind === 'output' && node.output.kind === 'plot' && node.output.measures !== undefined) {
+      const measures = node.output.measures.filter((measure) => wired.has(`${node.id}.${measure.id}`));
+      keptPlotMeasures.set(node.id, measures);
+      return { ...node, output: { ...node.output, measures } };
+    }
+    if (node.kind === 'output' && node.output.kind === 'table') {
+      return {
+        ...node,
+        output: {
+          ...node.output,
+          columns: node.output.columns.filter((column) => wired.has(`${node.id}.${column}`)),
+        },
+      };
+    }
+    return node;
+  });
   return {
     ...document,
-    nodes: document.nodes.map((node) =>
-      node.kind === 'output' && node.output.kind === 'table'
-        ? {
-            ...node,
-            output: {
-              ...node.output,
-              columns: node.output.columns.filter((column) => wired.has(`${node.id}.${column}`)),
-            },
-          }
-        : node,
-    ),
+    nodes,
+    edges: document.edges.filter((edge) => {
+      const measures = keptPlotMeasures.get(edge.to.node);
+      if (measures === undefined) return true;
+      return measures.some(
+        (measure) => edge.to.port === measure.id || edge.to.port === plotThresholdPort(measure.id),
+      );
+    }),
   };
 }
 
@@ -465,6 +483,50 @@ function uniqueColumnName(existing: readonly string[], base: string): string {
  * never at `__new-column__::open`).
  */
 export const NEW_COLUMN = '__new-column__';
+export const NEW_PLOT_MEASURE = '__new-plot-measure__';
+
+/** Wire a Plot's trailing ghost port by creating a stable value/threshold pair. */
+export function addPlotMeasure(
+  document: GraphDocument,
+  nodeId: string,
+  label: string,
+): { readonly document: GraphDocument; readonly measure: PlotMeasure } {
+  const node = document.nodes.find((entry) => entry.id === nodeId);
+  const existing = node?.kind === 'output' && node.output.kind === 'plot'
+    ? plotMeasures(node.output)
+    : [];
+  const ids = new Set(existing.map((measure) => measure.id));
+  let id = VALUE_PORT;
+  if (ids.has(id)) {
+    let index = 2;
+    while (ids.has(`value${index}`)) index += 1;
+    id = `value${index}`;
+  }
+  const measure: PlotMeasure = { id, label };
+  return {
+    document: updateNode<OutputNode>(document, nodeId, (entry) =>
+      entry.output.kind === 'plot'
+        ? { ...entry, output: { kind: 'plot', measures: [...existing, measure] } }
+        : entry,
+    ),
+    measure,
+  };
+}
+
+/** Remove one Plot measure and both of its graph ports. */
+export function removePlotMeasure(document: GraphDocument, nodeId: string, measureId: string): GraphDocument {
+  const threshold = plotThresholdPort(measureId);
+  return {
+    ...updateNode<OutputNode>(document, nodeId, (node) =>
+      node.output.kind === 'plot'
+        ? { ...node, output: { kind: 'plot', measures: plotMeasures(node.output).filter((measure) => measure.id !== measureId) } }
+        : node,
+    ),
+    edges: document.edges.filter(
+      (edge) => !(edge.to.node === nodeId && (edge.to.port === measureId || edge.to.port === threshold)),
+    ),
+  };
+}
 
 /**
  * Wiring onto the ghost slot names the column after what was wired, the way a
@@ -678,7 +740,7 @@ export function defaultOutput(kind: OutputKind, contextUnit?: Unit): Output {
     case 'check':
       return { kind, comparison: '>=', threshold: { value: 1, unit: contextUnit ?? parseUnit('') } };
     case 'plot':
-      return { kind };
+      return { kind, measures: [] };
     case 'table':
       return { kind, columns: [] };
     case 'equation':
@@ -725,6 +787,44 @@ export function changeOutputKind(document: GraphDocument, nodeId: string, next: 
   const current = node.output;
   if (current.kind === next.kind) return document;
 
+  // A redesigned Plot can have many value/threshold pairs. Every other output
+  // kind adopts at most its first remaining measure. Its stable id need not be
+  // `value` after an earlier measure was deleted, so rename that pair before
+  // running the ordinary single-value conversion paths below.
+  if (current.kind === 'plot') {
+    const [primary] = plotMeasures(current);
+    const adoptedValue = primary === undefined
+      ? document
+      : renamePortEdges(document, nodeId, primary.id, VALUE_PORT);
+    const adoptedThreshold = primary === undefined
+      ? adoptedValue
+      : renamePortEdges(adoptedValue, nodeId, plotThresholdPort(primary.id), THRESHOLD_PORT);
+    const keep = new Set([VALUE_PORT, ...(next.kind === 'check' ? [THRESHOLD_PORT] : [])]);
+    const primaryOnly = pruneEdgesTo(adoptedThreshold, nodeId, keep);
+    const asSingleValue = updateNode<OutputNode>(primaryOnly, nodeId, (entry) => ({
+      ...entry,
+      output: { kind: 'print' },
+    }));
+    return changeOutputKind(asSingleValue, nodeId, next);
+  }
+
+  // Entering Plot adopts an existing single `value` wire as its first named
+  // measure; an unwired node starts with only the ghost port.
+  if (next.kind === 'plot') {
+    const edge = document.edges.find((candidate) => candidate.to.node === nodeId && candidate.to.port === VALUE_PORT);
+    const source = edge === undefined
+      ? undefined
+      : document.nodes.find((candidate) => candidate.id === edge.from.node);
+    const measures: readonly PlotMeasure[] = edge === undefined
+      ? []
+      : [{ id: VALUE_PORT, label: source === undefined ? edge.from.port : nodeLabel(source) }];
+    const kept = pruneEdgesTo(document, nodeId, new Set([VALUE_PORT, THRESHOLD_PORT]));
+    return updateNode<OutputNode>(kept, nodeId, (entry) => ({
+      ...entry,
+      output: { kind: 'plot', measures },
+    }));
+  }
+
   if (current.kind === 'table' && next.kind !== 'table') {
     const [firstColumn] = current.columns;
     const adopted =
@@ -734,7 +834,11 @@ export function changeOutputKind(document: GraphDocument, nodeId: string, next: 
   }
 
   if (current.kind !== 'table' && next.kind === 'table') {
-    const withKind = updateNode<OutputNode>(document, nodeId, (entry) => ({ ...entry, output: next }));
+    const withKind = updateNode<OutputNode>(
+      pruneEdgesTo(document, nodeId, new Set([VALUE_PORT])),
+      nodeId,
+      (entry) => ({ ...entry, output: next }),
+    );
     const existing = withKind.edges.find(
       (edge) => edge.to.node === nodeId && edge.to.port === VALUE_PORT,
     );
@@ -876,9 +980,11 @@ function renamePortEdges(
 ): GraphDocument {
   return {
     ...document,
-    edges: document.edges.map((edge) =>
-      edge.to.node === nodeId && edge.to.port === from ? { ...edge, to: { node: nodeId, port: to } } : edge,
-    ),
+    edges: document.edges.map((edge) => {
+      if (edge.to.node !== nodeId || edge.to.port !== from) return edge;
+      const target = { node: nodeId, port: to };
+      return { ...edge, id: edgeId(edge.from, target), to: target };
+    }),
   };
 }
 

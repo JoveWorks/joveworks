@@ -196,6 +196,10 @@ export type {
   PrintOutput,
   CheckOutput,
   PlotOutput,
+  PlotMeasure,
+  PlotViewOverride,
+  PlotType,
+  PlotScale,
   TableOutput,
   FeasibilityOutput,
   SensitivityOutput,
@@ -208,6 +212,8 @@ export type {
   Candidate,
   Comparison,
 } from './document.js';
+
+export { PLOT_TYPES, PLOT_SCALES, plotMeasures, plotThresholdPort } from './document.js';
 
 export {
   loadDocument,

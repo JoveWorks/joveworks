@@ -3185,6 +3185,80 @@ aside.right {
   overflow-x: auto;
 }
 
+.intelligent-plot {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.intelligent-plot-view {
+  min-width: 0;
+}
+
+.plot-auto-reason {
+  margin: 2px 0;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.plot-configuration-error {
+  margin: 8px 0;
+  padding: 8px;
+  border-left: 3px solid var(--state-error);
+  background: var(--badge-fail-bg);
+  color: var(--state-error);
+}
+
+.plot-controls {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.plot-controls > summary {
+  cursor: pointer;
+}
+
+.plot-panel-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 10px;
+  margin: 6px 0;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 8px;
+}
+
+.plot-panel-controls > p,
+.plot-panel-controls > button,
+.plot-measure-controls {
+  grid-column: 1 / -1;
+}
+
+.plot-measure-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--line);
+}
+
+.plot-panel-controls label,
+.plot-axis-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.plot-axis-controls {
+  flex-direction: row;
+}
+
+.plot-axis-controls > :first-child {
+  min-width: 0;
+  flex: 1;
+}
+
 /* Contours have a compact vertical scale; categorical series continue to use
  * Observable's ordinary swatch legend above their chart. */
 .notebook .contour-figure {
@@ -3594,6 +3668,11 @@ aside.right {
 
   .notebook-control-track,
   .notebook-control-reading {
+    display: none !important;
+  }
+
+  .plot-controls,
+  .plot-auto-reason {
     display: none !important;
   }
 

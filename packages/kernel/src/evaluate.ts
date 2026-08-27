@@ -18,7 +18,7 @@
  *   is the economy that was chosen for.
  */
 
-import { DIMENSIONLESS, isDimensionless, isGenericDimension, toCanonical, type Unit } from '@joveworks/units';
+import { DIMENSIONLESS, DIMENSIONLESS_UNIT, isDimensionless, isGenericDimension, toCanonical, type Unit } from '@joveworks/units';
 import {
   VALUE_PORT,
   THRESHOLD_PORT,
@@ -47,6 +47,8 @@ import {
   expressionOf,
   isRange,
   renardValues,
+  plotMeasures,
+  plotThresholdPort,
   type Candidate,
   type Catalogue,
   type CompareNode,
@@ -67,6 +69,7 @@ import {
   type ObjectiveDirection,
   type Port,
   type RangeNode,
+  type PlotViewOverride,
   type SpectrumPort,
 } from '@joveworks/schema';
 import {
@@ -167,8 +170,21 @@ export interface CheckResult extends OutputBase {
  */
 export type PlotAxis = AxisReadout;
 
+export interface PlotMeasureResult {
+  readonly id: string;
+  readonly label: string;
+  readonly series: NumericSeries;
+  readonly unit: Unit;
+  readonly axes: readonly PlotAxis[];
+  readonly threshold?: number;
+  readonly view?: PlotViewOverride;
+}
+
 export interface PlotResult extends OutputBase {
   readonly kind: 'plot';
+  /** New multi-measure result. Optional only for source compatibility with older fixtures. */
+  readonly measures?: readonly PlotMeasureResult[];
+  /** Legacy primary-measure projection retained while version-1 documents are accepted. */
   readonly series: NumericSeries;
   readonly unit: Unit;
   readonly x: PlotAxis;
@@ -2368,7 +2384,11 @@ function outputResult(
     };
   }
 
-  const { value, unit: portUnit } = sourceOf(node, VALUE_PORT, resolution, values);
+  // Plot measure ports are stable rather than positional: deleting the first
+  // measure may leave `value2` as the new lead. Do not accidentally require
+  // the legacy `value` port merely to reach the multi-measure branch below.
+  const primaryPort = output.kind === 'plot' ? plotMeasures(output)[0]?.id ?? VALUE_PORT : VALUE_PORT;
+  const { value, unit: portUnit } = sourceOf(node, primaryPort, resolution, values);
 
   if (output.kind === 'print') {
     return {
@@ -2438,7 +2458,7 @@ function outputResult(
     };
   }
 
-  const plotAxis = (id: string): PlotAxis => {
+  const plotAxis = (id: string, plotted: NumericSeries): PlotAxis => {
     const axis = axes.get(id);
     if (axis === undefined) {
       throw new KernelError(`'${id}' is not a range input node, so it introduces no axis`, node.id);
@@ -2452,7 +2472,7 @@ function outputResult(
     // generators combined together share one axis id that is neither node's
     // own (`graph.ts`'s `Resolution.axes` doc comment), so matching against
     // the raw `id` would misfire "flat" for a value that does vary.
-    if (!value.axes.some((own) => own.id === axis.id)) {
+    if (!plotted.axes.some((own) => own.id === axis.id)) {
       warnings.push({
         kind: 'plotAxis',
         nodeId: node.id,
@@ -2466,76 +2486,122 @@ function outputResult(
     };
   };
 
-  const picked = pickPlotAxes(
-    { x: output.x, series: output.series, facet: output.facet },
-    value.axes,
-    axes,
-    node.id,
-    warnings,
-  );
-  const xId = picked.x;
-  const seriesId = picked.series;
-  const facetId = picked.facet;
+  const axisReadout = (axis: Axis, plotted: NumericSeries): PlotAxis => {
+    const introducedBy = [...axes.entries()].find(([, candidate]) => candidate.id === axis.id)?.[0];
+    if (introducedBy === undefined) throw new KernelError(`no coordinates were found for '${axis.label}'`, node.id);
+    return plotAxis(introducedBy, plotted);
+  };
 
-  const contour = output.contour ?? false;
-  // A contour is a value over two swept axes, and one of them can go away
-  // under a plot that is already set to contour — unwire the range feeding an
-  // input and type a value on the port instead. The choice is kept rather than
-  // cleared, so restoring the range restores the contour; until then the
-  // figure draws the one axis it does have, as a line.
-  if (contour && seriesId === undefined) {
-    warnings.push({
-      kind: 'plotContourFlat',
-      nodeId: node.id,
-      message: 'a contour needs a second swept axis — this is drawn as a line until it has one',
-    });
-  }
-  if (contour && facetId !== undefined) {
-    warnings.push({
-      kind: 'plotContourFacet',
-      nodeId: node.id,
-      message: `the facet axis is ignored while contour is on — a contour plot only draws x and series`,
-    });
-  }
+  const measures = plotMeasures(output).map((measure): PlotMeasureResult => {
+    const { value: plotted, unit: sourceUnit } = sourceOf(node, measure.id, resolution, values);
+    if (plotted.kind !== 'numeric') {
+      throw new KernelError(
+        `a plot measure needs a numeric value, not a categorical one`,
+        endpointKey(node.id, measure.id),
+      );
+    }
+    if (plotted.axes.length > 3) {
+      warnings.push({
+        kind: 'plotAxesUnsupported',
+        nodeId: node.id,
+        message: `'${measure.label ?? measure.id}' varies along ${plotted.axes.length} axes; a plot panel supports at most three`,
+      });
+    }
 
-  // `threshold` follows `CompareNode.threshold`'s rule — wired wins, else the
-  // typed default, else (unlike compare, whose threshold is mandatory) no
-  // line at all. A plot's threshold is one reference line, not a per-point
-  // bound the way compare's can be, so a wired series has to resolve to a
-  // single value.
-  const thresholdKey = endpointKey(node.id, THRESHOLD_PORT);
-  const thresholdEdge = resolution.incoming.get(thresholdKey)?.[0];
-  const threshold =
-    thresholdEdge === undefined
-      ? output.threshold === undefined
+    const thresholdPort = plotThresholdPort(measure.id);
+    const thresholdKey = endpointKey(node.id, thresholdPort);
+    const thresholdEdge = resolution.incoming.get(thresholdKey)?.[0];
+    const authoredThresholdUnit = measure.threshold === undefined
+      ? undefined
+      : isDimensionless(measure.threshold.unit.dimension) && !isDimensionless(sourceUnit.dimension)
+        ? sourceUnit
+        : measure.threshold.unit;
+    const threshold = thresholdEdge === undefined
+      ? measure.threshold === undefined || authoredThresholdUnit === undefined
         ? undefined
-        : toCanonical(output.threshold.value, output.threshold.unit)
+        : toCanonical(measure.threshold.value, authoredThresholdUnit)
       : (() => {
-          const series = valueAtEdge(thresholdEdge, thresholdKey, values);
-          if (series.kind !== 'numeric') {
-            throw new KernelError(
-              "a plot's threshold needs a numeric value, not a categorical one",
-              thresholdKey,
-            );
+          const supplied = valueAtEdge(thresholdEdge, thresholdKey, values);
+          if (supplied.kind !== 'numeric') {
+            throw new KernelError("a plot's threshold needs a numeric value, not a categorical one", thresholdKey);
           }
-          if (series.data.length !== 1) {
+          if (supplied.data.length !== 1) {
             throw new KernelError(
               "a plot's threshold needs a single value — it draws one reference line, not one per point",
               thresholdKey,
             );
           }
-          return series.data[0] as number;
+          return supplied.data[0] as number;
         })();
+    const edge = resolution.incoming.get(endpointKey(node.id, measure.id))?.[0];
+    const sourceNode = edge === undefined
+      ? undefined
+      : resolution.document.nodes.find((candidate) => candidate.id === edge.from.node);
+    const label = measure.label ?? sourceNode?.label ?? edge?.from.port ?? measure.id;
+    return {
+      id: measure.id,
+      label,
+      series: plotted,
+      unit: measure.unit ?? sourceUnit,
+      axes: plotted.axes.map((axis) => axisReadout(axis, plotted)),
+      ...(threshold === undefined ? {} : { threshold }),
+      ...(measure.view === undefined ? {} : { view: measure.view }),
+    };
+  });
+
+  const primary = measures[0];
+  if (primary === undefined) throw new KernelError('wire at least one numeric value', node.id);
+  const contour = primary.view?.type === 'contour' || (primary.view?.type === undefined && (output.contour ?? false));
+  const pinned = {
+    x: primary.view?.x ?? output.x,
+    series: contour ? (primary.view?.y ?? output.series) : (primary.view?.series ?? output.series),
+    facet: primary.view?.facet ?? output.facet,
+  };
+  const legacyPlot = output.measures === undefined;
+  const picked = primary.series.axes.length === 0 && !legacyPlot
+    ? undefined
+    : pickPlotAxes(pinned, primary.series.axes, axes, node.id, warnings);
+  if (contour && picked?.series === undefined) {
+    warnings.push({
+      kind: 'plotContourFlat',
+      nodeId: node.id,
+      message: 'a contour needs a second swept axis — reset its type to Auto or add another axis',
+    });
+  }
+  if (legacyPlot && contour && picked?.facet !== undefined) {
+    warnings.push({
+      kind: 'plotContourFacet',
+      nodeId: node.id,
+      message: 'the legacy contour ignores its facet axis; reset the plot to Auto to use faceted surfaces',
+    });
+  }
+
+  const scalarAxis: Axis = {
+    id: `${node.id}Measure`,
+    label: 'measure',
+    length: measures.length,
+    order: Number.MAX_SAFE_INTEGER,
+  };
+  const primaryX: PlotAxis = picked === undefined
+    ? {
+        axis: scalarAxis,
+        coordinates: { kind: 'categorical', axes: [scalarAxis], data: measures.map((measure) => measure.label) },
+        unit: DIMENSIONLESS_UNIT,
+      }
+    : plotAxis(picked.x, primary.series);
 
   return {
     ...base,
     kind: 'plot',
-    series: value,
-    unit: output.unit ?? portUnit,
-    x: plotAxis(xId),
-    ...(seriesId === undefined ? {} : { series2: plotAxis(seriesId) }),
-    ...(facetId === undefined || contour ? {} : { facet: plotAxis(facetId) }),
+    measures,
+    series: primary.series,
+    unit: primary.unit,
+    x: primaryX,
+    ...(picked?.series === undefined ? {} : { series2: plotAxis(picked.series, primary.series) }),
+    ...(picked?.facet === undefined || (legacyPlot && contour)
+      ? {}
+      : { facet: plotAxis(picked.facet, primary.series) }),
     contour,
-    ...(threshold === undefined ? {} : { threshold }),
+    ...(primary.threshold === undefined ? {} : { threshold: primary.threshold }),
   };
 }

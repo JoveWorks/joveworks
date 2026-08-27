@@ -224,7 +224,7 @@ range and reads correctly in the report: *candidate A: d = 40 mm, 2.47 kg*.
 |---|---|
 | **Value** | A scalar with unit, label and significant figures |
 | **Check** | An assertion — `S ≥ 1.5` → pass or fail |
-| **Plot** | Line or contour over swept inputs, with threshold overlay |
+| **Plot** | One intelligent figure: lines, scalar/category dots, heatmaps, contours, facets and compatible multi-value dashboards, inferred from its inputs with per-value threshold overlays |
 | **Table** | A swept series as rows — standard sizes against results |
 | **Equation** | Shows a wired formula's own expression, typeset — the opt-in escape hatch |
 | **Feasibility** | Shades where every referenced Check node's verdict passes at once — the multi-constraint counterpart of a single check |

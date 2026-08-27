@@ -63,6 +63,8 @@ import {
   START_PORT,
   STOP_PORT,
   COUNT_PORT,
+  plotMeasures,
+  plotThresholdPort,
   axes as documentAxes,
   hasUnit,
   isRange,
@@ -276,7 +278,10 @@ function displayOverride(node: GraphNode, port: string, type: PortType): PortTyp
 export function outputPortNames(node: GraphNode): readonly string[] {
   if (node.kind !== 'output') return [];
   if (node.output.kind === 'table') return node.output.columns;
-  if (node.output.kind === 'plot' || node.output.kind === 'check') return [VALUE_PORT, THRESHOLD_PORT];
+  if (node.output.kind === 'plot') {
+    return plotMeasures(node.output).flatMap((measure) => [measure.id, plotThresholdPort(measure.id)]);
+  }
+  if (node.output.kind === 'check') return [VALUE_PORT, THRESHOLD_PORT];
   // A Feasibility output references existing Check nodes by id rather than
   // taking a wire — it is the one output kind with zero ports.
   if (node.output.kind === 'feasibility' || node.output.kind === 'reliability') return [];
@@ -1186,15 +1191,18 @@ export function resolveGraph(
       // target narrows to match it, and a bare unitless default (a freshly
       // dropped node, or one whose typed threshold was never given a unit)
       // is read in that dimension rather than refused.
-      if (node.output.kind === 'plot' && name === THRESHOLD_PORT) {
-        const dimension = targets.get(endpointKey(node.id, VALUE_PORT))?.dimension;
+      const plotMeasure = node.output.kind === 'plot'
+        ? plotMeasures(node.output).find((measure) => plotThresholdPort(measure.id) === name)
+        : undefined;
+      if (node.output.kind === 'plot' && plotMeasure !== undefined) {
+        const dimension = targets.get(endpointKey(node.id, plotMeasure.id))?.dimension;
         targets.set(
           key,
           dimension === undefined
             ? { kind: 'numeric' }
             : { kind: 'numeric', dimension, unit: canonicalUnit(dimension) },
         );
-        const authoredUnit = node.output.threshold?.unit;
+        const authoredUnit = plotMeasure.threshold?.unit;
         const bareDefault =
           edge === undefined && (authoredUnit === undefined || isDimensionless(authoredUnit.dimension));
         if (dimension !== undefined && !bareDefault) {

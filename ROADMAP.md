@@ -89,26 +89,16 @@ begins.
 
 ## Editor backlog
 
-**1. Plot node's remaining options.** A first slice landed: three axis slots
-(`x`, `series`, `facet`), auto-assigned from whatever axes the wired value
-varies along. The table half of "complex settings live in the notebook, not
-the node panel" has landed too: a table's column order, per-column decimal
-figures and marked rows are now edited directly in the rendered notebook
-table (drag a header to reorder, a small figures field per column, click a
-row to mark it) and only stored on the node (`TableOutput.figures`,
-`TableOutput.marks`); the node panel keeps just rename and remove. Marks are
-row-index based for now, not axis-value based, so a sweep that changes shape
-can leave a mark pointing at the wrong row — an accepted gap until this is
-unified with the plot's own version below.
-
-Both halves of marking are now closed by item 56 below: marks moved off the
-table node onto the document as axis *coordinates*, shared by the table, the
-plot, the feasibility map and the Pareto chart, so a re-sampled range can no
-longer leave a mark pointing at the wrong design. Still open on the plot side:
-a fourth axis (facet-row × facet-col) if that turns out to
-be needed, and a settable plot height. Plot width was raised too but folded
-into the larger "whole notebook redesign" and postponed rather than picked up
-here.
+**1. Intelligent Plot node — complete.** Plot now accepts any number of named
+numeric measures through a trailing ghost port and infers scalar dot
+comparisons, numeric lines, categorical series, discrete heatmaps, continuous
+contours, third-axis facets and independent dashboard panels. Compatible
+measures overlay; incompatible dimensions stack without dual axes. Each
+measure has its own typed or wireable threshold. Focused type, role, scale,
+label and height overrides live beside the rendered NodeBook figure, while an
+unoverridden plot responds live to upstream range and wiring changes. Legacy
+version-1 plot documents continue to load. Higher-dimensional panels stop with
+a named error rather than silently dropping a fourth axis.
 
 **2. A range's two bounds showing different units** — `10 mm ... 1 m`, each
 bound keeping its own unit rather than both sharing one. Two ways to build

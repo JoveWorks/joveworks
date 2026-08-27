@@ -3,9 +3,11 @@ import type { Catalogue, Edge, GraphDocument } from '@joveworks/schema';
 
 import {
   addNamedColumn,
+  addPlotMeasure,
   connect,
   edgeId,
   NEW_COLUMN,
+  NEW_PLOT_MEASURE,
   nodeLabel,
   relabelColumn,
 } from '../model/document';
@@ -42,6 +44,8 @@ export function connectResolvingTableColumn(
   const initialTarget = document.nodes.find((node) => node.id === candidate.to.node);
   const resolvesTableColumn =
     initialTarget?.kind === 'output' && initialTarget.output.kind === 'table';
+  const resolvesPlotMeasure =
+    initialTarget?.kind === 'output' && initialTarget.output.kind === 'plot';
   const prepare = (current: GraphDocument): { readonly document: GraphDocument; readonly edge: Edge } => {
     let attempted = current;
     let to = candidate.to;
@@ -55,6 +59,12 @@ export function connectResolvingTableColumn(
           : relabelColumn(current, to.node, to.port, base);
       attempted = resolved.document;
       to = { node: to.node, port: resolved.column };
+    } else if (resolvesPlotMeasure && to.port === NEW_PLOT_MEASURE) {
+      const source = current.nodes.find((node) => node.id === candidate.from.node);
+      const label = source === undefined ? candidate.from.port : nodeLabel(source);
+      const resolved = addPlotMeasure(current, to.node, label);
+      attempted = resolved.document;
+      to = { node: to.node, port: resolved.measure.id };
     }
 
     return { document: attempted, edge: { ...candidate, id: edgeId(candidate.from, to), to } };

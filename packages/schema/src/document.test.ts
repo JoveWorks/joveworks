@@ -788,3 +788,54 @@ describe('Pareto outputs and document-wide marks', () => {
     expect(parsed.marks).toBeUndefined();
   });
 });
+
+describe('intelligent Plot outputs', () => {
+  const base = (output: JsonValue): JsonObject => ({
+    schemaVersion: 1,
+    id: 'plot-study',
+    title: 'Plot study',
+    nodes: [
+      {
+        kind: 'input', id: 'd', position: { x: 0, y: 0 },
+        value: { kind: 'linear', start: 10, stop: 20, points: 3, unit: 'mm' },
+      },
+      { kind: 'output', id: 'plot', position: { x: 200, y: 0 }, output },
+    ],
+    edges: [],
+    frames: [],
+  });
+
+  it('round-trips stable measures, thresholds, and focused view overrides', () => {
+    const document = base({
+      kind: 'plot',
+      measures: [
+        {
+          id: 'value', label: 'stress', unit: 'MPa', threshold: { value: 200, unit: 'MPa' },
+          view: {
+            type: 'line', x: 'd', scales: { d: 'log' }, axisLabels: { d: 'diameter' },
+            valueLabel: 'working stress', valueScale: 'linear', height: 320,
+          },
+        },
+        { id: 'value2', label: 'allowable stress', unit: 'MPa' },
+      ],
+    });
+    expect(serializeDocument(parseDocument(document))).toEqual(document);
+  });
+
+  it('keeps loading the legacy one-value plot shape', () => {
+    const legacy = base({ kind: 'plot', x: 'd', contour: false, threshold: { value: 15, unit: 'mm' } });
+    expect(serializeDocument(parseDocument(legacy))).toEqual(legacy);
+  });
+
+  it('refuses duplicate measure ports and stale pinned axes', () => {
+    expect(() => parseDocument(base({ kind: 'plot', measures: [{ id: 'value' }, { id: 'value' }] })))
+      .toThrow(/duplicate port ids/u);
+    expect(() => parseDocument(base({ kind: 'plot', measures: [{ id: 'value', view: { x: 'missing' } }] })))
+      .toThrow(/not a range input node/u);
+  });
+
+  it('bounds authored panel heights', () => {
+    expect(() => parseDocument(base({ kind: 'plot', measures: [{ id: 'value', view: { height: 721 } }] })))
+      .toThrow(/at most 720/u);
+  });
+});
