@@ -13,7 +13,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
-import { SCHEMA_VERSION, VALUE_PORT, type GraphDocument, type OutputNode } from '@joveworks/schema';
+import { DOCUMENT_SCHEMA_VERSION, VALUE_PORT, type GraphDocument, type OutputNode } from '@joveworks/schema';
 import { parseUnit } from '@joveworks/units';
 
 import { GraphContext, type GraphContextValue } from '../graph-context';
@@ -39,7 +39,7 @@ const wire = (from: readonly [string, string], to: readonly [string, string]) =>
 // and an 'equation' output (the opt-in escape hatch) — same underlying
 // formula, so any difference in what shows is purely the output kind's doing.
 const document: GraphDocument = {
-  schemaVersion: SCHEMA_VERSION,
+  schemaVersion: DOCUMENT_SCHEMA_VERSION,
   id: 'expr-hidden',
   title: 'Expressions hidden by default',
   nodes: [
@@ -74,8 +74,6 @@ const equationNode = document.nodes.find((node): node is OutputNode => node.id =
 const graphContext: GraphContextValue = {
   document,
   catalogues: [],
-  lockedCatalogues: [],
-  unlockCatalogue: async () => {},
   userEquations: [],
   saveUserEquation: () => {},
   removeUserEquation: () => {},
