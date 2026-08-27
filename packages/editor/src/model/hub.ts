@@ -169,12 +169,14 @@ export async function createWorkspace(
 export async function loadWorkspace(
   rawHubUrl: string,
   workspaceId: string,
+  workspaceToken: string,
 ): Promise<HubWorkspace> {
   const base = hubUrl(rawHubUrl);
   const value = await requestJson(
     resolve(base, `/api/v1/workspaces/${encodeURIComponent(workspaceId)}`),
     'GET',
     undefined,
+    workspaceToken,
   );
   return parseWorkspace(base, value);
 }

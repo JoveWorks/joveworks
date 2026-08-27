@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactElement } from 'react';
 
 import { phrase } from '../i18n';
 import { loadWorkspace, type HubWorkspace } from '../model/hub';
-import type { WorkspaceAccess } from '../model/workspaceAccess';
+import { loadWorkspaceEditToken, type WorkspaceAccess } from '../model/workspaceAccess';
 import { useSettings } from '../settings-context';
 
 interface Row {
@@ -30,7 +30,9 @@ export function WorkspaceLibraryDialog({ accesses, onOpen, onDelete, onClose }: 
     let active = true;
     void Promise.all(accesses.map(async (access): Promise<Row> => {
       try {
-        return { access, workspace: await loadWorkspace(access.hubUrl, access.id) };
+        const token = loadWorkspaceEditToken(access.hubUrl, access.id);
+        if (token === undefined) throw new Error('This browser does not own this workspace.');
+        return { access, workspace: await loadWorkspace(access.hubUrl, access.id, token) };
       } catch (reason) {
         return { access, error: reason instanceof Error ? reason.message : phrase(locale, 'Could not load this workspace.') };
       }

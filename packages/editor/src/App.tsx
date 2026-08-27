@@ -229,13 +229,13 @@ function startupDocument(
   };
 }
 
-function workspaceLinkFromUrl(): { readonly hubUrl: string; readonly workspaceId: string } | undefined {
+function publicationLinkFromUrl(): { readonly hubUrl: string; readonly publicationId: string } | undefined {
   const url = new URL(window.location.href);
   const hubUrl = url.searchParams.get('hub');
-  const workspaceId = url.searchParams.get('workspace');
-  return hubUrl === null || workspaceId === null || workspaceId.trim() === ''
+  const publicationId = url.searchParams.get('publication');
+  return hubUrl === null || publicationId === null || publicationId.trim() === ''
     ? undefined
-    : { hubUrl, workspaceId };
+    : { hubUrl, publicationId };
 }
 
 function measuredNodeSizes(flow: ReturnType<typeof useReactFlow>): NodeSizes {
@@ -455,7 +455,7 @@ function AppShell(): ReactElement {
   const [showUnlockCatalogue, setShowUnlockCatalogue] = useState(false);
   const [showConnectCourse, setShowConnectCourse] = useState(false);
   const [workspaceDialog, setWorkspaceDialog] = useState<'save' | 'open' | undefined>();
-  const [linkedWorkspace] = useState(workspaceLinkFromUrl);
+  const [linkedPublication] = useState(publicationLinkFromUrl);
   const [showWorkspaceLibrary, setShowWorkspaceLibrary] = useState(false);
   const [hubWorkspace, setHubWorkspace] = useState<HubWorkspace | undefined>();
   const [workspaceAccessRevision, setWorkspaceAccessRevision] = useState(0);
@@ -544,7 +544,7 @@ function AppShell(): ReactElement {
       pushNotice(`Could not refresh ${source.title}: ${messageOf(error)}`);
     }
   };
-  const openCoursePublication = async (source: HubCourse, publicationId: string): Promise<void> => {
+  const openCoursePublication = async (source: HubCourse, publicationId: string, bindCourse = true): Promise<void> => {
     try {
       const token = courseTokens.current.get(courseKey(source));
       const publication = await loadHubPublication(source, publicationId, token);
@@ -557,7 +557,7 @@ function AppShell(): ReactElement {
       setCatalogues((current) => loadedCatalogues.reduce(withCatalogue, current));
       for (const catalogue of loadedCatalogues) cacheCatalogue(catalogue.id, saveCatalogue(catalogue));
       resetDocument(loadedDocument);
-      setCourseWorkspaceBinding({ source, catalogues: publication.catalogues });
+      if (bindCourse) setCourseWorkspaceBinding({ source, catalogues: publication.catalogues });
       recordRecentDocument(loadedDocument);
       clearAutosaveSnapshot();
       pushNotice(`Opened ${publication.title} from ${source.title}.`);
@@ -632,23 +632,26 @@ function AppShell(): ReactElement {
   };
 
   const openHubWorkspace = async (hubAddress: string, workspaceId: string): Promise<void> => {
-    await openLoadedHubWorkspace(await loadWorkspace(hubAddress, workspaceId.trim()));
+    const token = loadWorkspaceEditToken(hubAddress.replace(/\/$/, ''), workspaceId.trim());
+    if (token === undefined) throw new Error('This private workspace is not available in this browser.');
+    await openLoadedHubWorkspace(await loadWorkspace(hubAddress, workspaceId.trim(), token));
   };
 
   useEffect(() => {
-    if (linkedWorkspace === undefined) return;
-    void openHubWorkspace(linkedWorkspace.hubUrl, linkedWorkspace.workspaceId)
+    if (linkedPublication === undefined) return;
+    const source: HubCourse = { hubUrl: linkedPublication.hubUrl, slug: 'linked-publication', title: 'Linked material', publications: [] };
+    void openCoursePublication(source, linkedPublication.publicationId, false)
       .then(() => {
         const url = new URL(window.location.href);
         url.searchParams.delete('hub');
-        url.searchParams.delete('workspace');
+        url.searchParams.delete('publication');
         window.history.replaceState({}, '', url);
       })
-      .catch((error) => pushNotice(`Could not open linked Hub workspace: ${messageOf(error)}`));
+      .catch((error) => pushNotice(`Could not open linked course material: ${messageOf(error)}`));
   // The URL is read exactly once on boot. Re-running on editor state changes
   // would repeatedly replace a document the student has started to edit.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [linkedWorkspace]);
+  }, [linkedPublication]);
 
   const deleteHubWorkspace = async (workspace: HubWorkspace): Promise<void> => {
     const token = loadWorkspaceEditToken(workspace.hubUrl, workspace.id);

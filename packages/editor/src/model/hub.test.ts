@@ -89,7 +89,7 @@ describe('Hub API transport', () => {
     await expect(saveWorkspace(created.workspace, { title: changed.title, document: changed }, created.editToken)).resolves.toMatchObject({
       id: 'Ab12Cd34Ef56', title: 'Student study — revised',
     });
-    await expect(loadWorkspace('http://localhost:8080', 'Ab12Cd34Ef56')).resolves.toMatchObject({
+    await expect(loadWorkspace('http://localhost:8080', 'Ab12Cd34Ef56', 'edit-capability')).resolves.toMatchObject({
       id: 'Ab12Cd34Ef56', title: 'Student study — revised',
     });
     expect(fetch).toHaveBeenNthCalledWith(1, 'http://localhost:8080/api/v1/workspaces', expect.objectContaining({ method: 'POST' }));
