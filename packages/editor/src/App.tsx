@@ -145,10 +145,10 @@ import {
   discoverCourses,
   createWorkspace,
   deleteWorkspace,
-  loadCatalogue as loadHubCatalogue,
   loadPublication as loadHubPublication,
   loadSharedWorkspace,
   loadWorkspace,
+  resolveCourseCatalogues,
   saveWorkspace,
   type HubCatalogueRef,
   type HubCourse,
@@ -567,11 +567,8 @@ function AppShell(): ReactElement {
   const loadCourseCatalogues = async (source: HubCourse): Promise<void> => {
     try {
       const token = courseTokens.current.get(courseKey(source));
-      const loadedCatalogues = await Promise.all(
-        (source.catalogues ?? []).map(async (reference) =>
-          loadCatalogue(JSON.stringify(await loadHubCatalogue(source, reference, token))),
-        ),
-      );
+      const resolved = await resolveCourseCatalogues(source, source.catalogues ?? [], token);
+      const loadedCatalogues = resolved.map((content) => loadCatalogue(JSON.stringify(content)));
       setCatalogues((current) => loadedCatalogues.reduce(withCatalogue, current));
       for (const catalogue of loadedCatalogues) cacheCatalogue(catalogue.id, saveCatalogue(catalogue));
       pushNotice(`Loaded ${loadedCatalogues.length} catalogue${loadedCatalogues.length === 1 ? '' : 's'} from ${source.title}.`);
@@ -583,11 +580,8 @@ function AppShell(): ReactElement {
     try {
       const token = courseTokens.current.get(courseKey(source));
       const publication = await loadHubPublication(source, publicationId, token);
-      const loadedCatalogues = await Promise.all(
-        publication.catalogues.map(async (reference) =>
-          loadCatalogue(JSON.stringify(await loadHubCatalogue(source, reference, token))),
-        ),
-      );
+      const resolved = await resolveCourseCatalogues(source, publication.catalogues, token);
+      const loadedCatalogues = resolved.map((content) => loadCatalogue(JSON.stringify(content)));
       const loadedDocument = loadDocument(JSON.stringify(publication.document));
       rememberHubUrl(source.hubUrl);
       setCatalogues((current) => loadedCatalogues.reduce(withCatalogue, current));
@@ -654,9 +648,8 @@ function AppShell(): ReactElement {
       const source = existing ?? await connectCourse(workspace.hubUrl, workspace.courseSlug);
       if (existing === undefined) setCourseSources((current) => withCourseSource(current, source));
       const token = courseTokens.current.get(courseKey(source));
-      const loadedCatalogues = await Promise.all(
-        workspace.catalogues.map(async (reference) => loadCatalogue(JSON.stringify(await loadHubCatalogue(source, reference, token)))),
-      );
+      const resolved = await resolveCourseCatalogues(source, workspace.catalogues, token);
+      const loadedCatalogues = resolved.map((content) => loadCatalogue(JSON.stringify(content)));
       setCatalogues((current) => loadedCatalogues.reduce(withCatalogue, current));
       for (const catalogue of loadedCatalogues) cacheCatalogue(catalogue.id, saveCatalogue(catalogue));
       binding = { source, catalogues: workspace.catalogues };

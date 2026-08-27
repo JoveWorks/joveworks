@@ -18,10 +18,23 @@ export function loadCourseSources(): readonly HubCourse[] {
 
 export function saveCourseSources(sources: readonly HubCourse[]): void {
   try {
-    window.localStorage.setItem(KEY, JSON.stringify(sources));
+    // Drop `catalogueContents` before persisting: it is the full catalogue
+    // documents, already duplicated into `catalogueCache` by id once parsed,
+    // and "last safe manifest" was always meant to be the small refs list —
+    // not a second copy of potentially-restricted content sitting in
+    // localStorage for as long as the course source is remembered. Losing it
+    // here just means the next session falls back to `loadCatalogue`'s
+    // per-ref fetch, exactly like a Hub that never inlined it.
+    window.localStorage.setItem(KEY, JSON.stringify(sources.map(withoutInlineContents)));
   } catch {
     // A remembered source is a convenience; the current course still works.
   }
+}
+
+function withoutInlineContents(source: HubCourse): HubCourse {
+  if (source.catalogueContents === undefined) return source;
+  const { catalogueContents: _catalogueContents, ...rest } = source;
+  return rest;
 }
 
 export function withCourseSource(sources: readonly HubCourse[], source: HubCourse): readonly HubCourse[] {
