@@ -29,7 +29,7 @@ import {
   type JsonObject,
   type JsonValue,
 } from './json.js';
-import { readSchemaVersion, SCHEMA_VERSION } from './version.js';
+import { CATALOGUE_SCHEMA_VERSION, readSchemaVersion } from './version.js';
 import { parseLocalizedText, serializeLocalizedText, type LocalizedText } from './localization.js';
 import { loadCatalogue, saveCatalogue } from './io.js';
 import type { Catalogue } from './formula.js';
@@ -110,7 +110,13 @@ export async function encryptCatalogue(
   const plaintext = new TextEncoder().encode(saveCatalogue(catalogue));
   const ciphertext = await crypto.subtle.encrypt({ name: CIPHER_ALGORITHM, iv: iv as BufferSource }, key, plaintext);
   return {
-    schemaVersion: SCHEMA_VERSION,
+    // The envelope wraps a Catalogue and is distributed the same LMS/Hub way
+    // (docs/password-shared-catalogues.md); it stamps the catalogue version
+    // rather than one of its own so it stays keyed to the content it locks.
+    // Locked catalogues are slated for removal in separate work (they move to
+    // a backend) — this stays minimal rather than introducing a third,
+    // soon-to-be-deleted constant.
+    schemaVersion: CATALOGUE_SCHEMA_VERSION,
     id: catalogue.id,
     name: catalogue.name,
     kdf: { algorithm: KDF_ALGORITHM, hash: KDF_HASH, iterations, salt: bytesToBase64(salt) },
@@ -136,7 +142,7 @@ export async function decryptCatalogue(locked: LockedCatalogue, password: string
 
 export function parseLockedCatalogue(value: JsonValue, path = ''): LockedCatalogue {
   const object = readObject(value, path);
-  const schemaVersion = readSchemaVersion(object, path);
+  const schemaVersion = readSchemaVersion(object, path, CATALOGUE_SCHEMA_VERSION, 'locked catalogue');
   const kdfPath = join(path, 'kdf');
   const kdfObject = readObject(required(object, 'kdf', path), kdfPath);
   const algorithm = readString(required(kdfObject, 'algorithm', kdfPath), join(kdfPath, 'algorithm'));

@@ -43,7 +43,7 @@ import {
   type OutputPort,
   type Port,
 } from './port.js';
-import { readSchemaVersion } from './version.js';
+import { CATALOGUE_SCHEMA_VERSION, readSchemaVersion } from './version.js';
 import {
   dimensionsEqual,
   divideDimensions,
@@ -895,7 +895,7 @@ export interface Catalogue {
 
 export function parseCatalogue(value: JsonValue, path = ''): Catalogue {
   const object = readObject(value, path);
-  const schemaVersion = readSchemaVersion(object, path);
+  const schemaVersion = readSchemaVersion(object, path, CATALOGUE_SCHEMA_VERSION, 'catalogue');
   const formulas = readArray(required(object, 'formulas', path), join(path, 'formulas')).map(
     (entry, i) => parseFormula(entry, `${join(path, 'formulas')}[${i}]`),
   );
