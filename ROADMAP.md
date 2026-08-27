@@ -218,8 +218,8 @@ crosses the stable/nightly split: `packages/schema/src/migration.ts` adds
 `migrateDocument`, an explicit entry point separate from the always-strict
 `parseDocument` — it walks a `DOCUMENT_MIGRATIONS` chain keyed by the
 `schemaVersion` a step upgrades *from*, one small step per version, up to
-`SCHEMA_VERSION`, then validates the result exactly as `parseDocument` always
-has. A `schemaVersion` newer than the build understands is a named refusal
+`DOCUMENT_SCHEMA_VERSION`, then validates the result exactly as
+`parseDocument` always has. A `schemaVersion` newer than the build understands is a named refusal
 ("this document was made with a newer version of JoveWorks…"), never a silent
 misparse. schemaVersion 1 is still the only version ever shipped, so
 `DOCUMENT_MIGRATIONS` is empty today — the chain-walking logic itself is
@@ -237,6 +237,30 @@ a pinned fixture corpus too
 `formula.test.ts`), so a future change to formula serialization fails loudly
 with a message naming exactly what it invalidates, instead of relying on a
 single hand-written pin being remembered.
+
+The one stamp is now two. `SCHEMA_VERSION` used to be a single integer that
+documents, catalogues and the locked-catalogue envelope all checked against,
+which meant they could never move apart: bumping it to ship a document-format
+change made `parseCatalogue` demand the new number too, and every catalogue
+already sitting on the school's LMS or cached in a student's browser would be
+refused — exactly the files nobody can reach in to rewrite. It is now
+`DOCUMENT_SCHEMA_VERSION` and `CATALOGUE_SCHEMA_VERSION`, both still 1, each
+with its own check and its own named refusal, and `version.test.ts` pins the
+independence in both directions so the two cannot quietly be re-merged. (The
+third artefact went away on its own: locked catalogues are retired, since
+restricted content now lives behind the Hub's course token rather than being
+shipped as ciphertext.)
+
+**Still open, and the likelier of the two to bite: catalogues have no
+migration path.** `migrateDocument` covers documents only; a catalogue whose
+`schemaVersion` this build does not understand still gets the hard refusal and
+nothing else. That asymmetry was deliberate — documents were the urgent case,
+because a student's own coursework is what gets lost — but the catalogue is
+the artefact that actually changes on a schedule: corrected R&M formulas ship
+mid-semester by design, and the file lives on an LMS and in browser caches
+where it cannot be reissued to everyone at once. When catalogue format has to
+change, it wants the same treatment `migration.ts` already models, and the
+split above is what makes that possible without touching documents at all.
 
 **30. Change: Should we use compiled notebooks to share in the notebook viewer?** To save mobile processing power, they can't edit anyway.
 
