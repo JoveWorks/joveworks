@@ -37,6 +37,8 @@ interface Props {
   readonly onTitleMathRenderingChange: (enabled: boolean) => void;
   readonly contourPalette: ContourPalette;
   readonly onContourPaletteChange: (palette: ContourPalette) => void;
+  readonly advancedNodesEnabled: boolean;
+  readonly onAdvancedNodesEnabledChange: (enabled: boolean) => void;
   readonly onClose: () => void;
 }
 
@@ -57,6 +59,8 @@ export function SettingsDialog({
   onTitleMathRenderingChange,
   contourPalette,
   onContourPaletteChange,
+  advancedNodesEnabled,
+  onAdvancedNodesEnabledChange,
   onClose,
 }: Props): ReactElement {
   const copy = ui(locale);
@@ -158,6 +162,18 @@ export function SettingsDialog({
             ))}
           </select>
         </label>
+
+        <label className="dialog-field dialog-checkbox">
+          <input
+            type="checkbox"
+            checked={advancedNodesEnabled}
+            onChange={(event) => onAdvancedNodesEnabledChange(event.target.checked)}
+          />
+          {copy.showAdvancedNodes}
+        </label>
+        <p className="dialog-note">
+          {copy.advancedNodesNote}
+        </p>
 
         <div className="dialog-actions">
           <button type="button" onClick={onClose}>

@@ -27,6 +27,8 @@ export interface SettingsContextValue {
   readonly setThemePreference: (preference: ThemePreference) => void;
   readonly contourPalette: ContourPalette;
   readonly setContourPalette: (palette: ContourPalette) => void;
+  readonly advancedNodesEnabled: boolean;
+  readonly setAdvancedNodesEnabled: (enabled: boolean) => void;
 }
 
 export const SettingsContext = createContext<SettingsContextValue | undefined>(undefined);
