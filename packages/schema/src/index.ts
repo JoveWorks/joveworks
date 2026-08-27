@@ -228,15 +228,3 @@ export {
 export type { CatalogueFormat } from './io.js';
 export { localize, parseLocalizedText, serializeLocalizedText } from './localization.js';
 export type { LocalizedText } from './localization.js';
-
-export {
-  encryptCatalogue,
-  decryptCatalogue,
-  parseLockedCatalogue,
-  serializeLockedCatalogue,
-  loadLockedCatalogue,
-  saveLockedCatalogue,
-  CatalogueUnlockError,
-  DEFAULT_KDF_ITERATIONS,
-} from './lockedCatalogue.js';
-export type { LockedCatalogue } from './lockedCatalogue.js';

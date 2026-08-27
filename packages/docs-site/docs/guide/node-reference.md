@@ -350,8 +350,8 @@ Every formula the loaded catalogues carry appears in the palette, grouped
 by catalogue — one section per catalogue, in the same order as the
 palette. The catalogues that ship with JoveWorks itself are below; a
 course's own restricted catalogue (Roloff & Matek content, for instance)
-is distributed separately and loaded — locked, until you unlock it with
-its password — the same way.
+is distributed separately, through the course LMS or Hub, and loaded the
+same way.
 
 ### Base nodes
 
@@ -451,12 +451,12 @@ solving with Base nodes) where the graph doesn't do it for you.
 
 ### Restricted catalogues
 
-A course catalogue — Roloff & Matek formulas, for instance — ships
-locked: its name shows in the palette but its formulas stay hidden until
-you enter the password your course hands out. Restricted content is never
-exported or logged outside the graphs that use it, and this reference
-intentionally says nothing about what any specific restricted catalogue
-contains — that's the textbook's material, not this editor's.
+A course catalogue — Roloff & Matek formulas, for instance — is
+distributed separately through the course LMS or Hub, not bundled with
+the app. Restricted content is never exported or logged outside the
+graphs that use it, and this reference intentionally says nothing about
+what any specific restricted catalogue contains — that's the textbook's
+material, not this editor's.
 
 ## Statistics
 
