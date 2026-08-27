@@ -1,10 +1,15 @@
 name: CI
 
-# Disabled for solo work — build+test already run locally, and the
-# release workflow has its own build/test gate. Re-add `push`/`pull_request`
-# triggers here (see git history) to bring it back.
+# A school is now deploying the `production` branch to run a real course,
+# so PRs and pushes to `main` need their own build/test gate again — the
+# "runs locally, solo project" reasoning that justified workflow_dispatch-only
+# no longer holds once other people's work (and their downstream deployment)
+# depends on `main` staying green.
 on:
-  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
   build-and-test:

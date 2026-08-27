@@ -67,11 +67,51 @@ jobs:
           awk '/^## /{ if (found) exit; found=1 } found' CHANGELOG.md > /tmp/release-notes.md
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
+      - name: Build stable bundle
+        # `pnpm build` above (the CI gate) already ran once at the tip of
+        # `main`; this repeats the tsc build as part of `build:bundle` so
+        # __APP_VERSION__ picks up the version this job just bumped to.
+        # JOVEWORKS_CHANNEL=stable is what distinguishes this from the
+        # Netlify (nightly) build, which leaves it at the default.
+        # JOVEWORKS_BASE_PATH=./ makes the editor's own asset references
+        # relative — the app only ever routes with a `?example=` query
+        # parameter (see exampleUrl.ts), never a path-based router, so a
+        # relative base produces one bundle that works unmodified at the
+        # domain root or under any subpath. (This overrides the "/" default
+        # in vite.config.ts, which stays as-is for Netlify.) The docs
+        # sub-site under build/docs/ is the one part of this bundle that
+        # still assumes domain-root hosting — see the comment on `base` in
+        # packages/docs-site/docs/.vitepress/config.ts for why, and
+        # deploy/stable-bundle/README.txt for what that means for a school
+        # hosting under a subpath.
+        env:
+          JOVEWORKS_CHANNEL: stable
+          JOVEWORKS_BASE_PATH: ./
+        run: pnpm build:bundle
+
+      - name: Add static-host config to stable bundle
+        # netlify.toml's SPA-fallback redirect only works on Netlify; the
+        # school's static host needs its own equivalent. See
+        # deploy/stable-bundle/README.txt for what these are and how to
+        # use them.
+        run: |
+          cp deploy/stable-bundle/nginx.conf.snippet packages/editor/build/
+          cp deploy/stable-bundle/.htaccess packages/editor/build/
+          cp deploy/stable-bundle/README.txt packages/editor/build/
+
+      - name: Zip stable bundle
+        run: |
+          zip_name="joveworks-stable-${{ steps.notes.outputs.tag }}.zip"
+          (cd packages/editor/build && zip -rq "$GITHUB_WORKSPACE/$zip_name" .)
+          echo "path=$zip_name" >> "$GITHUB_OUTPUT"
+        id: bundle
+
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "${{ steps.notes.outputs.tag }}" \
+            "${{ steps.bundle.outputs.path }}#Stable bundle (static site, for self-hosting)" \
             --title "${{ steps.notes.outputs.tag }}" \
             --notes-file /tmp/release-notes.md \
             $([ "${{ inputs.prerelease }}" = "true" ] && echo --prerelease)

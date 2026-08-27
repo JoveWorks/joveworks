@@ -4,6 +4,14 @@
  * packages/docs-site/docs/.vitepress/config.ts) — but in dev the two are
  * separate Vite servers (editor on 5173, docs on 5174 — `pnpm docs:dev`),
  * so DOCS_BASE_URL can't just be the editor's own origin there.
+ *
+ * `window.location.origin` has no path component, so this always points at
+ * /docs/ off the domain root — correct for Netlify and for a stable bundle
+ * hosted at a school's domain root, but not for one hosted under a subpath
+ * (the docs site's own `base` has the same domain-root assumption, and for
+ * the same reason; see the comment there). The editor's own UI and the
+ * catalogue-author build don't have this limitation — only these help links
+ * and the docs pages themselves do.
  */
 
 import type { NodeKind } from '@joveworks/schema';

@@ -1,0 +1,17 @@
+# JoveWorks stable bundle — Apache SPA fallback.
+#
+# This is the Apache equivalent of the Netlify redirect in netlify.toml
+# (`/* -> /index.html, status 200`): any request that doesn't match a real
+# file or directory is served index.html instead of a 404, so the app's
+# own client-side routing can handle it.
+#
+# Drop this file in the same directory as index.html (the document root
+# this bundle is unzipped into). Requires mod_rewrite to be enabled.
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule . /index.html [L]
+</IfModule>
