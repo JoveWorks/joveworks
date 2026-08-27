@@ -18,7 +18,8 @@
     "author:dev": "pnpm --filter @joveworks/catalogue-author dev",
     "author:build": "pnpm --filter @joveworks/catalogue-author build",
     "encrypt-catalogue": "node tools/encrypt-catalogue/encrypt-catalogue.mjs",
-    "release": "commit-and-tag-version"
+    "release": "commit-and-tag-version",
+    "build:bundle": "pnpm build && pnpm --filter @joveworks/editor build && pnpm --filter @joveworks/docs-site build && pnpm --filter @joveworks/catalogue-author build && mkdir -p packages/editor/build/docs && cp -r packages/docs-site/docs/.vitepress/dist/. packages/editor/build/docs/ && mkdir -p packages/editor/build/author && cp -r packages/catalogue-author/build/. packages/editor/build/author/"
   },
   "devDependencies": {
     "commit-and-tag-version": "^13.1.2",
