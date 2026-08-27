@@ -25,6 +25,7 @@ import { fromCanonical, parseUnit } from '@joveworks/units';
 
 import { analyse } from './analysis';
 import { baseCatalogue, bundledCatalogues } from './catalogues';
+import { DEFAULT_ADVANCED_NODES } from './editorSettings';
 import { GAP } from './layout-constants';
 import {
   apertureDecision,
@@ -84,6 +85,25 @@ describe('the samples the editor opens with', () => {
   it('wires the clearance example so the kernel evaluates it end to end', () => {
     const example = monteCarloClearance([baseCatalogue()]) as GraphDocument;
     const analysis = analyse(example, [baseCatalogue()]);
+    expect(analysis.states.get('out_clearance') ?? 'ok').toBe('ok');
+    expect(analysis.states.get('watch') ?? 'ok').toBe('ok');
+  });
+
+  // Beta gating (packages/editor/src/palette/advancedNodes.ts) only hides the
+  // Monte Carlo palette entries when the "advanced nodes" preference is off
+  // — it must never stop a document that already uses them from working.
+  // `analyse` here is exactly what the editor and the NodeBook call to load
+  // and render a document, and it never consults the preference, so this
+  // stands in for "opens a course-supplied NodeBook with the setting off".
+  it('still loads, evaluates, and renders a Monte Carlo sample with advanced nodes off (the beta default)', () => {
+    expect(DEFAULT_ADVANCED_NODES).toBe(false);
+
+    const example = monteCarloClearance([baseCatalogue()]) as GraphDocument;
+    expect(example.nodes.some((node) => node.kind === 'monteCarloGenerator')).toBe(true);
+    expect(example.nodes.some((node) => node.kind === 'monteCarloReceiver')).toBe(true);
+
+    const analysis = analyse(example, [baseCatalogue()]);
+    expect(analysis.message).toBeUndefined();
     expect(analysis.states.get('out_clearance') ?? 'ok').toBe('ok');
     expect(analysis.states.get('watch') ?? 'ok').toBe('ok');
   });

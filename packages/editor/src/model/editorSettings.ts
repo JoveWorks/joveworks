@@ -94,6 +94,23 @@ export function saveSnapToGrid(enabled: boolean): void {
   saveBoolean(SNAP_TO_GRID_KEY, enabled);
 }
 
+const ADVANCED_NODES_KEY = 'joveworks:settings:advancedNodes';
+
+/** Off by default for the student-facing beta: the palette otherwise exposes
+ * analysis machinery (Monte Carlo, pareto, sensitivity, ...) well beyond a
+ * first course. This only hides palette entries — see
+ * `palette/advancedNodes.ts` — a document that already uses a gated node
+ * keeps loading, evaluating, and rendering regardless of this setting. */
+export const DEFAULT_ADVANCED_NODES = false;
+
+export function loadAdvancedNodes(): boolean {
+  return loadBoolean(ADVANCED_NODES_KEY, DEFAULT_ADVANCED_NODES);
+}
+
+export function saveAdvancedNodes(enabled: boolean): void {
+  saveBoolean(ADVANCED_NODES_KEY, enabled);
+}
+
 export const DEFAULT_PALETTE_WIDTH = 360;
 export const DEFAULT_NOTEBOOK_WIDTH = 540;
 

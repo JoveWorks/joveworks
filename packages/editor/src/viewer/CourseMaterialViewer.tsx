@@ -335,6 +335,10 @@ export function CourseMaterialViewer(): ReactElement {
     setThemePreference: () => {},
     contourPalette: 'viridis',
     setContourPalette: () => {},
+    // This viewer never renders the Palette, so the value is inert — kept at
+    // the same off-by-default value as the editor for consistency.
+    advancedNodesEnabled: false,
+    setAdvancedNodesEnabled: () => {},
   };
   const examples = useMemo<readonly CourseExample[]>(() => {
     const catalogues = [baseCatalogue(), ...bundledCatalogues()];

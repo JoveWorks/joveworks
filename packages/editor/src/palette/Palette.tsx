@@ -38,6 +38,7 @@ import { phrase, ui } from '../i18n';
 import { addNode, defaultOutput, uniqueId } from '../model/document';
 import { entries, search, type PaletteEntry } from '../model/catalogues';
 import { LockedCatalogueSection } from './LockedCatalogueSection';
+import { filterAdvancedActions, isAdvancedFormula } from './advancedNodes';
 import { monteCarloSampleCount, monteCarloSampleLimit } from '../model/monteCarlo';
 import { DEFAULT_READER } from '../files/readers';
 import { loadFavourites, saveFavourites } from '../model/palettePreferences';
@@ -90,7 +91,7 @@ function useDropPosition(): () => Position {
 
 export function Palette({ onClose }: { readonly onClose: () => void }): ReactElement {
   const { document, catalogues, lockedCatalogues, unlockCatalogue, userEquations, removeUserEquation, edit } = useGraph();
-  const { locale } = useSettings();
+  const { locale, advancedNodesEnabled } = useSettings();
   const copy = ui(locale);
   const t = (english: string): string => phrase(locale, english);
   const [query, setQuery] = useState('');
@@ -118,7 +119,14 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
   const inputCollapsed = collapsed.has(INPUT);
   const outputCollapsed = collapsed.has(OUTPUT);
 
-  const all = useMemo(() => entries(catalogues), [catalogues]);
+  // The one-line change to gate the mechanics nodes later: add their formula
+  // ids to `ADVANCED_FORMULA_IDS` in `advancedNodes.ts` — this filter already
+  // applies it everywhere a formula can appear (search, catalogue section,
+  // favourites).
+  const all = useMemo(
+    () => entries(catalogues).filter((entry) => advancedNodesEnabled || !isAdvancedFormula(entry.formula.id)),
+    [catalogues, advancedNodesEnabled],
+  );
   const found = useMemo(() => search(all, query, locale), [all, query, locale]);
 
   const grouped = useMemo(() => {
@@ -390,15 +398,24 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
 
   // Grouped by id prefix, not array position — a positional slice silently
   // reshuffles category membership whenever an entry is inserted or removed.
-  const inputActions = actions.filter((action) => action.id.startsWith('builtin:input:'));
-  const generalActions = actions.filter((action) => action.id.startsWith('builtin:general:'));
-  const outputActions = actions.filter((action) => action.id.startsWith('builtin:output:'));
+  // Advanced-gated entries (e.g. the file reader, pack/unpack, waypoint) are
+  // dropped before grouping, same rule applied below to the stochastic and
+  // analysis sections.
+  const visibleActions = filterAdvancedActions(actions, advancedNodesEnabled);
+  const inputActions = visibleActions.filter((action) => action.id.startsWith('builtin:input:'));
+  const generalActions = visibleActions.filter((action) => action.id.startsWith('builtin:general:'));
+  const outputActions = visibleActions.filter((action) => action.id.startsWith('builtin:output:'));
 
   // Sampling, reductions over a trial axis, and the report outputs that turn
   // those samples into evidence belong together. Keeping this separate from
   // general design-space analysis also prevents the Analysis section becoming
   // a catch-all as reliability work grows.
-  const stochasticActions: readonly PaletteAction[] = [
+  //
+  // The whole section is gated behind "advanced nodes" as a unit — it's
+  // simplest to empty it here rather than list every entry's id in
+  // `advancedNodes.ts`'s `ADVANCED_ACTION_IDS`. An empty section renders
+  // nothing further down and drops out of favourites automatically.
+  const stochasticActions: readonly PaletteAction[] = !advancedNodesEnabled ? [] : [
     {
       id: 'builtin:montecarlo:generator',
       label: copy.monteCarloGenerator,
@@ -490,10 +507,20 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
       insert: () => addSelect('argMax'),
     },
   ];
+  // `pareto`, `stress`, `bestDesign`, `sensitivity`, and the `firstPassing`/
+  // `argMin`/`argMax` selection nodes are gated individually rather than as
+  // a section, since `feasibility` and `crossing` stay in this same section
+  // and must stay visible regardless of the setting (see task requirements).
+  const visibleAnalysisActions = filterAdvancedActions(analysisActions, advancedNodesEnabled);
 
   const favouriteEntries = all.filter(({ formula }) => favourites.has(formula.id));
   const favouriteUserEquations = userEquations.filter((equation) => favourites.has(`user:${equation.id}`));
-  const favouriteActions = [...actions, ...stochasticActions, ...analysisActions].filter((action) => favourites.has(action.id));
+  // Built from the already-gated lists: a favourited-but-now-hidden node
+  // drops out of Favourites too, without touching the stored favourite (it
+  // reappears here the moment the setting is switched back on).
+  const favouriteActions = [...visibleActions, ...stochasticActions, ...visibleAnalysisActions].filter((action) =>
+    favourites.has(action.id),
+  );
 
   const actionEntry = (action: PaletteAction, keyPrefix = ''): ReactElement => (
     <li key={`${keyPrefix}${action.id}`} onContextMenu={(event) => {
@@ -677,7 +704,7 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
         {builtInGroup === undefined ? null : catalogueSection(builtInGroup)}
         {arrayGroup === undefined ? null : catalogueSection(arrayGroup)}
 
-        {query.trim().length === 0 ? (
+        {query.trim().length === 0 && advancedNodesEnabled ? (
           <section>
             <h3><button type="button" className="section-toggle" onClick={() => toggleCollapsed(STOCHASTIC)}>
               <span className="section-toggle-title">{copy.stochasticAnalysis}{collapsed.has(STOCHASTIC) ? ` (${stochasticActions.length})` : ''}</span>
@@ -692,11 +719,11 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
         {query.trim().length === 0 ? (
           <section>
             <h3><button type="button" className="section-toggle" onClick={() => toggleCollapsed(ANALYSIS)}>
-              <span className="section-toggle-title">{copy.analysis}{collapsed.has(ANALYSIS) ? ` (${analysisActions.length})` : ''}</span>
+              <span className="section-toggle-title">{copy.analysis}{collapsed.has(ANALYSIS) ? ` (${visibleAnalysisActions.length})` : ''}</span>
               <span className="chevron" aria-hidden="true">{collapsed.has(ANALYSIS) ? '▸' : '▾'}</span>
             </button></h3>
             {collapsed.has(ANALYSIS) ? null : <ul>
-              {analysisActions.map((action) => actionEntry(action))}
+              {visibleAnalysisActions.map((action) => actionEntry(action))}
             </ul>}
           </section>
         ) : null}

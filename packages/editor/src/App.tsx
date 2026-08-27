@@ -59,6 +59,7 @@ import { edgeTouchesHiddenNode, hiddenByCollapsedGroups } from './model/collapse
 import { autoArrange } from './model/layout';
 import type { NodeSizes } from './model/node-sizes';
 import {
+  loadAdvancedNodes,
   loadCanvasControlsVisible,
   loadContourPalette,
   loadAppLocale,
@@ -68,6 +69,7 @@ import {
   loadSnapToGrid,
   loadTitleMathRendering,
   loadThemePreference,
+  saveAdvancedNodes,
   saveCanvasControlsVisible,
   saveContourPalette,
   saveAppLocale,
@@ -465,6 +467,7 @@ function AppShell(): ReactElement {
   const [themePreference, setThemePreferenceState] =
     useState<ThemePreference>(loadThemePreference);
   const [contourPalette, setContourPaletteState] = useState<ContourPalette>(loadContourPalette);
+  const [advancedNodesEnabled, setAdvancedNodesEnabledState] = useState<boolean>(loadAdvancedNodes);
   const [showSettings, setShowSettings] = useState(false);
   const [showUnlockCatalogue, setShowUnlockCatalogue] = useState(false);
   const [showConnectCourse, setShowConnectCourse] = useState(false);
@@ -781,6 +784,11 @@ function AppShell(): ReactElement {
     saveContourPalette(next);
   };
 
+  const setAdvancedNodesEnabled = (next: boolean): void => {
+    setAdvancedNodesEnabledState(next);
+    saveAdvancedNodes(next);
+  };
+
   const setShowCanvasControls = (next: boolean): void => {
     setShowCanvasControlsState(next);
     saveCanvasControlsVisible(next);
@@ -810,8 +818,10 @@ function AppShell(): ReactElement {
       setThemePreference,
       contourPalette,
       setContourPalette,
+      advancedNodesEnabled,
+      setAdvancedNodesEnabled,
     }),
-    [locale, numberFormat, minimapVisible, snapToGrid, titleMathRendering, themePreference, contourPalette],
+    [locale, numberFormat, minimapVisible, snapToGrid, titleMathRendering, themePreference, contourPalette, advancedNodesEnabled],
   );
 
   const analysis = useMemo(() => analyse(document, catalogues), [document, catalogues]);
@@ -1464,6 +1474,8 @@ function AppShell(): ReactElement {
               onTitleMathRenderingChange={setTitleMathRendering}
               contourPalette={contourPalette}
               onContourPaletteChange={setContourPalette}
+              advancedNodesEnabled={advancedNodesEnabled}
+              onAdvancedNodesEnabledChange={setAdvancedNodesEnabled}
               onClose={() => setShowSettings(false)}
             />
           ) : null}
