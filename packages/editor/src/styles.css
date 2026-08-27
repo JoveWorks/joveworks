@@ -3859,7 +3859,20 @@ aside.right {
   .notebook-icon-button,
   .notebook-section .grip,
   .notebook-section .chevron,
-  .column-figures {
+  .column-figures,
+  /* Every dialog (`SettingsDialog`, `UnlockCatalogueDialog`, the Hub
+     workspace dialogs…) and the ribbon's own dropdown share these two root
+     classes. Both can render as a sibling of `<main>` rather than inside
+     `.menubar` or `.canvas` — printing while one happens to be open (a
+     ribbon menu left open, a settings dialog) must not carry it onto the
+     page, so these are suppressed by class rather than by container. */
+  .dialog-backdrop,
+  .dialog,
+  .context-menu-backdrop,
+  .context-menu,
+  .tutorial-backdrop,
+  .tutorial-cutout,
+  .tutorial-caption {
     display: none !important;
   }
 
@@ -3894,8 +3907,66 @@ aside.right {
     padding: 0;
   }
 
+  /* A section is the report's own structure (a group frame — see
+     Notebook.tsx's own header comment), so try to keep one whole; only
+     honoured when it actually fits a page, per spec — a section longer than
+     a page still breaks rather than overflowing it. The heading is kept with
+     whatever follows it so it never ends up alone at a page's bottom, and
+     each individual result (figure or reading, plus its caption) gets the
+     same treatment at finer grain — the fallback for a section too long to
+     keep whole, so at least no single figure or reading is cut in half. */
   .notebook-section {
     break-inside: avoid;
+  }
+
+  .notebook h2 {
+    break-after: avoid;
+  }
+
+  .notebook .entry {
+    break-inside: avoid;
+  }
+
+  /* A wide sweep can render its plot or heatmap wider than one printed page
+     (a many-facet Feasibility figure, an unbounded-by-design width per
+     897e2f6/ROADMAP #46) — the screen copes by scrolling the figure
+     sideways (`overflow-x: auto`, styles.css above), which a printed page
+     cannot do. Scale the chart's own SVG down to the page width instead;
+     every chart keeps a `viewBox` matching its pixel size (Observable Plot's
+     default), so `height: auto` scales it proportionally rather than
+     distorting it. Never scales *up* — max-width only shrinks an oversize
+     chart, an already-narrow one is untouched. */
+  .figure {
+    overflow-x: visible;
+  }
+
+  .figure svg {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* A table can genuinely need more than one page (a sweep's every row) —
+     unlike a figure it is allowed to split, but not mid-row, and a reader
+     turning the page needs the column headings again rather than bare
+     numbers. `display: table-header-group` is the default for `thead` in
+     every engine that prints paginated tables at all; set explicitly here
+     since it is the one property this rule depends on. */
+  .notebook thead,
+  .stress-summary thead,
+  .best-design-margins thead,
+  .reliability-card thead {
+    display: table-header-group;
+  }
+
+  .notebook tbody tr,
+  .stress-summary tbody tr,
+  .best-design-margins tbody tr,
+  .reliability-card tbody tr {
+    break-inside: avoid;
+  }
+
+  .reliability-card {
+    overflow-x: visible;
   }
 
   .notebook-control-track,

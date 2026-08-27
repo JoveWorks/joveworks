@@ -203,7 +203,13 @@ function OutputTitle({ node }: { readonly node: OutputNode | MonteCarloReceiverN
   );
 }
 
-function Result({ result, node }: { readonly result: OutputResult; readonly node: OutputNode }): ReactElement | null {
+/**
+ * Exported for `Notebook.expressions.test.tsx` — the single place every
+ * output kind's rendering funnels through, so it's the right seam to prove
+ * the expressions-hidden-by-default rule (OVERVIEW.md's "Exporting") holds:
+ * only `result.kind === 'equation'` may ever reach `<Equation>`.
+ */
+export function Result({ result, node }: { readonly result: OutputResult; readonly node: OutputNode }): ReactElement | null {
   const { document, edit, analysis, setHoveredCandidate } = useGraph();
   const { numberFormat, locale } = useSettings();
   const notebookLocale = document.notebookLocale ?? locale;
