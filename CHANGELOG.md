@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.19.1](https://github.com/ThomasVanRiel/joveworks/compare/v0.19.0...v0.19.1) (2026-08-27)
+
+### Features
+
+* add intelligent multi-role plots ([96204f4](https://github.com/ThomasVanRiel/joveworks/commit/96204f40e21de769cc2be846ea6ce71b5a4ff090))
+* **editor:** connect course material from Hub ([a57cad7](https://github.com/ThomasVanRiel/joveworks/commit/a57cad785f819a1df6eb07592199fa78b1dee5bd))
+
+### Fixes
+
+* **editor:** polish nested group interactions ([4c74d99](https://github.com/ThomasVanRiel/joveworks/commit/4c74d99f807a581635bca0670bc1779851a3a427))
+* **editor:** render intelligent contour grids ([2099c7f](https://github.com/ThomasVanRiel/joveworks/commit/2099c7fd428dba61933b416ab62df5b65edfa7c7))
 ## [0.19.0](https://github.com/ThomasVanRiel/joveworks/compare/v0.18.0...v0.19.0) (2026-08-26)
 
 ### Features
