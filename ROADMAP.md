@@ -213,6 +213,30 @@ parses, serializes **and hashes** byte-for-byte as it always did, so saved
 notebooks kept matching their formula refs; the private catalogue parsed
 unmigrated. A test pins that hash equivalence, since it is the thing that
 silently breaks students' graphs if it ever slips.
+Built out into a real mechanism now that a student beta means real coursework
+crosses the stable/nightly split: `packages/schema/src/migration.ts` adds
+`migrateDocument`, an explicit entry point separate from the always-strict
+`parseDocument` — it walks a `DOCUMENT_MIGRATIONS` chain keyed by the
+`schemaVersion` a step upgrades *from*, one small step per version, up to
+`SCHEMA_VERSION`, then validates the result exactly as `parseDocument` always
+has. A `schemaVersion` newer than the build understands is a named refusal
+("this document was made with a newer version of JoveWorks…"), never a silent
+misparse. schemaVersion 1 is still the only version ever shipped, so
+`DOCUMENT_MIGRATIONS` is empty today — the chain-walking logic itself is
+proven with synthetic steps in `migration.test.ts` rather than left untested
+until a second version exists — but the rule going forward: any schema
+change, including one that only widens a type the way item 50's did, needs an
+entry in that table, and a no-op step (with a comment saying why) is the
+required form for "the schema was widened," not an absence. A versioned
+fixture corpus (`packages/schema/fixtures/documents/v1/`, loaded by
+`documentFixtures.test.ts`) checks that every shape a real NodeBook can
+take — scalar, swept range, frames/sections, marks, formula refs — still
+opens through that entry point, and the formula-hash regression guard is now
+a pinned fixture corpus too
+(`packages/schema/fixtures/formulas/hash-guard.json`, extended in
+`formula.test.ts`), so a future change to formula serialization fails loudly
+with a message naming exactly what it invalidates, instead of relying on a
+single hand-written pin being remembered.
 
 **30. Change: Should we use compiled notebooks to share in the notebook viewer?** To save mobile processing power, they can't edit anyway.
 
