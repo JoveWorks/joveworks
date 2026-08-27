@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactElement } from 'react';
 
 import { phrase } from '../i18n';
-import { loadWorkspace, type HubWorkspace } from '../model/hub';
+import { createWorkspaceShare, loadWorkspace, type HubWorkspace } from '../model/hub';
 import { loadWorkspaceEditToken, type WorkspaceAccess } from '../model/workspaceAccess';
 import { useSettings } from '../settings-context';
 
@@ -25,6 +25,12 @@ export function WorkspaceLibraryDialog({ accesses, onOpen, onDelete, onClose }: 
   const t = (english: string): string => phrase(locale, english);
   const [rows, setRows] = useState<readonly Row[]>([]);
   const [deleting, setDeleting] = useState<string | undefined>();
+  const share = async (workspace: HubWorkspace): Promise<void> => {
+    const token = loadWorkspaceEditToken(workspace.hubUrl, workspace.id);
+    if (token === undefined) throw new Error('This browser does not own this workspace.');
+    const link = await createWorkspaceShare(workspace, token);
+    try { await navigator.clipboard.writeText(link); } catch { window.prompt(t('Copy this student share link'), link); }
+  };
 
   useEffect(() => {
     let active = true;
@@ -72,6 +78,7 @@ export function WorkspaceLibraryDialog({ accesses, onOpen, onDelete, onClose }: 
                   </div>
                   <div className="workspace-library-actions">
                     <button type="button" onClick={() => onOpen(row.workspace!)}>{t('Open')}</button>
+                    <button type="button" onClick={() => void share(row.workspace!).catch((error) => window.alert(error instanceof Error ? error.message : t('Could not share this workspace.')))}>{t('Share')}</button>
                     <button type="button" className="danger" disabled={deleting !== undefined} onClick={() => remove(row)}>{deleting === row.workspace.id ? t('Deleting…') : t('Delete')}</button>
                   </div>
                 </>}

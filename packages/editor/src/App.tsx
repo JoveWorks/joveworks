@@ -144,6 +144,7 @@ import {
   deleteWorkspace,
   loadCatalogue as loadHubCatalogue,
   loadPublication as loadHubPublication,
+  loadSharedWorkspace,
   loadWorkspace,
   saveWorkspace,
   type HubCatalogueRef,
@@ -236,6 +237,12 @@ function publicationLinkFromUrl(): { readonly hubUrl: string; readonly publicati
   return hubUrl === null || publicationId === null || publicationId.trim() === ''
     ? undefined
     : { hubUrl, publicationId };
+}
+function studentShareLinkFromUrl(): { readonly hubUrl: string; readonly shareId: string } | undefined {
+  const url = new URL(window.location.href);
+  const hubUrl = url.searchParams.get('hub');
+  const shareId = url.searchParams.get('share');
+  return hubUrl === null || shareId === null || shareId.trim() === '' ? undefined : { hubUrl, shareId };
 }
 
 function measuredNodeSizes(flow: ReturnType<typeof useReactFlow>): NodeSizes {
@@ -456,6 +463,7 @@ function AppShell(): ReactElement {
   const [showConnectCourse, setShowConnectCourse] = useState(false);
   const [workspaceDialog, setWorkspaceDialog] = useState<'save' | 'open' | undefined>();
   const [linkedPublication] = useState(publicationLinkFromUrl);
+  const [linkedStudentShare] = useState(studentShareLinkFromUrl);
   const [showWorkspaceLibrary, setShowWorkspaceLibrary] = useState(false);
   const [hubWorkspace, setHubWorkspace] = useState<HubWorkspace | undefined>();
   const [workspaceAccessRevision, setWorkspaceAccessRevision] = useState(0);
@@ -652,6 +660,14 @@ function AppShell(): ReactElement {
   // would repeatedly replace a document the student has started to edit.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [linkedPublication]);
+  useEffect(() => {
+    if (linkedStudentShare === undefined) return;
+    void loadSharedWorkspace(linkedStudentShare.hubUrl, linkedStudentShare.shareId)
+      .then(openLoadedHubWorkspace)
+      .catch((error) => pushNotice(`Could not open linked student workspace: ${messageOf(error)}`));
+  // A share link is consumed only at startup.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [linkedStudentShare]);
 
   const deleteHubWorkspace = async (workspace: HubWorkspace): Promise<void> => {
     const token = loadWorkspaceEditToken(workspace.hubUrl, workspace.id);

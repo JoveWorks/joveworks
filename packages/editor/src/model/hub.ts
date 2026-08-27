@@ -208,6 +208,17 @@ export async function deleteWorkspace(workspace: HubWorkspace, workspaceToken: s
   );
 }
 
+export async function createWorkspaceShare(workspace: HubWorkspace, workspaceToken: string): Promise<string> {
+  const value = await requestJson(resolve(workspace.hubUrl, `/api/v1/workspaces/${encodeURIComponent(workspace.id)}/shares`), 'POST', undefined, workspaceToken);
+  if (!isObject(value) || typeof value.id !== 'string') throw new Error('The Hub returned an invalid student share link.');
+  return new URL(`/s/${encodeURIComponent(value.id)}`, `${workspace.hubUrl}/`).toString();
+}
+
+export async function loadSharedWorkspace(rawHubUrl: string, shareId: string): Promise<HubWorkspace> {
+  const base = hubUrl(rawHubUrl);
+  return parseWorkspace(base, await requestJson(resolve(base, `/api/v1/shares/${encodeURIComponent(shareId)}`), 'GET'));
+}
+
 function resolve(base: string, path: string): string {
   return new URL(path.replace(/^\//, ''), `${base}/`).toString();
 }
