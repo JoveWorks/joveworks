@@ -1,0 +1,80 @@
+[
+  {
+    "name": "single-output-scalar",
+    "hash": "30ce4ee8f2f8cefa",
+    "record": {
+      "id": "fixture.sum",
+      "version": 1,
+      "output": { "kind": "numeric", "name": "y", "unit": "N" },
+      "inputs": [
+        { "kind": "numeric", "name": "a", "unit": "N", "default": 10, "validRange": { "min": 0, "max": 1000 } },
+        { "kind": "numeric", "name": "b", "unit": "" },
+        { "kind": "numeric", "name": "c", "unit": "N" }
+      ],
+      "expression": "a*b + c",
+      "description": { "en": "An invented formula, used because a real one may not be redistributed." },
+      "status": "unverified"
+    }
+  },
+  {
+    "name": "two-output-lookup-table",
+    "hash": "9d62efd9d4af31c2",
+    "record": {
+      "id": "fixture.table",
+      "version": 1,
+      "output": [
+        { "kind": "numeric", "name": "w", "unit": "mm" },
+        { "kind": "numeric", "name": "n", "unit": "" }
+      ],
+      "inputs": [{ "kind": "categorical", "name": "pick", "domain": ["first", "second"], "default": "first" }],
+      "lookup": {
+        "axes": [{ "input": "pick", "kind": "categorical", "values": ["first", "second"] }],
+        "values": { "w": [10, 20], "n": [1, 2] }
+      },
+      "description": { "en": "An invented table, used because a real one may not be redistributed." },
+      "status": "unverified"
+    }
+  },
+  {
+    "name": "citation-variant-and-spectrum-input",
+    "hash": "fabd6f6e3829d266",
+    "record": {
+      "id": "fixture.variant",
+      "version": 3,
+      "output": { "kind": "numeric", "name": "y", "unit": "N" },
+      "inputs": [
+        {
+          "kind": "numeric",
+          "name": "a",
+          "unit": "N",
+          "description": { "en": "the first factor" },
+          "default": 10,
+          "validRange": { "min": 0, "max": 1000 },
+          "monotonic": "increasing"
+        },
+        { "kind": "categorical", "name": "grade", "domain": ["soft", "hard"], "default": "soft" },
+        { "kind": "spectrum", "name": "c_i", "unit": "N" }
+      ],
+      "expression": "a*grade + c_i",
+      "citation": "Invented 1.2B",
+      "variantOf": "fixture.variant-relation",
+      "appliesWhen": "a > 0",
+      "description": { "en": "An invented formula, used because a real one may not be redistributed." },
+      "status": "verified"
+    }
+  },
+  {
+    "name": "quarantined-record",
+    "hash": "6fca53e1701903ed",
+    "record": {
+      "id": "fixture.quarantined",
+      "version": 1,
+      "output": { "kind": "numeric", "name": "y", "unit": "N" },
+      "inputs": [{ "kind": "numeric", "name": "a", "unit": "N" }],
+      "expression": "a",
+      "description": { "en": "An invented formula, used because a real one may not be redistributed." },
+      "status": "quarantined",
+      "quarantineReason": { "en": "unit tag [__X] could not be resolved" }
+    }
+  }
+]

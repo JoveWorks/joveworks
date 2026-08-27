@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "id": "fixture-v1-scalar",
+  "title": "Scalar graph fixture (schemaVersion 1)",
+  "nodes": [
+    {
+      "kind": "input",
+      "id": "a",
+      "label": "a",
+      "position": { "x": 0, "y": 0 },
+      "value": { "kind": "scalar", "value": 4, "unit": "N" }
+    },
+    {
+      "kind": "input",
+      "id": "b",
+      "label": "b",
+      "position": { "x": 0, "y": 120 },
+      "value": { "kind": "scalar", "value": 2, "unit": "" }
+    },
+    {
+      "kind": "input",
+      "id": "c",
+      "label": "c",
+      "position": { "x": 0, "y": 240 },
+      "value": { "kind": "scalar", "value": 1, "unit": "N" }
+    },
+    {
+      "kind": "formula",
+      "id": "sum",
+      "label": "y = a*b + c",
+      "position": { "x": 260, "y": 120 },
+      "formula": { "id": "fixture.sum", "version": 1, "hash": "1111111111111111" }
+    },
+    {
+      "kind": "output",
+      "id": "printY",
+      "label": "y",
+      "position": { "x": 520, "y": 120 },
+      "output": { "kind": "print", "figures": 3 }
+    }
+  ],
+  "edges": [
+    { "id": "e-a", "from": { "node": "a", "port": "value" }, "to": { "node": "sum", "port": "a" } },
+    { "id": "e-b", "from": { "node": "b", "port": "value" }, "to": { "node": "sum", "port": "b" } },
+    { "id": "e-c", "from": { "node": "c", "port": "value" }, "to": { "node": "sum", "port": "c" } },
+    { "id": "e-y", "from": { "node": "sum", "port": "y" }, "to": { "node": "printY", "port": "value" } }
+  ],
+  "frames": []
+}
