@@ -26,7 +26,7 @@ import {
 import { localize } from './localization.js';
 import { canonicalJson, type JsonObject } from './json.js';
 import { hashRecord } from './hash.js';
-import { SCHEMA_VERSION } from './version.js';
+import { CATALOGUE_SCHEMA_VERSION } from './version.js';
 
 const product: JsonObject = {
   id: 'demo.product',
@@ -360,7 +360,7 @@ describe('localized text', () => {
 
 describe('catalogues', () => {
   const catalogue: JsonObject = {
-    schemaVersion: SCHEMA_VERSION,
+    schemaVersion: CATALOGUE_SCHEMA_VERSION,
     id: 'demo',
     name: { en: 'Invented demonstration formulas' },
     restricted: false,
@@ -389,8 +389,8 @@ describe('catalogues', () => {
   });
 
   it('refuses a version it does not read, rather than guessing', () => {
-    expect(() => parseCatalogue({ ...catalogue, schemaVersion: SCHEMA_VERSION + 1 })).toThrow(
-      /schemaVersion: is 2, but this build reads version 1 only/,
+    expect(() => parseCatalogue({ ...catalogue, schemaVersion: CATALOGUE_SCHEMA_VERSION + 1 })).toThrow(
+      /schemaVersion: is 2, but this build reads catalogue schemaVersion 1 only/,
     );
   });
 });

@@ -23,7 +23,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { migrateDocument } from './migration.js';
-import { SCHEMA_VERSION } from './version.js';
+import { DOCUMENT_SCHEMA_VERSION } from './version.js';
 import type { JsonValue } from './json.js';
 
 const fixturesRoot = fileURLToPath(new URL('../fixtures/documents', import.meta.url));
@@ -55,7 +55,7 @@ describe('every shipped schemaVersion has a fixture set that still opens', () =>
         it(`${file} migrates and parses`, () => {
           const raw = loadFixture(versionDir, file);
           const document = migrateDocument(raw);
-          expect(document.schemaVersion).toBe(SCHEMA_VERSION);
+          expect(document.schemaVersion).toBe(DOCUMENT_SCHEMA_VERSION);
         });
       }
     });
