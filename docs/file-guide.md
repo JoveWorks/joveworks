@@ -295,8 +295,7 @@ hand; this gives it a form instead of a text editor.
 - `vite.config.ts` — `base: '/author/'`; outputs to `build/` (kept separate
   from `tsc`'s `dist/`, same split as the editor).
 - Out of scope for now: editing a formula's `FormulaLookup` table (round-trips
-  untouched), cross-catalogue id-collision checking, and the password-locking
-  workflow (`docs/locking-catalogues.md`, still a separate CLI step).
+  untouched) and cross-catalogue id-collision checking.
 
 ---
 
@@ -327,13 +326,11 @@ Public scripts that **parse** the private predecessor Python source with stdlib 
 - `docs/file-guide.md` — this file.
 - `docs/analytics.md` — what the alpha Plausible analytics integration does and doesn't collect; the product-facing complement to `packages/editor/src/analytics/analytics.ts`.
 - `docs/authoring-catalogues.md` — how to hand-write a catalogue JSON file when there's no extraction script to run; the guide behind `packages/schema/src/formula.ts`/`port.ts`.
-- `docs/password-shared-catalogues.md` — a design note (roadmap #28) for password-based restricted-catalogue sharing; not yet built.
 - `docs/feature-review.md` — cross-domain feature review and prioritisation source.
 - `docs/selection-and-best-design-plan.md` — implementation plan retained for the landed selection/decision pass.
 - `docs/pareto-and-candidate-marking-plan.md` — plan for Pareto and candidate-marking work.
 - `docs/reliability-reports-plan.md` — implementation contract for swept statistics, distributions, reliability reporting, and additional random distributions.
 - `docs/catalogue-diagrams-plan.md` — plan for catalogue-provided diagrams.
-- `docs/locking-catalogues.md` — design record for locked catalogue handling.
 - `docs/REVIEW-2026-08.md` — dated repository review.
 - `docs/feature-review.md` — exploratory product ideas beyond what is built, with a priority order at the end. A review, not a status file.
 - `docs/selection-and-best-design-plan.md` — the plan behind the selection nodes and the Best Design card (review item 1).

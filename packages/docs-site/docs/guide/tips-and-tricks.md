@@ -156,14 +156,6 @@ you go looking:
   re-letters the ones after it, so unmark from the end if your prose
   already names letters.
 
-## Password-locked catalogues
-
-A restricted catalogue can ship with the app locked, showing only its name
-until someone enters the password (File → Unlock catalogue…, or directly
-from its section in the palette). Unlocking is entirely client-side and,
-once done, behaves exactly like a catalogue loaded from a file — no
-difference in how its formulas show up or work afterward.
-
 ## Monte Carlo
 
 A Monte Carlo generator draws samples from a distribution the same way an
