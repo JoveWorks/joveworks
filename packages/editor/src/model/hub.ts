@@ -8,7 +8,7 @@
  * itself is remembered, but a secret never joins localStorage.
  */
 
-import { loadDocument, serializeDocument, type GraphDocument, type JsonValue } from '@joveworks/schema';
+import { hashRecord, loadDocument, serializeDocument, type GraphDocument, type JsonValue } from '@joveworks/schema';
 
 const PROTOCOL_VERSION = 1;
 
@@ -26,6 +26,15 @@ export interface HubCourse {
   readonly publications: readonly HubPublicationSummary[];
   /** Every immutable catalogue revision currently used by this course. */
   readonly catalogues?: readonly HubCatalogueRef[];
+  /**
+   * The same catalogues' full documents, inline — a Hub new enough to send
+   * this spares the client the extra round trip `loadCatalogue` would
+   * otherwise need per entry in `catalogues`. Optional for the same reason
+   * `catalogues` refs alone remain fully supported: an older Hub, or one
+   * Thomas hasn't redeployed yet, sends only refs, and the client falls back
+   * to fetching each one individually.
+   */
+  readonly catalogueContents?: readonly HubCatalogueContent[];
 }
 
 /** Enough metadata to choose a course before loading its full manifest. */
@@ -38,6 +47,18 @@ export interface HubCatalogueRef {
   readonly id: string;
   readonly version: number;
   readonly hash: string;
+}
+
+/**
+ * A catalogue ref plus the document it points to, both delivered in the same
+ * course response. `id`/`version`/`hash` are repeated here (rather than
+ * nesting under the ref) so this shape stands on its own the way
+ * `HubCatalogueRef` does; `resolveCourseCatalogues` still cross-checks it
+ * against the matching entry in `catalogues` rather than trusting it alone —
+ * see the hash note there.
+ */
+export interface HubCatalogueContent extends HubCatalogueRef {
+  readonly content: JsonValue;
 }
 
 export interface HubPublication {
@@ -146,6 +167,22 @@ export async function loadPublication(
   };
 }
 
+/**
+ * A catalogue whose `hash` (and/or `version`) does not match the ref it is
+ * meant to satisfy — whether that ref came from a separate fetch's ETag or
+ * from a Hub's inline `catalogueContents`. Graphs reference formulas by id,
+ * version, and content hash (AGENTS.md); silently accepting a mismatched
+ * catalogue would let a student recompute different numbers than the ones
+ * their graph was saved against, so this is a hard failure rather than a
+ * fallback to whichever source disagreed.
+ */
+export class HubCatalogueMismatchError extends Error {
+  override readonly name = 'HubCatalogueMismatchError';
+  constructor(id: string) {
+    super(`Catalogue ${id} does not match the published revision.`);
+  }
+}
+
 export async function loadCatalogue(
   source: HubCourse,
   catalogue: HubCatalogueRef,
@@ -160,8 +197,49 @@ export async function loadCatalogue(
   // content hash the publication named, rather than merely an id/version that
   // a broken or misconfigured server happened to return.
   const hash = response.etag?.replace(/^"|"$/g, '');
-  if (hash !== catalogue.hash) throw new Error(`Catalogue ${catalogue.id} does not match the published revision.`);
+  if (hash !== catalogue.hash) throw new HubCatalogueMismatchError(catalogue.id);
   return response.value;
+}
+
+/**
+ * Every catalogue in `refs` (a publication's, a workspace's, or a whole
+ * course's), resolved with no second round trip for any ref `source`
+ * already inlined via `catalogueContents`. `refs` is a caller-supplied list
+ * rather than always `source.catalogues`, because a publication or a saved
+ * workspace can reference a subset of the course's catalogues; matching is
+ * still against `source.catalogueContents` by id, so an inline entry helps
+ * whichever ref list needs it. A ref missing from `catalogueContents` (an
+ * older Hub that sent none, or one that only inlined some) falls back to the
+ * existing per-ref `loadCatalogue` fetch, so a refs-only Hub keeps working
+ * unchanged, and partial inlining works the same way one ref at a time.
+ *
+ * Inline content is never trusted at face value: each one is matched to its
+ * ref by id and checked for the same version and the same content hash a
+ * separate fetch's ETag would have proven, via `hashRecord` — the content
+ * hash this codebase already uses (`formulaHash` in packages/schema) rather
+ * than a second hashing scheme invented for this transport. A mismatch
+ * throws `HubCatalogueMismatchError` instead of silently preferring the
+ * inline copy or the ref.
+ *
+ * Restricted catalogue content is gated by the course token on the request
+ * (unchanged — see the module header), not by any client-side encryption of
+ * the payload: an inline entry is a plain catalogue document like any other,
+ * and this function does not special-case locked/encrypted catalogues.
+ */
+export async function resolveCourseCatalogues(
+  source: HubCourse,
+  refs: readonly HubCatalogueRef[],
+  courseToken?: string,
+): Promise<readonly JsonValue[]> {
+  const inline = new Map((source.catalogueContents ?? []).map((entry) => [entry.id, entry] as const));
+  return Promise.all(refs.map(async (ref) => {
+    const content = inline.get(ref.id);
+    if (content === undefined) return loadCatalogue(source, ref, courseToken);
+    if (content.version !== ref.version || hashRecord(content.content) !== ref.hash) {
+      throw new HubCatalogueMismatchError(ref.id);
+    }
+    return content.content;
+  }));
 }
 
 export async function createWorkspace(
@@ -331,12 +409,16 @@ function parseCourse(hubUrl_: string, value: JsonValue): HubCourse {
   if (!isObject(value) || value.protocolVersion !== PROTOCOL_VERSION || typeof value.slug !== 'string' || typeof value.title !== 'string' || !Array.isArray(value.publications) || !Array.isArray(value.catalogues)) {
     throw new Error('The Hub returned an invalid course manifest.');
   }
+  if (value.catalogueContents !== undefined && !Array.isArray(value.catalogueContents)) {
+    throw new Error('The Hub returned invalid inline catalogue contents.');
+  }
   return {
     hubUrl: hubUrl_,
     slug: value.slug,
     title: value.title,
     publications: value.publications.map(parsePublicationSummary),
     catalogues: value.catalogues.map(parseCatalogueRef),
+    ...(value.catalogueContents === undefined ? {} : { catalogueContents: value.catalogueContents.map(parseCatalogueContent) }),
   };
 }
 
@@ -360,6 +442,20 @@ function parseCatalogueRef(value: JsonValue): HubCatalogueRef {
     throw new Error('The Hub publication contains an invalid catalogue reference.');
   }
   return { id: value.id, version: value.version, hash: value.hash };
+}
+
+function parseCatalogueContent(value: JsonValue): HubCatalogueContent {
+  if (
+    !isObject(value)
+    || typeof value.id !== 'string'
+    || typeof value.version !== 'number'
+    || !Number.isInteger(value.version)
+    || typeof value.hash !== 'string'
+    || !('content' in value)
+  ) {
+    throw new Error('The Hub course manifest contains an invalid inline catalogue.');
+  }
+  return { id: value.id, version: value.version, hash: value.hash, content: value.content as JsonValue };
 }
 
 function isMode(value: unknown): value is 'viewer' | 'editor' {
