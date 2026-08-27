@@ -8,7 +8,7 @@
  * itself is remembered, but a secret never joins localStorage.
  */
 
-import { hashRecord, loadDocument, serializeDocument, type GraphDocument, type JsonValue } from '@joveworks/schema';
+import { loadDocument, serializeDocument, type GraphDocument, type JsonValue } from '@joveworks/schema';
 
 const PROTOCOL_VERSION = 1;
 
@@ -214,10 +214,10 @@ export async function loadCatalogue(
  * unchanged, and partial inlining works the same way one ref at a time.
  *
  * Inline content is never trusted at face value: each one is matched to its
- * ref by id and checked for the same version and the same content hash a
- * separate fetch's ETag would have proven, via `hashRecord` — the content
- * hash this codebase already uses (`formulaHash` in packages/schema) rather
- * than a second hashing scheme invented for this transport. A mismatch
+ * ref by id, version, and the same server-issued SHA-256 value a separate
+ * fetch exposes as its ETag. Hub's catalogue hash is a transport/content
+ * revision hash; it is intentionally distinct from the schema's FNV formula
+ * hashes. A mismatch
  * throws `HubCatalogueMismatchError` instead of silently preferring the
  * inline copy or the ref.
  *
@@ -231,11 +231,16 @@ export async function resolveCourseCatalogues(
   refs: readonly HubCatalogueRef[],
   courseToken?: string,
 ): Promise<readonly JsonValue[]> {
-  const inline = new Map((source.catalogueContents ?? []).map((entry) => [entry.id, entry] as const));
+  const inline = new Map((source.catalogueContents ?? []).map((entry) => [`${entry.id}\n${entry.version}`, entry] as const));
   return Promise.all(refs.map(async (ref) => {
-    const content = inline.get(ref.id);
-    if (content === undefined) return loadCatalogue(source, ref, courseToken);
-    if (content.version !== ref.version || hashRecord(content.content) !== ref.hash) {
+    const content = inline.get(`${ref.id}\n${ref.version}`);
+    if (content === undefined) {
+      if ((source.catalogueContents ?? []).some((entry) => entry.id === ref.id)) {
+        throw new HubCatalogueMismatchError(ref.id);
+      }
+      return loadCatalogue(source, ref, courseToken);
+    }
+    if (content.id !== ref.id || content.version !== ref.version || content.hash !== ref.hash) {
       throw new HubCatalogueMismatchError(ref.id);
     }
     return content.content;

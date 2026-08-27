@@ -147,8 +147,10 @@ describe('resolveCourseCatalogues', () => {
   // Invented content only — never a real Roloff & Matek formula (AGENTS.md).
   const catalogueA = { schemaVersion: 1, id: 'catalogue-a', name: 'A', restricted: false, formulas: [{ id: 'a.made-up', version: 1, expression: 'y = a*b + c' }] };
   const catalogueB = { schemaVersion: 1, id: 'catalogue-b', name: 'B', restricted: false, formulas: [] };
-  const refA = { id: 'catalogue-a', version: 1, hash: hashRecord(catalogueA) };
-  const refB = { id: 'catalogue-b', version: 1, hash: hashRecord(catalogueB) };
+  // Hub uses SHA-256 catalogue revision hashes; their contents are opaque to
+  // the editor transport layer, which only compares the inline hash to the ref.
+  const refA = { id: 'catalogue-a', version: 1, hash: 'a'.repeat(64) };
+  const refB = { id: 'catalogue-b', version: 1, hash: 'b'.repeat(64) };
 
   const course = (catalogueContents?: HubCourse['catalogueContents']): HubCourse => ({
     hubUrl: 'http://localhost:8080',
@@ -192,10 +194,10 @@ describe('resolveCourseCatalogues', () => {
     expect(fetch).toHaveBeenCalledWith('http://localhost:8080/api/v1/catalogues/catalogue-b/1', {});
   });
 
-  it('rejects an inline catalogue whose hash does not match its ref, rather than preferring either side', async () => {
+  it('rejects an inline catalogue whose Hub hash does not match its ref, rather than preferring either side', async () => {
     const fetch = vi.fn();
     vi.stubGlobal('fetch', fetch);
-    const source = course([{ ...refA, content: { ...catalogueA, name: 'Tampered' } }, { ...refB, content: catalogueB }]);
+    const source = course([{ ...refA, hash: 'c'.repeat(64), content: catalogueA }, { ...refB, content: catalogueB }]);
 
     await expect(resolveCourseCatalogues(source, source.catalogues!)).rejects.toThrow(HubCatalogueMismatchError);
     expect(fetch).not.toHaveBeenCalled();
