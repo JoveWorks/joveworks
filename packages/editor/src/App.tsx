@@ -229,6 +229,15 @@ function startupDocument(
   };
 }
 
+function workspaceLinkFromUrl(): { readonly hubUrl: string; readonly workspaceId: string } | undefined {
+  const url = new URL(window.location.href);
+  const hubUrl = url.searchParams.get('hub');
+  const workspaceId = url.searchParams.get('workspace');
+  return hubUrl === null || workspaceId === null || workspaceId.trim() === ''
+    ? undefined
+    : { hubUrl, workspaceId };
+}
+
 function measuredNodeSizes(flow: ReturnType<typeof useReactFlow>): NodeSizes {
   return new Map(
     flow
@@ -446,6 +455,7 @@ function AppShell(): ReactElement {
   const [showUnlockCatalogue, setShowUnlockCatalogue] = useState(false);
   const [showConnectCourse, setShowConnectCourse] = useState(false);
   const [workspaceDialog, setWorkspaceDialog] = useState<'save' | 'open' | undefined>();
+  const [linkedWorkspace] = useState(workspaceLinkFromUrl);
   const [showWorkspaceLibrary, setShowWorkspaceLibrary] = useState(false);
   const [hubWorkspace, setHubWorkspace] = useState<HubWorkspace | undefined>();
   const [workspaceAccessRevision, setWorkspaceAccessRevision] = useState(0);
@@ -573,7 +583,7 @@ function AppShell(): ReactElement {
     recordRecentDocument(documentRef.current);
     clearAutosaveSnapshot();
     setSavedSnapshot(text);
-    pushNotice(`Saved to Hub workspace ${created.workspace.id}.`);
+    pushNotice(`Saved to Hub workspace ${created.workspace.id}. Share: ${new URL(`/w/${created.workspace.id}`, `${created.workspace.hubUrl}/`)}`);
   };
 
   const saveToHub = async (): Promise<void> => {
@@ -624,6 +634,21 @@ function AppShell(): ReactElement {
   const openHubWorkspace = async (hubAddress: string, workspaceId: string): Promise<void> => {
     await openLoadedHubWorkspace(await loadWorkspace(hubAddress, workspaceId.trim()));
   };
+
+  useEffect(() => {
+    if (linkedWorkspace === undefined) return;
+    void openHubWorkspace(linkedWorkspace.hubUrl, linkedWorkspace.workspaceId)
+      .then(() => {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('hub');
+        url.searchParams.delete('workspace');
+        window.history.replaceState({}, '', url);
+      })
+      .catch((error) => pushNotice(`Could not open linked Hub workspace: ${messageOf(error)}`));
+  // The URL is read exactly once on boot. Re-running on editor state changes
+  // would repeatedly replace a document the student has started to edit.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [linkedWorkspace]);
 
   const deleteHubWorkspace = async (workspace: HubWorkspace): Promise<void> => {
     const token = loadWorkspaceEditToken(workspace.hubUrl, workspace.id);
