@@ -191,6 +191,15 @@ export async function saveWorkspace(
   return parseWorkspace(workspace.hubUrl, value);
 }
 
+export async function deleteWorkspace(workspace: HubWorkspace, workspaceToken: string): Promise<void> {
+  await requestJson(
+    resolve(workspace.hubUrl, `/api/v1/workspaces/${encodeURIComponent(workspace.id)}`),
+    'DELETE',
+    undefined,
+    workspaceToken,
+  );
+}
+
 function resolve(base: string, path: string): string {
   return new URL(path.replace(/^\//, ''), `${base}/`).toString();
 }
@@ -228,7 +237,7 @@ async function getJsonResponse(url: string, courseToken?: string): Promise<JsonR
 
 async function requestJson(
   url: string,
-  method: 'GET' | 'POST' | 'PUT',
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE',
   body?: JsonValue,
   workspaceToken?: string,
 ): Promise<JsonValue> {
@@ -249,6 +258,7 @@ async function requestJson(
   if (response.status === 404) throw new Error('That workspace was not found on this Hub.');
   if (response.status === 409 || response.status === 412) throw new Error('This workspace changed elsewhere; reload it before saving.');
   if (!response.ok) throw new Error(`The Hub could not complete this workspace request (${response.status}).`);
+  if (response.status === 204) return null;
   try {
     return await response.json() as JsonValue;
   } catch {

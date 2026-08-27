@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { emptyDocument, serializeDocument } from '@joveworks/schema';
 
-import { connectCourse, createWorkspace, hubUrl, loadCatalogue, loadPublication, loadWorkspace, saveWorkspace } from './hub';
+import { connectCourse, createWorkspace, deleteWorkspace, hubUrl, loadCatalogue, loadPublication, loadWorkspace, saveWorkspace } from './hub';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -97,5 +97,18 @@ describe('Hub API transport', () => {
       method: 'PUT', headers: expect.objectContaining({ 'X-JoveWorks-Workspace-Token': 'edit-capability' }),
     }));
     expect(fetch).toHaveBeenNthCalledWith(3, 'http://localhost:8080/api/v1/workspaces/Ab12Cd34Ef56', expect.objectContaining({ method: 'GET' }));
+  });
+
+  it('deletes a workspace only with its edit token', async () => {
+    const workspace = {
+      hubUrl: 'http://localhost:8080', id: 'Ab12Cd34Ef56', title: 'Student study', document: emptyDocument('student-study', 'Student study'),
+    };
+    const fetch = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
+    vi.stubGlobal('fetch', fetch);
+
+    await expect(deleteWorkspace(workspace, 'edit-capability')).resolves.toBeUndefined();
+    expect(fetch).toHaveBeenCalledWith('http://localhost:8080/api/v1/workspaces/Ab12Cd34Ef56', expect.objectContaining({
+      method: 'DELETE', headers: { 'X-JoveWorks-Workspace-Token': 'edit-capability' },
+    }));
   });
 });

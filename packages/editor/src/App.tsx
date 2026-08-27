@@ -137,9 +137,11 @@ import { phrase, ui } from './i18n';
 import { CourseMaterialViewer } from './viewer/CourseMaterialViewer';
 import { ConnectCourseDialog } from './course/ConnectCourseDialog';
 import { WorkspaceDialog } from './course/WorkspaceDialog';
+import { WorkspaceLibraryDialog } from './course/WorkspaceLibraryDialog';
 import {
   connectCourse,
   createWorkspace,
+  deleteWorkspace,
   loadCatalogue as loadHubCatalogue,
   loadPublication as loadHubPublication,
   loadWorkspace,
@@ -148,7 +150,12 @@ import {
   type HubWorkspace,
 } from './model/hub';
 import { loadCourseSources, saveCourseSources, withCourseSource } from './model/courseSources';
-import { loadWorkspaceEditToken, saveWorkspaceEditToken } from './model/workspaceAccess';
+import {
+  loadWorkspaceAccesses,
+  loadWorkspaceEditToken,
+  removeWorkspaceEditToken,
+  saveWorkspaceEditToken,
+} from './model/workspaceAccess';
 
 /**
  * The base catalogue, the array-node catalogue, the bundled public
@@ -433,7 +440,10 @@ function AppShell(): ReactElement {
   const [showUnlockCatalogue, setShowUnlockCatalogue] = useState(false);
   const [showConnectCourse, setShowConnectCourse] = useState(false);
   const [workspaceDialog, setWorkspaceDialog] = useState<'save' | 'open' | undefined>();
+  const [showWorkspaceLibrary, setShowWorkspaceLibrary] = useState(false);
   const [hubWorkspace, setHubWorkspace] = useState<HubWorkspace | undefined>();
+  const [workspaceAccessRevision, setWorkspaceAccessRevision] = useState(0);
+  const workspaceAccesses = useMemo(loadWorkspaceAccesses, [workspaceAccessRevision]);
 
   useEffect(() => {
     window.document.title = `JoveWorks | ${document.title}`;
@@ -543,6 +553,7 @@ function AppShell(): ReactElement {
     const draft = { title: documentRef.current.title, document: documentRef.current };
     const created = await createWorkspace(hubAddress, draft);
     saveWorkspaceEditToken(created.workspace.hubUrl, created.workspace.id, created.editToken);
+    setWorkspaceAccessRevision((current) => current + 1);
     setHubWorkspace(created.workspace);
     const text = saveDocument(documentRef.current);
     recordRecentDocument(documentRef.current);
@@ -567,13 +578,26 @@ function AppShell(): ReactElement {
     pushNotice(`Saved to Hub workspace ${saved.id}.`);
   };
 
-  const openHubWorkspace = async (hubAddress: string, workspaceId: string): Promise<void> => {
-    const workspace = await loadWorkspace(hubAddress, workspaceId.trim());
+  const openLoadedHubWorkspace = (workspace: HubWorkspace): void => {
     setHubWorkspace(workspace);
     resetDocument(workspace.document);
     recordRecentDocument(workspace.document);
     clearAutosaveSnapshot();
     pushNotice(`Opened ${workspace.title} from Hub workspace ${workspace.id}.`);
+  };
+
+  const openHubWorkspace = async (hubAddress: string, workspaceId: string): Promise<void> => {
+    openLoadedHubWorkspace(await loadWorkspace(hubAddress, workspaceId.trim()));
+  };
+
+  const deleteHubWorkspace = async (workspace: HubWorkspace): Promise<void> => {
+    const token = loadWorkspaceEditToken(workspace.hubUrl, workspace.id);
+    if (token === undefined) throw new Error('This browser does not own that workspace.');
+    await deleteWorkspace(workspace, token);
+    removeWorkspaceEditToken(workspace.hubUrl, workspace.id);
+    setWorkspaceAccessRevision((current) => current + 1);
+    if (hubWorkspace?.hubUrl === workspace.hubUrl && hubWorkspace.id === workspace.id) setHubWorkspace(undefined);
+    pushNotice(`Deleted Hub workspace ${workspace.id}.`);
   };
 
   // A ref rather than a `document` dependency: restarting the interval on
@@ -922,9 +946,6 @@ function AppShell(): ReactElement {
     { label: t('New'), onClick: () => guardDiscard(newDocument) },
     { label: t('Open…'), onClick: () => guardDiscard(() => void openDocumentFile()) },
     { label: t('Save'), onClick: saveToFile },
-    { label: hubWorkspace === undefined ? t('Save to Hub…') : t('Save to Hub'), onClick: () => hubWorkspace === undefined ? setWorkspaceDialog('save') : void saveToHub().catch((error) => pushNotice(messageOf(error))) },
-    { label: t('Save a copy to Hub…'), onClick: () => setWorkspaceDialog('save') },
-    { label: t('Open Hub workspace…'), onClick: () => guardDiscard(() => setWorkspaceDialog('open')) },
     { heading: t('Recent') },
     ...(recentDocuments.length === 0
       ? [{ label: t('No recent documents'), disabled: true, onClick: () => undefined }]
@@ -960,6 +981,11 @@ function AppShell(): ReactElement {
 
   const courseMenuItems: readonly MenuItem[] = [
     { label: t('Connect course…'), onClick: () => setShowConnectCourse(true) },
+    { heading: t('Your Hub work') },
+    { label: hubWorkspace === undefined ? t('Save to Hub…') : t('Save to Hub'), onClick: () => hubWorkspace === undefined ? setWorkspaceDialog('save') : void saveToHub().catch((error) => pushNotice(messageOf(error))) },
+    { label: t('Save a copy to Hub…'), onClick: () => setWorkspaceDialog('save') },
+    { label: t('Open Hub workspace…'), onClick: () => guardDiscard(() => setWorkspaceDialog('open')) },
+    { label: t('Manage Hub workspaces…'), onClick: () => setShowWorkspaceLibrary(true) },
     ...(courseSources.length === 0
       ? [{ heading: t('No course connected') }]
       : courseSources.flatMap((source) => [
@@ -1258,6 +1284,17 @@ function AppShell(): ReactElement {
               initialHubUrl={hubWorkspace?.hubUrl ?? courseSources[0]?.hubUrl ?? ''}
               onSubmit={openHubWorkspace}
               onClose={() => setWorkspaceDialog(undefined)}
+            />
+          ) : null}
+          {showWorkspaceLibrary ? (
+            <WorkspaceLibraryDialog
+              accesses={workspaceAccesses}
+              onOpen={(workspace) => {
+                setShowWorkspaceLibrary(false);
+                guardDiscard(() => openLoadedHubWorkspace(workspace));
+              }}
+              onDelete={deleteHubWorkspace}
+              onClose={() => setShowWorkspaceLibrary(false)}
             />
           ) : null}
 

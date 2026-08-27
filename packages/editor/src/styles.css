@@ -2604,6 +2604,52 @@ aside.right {
   color: var(--state-error);
 }
 
+.workspace-library-dialog {
+  width: min(560px, calc(100vw - 32px));
+  max-height: min(620px, calc(100vh - 32px));
+}
+
+.workspace-library-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow: auto;
+}
+
+.workspace-library-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--panel);
+}
+
+.workspace-library-meta {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.workspace-library-meta strong,
+.workspace-library-meta small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-library-meta small {
+  color: var(--muted);
+}
+
+.workspace-library-actions {
+  display: flex;
+  gap: 6px;
+}
+
 .tutorial-backdrop {
   position: fixed;
   inset: 0;
