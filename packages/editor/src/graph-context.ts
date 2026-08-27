@@ -44,6 +44,9 @@ export interface GraphContextValue {
   /** Nodes whose detail is explicitly expanded. */
   readonly expanded: ReadonlySet<string>;
   readonly toggleExpanded: (id: string) => void;
+  /** Group frames compacted into derived canvas-only macro-nodes. */
+  readonly collapsedGroups: ReadonlySet<string>;
+  readonly toggleGroupCollapsed: (id: string) => void;
   /**
    * What's currently selected on the canvas — nodes, frames and edges alike,
    * by id. Lives here rather than in `Canvas.tsx` alone (despite being

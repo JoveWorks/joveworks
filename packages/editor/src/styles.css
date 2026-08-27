@@ -47,6 +47,34 @@
   color-scheme: light;
 }
 
+.stress-report {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.stress-design + .stress-design {
+  border-top: 1px solid var(--border, #d7d7d7);
+  padding-top: 0.75rem;
+}
+
+.stress-headline,
+.stress-empty {
+  margin: 0.25rem 0;
+}
+
+.stress-summary {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9em;
+}
+
+.stress-summary th,
+.stress-summary td {
+  border-bottom: 1px solid var(--border, #d7d7d7);
+  padding: 0.28rem 0.4rem;
+  text-align: left;
+}
+
 /* Dark values follow the OS preference unless the user has explicitly chosen
    light (view menu); duplicated below rather than deduped, since this file
    has no build step to do that mechanically — keep the two blocks adjacent. */
@@ -2236,6 +2264,159 @@ aside.right {
   background: var(--accent-wash);
 }
 
+/*
+ * A group is an annotation around canvas structure, not a second report
+ * section. Corner brackets make that lighter hierarchy survive nesting; the
+ * four short midpoint strokes show that every edge, not only a corner, can be
+ * resized. Hover/selection completes the perimeter while it is being edited.
+ */
+.frame.group {
+  --group-line: color-mix(in srgb, var(--muted) 72%, transparent);
+  position: relative;
+  /* A nested group's empty interior must not cover its parent's title and
+   * collapse control. Its actual controls opt back in below. */
+  pointer-events: none;
+  border-color: transparent;
+  background-color: color-mix(in srgb, var(--hover-bg) 18%, transparent);
+}
+
+.frame.group .frame-title,
+.frame.group .react-flow__resize-control,
+.frame.group .collapsed-group-ports {
+  pointer-events: auto;
+}
+
+.frame.group.hovered,
+.frame.group.selected {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--muted) 38%, transparent);
+}
+
+.frame.group .frame-title {
+  font-weight: 500;
+  font-style: italic;
+}
+
+.frame.group.collapsed {
+  border: 1px solid var(--group-line);
+  background: color-mix(in srgb, var(--hover-bg) 28%, transparent);
+}
+
+.frame.group.collapsed .group-frame-outline { display: none; }
+
+.frame-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.frame-title .title {
+  flex: 1;
+  min-width: 0;
+}
+
+.group-collapse {
+  flex: none;
+  border: 0;
+  padding: 0 2px;
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+}
+
+.collapsed-group-ports {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: 24px;
+  font-size: 10px;
+}
+
+.collapsed-group-port-list { min-width: 0; }
+.collapsed-group-port-list.outputs { text-align: right; }
+
+.collapsed-group-port {
+  height: 24px;
+  padding: 4px 10px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  box-sizing: border-box;
+}
+
+.collapsed-group-port.output { padding-left: 4px; }
+
+.collapsed-group-port.port-highlighted {
+  color: var(--accent);
+  background: var(--hover-bg);
+}
+
+.group-frame-outline {
+  position: absolute;
+  inset: -1px;
+  pointer-events: none;
+}
+
+.group-frame-outline .corner,
+.group-frame-outline .midpoint {
+  position: absolute;
+  display: block;
+}
+
+.group-frame-outline .corner {
+  width: 28px;
+  height: 28px;
+  border-color: var(--group-line);
+  border-style: solid;
+}
+
+.group-frame-outline .top-left {
+  top: 0;
+  left: 0;
+  border-width: 1px 0 0 1px;
+  border-radius: 8px 0 0;
+}
+
+.group-frame-outline .top-right {
+  top: 0;
+  right: 0;
+  border-width: 1px 1px 0 0;
+  border-radius: 0 8px 0 0;
+}
+
+.group-frame-outline .bottom-left {
+  bottom: 0;
+  left: 0;
+  border-width: 0 0 1px 1px;
+  border-radius: 0 0 0 8px;
+}
+
+.group-frame-outline .bottom-right {
+  right: 0;
+  bottom: 0;
+  border-width: 0 1px 1px 0;
+  border-radius: 0 0 8px;
+}
+
+.group-frame-outline .midpoint.top,
+.group-frame-outline .midpoint.bottom {
+  left: calc(50% - 12px);
+  width: 24px;
+  border-top: 1px solid var(--group-line);
+}
+
+.group-frame-outline .midpoint.top { top: 0; }
+.group-frame-outline .midpoint.bottom { bottom: 0; }
+
+.group-frame-outline .midpoint.left,
+.group-frame-outline .midpoint.right {
+  top: calc(50% - 12px);
+  height: 24px;
+  border-left: 1px solid var(--group-line);
+}
+
+.group-frame-outline .midpoint.left { left: 0; }
+.group-frame-outline .midpoint.right { right: 0; }
+
 .frame-title {
   padding: 4px 8px;
   font-weight: 600;
@@ -2364,12 +2545,17 @@ aside.right {
   gap: 4px;
 }
 
-.dialog-field select {
+.dialog-field select,
+.dialog-field input {
   padding: 4px 6px;
   border: 1px solid var(--line);
   border-radius: 4px;
   background: var(--panel);
   color: inherit;
+}
+
+.course-error {
+  color: var(--state-error);
 }
 
 .dialog-checkbox {

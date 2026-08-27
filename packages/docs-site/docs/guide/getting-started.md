@@ -26,8 +26,11 @@ course — this site, like the app, ships no textbook content.
    converted at the boundary. An undeclared unit is an error, never a guess.
 6. **Turn an input into a range** and the whole graph becomes a study — see
    [Sweeps](./sweeps).
-7. **Group related nodes into titled frames** and write a note on each. The
-   frames are the sections of your report, not just tidying.
+7. **Organise related nodes with frames.** A titled **section** frame and its
+   note become part of your report; a lighter **group** frame is canvas-only
+   organisation. Groups can nest in sections or other groups, can wrap a
+   section, and can collapse to a compact box with its incoming and outgoing
+   wires still visible.
 8. **Export the notebook** — prose, values, checks and plots in reading
    order — as the thing you hand in.
 

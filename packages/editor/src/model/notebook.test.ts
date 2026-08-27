@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { SCHEMA_VERSION, type GraphDocument, type GraphNode } from '@joveworks/schema';
 import { parseUnit } from '@joveworks/units';
 
-import { exposedSlidersFor, withSliderValue } from './notebook';
+import { exposedSlidersFor, notebookSectionId, withSliderValue } from './notebook';
 
 const slider = (id: string, x: number, exposed = true): GraphNode => ({
   kind: 'input',
@@ -113,5 +113,29 @@ describe('exposed NodeBook sliders', () => {
     );
     const changed = withSliderValue(document, 'assumption', 7.5);
     expect(exposedSlidersFor(changed, 'result')[0]?.value.value).toBe(7.5);
+  });
+});
+
+describe('group frame NodeBook ownership', () => {
+  it('looks through nested groups to the surrounding section', () => {
+    const result = { ...output('result'), frameId: 'inner' } as GraphNode;
+    const document: GraphDocument = {
+      ...graph([result], []),
+      frames: [
+        { id: 'section', title: 'Results', position: { x: 0, y: 0 }, size: { width: 600, height: 400 } },
+        { id: 'outer', kind: 'group', frameId: 'section', title: 'Assumptions', position: { x: 20, y: 20 }, size: { width: 500, height: 300 } },
+        { id: 'inner', kind: 'group', frameId: 'outer', title: 'Inputs', position: { x: 40, y: 40 }, size: { width: 300, height: 200 } },
+      ],
+    };
+    expect(notebookSectionId(document, result)).toBe('section');
+  });
+
+  it('treats outputs in a top-level group as unsectioned', () => {
+    const result = { ...output('result'), frameId: 'group' } as GraphNode;
+    const document: GraphDocument = {
+      ...graph([result], []),
+      frames: [{ id: 'group', kind: 'group', title: 'Related', position: { x: 0, y: 0 }, size: { width: 300, height: 200 } }],
+    };
+    expect(notebookSectionId(document, result)).toBeUndefined();
   });
 });

@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.19.0](https://github.com/ThomasVanRiel/joveworks/compare/v0.18.0...v0.19.0) (2026-08-26)
+
+### Features
+
+* add assumption stress analysis ([e51618c](https://github.com/ThomasVanRiel/joveworks/commit/e51618c2b39d205fe7daa66bf7fc7abdbaa41ad3))
+* **editor:** add nested group frames ([b600314](https://github.com/ThomasVanRiel/joveworks/commit/b60031437d39778b6be603663372952336849d84))
+* **editor:** add running catalogue example ([77e3028](https://github.com/ThomasVanRiel/joveworks/commit/77e3028edeb6a94fc0e9fa536d57593dc0e459af))
+* **editor:** collapse groups into macro nodes ([bb53c37](https://github.com/ThomasVanRiel/joveworks/commit/bb53c379ed6cd91282842bfe8273211ba0529189))
+* **schema:** support YAML catalogues ([e622eed](https://github.com/ThomasVanRiel/joveworks/commit/e622eedb515a17015c5de537fcbd7a953510890d))
+
+### Fixes
+
+* **editor:** carry nested groups with parent drags ([0ac400f](https://github.com/ThomasVanRiel/joveworks/commit/0ac400fc32452e6bbd1b8154d90b873ac411f8b1))
+* **editor:** keep parent group controls reachable ([6519942](https://github.com/ThomasVanRiel/joveworks/commit/65199421219df1f1369e5ea4d6a225eb82fab3f0))
 ## [0.18.0](https://github.com/ThomasVanRiel/joveworks/compare/v0.17.0...v0.18.0) (2026-08-25)
 
 ### Features

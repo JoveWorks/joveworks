@@ -154,6 +154,8 @@ export type {
   PlotResult,
   PlotMeasureResult,
   SensitivityResult,
+  StressResult,
+  StressTrace,
   TableColumnResult,
   TableResult,
   PrintResult,

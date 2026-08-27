@@ -35,6 +35,7 @@ export type QuickAddChoice =
         | 'plot'
         | 'table'
         | 'sensitivity'
+        | 'stress'
         | 'bestDesign'
         | 'pareto'
         | 'distribution';
@@ -134,6 +135,8 @@ export function quickAddNodeSpec(document: GraphDocument, choice: QuickAddCandid
             ? NEW_PLOT_MEASURE
           : choice.outputKind === 'bestDesign'
             ? OBJECTIVE_PORT
+            : choice.outputKind === 'stress'
+              ? ALONG_PORT
             : // A dragged wire lands on `x`, the first objective — `y` is drawn
               // after, once there is something to trade against.
               choice.outputKind === 'pareto'

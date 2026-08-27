@@ -47,6 +47,7 @@ export const OUTPUT_HELP_URLS: Readonly<
     | 'equation'
     | 'feasibility'
     | 'sensitivity'
+    | 'stress'
     | 'bestDesign'
     | 'pareto'
     | 'distribution'
@@ -61,6 +62,7 @@ export const OUTPUT_HELP_URLS: Readonly<
   equation: `${DOCS_BASE_URL}/guide/node-reference#equation`,
   feasibility: `${DOCS_BASE_URL}/guide/node-reference#feasibility`,
   sensitivity: `${DOCS_BASE_URL}/guide/node-reference#sensitivity`,
+  stress: `${DOCS_BASE_URL}/guide/node-reference#assumption-stress`,
   bestDesign: `${DOCS_BASE_URL}/guide/node-reference#best-design`,
   pareto: `${DOCS_BASE_URL}/guide/node-reference#pareto`,
   distribution: `${DOCS_BASE_URL}/guide/node-reference#distribution`,

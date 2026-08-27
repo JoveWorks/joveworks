@@ -64,8 +64,11 @@ import {
   duplicateNode,
   duplicateSelection,
   edgeId,
+  frameDescendantIds,
+  groupIntoGroup,
   groupIntoSection,
   moveNode,
+  moveFrameContents,
   NEW_COLUMN,
   NEW_PLOT_MEASURE,
   nodeLabel,
@@ -81,6 +84,13 @@ import type { NodeSizes } from '../model/node-sizes';
 import { primaryModifierLabel } from '../model/platform';
 import { fuzzySearch } from '../model/fuzzy';
 import { alignSelection, arrangeSelection, spaceSelectionEvenly } from '../model/selection-layout';
+import {
+  collapsedGroupForNode,
+  collapsedGroupSize,
+  groupPortHandle,
+  groupPorts,
+  hiddenByCollapsedGroups,
+} from '../model/collapsedGroups';
 import { BundleEdge } from './BundleEdge';
 import { CanvasFind } from './CanvasFind';
 import { ClosureNodeView } from './ClosureNodeView';
@@ -481,6 +491,8 @@ export function Canvas({
     commitEdit,
     expanded,
     toggleExpanded,
+    collapsedGroups,
+    toggleGroupCollapsed,
     selected,
     setSelected,
     setMarqueeActive,
@@ -704,41 +716,77 @@ export function Canvas({
   }, []);
 
   const nodes = useMemo<FlowNode<CanvasNodeData>[]>(
-    () => [
-      ...document.frames.map((frame) => ({
-        id: frame.id,
-        type: 'frame',
-        position: frame.position,
-        data: {},
-        selected: selected.has(frame.id),
-        ...sizeOf(measured, frame.id),
-        // Frames sit behind the nodes they group, and a click on one must not
-        // steal the node on top of it.
-        zIndex: -1,
-        style: { width: frame.size.width, height: frame.size.height },
-      })),
-      ...document.nodes.map((node) => {
-        const className = nodeClasses([
-          rejectedEndpointIds.has(node.id) ? 'connection-refused' : undefined,
-          matchedNodeIds.has(node.id) ? 'node-search-match' : undefined,
-        ]);
-        const data: CanvasNodeData = {
-          highlighted: connectedNodeIds.has(node.id),
-          highlightedPorts: highlightedPorts.get(node.id) ?? [],
-          onPortHover: setHoveredPort,
-        };
-        return {
-          id: node.id,
-          type: flowType(node.kind),
-          position: node.position,
-          data,
-          selected: selected.has(node.id),
-          ...(className === undefined ? {} : { className }),
-          ...sizeOf(measured, node.id),
-        };
-      }),
-    ],
-    [connectedNodeIds, document, highlightedPorts, matchedNodeIds, measured, rejectedEndpointIds, selected],
+    () => {
+      // Frames are passive surfaces behind calculation nodes, but within that
+      // layer the smallest region is the most specific one. This lets a child
+      // group receive a click instead of its broad parent when they overlap.
+      const frameLayer = new Map(
+        [...document.frames]
+          .sort((a, b) => b.size.width * b.size.height - a.size.width * a.size.height)
+          .map((frame, index) => [frame.id, -document.frames.length + index] as const),
+      );
+      const hidden = hiddenByCollapsedGroups(document, collapsedGroups);
+      const portsByGroup = new Map(
+        document.frames
+          .filter((frame) => frame.kind === 'group' && collapsedGroups.has(frame.id))
+          .map((frame) => [frame.id, groupPorts(document, frame.id)] as const),
+      );
+      return [
+        ...document.frames.map((frame) => {
+          const ports = portsByGroup.get(frame.id);
+          const interfacePorts = ports === undefined ? [] : [...ports.inputs, ...ports.outputs];
+          const highlightedGroupPorts = interfacePorts.flatMap((port) => {
+            const highlighted = highlightedPorts.get(port.nodeId)?.includes(port.port) ?? false;
+            if (!highlighted) return [];
+            const kind = ports?.inputs.includes(port) ? 'input' : 'output';
+            return [groupPortHandle(kind, port)];
+          });
+          const macroHighlighted = interfacePorts.some((port) => connectedNodeIds.has(port.nodeId));
+          const size = ports === undefined ? frame.size : collapsedGroupSize(ports);
+          return {
+            id: frame.id,
+            type: 'frame',
+            position: frame.position,
+            data: {
+              highlighted: macroHighlighted,
+              highlightedGroupPorts,
+              onPortHover: setHoveredPort,
+            },
+            selected: selected.has(frame.id),
+            selectable: true,
+            ...sizeOf(measured, frame.id),
+            // A group’s controls must sit above its wires, but ordinary nodes
+            // still follow it in the projection and therefore win where they
+            // overlap. Sections remain fully behind the calculation.
+            zIndex: frame.kind === 'group' ? 0 : frameLayer.get(frame.id) ?? -document.frames.length,
+            ...(hidden.has(frame.id) ? { hidden: true } : {}),
+            style: { width: size.width, height: size.height },
+          };
+        }),
+        ...document.nodes.map((node) => {
+          const className = nodeClasses([
+            rejectedEndpointIds.has(node.id) ? 'connection-refused' : undefined,
+            matchedNodeIds.has(node.id) ? 'node-search-match' : undefined,
+          ]);
+          const data: CanvasNodeData = {
+            highlighted: connectedNodeIds.has(node.id),
+            highlightedPorts: highlightedPorts.get(node.id) ?? [],
+            onPortHover: setHoveredPort,
+          };
+          return {
+            id: node.id,
+            type: flowType(node.kind),
+            position: node.position,
+            data,
+            selected: selected.has(node.id),
+            ...(className === undefined ? {} : { className }),
+            ...(hidden.has(node.id) ? { hidden: true } : {}),
+            ...sizeOf(measured, node.id),
+          };
+        }),
+      ];
+    },
+    [collapsedGroups, connectedNodeIds, document, highlightedPorts, matchedNodeIds, measured, rejectedEndpointIds, selected],
   );
 
   const edges = useMemo<FlowEdge[]>(() => {
@@ -747,16 +795,23 @@ export function Canvas({
     // same slot FormulaNodeView assigned it: position among edges sharing this
     // (node, port), in document order, which is exactly how that view counts.
     const slotOf = new Map<string, number>();
-    return document.edges.map((edge) => {
+    return document.edges.flatMap((edge) => {
       const key = `${edge.to.node}.${edge.to.port}`;
       const slot = slotOf.get(key) ?? 0;
       slotOf.set(key, slot + 1);
+      const sourceGroup = collapsedGroupForNode(document, collapsedGroups, edge.from.node);
+      const targetGroup = collapsedGroupForNode(document, collapsedGroups, edge.to.node);
+      if (sourceGroup !== undefined && sourceGroup === targetGroup) return [];
       return {
         id: edge.id,
-        source: edge.from.node,
-        sourceHandle: edge.from.port,
-        target: edge.to.node,
-        targetHandle: slotHandleId(edge.to.port, slot),
+        source: sourceGroup ?? edge.from.node,
+        sourceHandle: sourceGroup === undefined
+          ? edge.from.port
+          : groupPortHandle('output', { nodeId: edge.from.node, port: edge.from.port, label: '' }),
+        target: targetGroup ?? edge.to.node,
+        targetHandle: targetGroup === undefined
+          ? slotHandleId(edge.to.port, slot)
+          : groupPortHandle('input', { nodeId: edge.to.node, port: edge.to.port, label: '' }),
         ...(document.nodes.find((node) => node.id === edge.from.node)?.kind === 'pack' && edge.from.port === 'bundle'
           ? { type: 'bundle' }
           : {}),
@@ -766,7 +821,7 @@ export function Canvas({
           : {}),
       };
     });
-  }, [document, hoveredEdgeId, hoveredPortEdges, selected]);
+  }, [collapsedGroups, document, hoveredEdgeId, hoveredPortEdges, selected]);
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
@@ -833,9 +888,30 @@ export function Canvas({
       const resizing = new Set(
         changes
           .filter((change) => change.type === 'dimensions')
-          .filter((change) => frames.has(change.id))
+          .filter((change) => frames.has(change.id) && !collapsedGroups.has(change.id))
           .map((change) => change.id),
       );
+      // React Flow can include stale position reports for hidden or selected
+      // descendants in the same batch as a parent drag. The parent already
+      // carries that subtree in `moveFrameContents`; accepting those reports
+      // afterward would put a child straight back where it was.
+      const carriedFrames = new Set<string>();
+      const carriedNodes = new Set<string>();
+      for (const change of changes) {
+        if (
+          change.type !== 'position' ||
+          change.position === undefined ||
+          !frames.has(change.id) ||
+          resizing.has(change.id)
+        ) continue;
+        const descendants = frameDescendantIds(document, change.id);
+        for (const descendant of descendants) {
+          if (descendant !== change.id) carriedFrames.add(descendant);
+        }
+        for (const node of document.nodes) {
+          if (node.frameId !== undefined && descendants.has(node.frameId)) carriedNodes.add(node.id);
+        }
+      }
       // NodeResizer only snaps the pointer driving the dragged corner
       // (@xyflow/react's own snapGrid/snapToGrid), not the resulting box —
       // the stationary corner is wherever it already was, so width/height
@@ -846,6 +922,7 @@ export function Canvas({
         let next = current;
         for (const change of changes) {
           if (change.type === 'position' && change.position !== undefined) {
+            if (carriedFrames.has(change.id) || carriedNodes.has(change.id)) continue;
             const position =
               frames.has(change.id) && resizing.has(change.id) && snapToGrid
                 ? { x: gridSnap(change.position.x), y: gridSnap(change.position.y) }
@@ -862,12 +939,7 @@ export function Canvas({
                 const dx = position.x - before.position.x;
                 const dy = position.y - before.position.y;
                 if (dx !== 0 || dy !== 0) {
-                  for (const member of next.nodes.filter((node) => node.frameId === change.id)) {
-                    next = moveNode(next, member.id, {
-                      x: member.position.x + dx,
-                      y: member.position.y + dy,
-                    });
-                  }
+                  next = moveFrameContents(next, change.id, dx, dy);
                 }
               }
             } else {
@@ -878,7 +950,12 @@ export function Canvas({
           // which is measured, never authored) — NodeResizer reports it the
           // same way a drag reports position, live change by live change, so
           // this is the only way the resize preview is not frozen until drop.
-          if (change.type === 'dimensions' && change.dimensions !== undefined && frames.has(change.id)) {
+          if (
+            change.type === 'dimensions' &&
+            change.dimensions !== undefined &&
+            frames.has(change.id) &&
+            !collapsedGroups.has(change.id)
+          ) {
             const dimensions = snapToGrid
               ? { width: gridSnap(change.dimensions.width), height: gridSnap(change.dimensions.height) }
               : change.dimensions;
@@ -897,7 +974,7 @@ export function Canvas({
       // `onEdgesChange`'s, for the same keypress) has fully landed.
       if (removed.size > 0) queueMicrotask(() => commitEdit());
     },
-    [document.frames, editLive, commitEdit, snapToGrid, selected],
+    [collapsedGroups, document, editLive, commitEdit, snapToGrid, selected],
   );
 
   const onEdgesChange = useCallback(
@@ -1080,6 +1157,11 @@ export function Canvas({
         onClick: () =>
           edit((current) => groupIntoSection(current, selected, flow.screenToFlowPosition(at))),
       },
+      {
+        label: t('Group into new group'),
+        onClick: () =>
+          edit((current) => groupIntoGroup(current, selected, flow.screenToFlowPosition(at))),
+      },
     ];
     if (target.kind === 'selection') return selectionActions(target);
     if (target.kind === 'node') {
@@ -1120,9 +1202,14 @@ export function Canvas({
     }
     if (target.kind === 'frame') {
       const { id } = target;
+      const frame = document.frames.find((candidate) => candidate.id === id);
       return [
+        ...(frame?.kind === 'group' ? [{
+          label: t(collapsedGroups.has(id) ? 'Expand group' : 'Collapse group'),
+          onClick: () => toggleGroupCollapsed(id),
+        }] : []),
         {
-          label: t('Delete section'),
+          label: t(frame?.kind === 'group' ? 'Delete group' : 'Delete section'),
           danger: true,
           onClick: () => edit((current) => reframe(removeNodes(current, new Set([id])))),
         },
@@ -1193,6 +1280,10 @@ export function Canvas({
       {
         label: t(sectionActionLabel(document, selected)),
         onClick: () => edit((current) => groupIntoSection(current, selected, at)),
+      },
+      {
+        label: t(selectedNodeCount(document, selected) === 0 ? 'Add new group' : 'Group into new group'),
+        onClick: () => edit((current) => groupIntoGroup(current, selected, at)),
       },
       {
         label: t('Auto-arrange'),

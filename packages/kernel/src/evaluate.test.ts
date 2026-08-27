@@ -13,6 +13,7 @@ import {
   type FeasibilityResult,
   type PlotResult,
   type SensitivityResult,
+  type StressResult,
   type TableResult,
   type PrintResult,
   type ReliabilityResult,
@@ -2468,6 +2469,46 @@ describe('select nodes', () => {
       [wire('area.A', 'cross.value'), wire('d.value', 'cross.along')],
     );
     expect(() => resolveGraph(document, catalogues)).toThrow(/same dimension/u);
+  });
+});
+
+describe('Assumption Stress outputs', () => {
+  const study = () => documentOf(
+    [
+      input('d', linear(10, 50, 5, 'mm'), { axisLabel: 'load factor' }),
+      input('h', scalar(2, 'mm')),
+      formulaNode('area', refTo('area')),
+      outputNode('limit', { kind: 'check', comparison: '<=', threshold: { value: 70, unit: 'mm²' } }),
+      outputNode('stress', { kind: 'stress', checks: ['limit'] }),
+    ],
+    [
+      wire('d.value', 'area.w'),
+      wire('h.value', 'area.h'),
+      wire('area.A', 'limit.value'),
+      wire('d.value', 'stress.along'),
+    ],
+  );
+
+  it('keeps raw readings but reports their shared margin and interpolated first failure', () => {
+    const evaluation = evaluateDocument(study(), catalogues);
+    const result = evaluation.outputs.find((entry) => entry.nodeId === 'stress') as StressResult;
+    expect(result.along.axis.label).toBe('load factor');
+    expect(result.designAxes).toEqual([]);
+    const [trace] = result.traces;
+    expect(trace?.margins.data[0]).toBeCloseTo(50 / 70, 10);
+    expect(trace?.margins.data.at(-1)).toBeCloseTo(-30 / 70, 10);
+    expect(trace?.firstFailure.data).toEqual([35]);
+  });
+
+  it('rejects a challenge that is not a deterministic range', () => {
+    const document = study();
+    const scalarAlong = {
+      ...document,
+      edges: document.edges.map((edge) => edge.to.node === 'stress'
+        ? { ...edge, from: { node: 'h', port: 'value' } }
+        : edge),
+    };
+    expect(() => evaluateDocument(scalarAlong, catalogues)).toThrow(/numeric range/u);
   });
 });
 

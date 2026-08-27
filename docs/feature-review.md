@@ -14,6 +14,15 @@ explain why it was selected.
 
 ## Strongest opportunities
 
+### Assumption Stress
+
+After a student selects a candidate, an Assumption Stress report can hold that
+design fixed while one explicit range challenges an assumption such as load
+factor, temperature, or friction. It reports how each existing Check's margin
+shrinks, which one governs, and the first assumption value that fails. This is
+neither a sensitivity ranking nor a probability claim: it answers how much
+deterministic error the chosen design can tolerate.
+
 ### Best Design node
 
 Feed a Best Design node a set of candidates, checks, and an objective such as

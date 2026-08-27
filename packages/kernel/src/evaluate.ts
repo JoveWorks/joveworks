@@ -88,7 +88,7 @@ import { KernelError } from './errors.js';
 import { assertEvaluable, compileClosureFormula, compileFormula } from './formula.js';
 import { canonicalUnit, endpointKey, resolveGraph, type PortType, type Resolution } from './graph.js';
 import { evaluateSensitivity, type SensitivityRankingResult } from './sensitivity.js';
-import { select, type SelectResult } from './select.js';
+import { crossingsAlong, select, type SelectResult } from './select.js';
 import { reduceAlong } from './statistics.js';
 import { buildDistribution, type DistributionPanel } from './distribution.js';
 import { inverseNormal, wilsonInterval } from './normal.js';
@@ -235,6 +235,38 @@ export interface SensitivityResult extends OutputBase {
   readonly rankings: readonly SensitivityRankingResult[];
 }
 
+/** One existing Check, read over the challenge range. */
+export interface StressTrace {
+  readonly checkId: string;
+  readonly unit: Unit;
+  readonly comparison: Comparison;
+  readonly threshold: number;
+  /** Check readings broadcast onto the complete design × challenge grid. */
+  readonly series: NumericSeries;
+  /** True when there is a shared, percentage-like margin to plot and rank. */
+  readonly rankable: boolean;
+  /** Normalised margin over `series.axes`; NaN where a margin has no meaning. */
+  readonly margins: NumericSeries;
+  /** One verdict per cell of `series.axes`. */
+  readonly verdicts: readonly boolean[];
+  /** First pass-to-fail coordinate for every retained design cell; NaN when none was sampled. */
+  readonly firstFailure: NumericSeries;
+}
+
+/**
+ * A deterministic challenge of one assumption. The output deliberately keeps
+ * every non-challenge axis: the notebook projects a document mark onto these
+ * design axes rather than letting the range choose a favourable design.
+ */
+export interface StressResult extends OutputBase {
+  readonly kind: 'stress';
+  readonly checks: readonly string[];
+  readonly along: PlotAxis;
+  readonly axes: readonly Axis[];
+  readonly designAxes: readonly Axis[];
+  readonly traces: readonly StressTrace[];
+}
+
 /** One axis of the study, and the coordinate the winning cell sits at on it. */
 /**
  * One axis of the winner's position. `AxisCoordinate` from `candidates.ts` —
@@ -363,6 +395,7 @@ export type OutputResult =
   | EquationResult
   | FeasibilityResult
   | SensitivityResult
+  | StressResult
   | BestDesignResult
   | ParetoResult
   | DistributionResult
@@ -609,6 +642,7 @@ function runEvaluation(
         // outputs' results, so they wait until every check has been computed.
         if (
           node.output.kind === 'feasibility' ||
+          node.output.kind === 'stress' ||
           node.output.kind === 'bestDesign' ||
           node.output.kind === 'pareto' ||
           node.output.kind === 'reliability'
@@ -1972,6 +2006,131 @@ function normalisedMargin(result: CheckResult, value: number): number | undefine
   return result.comparison === '>=' || result.comparison === '>' ? slack : -slack;
 }
 
+/** The pass-to-fail direction for one-sided checks. */
+function stressDirection(comparison: Comparison): 'rising' | 'falling' | undefined {
+  if (comparison === '>=' || comparison === '>') return 'falling';
+  if (comparison === '<=' || comparison === '<') return 'rising';
+  return undefined;
+}
+
+/** A challenge is deliberately a visible deterministic range, never a trial or file axis. */
+function stressAlong(
+  node: OutputNode,
+  resolution: Resolution,
+  values: ReadonlyMap<string, PortValue>,
+): PlotAxis {
+  const { value, unit } = sourceOf(node, ALONG_PORT, resolution, values);
+  if (value.kind !== 'numeric' || value.axes.length !== 1) {
+    throw new KernelError("an Assumption Stress output needs one numeric range wired to 'along'", endpointKey(node.id, ALONG_PORT));
+  }
+  const axis = value.axes[0] as Axis;
+  const introducedBy = resolution.document.nodes.find((candidate) => candidate.id === axis.id);
+  if (
+    introducedBy === undefined ||
+    !(
+      introducedBy.kind === 'range' ||
+      (introducedBy.kind === 'input' && isRange(introducedBy.value))
+    )
+  ) {
+    throw new KernelError(
+      "'along' must be a deterministic range, not a Monte Carlo, file, or derived axis",
+      endpointKey(node.id, ALONG_PORT),
+    );
+  }
+  if (value.data.length < 2) {
+    throw new KernelError("the challenged range needs at least two points", endpointKey(node.id, ALONG_PORT));
+  }
+  const direction = Math.sign((value.data[1] as number) - (value.data[0] as number));
+  if (direction === 0 || !value.data.every(Number.isFinite) || value.data.some((entry, i) => i > 0 && Math.sign(entry - (value.data[i - 1] as number)) !== direction)) {
+    throw new KernelError("the challenged range must be finite and strictly monotonic", endpointKey(node.id, ALONG_PORT));
+  }
+  return { axis, coordinates: value, unit };
+}
+
+function stressTrace(
+  check: CheckResult,
+  along: PlotAxis,
+  studyAxes: readonly Axis[],
+  nodeId: string,
+  warnings: Warning[],
+): StressTrace {
+  const designAxes = studyAxes.filter((axis) => axis.id !== along.axis.id);
+  const ordered = [...designAxes, along.axis];
+  const series = broadcastSeries(check.series, studyAxes);
+  const verdicts = broadcastBoolean(check.results, check.series.axes, studyAxes);
+  const rankable = normalisedMargin(check, check.threshold) !== undefined;
+  const margins = series.data.map((value) => normalisedMargin(check, value) ?? Number.NaN);
+  const readValue = indexer(series, ordered);
+  const readAlong = indexer(along.coordinates, ordered);
+  const verdictSeries: CategoricalSeries = {
+    kind: 'categorical',
+    axes: studyAxes,
+    data: verdicts.map((verdict) => (verdict ? 'pass' : 'fail')),
+  };
+  const readVerdict = indexer(verdictSeries, ordered);
+  const failures = new Array<number>(gridSize(designAxes)).fill(Number.NaN);
+  let coarse = 0;
+  let recovered = 0;
+
+  for (let cell = 0; cell < failures.length; cell += 1) {
+    const base = cell * along.axis.length;
+    const coordinates = Array.from({ length: along.axis.length }, (_unused, i) =>
+      along.coordinates.data[readAlong(base + i)] as number,
+    );
+    const readings = Array.from({ length: along.axis.length }, (_unused, i) =>
+      series.data[readValue(base + i)] as number,
+    );
+    const passes = Array.from({ length: along.axis.length }, (_unused, i) =>
+      verdictSeries.data[readVerdict(base + i)] === 'pass',
+    );
+    if (!(passes[0] as boolean)) {
+      failures[cell] = coordinates[0] as number;
+      continue;
+    }
+    const direction = stressDirection(check.comparison);
+    if (direction === undefined || check.threshold === 0) {
+      const first = passes.findIndex((pass) => !pass);
+      if (first !== -1) failures[cell] = coordinates[first] as number;
+    } else {
+      const found = crossingsAlong(readings, coordinates, check.threshold, direction);
+      if (found.coarse) coarse += 1;
+      if (found.roots.length > 0) failures[cell] = found.roots[0] as number;
+    }
+    const failed = passes.findIndex((pass) => !pass);
+    if (failed !== -1 && passes.slice(failed + 1).some(Boolean)) recovered += 1;
+  }
+
+  if (!rankable) {
+    warnings.push({
+      kind: 'stressUnrankable',
+      nodeId,
+      message: `'${check.nodeId}' has a pass/fail verdict but no normalised margin (an equality or zero threshold)`,
+    });
+  }
+  if (coarse > 0) warnings.push({
+    kind: 'stressCoarseSweep',
+    nodeId,
+    message: `'${check.nodeId}' reaches failure across a coarse interval at ${coarse} design point${coarse === 1 ? '' : 's'}`,
+  });
+  if (recovered > 0) warnings.push({
+    kind: 'stressNonMonotonic',
+    nodeId,
+    message: `'${check.nodeId}' fails and later recovers at ${recovered} design point${recovered === 1 ? '' : 's'}; the first failure is reported`,
+  });
+
+  return {
+    checkId: check.nodeId,
+    unit: check.unit,
+    comparison: check.comparison,
+    threshold: check.threshold,
+    series,
+    rankable,
+    margins: { kind: 'numeric', axes: studyAxes, data: margins },
+    verdicts,
+    firstFailure: { kind: 'numeric', axes: designAxes, data: failures },
+  };
+}
+
 function outputResult(
   node: OutputNode,
   resolution: Resolution,
@@ -2083,6 +2242,22 @@ function outputResult(
       x: axisFor(picked.x),
       ...(picked.series === undefined ? {} : { series2: axisFor(picked.series) }),
       ...(picked.facet === undefined ? {} : { facet: axisFor(picked.facet) }),
+    };
+  }
+
+  if (output.kind === 'stress') {
+    const checks = referencedChecks(output.checks, node.id, 'Assumption Stress', outputsSoFar);
+    const along = stressAlong(node, resolution, values);
+    const studyAxes = unionAxes(along.axis ? [along.axis] : [], ...checks.map((check) => check.series.axes));
+    const traces = checks.map((check) => stressTrace(check, along, studyAxes, node.id, warnings));
+    return {
+      ...base,
+      kind: 'stress',
+      checks: output.checks,
+      along,
+      axes: studyAxes,
+      designAxes: studyAxes.filter((axis) => axis.id !== along.axis.id),
+      traces,
     };
   }
 

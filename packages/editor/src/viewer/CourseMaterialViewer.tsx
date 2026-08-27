@@ -33,11 +33,12 @@ import { marksOver, readOnlyMarking, type FigureMarking, type MarkIndex } from '
 import { ParetoFigure } from '../notebook/ParetoFigure';
 import { PlotFigure, plotGrid } from '../notebook/PlotFigure';
 import { SensitivityFigure } from '../notebook/SensitivityFigure';
+import { StressFigure } from '../notebook/StressFigure';
 import { DistributionFigure } from '../notebook/DistributionFigure';
 import { ReliabilityCard } from '../notebook/ReliabilityCard';
 import { SettingsContext, type SettingsContextValue } from '../settings-context';
 import { analytics, type CourseMaterial } from '../analytics/analytics';
-import { exposedSlidersFor, readingOrder, withSliderValue } from '../model/notebook';
+import { exposedSlidersFor, notebookSectionId, readingOrder, withSliderValue } from '../model/notebook';
 import { NotebookSliderControl } from '../notebook/NotebookSliderControl';
 import { phrase } from '../i18n';
 
@@ -59,7 +60,7 @@ const comparisonText: Readonly<Record<string, string>> = {
 
 function outputsOf(document: GraphDocument, frameId: string | undefined): readonly OutputNode[] {
   return document.nodes
-    .filter((node): node is OutputNode => node.kind === 'output' && node.frameId === frameId)
+    .filter((node): node is OutputNode => node.kind === 'output' && notebookSectionId(document, node) === frameId)
     .slice()
     .sort(readingOrder);
 }
@@ -189,6 +190,13 @@ function Result({
     );
   }
 
+  if (result.kind === 'stress') {
+    const checkLabels = Object.fromEntries(
+      result.checks.map((id) => [id, document.nodes.find((candidate) => candidate.id === id)?.label ?? id]),
+    );
+    return <div className="viewer-result viewer-plot"><strong>{title}</strong><StressFigure result={result} document={document} readouts={readouts} checkLabels={checkLabels} format={format} /></div>;
+  }
+
   if (result.kind === 'bestDesign') {
     const checkLabels = Object.fromEntries(
       result.checks.map((id) => [id, document.nodes.find((candidate) => candidate.id === id)?.label ?? id]),
@@ -283,7 +291,7 @@ function ExampleReport({
           ) : null}
         </div>
       </header>
-      {document.frames.map((frame) => {
+      {document.frames.filter((frame) => frame.kind !== 'group').map((frame) => {
         const outputs = outputsOf(document, frame.id);
         if (outputs.length === 0) return null;
         return (

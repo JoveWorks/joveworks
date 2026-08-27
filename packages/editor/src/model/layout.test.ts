@@ -150,6 +150,28 @@ describe('autoArrange', () => {
     expect(arranged.nodes.find((n) => n.id === 'c')!.frameId).toBeUndefined();
   });
 
+  it('treats nested groups as part of their top-level frame block', () => {
+    const section: Frame = { id: 'section', title: 'Section', position: { x: 100, y: 100 }, size: { width: 500, height: 350 } };
+    const group: Frame = {
+      id: 'group', kind: 'group', frameId: 'section', title: 'Inputs',
+      position: { x: 140, y: 150 }, size: { width: 280, height: 180 },
+    };
+    const document: GraphDocument = {
+      ...base,
+      nodes: [input('nested', 170, 180, 'group'), input('loose', 100, 100)],
+      frames: [section, group],
+    };
+    const arranged = autoArrange(document);
+    const arrangedSection = arranged.frames.find((frame) => frame.id === 'section')!;
+    const arrangedGroup = arranged.frames.find((frame) => frame.id === 'group')!;
+    const nested = arranged.nodes.find((node) => node.id === 'nested')!;
+
+    expect(arrangedGroup.position.x - arrangedSection.position.x).toBe(40);
+    expect(arrangedGroup.position.y - arrangedSection.position.y).toBe(50);
+    expect(nested.position.x - arrangedGroup.position.x).toBe(30);
+    expect(nested.position.y - arrangedGroup.position.y).toBe(30);
+  });
+
   it('leaves frames and loose nodes disjoint', () => {
     const frame: Frame = { id: 'f', title: 'Section', position: { x: 0, y: 0 }, size: { width: 300, height: 200 } };
     const document: GraphDocument = {

@@ -25,6 +25,12 @@ export const WARNING_KINDS = [
   'plotContourFlat',
   /** A Sensitivity candidate could not be evaluated at its low/high bound — skipped, not fatal. */
   'sensitivityCandidateSkipped',
+  /** A stress trace's interpolated failure point moves materially with more samples. */
+  'stressCoarseSweep',
+  /** A stress trace crossed into failure and later recovered. */
+  'stressNonMonotonic',
+  /** A stress check has a verdict but no comparable normalised margin. */
+  'stressUnrankable',
   /** A selection found no crossing (or no usable value) along the axis it searched. */
   'selectNoCrossing',
   /** The sweep is too coarse for the interpolated crossing to be trusted. */

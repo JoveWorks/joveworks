@@ -301,6 +301,18 @@ export interface SensitivityOutput {
 }
 
 /**
+ * Challenge one explicit, deterministic assumption and show how a marked
+ * design's existing checks lose margin along it. `along` is a port rather
+ * than an axis id for the same reason it is on Select and Statistic: the
+ * wire makes both the studied coordinate and its unit unambiguous.
+ */
+export interface StressOutput {
+  readonly kind: 'stress';
+  /** Existing Check outputs — never retype the limits being stress-tested. */
+  readonly checks: readonly string[];
+}
+
+/**
  * The decision card: among the points where every referenced check passes,
  * the one where a wired objective is smallest (or largest) — and which check
  * is the reason it cannot go further.
@@ -386,6 +398,7 @@ export type Output =
   | EquationOutput
   | FeasibilityOutput
   | SensitivityOutput
+  | StressOutput
   | BestDesignOutput
   | ParetoOutput
   | DistributionOutput
@@ -399,6 +412,7 @@ export const OUTPUT_KINDS = [
   'equation',
   'feasibility',
   'sensitivity',
+  'stress',
   'bestDesign',
   'pareto',
   'distribution',
@@ -835,9 +849,20 @@ export interface Edge {
   readonly to: Endpoint;
 }
 
-/** A titled group frame: a notebook section, with markdown prose. */
+/** What a frame contributes beyond grouping the canvas. */
+export type FrameKind = 'section' | 'group';
+
+/**
+ * A titled canvas frame. Sections become NodeBook sections; groups are
+ * transparent annotations. Missing `kind` means `section` for documents made
+ * before group frames existed. A frame's `frameId` names its visual parent;
+ * sections may sit in annotation groups, but not in other sections. Positions
+ * remain absolute canvas coordinates.
+ */
 export interface Frame {
   readonly id: string;
+  readonly kind?: FrameKind;
+  readonly frameId?: string;
   readonly title: string;
   readonly note?: string;
   readonly position: Position;
@@ -1047,6 +1072,12 @@ function parseOutput(value: JsonValue, path: string): Output {
     case 'sensitivity':
       return { kind };
 
+    case 'stress':
+      return {
+        kind,
+        checks: readStringArray(required(object, 'checks', path), join(path, 'checks')),
+      };
+
     case 'bestDesign':
       // An empty `checks` is an unconstrained min/max, allowed for the same
       // reason `feasibility`'s is: a node dropped from the palette has not
@@ -1174,6 +1205,8 @@ function serializeOutput(output: Output): JsonObject {
       };
     case 'sensitivity':
       return { kind: output.kind };
+    case 'stress':
+      return { kind: output.kind, checks: [...output.checks] };
     case 'bestDesign':
       return { kind: output.kind, checks: [...output.checks], direction: output.direction };
     case 'pareto':
@@ -1684,6 +1717,8 @@ function parseFrame(value: JsonValue, path: string): Frame {
   const object = readObject(value, path);
   return {
     id: readName(required(object, 'id', path), join(path, 'id')),
+    ...put('kind', optional(object, 'kind', path, (v, p) => readEnum(v, p, ['section', 'group'] as const))),
+    ...put('frameId', optional(object, 'frameId', path, readName)),
     title: readString(required(object, 'title', path), join(path, 'title')),
     ...put('notebookLocale', optional(object, 'notebookLocale', path, (v, p) => readEnum(v, p, ['en', 'nl'] as const))),
     ...put('note', optional(object, 'note', path, readString)),
@@ -1695,6 +1730,8 @@ function parseFrame(value: JsonValue, path: string): Frame {
 function serializeFrame(frame: Frame): JsonObject {
   return {
     id: frame.id,
+    ...put('kind', frame.kind),
+    ...put('frameId', frame.frameId),
     title: frame.title,
     ...put('note', frame.note),
     position: { x: frame.position.x, y: frame.position.y },
@@ -1720,6 +1757,25 @@ function checkReferences(document: GraphDocument, path: string): void {
       fail(`${join(path, 'frames')}[${i}].id`, `'${frame.id}' appears twice`);
     }
     frameIds.add(frame.id);
+  }
+
+  for (const [i, frame] of document.frames.entries()) {
+    if (frame.frameId !== undefined && !frameIds.has(frame.frameId)) {
+      fail(`${join(path, 'frames')}[${i}].frameId`, `no frame '${frame.frameId}' exists`);
+    }
+    const parent = frame.frameId === undefined
+      ? undefined
+      : document.frames.find((candidate) => candidate.id === frame.frameId);
+    if (frame.kind !== 'group' && frame.frameId !== undefined && parent?.kind !== 'group') {
+      fail(`${join(path, 'frames')}[${i}].frameId`, 'a section can only be nested in a group');
+    }
+    const seen = new Set([frame.id]);
+    let parentId = frame.frameId;
+    while (parentId !== undefined) {
+      if (seen.has(parentId)) fail(`${join(path, 'frames')}[${i}].frameId`, 'frame nesting contains a cycle');
+      seen.add(parentId);
+      parentId = document.frames.find((candidate) => candidate.id === parentId)?.frameId;
+    }
   }
 
   for (const [i, node] of document.nodes.entries()) {

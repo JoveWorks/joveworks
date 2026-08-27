@@ -35,9 +35,11 @@ calculation is built from connected nodes.
 - **Sweeps, not single answers.** Set any input to a range — linear, log, or a
   list of standard sizes — and the whole graph becomes a study, plotted against
   the acceptance threshold. This is the primary use, not an add-on.
-- **The notebook comes back as a view.** Titled frames on the canvas are the
+- **The notebook comes back as a view.** Section frames on the canvas are the
   sections of a live report: prose, values, pass/fail checks and plots in
-  reading order. That report is what gets handed in.
+  reading order. Lighter group frames organise the canvas, can nest and
+  collapse, but do not add report headings. That report is what gets handed
+  in.
 - **Formulas are data**, not code. The editor is both the product and the
   authoring tool for the formula catalogue.
 - **Units are canonical internally** — mm, N, s, rad, K — converted at the

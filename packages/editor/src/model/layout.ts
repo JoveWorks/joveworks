@@ -51,16 +51,30 @@ function frameBlock(frame: Frame): Block {
   return { key: `frame:${frame.id}`, origin: frame.position, width: frame.size.width, height: frame.size.height };
 }
 
+function rootFrameId(document: GraphDocument, id: string): string {
+  let current = id;
+  const seen = new Set<string>();
+  while (!seen.has(current)) {
+    seen.add(current);
+    const parent = document.frames.find((frame) => frame.id === current)?.frameId;
+    if (parent === undefined) return current;
+    current = parent;
+  }
+  return id;
+}
+
 function applyDeltas(document: GraphDocument, deltaByKey: ReadonlyMap<string, Position>): GraphDocument {
   const frames = document.frames.map((frame) => {
-    const delta = deltaByKey.get(`frame:${frame.id}`);
+    const delta = deltaByKey.get(`frame:${rootFrameId(document, frame.id)}`);
     if (delta === undefined) return frame;
     return { ...frame, position: { x: frame.position.x + delta.x, y: frame.position.y + delta.y } };
   });
 
   const nodes = document.nodes.map((node) => {
     const delta =
-      node.frameId !== undefined ? deltaByKey.get(`frame:${node.frameId}`) : deltaByKey.get(`node:${node.id}`);
+      node.frameId !== undefined
+        ? deltaByKey.get(`frame:${rootFrameId(document, node.frameId)}`)
+        : deltaByKey.get(`node:${node.id}`);
     if (delta === undefined) return node;
     return { ...node, position: { x: node.position.x + delta.x, y: node.position.y + delta.y } };
   });
@@ -71,7 +85,10 @@ function applyDeltas(document: GraphDocument, deltaByKey: ReadonlyMap<string, Po
 /** The old edge-ignoring row packer — the fallback for a document that can't be ranked. */
 function packGrid(document: GraphDocument, sizes: NodeSizes): GraphDocument {
   const loose = document.nodes.filter((node) => node.frameId === undefined);
-  const blocks = [...document.frames.map(frameBlock), ...loose.map((node) => nodeBlock(node, sizes))].sort(
+  const blocks = [
+    ...document.frames.filter((frame) => frame.frameId === undefined).map(frameBlock),
+    ...loose.map((node) => nodeBlock(node, sizes)),
+  ].sort(
     (a, b) => a.origin.y - b.origin.y || a.origin.x - b.origin.x,
   );
 
@@ -96,20 +113,21 @@ function packGrid(document: GraphDocument, sizes: NodeSizes): GraphDocument {
   return applyDeltas(document, deltaByKey);
 }
 
-function blockKeyOf(node: GraphNode): string {
-  return node.frameId !== undefined ? `frame:${node.frameId}` : `node:${node.id}`;
+function blockKeyOf(document: GraphDocument, node: GraphNode): string {
+  return node.frameId !== undefined ? `frame:${rootFrameId(document, node.frameId)}` : `node:${node.id}`;
 }
 
 function buildLayoutBlocks(document: GraphDocument, sizes: NodeSizes): readonly LayoutBlock[] {
   const membersByFrame = new Map<string, GraphNode[]>();
   for (const node of document.nodes) {
     if (node.frameId === undefined) continue;
-    const list = membersByFrame.get(node.frameId);
-    if (list === undefined) membersByFrame.set(node.frameId, [node]);
+    const root = rootFrameId(document, node.frameId);
+    const list = membersByFrame.get(root);
+    if (list === undefined) membersByFrame.set(root, [node]);
     else list.push(node);
   }
 
-  const frameBlocks: LayoutBlock[] = document.frames.map((frame) => {
+  const frameBlocks: LayoutBlock[] = document.frames.filter((frame) => frame.frameId === undefined).map((frame) => {
     const members = membersByFrame.get(frame.id) ?? [];
     return {
       key: `frame:${frame.id}`,
@@ -143,8 +161,8 @@ function buildLayoutEdges(document: GraphDocument): readonly LayoutEdge[] {
     const from = nodeById.get(edge.from.node);
     const to = nodeById.get(edge.to.node);
     if (from === undefined || to === undefined) continue;
-    const fromKey = blockKeyOf(from);
-    const toKey = blockKeyOf(to);
+    const fromKey = blockKeyOf(document, from);
+    const toKey = blockKeyOf(document, to);
     if (fromKey === toKey) continue; // an edge wholly inside one frame doesn't cross its boundary
     edges.push({ from: fromKey, to: toKey });
   }

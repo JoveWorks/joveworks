@@ -79,11 +79,12 @@ import { PlotFigure, plotGrid } from './PlotFigure';
 import { IntelligentPlotFigure } from './IntelligentPlotFigure';
 import { IntelligentPlotControls } from './IntelligentPlotControls';
 import { SensitivityFigure } from './SensitivityFigure';
+import { StressFigure } from './StressFigure';
 import { DistributionFigure } from './DistributionFigure';
 import { ReliabilityCard } from './ReliabilityCard';
 import { NotebookSliderControl } from './NotebookSliderControl';
 import { phrase, ui } from '../i18n';
-import { exposedSlidersFor, readingOrder, withSliderValue } from '../model/notebook';
+import { exposedSlidersFor, notebookSectionId, readingOrder, withSliderValue } from '../model/notebook';
 
 /**
  * Enter finishes the field (blurs it, same as `fields.tsx`'s `TextField`);
@@ -439,6 +440,18 @@ function Result({ result, node }: { readonly result: OutputResult; readonly node
     );
   }
 
+  if (result.kind === 'stress') {
+    const checkLabels = Object.fromEntries(
+      result.checks.map((id) => [id, document.nodes.find((candidate) => candidate.id === id)?.label ?? id]),
+    );
+    return (
+      <div className="result plot">
+        <span className="label"><OutputTitle node={node} /></span>
+        <StressFigure result={result} document={document} readouts={readouts} checkLabels={checkLabels} format={format} />
+      </div>
+    );
+  }
+
   if (result.kind === 'bestDesign') {
     // Same label fallback the feasibility tip uses — a check's own row and
     // this card should name it identically.
@@ -648,12 +661,12 @@ function Section({
       : [
           {
             label: t('Move up'),
-            disabled: document.frames[0]?.id === frame.id,
+            disabled: document.frames.find((entry) => entry.kind !== 'group')?.id === frame.id,
             onClick: () => edit((current) => moveFrame(current, frame.id, 'up')),
           },
           {
             label: t('Move down'),
-            disabled: document.frames.at(-1)?.id === frame.id,
+            disabled: document.frames.filter((entry) => entry.kind !== 'group').at(-1)?.id === frame.id,
             onClick: () => edit((current) => moveFrame(current, frame.id, 'down')),
           },
           {
@@ -844,14 +857,14 @@ export { readingOrder } from '../model/notebook';
 
 function outputsOf(document: GraphDocument, frameId: string | undefined): readonly OutputNode[] {
   return document.nodes
-    .filter((node): node is OutputNode => node.kind === 'output' && node.frameId === frameId)
+    .filter((node): node is OutputNode => node.kind === 'output' && notebookSectionId(document, node) === frameId)
     .slice()
     .sort(readingOrder);
 }
 
 function receiversOf(document: GraphDocument, frameId: string | undefined): readonly MonteCarloReceiverNode[] {
   return document.nodes
-    .filter((node): node is MonteCarloReceiverNode => node.kind === 'monteCarloReceiver' && node.frameId === frameId)
+    .filter((node): node is MonteCarloReceiverNode => node.kind === 'monteCarloReceiver' && notebookSectionId(document, node) === frameId)
     .slice()
     .sort(readingOrder);
 }
@@ -861,6 +874,7 @@ export function Notebook({ onClose }: { readonly onClose: () => void }): ReactEl
   const { locale } = useSettings();
   const copy = ui(locale);
   const t = (english: string): string => phrase(locale, english);
+  const sections = document.frames.filter((frame) => frame.kind !== 'group');
   // Session UI state, not a document field (same call as Palette.tsx) —
   // a section's collapse reopens on reload, same as a pinned node.
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
@@ -991,7 +1005,7 @@ export function Notebook({ onClose }: { readonly onClose: () => void }): ReactEl
         </button>
       </div>
 
-      {document.frames.map((frame, index) => (
+      {sections.map((frame, index) => (
         <Section
           key={frame.id}
           frame={frame}
@@ -1002,7 +1016,7 @@ export function Notebook({ onClose }: { readonly onClose: () => void }): ReactEl
           dragOver={dragOver?.frameId === frame.id ? dragOver.position : undefined}
           onDragOver={(position) => {
             dragSource.current = frame.id;
-            const next = position === 'after' ? document.frames[index + 1] : undefined;
+            const next = position === 'after' ? sections[index + 1] : undefined;
             setDragOver(
               next === undefined ? { frameId: frame.id, position } : { frameId: next.id, position: 'before' },
             );

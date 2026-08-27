@@ -335,6 +335,17 @@ describe('round-tripping (the verification docs/PLAN.md asks for)', () => {
     expect(serializeDocument(document)).toEqual(withFeasibility);
   });
 
+  it('round-trips an Assumption Stress output and its referenced checks', () => {
+    const withStress = {
+      ...study,
+      nodes: [
+        ...(study['nodes'] as JsonObject[]),
+        { kind: 'output', id: 'o-stress', position: { x: 0, y: 0 }, output: { kind: 'stress', checks: ['o-check'] } },
+      ],
+    };
+    expect(serializeDocument(parseDocument(withStress))).toEqual(withStress);
+  });
+
   it('round-trips a Best Design output, in both directions and with no checks at all', () => {
     // `checks: []` is legal here for a different reason than on a
     // Feasibility node: an unconstrained min or max is a real thing to ask
@@ -659,6 +670,47 @@ describe('group frames as notebook sections', () => {
       ),
     };
     expect(() => parseDocument(broken)).toThrow(/frameId: no frame 'gone' exists/);
+  });
+
+  it('round-trips a nested canvas-only group while older sections stay unchanged', () => {
+    const nested = {
+      ...study,
+      frames: [
+        ...(study['frames'] as JsonObject[]),
+        {
+          id: 'assumptions',
+          kind: 'group',
+          frameId: 'sizing',
+          title: 'Preliminary values',
+          position: { x: 0, y: 0 },
+          size: { width: 300, height: 120 },
+        },
+      ],
+    };
+    expect(serializeDocument(parseDocument(nested))).toEqual(nested);
+    expect(serializeDocument(parseDocument(study))).toEqual(study);
+  });
+
+  it('rejects missing parents, sections nested in sections, and nesting cycles', () => {
+    const group = {
+      id: 'group', kind: 'group', title: 'Group',
+      position: { x: 0, y: 0 }, size: { width: 100, height: 100 },
+    };
+    expect(() => parseDocument({ ...study, frames: [{ ...group, frameId: 'gone' }] })).toThrow(/no frame 'gone'/);
+    expect(serializeDocument(parseDocument({
+      ...study,
+      frames: [...(study['frames'] as JsonObject[]), { ...group, id: 'wrapper' }, { ...group, id: 'nested-section', kind: 'section', frameId: 'wrapper' }],
+    }))).toMatchObject({
+      frames: expect.arrayContaining([expect.objectContaining({ id: 'nested-section', frameId: 'wrapper' })]),
+    });
+    expect(() => parseDocument({
+      ...study,
+      frames: [...(study['frames'] as JsonObject[]), { ...group, id: 'nested-section', kind: 'section', frameId: 'sizing' }],
+    })).toThrow(/a section can only be nested in a group/);
+    expect(() => parseDocument({
+      ...study,
+      frames: [{ ...group, id: 'one', frameId: 'two' }, { ...group, id: 'two', frameId: 'one' }],
+    })).toThrow(/nesting contains a cycle/);
   });
 });
 

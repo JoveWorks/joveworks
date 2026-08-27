@@ -445,6 +445,12 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
       insert: () => addOutput('sensitivity'),
     },
     {
+      id: 'builtin:output:stress',
+      label: phrase(locale, 'assumption stress'),
+      summary: phrase(locale, 'how a marked design loses margin as one assumption changes'),
+      insert: () => addOutput('stress'),
+    },
+    {
       id: 'builtin:output:bestDesign',
       label: copy.bestDesign,
       summary: copy.bestDesignSummary,
