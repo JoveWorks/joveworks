@@ -21,13 +21,14 @@
  * explicit no-op step (with a comment saying why) is what turns "we got
  * lucky" into "we checked" the next time the schema grows.
  *
- * As of this writing, schemaVersion 1 is the only version JoveWorks has ever
- * shipped (see `version.ts` and the fixture corpus under
- * `packages/schema/fixtures/documents/`), and it is also `SCHEMA_VERSION`
- * today — so `DOCUMENT_MIGRATIONS` is empty: there is nothing to migrate
- * *from* yet, because nothing has been superseded yet. The chain-walking
- * machinery below is exercised by synthetic steps in `migration.test.ts`
- * rather than left untested until the day it is first needed for real.
+ * As of this writing, document schemaVersion 1 is the only version JoveWorks
+ * has ever shipped (see `version.ts` and the fixture corpus under
+ * `packages/schema/fixtures/documents/`), and it is also
+ * `DOCUMENT_SCHEMA_VERSION` today — so `DOCUMENT_MIGRATIONS` is empty: there
+ * is nothing to migrate *from* yet, because nothing has been superseded yet.
+ * The chain-walking machinery below is exercised by synthetic steps in
+ * `migration.test.ts` rather than left untested until the day it is first
+ * needed for real.
  */
 
 import {
@@ -40,7 +41,7 @@ import {
   type JsonValue,
 } from './json.js';
 import { parseDocument, type GraphDocument } from './document.js';
-import { SCHEMA_VERSION } from './version.js';
+import { DOCUMENT_SCHEMA_VERSION } from './version.js';
 
 /** One step: the raw JSON of a document at version N, upgraded to version N+1's shape. */
 export type SchemaMigrationStep = (raw: JsonObject) => JsonObject;
@@ -84,12 +85,15 @@ export function runMigrationChain(
 /**
  * The one entry point app code should call to open a document that may have
  * been saved on an older JoveWorks: walks `DOCUMENT_MIGRATIONS` up to
- * `SCHEMA_VERSION`, then validates the result exactly as `parseDocument`
- * always has.
+ * `DOCUMENT_SCHEMA_VERSION`, then validates the result exactly as
+ * `parseDocument` always has.
  *
- * A `schemaVersion` newer than this build understands is refused with a
- * named, specific error — never a silent misparse — because that is exactly
- * the shape of the stable/nightly split: a document a nightly build wrote
+ * This is document-version-specific — `DOCUMENT_SCHEMA_VERSION`, not any
+ * other artefact's stamp (see `version.ts`) — because it is the *document*
+ * that a student's stable/nightly split makes reopening-across-builds a real
+ * scenario for. A `schemaVersion` newer than this build understands is
+ * refused with a named, specific error — never a silent misparse — because
+ * that is exactly the shape of that split: a document a nightly build wrote
  * with a schema this stable build has never heard of must say so in words a
  * student or instructor can act on ("open it with a newer JoveWorks"),
  * not fail deep inside node or edge parsing with an unrelated message.
@@ -99,15 +103,15 @@ export function migrateDocument(value: JsonValue, path = ''): GraphDocument {
   const field = join(path, 'schemaVersion');
   const version = readInteger(required(object, 'schemaVersion', path), field, 1);
 
-  if (version > SCHEMA_VERSION) {
+  if (version > DOCUMENT_SCHEMA_VERSION) {
     fail(
       field,
       `is ${version} — this document was made with a newer version of JoveWorks than this ` +
-        `build understands (this build reads up to schemaVersion ${SCHEMA_VERSION}). Open it ` +
-        'with a newer JoveWorks, or with the nightly channel, instead.',
+        `build understands (this build reads up to document schemaVersion ${DOCUMENT_SCHEMA_VERSION}). ` +
+        'Open it with a newer JoveWorks, or with the nightly channel, instead.',
     );
   }
 
-  const upgraded = runMigrationChain(DOCUMENT_MIGRATIONS, object, version, SCHEMA_VERSION, path);
+  const upgraded = runMigrationChain(DOCUMENT_MIGRATIONS, object, version, DOCUMENT_SCHEMA_VERSION, path);
   return parseDocument(upgraded, path);
 }

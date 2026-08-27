@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { DOCUMENT_MIGRATIONS, migrateDocument, runMigrationChain, type SchemaMigrationStep } from './migration.js';
 import { emptyDocument, serializeDocument } from './document.js';
-import { SCHEMA_VERSION } from './version.js';
+import { DOCUMENT_SCHEMA_VERSION } from './version.js';
 import type { JsonObject } from './json.js';
 
 describe('the real document migration table', () => {
@@ -20,7 +20,7 @@ describe('the real document migration table', () => {
   });
 
   it('names a newer schemaVersion clearly rather than misparsing it', () => {
-    const document = { ...serializeDocument(emptyDocument('doc-1', 'Empty study')), schemaVersion: SCHEMA_VERSION + 1 };
+    const document = { ...serializeDocument(emptyDocument('doc-1', 'Empty study')), schemaVersion: DOCUMENT_SCHEMA_VERSION + 1 };
     expect(() => migrateDocument(document)).toThrow(
       /newer version of JoveWorks/,
     );

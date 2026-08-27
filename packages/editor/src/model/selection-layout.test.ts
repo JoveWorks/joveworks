@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { SCHEMA_VERSION, type ClosureNode, type GraphDocument, type InputNode } from '@joveworks/schema';
+import { DOCUMENT_SCHEMA_VERSION, type ClosureNode, type GraphDocument, type InputNode } from '@joveworks/schema';
 import { parseUnit } from '@joveworks/units';
 
 import { alignSelection, arrangeSelection, spaceSelectionEvenly } from './selection-layout';
@@ -22,7 +22,7 @@ const closure = (id: string, x: number, y: number, frameId?: string): ClosureNod
 });
 
 const base: GraphDocument = {
-  schemaVersion: SCHEMA_VERSION,
+  schemaVersion: DOCUMENT_SCHEMA_VERSION,
   id: 'selection-test',
   title: 'Selection test',
   nodes: [],

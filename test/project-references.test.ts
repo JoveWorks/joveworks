@@ -61,7 +61,7 @@ describe('dependency direction', () => {
     const dir = workspaceCopy();
     writeFileSync(
       join(dir, 'packages/units/src/illegal.ts'),
-      `import { SCHEMA_VERSION } from '@joveworks/schema';\nexport const x = SCHEMA_VERSION;\n`,
+      `import { DOCUMENT_SCHEMA_VERSION } from '@joveworks/schema';\nexport const x = DOCUMENT_SCHEMA_VERSION;\n`,
     );
     expect(build(dir)).toBe(false);
   }, 120_000);
@@ -112,7 +112,7 @@ describe('dependency direction', () => {
     );
     writeFileSync(
       join(dir, 'packages/kernel/src/illegal.ts'),
-      `import { SCHEMA_VERSION } from '@joveworks/schema';\nexport const x = SCHEMA_VERSION;\n`,
+      `import { DOCUMENT_SCHEMA_VERSION } from '@joveworks/schema';\nexport const x = DOCUMENT_SCHEMA_VERSION;\n`,
     );
     expect(build(dir)).toBe(true);
   }, 120_000);

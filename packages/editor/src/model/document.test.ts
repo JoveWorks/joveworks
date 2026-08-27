@@ -9,7 +9,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  SCHEMA_VERSION,
+  DOCUMENT_SCHEMA_VERSION,
   type ClosureNode,
   type FormulaNode,
   type GraphDocument,
@@ -151,7 +151,7 @@ const closure = (id: string, expression: string, x: number, y: number): ClosureN
 });
 
 const base: GraphDocument = {
-  schemaVersion: SCHEMA_VERSION,
+  schemaVersion: DOCUMENT_SCHEMA_VERSION,
   id: 'test',
   title: 'Test',
   nodes: [input('a', 0, 0), input('b', 400, 0)],

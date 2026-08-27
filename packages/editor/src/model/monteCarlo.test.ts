@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 import { evaluateDocument } from '@joveworks/kernel';
 import {
   DEFAULT_MONTE_CARLO_SAMPLE_LIMIT,
-  SCHEMA_VERSION,
+  DOCUMENT_SCHEMA_VERSION,
   formulaRef,
   type ClosureNode,
   type Edge,
@@ -75,7 +75,7 @@ const edge = (fromNode: string, fromPort: string, toNode: string, toPort: string
 });
 
 const doc = (nodes: GraphDocument['nodes'], edges: readonly Edge[]): GraphDocument => ({
-  schemaVersion: SCHEMA_VERSION,
+  schemaVersion: DOCUMENT_SCHEMA_VERSION,
   id: 'doc',
   title: 'test',
   nodes,

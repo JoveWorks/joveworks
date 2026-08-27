@@ -24,7 +24,7 @@ import {
   type Dimension,
 } from '@joveworks/units';
 import {
-  SCHEMA_VERSION,
+  CATALOGUE_SCHEMA_VERSION,
   formulaHash,
   isEvaluable,
   loadCatalogue,
@@ -80,7 +80,7 @@ describe.each([
     const loaded = loadCatalogue(json());
     expect(loaded.id).toBe(id);
     expect(loaded.restricted).toBe(false);
-    expect(loaded.schemaVersion).toBe(SCHEMA_VERSION);
+    expect(loaded.schemaVersion).toBe(CATALOGUE_SCHEMA_VERSION);
     expect(loaded.formulas).toHaveLength(catalogue.formulas.length);
   });
 

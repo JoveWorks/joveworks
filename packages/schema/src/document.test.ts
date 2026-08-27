@@ -8,7 +8,7 @@ import {
   serializeDocument,
 } from './document.js';
 import { loadDocument, saveDocument } from './io.js';
-import { SCHEMA_VERSION } from './version.js';
+import { DOCUMENT_SCHEMA_VERSION } from './version.js';
 import type { JsonObject, JsonValue } from './json.js';
 
 /**
@@ -20,7 +20,7 @@ import type { JsonObject, JsonValue } from './json.js';
  * document does not carry its expression at all — that is deliberate.
  */
 const study: JsonObject = {
-  schemaVersion: SCHEMA_VERSION,
+  schemaVersion: DOCUMENT_SCHEMA_VERSION,
   id: 'study-1',
   title: 'Sizing study',
   nodes: [
@@ -532,7 +532,7 @@ describe('round-tripping (the verification docs/PLAN.md asks for)', () => {
 
   it('stamps an empty document with the version this build writes', () => {
     const document = emptyDocument('study-2', 'Untitled');
-    expect(document.schemaVersion).toBe(SCHEMA_VERSION);
+    expect(document.schemaVersion).toBe(DOCUMENT_SCHEMA_VERSION);
     expect(loadDocument(saveDocument(document))).toEqual(document);
   });
 
@@ -785,7 +785,7 @@ describe('structural integrity', () => {
 
   it('refuses a document written by a schema version it does not read', () => {
     expect(() => parseDocument({ ...study, schemaVersion: 99 })).toThrow(
-      /this build reads version 1 only/,
+      /this build reads document schemaVersion 1 only/,
     );
   });
 });

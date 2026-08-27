@@ -13,7 +13,7 @@ export { SchemaError } from './errors.js';
 export type { JsonObject, JsonValue } from './json.js';
 export { canonicalJson } from './json.js';
 
-export { SCHEMA_VERSION } from './version.js';
+export { DOCUMENT_SCHEMA_VERSION, CATALOGUE_SCHEMA_VERSION } from './version.js';
 
 export {
   canonicalValue,

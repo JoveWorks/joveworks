@@ -38,7 +38,8 @@ import { describe, expect, it } from 'vitest';
 
 import {
   catalogueFormatFromFileName,
-  SCHEMA_VERSION,
+  CATALOGUE_SCHEMA_VERSION,
+  DOCUMENT_SCHEMA_VERSION,
   formulaRef,
   loadCatalogue,
   parseDocument,
@@ -62,7 +63,7 @@ const BELT: Catalogue = present
       readFileSync(path as string, 'utf8'),
       catalogueFormatFromFileName(path as string),
     )
-  : { schemaVersion: SCHEMA_VERSION, id: 'absent', name: 'absent', restricted: true, formulas: [] };
+  : { schemaVersion: CATALOGUE_SCHEMA_VERSION, id: 'absent', name: 'absent', restricted: true, formulas: [] };
 
 const CATALOGUES: readonly Catalogue[] = [BASE, BELT];
 
@@ -108,7 +109,7 @@ const wire = (from: string, to: string): JsonObject => {
 };
 
 const graph = (id: string, title: string, nodes: JsonObject[], edges: JsonObject[]): GraphDocument =>
-  parseDocument({ schemaVersion: SCHEMA_VERSION, id, title, nodes, edges, frames: [] });
+  parseDocument({ schemaVersion: DOCUMENT_SCHEMA_VERSION, id, title, nodes, edges, frames: [] });
 
 /**
  * The assignment, as both notebooks state it.

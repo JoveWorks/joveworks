@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { SCHEMA_VERSION, type GraphDocument, type GraphNode } from '@joveworks/schema';
+import { DOCUMENT_SCHEMA_VERSION, type GraphDocument, type GraphNode } from '@joveworks/schema';
 import { parseUnit } from '@joveworks/units';
 
 import { collapsedGroupForNode, groupPorts, hiddenByCollapsedGroups } from './collapsedGroups';
@@ -10,7 +10,7 @@ const input = (id: string, frameId?: string): GraphNode => ({
 });
 
 const document: GraphDocument = {
-  schemaVersion: SCHEMA_VERSION,
+  schemaVersion: DOCUMENT_SCHEMA_VERSION,
   id: 'groups',
   title: 'Groups',
   nodes: [input('outside'), input('inner', 'group'), input('nested', 'child'), input('sink')],

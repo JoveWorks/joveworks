@@ -18,7 +18,7 @@ import { describe, expect, it } from 'vitest';
 
 import { checkFormulaDimensions, evaluateDocument, valueAt } from '@joveworks/kernel';
 import {
-  SCHEMA_VERSION,
+  DOCUMENT_SCHEMA_VERSION,
   formulaRef,
   loadCatalogue,
   parseDocument,
@@ -43,7 +43,7 @@ function formula(id: string): Formula {
 function properties(id: string, port: string, choice: string): Readonly<Record<string, number>> {
   const record = formula(id);
   const document = parseDocument({
-    schemaVersion: SCHEMA_VERSION,
+    schemaVersion: DOCUMENT_SCHEMA_VERSION,
     id: 'study',
     title: 'Study',
     nodes: [

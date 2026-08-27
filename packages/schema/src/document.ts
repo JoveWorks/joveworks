@@ -45,7 +45,7 @@ import {
   type Quantity,
 } from './quantity.js';
 import { isRange, parseValueSpec, serializeValueSpec, type ValueSpec } from './value.js';
-import { SCHEMA_VERSION, readSchemaVersion } from './version.js';
+import { DOCUMENT_SCHEMA_VERSION, readSchemaVersion } from './version.js';
 import type { Unit } from '@joveworks/units';
 
 /** The single port every input node produces on and every output node consumes on. */
@@ -1834,7 +1834,7 @@ function checkReferences(document: GraphDocument, path: string): void {
 export function parseDocument(value: JsonValue, path = ''): GraphDocument {
   const object = readObject(value, path);
   const document: GraphDocument = {
-    schemaVersion: readSchemaVersion(object, path),
+    schemaVersion: readSchemaVersion(object, path, DOCUMENT_SCHEMA_VERSION, 'document'),
     id: readName(required(object, 'id', path), join(path, 'id')),
     title: readString(required(object, 'title', path), join(path, 'title')),
     nodes: readArray(required(object, 'nodes', path), join(path, 'nodes')).map((entry, i) =>
@@ -1877,5 +1877,5 @@ export function serializeDocument(document: GraphDocument): JsonObject {
 
 /** An empty document, stamped with the version this build writes. */
 export function emptyDocument(id: string, title: string): GraphDocument {
-  return { schemaVersion: SCHEMA_VERSION, id, title, nodes: [], edges: [], frames: [] };
+  return { schemaVersion: DOCUMENT_SCHEMA_VERSION, id, title, nodes: [], edges: [], frames: [] };
 }
