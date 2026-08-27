@@ -1,17 +1,20 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  DEFAULT_ADVANCED_NODES,
   DEFAULT_CANVAS_CONTROLS_VISIBLE,
   DEFAULT_CONTOUR_PALETTE,
   DEFAULT_NOTEBOOK_WIDTH,
   DEFAULT_PALETTE_WIDTH,
   DEFAULT_SNAP_TO_GRID,
+  loadAdvancedNodes,
   loadCanvasControlsVisible,
   loadContourPalette,
   loadHubUrl,
   loadNotebookWidth,
   loadPaletteWidth,
   loadSnapToGrid,
+  saveAdvancedNodes,
   saveCanvasControlsVisible,
   saveContourPalette,
   saveHubUrl,
@@ -76,6 +79,17 @@ describe('contour palette preference', () => {
     window.localStorage.setItem('joveworks:settings:notebookWidth', 'not-a-number');
     expect(loadPaletteWidth()).toBe(DEFAULT_PALETTE_WIDTH);
     expect(loadNotebookWidth()).toBe(DEFAULT_NOTEBOOK_WIDTH);
+  });
+
+  it('defaults advanced nodes to off and persists the student turning it on', () => {
+    expect(DEFAULT_ADVANCED_NODES).toBe(false);
+    expect(loadAdvancedNodes()).toBe(false);
+
+    saveAdvancedNodes(true);
+    expect(loadAdvancedNodes()).toBe(true);
+
+    saveAdvancedNodes(false);
+    expect(loadAdvancedNodes()).toBe(false);
   });
 
   it('remembers the last successful Hub address independently of a course or workspace', () => {
