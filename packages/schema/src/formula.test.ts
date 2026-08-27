@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
 
 /**
  * Every fixture here is invented. Reaching for a real R&M formula is the natural
@@ -291,6 +292,60 @@ describe('references by id, version and hash', () => {
     };
     expect(formulaHash(translated)).toBe(formulaHash(formula));
     expect(matchRef(formulaRef(formula), translated)).toBe('match');
+  });
+
+  /**
+   * The one-record pin above (`asItAlwaysWas`) covers a single shape. This
+   * extends it into an actual regression guard: a small corpus of serialized
+   * formula records — `packages/schema/fixtures/formulas/hash-guard.json`,
+   * every one of them invented — each with its `formulaHash` pinned to a
+   * literal string computed once and checked in.
+   *
+   * If a change to `serializePort`, `serializeFormula`, `formulaHash`, or
+   * anything they call alters how any of these records serializes, exactly
+   * one of these `it`s fails, and its message says why that is not a test
+   * nuisance: every saved student graph pins its formula nodes by this same
+   * hash (`FormulaRef.hash`), so a changed hash here is a changed hash for
+   * every graph a student has already saved against that formula — reopening
+   * one would show `matchRef` returning `'changed'` instead of `'match'`,
+   * which the editor reports as "this formula changed since you saved".
+   * That may be the *right* outcome for a deliberate formula edit, but it
+   * must never be a *surprise* — which is what pinning here forces: whoever
+   * changes serialization has to touch this fixture file too, and in doing
+   * so has to notice, and say in their commit, that they just invalidated
+   * saved graphs.
+   */
+  describe('regression guard: a fixture corpus of pinned formula hashes', () => {
+    interface HashFixture {
+      readonly name: string;
+      readonly hash: string;
+      readonly record: JsonObject;
+    }
+
+    const fixtures = JSON.parse(
+      readFileSync(new URL('../fixtures/formulas/hash-guard.json', import.meta.url), 'utf8'),
+    ) as readonly HashFixture[];
+
+    it('is not empty', () => {
+      expect(fixtures.length).toBeGreaterThan(0);
+    });
+
+    for (const fixture of fixtures) {
+      it(`${fixture.name} hashes to its pinned value`, () => {
+        const formula = parseFormula(fixture.record, `fixtures/formulas/hash-guard.json[${fixture.name}]`);
+        const actual = formulaHash(formula);
+        if (actual !== fixture.hash) {
+          throw new Error(
+            `formulaHash('${fixture.name}') changed from the pinned '${fixture.hash}' to '${actual}'. ` +
+              'This means a formula record now serializes differently than it did before — which changes ' +
+              'formulaHash for EVERY real formula shaped like it, which invalidates the FormulaRef.hash on ' +
+              'every saved student graph that references one. If this change is intentional, update the ' +
+              "pinned hash in packages/schema/fixtures/formulas/hash-guard.json and say so explicitly in the " +
+              'commit — this is not a fixture to silently refresh.',
+          );
+        }
+      });
+    }
   });
 });
 
