@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "id": "fixture-v1-frames",
+  "title": "Frames and sections graph fixture (schemaVersion 1)",
+  "nodes": [
+    {
+      "kind": "input",
+      "id": "a",
+      "label": "a",
+      "position": { "x": 0, "y": 0 },
+      "frameId": "sizing",
+      "value": { "kind": "scalar", "value": 5, "unit": "N" }
+    },
+    {
+      "kind": "input",
+      "id": "b",
+      "label": "b",
+      "position": { "x": 0, "y": 120 },
+      "frameId": "sizing",
+      "value": { "kind": "scalar", "value": 2, "unit": "" }
+    },
+    {
+      "kind": "formula",
+      "id": "scaled",
+      "label": "y = a*b + c",
+      "position": { "x": 260, "y": 60 },
+      "frameId": "sizing",
+      "formula": { "id": "fixture.product", "version": 1, "hash": "3333333333333333" },
+      "inputValues": { "c": { "kind": "scalar", "value": 0, "unit": "N" } }
+    },
+    {
+      "kind": "output",
+      "id": "check",
+      "label": "safety check",
+      "position": { "x": 520, "y": 60 },
+      "frameId": "sizing",
+      "output": { "kind": "check", "comparison": ">=", "threshold": { "value": 1.5, "unit": "" } }
+    },
+    {
+      "kind": "output",
+      "id": "note",
+      "label": "scratch note",
+      "position": { "x": 0, "y": 400 },
+      "frameId": "scratch",
+      "output": { "kind": "equation" }
+    }
+  ],
+  "edges": [
+    { "id": "e-a", "from": { "node": "a", "port": "value" }, "to": { "node": "scaled", "port": "a" } },
+    { "id": "e-b", "from": { "node": "b", "port": "value" }, "to": { "node": "scaled", "port": "b" } },
+    { "id": "e-y", "from": { "node": "scaled", "port": "y" }, "to": { "node": "check", "port": "value" } }
+  ],
+  "frames": [
+    {
+      "id": "annotations",
+      "kind": "group",
+      "title": "Working notes",
+      "position": { "x": -20, "y": 380 },
+      "size": { "width": 400, "height": 200 }
+    },
+    {
+      "id": "sizing",
+      "kind": "section",
+      "title": "Sizing",
+      "note": "Section prose describing the sizing calculation.",
+      "position": { "x": -20, "y": -20 },
+      "size": { "width": 640, "height": 200 }
+    },
+    {
+      "id": "scratch",
+      "kind": "section",
+      "frameId": "annotations",
+      "title": "Scratch",
+      "position": { "x": -10, "y": 390 },
+      "size": { "width": 300, "height": 120 }
+    }
+  ]
+}

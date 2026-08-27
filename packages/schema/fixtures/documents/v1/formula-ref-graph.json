@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "id": "fixture-v1-formula-refs",
+  "title": "Formula reference graph fixture (schemaVersion 1)",
+  "nodes": [
+    {
+      "kind": "input",
+      "id": "a",
+      "label": "a",
+      "position": { "x": 0, "y": 0 },
+      "value": { "kind": "scalar", "value": 3, "unit": "N" }
+    },
+    {
+      "kind": "input",
+      "id": "b",
+      "label": "b",
+      "position": { "x": 0, "y": 120 },
+      "value": { "kind": "scalar", "value": 4, "unit": "" }
+    },
+    {
+      "kind": "formula",
+      "id": "step1",
+      "label": "y = a*b + c (v1)",
+      "position": { "x": 260, "y": 60 },
+      "formula": { "id": "fixture.product", "version": 1, "hash": "5555555555555555" },
+      "inputValues": { "c": { "kind": "scalar", "value": 0, "unit": "N" } }
+    },
+    {
+      "kind": "formula",
+      "id": "step2",
+      "label": "y = a*b + c (v2, revised expression)",
+      "position": { "x": 520, "y": 60 },
+      "formula": { "id": "fixture.product", "version": 2, "hash": "6666666666666666" },
+      "inputValues": { "c": { "kind": "scalar", "value": 1, "unit": "N" } }
+    },
+    {
+      "kind": "compare",
+      "id": "verdict",
+      "label": "meets minimum",
+      "position": { "x": 780, "y": 60 },
+      "comparison": ">=",
+      "threshold": { "value": 10, "unit": "N" }
+    },
+    {
+      "kind": "output",
+      "id": "eq",
+      "label": "show the formula",
+      "position": { "x": 260, "y": 220 },
+      "output": { "kind": "equation" }
+    }
+  ],
+  "edges": [
+    { "id": "e-a1", "from": { "node": "a", "port": "value" }, "to": { "node": "step1", "port": "a" } },
+    { "id": "e-b1", "from": { "node": "b", "port": "value" }, "to": { "node": "step1", "port": "b" } },
+    { "id": "e-step", "from": { "node": "step1", "port": "y" }, "to": { "node": "step2", "port": "a" } },
+    { "id": "e-b2", "from": { "node": "b", "port": "value" }, "to": { "node": "step2", "port": "b" } },
+    { "id": "e-verdict", "from": { "node": "step2", "port": "y" }, "to": { "node": "verdict", "port": "value" } },
+    { "id": "e-eq", "from": { "node": "step1", "port": "y" }, "to": { "node": "eq", "port": "value" } }
+  ],
+  "frames": []
+}

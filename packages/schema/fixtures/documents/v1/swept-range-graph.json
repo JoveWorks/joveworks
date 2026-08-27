@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "id": "fixture-v1-swept-range",
+  "title": "Swept range graph fixture (schemaVersion 1)",
+  "nodes": [
+    {
+      "kind": "range",
+      "id": "width",
+      "label": "width",
+      "position": { "x": 0, "y": 0 },
+      "spacing": "linear",
+      "start": 10,
+      "stop": 50,
+      "count": 5,
+      "unit": "mm",
+      "axisLabel": "plate width"
+    },
+    {
+      "kind": "input",
+      "id": "depth",
+      "label": "depth",
+      "position": { "x": 0, "y": 160 },
+      "value": { "kind": "scalar", "value": 3, "unit": "mm" }
+    },
+    {
+      "kind": "formula",
+      "id": "area",
+      "label": "y = a*b + c",
+      "position": { "x": 260, "y": 80 },
+      "formula": { "id": "fixture.product", "version": 1, "hash": "2222222222222222" },
+      "inputValues": {
+        "c": { "kind": "scalar", "value": 0, "unit": "mm" }
+      }
+    },
+    {
+      "kind": "output",
+      "id": "areaPlot",
+      "label": "area vs width",
+      "position": { "x": 520, "y": 80 },
+      "output": { "kind": "plot", "x": "width", "unit": "mm" }
+    }
+  ],
+  "edges": [
+    { "id": "e-w", "from": { "node": "width", "port": "value" }, "to": { "node": "area", "port": "a" } },
+    { "id": "e-d", "from": { "node": "depth", "port": "value" }, "to": { "node": "area", "port": "b" } },
+    { "id": "e-y", "from": { "node": "area", "port": "y" }, "to": { "node": "areaPlot", "port": "value" } }
+  ],
+  "frames": []
+}

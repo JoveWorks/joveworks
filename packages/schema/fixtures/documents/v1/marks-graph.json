@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "id": "fixture-v1-marks",
+  "title": "Marked candidates graph fixture (schemaVersion 1)",
+  "nodes": [
+    {
+      "kind": "range",
+      "id": "diameter",
+      "label": "diameter",
+      "position": { "x": 0, "y": 0 },
+      "spacing": "linear",
+      "start": 20,
+      "stop": 60,
+      "count": 5,
+      "unit": "mm"
+    },
+    {
+      "kind": "input",
+      "id": "grade",
+      "label": "grade",
+      "position": { "x": 0, "y": 160 },
+      "value": { "kind": "categoricalList", "values": ["soft", "hard"] }
+    },
+    {
+      "kind": "formula",
+      "id": "mass",
+      "label": "y = a*b + c",
+      "position": { "x": 260, "y": 80 },
+      "formula": { "id": "fixture.product", "version": 1, "hash": "4444444444444444" },
+      "inputValues": { "c": { "kind": "scalar", "value": 0, "unit": "" } }
+    },
+    {
+      "kind": "output",
+      "id": "massPlot",
+      "label": "mass vs diameter",
+      "position": { "x": 520, "y": 80 },
+      "output": { "kind": "plot", "x": "diameter", "series": "grade" }
+    }
+  ],
+  "edges": [
+    { "id": "e-d", "from": { "node": "diameter", "port": "value" }, "to": { "node": "mass", "port": "a" } },
+    { "id": "e-g", "from": { "node": "grade", "port": "value" }, "to": { "node": "mass", "port": "b" } },
+    { "id": "e-y", "from": { "node": "mass", "port": "y" }, "to": { "node": "massPlot", "port": "value" } }
+  ],
+  "frames": [],
+  "marks": [
+    { "at": { "diameter": 40, "grade": "hard" } },
+    { "at": { "diameter": 20 } }
+  ]
+}
