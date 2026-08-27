@@ -1,7 +1,20 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { emptyDocument, serializeDocument } from '@joveworks/schema';
+import { emptyDocument, hashRecord, serializeDocument } from '@joveworks/schema';
 
-import { connectCourse, createWorkspace, deleteWorkspace, discoverCourses, hubUrl, loadCatalogue, loadPublication, loadWorkspace, saveWorkspace } from './hub';
+import {
+  connectCourse,
+  createWorkspace,
+  deleteWorkspace,
+  discoverCourses,
+  HubCatalogueMismatchError,
+  hubUrl,
+  loadCatalogue,
+  loadPublication,
+  loadWorkspace,
+  resolveCourseCatalogues,
+  saveWorkspace,
+  type HubCourse,
+} from './hub';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -127,5 +140,90 @@ describe('Hub API transport', () => {
     expect(fetch).toHaveBeenCalledWith('http://localhost:8080/api/v1/workspaces/Ab12Cd34Ef56', expect.objectContaining({
       method: 'DELETE', headers: { 'X-JoveWorks-Workspace-Token': 'edit-capability' },
     }));
+  });
+});
+
+describe('resolveCourseCatalogues', () => {
+  // Invented content only — never a real Roloff & Matek formula (AGENTS.md).
+  const catalogueA = { schemaVersion: 1, id: 'catalogue-a', name: 'A', restricted: false, formulas: [{ id: 'a.made-up', version: 1, expression: 'y = a*b + c' }] };
+  const catalogueB = { schemaVersion: 1, id: 'catalogue-b', name: 'B', restricted: false, formulas: [] };
+  const refA = { id: 'catalogue-a', version: 1, hash: hashRecord(catalogueA) };
+  const refB = { id: 'catalogue-b', version: 1, hash: hashRecord(catalogueB) };
+
+  const course = (catalogueContents?: HubCourse['catalogueContents']): HubCourse => ({
+    hubUrl: 'http://localhost:8080',
+    slug: 'machine-design-2026',
+    title: 'Machine design 2026',
+    publications: [],
+    catalogues: [refA, refB],
+    ...(catalogueContents === undefined ? {} : { catalogueContents }),
+  });
+
+  it('resolves fully-inlined catalogues with no fetch at all', async () => {
+    const fetch = vi.fn();
+    vi.stubGlobal('fetch', fetch);
+    const source = course([
+      { ...refA, content: catalogueA },
+      { ...refB, content: catalogueB },
+    ]);
+
+    await expect(resolveCourseCatalogues(source, source.catalogues!)).resolves.toEqual([catalogueA, catalogueB]);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('falls back to per-ref fetching when a Hub sends only refs', async () => {
+    const fetch = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify(catalogueA), { headers: { ETag: `"${refA.hash}"` } }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(catalogueB), { headers: { ETag: `"${refB.hash}"` } }));
+    vi.stubGlobal('fetch', fetch);
+    const source = course(undefined);
+
+    await expect(resolveCourseCatalogues(source, source.catalogues!)).resolves.toEqual([catalogueA, catalogueB]);
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('fetches only the refs a Hub left out of a partially-inlined response', async () => {
+    const fetch = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify(catalogueB), { headers: { ETag: `"${refB.hash}"` } }));
+    vi.stubGlobal('fetch', fetch);
+    const source = course([{ ...refA, content: catalogueA }]);
+
+    await expect(resolveCourseCatalogues(source, source.catalogues!)).resolves.toEqual([catalogueA, catalogueB]);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(fetch).toHaveBeenCalledWith('http://localhost:8080/api/v1/catalogues/catalogue-b/1', {});
+  });
+
+  it('rejects an inline catalogue whose hash does not match its ref, rather than preferring either side', async () => {
+    const fetch = vi.fn();
+    vi.stubGlobal('fetch', fetch);
+    const source = course([{ ...refA, content: { ...catalogueA, name: 'Tampered' } }, { ...refB, content: catalogueB }]);
+
+    await expect(resolveCourseCatalogues(source, source.catalogues!)).rejects.toThrow(HubCatalogueMismatchError);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('rejects an inline catalogue whose version does not match its ref', async () => {
+    const source = course([{ ...refA, version: 2, content: catalogueA }, { ...refB, content: catalogueB }]);
+
+    await expect(resolveCourseCatalogues(source, source.catalogues!)).rejects.toThrow(HubCatalogueMismatchError);
+  });
+
+  it('resolves a subset of refs — a publication or workspace binding, not the whole course', async () => {
+    const fetch = vi.fn();
+    vi.stubGlobal('fetch', fetch);
+    const source = course([{ ...refA, content: catalogueA }, { ...refB, content: catalogueB }]);
+
+    await expect(resolveCourseCatalogues(source, [refB])).resolves.toEqual([catalogueB]);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('sends the course token and surfaces the 401 message when a fallback fetch needs it', async () => {
+    const fetch = vi.fn().mockResolvedValueOnce(new Response(null, { status: 401 }));
+    vi.stubGlobal('fetch', fetch);
+    const source = course(undefined);
+
+    await expect(resolveCourseCatalogues(source, [refA], 'course-token')).rejects.toThrow('course access token');
+    expect(fetch).toHaveBeenCalledWith('http://localhost:8080/api/v1/catalogues/catalogue-a/1', {
+      headers: { 'X-JoveWorks-Course-Token': 'course-token' },
+    });
   });
 });
