@@ -215,6 +215,9 @@ export type {
 
 export { PLOT_TYPES, PLOT_SCALES, plotMeasures, plotThresholdPort } from './document.js';
 
+export { migrateDocument, runMigrationChain, DOCUMENT_MIGRATIONS } from './migration.js';
+export type { SchemaMigrationStep } from './migration.js';
+
 export {
   loadDocument,
   saveDocument,
