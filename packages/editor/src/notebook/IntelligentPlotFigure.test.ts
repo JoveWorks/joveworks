@@ -4,7 +4,7 @@ import type { Axis, PlotAxis, PlotMeasureResult } from '@joveworks/kernel';
 import { parseUnit } from '@joveworks/units';
 
 import type { PlotPanel } from '../model/plot';
-import { contourGridForPanel, rowsForPanel } from './IntelligentPlotFigure';
+import { contourGridForPanel, contourLegendLevels, rowsForPanel } from './IntelligentPlotFigure';
 
 const mm = parseUnit('mm');
 const width: Axis = { id: 'width', label: 'width', length: 2, order: 0 };
@@ -73,5 +73,17 @@ describe('intelligent plot rendering rows', () => {
       values: [1, 3, 2, 4],
       rectangle: { width: 2, height: 2, x1: 10, x2: 20, y1: 1, y2: 2 },
     });
+  });
+
+  it('keeps every in-range contour threshold on the right-side color scale', () => {
+    const plotted: PlotPanel = {
+      ...panel([
+        { ...measure('value', 'stress', [1, 2, 3], [width]), threshold: 2 },
+        { ...measure('value2', 'stress limit', [4, 5, 6], [width]), threshold: 5 },
+      ], [widthReadout]),
+      type: 'contour',
+      roles: { x: 'width', y: 'height' },
+    };
+    expect(contourLegendLevels(plotted, mm)).toEqual({ minimum: 1, maximum: 6, thresholds: [2, 5] });
   });
 });

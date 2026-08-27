@@ -159,6 +159,66 @@ export function contourGridForPanel(panel: PlotPanel, valueUnit: Unit): {
   };
 }
 
+/** The numeric extent and reference levels shown on a contour's right-side key. */
+export function contourLegendLevels(panel: PlotPanel, valueUnit: Unit): {
+  readonly minimum: number;
+  readonly maximum: number;
+  readonly thresholds: readonly number[];
+} | undefined {
+  const values = panel.measures
+    .flatMap((measure) => measure.series.data)
+    .map((value) => fromCanonical(value, valueUnit))
+    .filter(Number.isFinite);
+  if (values.length === 0) return undefined;
+  const minimum = Math.min(...values);
+  const maximum = Math.max(...values);
+  return {
+    minimum,
+    maximum,
+    thresholds: panel.measures
+      .flatMap((measure) => measure.threshold === undefined ? [] : [fromCanonical(measure.threshold, valueUnit)])
+      .filter((value) => Number.isFinite(value) && value >= minimum && value <= maximum),
+  };
+}
+
+/** Restore the compact, readable contour key used by the original Plot node. */
+function contourColorbar(panel: PlotPanel, valueUnit: Unit, palette: string): HTMLElement | undefined {
+  const levels = contourLegendLevels(panel, valueUnit);
+  if (levels === undefined) return undefined;
+  const format = (value: number): string => value.toLocaleString(undefined, { maximumSignificantDigits: 3 });
+  const colorbar = document.createElement('aside');
+  colorbar.className = 'contour-colorbar';
+  colorbar.dataset.palette = palette;
+  colorbar.style.height = `${panel.height}px`;
+
+  const title = document.createElement('strong');
+  title.textContent = measuredLabel(panel, valueUnit);
+  const scale = document.createElement('div');
+  scale.className = 'contour-colorbar-scale';
+  const values = document.createElement('div');
+  values.className = 'contour-colorbar-values';
+  values.append(Object.assign(document.createElement('span'), { textContent: format(levels.maximum) }));
+  values.append(Object.assign(document.createElement('span'), { textContent: format(levels.minimum) }));
+  const ramp = document.createElement('i');
+  ramp.className = 'contour-colorbar-ramp';
+  const span = levels.maximum - levels.minimum;
+  for (const threshold of levels.thresholds) {
+    const position = span === 0 ? 50 : ((threshold - levels.minimum) / span) * 100;
+    const tick = document.createElement('i');
+    tick.className = 'contour-colorbar-threshold';
+    tick.style.bottom = `${position}%`;
+    ramp.append(tick);
+    const reading = document.createElement('span');
+    reading.className = 'contour-colorbar-threshold-value';
+    reading.style.bottom = `${position}%`;
+    reading.textContent = format(threshold);
+    values.append(reading);
+  }
+  scale.append(values, ramp);
+  colorbar.append(title, scale);
+  return colorbar;
+}
+
 function measuredLabel(panel: PlotPanel, valueUnit: Unit): string {
   const lead = panel.measures[0] as PlotMeasureResult;
   const selected = lead.view?.valueLabel;
@@ -322,22 +382,25 @@ function PlotPanelFigure({
     const yScale = panel.roles.y === undefined
       ? panel.valueScale
       : panel.scales[panel.roles.y] ?? (isLogarithmicAxis(document, panel.roles.y) ? 'log' : 'linear');
+    const contouring = panel.type === 'contour';
     const chart = Plot.plot({
-      width: Math.max(320, width),
+      width: contouring ? Math.max(320, width - 102) : Math.max(320, width),
       height: panel.height,
       marginLeft: 64,
       marginBottom: 44,
       x: { label: panel.axes.length === 0 ? '' : xLabel, ...(xScale === 'log' ? { type: 'log' } : {}) },
       y: { label: yLabel, grid: panel.type === 'line' || panel.type === 'dot', ...(yScale === 'log' ? { type: 'log' } : {}) },
       ...(panel.type === 'heatmap' || panel.type === 'contour'
-        ? { color: { scheme: contourPalette, legend: true, label: measuredLabel(panel, valueUnit), ...(panel.valueScale === 'log' ? { type: 'log' } : {}) } }
+        ? { color: { scheme: contourPalette, legend: !contouring, label: measuredLabel(panel, valueUnit), ...(panel.valueScale === 'log' ? { type: 'log' } : {}) } }
         : data.some((row) => row.key !== undefined)
           ? { color: { legend: true } }
           : {}),
       ...(facetAxis === undefined ? {} : { fx: { label: labelOf(facetAxis, panel) } }),
       marks,
     });
-    container.append(chart);
+    const colorbar = contouring ? contourColorbar(panel, valueUnit, contourPalette) : undefined;
+    if (colorbar !== undefined) container.classList.add('contour-figure');
+    container.append(chart, ...(colorbar === undefined ? [] : [colorbar]));
 
     const pointed = (): SmartRow | undefined => (chart as { value?: SmartRow }).value;
     const grid = panelGrid(panel);
@@ -365,6 +428,8 @@ function PlotPanelFigure({
       chart.removeEventListener('click', handleClick);
       chart.removeEventListener('pointerleave', handleLeave);
       chart.remove();
+      colorbar?.remove();
+      container.classList.remove('contour-figure');
     };
   }, [panel, document, width, format, marking, contourPalette, titleMathRendering]);
 
