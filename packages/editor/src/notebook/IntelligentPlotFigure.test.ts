@@ -4,7 +4,7 @@ import type { Axis, PlotAxis, PlotMeasureResult } from '@joveworks/kernel';
 import { parseUnit } from '@joveworks/units';
 
 import type { PlotPanel } from '../model/plot';
-import { rowsForPanel } from './IntelligentPlotFigure';
+import { contourGridForPanel, rowsForPanel } from './IntelligentPlotFigure';
 
 const mm = parseUnit('mm');
 const width: Axis = { id: 'width', label: 'width', length: 2, order: 0 };
@@ -55,5 +55,23 @@ describe('intelligent plot rendering rows', () => {
       { cell: 0, x: 'a', value: 1, measure: 'a' },
       { cell: 0, x: 'b', value: 2, measure: 'b' },
     ]);
+  });
+
+  it('lays a regular contour field out in the dense y-major grid Observable expects', () => {
+    const height: Axis = { id: 'height', label: 'height', length: 2, order: 1 };
+    const heightReadout: PlotAxis = {
+      axis: height,
+      coordinates: { kind: 'numeric', axes: [height], data: [1, 2] },
+      unit: mm,
+    };
+    const plotted: PlotPanel = {
+      ...panel([measure('value', 'stress', [1, 2, 3, 4], [width, height])], [widthReadout, heightReadout]),
+      type: 'contour',
+      roles: { x: 'width', y: 'height' },
+    };
+    expect(contourGridForPanel(plotted, mm)).toEqual({
+      values: [1, 3, 2, 4],
+      rectangle: { width: 2, height: 2, x1: 10, x2: 20, y1: 1, y2: 2 },
+    });
   });
 });

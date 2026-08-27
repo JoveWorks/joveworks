@@ -97,6 +97,68 @@ export function rowsForPanel(panel: PlotPanel, valueUnit: Unit): readonly SmartR
   });
 }
 
+/**
+ * Observable's dense contour input is more reliable than its raster
+ * interpolation for the regular two-axis grids produced by a study. Keep the
+ * values in y-major order, which is the order `Plot.contour` expects, and let
+ * the existing row data continue to drive tips and candidate marks.
+ *
+ * A faceted field retains the sample-based path below: each facet is an
+ * independent dense grid, while this compact helper intentionally describes
+ * one rectangle only.
+ */
+export function contourGridForPanel(panel: PlotPanel, valueUnit: Unit): {
+  readonly values: readonly number[];
+  readonly rectangle: {
+    readonly width: number;
+    readonly height: number;
+    readonly x1: number;
+    readonly x2: number;
+    readonly y1: number;
+    readonly y2: number;
+  };
+} | undefined {
+  const xAxis = plotAxisFor(panel, panel.roles.x);
+  const yAxis = plotAxisFor(panel, panel.roles.y);
+  if (
+    xAxis?.coordinates.kind !== 'numeric' ||
+    yAxis?.coordinates.kind !== 'numeric' ||
+    panel.roles.facet !== undefined ||
+    panel.measures.length !== 1
+  ) return undefined;
+  const xs = displayedCoordinates(xAxis).map(Number);
+  const ys = displayedCoordinates(yAxis).map(Number);
+  if (
+    xs.length === 0 || ys.length === 0 ||
+    xs.some((value) => !Number.isFinite(value)) || ys.some((value) => !Number.isFinite(value))
+  ) {
+    return undefined;
+  }
+  const target = panelGrid(panel);
+  const measure = panel.measures[0] as PlotMeasureResult;
+  const valueAt = indexer(measure.series, target);
+  const xAt = indexer(xAxis.coordinates, target);
+  const yAt = indexer(yAxis.coordinates, target);
+  const values = new Array<number>(xs.length * ys.length).fill(Number.NaN);
+  for (let cell = 0; cell < gridSize(target); cell += 1) {
+    values[yAt(cell) * xs.length + xAt(cell)] = fromCanonical(
+      measure.series.data[valueAt(cell)] as number,
+      valueUnit,
+    );
+  }
+  return {
+    values,
+    rectangle: {
+      width: xs.length,
+      height: ys.length,
+      x1: Math.min(...xs),
+      x2: Math.max(...xs),
+      y1: Math.min(...ys),
+      y2: Math.max(...ys),
+    },
+  };
+}
+
 function measuredLabel(panel: PlotPanel, valueUnit: Unit): string {
   const lead = panel.measures[0] as PlotMeasureResult;
   const selected = lead.view?.valueLabel;
@@ -149,6 +211,7 @@ function PlotPanelFigure({
     const xAxis = plotAxisFor(panel, panel.roles.x);
     const yAxis = plotAxisFor(panel, panel.roles.y);
     const facetAxis = plotAxisFor(panel, panel.roles.facet);
+    const contourGrid = panel.type === 'contour' ? contourGridForPanel(panel, valueUnit) : undefined;
     const xLabel = xAxis === undefined ? '' : labelOf(xAxis, panel);
     const yLabel = yAxis === undefined ? measuredLabel(panel, valueUnit) : labelOf(yAxis, panel);
     const channels = {
@@ -173,15 +236,18 @@ function PlotPanelFigure({
         ...(facetAxis === undefined ? {} : { fx: 'facet' }),
       }));
     } else {
-      marks.push(Plot.contour(data, {
-        x: 'x',
-        y: 'y',
-        value: 'value',
-        fill: Plot.identity,
-        stroke: 'currentColor',
-        strokeOpacity: 0.35,
-        ...(facetAxis === undefined ? {} : { fx: 'facet' }),
-      }));
+      marks.push(contourGrid === undefined
+        ? Plot.contour(data, {
+            x: 'x', y: 'y', value: 'value', fill: Plot.identity,
+            stroke: 'currentColor', strokeOpacity: 0.35,
+            ...(facetAxis === undefined ? {} : { fx: 'facet' }),
+          })
+        : Plot.contour(contourGrid.values, {
+            ...contourGrid.rectangle,
+            fill: Plot.identity,
+            stroke: 'currentColor',
+            strokeOpacity: 0.35,
+          }));
     }
 
     const references = panel.measures.flatMap((measure) =>
@@ -206,11 +272,19 @@ function PlotPanelFigure({
     }
     if (references.length > 0 && (panel.type === 'heatmap' || panel.type === 'contour')) {
       marks.push(
-        ...references.map((reference) => Plot.contour(data, {
-          x: 'x', y: 'y', value: 'value', thresholds: [reference.value], smooth: false,
-          stroke: '#c2410c', strokeWidth: 2,
-          ...(facetAxis === undefined ? {} : { fx: 'facet' }),
-        })),
+        ...references.map((reference) => contourGrid === undefined
+          ? Plot.contour(data, {
+              x: 'x', y: 'y', value: 'value', thresholds: [reference.value], smooth: false,
+              stroke: '#c2410c', strokeWidth: 2,
+              ...(facetAxis === undefined ? {} : { fx: 'facet' }),
+            })
+          : Plot.contour(contourGrid.values, {
+              ...contourGrid.rectangle,
+              thresholds: [reference.value],
+              smooth: false,
+              stroke: '#c2410c',
+              strokeWidth: 2,
+            })),
       );
     }
 
