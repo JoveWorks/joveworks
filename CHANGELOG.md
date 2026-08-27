@@ -2,6 +2,38 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.21.0](https://github.com/ThomasVanRiel/joveworks/compare/v0.20.0...v0.21.0) (2026-08-27)
+
+### Features
+
+* **editor:** add an advanced-nodes editor preference ([a8d4b9e](https://github.com/ThomasVanRiel/joveworks/commit/a8d4b9e5d31539a2cce0df9370b9a3e419526412))
+* **editor:** configurable base path and a visible release channel ([c512580](https://github.com/ThomasVanRiel/joveworks/commit/c5125805c5b5092bce781bb74ae401ca943fcaf9))
+* **editor:** discover Hub courses ([1dd1d10](https://github.com/ThomasVanRiel/joveworks/commit/1dd1d100fd5443968d8fedcdc2294ed01b2146ec))
+* **editor:** gate advanced palette entries behind the preference ([4c6e5cd](https://github.com/ThomasVanRiel/joveworks/commit/4c6e5cd15ed6bd71a1ab59db3f91de93526e0dce))
+* **editor:** resolve inline Hub catalogue contents with integrity checks ([8e58616](https://github.com/ThomasVanRiel/joveworks/commit/8e58616b41cb1b555fac2bd639bc7a5a2dadfe21))
+* **editor:** use inline catalogue contents when opening course material ([9da70e6](https://github.com/ThomasVanRiel/joveworks/commit/9da70e6097844a5769fadb08ecf09c8b40b30e1e))
+* **schema:** add an explicit document-migration entry point ([568365e](https://github.com/ThomasVanRiel/joveworks/commit/568365e42ef126b78baec66f6ee5d22163a01ae6))
+
+### Fixes
+
+* **editor:** harden the NodeBook's print/PDF export ([e40b66f](https://github.com/ThomasVanRiel/joveworks/commit/e40b66f4d2d37e738787fc11eec398b1e9947e84)), references [#46](https://github.com/ThomasVanRiel/joveworks/issues/46)
+* **editor:** persist Hub address ([4dd66b0](https://github.com/ThomasVanRiel/joveworks/commit/4dd66b05c036cf5e41eef44dc657b4cfda15876b))
+* **editor:** ship the stable bundle with a relative base, not an absolute one ([756c52d](https://github.com/ThomasVanRiel/joveworks/commit/756c52da1c48b2c8ff0ebf4e66ea4b6537629d32))
+* **editor:** size the Feasibility heatmap's single-panel width from its own ticks ([fe58bcc](https://github.com/ThomasVanRiel/joveworks/commit/fe58bccf6a8fd65266a239358c7ffcedc6547bee))
+* **editor:** update the print-expressions test for the merged schema split ([614e81e](https://github.com/ThomasVanRiel/joveworks/commit/614e81e682e4176f15a88be581bd77ca6dc1ef2b))
+* verify inline Hub catalogue hashes ([f26a809](https://github.com/ThomasVanRiel/joveworks/commit/f26a809190c76d9064ee763406b865c44c5f883d))
+
+### Refactoring
+
+* **schema:** split SCHEMA_VERSION into per-artefact stamps ([231f4bb](https://github.com/ThomasVanRiel/joveworks/commit/231f4bba370eed8a0d14fbaea373a91e9aa46545))
+* **schema:** update SCHEMA_VERSION call sites for the per-artefact split ([7fb6828](https://github.com/ThomasVanRiel/joveworks/commit/7fb6828e87fc3d821d8cd45b452d752ad246900f))
+* **schema:** wire document/catalogue parsers to their own version stamp ([6b52542](https://github.com/ThomasVanRiel/joveworks/commit/6b52542ac923b5d6ea3fc2ad4f73dd221029fd4d))
+
+### Documentation
+
+* record beta status and the next session's priorities ([b84b6a0](https://github.com/ThomasVanRiel/joveworks/commit/b84b6a01df6a7433968db1a1331fde60fc183878))
+* record the document-migration mechanism in ROADMAP item 17 ([af3e93c](https://github.com/ThomasVanRiel/joveworks/commit/af3e93c27d608e6b91a85aeb170fcda3646f6f0d))
+* record the schema version split and the catalogue migration gap ([c8fe0b4](https://github.com/ThomasVanRiel/joveworks/commit/c8fe0b4e360cf060ce6bcced04e91e9df9b1bd1f))
 ## [0.20.0](https://github.com/ThomasVanRiel/joveworks/compare/v0.19.1...v0.20.0) (2026-08-27)
 
 ### Features
