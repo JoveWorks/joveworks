@@ -308,6 +308,31 @@ describe('document edits', () => {
       expect(grouped.nodes.find((node) => node.id === 'b')?.frameId).toBe('section');
     });
 
+    it('wraps a selected section in a canvas-only group without changing its NodeBook role', () => {
+      const grouped = groupIntoGroup({ ...base, frames: [section] }, new Set(['section']), { x: 999, y: 999 });
+      const group = grouped.frames.find((frame) => frame.kind === 'group');
+      expect(group).toBeDefined();
+      expect(grouped.frames.find((frame) => frame.id === 'section')?.frameId).toBe(group?.id);
+      expect(grouped.nodes.every((node) => node.frameId === 'section')).toBe(true);
+    });
+
+    it('makes repeated grouping visibly wrap the prior group instead of tracing its border', () => {
+      const once = groupIntoGroup({ ...base, frames: [section] }, new Set(['a']), { x: 999, y: 999 });
+      const inner = once.frames.find((frame) => frame.kind === 'group')!;
+      const twice = groupIntoGroup(once, new Set(['a']), { x: 999, y: 999 });
+      const outer = twice.frames.find((frame) => frame.id !== inner.id && frame.kind === 'group')!;
+      expect(twice.frames.find((frame) => frame.id === inner.id)?.frameId).toBe(outer.id);
+      expect(outer.size.width).toBeGreaterThan(inner.size.width);
+      expect(outer.size.height).toBeGreaterThan(inner.size.height);
+    });
+
+    it('keeps an oversized group nested by its title anchor', () => {
+      const outer = { ...section, id: 'outer', kind: 'group' as const, size: { width: 300, height: 200 } };
+      const child = { ...outer, id: 'child', position: { x: 0, y: 0 }, size: { width: 600, height: 400 } };
+      const reframed = reframe({ ...base, frames: [outer, child] });
+      expect(reframed.frames.find((frame) => frame.id === 'child')?.frameId).toBe('outer');
+    });
+
     it('moves every nested group and node with a parent frame', () => {
       const nested = groupIntoGroup({ ...base, frames: [section] }, new Set(['a']), { x: 999, y: 999 });
       const group = nested.frames.find((frame) => frame.kind === 'group')!;

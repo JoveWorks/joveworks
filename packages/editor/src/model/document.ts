@@ -979,8 +979,13 @@ function inside(position: Position, frame: Frame): boolean {
 }
 
 function frameInside(child: Frame, parent: Frame): boolean {
+  if (child.id === parent.id) return false;
+  // Groups are annotations anchored by their title.  Their expanded body may
+  // intentionally extend beyond a parent group, while their compact macro
+  // form still plainly belongs there; requiring the whole expanded rectangle
+  // made that child detach (and stop travelling with its parent) on reframe.
+  if (child.kind === 'group') return inside(child.position, parent);
   return (
-    child.id !== parent.id &&
     child.position.x >= parent.position.x &&
     child.position.y >= parent.position.y &&
     child.position.x + child.size.width <= parent.position.x + parent.size.width &&
@@ -1012,12 +1017,12 @@ export function reframe(document: GraphDocument): GraphDocument {
   }
   let changed = false;
   const frames = document.frames.map((frame) => {
-    if (frame.kind !== 'group') {
-      if (frame.frameId === undefined) return frame;
-      changed = true;
-      return withoutParentFrame(frame);
-    }
-    const containing = innermost(document.frames.filter((candidate) => frameInside(frame, candidate)));
+    // A section may be wrapped in an annotation group, but never nested in
+    // another report section.  It keeps its own NodeBook entry either way.
+    const candidates = document.frames.filter(
+      (candidate) => frameInside(frame, candidate) && (frame.kind === 'group' || candidate.kind === 'group'),
+    );
+    const containing = innermost(candidates);
     if (containing?.id === frame.frameId) return frame;
     changed = true;
     return containing === undefined ? withoutParentFrame(frame) : { ...frame, frameId: containing.id };
@@ -1089,6 +1094,56 @@ export function frameAround(
   };
 }
 
+/** Group nesting is visible even when the same nodes are grouped repeatedly. */
+const NESTED_GROUP_INSET = 12;
+
+function commonGroupDepth(document: GraphDocument, nodes: readonly GraphNode[]): number {
+  if (nodes.length === 0) return 0;
+  const frames = new Map(document.frames.map((frame) => [frame.id, frame] as const));
+  const ancestors = (node: GraphNode): ReadonlySet<string> => {
+    const ids = new Set<string>();
+    let frameId = node.frameId;
+    while (frameId !== undefined) {
+      const frame = frames.get(frameId);
+      if (frame === undefined) break;
+      if (frame.kind === 'group') ids.add(frame.id);
+      frameId = frame.frameId;
+    }
+    return ids;
+  };
+  const shared = new Set(ancestors(nodes[0]!));
+  for (const node of nodes.slice(1)) {
+    const theirs = ancestors(node);
+    for (const id of shared) if (!theirs.has(id)) shared.delete(id);
+  }
+  return shared.size;
+}
+
+function frameAroundSelection(
+  id: string,
+  title: string,
+  nodes: readonly GraphNode[],
+  frames: readonly Frame[],
+  padding: number,
+): Frame {
+  if (frames.length === 0) return frameAround(id, title, nodes, padding);
+  const positions = [
+    ...nodes.map((node) => ({ x: node.position.x, y: node.position.y, width: NODE_WIDTH, height: NODE_HEIGHT })),
+    ...frames.map((frame) => ({ x: frame.position.x, y: frame.position.y, width: frame.size.width, height: frame.size.height })),
+  ];
+  const left = Math.min(...positions.map((item) => item.x)) - padding;
+  const top = Math.min(...positions.map((item) => item.y)) - padding * 1.5;
+  return {
+    id,
+    title,
+    position: { x: left, y: top },
+    size: {
+      width: Math.max(...positions.map((item) => item.x + item.width)) + padding - left,
+      height: Math.max(...positions.map((item) => item.y + item.height)) + padding - top,
+    },
+  };
+}
+
 /**
  * "Group into new section" — around the current selection, or, with nothing
  * selected, an empty frame dropped at `at` rather than sweeping every free
@@ -1118,8 +1173,10 @@ export function groupIntoGroup(
 ): GraphDocument {
   const id = uniqueId(document, 'group');
   const chosen = document.nodes.filter((node) => selected.has(node.id));
-  const base = chosen.length > 0
-    ? frameAround(id, 'New group', chosen)
+  const chosenFrames = document.frames.filter((frame) => selected.has(frame.id));
+  const padding = GAP + commonGroupDepth(document, chosen) * NESTED_GROUP_INSET;
+  const base = chosen.length > 0 || chosenFrames.length > 0
+    ? frameAroundSelection(id, 'New group', chosen, chosenFrames, padding)
     : { id, title: 'New group', position: at, size: { width: 320, height: 220 } };
   return reframe(addFrame(document, { ...base, kind: 'group' }));
 }

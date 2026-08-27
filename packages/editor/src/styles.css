@@ -2345,6 +2345,11 @@ aside.right {
 
 .collapsed-group-port.output { padding-left: 4px; }
 
+.collapsed-group-port.port-highlighted {
+  color: var(--accent);
+  background: var(--hover-bg);
+}
+
 .group-frame-outline {
   position: absolute;
   inset: -1px;

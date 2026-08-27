@@ -722,23 +722,37 @@ export function Canvas({
           .map((frame) => [frame.id, groupPorts(document, frame.id)] as const),
       );
       return [
-        ...document.frames.map((frame) => ({
-          id: frame.id,
-          type: 'frame',
-          position: frame.position,
-          data: {},
-          selected: selected.has(frame.id),
-          ...sizeOf(measured, frame.id),
-          // Frames sit behind the nodes they group, and a click on one must not
-          // steal the node on top of it.
-          zIndex: frameLayer.get(frame.id) ?? -document.frames.length,
-          ...(hidden.has(frame.id) ? { hidden: true } : {}),
-          style: (() => {
-            const ports = portsByGroup.get(frame.id);
-            const size = ports === undefined ? frame.size : collapsedGroupSize(ports);
-            return { width: size.width, height: size.height };
-          })(),
-        })),
+        ...document.frames.map((frame) => {
+          const ports = portsByGroup.get(frame.id);
+          const interfacePorts = ports === undefined ? [] : [...ports.inputs, ...ports.outputs];
+          const highlightedGroupPorts = interfacePorts.flatMap((port) => {
+            const highlighted = highlightedPorts.get(port.nodeId)?.includes(port.port) ?? false;
+            if (!highlighted) return [];
+            const kind = ports?.inputs.includes(port) ? 'input' : 'output';
+            return [groupPortHandle(kind, port)];
+          });
+          const macroHighlighted = interfacePorts.some((port) => connectedNodeIds.has(port.nodeId));
+          const size = ports === undefined ? frame.size : collapsedGroupSize(ports);
+          return {
+            id: frame.id,
+            type: 'frame',
+            position: frame.position,
+            data: {
+              highlighted: macroHighlighted,
+              highlightedGroupPorts,
+              onPortHover: setHoveredPort,
+            },
+            selected: selected.has(frame.id),
+            selectable: true,
+            ...sizeOf(measured, frame.id),
+            // A group’s controls must sit above its wires, but ordinary nodes
+            // still follow it in the projection and therefore win where they
+            // overlap. Sections remain fully behind the calculation.
+            zIndex: frame.kind === 'group' ? 0 : frameLayer.get(frame.id) ?? -document.frames.length,
+            ...(hidden.has(frame.id) ? { hidden: true } : {}),
+            style: { width: size.width, height: size.height },
+          };
+        }),
         ...document.nodes.map((node) => {
           const className = nodeClasses([
             rejectedEndpointIds.has(node.id) ? 'connection-refused' : undefined,

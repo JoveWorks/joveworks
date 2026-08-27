@@ -16,11 +16,12 @@ import { Handle, NodeResizer, Position, type NodeProps } from '@xyflow/react';
 import { useGraph } from '../graph-context';
 import { phrase } from '../i18n';
 import { reframe, updateFrame } from '../model/document';
+import type { CanvasFlowNode } from './node-data';
 import { TitleField } from './TitleField';
 import { collapsedGroupSize, groupPortHandle, groupPorts } from '../model/collapsedGroups';
 import { useSettings } from '../settings-context';
 
-export function FrameView({ id, selected }: NodeProps): ReactElement | null {
+export function FrameView({ id, selected, data }: NodeProps<CanvasFlowNode>): ReactElement | null {
   const { document, edit, editLive, commitEdit, collapsedGroups, toggleGroupCollapsed, hovered: hoveredIds } = useGraph();
   const { locale } = useSettings();
   const [hovered, setHovered] = useState(false);
@@ -32,10 +33,12 @@ export function FrameView({ id, selected }: NodeProps): ReactElement | null {
   const ports = collapsed ? groupPorts(document, id) : undefined;
   const size = ports === undefined ? frame.size : collapsedGroupSize(ports);
   const collapseLabel = phrase(locale, collapsed ? 'Expand group' : 'Collapse group');
+  const highlightedGroupPorts = new Set(data?.highlightedGroupPorts ?? []);
+  const interfaceHighlighted = (data?.highlighted ?? false) || highlightedGroupPorts.size > 0;
 
   return (
     <div
-      className={`frame ${frame.kind ?? 'section'}${collapsed ? ' collapsed' : ''}${hovered ? ' hovered' : ''}${selected ? ' selected' : ''}${highlighted ? ' highlighted' : ''}`}
+      className={`frame ${frame.kind ?? 'section'}${collapsed ? ' collapsed' : ''}${hovered ? ' hovered' : ''}${selected ? ' selected' : ''}${highlighted || interfaceHighlighted ? ' highlighted' : ''}`}
       style={{ width: size.width, height: size.height }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
@@ -67,7 +70,13 @@ export function FrameView({ id, selected }: NodeProps): ReactElement | null {
           <span className="midpoint left" />
         </span>
       ) : null}
-      <div className="frame-title">
+      <div
+        className="frame-title"
+        // A frame label is an editor control, not a small patch of draggable
+        // canvas.  In particular, it must win over a wire crossing the title.
+        onPointerDown={(event) => event.stopPropagation()}
+        onClick={(event) => event.stopPropagation()}
+      >
         {frame.kind === 'group' ? (
           <button
             type="button"
@@ -93,7 +102,12 @@ export function FrameView({ id, selected }: NodeProps): ReactElement | null {
         <div className="collapsed-group-ports">
           <div className="collapsed-group-port-list inputs">
             {ports.inputs.map((port, index) => (
-              <div className="collapsed-group-port input" key={groupPortHandle('input', port)}>
+              <div
+                className={`collapsed-group-port input${highlightedGroupPorts.has(groupPortHandle('input', port)) ? ' port-highlighted' : ''}`}
+                key={groupPortHandle('input', port)}
+                onMouseEnter={() => data?.onPortHover?.({ nodeId: port.nodeId, port: port.port })}
+                onMouseLeave={() => data?.onPortHover?.()}
+              >
                 <Handle
                   type="target"
                   position={Position.Left}
@@ -107,7 +121,12 @@ export function FrameView({ id, selected }: NodeProps): ReactElement | null {
           </div>
           <div className="collapsed-group-port-list outputs">
             {ports.outputs.map((port, index) => (
-              <div className="collapsed-group-port output" key={groupPortHandle('output', port)}>
+              <div
+                className={`collapsed-group-port output${highlightedGroupPorts.has(groupPortHandle('output', port)) ? ' port-highlighted' : ''}`}
+                key={groupPortHandle('output', port)}
+                onMouseEnter={() => data?.onPortHover?.({ nodeId: port.nodeId, port: port.port })}
+                onMouseLeave={() => data?.onPortHover?.()}
+              >
                 <span>{port.label}</span>
                 <Handle
                   type="source"

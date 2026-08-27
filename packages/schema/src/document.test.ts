@@ -691,16 +691,22 @@ describe('group frames as notebook sections', () => {
     expect(serializeDocument(parseDocument(study))).toEqual(study);
   });
 
-  it('rejects missing parents, nested sections, and nesting cycles', () => {
+  it('rejects missing parents, sections nested in sections, and nesting cycles', () => {
     const group = {
       id: 'group', kind: 'group', title: 'Group',
       position: { x: 0, y: 0 }, size: { width: 100, height: 100 },
     };
     expect(() => parseDocument({ ...study, frames: [{ ...group, frameId: 'gone' }] })).toThrow(/no frame 'gone'/);
+    expect(serializeDocument(parseDocument({
+      ...study,
+      frames: [...(study['frames'] as JsonObject[]), { ...group, id: 'wrapper' }, { ...group, id: 'nested-section', kind: 'section', frameId: 'wrapper' }],
+    }))).toMatchObject({
+      frames: expect.arrayContaining([expect.objectContaining({ id: 'nested-section', frameId: 'wrapper' })]),
+    });
     expect(() => parseDocument({
       ...study,
       frames: [...(study['frames'] as JsonObject[]), { ...group, id: 'nested-section', kind: 'section', frameId: 'sizing' }],
-    })).toThrow(/only group frames can be nested/);
+    })).toThrow(/a section can only be nested in a group/);
     expect(() => parseDocument({
       ...study,
       frames: [{ ...group, id: 'one', frameId: 'two' }, { ...group, id: 'two', frameId: 'one' }],

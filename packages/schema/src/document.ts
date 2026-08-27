@@ -798,8 +798,9 @@ export type FrameKind = 'section' | 'group';
 /**
  * A titled canvas frame. Sections become NodeBook sections; groups are
  * transparent annotations. Missing `kind` means `section` for documents made
- * before group frames existed. A group's `frameId` names its parent frame;
- * positions remain absolute canvas coordinates.
+ * before group frames existed. A frame's `frameId` names its visual parent;
+ * sections may sit in annotation groups, but not in other sections. Positions
+ * remain absolute canvas coordinates.
  */
 export interface Frame {
   readonly id: string;
@@ -1624,8 +1625,11 @@ function checkReferences(document: GraphDocument, path: string): void {
     if (frame.frameId !== undefined && !frameIds.has(frame.frameId)) {
       fail(`${join(path, 'frames')}[${i}].frameId`, `no frame '${frame.frameId}' exists`);
     }
-    if (frame.kind !== 'group' && frame.frameId !== undefined) {
-      fail(`${join(path, 'frames')}[${i}].frameId`, 'only group frames can be nested');
+    const parent = frame.frameId === undefined
+      ? undefined
+      : document.frames.find((candidate) => candidate.id === frame.frameId);
+    if (frame.kind !== 'group' && frame.frameId !== undefined && parent?.kind !== 'group') {
+      fail(`${join(path, 'frames')}[${i}].frameId`, 'a section can only be nested in a group');
     }
     const seen = new Set([frame.id]);
     let parentId = frame.frameId;

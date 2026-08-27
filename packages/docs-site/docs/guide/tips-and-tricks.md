@@ -88,7 +88,7 @@ typed — this only fires for tokens that are unambiguously math, so you don't
 need to escape ordinary text. Turn it off in Settings if you'd rather see raw
 text everywhere (also affects the notebook).
 
-## Sections (frames)
+## Sections and groups (frames)
 
 Grouping nodes into a titled section isn't just visual tidying — a section
 becomes a heading with a prose note in the exported notebook, in the same
@@ -96,6 +96,13 @@ order it appears on the canvas. Right-click a selection → "Group into new
 section", or drag nodes into an existing section's boundary. Reorder sections
 from the notebook panel; delete a section from its own right-click menu
 without deleting the nodes inside it.
+
+Use **Group into new group** when you only want to organise the canvas. Groups
+do not add a NodeBook heading or note. They can nest inside sections, other
+groups, or around a section; repeated grouping of the same nodes adds a small
+inset so the hierarchy remains visible. A group’s arrow collapses it into a
+macro node: its crossing wires stay attached to named input and output ports,
+and hovering either a port or a wire highlights the complete connection.
 
 ## Units, per port
 
