@@ -12,6 +12,7 @@ const CANVAS_CONTROLS_VISIBLE_KEY = 'joveworks:settings:canvasControlsVisible';
 const SNAP_TO_GRID_KEY = 'joveworks:settings:snapToGrid';
 const PALETTE_WIDTH_KEY = 'joveworks:settings:paletteWidth';
 const NOTEBOOK_WIDTH_KEY = 'joveworks:settings:notebookWidth';
+const HUB_URL_KEY = 'joveworks:settings:hubUrl';
 
 export type AppLocale = 'en' | 'nl';
 
@@ -129,6 +130,26 @@ export function loadNotebookWidth(): number {
 
 export function saveNotebookWidth(width: number): void {
   saveWidth(NOTEBOOK_WIDTH_KEY, width);
+}
+
+/** The last successful Hub address is a device preference, not course
+ * membership and never a secret. It keeps the Hub dialogs useful before this
+ * browser has connected a course or created a workspace. */
+export function loadHubUrl(): string | undefined {
+  try {
+    const value = window.localStorage.getItem(HUB_URL_KEY);
+    return value === null || value.trim() === '' ? undefined : value;
+  } catch {
+    return undefined;
+  }
+}
+
+export function saveHubUrl(url: string): void {
+  try {
+    window.localStorage.setItem(HUB_URL_KEY, url);
+  } catch {
+    // A preference must not prevent a successful Hub action.
+  }
 }
 
 const TITLE_MATH_KEY = 'joveworks:settings:titleMathRendering';

@@ -4,6 +4,7 @@ import { phrase } from '../i18n';
 import { useSettings } from '../settings-context';
 
 interface Props {
+  readonly initialHubUrl: string;
   readonly onConnect: (hubUrl: string, courseSlug: string, courseToken: string) => Promise<void>;
   readonly onClose: () => void;
 }
@@ -11,10 +12,10 @@ interface Props {
 /** Connects a browser session to a Hub course. The access token deliberately
  * stays in component/session state; only the non-secret course source is kept
  * for the next visit. */
-export function ConnectCourseDialog({ onConnect, onClose }: Props): ReactElement {
+export function ConnectCourseDialog({ initialHubUrl, onConnect, onClose }: Props): ReactElement {
   const { locale } = useSettings();
   const t = (english: string): string => phrase(locale, english);
-  const [hubUrl, setHubUrl] = useState('');
+  const [hubUrl, setHubUrl] = useState(initialHubUrl);
   const [courseSlug, setCourseSlug] = useState('');
   const [courseToken, setCourseToken] = useState('');
   const [error, setError] = useState<string | undefined>();

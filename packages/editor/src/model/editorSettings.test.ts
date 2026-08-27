@@ -8,11 +8,13 @@ import {
   DEFAULT_SNAP_TO_GRID,
   loadCanvasControlsVisible,
   loadContourPalette,
+  loadHubUrl,
   loadNotebookWidth,
   loadPaletteWidth,
   loadSnapToGrid,
   saveCanvasControlsVisible,
   saveContourPalette,
+  saveHubUrl,
   saveNotebookWidth,
   savePaletteWidth,
   saveSnapToGrid,
@@ -74,5 +76,13 @@ describe('contour palette preference', () => {
     window.localStorage.setItem('joveworks:settings:notebookWidth', 'not-a-number');
     expect(loadPaletteWidth()).toBe(DEFAULT_PALETTE_WIDTH);
     expect(loadNotebookWidth()).toBe(DEFAULT_NOTEBOOK_WIDTH);
+  });
+
+  it('remembers the last successful Hub address independently of a course or workspace', () => {
+    expect(loadHubUrl()).toBeUndefined();
+
+    saveHubUrl('https://course.example.edu');
+
+    expect(loadHubUrl()).toBe('https://course.example.edu');
   });
 });

@@ -152,6 +152,7 @@ import {
   type HubWorkspace,
 } from './model/hub';
 import { loadCourseSources, saveCourseSources, withCourseSource } from './model/courseSources';
+import { loadHubUrl, saveHubUrl } from './model/editorSettings';
 import {
   loadWorkspaceAccesses,
   loadWorkspaceEditToken,
@@ -323,6 +324,7 @@ function AppShell(): ReactElement {
   const flow = useReactFlow();
   const [catalogues, setCatalogues] = useState<readonly Catalogue[]>(initialCatalogues);
   const [courseSources, setCourseSourcesState] = useState<readonly HubCourse[]>(loadCourseSources);
+  const [rememberedHubUrl, setRememberedHubUrl] = useState<string | undefined>(loadHubUrl);
   const [courseWorkspaceBinding, setCourseWorkspaceBinding] = useState<{
     readonly source: HubCourse;
     readonly catalogues: readonly HubCatalogueRef[];
@@ -337,6 +339,10 @@ function AppShell(): ReactElement {
       saveCourseSources(next);
       return next;
     });
+  const rememberHubUrl = (url: string): void => {
+    saveHubUrl(url);
+    setRememberedHubUrl(url);
+  };
   // Locked catalogues shipped with the app, minus whichever ones this
   // student has already unlocked — tracked by the locked asset's own id
   // (`markLockedCatalogueUnlocked`), not by matching it against a decrypted
@@ -466,6 +472,7 @@ function AppShell(): ReactElement {
   const [linkedStudentShare] = useState(studentShareLinkFromUrl);
   const [showWorkspaceLibrary, setShowWorkspaceLibrary] = useState(false);
   const [hubWorkspace, setHubWorkspace] = useState<HubWorkspace | undefined>();
+  const initialHubUrl = hubWorkspace?.hubUrl ?? rememberedHubUrl ?? courseSources[0]?.hubUrl ?? '';
   const [workspaceAccessRevision, setWorkspaceAccessRevision] = useState(0);
   const workspaceAccesses = useMemo(loadWorkspaceAccesses, [workspaceAccessRevision]);
 
@@ -539,6 +546,7 @@ function AppShell(): ReactElement {
   const courseKey = (source: HubCourse): string => `${source.hubUrl}\n${source.slug}`;
   const connectToCourse = async (hubAddress: string, slug: string, token: string): Promise<void> => {
     const source = await connectCourse(hubAddress, slug, token);
+    rememberHubUrl(source.hubUrl);
     if (token.length > 0) courseTokens.current.set(courseKey(source), token);
     setCourseSources((current) => withCourseSource(current, source));
     pushNotice(`Connected to ${source.title}.`);
@@ -562,6 +570,7 @@ function AppShell(): ReactElement {
         ),
       );
       const loadedDocument = loadDocument(JSON.stringify(publication.document));
+      rememberHubUrl(source.hubUrl);
       setCatalogues((current) => loadedCatalogues.reduce(withCatalogue, current));
       for (const catalogue of loadedCatalogues) cacheCatalogue(catalogue.id, saveCatalogue(catalogue));
       resetDocument(loadedDocument);
@@ -584,6 +593,7 @@ function AppShell(): ReactElement {
       }),
     };
     const created = await createWorkspace(hubAddress, draft);
+    rememberHubUrl(created.workspace.hubUrl);
     saveWorkspaceEditToken(created.workspace.hubUrl, created.workspace.id, created.editToken);
     setWorkspaceAccessRevision((current) => current + 1);
     setHubWorkspace(created.workspace);
@@ -618,6 +628,7 @@ function AppShell(): ReactElement {
   };
 
   const openLoadedHubWorkspace = async (workspace: HubWorkspace): Promise<void> => {
+    rememberHubUrl(workspace.hubUrl);
     let binding: { readonly source: HubCourse; readonly catalogues: readonly HubCatalogueRef[] } | undefined;
     if (workspace.courseSlug !== undefined) {
       const existing = courseSources.find((source) => source.hubUrl === workspace.hubUrl && source.slug === workspace.courseSlug);
@@ -1348,11 +1359,11 @@ function AppShell(): ReactElement {
               onMouseLeave={scheduleMenuClose}
             />
           )}
-          {showConnectCourse ? <ConnectCourseDialog onConnect={connectToCourse} onClose={() => setShowConnectCourse(false)} /> : null}
+          {showConnectCourse ? <ConnectCourseDialog initialHubUrl={initialHubUrl} onConnect={connectToCourse} onClose={() => setShowConnectCourse(false)} /> : null}
           {workspaceDialog === 'save' ? (
             <WorkspaceDialog
               kind="save"
-              initialHubUrl={hubWorkspace?.hubUrl ?? courseSources[0]?.hubUrl ?? ''}
+              initialHubUrl={initialHubUrl}
               onSubmit={saveNewHubWorkspace}
               onClose={() => setWorkspaceDialog(undefined)}
             />
@@ -1360,7 +1371,7 @@ function AppShell(): ReactElement {
           {workspaceDialog === 'open' ? (
             <WorkspaceDialog
               kind="open"
-              initialHubUrl={hubWorkspace?.hubUrl ?? courseSources[0]?.hubUrl ?? ''}
+              initialHubUrl={initialHubUrl}
               onSubmit={openHubWorkspace}
               onClose={() => setWorkspaceDialog(undefined)}
             />
