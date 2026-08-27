@@ -18,7 +18,7 @@
 
 import { parseUnit, type Unit } from '@joveworks/units';
 import {
-  SCHEMA_VERSION,
+  DOCUMENT_SCHEMA_VERSION,
   formulaRef,
   loadDocument,
   type Catalogue,
@@ -135,7 +135,7 @@ function document(
   frames: GraphDocument['frames'] = [],
   marks: GraphDocument['marks'] = undefined,
 ): GraphDocument {
-  return { schemaVersion: SCHEMA_VERSION, id, title, nodes, edges, frames, ...(marks === undefined ? {} : { marks }) };
+  return { schemaVersion: DOCUMENT_SCHEMA_VERSION, id, title, nodes, edges, frames, ...(marks === undefined ? {} : { marks }) };
 }
 
 /** Examples are templates, not student-authored content, so their visible

@@ -13,7 +13,8 @@
  */
 
 import {
-  SCHEMA_VERSION,
+  CATALOGUE_SCHEMA_VERSION,
+  DOCUMENT_SCHEMA_VERSION,
   formulaRef,
   parseCatalogue,
   parseDocument,
@@ -26,7 +27,7 @@ import {
 
 export function catalogueOf(formulas: readonly JsonObject[], id = 'test'): Catalogue {
   return parseCatalogue({
-    schemaVersion: SCHEMA_VERSION,
+    schemaVersion: CATALOGUE_SCHEMA_VERSION,
     id,
     name: 'Invented formulas',
     restricted: false,
@@ -40,7 +41,7 @@ export function documentOf(
   frames: readonly JsonObject[] = [],
 ): GraphDocument {
   return parseDocument({
-    schemaVersion: SCHEMA_VERSION,
+    schemaVersion: DOCUMENT_SCHEMA_VERSION,
     id: 'graph',
     title: 'Test graph',
     nodes: [...nodes],

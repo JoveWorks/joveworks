@@ -10,7 +10,7 @@ import type { ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
-import { SCHEMA_VERSION, loadCatalogue, formulaRef, type Catalogue, type GraphDocument } from '@joveworks/schema';
+import { DOCUMENT_SCHEMA_VERSION, loadCatalogue, formulaRef, type Catalogue, type GraphDocument } from '@joveworks/schema';
 import { parseUnit } from '@joveworks/units';
 
 import { analyse, lookup } from './analysis';
@@ -24,7 +24,7 @@ import { padPressure, platformFootprint } from './samples';
 
 const INVENTED: Catalogue = loadCatalogue(
   JSON.stringify({
-    schemaVersion: SCHEMA_VERSION,
+    schemaVersion: DOCUMENT_SCHEMA_VERSION,
     id: 'invented',
     name: 'Invented',
     restricted: false,
@@ -96,7 +96,7 @@ const wire = (id: string, from: [string, string], to: [string, string]) => ({
 });
 
 function graph(nodes: GraphDocument['nodes'], edges: GraphDocument['edges']): GraphDocument {
-  return { schemaVersion: SCHEMA_VERSION, id: 'test', title: 'Test', nodes, edges, frames: [] };
+  return { schemaVersion: DOCUMENT_SCHEMA_VERSION, id: 'test', title: 'Test', nodes, edges, frames: [] };
 }
 
 describe('analysing a graph mid-build', () => {

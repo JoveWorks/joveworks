@@ -6,7 +6,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  SCHEMA_VERSION,
+  DOCUMENT_SCHEMA_VERSION,
   type ClosureNode,
   type CompareNode,
   type Edge,
@@ -61,7 +61,7 @@ const edge = (id: string, fromNode: string, toNode: string): Edge => ({
 });
 
 const base: GraphDocument = {
-  schemaVersion: SCHEMA_VERSION,
+  schemaVersion: DOCUMENT_SCHEMA_VERSION,
   id: 'test',
   title: 'Test',
   nodes: [],

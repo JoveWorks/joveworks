@@ -21,7 +21,7 @@ import {
   parseFormula,
   parseLocalizedText,
   SchemaError,
-  SCHEMA_VERSION,
+  CATALOGUE_SCHEMA_VERSION,
   type Catalogue,
   type Formula,
   type JsonObject,
@@ -136,7 +136,7 @@ function formulaJson(formula: DraftFormula): JsonObject {
 
 function catalogueMetaJson(draft: DraftCatalogue): JsonObject {
   return {
-    schemaVersion: SCHEMA_VERSION,
+    schemaVersion: CATALOGUE_SCHEMA_VERSION,
     id: draft.id,
     name: localizedTextJson(draft.name),
     restricted: draft.restricted,
@@ -204,7 +204,7 @@ export function validateCatalogue(draft: DraftCatalogue): CatalogueValidation {
   let catalogue: Catalogue | undefined;
   if (ready) {
     catalogue = {
-      schemaVersion: SCHEMA_VERSION,
+      schemaVersion: CATALOGUE_SCHEMA_VERSION,
       id: draft.id,
       name: parseLocalizedText(localizedTextJson(draft.name), 'name'),
       restricted: draft.restricted,

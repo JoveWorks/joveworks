@@ -9,7 +9,7 @@
  */
 
 import {
-  SCHEMA_VERSION,
+  CATALOGUE_SCHEMA_VERSION,
   parseCatalogue,
   saveCatalogue,
   serializeCatalogue,
@@ -32,7 +32,7 @@ export const MECHANICS_CATALOGUE_ID = 'mechanics';
  * the kernel is testable end to end with no R&M material present at all.
  */
 export const BASE_CATALOGUE: Catalogue = {
-  schemaVersion: SCHEMA_VERSION,
+  schemaVersion: CATALOGUE_SCHEMA_VERSION,
   id: BASE_CATALOGUE_ID,
   name: { en: 'Base nodes', nl: 'Basisknooppunten' },
   restricted: false,
@@ -41,7 +41,7 @@ export const BASE_CATALOGUE: Catalogue = {
 
 /** `arrayNodes.ts`'s reductions, as their own catalogue — see that file's docstring for why. */
 export const ARRAY_CATALOGUE: Catalogue = {
-  schemaVersion: SCHEMA_VERSION,
+  schemaVersion: CATALOGUE_SCHEMA_VERSION,
   id: ARRAY_CATALOGUE_ID,
   name: { en: 'Array nodes', nl: 'Arrayknooppunten' },
   restricted: false,
@@ -50,7 +50,7 @@ export const ARRAY_CATALOGUE: Catalogue = {
 
 /** `mechanicsNodes.ts`'s beam/shaft diagrams — generic mechanics, not R&M content. */
 export const MECHANICS_CATALOGUE: Catalogue = {
-  schemaVersion: SCHEMA_VERSION,
+  schemaVersion: CATALOGUE_SCHEMA_VERSION,
   id: MECHANICS_CATALOGUE_ID,
   name: { en: 'Mechanics nodes', nl: 'Mechanicaknooppunten' },
   restricted: false,

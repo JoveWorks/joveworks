@@ -27,7 +27,7 @@ import { describe, expect, it } from 'vitest';
 
 import { evaluateDocument, type BestDesignResult, type NumericSeries } from '@joveworks/kernel';
 import { parseUnit } from '@joveworks/units';
-import { SCHEMA_VERSION, formulaRef, type Catalogue, type GraphDocument } from '@joveworks/schema';
+import { DOCUMENT_SCHEMA_VERSION, formulaRef, type Catalogue, type GraphDocument } from '@joveworks/schema';
 
 import { lookup } from './analysis';
 import { baseCatalogue, bundledCatalogues } from './catalogues';
@@ -74,7 +74,7 @@ const wire = (from: [string, string], to: [string, string]) => ({
 });
 
 const graph = (nodes: GraphDocument['nodes'], edges: GraphDocument['edges']): GraphDocument => ({
-  schemaVersion: SCHEMA_VERSION,
+  schemaVersion: DOCUMENT_SCHEMA_VERSION,
   id: 'aperture',
   title: 'Choosing an aperture',
   nodes,

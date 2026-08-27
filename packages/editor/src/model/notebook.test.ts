@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { SCHEMA_VERSION, type GraphDocument, type GraphNode } from '@joveworks/schema';
+import { DOCUMENT_SCHEMA_VERSION, type GraphDocument, type GraphNode } from '@joveworks/schema';
 import { parseUnit } from '@joveworks/units';
 
 import { exposedSlidersFor, notebookSectionId, withSliderValue } from './notebook';
@@ -22,7 +22,7 @@ const output = (id: string, kind: 'print' | 'equation' = 'print'): GraphNode => 
 });
 
 const graph = (nodes: readonly GraphNode[], edges: GraphDocument['edges']): GraphDocument => ({
-  schemaVersion: SCHEMA_VERSION,
+  schemaVersion: DOCUMENT_SCHEMA_VERSION,
   id: 'controls',
   title: 'Controls',
   nodes,

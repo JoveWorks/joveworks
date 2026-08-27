@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { Axis, PlotAxis, PlotMeasureResult } from '@joveworks/kernel';
-import { SCHEMA_VERSION, type GraphDocument, type GraphNode } from '@joveworks/schema';
+import { DOCUMENT_SCHEMA_VERSION, type GraphDocument, type GraphNode } from '@joveworks/schema';
 import { parseUnit } from '@joveworks/units';
 
 import { inferPlotPanels } from './plot';
@@ -39,7 +39,7 @@ function measure(
 }
 
 function documentWith(nodes: readonly GraphNode[]): GraphDocument {
-  return { schemaVersion: SCHEMA_VERSION, id: 'plot', title: 'Plot', nodes, edges: [], frames: [] };
+  return { schemaVersion: DOCUMENT_SCHEMA_VERSION, id: 'plot', title: 'Plot', nodes, edges: [], frames: [] };
 }
 
 function range(id: string, kind: 'linear' | 'logarithmic' | 'list' | 'categoricalList'): GraphNode {

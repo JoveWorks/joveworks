@@ -11,7 +11,7 @@
 
 import { describe, expect, it } from 'vitest';
 import {
-  SCHEMA_VERSION,
+  DOCUMENT_SCHEMA_VERSION,
   formulaRef,
   loadCatalogue,
   parseDocument,
@@ -66,7 +66,7 @@ const wire = (from: string, to: string): JsonObject => {
 
 const graph = (nodes: readonly JsonObject[], edges: readonly JsonObject[]): GraphDocument =>
   parseDocument({
-    schemaVersion: SCHEMA_VERSION,
+    schemaVersion: DOCUMENT_SCHEMA_VERSION,
     id: 'shaft',
     title: 'Torque diagram',
     nodes: [...nodes],
