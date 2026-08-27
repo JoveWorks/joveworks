@@ -34,6 +34,16 @@ function isHubCourse(value: unknown): value is HubCourse {
   return typeof candidate.hubUrl === 'string'
     && typeof candidate.slug === 'string'
     && typeof candidate.title === 'string'
+    && (candidate.catalogues === undefined || (
+      Array.isArray(candidate.catalogues)
+      && candidate.catalogues.every((catalogue) =>
+        typeof catalogue === 'object'
+        && catalogue !== null
+        && typeof catalogue.id === 'string'
+        && typeof catalogue.version === 'number'
+        && typeof catalogue.hash === 'string',
+      )
+    ))
     && Array.isArray(candidate.publications)
     && candidate.publications.every((publication) =>
       typeof publication === 'object'

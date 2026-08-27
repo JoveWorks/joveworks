@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { emptyDocument, serializeDocument } from '@joveworks/schema';
 
-import { connectCourse, createWorkspace, deleteWorkspace, hubUrl, loadCatalogue, loadPublication, loadWorkspace, saveWorkspace } from './hub';
+import { connectCourse, createWorkspace, deleteWorkspace, discoverCourses, hubUrl, loadCatalogue, loadPublication, loadWorkspace, saveWorkspace } from './hub';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -32,12 +32,14 @@ describe('Hub API transport', () => {
         slug: 'machine-design-2026',
         title: 'Machine design 2026',
         publications: [{ id: 'aB3dE5fG7hJ9', title: 'Belt study', mode: 'viewer', publishedAt: '2026-08-27 08:00:00' }],
+        catalogues: [{ id: 'course-catalogue', version: 3, hash: 'abc123' }],
       })));
     vi.stubGlobal('fetch', fetch);
 
     await expect(connectCourse('http://localhost:8080', 'machine-design-2026', 'course-token')).resolves.toMatchObject({
       title: 'Machine design 2026',
       publications: [{ id: 'aB3dE5fG7hJ9' }],
+      catalogues: [{ id: 'course-catalogue', version: 3 }],
     });
     expect(fetch).toHaveBeenNthCalledWith(1, 'http://localhost:8080/.well-known/joveworks', {});
     expect(fetch).toHaveBeenNthCalledWith(2, 'http://localhost:8080/api/v1/courses/machine-design-2026', {
@@ -45,8 +47,23 @@ describe('Hub API transport', () => {
     });
   });
 
+  it('discovers course choices before a student selects one', async () => {
+    const fetch = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ protocolVersion: 1, api: '/api/v1' })))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        protocolVersion: 1,
+        courses: [{ slug: 'machine-design-2026', title: 'Machine design 2026' }],
+      })));
+    vi.stubGlobal('fetch', fetch);
+
+    await expect(discoverCourses('http://localhost:8080')).resolves.toEqual([
+      { slug: 'machine-design-2026', title: 'Machine design 2026' },
+    ]);
+    expect(fetch).toHaveBeenNthCalledWith(2, 'http://localhost:8080/api/v1/courses', {});
+  });
+
   it('loads a publication and its exact catalogue version', async () => {
-    const source = { hubUrl: 'http://localhost:8080', slug: 'machine-design-2026', title: 'Machine design 2026', publications: [] };
+    const source = { hubUrl: 'http://localhost:8080', slug: 'machine-design-2026', title: 'Machine design 2026', publications: [], catalogues: [] };
     const fetch = vi.fn()
       .mockResolvedValueOnce(new Response(JSON.stringify({
         protocolVersion: 1,

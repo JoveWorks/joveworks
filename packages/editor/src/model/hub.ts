@@ -24,6 +24,14 @@ export interface HubCourse {
   readonly slug: string;
   readonly title: string;
   readonly publications: readonly HubPublicationSummary[];
+  /** Every immutable catalogue revision currently used by this course. */
+  readonly catalogues?: readonly HubCatalogueRef[];
+}
+
+/** Enough metadata to choose a course before loading its full manifest. */
+export interface HubCourseSummary {
+  readonly slug: string;
+  readonly title: string;
 }
 
 export interface HubCatalogueRef {
@@ -90,12 +98,25 @@ export async function connectCourse(
   const base = hubUrl(rawHubUrl);
   const slug = courseSlug.trim();
   if (slug.length === 0) throw new Error('Enter the course slug supplied by your instructor.');
-  const discovery = await getJson(resolve(base, '/.well-known/joveworks'));
-  if (!isObject(discovery) || discovery.protocolVersion !== PROTOCOL_VERSION || typeof discovery.api !== 'string') {
-    throw new Error('That server is not a compatible JoveWorks Hub.');
-  }
+  const discovery = await discover(base);
   const course = await getJson(resolve(base, `${discovery.api}/courses/${encodeURIComponent(slug)}`), courseToken);
   return parseCourse(base, course);
+}
+
+/** Discover the courses exposed by a compatible Hub without knowing a slug. */
+export async function discoverCourses(rawHubUrl: string): Promise<readonly HubCourseSummary[]> {
+  const base = hubUrl(rawHubUrl);
+  const discovery = await discover(base);
+  const index = await getJson(resolve(base, `${discovery.api}/courses`));
+  if (!isObject(index) || index.protocolVersion !== PROTOCOL_VERSION || !Array.isArray(index.courses)) {
+    throw new Error('The Hub returned an invalid course list.');
+  }
+  return index.courses.map((course) => {
+    if (!isObject(course) || typeof course.slug !== 'string' || typeof course.title !== 'string') {
+      throw new Error('The Hub course list contains an invalid course.');
+    }
+    return { slug: course.slug, title: course.title };
+  });
 }
 
 export async function loadPublication(
@@ -307,7 +328,7 @@ function parseWorkspace(hubUrl_: string, value: JsonValue): HubWorkspace {
 }
 
 function parseCourse(hubUrl_: string, value: JsonValue): HubCourse {
-  if (!isObject(value) || value.protocolVersion !== PROTOCOL_VERSION || typeof value.slug !== 'string' || typeof value.title !== 'string' || !Array.isArray(value.publications)) {
+  if (!isObject(value) || value.protocolVersion !== PROTOCOL_VERSION || typeof value.slug !== 'string' || typeof value.title !== 'string' || !Array.isArray(value.publications) || !Array.isArray(value.catalogues)) {
     throw new Error('The Hub returned an invalid course manifest.');
   }
   return {
@@ -315,7 +336,16 @@ function parseCourse(hubUrl_: string, value: JsonValue): HubCourse {
     slug: value.slug,
     title: value.title,
     publications: value.publications.map(parsePublicationSummary),
+    catalogues: value.catalogues.map(parseCatalogueRef),
   };
+}
+
+async function discover(base: string): Promise<{ readonly api: string }> {
+  const discovery = await getJson(resolve(base, '/.well-known/joveworks'));
+  if (!isObject(discovery) || discovery.protocolVersion !== PROTOCOL_VERSION || typeof discovery.api !== 'string') {
+    throw new Error('That server is not a compatible JoveWorks Hub.');
+  }
+  return { api: discovery.api };
 }
 
 function parsePublicationSummary(value: JsonValue): HubPublicationSummary {

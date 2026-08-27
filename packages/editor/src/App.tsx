@@ -140,6 +140,7 @@ import { WorkspaceDialog } from './course/WorkspaceDialog';
 import { WorkspaceLibraryDialog } from './course/WorkspaceLibraryDialog';
 import {
   connectCourse,
+  discoverCourses,
   createWorkspace,
   deleteWorkspace,
   loadCatalogue as loadHubCatalogue,
@@ -560,6 +561,21 @@ function AppShell(): ReactElement {
       pushNotice(`Could not refresh ${source.title}: ${messageOf(error)}`);
     }
   };
+  const loadCourseCatalogues = async (source: HubCourse): Promise<void> => {
+    try {
+      const token = courseTokens.current.get(courseKey(source));
+      const loadedCatalogues = await Promise.all(
+        (source.catalogues ?? []).map(async (reference) =>
+          loadCatalogue(JSON.stringify(await loadHubCatalogue(source, reference, token))),
+        ),
+      );
+      setCatalogues((current) => loadedCatalogues.reduce(withCatalogue, current));
+      for (const catalogue of loadedCatalogues) cacheCatalogue(catalogue.id, saveCatalogue(catalogue));
+      pushNotice(`Loaded ${loadedCatalogues.length} catalogue${loadedCatalogues.length === 1 ? '' : 's'} from ${source.title}.`);
+    } catch (error) {
+      pushNotice(`Could not load course catalogues: ${messageOf(error)}`);
+    }
+  };
   const openCoursePublication = async (source: HubCourse, publicationId: string, bindCourse = true): Promise<void> => {
     try {
       const token = courseTokens.current.get(courseKey(source));
@@ -658,7 +674,7 @@ function AppShell(): ReactElement {
 
   useEffect(() => {
     if (linkedPublication === undefined) return;
-    const source: HubCourse = { hubUrl: linkedPublication.hubUrl, slug: 'linked-publication', title: 'Linked material', publications: [] };
+    const source: HubCourse = { hubUrl: linkedPublication.hubUrl, slug: 'linked-publication', title: 'Linked material', publications: [], catalogues: [] };
     void openCoursePublication(source, linkedPublication.publicationId, false)
       .then(() => {
         const url = new URL(window.location.href);
@@ -1081,6 +1097,11 @@ function AppShell(): ReactElement {
       : courseSources.flatMap((source) => [
           { heading: source.title },
           { label: t('Refresh course material'), onClick: () => void refreshCourse(source) },
+          {
+            label: t('Load course catalogues'),
+            disabled: (source.catalogues?.length ?? 0) === 0,
+            onClick: () => void loadCourseCatalogues(source),
+          },
           ...(source.publications.length === 0
             ? [{ label: t('No published material'), disabled: true, onClick: () => undefined }]
             : source.publications.map((publication) => ({
@@ -1359,7 +1380,7 @@ function AppShell(): ReactElement {
               onMouseLeave={scheduleMenuClose}
             />
           )}
-          {showConnectCourse ? <ConnectCourseDialog initialHubUrl={initialHubUrl} onConnect={connectToCourse} onClose={() => setShowConnectCourse(false)} /> : null}
+          {showConnectCourse ? <ConnectCourseDialog initialHubUrl={initialHubUrl} onConnect={connectToCourse} onDiscover={discoverCourses} onClose={() => setShowConnectCourse(false)} /> : null}
           {workspaceDialog === 'save' ? (
             <WorkspaceDialog
               kind="save"
