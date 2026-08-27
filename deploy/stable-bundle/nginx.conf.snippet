@@ -1,0 +1,14 @@
+# JoveWorks stable bundle — nginx SPA fallback.
+#
+# This is the nginx equivalent of the Netlify redirect in netlify.toml
+# (`/* -> /index.html, status 200`): any path that doesn't match a real
+# file falls through to index.html so the app's own client-side routing
+# can handle it, instead of nginx returning a 404.
+#
+# Paste this into the `server { }` block (or a `location / { }` block, if
+# JoveWorks is served under a subpath) for the site that serves this
+# bundle's files, then reload nginx.
+
+location / {
+    try_files $uri $uri/ /index.html;
+}

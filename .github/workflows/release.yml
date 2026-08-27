@@ -67,11 +67,41 @@ jobs:
           awk '/^## /{ if (found) exit; found=1 } found' CHANGELOG.md > /tmp/release-notes.md
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
+      - name: Build stable bundle
+        # `pnpm build` above (the CI gate) already ran once at the tip of
+        # `main`; this repeats the tsc build as part of `build:bundle` so
+        # __APP_VERSION__ picks up the version this job just bumped to.
+        # JOVEWORKS_CHANNEL=stable is what distinguishes this from the
+        # Netlify (nightly) build, which leaves it at the default. Base
+        # path is left at its default ("/"): this bundle is built for
+        # root-path hosting, as the README in deploy/stable-bundle/ says.
+        env:
+          JOVEWORKS_CHANNEL: stable
+        run: pnpm build:bundle
+
+      - name: Add static-host config to stable bundle
+        # netlify.toml's SPA-fallback redirect only works on Netlify; the
+        # school's static host needs its own equivalent. See
+        # deploy/stable-bundle/README.txt for what these are and how to
+        # use them.
+        run: |
+          cp deploy/stable-bundle/nginx.conf.snippet packages/editor/build/
+          cp deploy/stable-bundle/.htaccess packages/editor/build/
+          cp deploy/stable-bundle/README.txt packages/editor/build/
+
+      - name: Zip stable bundle
+        run: |
+          zip_name="joveworks-stable-${{ steps.notes.outputs.tag }}.zip"
+          (cd packages/editor/build && zip -rq "$GITHUB_WORKSPACE/$zip_name" .)
+          echo "path=$zip_name" >> "$GITHUB_OUTPUT"
+        id: bundle
+
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "${{ steps.notes.outputs.tag }}" \
+            "${{ steps.bundle.outputs.path }}#Stable bundle (static site, for self-hosting)" \
             --title "${{ steps.notes.outputs.tag }}" \
             --notes-file /tmp/release-notes.md \
             $([ "${{ inputs.prerelease }}" = "true" ] && echo --prerelease)
