@@ -75,7 +75,7 @@ describe('Hub API transport', () => {
   it('creates, saves, and loads an editable workspace without putting its edit token in the URL', async () => {
     const initial = emptyDocument('student-study', 'Student study');
     const changed = { ...initial, title: 'Student study — revised' };
-    const saved = { id: 'Ab12Cd34Ef56', title: changed.title, document: serializeDocument(changed), updatedAt: '2026-08-27 12:00:00' };
+    const saved = { id: 'Ab12Cd34Ef56', title: changed.title, document: serializeDocument(changed), catalogues: [], updatedAt: '2026-08-27 12:00:00' };
     const fetch = vi.fn()
       .mockResolvedValueOnce(new Response(JSON.stringify({ id: 'Ab12Cd34Ef56', editToken: 'edit-capability' })))
       .mockResolvedValueOnce(new Response(JSON.stringify(saved)))
@@ -101,7 +101,7 @@ describe('Hub API transport', () => {
 
   it('deletes a workspace only with its edit token', async () => {
     const workspace = {
-      hubUrl: 'http://localhost:8080', id: 'Ab12Cd34Ef56', title: 'Student study', document: emptyDocument('student-study', 'Student study'),
+      hubUrl: 'http://localhost:8080', id: 'Ab12Cd34Ef56', title: 'Student study', document: emptyDocument('student-study', 'Student study'), catalogues: [],
     };
     const fetch = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
     vi.stubGlobal('fetch', fetch);

@@ -46,12 +46,16 @@ export interface HubWorkspace {
   readonly id: string;
   readonly title: string;
   readonly document: GraphDocument;
+  readonly courseSlug?: string;
+  readonly catalogues: readonly HubCatalogueRef[];
   readonly updatedAt?: string;
 }
 
 export interface HubWorkspaceDraft {
   readonly title: string;
   readonly document: GraphDocument;
+  readonly courseSlug?: string;
+  readonly catalogues?: readonly HubCatalogueRef[];
 }
 
 export interface CreatedHubWorkspace {
@@ -150,13 +154,14 @@ export async function createWorkspace(
     {
       title: draft.title,
       document: serializeDocument(draft.document),
+      ...(draft.courseSlug === undefined ? {} : { courseSlug: draft.courseSlug, catalogues: (draft.catalogues ?? []).map((catalogue) => ({ id: catalogue.id, version: catalogue.version, hash: catalogue.hash })) }),
     },
   );
   if (!isObject(value) || typeof value.id !== 'string' || typeof value.editToken !== 'string') {
     throw new Error('The Hub did not return an edit token for the new workspace.');
   }
   return {
-    workspace: { hubUrl: base, id: value.id, title: draft.title, document: draft.document },
+    workspace: { hubUrl: base, id: value.id, title: draft.title, document: draft.document, ...(draft.courseSlug === undefined ? { catalogues: [] } : { courseSlug: draft.courseSlug, catalogues: draft.catalogues ?? [] }) },
     editToken: value.editToken,
   };
 }
@@ -185,6 +190,7 @@ export async function saveWorkspace(
     {
       title: draft.title,
       document: serializeDocument(draft.document),
+      ...(draft.courseSlug === undefined ? {} : { courseSlug: draft.courseSlug, catalogues: (draft.catalogues ?? []).map((catalogue) => ({ id: catalogue.id, version: catalogue.version, hash: catalogue.hash })) }),
     },
     workspaceToken,
   );
@@ -267,7 +273,7 @@ async function requestJson(
 }
 
 function parseWorkspace(hubUrl_: string, value: JsonValue): HubWorkspace {
-  if (!isObject(value) || typeof value.id !== 'string' || typeof value.title !== 'string' || !('document' in value)) {
+  if (!isObject(value) || typeof value.id !== 'string' || typeof value.title !== 'string' || !('document' in value) || !Array.isArray(value.catalogues)) {
     throw new Error('The Hub returned an invalid workspace.');
   }
   let document: GraphDocument;
@@ -281,6 +287,8 @@ function parseWorkspace(hubUrl_: string, value: JsonValue): HubWorkspace {
     id: value.id,
     title: value.title,
     document,
+    ...(typeof value.courseSlug === 'string' ? { courseSlug: value.courseSlug } : {}),
+    catalogues: value.catalogues.map(parseCatalogueRef),
     ...(typeof value.updatedAt === 'string' ? { updatedAt: value.updatedAt } : {}),
   };
 }

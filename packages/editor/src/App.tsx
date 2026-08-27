@@ -146,6 +146,7 @@ import {
   loadPublication as loadHubPublication,
   loadWorkspace,
   saveWorkspace,
+  type HubCatalogueRef,
   type HubCourse,
   type HubWorkspace,
 } from './model/hub';
@@ -306,6 +307,10 @@ function AppShell(): ReactElement {
   const flow = useReactFlow();
   const [catalogues, setCatalogues] = useState<readonly Catalogue[]>(initialCatalogues);
   const [courseSources, setCourseSourcesState] = useState<readonly HubCourse[]>(loadCourseSources);
+  const [courseWorkspaceBinding, setCourseWorkspaceBinding] = useState<{
+    readonly source: HubCourse;
+    readonly catalogues: readonly HubCatalogueRef[];
+  } | undefined>();
   /** Course secrets never persist. A reload can still open public material and
    * reuses cached catalogues, but asks the student to reconnect before fetching
    * restricted material again. */
@@ -380,6 +385,7 @@ function AppShell(): ReactElement {
     setSavedSnapshot(saveDocument(next));
     setCollapsedGroups(new Set());
     setFitRequest((current) => current + 1);
+    setCourseWorkspaceBinding(undefined);
   };
   const openExample = (id: ExampleId): void => {
     const sample = exampleDocument(id, catalogues, locale);
@@ -541,6 +547,7 @@ function AppShell(): ReactElement {
       setCatalogues((current) => loadedCatalogues.reduce(withCatalogue, current));
       for (const catalogue of loadedCatalogues) cacheCatalogue(catalogue.id, saveCatalogue(catalogue));
       resetDocument(loadedDocument);
+      setCourseWorkspaceBinding({ source, catalogues: publication.catalogues });
       recordRecentDocument(loadedDocument);
       clearAutosaveSnapshot();
       pushNotice(`Opened ${publication.title} from ${source.title}.`);
@@ -550,7 +557,14 @@ function AppShell(): ReactElement {
   };
 
   const saveNewHubWorkspace = async (hubAddress: string): Promise<void> => {
-    const draft = { title: documentRef.current.title, document: documentRef.current };
+    const draft = {
+      title: documentRef.current.title,
+      document: documentRef.current,
+      ...(courseWorkspaceBinding === undefined ? {} : {
+        courseSlug: courseWorkspaceBinding.source.slug,
+        catalogues: courseWorkspaceBinding.catalogues,
+      }),
+    };
     const created = await createWorkspace(hubAddress, draft);
     saveWorkspaceEditToken(created.workspace.hubUrl, created.workspace.id, created.editToken);
     setWorkspaceAccessRevision((current) => current + 1);
@@ -564,7 +578,14 @@ function AppShell(): ReactElement {
 
   const saveToHub = async (): Promise<void> => {
     if (hubWorkspace === undefined) throw new Error('Choose a Hub before saving this workspace.');
-    const draft = { title: documentRef.current.title, document: documentRef.current };
+    const draft = {
+      title: documentRef.current.title,
+      document: documentRef.current,
+      ...(courseWorkspaceBinding === undefined ? {} : {
+        courseSlug: courseWorkspaceBinding.source.slug,
+        catalogues: courseWorkspaceBinding.catalogues,
+      }),
+    };
     const token = loadWorkspaceEditToken(hubWorkspace.hubUrl, hubWorkspace.id);
     if (token === undefined) {
       throw new Error('This shared workspace is read-only in this browser. Choose “Save a copy to Hub…” to make your own.');
@@ -578,16 +599,30 @@ function AppShell(): ReactElement {
     pushNotice(`Saved to Hub workspace ${saved.id}.`);
   };
 
-  const openLoadedHubWorkspace = (workspace: HubWorkspace): void => {
+  const openLoadedHubWorkspace = async (workspace: HubWorkspace): Promise<void> => {
+    let binding: { readonly source: HubCourse; readonly catalogues: readonly HubCatalogueRef[] } | undefined;
+    if (workspace.courseSlug !== undefined) {
+      const existing = courseSources.find((source) => source.hubUrl === workspace.hubUrl && source.slug === workspace.courseSlug);
+      const source = existing ?? await connectCourse(workspace.hubUrl, workspace.courseSlug);
+      if (existing === undefined) setCourseSources((current) => withCourseSource(current, source));
+      const token = courseTokens.current.get(courseKey(source));
+      const loadedCatalogues = await Promise.all(
+        workspace.catalogues.map(async (reference) => loadCatalogue(JSON.stringify(await loadHubCatalogue(source, reference, token)))),
+      );
+      setCatalogues((current) => loadedCatalogues.reduce(withCatalogue, current));
+      for (const catalogue of loadedCatalogues) cacheCatalogue(catalogue.id, saveCatalogue(catalogue));
+      binding = { source, catalogues: workspace.catalogues };
+    }
     setHubWorkspace(workspace);
     resetDocument(workspace.document);
+    setCourseWorkspaceBinding(binding);
     recordRecentDocument(workspace.document);
     clearAutosaveSnapshot();
     pushNotice(`Opened ${workspace.title} from Hub workspace ${workspace.id}.`);
   };
 
   const openHubWorkspace = async (hubAddress: string, workspaceId: string): Promise<void> => {
-    openLoadedHubWorkspace(await loadWorkspace(hubAddress, workspaceId.trim()));
+    await openLoadedHubWorkspace(await loadWorkspace(hubAddress, workspaceId.trim()));
   };
 
   const deleteHubWorkspace = async (workspace: HubWorkspace): Promise<void> => {
@@ -1291,7 +1326,7 @@ function AppShell(): ReactElement {
               accesses={workspaceAccesses}
               onOpen={(workspace) => {
                 setShowWorkspaceLibrary(false);
-                guardDiscard(() => openLoadedHubWorkspace(workspace));
+                guardDiscard(() => void openLoadedHubWorkspace(workspace).catch((error) => pushNotice(`Could not open Hub workspace: ${messageOf(error)}`)));
               }}
               onDelete={deleteHubWorkspace}
               onClose={() => setShowWorkspaceLibrary(false)}
