@@ -1,28 +1,53 @@
 /**
- * The version stamp.
+ * Version stamps — one per artefact, not one for the whole package.
  *
- * One integer, on every document this package writes. There is deliberately **no
- * migration chain**: a chain protects existing user graphs, and there are none
- * yet — until real student work exists, the format may change and documents are
- * regenerated. The stamp still costs one field and earns it immediately, because
- * without it a file written today could not be identified later.
+ * Three unrelated things carry a `schemaVersion`: a student's saved
+ * `GraphDocument` (`document.ts`), a formula `Catalogue` (`formula.ts`), and a
+ * `LockedCatalogue` envelope (`lockedCatalogue.ts`). They used to share one
+ * `SCHEMA_VERSION`, which sounds tidy right up until one of them needs to
+ * change: a document-format bump forced `parseCatalogue` to demand the new
+ * number too, so every catalogue already sitting on a school's LMS and cached
+ * in students' browsers would suddenly be refused — and those are exactly the
+ * files nobody can reach in to rewrite. Corrected formulas shipping mid-semester,
+ * independent of any document change, is not a hypothetical; it is how this
+ * course runs. So each artefact gets its own constant and its own check, and
+ * bumping one must never make another artefact's existing files unreadable.
  *
- * So a foreign version is a clear refusal, not a silent best-effort read. When
- * the chain arrives, this is the only place that has to learn about it.
+ * `migrateDocument` (`migration.ts`) is the chain-walker for
+ * `DOCUMENT_SCHEMA_VERSION` specifically: a student's NodeBook has to survive
+ * being saved on one JoveWorks build and reopened on another, so a foreign
+ * *document* version is bridged where possible, one step at a time. That
+ * reasoning applies to the document version alone — a catalogue or locked
+ * catalogue on a version this build does not understand still gets the same
+ * hard, named refusal `readSchemaVersion` below always gave, because nothing
+ * here migrates catalogue content. Real student graphs and real cached
+ * catalogues exist now (course beta): "regenerate the file" is no longer an
+ * acceptable answer to "the version changed," which is the assumption this
+ * file used to be written under.
  */
 
 import { fail, join, readInteger, required, type JsonObject } from './json.js';
 
-export const SCHEMA_VERSION = 1;
+export const DOCUMENT_SCHEMA_VERSION = 1;
+export const CATALOGUE_SCHEMA_VERSION = 1;
 
-export function readSchemaVersion(object: JsonObject, path: string): number {
+/**
+ * Read and check one artefact's `schemaVersion`. `expected` and `artefact`
+ * make the refusal specific — which artefact, which version — rather than a
+ * bare number that could belong to any of the three.
+ */
+export function readSchemaVersion(
+  object: JsonObject,
+  path: string,
+  expected: number,
+  artefact: string,
+): number {
   const field = join(path, 'schemaVersion');
   const version = readInteger(required(object, 'schemaVersion', path), field, 1);
-  if (version !== SCHEMA_VERSION) {
+  if (version !== expected) {
     fail(
       field,
-      `is ${version}, but this build reads version ${SCHEMA_VERSION} only. ` +
-        'Documents are regenerated rather than migrated until real graphs exist',
+      `is ${version}, but this build reads ${artefact} schemaVersion ${expected} only.`,
     );
   }
   return version;
