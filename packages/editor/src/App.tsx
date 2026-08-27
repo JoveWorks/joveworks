@@ -135,6 +135,14 @@ import { loadTutorialSeen } from './tutorial/tutorialSettings';
 import { useResizableWidth } from './useResizableWidth';
 import { phrase, ui } from './i18n';
 import { CourseMaterialViewer } from './viewer/CourseMaterialViewer';
+import { ConnectCourseDialog } from './course/ConnectCourseDialog';
+import {
+  connectCourse,
+  loadCatalogue as loadHubCatalogue,
+  loadPublication as loadHubPublication,
+  type HubCourse,
+} from './model/hub';
+import { loadCourseSources, saveCourseSources, withCourseSource } from './model/courseSources';
 
 /**
  * The base catalogue, the array-node catalogue, the bundled public
@@ -284,6 +292,17 @@ function MobileLanding(): ReactElement {
 function AppShell(): ReactElement {
   const flow = useReactFlow();
   const [catalogues, setCatalogues] = useState<readonly Catalogue[]>(initialCatalogues);
+  const [courseSources, setCourseSourcesState] = useState<readonly HubCourse[]>(loadCourseSources);
+  /** Course secrets never persist. A reload can still open public material and
+   * reuses cached catalogues, but asks the student to reconnect before fetching
+   * restricted material again. */
+  const courseTokens = useRef(new Map<string, string>());
+  const setCourseSources = (update: (current: readonly HubCourse[]) => readonly HubCourse[]): void =>
+    setCourseSourcesState((current) => {
+      const next = update(current);
+      saveCourseSources(next);
+      return next;
+    });
   // Locked catalogues shipped with the app, minus whichever ones this
   // student has already unlocked — tracked by the locked asset's own id
   // (`markLockedCatalogueUnlocked`), not by matching it against a decrypted
@@ -406,6 +425,7 @@ function AppShell(): ReactElement {
   const [contourPalette, setContourPaletteState] = useState<ContourPalette>(loadContourPalette);
   const [showSettings, setShowSettings] = useState(false);
   const [showUnlockCatalogue, setShowUnlockCatalogue] = useState(false);
+  const [showConnectCourse, setShowConnectCourse] = useState(false);
 
   useEffect(() => {
     window.document.title = `JoveWorks | ${document.title}`;
@@ -434,7 +454,7 @@ function AppShell(): ReactElement {
       : { kind: 'example', id: linkedExample },
   );
   const [openMenu, setOpenMenu] = useState<
-    | { readonly menu: 'file' | 'edit' | 'view' | 'help'; readonly x: number; readonly y: number }
+    | { readonly menu: 'file' | 'course' | 'edit' | 'view' | 'help'; readonly x: number; readonly y: number }
     | undefined
   >(undefined);
   // The cursor crossing the gap between a ribbon button and its dropdown
@@ -472,6 +492,43 @@ function AppShell(): ReactElement {
     const id = crypto.randomUUID();
     setNotices((current) => [...current, { id, message }]);
     window.setTimeout(() => dismissNotice(id), 6000);
+  };
+
+  const courseKey = (source: HubCourse): string => `${source.hubUrl}\n${source.slug}`;
+  const connectToCourse = async (hubAddress: string, slug: string, token: string): Promise<void> => {
+    const source = await connectCourse(hubAddress, slug, token);
+    if (token.length > 0) courseTokens.current.set(courseKey(source), token);
+    setCourseSources((current) => withCourseSource(current, source));
+    pushNotice(`Connected to ${source.title}.`);
+  };
+  const refreshCourse = async (source: HubCourse): Promise<void> => {
+    try {
+      const refreshed = await connectCourse(source.hubUrl, source.slug, courseTokens.current.get(courseKey(source)));
+      setCourseSources((current) => withCourseSource(current, refreshed));
+      pushNotice(`Refreshed ${refreshed.title}.`);
+    } catch (error) {
+      pushNotice(`Could not refresh ${source.title}: ${messageOf(error)}`);
+    }
+  };
+  const openCoursePublication = async (source: HubCourse, publicationId: string): Promise<void> => {
+    try {
+      const token = courseTokens.current.get(courseKey(source));
+      const publication = await loadHubPublication(source, publicationId, token);
+      const loadedCatalogues = await Promise.all(
+        publication.catalogues.map(async (reference) =>
+          loadCatalogue(JSON.stringify(await loadHubCatalogue(source, reference, token))),
+        ),
+      );
+      const loadedDocument = loadDocument(JSON.stringify(publication.document));
+      setCatalogues((current) => loadedCatalogues.reduce(withCatalogue, current));
+      for (const catalogue of loadedCatalogues) cacheCatalogue(catalogue.id, saveCatalogue(catalogue));
+      resetDocument(loadedDocument);
+      recordRecentDocument(loadedDocument);
+      clearAutosaveSnapshot();
+      pushNotice(`Opened ${publication.title} from ${source.title}.`);
+    } catch (error) {
+      pushNotice(`Could not open course material: ${messageOf(error)}`);
+    }
   };
 
   // A ref rather than a `document` dependency: restarting the interval on
@@ -853,6 +910,22 @@ function AppShell(): ReactElement {
     { label: t('Redo'), disabled: !canRedo, onClick: redo },
   ];
 
+  const courseMenuItems: readonly MenuItem[] = [
+    { label: t('Connect course…'), onClick: () => setShowConnectCourse(true) },
+    ...(courseSources.length === 0
+      ? [{ heading: t('No course connected') }]
+      : courseSources.flatMap((source) => [
+          { heading: source.title },
+          { label: t('Refresh course material'), onClick: () => void refreshCourse(source) },
+          ...(source.publications.length === 0
+            ? [{ label: t('No published material'), disabled: true, onClick: () => undefined }]
+            : source.publications.map((publication) => ({
+                label: publication.title,
+                onClick: () => guardDiscard(() => void openCoursePublication(source, publication.id)),
+              }))),
+        ])),
+  ];
+
   const viewMenuItems: readonly MenuItem[] = [
     { label: showPalette ? 'Hide palette' : 'Show palette', onClick: () => setShowPalette(!showPalette) },
     { label: showNotebook ? 'Hide notebook' : 'Show notebook', onClick: () => setShowNotebook(!showNotebook) },
@@ -1007,16 +1080,18 @@ function AppShell(): ReactElement {
     },
   ];
 
-  const menuItemsFor = (menu: 'file' | 'edit' | 'view' | 'help'): readonly MenuItem[] =>
+  const menuItemsFor = (menu: 'file' | 'course' | 'edit' | 'view' | 'help'): readonly MenuItem[] =>
     menu === 'file'
       ? fileMenuItems
-      : menu === 'edit'
-        ? editMenuItems
-        : menu === 'view'
-          ? viewMenuItems
-          : helpMenuItems;
+      : menu === 'course'
+        ? courseMenuItems
+        : menu === 'edit'
+          ? editMenuItems
+          : menu === 'view'
+            ? viewMenuItems
+            : helpMenuItems;
 
-  const menuButton = (menu: 'file' | 'edit' | 'view' | 'help', label: string): ReactElement => (
+  const menuButton = (menu: 'file' | 'course' | 'edit' | 'view' | 'help', label: string): ReactElement => (
     <button
       type="button"
       className={`menu-button${openMenu?.menu === menu ? ' open' : ''}`}
@@ -1053,6 +1128,7 @@ function AppShell(): ReactElement {
         <div className="app" onContextMenu={(event) => event.preventDefault()}>
           <header className="menubar" onMouseEnter={cancelMenuClose} onMouseLeave={scheduleMenuClose}>
             {menuButton('file', 'File')}
+            {menuButton('course', 'Course')}
             {menuButton('edit', 'Edit')}
             {menuButton('view', 'View')}
             {menuButton('help', 'Help')}
@@ -1119,6 +1195,7 @@ function AppShell(): ReactElement {
               onMouseLeave={scheduleMenuClose}
             />
           )}
+          {showConnectCourse ? <ConnectCourseDialog onConnect={connectToCourse} onClose={() => setShowConnectCourse(false)} /> : null}
 
           <main>
             {/* Overlays the workspace instead of sitting in normal flow, so

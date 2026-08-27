@@ -2545,12 +2545,17 @@ aside.right {
   gap: 4px;
 }
 
-.dialog-field select {
+.dialog-field select,
+.dialog-field input {
   padding: 4px 6px;
   border: 1px solid var(--line);
   border-radius: 4px;
   background: var(--panel);
   color: inherit;
+}
+
+.course-error {
+  color: var(--state-error);
 }
 
 .dialog-checkbox {
