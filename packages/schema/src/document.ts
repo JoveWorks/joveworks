@@ -1657,7 +1657,9 @@ function parseTableFigures(value: JsonValue, path: string): Readonly<Record<stri
   return Object.fromEntries(
     Object.entries(object).map(([column, figures]) => [
       readName(column, path),
-      readInteger(figures, join(path, column), 1),
+      // Zero is meaningful: it renders an integer column without decimal
+      // places (for example a standard diameter series).
+      readInteger(figures, join(path, column), 0),
     ]),
   );
 }
