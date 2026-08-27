@@ -1323,7 +1323,11 @@ function AppShell(): ReactElement {
 
               {/* v0.x is unstable by semver convention — the badge names that
                   explicitly rather than relying on a reader knowing the
-                  convention, and drops away on its own once a 1.0 ships. */}
+                  convention, and drops away on its own once a 1.0 ships.
+                  The channel word is here too: nightly and stable are built
+                  from the same version number but live on different origins
+                  (separate localStorage, separate bugs), so a report of just
+                  "v0.21.0" is ambiguous and "nightly v0.21.0" is not. */}
               <a
                 className={`menubar-version${__APP_VERSION__.startsWith('0.') ? ' alpha' : ''}`}
                 href={`https://github.com/ThomasVanRiel/joveworks/releases/tag/v${__APP_VERSION__}`}
@@ -1331,7 +1335,7 @@ function AppShell(): ReactElement {
                 rel="noopener"
                 title={`View the JoveWorks v${__APP_VERSION__} release on GitHub${localVersionSuffix}`}
               >
-                {__APP_VERSION__.startsWith('0.') ? 'alpha · ' : ''}v{__APP_VERSION__}
+                {__APP_VERSION__.startsWith('0.') ? 'alpha · ' : ''}{t(__APP_CHANNEL__)} v{__APP_VERSION__}
                 {localVersionSuffix}
               </a>
 
