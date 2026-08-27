@@ -3,6 +3,15 @@ import { defineConfig } from "vitepress";
 export default defineConfig({
   title: "JoveWorks Docs",
   description: "Docs for the node-editor design tool for dimensioning machine parts.",
+  // Stays an absolute path, unlike the editor and catalogue-author builds.
+  // Verified experimentally: with a relative base VitePress still emits a
+  // uniform `./assets/...` on every page regardless of nesting depth, so a
+  // page one directory down (e.g. guide/units.html) ends up looking for
+  // guide/assets/... — which doesn't exist, only docs/assets/... does. That
+  // makes a relative base actively wrong here, not just unnecessary, so
+  // this — and the DOCS_BASE_URL in packages/editor/src/help-links.ts that
+  // has to agree with it — are the one part of the release bundle that
+  // assumes domain-root hosting.
   base: "/docs/",
   cleanUrls: true,
   head: [["link", { rel: "icon", href: "/docs/favicon.svg", type: "image/svg+xml" }]],

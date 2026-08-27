@@ -72,11 +72,21 @@ jobs:
         # `main`; this repeats the tsc build as part of `build:bundle` so
         # __APP_VERSION__ picks up the version this job just bumped to.
         # JOVEWORKS_CHANNEL=stable is what distinguishes this from the
-        # Netlify (nightly) build, which leaves it at the default. Base
-        # path is left at its default ("/"): this bundle is built for
-        # root-path hosting, as the README in deploy/stable-bundle/ says.
+        # Netlify (nightly) build, which leaves it at the default.
+        # JOVEWORKS_BASE_PATH=./ makes the editor's own asset references
+        # relative — the app only ever routes with a `?example=` query
+        # parameter (see exampleUrl.ts), never a path-based router, so a
+        # relative base produces one bundle that works unmodified at the
+        # domain root or under any subpath. (This overrides the "/" default
+        # in vite.config.ts, which stays as-is for Netlify.) The docs
+        # sub-site under build/docs/ is the one part of this bundle that
+        # still assumes domain-root hosting — see the comment on `base` in
+        # packages/docs-site/docs/.vitepress/config.ts for why, and
+        # deploy/stable-bundle/README.txt for what that means for a school
+        # hosting under a subpath.
         env:
           JOVEWORKS_CHANNEL: stable
+          JOVEWORKS_BASE_PATH: ./
         run: pnpm build:bundle
 
       - name: Add static-host config to stable bundle

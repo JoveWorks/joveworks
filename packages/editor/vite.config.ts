@@ -28,9 +28,13 @@ export default defineConfig({
     __APP_CHANNEL__: JSON.stringify(process.env.JOVEWORKS_CHANNEL ?? 'nightly'),
   },
   // Defaults to the domain root so the current Netlify build (nightly) is
-  // unaffected. A school hosting the stable bundle under a subpath (e.g.
-  // `/joveworks/`) sets JOVEWORKS_BASE_PATH so built-in asset URLs resolve
-  // there instead.
+  // unaffected. The release workflow overrides this to `./` (a relative
+  // base) when it builds the stable bundle: the app only ever routes with
+  // a `?example=` query parameter (see exampleUrl.ts) — there is no
+  // path-based router anywhere in this app — so a relative base resolves
+  // correctly whether the bundle ends up at the domain root or under a
+  // school's subpath, with no rebuild needed either way. JOVEWORKS_BASE_PATH
+  // still accepts an absolute path too, for anyone who genuinely wants one.
   base: process.env.JOVEWORKS_BASE_PATH ?? '/',
   // `dist/` belongs to tsc; the bundle goes elsewhere so the two never collide.
   build: { target: 'es2022', outDir: 'build' },

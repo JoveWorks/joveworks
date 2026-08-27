@@ -10,11 +10,22 @@ Any web server that can serve files can serve this.
 Unzip the archive. You'll get an index.html file plus assets/, docs/, and
 author/ folders (and one of the server-config files below, if you keep it).
 
-2. Point your web server's document root at the unzipped folder
------------------------------------------------------------------
-Configure your web server so the unzipped folder IS the document root —
-index.html should be reachable directly at the site's root URL
-(https://your-domain/index.html), not nested one level down.
+2. Point your web server at the unzipped folder
+--------------------------------------------------
+This bundle works unmodified at the domain root (https://your-domain/) OR
+under a subpath (https://your-domain/joveworks/) — nothing to configure
+either way, and no rebuild needed if you decide to move it later. Just make
+sure index.html is reachable directly wherever you put it (e.g.
+https://your-domain/joveworks/index.html), not nested one level further.
+
+The one exception is the built-in documentation: the "?" help buttons in
+the app, and the docs/ folder if browsed directly, are built assuming
+domain-root hosting. Under a subpath they'll point at
+https://your-domain/docs/... instead of https://your-domain/joveworks/docs/...
+and 404. Nothing else in the app is affected — the editor itself and the
+author/ tool work regardless. If you need the docs to work correctly under
+a subpath too, let us know the subpath and we'll produce a docs build for
+it.
 
 3. Add the single-page-app fallback rule
 ------------------------------------------
@@ -31,22 +42,11 @@ If your host is neither of those, look for a "SPA fallback", "rewrite all
 routes to index.html", or "custom 404 = index.html" setting — that's the
 same rule under a different name.
 
-4. Subpath hosting (e.g. https://your-domain/joveworks/ instead of the
-   domain root)
-------------------------------------------------------------------------
-This bundle is built to be served from the domain root. If you need to
-host it under a subpath, the app needs to be *built* with that path baked
-in (it is not something you can change by editing these files after the
-fact) — let us know the subpath before you deploy and we'll produce a
-bundle built for it. Deploying this root-path bundle under a subpath will
-show a blank page, because it will look for its own assets (CSS, JS) at
-the wrong URLs.
-
-5. Verify it worked
+4. Verify it worked
 --------------------
-  - Open the site's root URL in a browser. The JoveWorks editor should
-    load (palette on the left, canvas in the middle, NodeBook on the
-    right).
+  - Open the app's URL (domain root or your subpath) in a browser. The
+    JoveWorks editor should load (palette on the left, canvas in the
+    middle, NodeBook on the right).
   - Check the small version badge in the top menu bar reads
     "stable vX.Y.Z" — if it says "nightly" instead, you've deployed the
     wrong build.
@@ -54,6 +54,9 @@ the wrong URLs.
     bookmarked/shared link directly). If you get your web server's 404
     page instead of JoveWorks, the SPA fallback rule from step 3 isn't
     active yet.
+  - If you're hosting under a subpath, click a node's "?" help button and
+    confirm it lands on a real docs page rather than a 404 — see the note
+    in step 2 if it doesn't.
 
 Questions
 ---------
