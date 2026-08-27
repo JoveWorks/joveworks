@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.20.0](https://github.com/ThomasVanRiel/joveworks/compare/v0.19.1...v0.20.0) (2026-08-27)
+
+### Features
+
+* **editor:** manage Hub workspaces ([8758961](https://github.com/ThomasVanRiel/joveworks/commit/875896105c84e85ad14cd02ef3ed3d048d69035a))
+* **editor:** open linked course publications ([9b3dffd](https://github.com/ThomasVanRiel/joveworks/commit/9b3dffdb590603538ad5b74c1acb417b5f164163))
+* **editor:** open linked Hub workspaces ([e8f7b4b](https://github.com/ThomasVanRiel/joveworks/commit/e8f7b4beef337d4e859f01e07961e6345d78a379))
+* **editor:** restore course-pinned workspaces ([e1dff62](https://github.com/ThomasVanRiel/joveworks/commit/e1dff62e971552b840e5aed4e34f6694a92a11f9))
+* **editor:** save workspaces to Hub ([2093594](https://github.com/ThomasVanRiel/joveworks/commit/20935944f3f085a5941c9191a5a1fa7074e7da6c))
+* **editor:** share student workspaces ([aa890cc](https://github.com/ThomasVanRiel/joveworks/commit/aa890cc5a86d4d25a69d281ffd1e726f37cdf354))
+
+### Fixes
+
+* **editor:** restore contour colorbar thresholds ([e11db3e](https://github.com/ThomasVanRiel/joveworks/commit/e11db3e35a08c24df81506321ff9863a56da45ab))
+* **editor:** use Hub student share URL ([0a3abb6](https://github.com/ThomasVanRiel/joveworks/commit/0a3abb669617cf0502b046c7e9e7be11d39ea5f8))
+* **schema:** allow zero table figures ([43585ce](https://github.com/ThomasVanRiel/joveworks/commit/43585ceeb29d6092791cf6d3aba3c6ca337d254d))
 ## [0.19.1](https://github.com/ThomasVanRiel/joveworks/compare/v0.19.0...v0.19.1) (2026-08-27)
 
 ### Features
