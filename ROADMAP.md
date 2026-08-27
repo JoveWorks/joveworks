@@ -271,6 +271,12 @@ Out of scope for this repo — R&M catalogue content (equation 16.3) lives in
 the private `machine-design-catalogue` repository, not here.
 
 **46. Bug: Feasibility heatmap's axis title, tick labels, and ticks overlap.** The non-faceted branch of `FeasibilityFigure.tsx` fixes its plot width at a flat `360` (`packages/editor/src/notebook/FeasibilityFigure.tsx:78`) regardless of how many x-axis ticks the swept range produces or how long their coordinate labels are — unlike the faceted branch, already fixed to size each facet panel from its own tick count (`perFacetWidth`, line 76, commit 897e2f6). A two-input sweep with many points and long decimal coordinates (e.g. `66.667`, `73.333`, …) crowds ten-plus tick labels into a ~300px plot area, so they collide with each other and with the x-axis title sitting below them. Same class of bug as the one already fixed for facets, just not extended to the single-panel case — likely wants the same tick-count-aware width logic.
+Fixed: the faceted branch's own logic is now the only logic. `perFacetWidth`
+is pulled out into an exported `feasibilityPlotWidth(xTickCount, facetCount)`,
+and the single-panel case calls it with `facetCount` absent instead of
+hard-coding `360` — a facet panel and a single panel were always sizing the
+same kind of thing (a panel's own x-ticks), so there was never a real second
+case to invent. Covered in `FeasibilityFigure.test.ts`.
 
 **48. Feature: Let's design the shaft calculations** Take a look at the shaft notebooks and equations in the /home/thomas/source/mechanical-design repo and discuss what we can do. It will need force/distance, support/distance pairs to construct the piecewise arrays. I want to be able to show the bending/load diagrams and calculate the shaft sizes from it. This is a big feature, so we must plan it meticulously.
 Planned in `~/.claude/plans/fuzzy-imagining-fountain.md`, built in the

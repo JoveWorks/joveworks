@@ -44,6 +44,21 @@ interface Row {
 /** No band to sit a single-axis strip on — Observable Plot still wants a `y`. */
 const SINGLE_ROW = '';
 
+/**
+ * The plot's total width, single-panel or faceted alike: every panel needs
+ * to fit its own x-axis ticks, not a flat guess — a mask only has two
+ * colours to read a cell by, so ticks crushed too narrow to lay out read as
+ * noise rather than a heatmap. A many-point sweep with long decimal
+ * coordinates (e.g. `66.667`, `73.333`, …) collides its tick labels into a
+ * fixed-width plot just as surely as it would crush a facet panel — same
+ * bug, same fix, extended from the faceted case (`perFacetWidth`, added in
+ * 897e2f6) to the single-panel one instead of inventing a second approach.
+ */
+export function feasibilityPlotWidth(xTickCount: number, facetCount: number | undefined): number {
+  const perFacetWidth = Math.max(120, 22 * xTickCount + 48);
+  return facetCount === undefined ? perFacetWidth : perFacetWidth * facetCount;
+}
+
 function coordinates(axis: PlotAxis): readonly (number | string)[] {
   return axis.coordinates.kind === 'numeric'
     ? axis.coordinates.data.map((value) => fromCanonical(value, axis.unit))
@@ -157,14 +172,8 @@ export function FeasibilityFigure({ result, checkLabels, marking }: Props): Reac
     const seriesLabel = result.series2?.axis.label ?? '';
     const fx = result.facet === undefined ? undefined : 'facet';
 
-    // Each facet panel needs to fit its own x-axis ticks, not just a fixed
-    // share of an overall cap — a mask only has two colours to read a facet
-    // by, so a facet crushed too narrow to show its own ticks reads as
-    // noise rather than a small multiple. `PlotFigure`'s facet width (used
-    // for a line, which stays legible smaller) is the wrong model here.
-    const perFacetWidth = Math.max(120, 22 * result.x.axis.length + 48);
     const chart = Plot.plot({
-      width: result.facet === undefined ? 360 : perFacetWidth * result.facet.axis.length,
+      width: feasibilityPlotWidth(result.x.axis.length, result.facet?.axis.length),
       height: result.series2 === undefined ? 80 : 240,
       marginLeft: 56,
       marginBottom: 40,
