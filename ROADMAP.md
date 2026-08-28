@@ -405,91 +405,79 @@ Reliability. Deliberately deferred: two-dimensional decision maps, automatic
 perturbation of scalar inputs, and reselecting Best Design at each challenge
 point.
 
-**58. Change: collapse `list`/`spectrum` into one value kind, and split the
-port kind into `collection` plus a variadic flag.** Decided 2026-08-28,
-replacing item 6's rename. Two findings drove it.
+**58. Change: delete the spectrum concept; many values arrive by wire.**
+Decided 2026-08-28, replacing item 6's rename. Three findings drove it, each
+narrowing the change further than the one before.
 
 First, `spectrum` is a misnomer. A load spectrum (*Lastkollektiv*) is pairs of
-load level and cycle count, consumed against an S–N curve by
-Palmgren–Miner. Nothing in this repo does fatigue — no Miner, no damage sum,
-no cycle counts anywhere in source, docs or tests — and `SpectrumValue`
+load level and cycle count, consumed against an S–N curve by Palmgren–Miner.
+Nothing in this repo does fatigue — no Miner, no damage sum, no cycle counts
+anywhere in source, docs or tests — and `SpectrumValue`
 (`packages/schema/src/value.ts:94`) is a bare `number[]` with a unit. The name
 promises an analysis the code does not perform, which is worse than a vague
-name. The one place with a Kollektiv's *shape*, a `values` port paired with a
-`weights` port (`packages/kernel/src/graph.ts:707`), is Monte Carlo's discrete
-distribution, where the weights are probabilities.
+name. The one place carrying a Kollektiv's *shape*, a `values` port paired with
+a `weights` port (`packages/kernel/src/graph.ts:707`), is Monte Carlo's
+discrete distribution, where the weights are probabilities.
 
-Second — and this is what closes item 6 by removal rather than by rename —
-"consumed whole" is node behaviour, not a property of the data. Every pure
-reduction (`sum`, `product`, `count`, `mean`, `median`, `standardDeviation`,
-`valueAt`) always consumes its whole argument, so the value never needed to say
-so. The one thing forcing the distinction into the data is that
-`minimum`/`maximum` share the same `spectrum` port kind while meaning something
-different by it: "the smallest of any number of values — wire as many as
-needed" (`packages/nodes/src/operations.ts:79`) is variadic arithmetic, and two
-swept inputs there must give a pointwise grid rather than one flattened scalar.
-`packages/kernel/src/evaluate.ts:1143` records that the flattening version
-shipped once and collapsed the whole grid.
+Second, "consumed whole" is node behaviour, not a property of the data. Every
+pure reduction always consumes its whole argument, so the value never needed to
+say so. What forced the distinction into the data was `minimum`/`maximum`
+sharing the reduction port kind while meaning variadic arithmetic by it — "the
+smallest of any number of values, wire as many as needed"
+(`packages/nodes/src/operations.ts:79`) — where two swept inputs must give a
+pointwise grid, not one flattened scalar (`evaluate.ts:1143` records that the
+flattening version shipped once and collapsed the grid).
 
-So split the overloaded port kind and delete the value kind. Only one new
-kind, because only one of the two needs to be a kind at all:
+Third, and what removes the concept rather than renaming it: a port that takes
+many values already accepts them **by wire**. `spectrumSlots.ts` renders such a
+port as `port::0`, `port::1`, … plus a trailing `port::open` ghost slot that
+takes the next wire with no "add a value" button (`model/document.ts:540`). So
+the hand-typed collection was never the only way in, and once breakpoints,
+loads and choices all arrive by wire, every many-valued port behaves
+identically: n wires, one value per wire per cell, broadcast, grid preserved.
+`sum` totals its wires, `minimum` compares its wires, a shaft node reads its
+wires as breakpoints in slot order.
 
-- `collection` — a new port kind meaning "takes all the values at once": the
-  seven array nodes plus Monte Carlo's `values`/`weights`.
-- `minimum`/`maximum` keep the ordinary `numeric` kind and gain a `variadic`
-  flag saying the port accepts several wires. `graph.ts:603` already branches
-  on `port.kind === 'spectrum'` to choose one-edge-versus-many; that becomes a
-  check of the flag. They keep broadcasting, so two swept inputs still give the
-  n × m grid and `evaluate.ts:1143`'s regression stays fixed.
+So there is no case left where a port consumes a whole axis-less collection,
+and the concept can go entirely rather than be renamed:
 
-Name chosen 2026-08-28 for the student, not the author. The port kind is
-student-facing: `graph.ts:555` interpolates it into `cannot connect a
-${source.kind} value to a ${target.kind} port`, which is the error a bad wire
-produces and so the most-read message in the editor. "Cannot connect a category
-value to a collection port" is actionable by a first-year; "to a variadic port"
-is not. `variadic` survives only as a schema field name, which nobody but a
-catalogue author ever sees. While in there, rewrite `graph.ts:555` to explain
-rather than name, so the sentence does not rest on the token at all.
+- `SpectrumValue` deletes from `schema/value.ts`, with `spectrum` out of
+  `VALUE_KINDS` and its parse/serialize cases. `list` keeps the
+  comma-separated-numbers field, for sweeps only — so item 5's editing UI comes
+  back out and item 6 closes as resolved by removal.
+- The `spectrum` **port kind** deletes too, becoming an ordinary `numeric` port
+  with a `variadic` flag: `sum`, `product`, `count`, `mean`, `median`,
+  `standardDeviation`, `valueAt`, `minimum`, `maximum`, the shaft nodes
+  (`mechanicsNodes.ts`) and Monte Carlo's `values`/`weights`. `graph.ts:603`
+  already branches on `port.kind === 'spectrum'` to choose one-edge-versus-many;
+  that becomes a check of the flag.
+- `Spectrum` leaves the kernel. `evaluate.ts:1030` is its only construction
+  site and a `SpectrumValue` input its only source, so the runtime kind becomes
+  unreachable: `series.ts:41` goes, and the `fixed`/`reader` split at
+  `evaluate.ts:1545` collapses to `reader` alone.
 
-`SpectrumValue` then deletes, `list` becomes the only hand-typed collection,
-and students stop choosing between two kinds that look identical in the box.
-`packages/nodes/src/catalogue.test.ts:154` pins the spectrum port to exactly
-nine nodes today and becomes the two-way invariant for the split.
+The point of going this far rather than stopping at a rename: the port kind is
+student-facing. `graph.ts:555` interpolates it into `cannot connect a
+${source.kind} value to a ${target.kind} port`, the error a bad wire produces
+and so the most-read message in the editor. Every candidate name — `spectrum`,
+`collection`, `reduction` — was a new word a first-year had to learn. Deleting
+the kind means the sentence can no longer mention it. `variadic` survives only
+as a schema field name, which nobody but a catalogue author sees.
 
-**The collapse rule** — decided 2026-08-28, and the reason the value kind can
-go away at all. A `collection` port consumes everything that arrives, axes
-included. `sum` sums every item however the items got there: typed inline,
-swept from a range, or computed upstream. So `d = [30, 40, 50]` → `area` →
-`sum` is the total area, not three swept areas.
-
-Today the opposite holds — a swept edge at a spectrum port broadcasts per cell
-(`evaluate.ts:1545` makes it a `reader`) and even contributes its axis to the
-node's grid (`:1234`), so `sum` of one swept wire is an identity. Only an
-authored `spectrum` was consumed whole. With the value kind deleted there is
-nothing left to carry that distinction, and the alternative — a directly-wired
-list collapses but a computed one does not — would make behaviour depend on
-graph topology, which is far harder to explain to a student than one blunt
-rule.
-
-Consequence worth stating in the student guide: one input fanned out to both
-port kinds is well defined and useful. A range wired to `multiply` sweeps six
-cells; the same range wired to `sum` collapses to one number, constant across
-those six — "compare each load case against the total".
-
-Deferred, and not expressible under this rule: reducing along one axis while
-keeping another. A real feature, considerably bigger, and nothing in the course
-needs it yet.
+Accepted cost: a hand-typed set of values becomes N input nodes on the canvas
+instead of one comma-separated field. Three breakpoints is three drags onto the
+ghost slot; a ten-value set would be ten nodes, and nothing in the course has
+one — the load-spectrum feature that would have justified it does not exist.
 
 Do this before beta. `DOCUMENT_MIGRATIONS` is empty and both schema versions
-are still 1 (`packages/schema/src/migration.ts:55`,
-`packages/schema/src/version.ts:30`), so no saved document needs rewriting —
-the window closes the day students first save. The port kind is hashed:
-base-node hashes regenerate from `buildFormulas`, but
+are still 1 (`schema/src/migration.ts:55`, `schema/src/version.ts:30`), so no
+saved document needs rewriting — the window closes the day students first save.
+The port kind is hashed: base-node hashes regenerate from `buildFormulas`, but
 `packages/schema/fixtures/formulas/hash-guard.json:56` needs updating by hand,
-and the private `machine-design-catalogue` has to be checked for hand-authored
-spectrum ports before the rename ships.
+and the private `machine-design-catalogue` must be checked for hand-authored
+spectrum ports before this ships.
 
-Note for whoever does it: `packages/schema/src/version.ts:23-25` asserts "Real
+Also in the same pass: `packages/schema/src/version.ts:23-25` asserts "Real
 student graphs and real cached catalogues exist now (course beta)", which is
 not true yet and is exactly the premise that would argue against making this
-break. Correct it in the same pass.
+break. Correct it.
