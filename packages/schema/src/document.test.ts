@@ -150,7 +150,7 @@ const study: JsonObject = {
   marks: [{ at: { d: 40 } }],
 };
 
-describe('round-tripping (the verification docs/PLAN.md asks for)', () => {
+describe('round-tripping', () => {
   it('survives save, reload and save again with every field intact', () => {
     const document = parseDocument(study);
     expect(serializeDocument(document)).toEqual(study);

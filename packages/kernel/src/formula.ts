@@ -130,7 +130,7 @@ export function compileClosureFormula(formula: Formula, where?: string): Compile
 
 /**
  * Check a record against itself, with no graph in sight — the dimensional check
- * docs/PLAN.md asks of every migrated formula. Generic variables are bound to
+ * every migrated formula must pass. Generic variables are bound to
  * distinct base dimensions, which proves the case for all of them.
  */
 export function checkFormulaDimensions(formula: Formula): void {

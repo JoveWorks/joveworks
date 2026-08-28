@@ -51,7 +51,7 @@ describe('the belt chapter tag set', () => {
   });
 
   it('round-trips a bending frequency for display', () => {
-    // The belt golden f_B = 6.464 s⁻¹ (docs/PLAN.md). s-1 is canonical, so this is a
+    // The belt golden f_B = 6.464 s⁻¹. s-1 is canonical, so this is a
     // formatting check rather than a conversion one.
     expect(formatQuantity(6.464, parseUnit('s-1'))).toBe('6.464 s-1');
   });
@@ -67,7 +67,7 @@ describe('the density trap', () => {
   // Density is where an mm-N-s base bites: mass is the tonne, so a belt density
   // of 1.25 kg/dm³ is 1.25e-9 in canonical units — nine orders of magnitude from
   // the number on the page. The predecessor package worked around this by
-  // writing the conversion into the expression itself (`* 1E-6 * 1E3`, docs/PLAN.md);
+  // writing the conversion into the expression itself (`* 1E-6 * 1E3`);
   // here it happens once, at the boundary.
   const areaMm2 = 96;
   const densityKgPerDm3 = 1.25;

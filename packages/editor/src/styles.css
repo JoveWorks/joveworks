@@ -1,12 +1,12 @@
 /*
- * Three columns, compact nodes, and colour reserved for state (S46, S49, S50).
+ * Three columns, compact nodes, and colour reserved for state.
  *
  * The palette here is deliberately small: one ink, one paper, one accent for
  * interaction, and four state colours — quarantined, incomplete/blocked, error,
  * and check pass/fail. Dimensions are written as text on the port, because a
  * single chapter spans a dozen units and colour-coding them would spend the one
  * channel that should mean "look here". A fifth small set, the kind accents,
- * treats a node's kind as a form of state too (S49) — a thin stripe, never
+ * treats a node's kind as a form of state too — a thin stripe, never
  * competing with the state border for the same channel. Only input and
  * output carry one, since they're the graph's actual I/O boundary; formula
  * and compare are both "normal" interior nodes and stay unstriped. Every
@@ -28,7 +28,7 @@
   --state-pass: #15803d;
   --state-fail: #b91c1c;
 
-  /* Kind is a form of state (S49) — a thin per-kind accent, distinct in hue
+  /* Kind is a form of state — a thin per-kind accent, distinct in hue
      from the state colours above and from each other. */
   --kind-input: #0e7490;
   --kind-output: #7c3aed;
@@ -535,7 +535,7 @@ input[aria-invalid='true'] {
   height: 100vh;
 }
 
-/* A conventional File/Edit/View ribbon, top-left (UI-FEEDBACK.md) — the
+/* A conventional File/Edit/View ribbon, top-left — the
    menus themselves are ContextMenu dropdowns anchored under each button. */
 .menubar {
   display: flex;
@@ -1665,7 +1665,7 @@ aside.right {
   white-space: nowrap;
 }
 
-/* State is the only thing colour says (S49). */
+/* State is the only thing colour says. */
 .node.state-incomplete {
   border-color: var(--state-waiting);
   border-style: dashed;
@@ -1852,7 +1852,7 @@ aside.right {
 }
 
 /*
- * A spectrum port's trailing open slot (S71) — an invitation to wire another
+ * A variadic port's trailing open slot — an invitation to wire another
  * value, not a state. Dashed and faint rather than the amber "missing"
  * treatment above, which this row only takes on when it is the *only* slot
  * (nothing wired yet, same as any other required port).
@@ -1991,7 +1991,7 @@ aside.right {
 }
 
 /* A range's two bounds, each a value/unit pair like .quantity-split — typing
-   a different unit on one re-expresses both under it (S47), so the two
+   a different unit on one re-expresses both under it, so the two
    fields only ever show the same symbol in practice. */
 .range-split {
   display: flex;
@@ -3360,7 +3360,7 @@ aside.right {
    segments (CheckReading) carry their own per-point colour, and the
    threshold text after them stays plain rather than inheriting a verdict
    that isn't about the threshold itself. Partial reuses the quarantined
-   amber (S49's existing "needs attention" hue) rather than the pass/fail
+   amber (the existing "needs attention" hue) rather than the pass/fail
    green/red, since some-pass-some-fail is neither. */
 .notebook .result.check.pass .mark {
   color: var(--state-pass);

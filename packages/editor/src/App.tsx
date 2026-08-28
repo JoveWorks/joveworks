@@ -998,7 +998,7 @@ function AppShell(): ReactElement {
   };
 
   // Open/save belong in a conventional File/Edit/View/Help ribbon, top-left
-  // (docs/UX-SPEC.md) — not wherever the individual actions used to live.
+  // — not wherever the individual actions used to live.
   // Recent is read fresh on every render rather than kept in its own state:
   // the list only changes as a side effect of actions that already trigger a
   // re-render (Open, Save, picking a recent entry), so there is nothing an
@@ -1366,9 +1366,8 @@ function AppShell(): ReactElement {
 
           <main>
             {/* Overlays the workspace instead of sitting in normal flow, so
-                showing or dismissing one does not shift the canvas (docs/UX-SPEC.md:
-                messages must overlay, not push other UI down). Stacks rather than
-                replacing, and each clears itself after a delay. */}
+                showing or dismissing one does not shift the canvas. Stacks rather
+                than replacing, and each clears itself after a delay. */}
             {notices.length === 0 ? null : (
               <div className="notices">
                 {notices.map((notice) => (

@@ -1,7 +1,7 @@
 /**
- * The known bug from docs/UX-SPEC.md: "a series carries an axis the target
- * grid does not". Root cause was `rows()` treating the plotted value's own
- * axes as the whole grid, when a value that does not vary along the chosen
+ * A known bug: "a series carries an axis the target grid does not". Root
+ * cause was `rows()` treating the plotted value's own axes as the whole
+ * grid, when a value that does not vary along the chosen
  * x axis — a legitimate flat curve, which evaluate.ts warns about rather
  * than refuses (`plotAxis`) — has fewer axes than the x coordinates do.
  */

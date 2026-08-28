@@ -629,7 +629,7 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
             </ul>}
           </section>
         ) : null}
-        {/* Ahead of the catalogues, not one-off toolbar buttons (docs/UX-SPEC.md):
+        {/* Ahead of the catalogues, not one-off toolbar buttons:
             an input and an output are what every graph is built from and
             eventually ends in, so they read the same way a catalogue entry
             does rather than living apart from the rest of the palette. Each
