@@ -280,6 +280,67 @@ describe('Reliability outputs', () => {
   });
 });
 
+describe('discrete Monte Carlo choices arriving as variadic wires', () => {
+  // Every wiring shape below feeds the same 1/2/3 choice set to the same
+  // 'draw' node in the same 'graph' document, so `monteCarloSamples`'s seed
+  // (documentId + nodeId) lines up and the draws can be compared directly —
+  // not just checked for shape.
+  const drawsOf = (nodes: readonly JsonObject[], wires: readonly JsonObject[]): readonly number[] =>
+    numeric(
+      valueAt(
+        evaluateDocument(
+          documentOf([...nodes, monteCarloGeneratorNode('draw', { distribution: 'discrete' }, 20, 'mm')], wires),
+          catalogues,
+        ),
+        'draw',
+        'value',
+      ),
+    ).data;
+
+  it('reads one wire carrying a list as the whole choice set', () => {
+    const draws = drawsOf([input('choices', list([1, 2, 3], 'mm'))], [wire('choices.value', 'draw.values')]);
+    expect(draws).toHaveLength(20);
+    expect(draws.every((value) => [1, 2, 3].includes(value))).toBe(true);
+  });
+
+  it('reads three single-value wires as the same choice set', () => {
+    const { nodes, wires } = variadicWires('choice', 'draw.values', [1, 2, 3], 'mm');
+    const draws = drawsOf(nodes, wires);
+    expect(draws).toHaveLength(20);
+    expect(draws.every((value) => [1, 2, 3].includes(value))).toBe(true);
+  });
+
+  it('reads a mix of a multi-value wire and single-value wires as one choice set', () => {
+    const draws = drawsOf(
+      [input('pair', list([1, 2], 'mm')), input('third', scalar(3, 'mm'))],
+      [wire('pair.value', 'draw.values'), wire('third.value', 'draw.values')],
+    );
+    expect(draws).toHaveLength(20);
+    expect(draws.every((value) => [1, 2, 3].includes(value))).toBe(true);
+  });
+
+  it('draws identically no matter which of those shapes carried the choices', () => {
+    const oneWire = drawsOf([input('choices', list([1, 2, 3], 'mm'))], [wire('choices.value', 'draw.values')]);
+    const { nodes: threeNodes, wires: threeWireList } = variadicWires('choice', 'draw.values', [1, 2, 3], 'mm');
+    const threeWires = drawsOf(threeNodes, threeWireList);
+    const mixed = drawsOf(
+      [input('pair', list([1, 2], 'mm')), input('third', scalar(3, 'mm'))],
+      [wire('pair.value', 'draw.values'), wire('third.value', 'draw.values')],
+    );
+    expect(threeWires).toEqual(oneWire);
+    expect(mixed).toEqual(oneWire);
+  });
+
+  it('reads one wire carrying a list as several weights', () => {
+    const { nodes: choiceNodes, wires: choiceWires } = variadicWires('choice', 'draw.values', [1, 2, 3], 'mm');
+    const draws = drawsOf(
+      [...choiceNodes, input('weights', list([1, 2, 3], ''))],
+      [...choiceWires, wire('weights.value', 'draw.weights')],
+    );
+    expect(draws).toHaveLength(20);
+  });
+});
+
 describe('table-backed formulas', () => {
   const lookupCatalogue = catalogueOf([
     {
