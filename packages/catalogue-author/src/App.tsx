@@ -60,7 +60,11 @@ export function App() {
 
   function handleExport() {
     if (validation.catalogue === undefined) return;
-    saveTextFile(`${validation.catalogue.id}.json`, saveCatalogue(validation.catalogue));
+    saveTextFile(
+      `${validation.catalogue.id}.yaml`,
+      saveCatalogue(validation.catalogue, 'yaml'),
+      'application/yaml',
+    );
   }
 
   function handleAddFormula() {

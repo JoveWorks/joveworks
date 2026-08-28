@@ -35,8 +35,8 @@ export function openTextFile(accept = 'application/json,.json'): Promise<PickedF
 }
 
 /** Hand the text back as a download — the export half of file I/O. */
-export function saveTextFile(name: string, text: string): void {
-  const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+export function saveTextFile(name: string, text: string, mimeType = 'application/json'): void {
+  const url = URL.createObjectURL(new Blob([text], { type: mimeType }));
   const link = document.createElement('a');
   link.href = url;
   link.download = name;

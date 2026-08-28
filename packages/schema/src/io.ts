@@ -12,7 +12,7 @@
 import { parseCatalogue, serializeCatalogue, type Catalogue } from './formula.js';
 import { parseDocument, serializeDocument, type GraphDocument } from './document.js';
 import { fail, readJsonText, type JsonValue } from './json.js';
-import { parseDocument as parseYamlDocument, visit } from 'yaml';
+import { parseDocument as parseYamlDocument, stringify as stringifyYaml, visit } from 'yaml';
 
 export type CatalogueFormat = 'json' | 'yaml';
 
@@ -52,6 +52,25 @@ function readYamlText(text: string): JsonValue {
   }
 }
 
+/**
+ * Mirrors `readYamlText`'s dialect exactly — core schema, YAML 1.2 — so
+ * anything this writes is guaranteed to satisfy the loader's own rules.
+ *
+ * `aliasDuplicateObjects: false` is the one that matters: a serialized
+ * catalogue repeats small identical objects constantly (shared port shapes,
+ * empty descriptors), and `yaml`'s stringifier anchors/aliases repeated
+ * objects by default. `readYamlText` rejects any anchor on sight, so without
+ * this option a round-tripped catalogue would fail to load.
+ */
+function writeYamlText(value: JsonValue): string {
+  // `stringify` already ends its output with a trailing newline.
+  return stringifyYaml(value, {
+    schema: 'core',
+    version: '1.2',
+    aliasDuplicateObjects: false,
+  });
+}
+
 export function loadDocument(text: string): GraphDocument {
   return parseDocument(readJsonText(text));
 }
@@ -65,6 +84,7 @@ export function loadCatalogue(text: string, format: CatalogueFormat = 'json'): C
   return parseCatalogue(format === 'yaml' ? readYamlText(text) : readJsonText(text));
 }
 
-export function saveCatalogue(catalogue: Catalogue): string {
-  return `${JSON.stringify(serializeCatalogue(catalogue), null, 2)}\n`;
+export function saveCatalogue(catalogue: Catalogue, format: CatalogueFormat = 'json'): string {
+  const value = serializeCatalogue(catalogue);
+  return format === 'yaml' ? writeYamlText(value) : `${JSON.stringify(value, null, 2)}\n`;
 }
