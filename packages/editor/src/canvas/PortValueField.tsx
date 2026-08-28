@@ -91,6 +91,20 @@ export function portFieldValue(
   return { kind: 'scalar', ...adopted };
 }
 
+/** What a wired field says once it's taken over — unplugging is what returns it to typing. */
+const WIRED_HINT = 'Set by the wire — unplug it to type a default again.';
+
+/**
+ * A wired field's tooltip. The CSS ellipsizes a long reading — a range, a
+ * long decimal, a value with a long unit — to keep the port row on its one
+ * line, so the box alone can end up showing less than the whole value. The
+ * native title is where the rest of it lives; it would be no help at all if
+ * it only ever said *why* the field is read-only and never what is in it.
+ */
+export function portFieldTitle(text: string): string {
+  return text.length === 0 ? WIRED_HINT : `${text} — ${WIRED_HINT}`;
+}
+
 export function PortValueField({
   port,
   authored,
@@ -101,6 +115,7 @@ export function PortValueField({
   wired = false,
   onCommit,
 }: Props): ReactElement {
+  const text = portFieldText(port, authored, format, supplied);
   return (
     <TextField
       className="quantity port-default"
@@ -108,10 +123,10 @@ export function PortValueField({
       // An em-dash, not "0": the port has no value, which is a different
       // statement from a value that happens to be zero.
       placeholder="—"
-      title={wired ? 'Set by the wire — unplug it to type a default again.' : title}
-      value={portFieldText(port, authored, format, supplied)}
+      title={wired ? portFieldTitle(text) : title}
+      value={text}
       disabled={wired}
-      onCommit={(text) => onCommit(portFieldValue(text, unit, format))}
+      onCommit={(typed) => onCommit(portFieldValue(typed, unit, format))}
     />
   );
 }

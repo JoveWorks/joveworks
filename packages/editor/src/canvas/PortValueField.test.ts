@@ -9,7 +9,7 @@ import { PLAIN_NUMBER_FORMAT, UnitError, parseGenericDimension, parseUnit } from
 import type { Series } from '@joveworks/kernel';
 import type { NumericPort } from '@joveworks/schema';
 
-import { portFieldText, portFieldValue } from './PortValueField';
+import { portFieldText, portFieldTitle, portFieldValue } from './PortValueField';
 import { withInputValue } from '../model/document';
 
 const format = PLAIN_NUMBER_FORMAT;
@@ -57,6 +57,22 @@ describe('what a port field shows', () => {
       unit: parseUnit('mm'),
     };
     expect(portFieldText(withDefault, undefined, format, supplied)).toBe('20 mm … 40 mm');
+  });
+});
+
+describe('the tooltip on a wired field', () => {
+  // A range like this is exactly what the box itself clips (styles.css's
+  // ellipsis on `.port-default`) — the tooltip is where a student actually
+  // reads the rest of it, so it must carry the value, not just say why the
+  // field is locked.
+  it('carries the full value, not only the reason the field is locked', () => {
+    expect(portFieldTitle('20 mm … 40 mm')).toBe(
+      '20 mm … 40 mm — Set by the wire — unplug it to type a default again.',
+    );
+  });
+
+  it('falls back to the plain hint when there is nothing yet to show', () => {
+    expect(portFieldTitle('')).toBe('Set by the wire — unplug it to type a default again.');
   });
 });
 

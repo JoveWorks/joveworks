@@ -1377,6 +1377,13 @@ aside.right {
   color: var(--ink);
   font: inherit;
   text-align: right;
+  /* A wired reading (a range, a long decimal, a long unit) can outrun the
+     box; clip it to one line with an ellipsis rather than the hard cut a
+     plain overflow gives, matching `.port-arriving`'s wired-categorical
+     case below. The full value moves to the title tooltip (PortValueField). */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Every numeric port carries one of these, so at rest it must read as the
