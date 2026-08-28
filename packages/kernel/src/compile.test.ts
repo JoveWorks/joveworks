@@ -26,8 +26,8 @@ import { parseExpression, parsePredicate } from './parse.js';
 
 const scope = (
   dimensions: Readonly<Record<string, Dimension>>,
-  spectra: readonly string[] = [],
-): DimensionScope => ({ dimensions, spectra: new Set(spectra) });
+  variadic: readonly string[] = [],
+): DimensionScope => ({ dimensions, variadic: new Set(variadic) });
 
 const dimensionOf = (source: string, of: DimensionScope): Dimension =>
   expressionDimension(parseExpression(source), of);
@@ -57,13 +57,13 @@ describe('compiled closures', () => {
     expect(() => compileExpression('sqrt(a, b)')).toThrow(/takes 1 argument/u);
   });
 
-  it('reduces a whole spectrum, and only by name', () => {
+  it('reduces every value wired into a port, and only by name', () => {
     expect(compileExpression('sum(xs)')({ xs: [1, 2, 3] })).toBe(6);
     expect(compileExpression('prod(xs)')({ xs: [2, 3, 4] })).toBe(24);
-    expect(() => compileExpression('sum(xs * 2)')).toThrow(/one spectrum port by name/u);
+    expect(() => compileExpression('sum(xs * 2)')).toThrow(/one variadic port by name/u);
   });
 
-  it('reduces a spectrum to the descriptive statistics', () => {
+  it('reduces a variadic port to the descriptive statistics', () => {
     expect(compileExpression('count(xs)')({ xs: [1, 2, 3, 4] })).toBe(4);
     expect(compileExpression('mean(xs)')({ xs: [1, 2, 3, 4] })).toBe(2.5);
     expect(compileExpression('median(xs)')({ xs: [1, 3, 2] })).toBe(2);
@@ -71,11 +71,11 @@ describe('compiled closures', () => {
     expect(compileExpression('sdev(xs)')({ xs: [2, 4, 4, 4, 5, 5, 7, 9] })).toBeCloseTo(2.13809, 4);
   });
 
-  it('picks a value out of a spectrum by a 0-based index, computed like any other argument', () => {
+  it('picks a value out of a variadic port by a 0-based index, computed like any other argument', () => {
     expect(compileExpression('at(xs, 1)')({ xs: [10, 20, 30] })).toBe(20);
     expect(compileExpression('at(xs, i)')({ xs: [10, 20, 30], i: 2 })).toBe(30);
     expect(compileExpression('at(xs, i + 1)')({ xs: [10, 20, 30], i: 0 })).toBe(20);
-    expect(() => compileExpression('at(xs)')).toThrow(/one spectrum port by name/u);
+    expect(() => compileExpression('at(xs)')).toThrow(/one variadic port by name/u);
   });
 
   it('refuses a value where a series belongs, and the reverse', () => {
@@ -168,27 +168,27 @@ describe('dimensions of an expression', () => {
     expect(dimensionOf('abs(F)', ports)).toEqual(FORCE);
   });
 
-  it('sums a spectrum without losing its dimension, and refuses to multiply one', () => {
-    const spectra = scope({ xs: FORCE, ns: DIMENSIONLESS }, ['xs', 'ns']);
-    expect(dimensionOf('sum(xs)', spectra)).toEqual(FORCE);
-    expect(dimensionOf('prod(ns)', spectra)).toEqual(DIMENSIONLESS);
-    expect(() => dimensionOf('prod(xs)', spectra)).toThrow(/pure series/u);
-    expect(() => dimensionOf('xs + xs', spectra)).toThrow(/only be reduced/u);
-    expect(() => dimensionOf('sum(F)', ports)).toThrow(/takes a spectrum port/u);
+  it('sums a variadic port without losing its dimension, and refuses to multiply a non-variadic one', () => {
+    const variadic = scope({ xs: FORCE, ns: DIMENSIONLESS }, ['xs', 'ns']);
+    expect(dimensionOf('sum(xs)', variadic)).toEqual(FORCE);
+    expect(dimensionOf('prod(ns)', variadic)).toEqual(DIMENSIONLESS);
+    expect(() => dimensionOf('prod(xs)', variadic)).toThrow(/pure series/u);
+    expect(() => dimensionOf('xs + xs', variadic)).toThrow(/only be reduced/u);
+    expect(() => dimensionOf('sum(F)', ports)).toThrow(/takes a variadic port/u);
   });
 
-  it('keeps a spectrum reduction dimension-preserving for the descriptive statistics, and count always dimensionless', () => {
-    const spectra = scope({ xs: FORCE }, ['xs']);
-    expect(dimensionOf('mean(xs)', spectra)).toEqual(FORCE);
-    expect(dimensionOf('median(xs)', spectra)).toEqual(FORCE);
-    expect(dimensionOf('sdev(xs)', spectra)).toEqual(FORCE);
-    expect(dimensionOf('count(xs)', spectra)).toEqual(DIMENSIONLESS);
+  it('keeps a variadic-port reduction dimension-preserving for the descriptive statistics, and count always dimensionless', () => {
+    const variadic = scope({ xs: FORCE }, ['xs']);
+    expect(dimensionOf('mean(xs)', variadic)).toEqual(FORCE);
+    expect(dimensionOf('median(xs)', variadic)).toEqual(FORCE);
+    expect(dimensionOf('sdev(xs)', variadic)).toEqual(FORCE);
+    expect(dimensionOf('count(xs)', variadic)).toEqual(DIMENSIONLESS);
   });
 
-  it('takes a plain index alongside a reduced spectrum, and refuses a dimensioned one', () => {
-    const spectra = scope({ xs: FORCE, n: DIMENSIONLESS, d: LENGTH }, ['xs']);
-    expect(dimensionOf('at(xs, n)', spectra)).toEqual(FORCE);
-    expect(() => dimensionOf('at(xs, d)', spectra)).toThrow(/plain index/u);
+  it('takes a plain index alongside a reduced variadic port, and refuses a dimensioned one', () => {
+    const variadic = scope({ xs: FORCE, n: DIMENSIONLESS, d: LENGTH }, ['xs']);
+    expect(dimensionOf('at(xs, n)', variadic)).toEqual(FORCE);
+    expect(() => dimensionOf('at(xs, d)', variadic)).toThrow(/plain index/u);
   });
 
   it('rejects a name that is not a port', () => {

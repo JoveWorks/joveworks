@@ -2,9 +2,9 @@
  * A pack: bundles any number of independently-dimensioned wires into one
  * `bundle` output. Each currently-wired channel (`in0`, `in2`, …, whatever
  * is actually wired — see `bundle.ts`'s `packChannelIndices`, gaps and all)
- * draws its own handle; a trailing ghost slot, like a spectrum port's own,
+ * draws its own handle; a trailing ghost slot, like a variadic port's own,
  * accepts the next wire — except here the ghost's *port name* is decided at
- * render time (`nextPackChannel`), because unlike a spectrum port's several
+ * render time (`nextPackChannel`), because unlike a variadic port's several
  * same-named slots, every pack channel is its own distinctly-named port.
  */
 
@@ -19,7 +19,7 @@ import { ParameterLabel } from '../ParameterLabel';
 import { NodeShell } from './NodeShell';
 import { packChannelLabels } from './bundleLabels';
 import type { CanvasFlowNode } from './node-data';
-import { slotHandleId } from './spectrumSlots';
+import { slotHandleId } from './portSlots';
 import { TitleField } from './TitleField';
 
 export function PackNodeView({ id, data }: NodeProps<CanvasFlowNode>): ReactElement | null {

@@ -85,7 +85,6 @@ export type {
   NumericSeries,
   PortValue,
   Series,
-  Spectrum,
 } from './series.js';
 
 export {
@@ -109,6 +108,7 @@ export {
   canConnect,
   canonicalUnit,
   endpointKey,
+  isVariadicTarget,
   outputPortNames,
   resolveGraph,
   selectPortNames,

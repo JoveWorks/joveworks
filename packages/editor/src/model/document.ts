@@ -365,7 +365,7 @@ export function removeEdges(document: GraphDocument, ids: ReadonlySet<string>): 
  * Attach an edge. Any edge already arriving at the target port is replaced —
  * an input takes one connection, and rewiring is the ordinary way to change
  * one's mind, not an error to report — unless `join` says the target is a
- * spectrum port, where a new wire adds to what is already there.
+ * variadic port, where a new wire adds to what is already there.
  */
 export function connect(
   document: GraphDocument,
@@ -384,7 +384,7 @@ export function connect(
 
 /**
  * A table column exists only while something is wired to it — the same rule
- * a spectrum port's slots follow, just with a name and a position kept
+ * a variadic port's slots follow, just with a name and a position kept
  * across edits instead of an anonymous count. Called after every edit that
  * can drop an edge into a table, so a deleted wire closes its column with it
  * rather than leaving an empty one behind.
@@ -484,7 +484,7 @@ function uniqueColumnName(existing: readonly string[], base: string): string {
 }
 
 /**
- * The handle id a table's trailing ghost column renders (spectrumSlots.ts's
+ * The handle id a table's trailing ghost column renders (portSlots.ts's
  * suffix convention makes this collision-proof against a real column that
  * happens to share the text — a column named `open` still slots at index 0,
  * never at `__new-column__::open`).
@@ -537,10 +537,10 @@ export function removePlotMeasure(document: GraphDocument, nodeId: string, measu
 
 /**
  * Wiring onto the ghost slot names the column after what was wired, the way a
- * spectrum port's ghost slot accepts a wire with no separate "add a
+ * variadic port's ghost slot accepts a wire with no separate "add a
  * slot" step first — a table's columns are named and ordered where a
- * spectrum's are not, so this is the one piece a spectrum's ghost slot never
- * needed: the new port's name has to come from somewhere.
+ * variadic port's are not, so this is the one piece a variadic port's ghost
+ * slot never needed: the new port's name has to come from somewhere.
  */
 export function addNamedColumn(
   document: GraphDocument,

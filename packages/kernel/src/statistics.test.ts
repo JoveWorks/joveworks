@@ -13,7 +13,7 @@ describe('statistics over axes', () => {
     expect(percentile([1, 2, 4, 8], 25)).toBe(1.75);
   });
 
-  it('matches the existing spectrum sdev denominator', () => {
+  it("matches the existing variadic-port reduction's sdev denominator", () => {
     const values = [1, 2, 4, 8];
     const expected = REDUCTIONS.get('sdev')?.apply(values, []);
     expect(reduceAlong({ statistic: 'stddev', value: numeric(values), nodeId: 's' }).result.data[0]).toBe(expected);

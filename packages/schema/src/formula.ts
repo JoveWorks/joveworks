@@ -125,10 +125,10 @@ export interface FormulaLookup {
  * `breakpoints` and `values` each name one or more declared input ports,
  * concatenated in the order listed — not paired by wire order, which a
  * student could wire inconsistently between the two ports. This is what
- * lets a diagram formula take a spectrum of applied loads *and* a support's
+ * lets a diagram formula take a whole set of applied loads *and* a support's
  * separately-computed reaction as one more, single-valued entry: e.g.
  * `breakpoints: ['position', 'supportA']`, `values: ['force', 'reactionA']`
- * pairs `position`/`force` (a spectrum, many values) with `supportA`/
+ * pairs `position`/`force` (a variadic port, many wires) with `supportA`/
  * `reactionA` (plain numeric ports, one value each) by declared position,
  * not by however a student happened to wire them.
  *
@@ -150,15 +150,15 @@ export interface FormulaPiecewise {
   readonly kind: PiecewiseKind;
   /** Name of the declared numeric input evaluated against each breakpoint. */
   readonly axis: string;
-  /** Declared spectrum/numeric input(s) holding each breakpoint's position, in `axis`'s dimension. Paired with `values`. */
+  /** Declared numeric input(s) holding each breakpoint's position, in `axis`'s dimension. Paired with `values`. */
   readonly breakpoints?: readonly string[];
-  /** Declared spectrum/numeric input(s) holding the value added at each breakpoint. Paired with `breakpoints`. */
+  /** Declared numeric input(s) holding the value added at each breakpoint. Paired with `breakpoints`. */
   readonly values?: readonly string[];
-  /** Declared spectrum/numeric input(s) holding each distributed span's start, in `axis`'s dimension. Paired with `distributedEnd`/`distributedRate`. */
+  /** Declared numeric input(s) holding each distributed span's start, in `axis`'s dimension. Paired with `distributedEnd`/`distributedRate`. */
   readonly distributedStart?: readonly string[];
-  /** Declared spectrum/numeric input(s) holding each distributed span's end, in `axis`'s dimension. Paired with `distributedStart`/`distributedRate`. */
+  /** Declared numeric input(s) holding each distributed span's end, in `axis`'s dimension. Paired with `distributedStart`/`distributedRate`. */
   readonly distributedEnd?: readonly string[];
-  /** Declared spectrum/numeric input(s) holding each distributed span's rate, per unit of `axis`. Paired with `distributedStart`/`distributedEnd`. */
+  /** Declared numeric input(s) holding each distributed span's rate, per unit of `axis`. Paired with `distributedStart`/`distributedEnd`. */
   readonly distributedRate?: readonly string[];
 }
 
@@ -181,9 +181,9 @@ export interface FormulaPiecewise {
 export interface FormulaDeflection {
   /** Name of the declared numeric input the curve is evaluated at. */
   readonly axis: string;
-  /** Declared spectrum/numeric input(s) holding each breakpoint's position, in `axis`'s dimension. */
+  /** Declared numeric input(s) holding each breakpoint's position, in `axis`'s dimension. */
   readonly breakpoints: readonly string[];
-  /** Declared spectrum/numeric input(s) holding the value added at each breakpoint. */
+  /** Declared numeric input(s) holding the value added at each breakpoint. */
   readonly values: readonly string[];
   /** The two declared numeric inputs — support positions, in `axis`'s dimension — the curve is pinned to zero at. */
   readonly zeroAt: readonly [string, string];
@@ -371,10 +371,10 @@ function parsePortNameList(value: JsonValue, path: string): readonly string[] {
 }
 
 /**
- * Each entry is a spectrum or a plain numeric port — concatenated in the
- * order listed to build the full breakpoint/value arrays, so a support's
- * separately-computed reaction can join a load spectrum as one more
- * single-valued entry without depending on wire order (see
+ * Each entry is a declared numeric port, variadic or plain — concatenated in
+ * the order listed to build the full breakpoint/value arrays, so a support's
+ * separately-computed reaction can join a variadic port's many wires as one
+ * more single-valued entry without depending on wire order (see
  * `FormulaPiecewise`'s docstring). Shared by `piecewise` and `deflection`
  * validation, since a deflection curve's breakpoints/values are the exact
  * same shape as a `cumulativeCubic` formula's.
@@ -390,8 +390,8 @@ function checkNamedPorts(
     const entryPath = `${namesPath}[${i}]`;
     const port = inputs.find((candidate) => candidate.name === name);
     const dimension = port === undefined ? undefined : portDimension(port);
-    if (port === undefined || (port.kind !== 'spectrum' && port.kind !== 'numeric') || dimension === undefined) {
-      fail(entryPath, `'${name}' must be a declared spectrum or numeric input with a concrete unit`);
+    if (port === undefined || port.kind !== 'numeric' || dimension === undefined) {
+      fail(entryPath, `'${name}' must be a declared numeric input with a concrete unit`);
     } else if (wantDimension !== undefined && !dimensionsEqual(wantDimension, dimension)) {
       fail(entryPath, mismatch);
     }
@@ -606,7 +606,16 @@ export function parseFormula(value: JsonValue, path: string): Formula {
     }
     const axisPort = inputs.find((candidate) => candidate.name === piecewise.axis);
     const axisDimension = axisPort === undefined ? undefined : portDimension(axisPort);
-    if (axisPort === undefined || axisPort.kind !== 'numeric' || axisDimension === undefined) {
+    // The axis is read once per cell (`axisRead` in the kernel), so — unlike
+    // `breakpoints`/`values`/`distributedStart`/`End`/`Rate`, which want
+    // exactly the variadic shape (`checkNamedPorts`) — it must be a plain,
+    // single-valued numeric port.
+    if (
+      axisPort === undefined ||
+      axisPort.kind !== 'numeric' ||
+      axisPort.variadic === true ||
+      axisDimension === undefined
+    ) {
       fail(join(path, 'piecewise.axis'), `'${piecewise.axis}' must be a declared input with a concrete numeric unit`);
     }
     const checkNames = (names: readonly string[] | undefined, namesPath: string, wantDimension: Dimension | undefined, mismatch: string): void =>
@@ -675,13 +684,24 @@ export function parseFormula(value: JsonValue, path: string): Formula {
     }
     const axisPort = inputs.find((candidate) => candidate.name === deflection.axis);
     const axisDimension = axisPort === undefined ? undefined : portDimension(axisPort);
-    if (axisPort === undefined || axisPort.kind !== 'numeric' || axisDimension === undefined) {
+    if (
+      axisPort === undefined ||
+      axisPort.kind !== 'numeric' ||
+      axisPort.variadic === true ||
+      axisDimension === undefined
+    ) {
       fail(join(path, 'deflection.axis'), `'${deflection.axis}' must be a declared input with a concrete numeric unit`);
     }
+    // Unlike `breakpoints`/`values` (`checkNamedPorts`, which wants exactly
+    // this variadic shape), a `zeroAt` entry, `modulus` and
+    // `secondMomentOfArea` each read one number per cell (`namedScalarReader`
+    // in the kernel) — a variadic port has nothing single-valued to hand it,
+    // so it is refused here rather than left to fail confusingly at
+    // evaluation time.
     const namedScalar = (name: string, namePath: string): Dimension | undefined => {
       const port = inputs.find((candidate) => candidate.name === name);
       const dimension = port === undefined ? undefined : portDimension(port);
-      if (port === undefined || port.kind !== 'numeric' || dimension === undefined) {
+      if (port === undefined || port.kind !== 'numeric' || port.variadic === true || dimension === undefined) {
         fail(namePath, `'${name}' must be a declared numeric input with a concrete unit`);
       }
       return dimension;

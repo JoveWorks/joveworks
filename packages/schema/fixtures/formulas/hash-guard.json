@@ -36,8 +36,8 @@
     }
   },
   {
-    "name": "citation-variant-and-spectrum-input",
-    "hash": "fabd6f6e3829d266",
+    "name": "citation-variant-and-variadic-input",
+    "hash": "fd5861fb9975dad5",
     "record": {
       "id": "fixture.variant",
       "version": 3,
@@ -53,7 +53,7 @@
           "monotonic": "increasing"
         },
         { "kind": "categorical", "name": "grade", "domain": ["soft", "hard"], "default": "soft" },
-        { "kind": "spectrum", "name": "c_i", "unit": "N" }
+        { "kind": "numeric", "name": "c_i", "unit": "N", "variadic": true }
       ],
       "expression": "a*grade + c_i",
       "citation": "Invented 1.2B",

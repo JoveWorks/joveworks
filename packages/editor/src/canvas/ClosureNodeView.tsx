@@ -43,7 +43,7 @@ import { axisLabel, reading, summarise } from '../model/values';
 import { NodeShell } from './NodeShell';
 import { Sparkline } from './Sparkline';
 import type { CanvasFlowNode } from './node-data';
-import { slotHandleId } from './spectrumSlots';
+import { slotHandleId } from './portSlots';
 import { DisplayUnitPicker } from './DisplayUnitPicker';
 import { TextField } from './fields';
 import { PORT_VALUE_HINT, PortValueField } from './PortValueField';
@@ -131,9 +131,9 @@ export function ClosureNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
     >
       <ul className="ports">
         {(formula?.inputs ?? []).flatMap((port) => {
-          // Same shape FormulaNodeView draws a spectrum port in: one slot
+          // Same shape FormulaNodeView draws a variadic port in: one slot
           // per edge already joined, plus a trailing open one.
-          if (port.kind !== 'spectrum') {
+          if (!(port.kind === 'numeric' && port.variadic === true)) {
             // Typed on the node counts as supplied, exactly as it does for a
             // catalogue formula's port — a closure's names are ports too.
             const missing = !wired.has(port.name) && node.inputValues?.[port.name] === undefined;

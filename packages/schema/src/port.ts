@@ -8,22 +8,24 @@
  * parses. `portDimension` is the derivation, and it is what connection checking
  * compares.
  *
- * A numeric or spectrum port may declare a **generic signature** instead of a
- * unit — `$A`, `$A*$B` — which is how the base node library says "whatever is
- * wired here". No catalogue formula uses one: R&M names every unit. An
- * input's signature must be a bare variable, so that binding it is an assignment
+ * A numeric port may declare a **generic signature** instead of a unit —
+ * `$A`, `$A*$B` — which is how the base node library says "whatever is wired
+ * here". No catalogue formula uses one: R&M names every unit. An input's
+ * signature must be a bare variable, so that binding it is an assignment
  * rather than an equation; the output may be any monomial in those variables.
  *
- * Three kinds, and the third is the one that is easy to miss:
+ * Two kinds:
  *
- * - **numeric** — a dimensioned scalar. Sweepable by any range kind.
+ * - **numeric** — a dimensioned scalar. Sweepable by any range kind. Its
+ *   `variadic` flag marks a port that takes several wires instead of one —
+ *   `sum`'s addends, a shaft's breakpoints — rendered by the editor's
+ *   ghost-slot mechanism (`portSlots.ts`... see that file's own history
+ *   for the name). Each wire still carries one value per grid cell; a
+ *   variadic port introduces no axis of its own; that is unaffected by
+ *   whether any of its wires happen to be swept.
  * - **categorical** — a value from an enumerated domain, `H7` and friends.
  *   Sweepable by explicit list only; there is no spacing between `H7`
  *   and `K7`.
- * - **spectrum** — a whole series consumed at once, the load spectrum.
- *   A sweep *produces* a series and a spectrum *consumes* one, so a spectrum
- *   port cannot itself be swept; that is enforced where values are attached,
- *   in `value.ts`.
  */
 
 import {
@@ -41,6 +43,7 @@ import {
   join,
   optional,
   put,
+  readBoolean,
   readEnum,
   readNumber,
   readObject,
@@ -60,8 +63,8 @@ import {
 import type { Unit } from '@joveworks/units';
 
 /**
- * What a numeric or spectrum port declares: a concrete display unit, or a
- * generic signature standing for whatever is wired to it.
+ * What a numeric port declares: a concrete display unit, or a generic
+ * signature standing for whatever is wired to it.
  */
 export type PortUnit = Unit | GenericDimension;
 
@@ -70,7 +73,7 @@ export function isGenericPort(port: Port): boolean {
   return isGenericDimension(port.unit);
 }
 
-export const PORT_KINDS = ['numeric', 'categorical', 'spectrum', 'bundle'] as const;
+export const PORT_KINDS = ['numeric', 'categorical', 'bundle'] as const;
 export type PortKind = (typeof PORT_KINDS)[number];
 
 /**
@@ -114,6 +117,17 @@ export interface NumericPort extends PortBase {
    * and adding it afterwards would be a schema migration for no reason.
    */
   readonly monotonic?: Monotonicity;
+  /**
+   * This port accepts several wires instead of one — `sum`'s addends, a
+   * shaft's breakpoints, Monte Carlo's discrete-distribution values and
+   * weights. The editor renders it as `port::0`, `port::1`, … plus a
+   * trailing `port::open` ghost slot (`portSlots.ts`); one value per wire per
+   * grid cell, broadcast the same as any other numeric input. It still
+   * introduces no axis of its own, so a variadic port cannot itself be swept.
+   * Never set on a generic port, and never true on an `OutputPort` — a
+   * formula produces one value, not several.
+   */
+  readonly variadic?: boolean;
 }
 
 export interface CategoricalPort extends PortBase {
@@ -143,12 +157,6 @@ export function domainMember(port: CategoricalPort, value: string): string | und
   return port.aliases[value];
 }
 
-export interface SpectrumPort extends PortBase {
-  readonly kind: 'spectrum';
-  readonly unit: PortUnit;
-  readonly preferredUnit?: Unit;
-}
-
 /**
  * A whole ordered bundle of channels, each its own generic signature — the
  * ports `pack`/`unpack` synthesise for themselves at resolve/render time
@@ -164,9 +172,9 @@ export interface BundlePort extends PortBase {
   readonly channels: readonly GenericDimension[];
 }
 
-export type Port = NumericPort | CategoricalPort | SpectrumPort | BundlePort;
+export type Port = NumericPort | CategoricalPort | BundlePort;
 
-/** What a formula may produce. A spectrum is consumed, never produced. */
+/** What a formula may produce. A `NumericPort` here is never `variadic` — a formula produces one value, not several. */
 export type OutputPort = NumericPort | CategoricalPort;
 
 /**
@@ -262,13 +270,10 @@ export function parsePort(value: JsonValue, path: string): Port {
       fail(join(path, 'preferredUnit'), 'must have the same dimension as the port unit');
     }
   }
-  if (kind === 'spectrum') {
-    return { kind, name, unit, ...put('description', description), ...put('preferredUnit', preferredUnit) };
-  }
-
   const fallback = optional(object, 'default', path, readNumber);
   const validRange = optional(object, 'validRange', path, parseValidRange);
   const monotonic = optional(object, 'monotonic', path, (v, p) => readEnum(v, p, MONOTONICITY));
+  const variadic = optional(object, 'variadic', path, readBoolean);
   if (isGenericDimension(unit) && (fallback !== undefined || validRange !== undefined)) {
     fail(path, `'${unit.symbol}' is generic, so there is no unit for a default or a range to be in`);
   }
@@ -284,6 +289,7 @@ export function parsePort(value: JsonValue, path: string): Port {
     ...put('default', fallback),
     ...put('validRange', validRange),
     ...put('monotonic', monotonic),
+    ...put('variadic', variadic),
   };
 }
 
@@ -310,14 +316,12 @@ export function serializePort(port: Port): JsonObject {
   if (port.kind === 'bundle') {
     return { ...base, channels: port.channels.map((channel) => channel.symbol) };
   }
-  if (port.kind === 'spectrum') {
-    return { ...base, unit: port.unit.symbol, ...put('preferredUnit', port.preferredUnit?.symbol) };
-  }
   return {
     ...base,
     unit: port.unit.symbol,
     ...put('preferredUnit', port.preferredUnit?.symbol),
     ...put('default', port.default),
+    ...put('variadic', port.variadic),
     ...put(
       'validRange',
       port.validRange === undefined
@@ -349,13 +353,17 @@ export function asInputPort(port: Port, path: string): Port {
   return port;
 }
 
-/** Reject an output port declared as a spectrum or a bundle, neither of which a formula may produce. */
+/**
+ * Reject an output port declared as a bundle, or a numeric one declared
+ * `variadic` — a formula produces exactly one value, never several, so
+ * neither shape is something an output can be.
+ */
 export function asOutputPort(port: Port, path: string): OutputPort {
-  if (port.kind === 'spectrum') {
-    fail(path, 'a spectrum is an input only — a formula cannot produce one');
-  }
   if (port.kind === 'bundle') {
     fail(path, "a bundle is 'pack's own output only — a catalogue formula cannot produce one");
+  }
+  if (port.kind === 'numeric' && port.variadic === true) {
+    fail(path, "'variadic' is an input-only flag — a formula cannot produce several values");
   }
   return port;
 }

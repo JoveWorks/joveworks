@@ -20,10 +20,12 @@
  * reasoning applies to the document version alone — a catalogue on a version
  * this build does not understand still gets the same
  * hard, named refusal `readSchemaVersion` below always gave, because nothing
- * here migrates catalogue content. Real student graphs and real cached
- * catalogues exist now (course beta): "regenerate the file" is no longer an
- * acceptable answer to "the version changed," which is the assumption this
- * file used to be written under.
+ * here migrates catalogue content. The course beta is still being prepped:
+ * no student has a saved graph and no school has a cached catalogue yet, so
+ * "regenerate the file" is still an acceptable answer to "the version
+ * changed" — the window for a plain format break, rather than a migration,
+ * is still open. That changes the moment real files exist, and this file's
+ * reasoning above is already written for that day.
  */
 
 import { fail, join, readInteger, required, type JsonObject } from './json.js';

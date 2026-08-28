@@ -147,11 +147,11 @@ describe('connectResolvingTableColumn', () => {
     ]);
   });
 
-  it('preserves spectrum joining for an ordinary target', () => {
+  it('preserves variadic-port joining for an ordinary target', () => {
     const total: Formula = {
       id: 'invented.total',
       version: 1,
-      inputs: [{ kind: 'spectrum', name: 'loads', unit: parseUnit('N') }],
+      inputs: [{ kind: 'numeric', name: 'loads', unit: parseUnit('N'), variadic: true }],
       outputs: [{ kind: 'numeric', name: 'total', unit: parseUnit('N') }],
       expressions: { total: 'sum(loads)' },
       description: 'Invented total for connection tests',
@@ -164,15 +164,15 @@ describe('connectResolvingTableColumn', () => {
       restricted: false,
       formulas: [total],
     };
-    const spectrum = (id: string): InputNode => ({
+    const load = (id: string, value: number): InputNode => ({
       kind: 'input',
       id,
-      value: { kind: 'spectrum', values: [1, 2], unit: parseUnit('N') },
+      value: { kind: 'scalar', value, unit: parseUnit('N') },
       position: { x: 0, y: 0 },
     });
     let current = documentWith(
-      spectrum('first'),
-      spectrum('second'),
+      load('first', 1),
+      load('second', 2),
       { kind: 'formula', id: 'total', formula: formulaRef(total), position: { x: 300, y: 0 } },
     );
     current = connect(current, { node: 'first', port: VALUE_PORT }, { node: 'total', port: 'loads' }, true);

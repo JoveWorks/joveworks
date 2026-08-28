@@ -119,7 +119,7 @@ export function sensitivityCandidates(
       continue;
     }
 
-    if (node.value.kind === 'categorical' || node.value.kind === 'spectrum') continue;
+    if (node.value.kind === 'categorical') continue;
 
     const outgoing = document.edges.find((edge) => edge.from.node === node.id && edge.from.port === VALUE_PORT);
     if (outgoing === undefined) continue;

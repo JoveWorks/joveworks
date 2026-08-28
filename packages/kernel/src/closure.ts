@@ -35,7 +35,7 @@ import { CONSTANTS, REDUCTIONS } from './functions.js';
 import { parseExpression } from './parse.js';
 
 /**
- * Every free name that is ever a reduction's spectrum argument — `sum(xs)`,
+ * Every free name that is ever a reduction's variadic argument — `sum(xs)`,
  * or `at(xs, i)`'s `xs` but not its plain index `i` — not `xs` alone.
  */
 function reductionArguments(expr: Expr, into: Set<string>): void {
@@ -72,8 +72,8 @@ export function closureFormula(expression: string): Formula {
     throw new KernelError('type an equation, e.g. a + b');
   }
   const expr = parseExpression(expression);
-  const spectra = new Set<string>();
-  reductionArguments(expr, spectra);
+  const variadicNames = new Set<string>();
+  reductionArguments(expr, variadicNames);
 
   const names = [...expressionNames(expr)]
     .filter((name) => CONSTANTS[name] === undefined)
@@ -85,11 +85,12 @@ export function closureFormula(expression: string): Formula {
     );
   }
 
-  const inputs: Port[] = names.map((name) =>
-    spectra.has(name)
-      ? { kind: 'spectrum', name, unit: parseGenericDimension(`$${name}`) }
-      : { kind: 'numeric', name, unit: parseGenericDimension(`$${name}`) },
-  );
+  const inputs: Port[] = names.map((name) => ({
+    kind: 'numeric',
+    name,
+    unit: parseGenericDimension(`$${name}`),
+    ...(variadicNames.has(name) ? { variadic: true } : {}),
+  }));
 
   return {
     id: 'closure',

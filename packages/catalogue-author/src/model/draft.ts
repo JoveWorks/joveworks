@@ -24,7 +24,7 @@ import {
 
 export type DraftLocalizedText = Readonly<Record<string, string>>;
 
-export type DraftPortKind = 'numeric' | 'categorical' | 'spectrum';
+export type DraftPortKind = 'numeric' | 'categorical';
 
 export interface DraftValidRange {
   readonly min: string;
@@ -35,7 +35,7 @@ export interface DraftPort {
   readonly key: string;
   readonly kind: DraftPortKind;
   readonly name: string;
-  /** Numeric/spectrum only. */
+  /** Numeric only. */
   readonly unit: string;
   readonly preferredUnit: string;
   /** Numeric default, or the categorical default value. */
@@ -44,6 +44,8 @@ export interface DraftPort {
   readonly monotonic: Monotonicity | '';
   /** Categorical only, comma-separated. */
   readonly domain: string;
+  /** Numeric only: this input takes several wires instead of one. */
+  readonly variadic: boolean;
   readonly description: DraftLocalizedText;
 }
 
@@ -101,6 +103,7 @@ export function emptyPort(kind: DraftPortKind): DraftPort {
     validRange: { min: '', max: '' },
     monotonic: '',
     domain: '',
+    variadic: false,
     description: {},
   };
 }
@@ -148,17 +151,7 @@ function draftPortFromReal(port: Port): DraftPort {
         validRange: { min: '', max: '' },
         monotonic: '',
         domain: port.domain.join(', '),
-      };
-    case 'spectrum':
-      return {
-        ...base,
-        kind: 'spectrum',
-        unit: port.unit.symbol,
-        preferredUnit: port.preferredUnit?.symbol ?? '',
-        defaultValue: '',
-        validRange: { min: '', max: '' },
-        monotonic: '',
-        domain: '',
+        variadic: false,
       };
     case 'bundle':
       // No catalogue formula declares one (see packages/schema/src/port.ts's
@@ -173,6 +166,7 @@ function draftPortFromReal(port: Port): DraftPort {
         validRange: { min: '', max: '' },
         monotonic: '',
         domain: '',
+        variadic: false,
       };
     case 'numeric':
     default:
@@ -188,6 +182,7 @@ function draftPortFromReal(port: Port): DraftPort {
         },
         monotonic: port.monotonic ?? '',
         domain: '',
+        variadic: port.variadic ?? false,
       };
   }
 }

@@ -9,7 +9,7 @@
 import type { ReactElement } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 
-import { parseUnit, type NumberFormat, type Unit } from '@joveworks/units';
+import { DIMENSIONLESS_UNIT, parseUnit, type NumberFormat, type Unit } from '@joveworks/units';
 import {
   MAX_PORT,
   MEAN_PORT,
@@ -30,11 +30,11 @@ import { toUnitsFormat } from '../model/numberFormat';
 import { nodeLabel, reframe, removeNodes, syncColumnLabels, updateNode } from '../model/document';
 import { setMonteCarloSampleCount } from '../model/monteCarlo';
 import { axisLabel, reading, summarise, type Reading } from '../model/values';
-import { ParameterLabel } from '../ParameterLabel';
+import { ParameterLabel, UnitInLabel } from '../ParameterLabel';
 import { NodeShell } from './NodeShell';
 import { NumberField, TextField } from './fields';
 import type { CanvasFlowNode } from './node-data';
-import { slotHandleId } from './spectrumSlots';
+import { slotHandleId } from './portSlots';
 import { Sparkline } from './Sparkline';
 import { TitleField, TitleText } from './TitleField';
 
@@ -152,6 +152,9 @@ export function MonteCarloGeneratorNodeView({ id, selected, data }: NodeProps<Ca
     const edge = document.edges.find((entry) => entry.to.node === id && entry.to.port === port);
     return edge === undefined ? undefined : reading(analysis, edge.from.node, edge.from.port);
   };
+  /** Every edge already arriving at one port — more than one only for `values`/`weights`, which are variadic. */
+  const edgesAt = (port: string): number =>
+    document.edges.filter((edge) => edge.to.node === id && edge.to.port === port).length;
   const onPortHover = (port: string) => () => data?.onPortHover?.({ nodeId: id, port });
   const onPortHoverEnd = () => data?.onPortHover?.();
   const setNode = (change: (current: MonteCarloGeneratorNode) => MonteCarloGeneratorNode): void =>
@@ -305,15 +308,56 @@ export function MonteCarloGeneratorNodeView({ id, selected, data }: NodeProps<Ca
             />
           </>
         ) : (
-          <>
-            {[VALUES_PORT, WEIGHTS_PORT].map((port) => (
-              <li key={port} className={`port${highlightedPorts.has(port) ? ' port-highlighted' : ''}`}>
-                <Handle type="target" position={Position.Left} id={slotHandleId(port, 0)} />
-                <span className="port-name">{port}</span>
-                <span className="port-unit">spectrum{port === WEIGHTS_PORT ? ' (optional)' : ''}</span>
+          // `values` and `weights` are variadic: one wire per possible draw,
+          // rendered the same numbered-slot-plus-trailing-ghost-slot way a
+          // reduction's variadic input is (`FormulaNodeView`) — there is no
+          // single node left that can hold "the whole set of choices" the
+          // way a spectrum input node once did, so a three-choice discrete
+          // distribution is three wires in and `weights` is optional (unwired
+          // draws equal weights).
+          [VALUES_PORT, WEIGHTS_PORT].flatMap((port) => {
+            const count = edgesAt(port);
+            const unit = port === WEIGHTS_PORT ? DIMENSIONLESS_UNIT : node.unit;
+            const filled = Array.from({ length: count }, (_unused, i) => (
+              <li
+                key={`${port}-${i}`}
+                className={`port${highlightedPorts.has(port) ? ' port-highlighted' : ''}`}
+                onMouseEnter={onPortHover(port)}
+                onMouseLeave={onPortHoverEnd}
+              >
+                <Handle
+                  type="target"
+                  position={Position.Left}
+                  id={slotHandleId(port, i)}
+                  className={highlightedPorts.has(port) ? 'port-highlighted' : ''}
+                />
+                {i === 0 ? (
+                  <ParameterLabel name={port} unit={unit} nameClassName="port-name" unitClassName="port-unit" />
+                ) : (
+                  <UnitInLabel unit={unit} className="port-unit" />
+                )}
               </li>
-            ))}
-          </>
+            ));
+            return [
+              ...filled,
+              <li
+                key={`${port}-open`}
+                className={`${count === 0 && port === VALUES_PORT ? 'port missing' : 'port port-open'}${highlightedPorts.has(port) ? ' port-highlighted' : ''}`}
+                onMouseEnter={onPortHover(port)}
+                onMouseLeave={onPortHoverEnd}
+              >
+                <Handle
+                  type="target"
+                  position={Position.Left}
+                  id={slotHandleId(port, 'open')}
+                  className={`${count === 0 && port === VALUES_PORT ? 'missing' : ''}${highlightedPorts.has(port) ? ' port-highlighted' : ''}`}
+                />
+                {count === 0 ? (
+                  <span className="port-name">{port}{port === WEIGHTS_PORT ? ' (optional)' : ''}</span>
+                ) : null}
+              </li>,
+            ];
+          })
         )}
       </ul>
       <div className="node-value-editor generator-editor">

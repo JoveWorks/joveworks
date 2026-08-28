@@ -137,7 +137,7 @@ export function lookupCatalogue(catalogues: readonly Catalogue[], id: string): C
  */
 function hasValue(node: GraphNode, port: Port): boolean {
   const authored = 'inputValues' in node ? node.inputValues?.[port.name] : undefined;
-  if (port.kind === 'spectrum' || port.kind === 'bundle') return false;
+  if (port.kind === 'bundle' || (port.kind === 'numeric' && port.variadic === true)) return false;
   if (port.kind === 'categorical') return authored !== undefined || port.default !== undefined;
   if (authored !== undefined) return true;
   return port.default !== undefined && !isGenericPort(port);
@@ -193,7 +193,7 @@ function readiness(
   problems: Map<string, ReactNode>,
 ): ReadonlySet<string> {
   const ready = new Set<string>();
-  // More than one source only for a spectrum port — a plain `Map` here
+  // More than one source only for a variadic port — a plain `Map` here
   // would let a second edge silently overwrite the first, and readiness would
   // only ever check whichever source happened to be recorded last.
   const wired = new Map<string, Array<{ readonly node: string; readonly port: string }>>();

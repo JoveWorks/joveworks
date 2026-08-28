@@ -8,16 +8,16 @@
  *
  * **Nothing here is textbook content.** These are the operations of arithmetic;
  * they carry no citation, and the catalogue is `restricted: false`. Reductions
- * over a whole series — `sum`, `mean`, `median`, and the rest — live in
- * `arrayNodes.ts` instead, as their own catalogue: see that file's docstring
- * for why they are not folded in here.
+ * over every value wired into a port — `sum`, `mean`, `median`, and the rest —
+ * live in `arrayNodes.ts` instead, as their own catalogue: see that file's
+ * docstring for why they are not folded in here.
  *
  * Three rules govern the dimensions:
  *
  * - trig, log and exp **require a dimensionless argument** — so their ports are
  *   concrete, not generic;
  * - `min`/`max` require **identical** dimensions across every value compared —
- *   one variable, joined by any number of wires into one spectrum port,
+ *   one variable, joined by any number of wires into one variadic port,
  *   not two fixed ones;
  * - rounding **preserves** dimension — `floor` is `$A → $A`, not `$A → ''`.
  *
@@ -27,7 +27,7 @@
 
 import type { Formula } from '@joveworks/schema';
 import { parseGenericDimension } from '@joveworks/units';
-import { buildFormulas, generic, genericSpectrum, plain, text, type Draft } from './draft.js';
+import { buildFormulas, generic, genericVariadic, plain, text, type Draft } from './draft.js';
 import { ISO286_FORMULAS } from './iso286.js';
 
 const DRAFTS: readonly Draft[] = [
@@ -79,14 +79,14 @@ const DRAFTS: readonly Draft[] = [
     description: 'The smallest of any number of values, all the same dimension.',
     expression: 'least(a)',
     output: generic('smallest', 'A', 'least(a)'),
-    inputs: [genericSpectrum('a', 'A', 'Values to compare — wire as many as needed')],
+    inputs: [genericVariadic('a', 'A', 'Values to compare — wire as many as needed')],
   },
   {
     id: 'maximum',
     description: 'The largest of any number of values, all the same dimension.',
     expression: 'greatest(a)',
     output: generic('largest', 'A', 'greatest(a)'),
-    inputs: [genericSpectrum('a', 'A', 'Values to compare — wire as many as needed')],
+    inputs: [genericVariadic('a', 'A', 'Values to compare — wire as many as needed')],
   },
 
   // --- arithmetic, dimension-combining -------------------------------------

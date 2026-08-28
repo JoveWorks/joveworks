@@ -151,7 +151,16 @@ describe('what the library carries', () => {
     }
   });
 
-  it('has a spectrum input on each reduction and nowhere else', () => {
+  // `variadic` is the general "this port takes several wires" flag — not
+  // reduction-specific — so the honest invariant here is two-way and scoped
+  // to what `HAND_AUTHORED` actually covers (`operations.ts`/`arrayNodes.ts`
+  // built through `draft.ts`): every reduction in this pair of catalogues
+  // has one, and nothing else in them does. `mechanicsNodes.ts`'s shaft
+  // formulas declare `variadic` ports too (`position`/`force`,
+  // `start`/`end`/`rate`), by the same convention — they are just built
+  // directly rather than through `draft.ts` and are not part of
+  // `HAND_AUTHORED`, so this test does not see them.
+  it('has a variadic input on each reduction and nowhere else', () => {
     const reductions = new Set([
       'sum',
       'product',
@@ -164,8 +173,8 @@ describe('what the library carries', () => {
       'valueAt',
     ]);
     for (const formula of HAND_AUTHORED) {
-      const spectrum = formula.inputs.some((port) => port.kind === 'spectrum');
-      expect(spectrum, formula.id).toBe(reductions.has(formula.id));
+      const variadic = formula.inputs.some((port) => port.kind === 'numeric' && port.variadic === true);
+      expect(variadic, formula.id).toBe(reductions.has(formula.id));
     }
   });
 

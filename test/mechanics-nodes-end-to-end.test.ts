@@ -84,14 +84,18 @@ describe('the mechanics node library through the kernel', () => {
     // 500 N·mm applied at z = 0 mm, taken off again (-500 N·mm) at z = 100 mm.
     const document = graph(
       [
-        input('position', { kind: 'spectrum', values: [0, 100], unit: 'mm' }),
-        input('torque', { kind: 'spectrum', values: [500, -500], unit: 'Nmm' }),
+        input('position0', { kind: 'scalar', value: 0, unit: 'mm' }),
+        input('position1', { kind: 'scalar', value: 100, unit: 'mm' }),
+        input('torque0', { kind: 'scalar', value: 500, unit: 'Nmm' }),
+        input('torque1', { kind: 'scalar', value: -500, unit: 'Nmm' }),
         input('z', { kind: 'list', values: [0, 50, 100, 150], unit: 'mm' }),
         node('T', 'shaftTorque'),
       ],
       [
-        wire('position.value', 'T.position'),
-        wire('torque.value', 'T.torque'),
+        wire('position0.value', 'T.position'),
+        wire('position1.value', 'T.position'),
+        wire('torque0.value', 'T.torque'),
+        wire('torque1.value', 'T.torque'),
         wire('z.value', 'T.z'),
       ],
     );
@@ -107,8 +111,8 @@ describe('the mechanics node library through the kernel', () => {
     // Rb = P·x/L = 400 N, both upward (positive) — worked by hand, not from
     // a book, since this is generic statics rather than R&M content.
     const nodes: JsonObject[] = [
-      input('position', { kind: 'spectrum', values: [80], unit: 'mm' }),
-      input('force', { kind: 'spectrum', values: [-1000], unit: 'N' }),
+      input('position', { kind: 'scalar', value: 80, unit: 'mm' }),
+      input('force', { kind: 'scalar', value: -1000, unit: 'N' }),
       input('supportA', { kind: 'scalar', value: 0, unit: 'mm' }),
       input('supportB', { kind: 'scalar', value: 200, unit: 'mm' }),
 
@@ -185,11 +189,11 @@ describe('the mechanics node library through the kernel', () => {
     // superposition, not a realistic supported beam), plus a −2 N/mm
     // distributed load from z = 100 to 140 mm (−80 N total).
     const nodes: JsonObject[] = [
-      input('position', { kind: 'spectrum', values: [80], unit: 'mm' }),
-      input('force', { kind: 'spectrum', values: [-1000], unit: 'N' }),
-      input('start', { kind: 'spectrum', values: [100], unit: 'mm' }),
-      input('end', { kind: 'spectrum', values: [140], unit: 'mm' }),
-      input('rate', { kind: 'spectrum', values: [-2], unit: 'N/mm' }),
+      input('position', { kind: 'scalar', value: 80, unit: 'mm' }),
+      input('force', { kind: 'scalar', value: -1000, unit: 'N' }),
+      input('start', { kind: 'scalar', value: 100, unit: 'mm' }),
+      input('end', { kind: 'scalar', value: 140, unit: 'mm' }),
+      input('rate', { kind: 'scalar', value: -2, unit: 'N/mm' }),
       input('z', { kind: 'list', values: [50, 90, 120, 200], unit: 'mm' }),
       node('pointShear', 'shaftShear'),
       node('distShear', 'shaftDistributedShear'),
@@ -239,8 +243,8 @@ describe('the mechanics node library through the kernel', () => {
     // (EI = 1 000 000 N·mm², invented — no cross-section formula exists
     // yet), y(80) = −153.6 mm.
     const nodes: JsonObject[] = [
-      input('position', { kind: 'spectrum', values: [80], unit: 'mm' }),
-      input('force', { kind: 'spectrum', values: [-1000], unit: 'N' }),
+      input('position', { kind: 'scalar', value: 80, unit: 'mm' }),
+      input('force', { kind: 'scalar', value: -1000, unit: 'N' }),
       input('supportA', { kind: 'scalar', value: 0, unit: 'mm' }),
       input('supportB', { kind: 'scalar', value: 200, unit: 'mm' }),
 
@@ -342,8 +346,8 @@ describe('the mechanics node library through the kernel', () => {
     // both supports (not just "zero because I forgot the correction"),
     // matching the −153.6 mm computed above.
     const nodes: JsonObject[] = [
-      input('position', { kind: 'spectrum', values: [80], unit: 'mm' }),
-      input('force', { kind: 'spectrum', values: [-1000], unit: 'N' }),
+      input('position', { kind: 'scalar', value: 80, unit: 'mm' }),
+      input('force', { kind: 'scalar', value: -1000, unit: 'N' }),
       input('supportA', { kind: 'scalar', value: 0, unit: 'mm' }),
       input('supportB', { kind: 'scalar', value: 200, unit: 'mm' }),
 

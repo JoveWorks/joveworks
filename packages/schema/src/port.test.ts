@@ -135,12 +135,24 @@ describe('categorical ports', () => {
   });
 });
 
-describe('spectrum ports', () => {
-  const spectrum: JsonValue = { kind: 'spectrum', name: 'P_i', unit: 'kW' };
+describe('variadic ports', () => {
+  const variadic: JsonValue = { kind: 'numeric', name: 'P_i', unit: 'kW', variadic: true };
 
-  it('is an input only — a formula cannot produce one', () => {
-    expect(() => asOutputPort(parsePort(spectrum, 'output'), 'output')).toThrow(
-      /output: a spectrum is an input only/,
+  it('parses and serializes the flag', () => {
+    const port = parsePort(variadic, 'port');
+    expect(port.kind === 'numeric' && port.variadic).toBe(true);
+    expect(serializePort(port)).toMatchObject({ variadic: true });
+  });
+
+  it('is absent by default, and left out of the serialized form', () => {
+    const port = parsePort(numeric, 'port');
+    expect(port.kind === 'numeric' && port.variadic).toBeUndefined();
+    expect(serializePort(port)).not.toHaveProperty('variadic');
+  });
+
+  it('is an input-only flag — a formula cannot produce several values', () => {
+    expect(() => asOutputPort(parsePort(variadic, 'output'), 'output')).toThrow(
+      /output: 'variadic' is an input-only flag/,
     );
   });
 
@@ -212,8 +224,8 @@ describe('generic ports', () => {
     expect(() => asInputPort(squared, 'inputs[0]')).toThrow(/not a bare variable/);
   });
 
-  it('lets a spectrum port be generic — sum consumes a series of anything', () => {
-    const port = parsePort({ kind: 'spectrum', name: 'xs', unit: '$A' }, 'port');
+  it('lets a variadic port be generic — sum consumes values of anything', () => {
+    const port = parsePort({ kind: 'numeric', name: 'xs', unit: '$A', variadic: true }, 'port');
     expect(isGenericPort(port)).toBe(true);
     expect(portDimension(port)).toBeUndefined();
   });

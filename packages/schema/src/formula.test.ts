@@ -62,7 +62,7 @@ describe('the formula record', () => {
           monotonic: 'increasing',
         },
         { kind: 'categorical', name: 'grade', domain: ['soft', 'hard'], default: 'soft' },
-        { kind: 'spectrum', name: 'c_i', unit: 'N' },
+        { kind: 'numeric', name: 'c_i', unit: 'N', variadic: true },
       ],
     };
     expect(serializeFormula(parse(json))).toEqual(json);
@@ -457,8 +457,8 @@ describe('piecewise formulas', () => {
     output: { kind: 'numeric', name: 'y', unit: 'N' },
     inputs: [
       { kind: 'numeric', name: 'z', unit: 'mm', default: 0 },
-      { kind: 'spectrum', name: 'position', unit: 'mm' },
-      { kind: 'spectrum', name: 'value', unit: 'N' },
+      { kind: 'numeric', name: 'position', unit: 'mm', variadic: true },
+      { kind: 'numeric', name: 'value', unit: 'N', variadic: true },
     ],
     expression: 'sum(value)',
     piecewise: { kind: 'cumulativeStep', axis: 'z', breakpoints: ['position'], values: ['value'] },
@@ -518,7 +518,7 @@ describe('piecewise formulas', () => {
     ).toThrow(/needs a concrete numeric output/);
   });
 
-  it('accepts a plain numeric port alongside a spectrum in the same breakpoints/values list', () => {
+  it('accepts a plain numeric port alongside a variadic one in the same breakpoints/values list', () => {
     const withExtra: JsonObject = {
       ...running,
       inputs: [
@@ -540,7 +540,7 @@ describe('piecewise formulas', () => {
   it('rejects a name in breakpoints/values that is not a declared input', () => {
     expect(() =>
       parseFormula({ ...running, piecewise: { ...(running['piecewise'] as JsonObject), values: ['nope'] } }, ''),
-    ).toThrow(/'nope' must be a declared spectrum or numeric input/);
+    ).toThrow(/'nope' must be a declared numeric input/);
   });
 
   it('round-trips the cumulativeMoment kind', () => {
@@ -597,9 +597,9 @@ describe('piecewise formulas', () => {
             ...cubic,
             inputs: [
               ...(cubic['inputs'] as JsonObject[]),
-              { kind: 'spectrum', name: 'start', unit: 'mm' },
-              { kind: 'spectrum', name: 'end', unit: 'mm' },
-              { kind: 'spectrum', name: 'rate', unit: 'N/mm' },
+              { kind: 'numeric', name: 'start', unit: 'mm', variadic: true },
+              { kind: 'numeric', name: 'end', unit: 'mm', variadic: true },
+              { kind: 'numeric', name: 'rate', unit: 'N/mm', variadic: true },
             ],
             piecewise: {
               ...(cubic['piecewise'] as JsonObject),
@@ -617,9 +617,9 @@ describe('piecewise formulas', () => {
       ...running,
       inputs: [
         ...(running['inputs'] as JsonObject[]),
-        { kind: 'spectrum', name: 'start', unit: 'mm' },
-        { kind: 'spectrum', name: 'end', unit: 'mm' },
-        { kind: 'spectrum', name: 'rate', unit: 'N/mm' },
+        { kind: 'numeric', name: 'start', unit: 'mm', variadic: true },
+        { kind: 'numeric', name: 'end', unit: 'mm', variadic: true },
+        { kind: 'numeric', name: 'rate', unit: 'N/mm', variadic: true },
       ],
       piecewise: {
         kind: 'cumulativeStep', axis: 'z',
@@ -697,8 +697,8 @@ describe('deflection formulas', () => {
     output: { kind: 'numeric', name: 'y', unit: 'mm' },
     inputs: [
       { kind: 'numeric', name: 'z', unit: 'mm', default: 0 },
-      { kind: 'spectrum', name: 'position', unit: 'mm' },
-      { kind: 'spectrum', name: 'value', unit: 'N' },
+      { kind: 'numeric', name: 'position', unit: 'mm', variadic: true },
+      { kind: 'numeric', name: 'value', unit: 'N', variadic: true },
       { kind: 'numeric', name: 'supportA', unit: 'mm' },
       { kind: 'numeric', name: 'supportB', unit: 'mm' },
       { kind: 'numeric', name: 'modulus', unit: 'N/mm²' },
@@ -769,7 +769,7 @@ describe('deflection formulas', () => {
     ).toThrow(/must have the output's dimension times 'modulus''s and 'inertia''s, divided by 'z''s cubed/);
   });
 
-  it('rejects a spectrum port used as zeroAt/modulus/secondMomentOfArea', () => {
+  it('rejects a variadic port used as zeroAt/modulus/secondMomentOfArea', () => {
     expect(() =>
       parseFormula(
         { ...beam, deflection: { ...(beam['deflection'] as JsonObject), modulus: 'position' } },

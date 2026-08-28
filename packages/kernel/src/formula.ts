@@ -122,7 +122,7 @@ function compilePerOutput<T>(
 export function compileClosureFormula(formula: Formula, where?: string): CompiledFormula {
   return {
     formula,
-    scope: { dimensions: {}, spectra: new Set() },
+    scope: { dimensions: {}, variadic: new Set() },
     evaluate: compilePerOutput(formula, where, (name) => expressionOf(formula, name), compileExpression),
     appliesWhen: new Map(),
   };
@@ -170,7 +170,7 @@ function genericVariablesOf(formula: Formula): ReadonlySet<string> {
  */
 function checkRecord(formula: Formula, bindings: Bindings, where: string): DimensionScope {
   const dimensions: Record<string, Dimension> = {};
-  const spectra = new Set<string>();
+  const variadic = new Set<string>();
   for (const port of formula.inputs) {
     const dimension = portDimensionUnder(port, bindings, where);
     if (dimension === undefined) {
@@ -181,9 +181,9 @@ function checkRecord(formula: Formula, bindings: Bindings, where: string): Dimen
       );
     }
     dimensions[port.name] = dimension;
-    if (port.kind === 'spectrum') spectra.add(port.name);
+    if (port.kind === 'numeric' && port.variadic === true) variadic.add(port.name);
   }
-  const scope: DimensionScope = { dimensions, spectra };
+  const scope: DimensionScope = { dimensions, variadic };
 
   // A table-backed output needs no expression to vouch for it: its column is
   // read in the unit it declares. Only what an expression computes has to be

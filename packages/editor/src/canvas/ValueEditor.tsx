@@ -21,7 +21,7 @@ import { ui } from '../i18n';
 import { toUnitsFormat } from '../model/numberFormat';
 import { NumberField, TextField } from './fields';
 
-type Kind = 'scalar' | 'slider' | 'linear' | 'logarithmic' | 'list' | 'renard' | 'spectrum' | 'categorical' | 'categoricalList' | 'tableColumn';
+type Kind = 'scalar' | 'slider' | 'linear' | 'logarithmic' | 'list' | 'renard' | 'categorical' | 'categoricalList' | 'tableColumn';
 
 /**
  * A unit field's placeholder when empty — matching `unitLabel`'s own
@@ -50,16 +50,16 @@ export function roundToDecimalFigures(value: number, figures: number): number {
 /** The smallest bound already on the value, so a switch never throws away the one number worth keeping. */
 function smallest(value: ValueSpec): number {
   if (value.kind === 'scalar' || value.kind === 'slider') return value.value;
-  if (value.kind === 'list' || value.kind === 'spectrum') return Math.min(...value.values);
+  if (value.kind === 'list') return Math.min(...value.values);
   if (value.kind === 'linear' || value.kind === 'logarithmic' || value.kind === 'renard') {
     return Math.min(value.start, value.stop);
   }
   return 1;
 }
 
-/** The largest value already typed into a list or spectrum, so a switch to a range can take both its ends as bounds. */
+/** The largest value already typed into a list, so a switch to a range can take both its ends as bounds. */
 function largest(value: ValueSpec): number | undefined {
-  return value.kind === 'list' || value.kind === 'spectrum' ? Math.max(...value.values) : undefined;
+  return value.kind === 'list' ? Math.max(...value.values) : undefined;
 }
 
 function firstCategory(value: ValueSpec): string {
@@ -99,7 +99,6 @@ export function converted(value: ValueSpec, kind: Kind): ValueSpec {
       return { kind, start, stop, points: 10, unit };
     }
     case 'list':
-    case 'spectrum':
       return { kind, values: [sample, sample * 2], unit };
     case 'renard': {
       const start = sample <= 0 ? 1 : sample;
@@ -163,13 +162,12 @@ export function ValueKindSelect({ value, onChange }: Props): ReactElement {
   const labels: Readonly<Record<Kind, string>> = {
     scalar: copy.scalar, slider: copy.slider, linear: copy.linear,
     logarithmic: copy.logarithmic, list: copy.list, renard: copy.renard,
-    // Not yet localized, same as the niche kinds already this way — a
-    // spectrum was schema-only until now (ROADMAP item 5).
-    spectrum: 'spectrum', categorical: 'category', categoricalList: 'category list',
+    // Not yet localized, same as the other niche kinds already this way.
+    categorical: 'category', categoricalList: 'category list',
     tableColumn: 'table column',
   };
   const kind = (
-    ['scalar', 'slider', 'linear', 'logarithmic', 'list', 'renard', 'spectrum', 'categorical', 'categoricalList', 'tableColumn'] as const
+    ['scalar', 'slider', 'linear', 'logarithmic', 'list', 'renard', 'categorical', 'categoricalList', 'tableColumn'] as const
   ).includes(value.kind as Kind)
     ? (value.kind as Kind)
     : 'scalar';
@@ -270,7 +268,6 @@ export function ValueFields({ value, onChange, onSliderChange, onSliderCommit }:
     switch (value.kind) {
       case 'scalar':
       case 'slider':
-      case 'spectrum':
       case 'linear':
       case 'logarithmic':
       case 'list':
@@ -538,40 +535,6 @@ export function ValueFields({ value, onChange, onSliderChange, onSliderCommit }:
         </div>
       ) : null}
 
-      {value.kind === 'spectrum' ? (
-        <div className="range-fields">
-          <label className="wide">
-            spectrum
-            <TextField
-              className="list"
-              value={value.values.join(', ')}
-              placeholder="500, -1200, 300"
-              title="A load spectrum — consumed whole by whatever it's wired to, not swept point by point."
-              onCommit={(text) => {
-                const values = text
-                  .split(/[,;\s]+/u)
-                  .filter((entry) => entry.length > 0)
-                  .map((entry) => {
-                    const parsed = Number(entry);
-                    if (!Number.isFinite(parsed)) throw new Error(`'${entry}' is not a number`);
-                    return parsed;
-                  });
-                if (values.length === 0) throw new Error('a spectrum needs at least one value');
-                onChange({ ...value, values });
-              }}
-            />
-          </label>
-          <label>
-            unit
-            <TextField
-              className="unit"
-              value={unit.symbol}
-              placeholder={EMPTY_UNIT}
-              onCommit={setUnit}
-            />
-          </label>
-        </div>
-      ) : null}
     </div>
   );
 }

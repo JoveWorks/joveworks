@@ -100,13 +100,13 @@ function portJson(port: DraftPort): JsonObject {
 
   out['unit'] = port.unit;
   if (port.preferredUnit.trim().length > 0) out['preferredUnit'] = port.preferredUnit;
-  if (port.kind === 'spectrum') return out;
 
   const fallback = numberField(port.defaultValue);
   if (fallback !== undefined) out['default'] = fallback;
   const validRange = validRangeJson(port.validRange);
   if (validRange !== undefined) out['validRange'] = validRange;
   if (port.monotonic.length > 0) out['monotonic'] = port.monotonic;
+  if (port.variadic) out['variadic'] = true;
   return out;
 }
 

@@ -37,8 +37,8 @@ import { parseExpression, parsePredicate } from './parse.js';
 
 /**
  * What a compiled closure reads. A port name resolves either to a number — the
- * value in this cell of the sweep — or, for a spectrum port, to the whole series
- * at once.
+ * value in this cell of the sweep — or, for a variadic port, to the whole
+ * collected series at once.
  */
 export type Env = Readonly<Record<string, number | readonly number[]>>;
 
@@ -66,13 +66,14 @@ function readSeries(env: Env, name: string): readonly number[] {
 }
 
 /**
- * The bare spectrum name a reduction's first argument must be, plus whatever
- * plain expressions follow it (`at`'s index, for reductions that declare an
- * `extraArity`).
+ * The bare variadic-port name a reduction's first argument must be, plus
+ * whatever plain expressions follow it (`at`'s index, for reductions that
+ * declare an `extraArity`).
  *
- * `sum(xs)` is a whole port consumed at once, so `sum(xs * 2)` is not a smaller
- * version of the same idea — it is an elementwise operation this language has no
- * way to express. Saying so at compile time beats a confusing runtime failure.
+ * `sum(xs)` is every wired value consumed at once, so `sum(xs * 2)` is not a
+ * smaller version of the same idea — it is an elementwise operation this
+ * language has no way to express. Saying so at compile time beats a
+ * confusing runtime failure.
  */
 function reductionCallParts(
   expr: Expr,
@@ -85,7 +86,7 @@ function reductionCallParts(
   if (expr.kind !== 'call' || args.length !== 1 + extraArity || first === undefined || first.kind !== 'name') {
     const example = extraArity === 0 ? `${callee}(xs)` : `${callee}(xs, i)`;
     throw new KernelError(
-      `${callee}() takes one spectrum port by name${extraArity > 0 ? ' plus an index' : ''}, as in '${example}'`,
+      `${callee}() takes one variadic port by name${extraArity > 0 ? ' plus an index' : ''}, as in '${example}'`,
       where,
     );
   }
@@ -224,8 +225,8 @@ export function compilePredicate(source: string, where?: string): CompiledPredic
 export interface DimensionScope {
   /** Port name → dimension. A generic port must already be resolved. */
   readonly dimensions: Readonly<Record<string, Dimension>>;
-  /** Which of those are spectrum ports, and so may only be reduced. */
-  readonly spectra?: ReadonlySet<string>;
+  /** Which of those are variadic ports, and so may only be reduced. */
+  readonly variadic?: ReadonlySet<string>;
 }
 
 /**
@@ -304,9 +305,9 @@ function dimensionOf(expr: Expr, scope: DimensionScope, where: string | undefine
       if (dimension === undefined) {
         throw new KernelError(`'${expr.name}' is not a port of this formula`, where);
       }
-      if (scope.spectra?.has(expr.name) === true) {
+      if (scope.variadic?.has(expr.name) === true) {
         throw new KernelError(
-          `'${expr.name}' is a spectrum and can only be reduced, as in 'sum(${expr.name})'`,
+          `'${expr.name}' is a variadic port and can only be reduced, as in 'sum(${expr.name})'`,
           where,
         );
       }
@@ -361,9 +362,9 @@ function dimensionOf(expr: Expr, scope: DimensionScope, where: string | undefine
         if (dimension === undefined) {
           throw new KernelError(`'${name}' is not a port of this formula`, where);
         }
-        if (scope.spectra !== undefined && !scope.spectra.has(name)) {
+        if (scope.variadic !== undefined && !scope.variadic.has(name)) {
           throw new KernelError(
-            `${expr.callee}() takes a spectrum port, and '${name}' is not one`,
+            `${expr.callee}() takes a variadic port, and '${name}' is not one`,
             where,
           );
         }

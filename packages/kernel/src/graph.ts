@@ -151,7 +151,7 @@ export interface Resolution {
   readonly sources: ReadonlyMap<string, PortType>;
   /** `node.port` → the type of a port an edge may arrive at. */
   readonly targets: ReadonlyMap<string, PortType>;
-  /** `node.port` → the edges arriving there — more than one only for a spectrum port. */
+  /** `node.port` → the edges arriving there — more than one only for a variadic port. */
   readonly incoming: ReadonlyMap<string, readonly Edge[]>;
   /** node id → its generic variable bindings. */
   readonly bindings: ReadonlyMap<string, ReadonlyMap<string, Dimension>>;
@@ -230,12 +230,6 @@ function inputValueType(node: InputNode, tableColumn?: ResolvedTableColumn): Por
     case 'categorical':
     case 'categoricalList':
       return { kind: 'categorical' };
-    case 'spectrum':
-      return displayOverride(node, VALUE_PORT, {
-        kind: 'spectrum',
-        dimension: spec.unit.dimension,
-        unit: spec.unit,
-      });
     case 'tableColumn':
       if (tableColumn === undefined) throw new KernelError('this table column could not be resolved', node.id);
       return tableColumn.kind === 'categorical'
@@ -533,7 +527,7 @@ export function resolveGraph(
     return edges[0];
   };
 
-  /** `oneEdge`, as the zero-or-one-element array a spectrum port's slot takes. */
+  /** `oneEdge`, as the zero-or-one-element array a non-variadic port's single slot takes. */
   const oneEdgeArray = (key: string): readonly Edge[] => {
     const edge = oneEdge(key);
     return edge === undefined ? [] : [edge];
@@ -548,11 +542,14 @@ export function resolveGraph(
     return type;
   };
 
+  /** What a student sees when a wire and a port disagree — say what each side is, not the internal kind name. */
+  const kindNoun = (kind: PortKind): string =>
+    kind === 'numeric' ? 'a number' : kind === 'categorical' ? 'a category' : 'a bundle of channels';
+
   const checkKind = (source: PortType, target: PortType, where: string): void => {
     if (source.kind === target.kind) return;
-    if (source.kind === 'numeric' && target.kind === 'spectrum') return;
     throw new KernelError(
-      `cannot connect a ${source.kind} value to a ${target.kind} port`,
+      `this wire carries ${kindNoun(source.kind)}, but the port it lands on takes ${kindNoun(target.kind)}`,
       where,
     );
   };
@@ -598,11 +595,12 @@ export function resolveGraph(
         port.kind !== 'categorical' && port.kind !== 'bundle' && isGenericDimension(port.unit)
           ? port.unit
           : undefined;
-      // A spectrum port takes one edge per collected value; every
-      // other kind takes exactly one, which `oneEdge` throws on if not true.
-      const edges = port.kind === 'spectrum' ? (incoming.get(key) ?? []) : oneEdgeArray(key);
+      // A variadic port takes one edge per wired value; every other port
+      // takes exactly one, which `oneEdge` throws on if not true.
+      const variadic = port.kind === 'numeric' && port.variadic === true;
+      const edges = variadic ? (incoming.get(key) ?? []) : oneEdgeArray(key);
       if (edges.length === 0) {
-        // A spectrum port collects wires and takes no inline value
+        // A variadic port collects wires and takes no inline value
         // (`inputValues` is validated as scalar-or-categorical below), so
         // there is nothing here to bind from.
         const authored = inputValues?.[port.name];
@@ -703,15 +701,18 @@ export function resolveGraph(
       // `value` is wired to — here there is no `value` input to infer from,
       // so the target type never needs to wait on anything).
       if (node.distribution === 'discrete') {
+        // `values`/`weights` are variadic — one wire per possible draw, the
+        // same n-wires-one-value-each shape every other variadic port takes
+        // (`bindInputs` below) — so every edge is checked, not just one.
         const valuesKey = endpointKey(node.id, VALUES_PORT);
         const weightsKey = endpointKey(node.id, WEIGHTS_PORT);
-        targets.set(valuesKey, { kind: 'spectrum', dimension: node.unit.dimension, unit: node.unit });
-        targets.set(weightsKey, { kind: 'spectrum', dimension: DIMENSIONLESS, unit: DIMENSIONLESS_UNIT });
-        for (const key of [valuesKey, weightsKey]) {
-          const edge = oneEdge(key);
-          if (edge !== undefined) {
+        const valuesType: PortType = { kind: 'numeric', dimension: node.unit.dimension, unit: node.unit };
+        const weightsType: PortType = { kind: 'numeric', dimension: DIMENSIONLESS, unit: DIMENSIONLESS_UNIT };
+        targets.set(valuesKey, valuesType);
+        targets.set(weightsKey, weightsType);
+        for (const [key, target] of [[valuesKey, valuesType], [weightsKey, weightsType]] as const) {
+          for (const edge of incoming.get(key) ?? []) {
             const source = sourceType(edge);
-            const target = targets.get(key) as PortType;
             checkKind(source, target, key);
             if (source.dimension !== undefined && target.dimension !== undefined) {
               assertConnectable(source.dimension, target.dimension, key);
@@ -877,8 +878,10 @@ export function resolveGraph(
       if (formula.inputs.every((port) => bound.has(port.name))) {
         const scope: DimensionScope = {
           dimensions: Object.fromEntries(bound),
-          spectra: new Set(
-            formula.inputs.filter((port) => port.kind === 'spectrum').map((port) => port.name),
+          variadic: new Set(
+            formula.inputs
+              .filter((port) => port.kind === 'numeric' && port.variadic === true)
+              .map((port) => port.name),
           ),
         };
         const dimension = expressionDimension(parseExpression(node.expression), scope, node.id);
@@ -1250,13 +1253,17 @@ export function resolveGraph(
 }
 
 /**
- * Whether an edge's target is a spectrum port, straight from the catalogue —
+ * Whether an edge's target is a variadic port, straight from the catalogue —
  * cheaper than a full resolve, and all `canConnect` needs to decide whether a
- * candidate should join what's already there or displace it.
+ * candidate should join what's already there or displace it. Exported so the
+ * editor's own connect logic (`Canvas.tsx`) can ask the identical question
+ * before a drop ever reaches `canConnect` — there is no cheap way left to
+ * read this off a resolved `PortType`, now that a variadic port's `kind` is
+ * `'numeric'` like any other's.
  * Anything it cannot place (no such node, no such formula, no such port)
  * answers `false`, which is the ordinary one-edge-per-port default.
  */
-function isSpectrumTarget(
+export function isVariadicTarget(
   document: GraphDocument,
   catalogues: readonly Catalogue[],
   to: Edge['to'],
@@ -1266,17 +1273,26 @@ function isSpectrumTarget(
 
   if (node.kind === 'closure') {
     try {
-      return closureFormula(node.expression).inputs.find((port) => port.name === to.port)?.kind === 'spectrum';
+      const port = closureFormula(node.expression).inputs.find((candidate) => candidate.name === to.port);
+      return port !== undefined && port.kind === 'numeric' && port.variadic === true;
     } catch {
       return false;
     }
+  }
+
+  // `values`/`weights` are the same n-wires-one-value-each shape as a
+  // catalogue formula's variadic port, but declared on the node itself
+  // (`resolveGraph`'s `monteCarloGenerator` branch) rather than through
+  // `formula.inputs`, since a generator has no `Formula` record at all.
+  if (node.kind === 'monteCarloGenerator') {
+    return node.distribution === 'discrete' && (to.port === VALUES_PORT || to.port === WEIGHTS_PORT);
   }
 
   if (node.kind !== 'formula') return false;
   for (const catalogue of catalogues) {
     const formula = catalogue.formulas.find((entry) => matchRef(node.formula, entry) === 'match');
     const port = formula?.inputs.find((candidate) => candidate.name === to.port);
-    if (port !== undefined) return port.kind === 'spectrum';
+    if (port !== undefined) return port.kind === 'numeric' && port.variadic === true;
   }
   return false;
 }
@@ -1304,10 +1320,10 @@ export function canConnect(
     // takes one connection) rather than being refused for arriving alongside
     // it — `connect` in the editor's document model already does this; the
     // check has to agree, or a re-drag onto an occupied port is rejected here
-    // before it ever reaches that replace. A spectrum port is the one
+    // before it ever reaches that replace. A variadic port is the one
     // exception: a second wire joins it, so nothing already there is
     // displaced.
-    const displaced = isSpectrumTarget(document, catalogues, candidate.to)
+    const displaced = isVariadicTarget(document, catalogues, candidate.to)
       ? document.edges
       : document.edges.filter(
           (edge) => !(edge.to.node === candidate.to.node && edge.to.port === candidate.to.port),
@@ -1369,12 +1385,7 @@ export function adaptInputUnit(
 }
 
 export function typesConnect(source: PortType, target: PortType): boolean {
-  // A spectrum target takes a matching spectrum source (one authored list, as
-  // before) or a numeric one — one of what may be several discrete
-  // wires collected into a series before the formula's own expression runs.
-  const kindsMatch =
-    source.kind === target.kind || (source.kind === 'numeric' && target.kind === 'spectrum');
-  if (!kindsMatch) return false;
+  if (source.kind !== target.kind) return false;
   if (source.dimension === undefined || target.dimension === undefined) return true;
   return connectable(source.dimension, target.dimension);
 }

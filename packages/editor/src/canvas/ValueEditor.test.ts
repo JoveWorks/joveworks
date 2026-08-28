@@ -108,23 +108,6 @@ describe('switching an input value between kinds', () => {
     expect(converted(value, 'scalar')).toEqual({ kind: 'scalar', value: 35, unit: mm });
   });
 
-  it('takes the smallest value of a spectrum as the value, not the first one, same as a list', () => {
-    const spectrum = { kind: 'spectrum' as const, values: [500, -1200, 300], unit: mm };
-    expect(converted(spectrum, 'scalar')).toEqual({ kind: 'scalar', value: -1200, unit: mm });
-  });
-
-  it('converts a scalar to a one-then-doubled spectrum, same as a list', () => {
-    const scalar = { kind: 'scalar' as const, value: 20, unit: mm };
-    expect(converted(scalar, 'spectrum')).toEqual({ kind: 'spectrum', values: [20, 40], unit: mm });
-  });
-
-  it('takes a spectrum’s min and max as the bounds, switching to a linear range', () => {
-    const spectrum = { kind: 'spectrum' as const, values: [40, 10, 25], unit: mm };
-    expect(converted(spectrum, 'linear')).toEqual({
-      kind: 'linear', start: 10, stop: 40, points: 10, unit: mm,
-    });
-  });
-
   it('preserves a category when switching between one value and a categorical sweep', () => {
     const value = { kind: 'categorical' as const, value: 'H' };
     expect(converted(value, 'categoricalList')).toEqual({ kind: 'categoricalList', values: ['H'] });

@@ -98,7 +98,7 @@ export function FormulaForm({ formula, validation, onChange }: Props) {
         <PortEditor
           key={port.key}
           port={port}
-          allowedKinds={['numeric', 'categorical', 'spectrum']}
+          allowedKinds={['numeric', 'categorical']}
           removable
           onChange={(patch) => onChange(updatePort(formula, port.key, patch))}
           onRemove={() => onChange(removePort(formula, port.key))}
@@ -114,9 +114,6 @@ export function FormulaForm({ formula, validation, onChange }: Props) {
         </button>
         <button type="button" onClick={() => onChange(addPort(formula, 'categorical'))}>
           + Categorical input
-        </button>
-        <button type="button" onClick={() => onChange(addPort(formula, 'spectrum'))}>
-          + Spectrum input
         </button>
       </div>
 

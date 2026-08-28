@@ -35,7 +35,7 @@ import { ParameterLabel } from '../ParameterLabel';
 import { NodeShell } from './NodeShell';
 import { NumberField, TextField } from './fields';
 import type { CanvasFlowNode } from './node-data';
-import { slotHandleId } from './spectrumSlots';
+import { slotHandleId } from './portSlots';
 import { Sparkline } from './Sparkline';
 import { TitleField, TitleText } from './TitleField';
 

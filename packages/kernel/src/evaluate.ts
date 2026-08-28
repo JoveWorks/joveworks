@@ -70,7 +70,6 @@ import {
   type Port,
   type RangeNode,
   type PlotViewOverride,
-  type SpectrumPort,
 } from '@joveworks/schema';
 import {
   candidateAt,
@@ -108,7 +107,6 @@ import {
   type NumericSeries,
   type PortValue,
   type Series,
-  type Spectrum,
 } from './series.js';
 import type { Warning } from './warnings.js';
 
@@ -821,6 +819,35 @@ function generatorParam(
   return wired.data[0] as number;
 }
 
+/**
+ * Every wire's own single value at a variadic port on a generator node —
+ * `values`/`weights` for a discrete distribution, one entry per possible
+ * draw. Each edge has to collapse to one number for the same reason
+ * `generatorParam` requires it of its own wired edge: there is nothing on
+ * this node's own axis yet for a swept edge to line up against.
+ */
+function variadicScalars(
+  name: string,
+  key: string,
+  resolution: Resolution,
+  values: ReadonlyMap<string, PortValue>,
+): readonly number[] {
+  return (resolution.incoming.get(key) ?? []).map((edge) => {
+    const wired = valueAtEdge(edge, key, values);
+    if (wired.kind !== 'numeric') {
+      throw new KernelError(`'${name}' needs a numeric value, not a categorical one`, key);
+    }
+    if (wired.data.length !== 1) {
+      throw new KernelError(
+        `'${name}' needs one number per wire, not a swept series of ${wired.data.length} — ` +
+          'nothing on the axis this generator introduces exists yet to line up against',
+        key,
+      );
+    }
+    return wired.data[0] as number;
+  });
+}
+
 /** A generator's draws, converted into canonical units — the same boundary `inputValue` crosses. */
 function generatorValue(
   node: MonteCarloGeneratorNode,
@@ -851,21 +878,17 @@ function generatorValue(
       : node.distribution === 'discrete'
         ? (() => {
             const valuesKey = endpointKey(node.id, VALUES_PORT);
-            const valueEdge = resolution.incoming.get(valuesKey)?.[0];
-            if (valueEdge === undefined) throw new KernelError("'values' is not connected", valuesKey);
-            const choices = valueAtEdge(valueEdge, valuesKey, values);
-            if (choices.kind !== 'spectrum' || choices.values.length === 0) throw new KernelError("'values' needs a non-empty spectrum", valuesKey);
+            const choices = variadicScalars(VALUES_PORT, valuesKey, resolution, values);
+            if (choices.length === 0) throw new KernelError("'values' needs at least one wire", valuesKey);
             const weightsKey = endpointKey(node.id, WEIGHTS_PORT);
-            const weightEdge = resolution.incoming.get(weightsKey)?.[0];
-            const weights = weightEdge === undefined ? undefined : valueAtEdge(weightEdge, weightsKey, values);
-            if (weights !== undefined && weights.kind !== 'spectrum') throw new KernelError("'weights' needs a spectrum", weightsKey);
-            const invalid = weights !== undefined && (weights.values.length !== choices.values.length || weights.values.some((value) => value < 0) || weights.values.every((value) => value === 0));
+            const weights = variadicScalars(WEIGHTS_PORT, weightsKey, resolution, values);
+            const invalid = weights.length > 0 && (weights.length !== choices.length || weights.some((value) => value < 0) || weights.every((value) => value === 0));
             if (invalid) warnings.push({
               kind: 'monteCarloDiscreteWeights',
               nodeId: node.id,
               message: 'discrete weights must match values, be non-negative, and contain a positive weight — equal weights were used',
             });
-            return { distribution: 'discrete' as const, values: choices.values, ...(weights === undefined || invalid ? {} : { weights: weights.values }) };
+            return { distribution: 'discrete' as const, values: choices, ...(weights.length === 0 || invalid ? {} : { weights }) };
           })()
       : {
           distribution: node.distribution,
@@ -1007,8 +1030,8 @@ function fileValues(
 }
 
 /**
- * A literal, a categorical choice, a spectrum or a range, converted into
- * canonical units on the way in. This is the boundary.
+ * A literal, a categorical choice, or a range, converted into canonical
+ * units on the way in. This is the boundary.
  */
 function inputValue(node: InputNode, axes: ReadonlyMap<string, Axis>, resolution: Resolution): PortValue {
   const spec = node.value;
@@ -1024,12 +1047,6 @@ function inputValue(node: InputNode, axes: ReadonlyMap<string, Axis>, resolution
 
     case 'categorical':
       return categoricalScalar(spec.value);
-
-    case 'spectrum':
-      return {
-        kind: 'spectrum',
-        values: spec.values.map((value) => toCanonical(value, spec.unit)),
-      };
 
     case 'list':
       return {
@@ -1103,7 +1120,7 @@ function valueAtEdge(edge: Edge, key: string, values: ReadonlyMap<string, PortVa
   return value;
 }
 
-/** A non-spectrum port takes exactly one edge (`oneEdge` in graph.ts already refused a second). */
+/** A non-variadic port takes exactly one edge (`oneEdge` in graph.ts already refused a second). */
 function inputPortValue(
   node: FormulaNode | ClosureNode | { readonly id: string },
   port: Port,
@@ -1139,25 +1156,23 @@ function inputPortValue(
 }
 
 /**
- * Every edge wired to a spectrum port, each keeping its own value —
+ * Every edge wired to a variadic port, each keeping its own value —
  * and so its own axes — rather than flattened into one collection up front.
  *
  * A swept edge is broadcast per source, not flattened across edges: two
  * ranges wired into `minimum` used to broadcast pointwise when it was an
  * ordinary two-port generic node ("two ranges give an n × m grid" applies
- * here exactly as it does to `add`), and
- * flattening across edges silently lost that — collapsing the whole grid to
- * one scalar instead of a grid of pointwise reductions. `evaluateFormula`
- * broadcasts each edge against the node's own axes and collects one value
- * per edge per cell; only an authored spectrum list — invariant by
- * definition — still contributes every one of its values at every cell.
+ * here exactly as it does to `add`), and flattening across edges would
+ * silently lose that — collapsing the whole grid to one scalar instead of a
+ * grid of pointwise reductions. `evaluateFormula` instead broadcasts each
+ * edge against the node's own axes and collects one value per edge per cell.
  */
-function spectrumEdgeValues(
+function variadicEdgeValues(
   nodeId: string,
   port: Port,
   resolution: Resolution,
   values: ReadonlyMap<string, PortValue>,
-): readonly (NumericSeries | Spectrum)[] {
+): readonly NumericSeries[] {
   const key = endpointKey(nodeId, port.name);
   const edges = resolution.incoming.get(key) ?? [];
   if (edges.length === 0) throw new KernelError(`'${port.name}' is not connected and has no default`, key);
@@ -1206,34 +1221,32 @@ function evaluateFormula(
     ? compileClosureFormula(formula, nodeId)
     : compileFormula(formula, resolution.bindings.get(nodeId) ?? new Map(), nodeId);
 
-  const regularPorts = formula.inputs.filter((port) => port.kind !== 'spectrum');
+  const regularPorts = formula.inputs.filter((port) => !(port.kind === 'numeric' && port.variadic === true));
   const regularInputs = regularPorts.map((port) => {
     const value = inputPortValue(node, port, resolution, values);
-    // An ordinary port's own source is never spectrum- or bundle-kind — a
-    // formula cannot produce either — so this is a defensive check, not a
-    // real case, but it is what lets everything below see NumericSeries |
-    // CategoricalSeries instead of the full PortValue union.
-    if (value.kind === 'spectrum' || value.kind === 'bundle') {
-      throw new KernelError(`'${port.name}' cannot hold a ${value.kind} — only a matching port can`, nodeId);
+    // An ordinary port's own source is never bundle-kind — that only ever
+    // sits on the wire between `pack` and `unpack` (`series.ts`) — so this
+    // is a defensive check, not a real case, but it is what lets everything
+    // below see NumericSeries | CategoricalSeries instead of the full
+    // PortValue union.
+    if (value.kind === 'bundle') {
+      throw new KernelError(`'${port.name}' cannot hold a bundle — only 'unpack' can`, nodeId);
     }
     return { port, value };
   });
-  const spectrumPorts = formula.inputs.filter(
-    (port): port is SpectrumPort => port.kind === 'spectrum',
+  const variadicPorts = formula.inputs.filter(
+    (port): port is NumericPort => port.kind === 'numeric' && port.variadic === true,
   );
-  const spectrumInputs = spectrumPorts.map((port) => ({
+  const variadicInputs = variadicPorts.map((port) => ({
     port,
-    edgeValues: spectrumEdgeValues(nodeId, port, resolution, values),
+    edgeValues: variadicEdgeValues(nodeId, port, resolution, values),
   }));
 
-  // Every axis actually in play — a regular port's own, and each spectrum
-  // edge's own, broadcast per source, not flattened across them; an
-  // authored list contributes no axis, invariant.
+  // Every axis actually in play — a regular port's own, and each variadic
+  // port's own edges, broadcast per source rather than flattened across them.
   const axes = unionAxes(
     ...regularInputs.map(({ value }) => value.axes),
-    ...spectrumInputs.flatMap(({ edgeValues }) =>
-      edgeValues.map((value) => (value.kind === 'spectrum' ? [] : value.axes)),
-    ),
+    ...variadicInputs.flatMap(({ edgeValues }) => edgeValues.map((value) => value.axes)),
   );
   const cells = gridSize(axes);
   if (cells >= largeGrid) {
@@ -1247,36 +1260,28 @@ function evaluateFormula(
     });
   }
 
-  // Each declared name contributes one reader per cell — a spectrum port's
-  // every value (`fixed`, an authored list, or `reader` if it is itself
-  // wired to something swept) or a plain numeric port's single value —
-  // concatenated across names in the order a `piecewise`/`deflection` field
-  // lists them, never by wire order (see the schema docstring: a support's
-  // reaction joins a load spectrum this way, as one more single-valued
-  // entry). Shared by both computation kinds — a deflection curve's
-  // breakpoints/values are the exact same shape as a `cumulativeCubic`
-  // formula's.
-  type EdgeContribution =
-    | { readonly kind: 'fixed'; readonly values: readonly number[] }
-    | { readonly kind: 'reader'; readonly read: (cell: number) => number };
-  const namedContributions = (names: readonly string[] | undefined): readonly EdgeContribution[] =>
-    (names ?? []).flatMap((name): readonly EdgeContribution[] => {
-      const spectrumEntry = spectrumInputs.find(({ port }) => port.name === name);
-      if (spectrumEntry !== undefined) {
-        return spectrumEntry.edgeValues.map((value): EdgeContribution =>
-          value.kind === 'spectrum'
-            ? { kind: 'fixed', values: value.values }
-            : { kind: 'reader', read: reader(value, axes) },
-        );
+  // Each declared name contributes one reader per cell — a variadic port's
+  // every wired edge, or a plain numeric port's single value — concatenated
+  // across names in the order a `piecewise`/`deflection` field lists them,
+  // never by wire order (see the schema docstring: a support's reaction
+  // joins a variadic port's several wires this way, as one more
+  // single-valued entry). Shared by both computation kinds — a deflection
+  // curve's breakpoints/values are the exact same shape as a
+  // `cumulativeCubic` formula's.
+  const namedContributions = (names: readonly string[] | undefined): readonly ((cell: number) => number)[] =>
+    (names ?? []).flatMap((name): readonly ((cell: number) => number)[] => {
+      const variadicEntry = variadicInputs.find(({ port }) => port.name === name);
+      if (variadicEntry !== undefined) {
+        return variadicEntry.edgeValues.map((value) => reader(value, axes));
       }
       const regularEntry = regularInputs.find(({ port }) => port.name === name);
       if (regularEntry !== undefined && regularEntry.value.kind === 'numeric') {
-        return [{ kind: 'reader', read: reader(regularEntry.value, axes) }];
+        return [reader(regularEntry.value, axes)];
       }
-      throw new KernelError(`'${name}' must be a declared spectrum or numeric input`, nodeId);
+      throw new KernelError(`'${name}' must be a declared numeric input`, nodeId);
     });
-  const namesAt = (cell: number, contributions: readonly EdgeContribution[]): readonly number[] =>
-    contributions.flatMap((edge) => (edge.kind === 'fixed' ? edge.values : [edge.read(cell)]));
+  const namesAt = (cell: number, contributions: readonly ((cell: number) => number)[]): readonly number[] =>
+    contributions.map((read) => read(cell));
 
   if (formula.piecewise !== undefined) {
     if (isGenericDimension(only.unit)) {
@@ -1534,29 +1539,20 @@ function evaluateFormula(
     readers.push({ name: port.name, read: reader(value, axes) });
   }
 
-  // One reader per spectrum edge — a swept edge contributes one broadcast
-  // value per cell, an authored list contributes all of its values at every
-  // cell — collected into one array per spectrum port, per cell. Same
-  // `EdgeContribution` shape as the piecewise/deflection branches above,
-  // hoisted to this function's top.
-  const spectrumReaders: Array<{
+  // One reader per variadic edge — a swept edge contributes one broadcast
+  // value per cell — collected into one array per variadic port, per cell.
+  const variadicReaders: Array<{
     readonly name: string;
-    readonly perEdge: readonly EdgeContribution[];
-  }> = spectrumInputs.map(({ port, edgeValues }) => ({
+    readonly perEdge: readonly ((cell: number) => number)[];
+  }> = variadicInputs.map(({ port, edgeValues }) => ({
     name: port.name,
-    perEdge: edgeValues.map((value): EdgeContribution =>
-      value.kind === 'spectrum'
-        ? { kind: 'fixed', values: value.values }
-        : { kind: 'reader', read: reader(value, axes) },
-    ),
+    perEdge: edgeValues.map((value) => reader(value, axes)),
   }));
 
   for (let cell = 0; cell < cells; cell += 1) {
     for (const { name, read } of readers) env[name] = read(cell);
-    for (const { name, perEdge } of spectrumReaders) {
-      env[name] = perEdge.flatMap((contribution) =>
-        contribution.kind === 'reader' ? [contribution.read(cell)] : contribution.values,
-      );
+    for (const { name, perEdge } of variadicReaders) {
+      env[name] = perEdge.map((read) => read(cell));
     }
     // In declared order, each output joining the environment as it is
     // computed: that is what lets a later expression name an earlier output
@@ -1839,8 +1835,8 @@ function sourceOf(
 ): { readonly value: Series; readonly unit: Unit } {
   const key = endpointKey(node.id, port);
   const value = (() => {
-    // An output's own port is never spectrum-kind — only a
-    // formula's input can be widened that way — so resolveGraph has already refused a second edge.
+    // An output's own port is never variadic — only a formula's input can be
+    // widened that way — so resolveGraph has already refused a second edge.
     const edge = resolution.incoming.get(key)?.[0];
     if (edge === undefined) throw new KernelError(`'${port}' is not connected`, key);
     const found = values.get(endpointKey(edge.from.node, edge.from.port));
@@ -1850,8 +1846,8 @@ function sourceOf(
     return found;
   })();
 
-  if (value.kind === 'spectrum' || value.kind === 'bundle') {
-    throw new KernelError(`'${port}' is a ${value.kind}, which an output node cannot render`, key);
+  if (value.kind === 'bundle') {
+    throw new KernelError(`'${port}' is a bundle, which an output node cannot render`, key);
   }
   return { value, unit: displayUnit(resolution.targets.get(key)) };
 }
@@ -2206,7 +2202,7 @@ function outputResult(
         throw new KernelError(`'${id}' is not a range input node, so it introduces no axis`, node.id);
       }
       const coordinates = values.get(endpointKey(id, VALUE_PORT));
-      if (coordinates === undefined || coordinates.kind === 'spectrum' || coordinates.kind === 'bundle') {
+      if (coordinates === undefined || coordinates.kind === 'bundle') {
         throw new KernelError(`'${id}' produced no coordinates to plot against`, node.id);
       }
       if (!maskAxes.some((own) => own.id === axis.id)) {
@@ -2639,7 +2635,7 @@ function outputResult(
       throw new KernelError(`'${id}' is not a range input node, so it introduces no axis`, node.id);
     }
     const coordinates = values.get(endpointKey(id, VALUE_PORT));
-    if (coordinates === undefined || coordinates.kind === 'spectrum' || coordinates.kind === 'bundle') {
+    if (coordinates === undefined || coordinates.kind === 'bundle') {
       throw new KernelError(`'${id}' produced no coordinates to plot against`, node.id);
     }
     // Compared against the resolved axis's own `id`, not the node id passed
