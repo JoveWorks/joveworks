@@ -13,7 +13,6 @@ import { describe, expect, it } from 'vitest';
 import type { Axis, FeasibilityResult } from '@joveworks/kernel';
 import { parseUnit } from '@joveworks/units';
 
-import { isFacetedChartTooWideForColumn, WIDE_FIGURE_PRINT_PX } from './PlotFigure';
 import { feasibilityPlotWidth, rows } from './FeasibilityFigure';
 
 const mm = parseUnit('mm');
@@ -89,36 +88,5 @@ describe('feasibilityPlotWidth', () => {
   it('reproduces the reported collision case: a many-point sweep with long decimal coordinates', () => {
     // 15 x-ticks like `66.667`, `73.333`, … no longer fit a flat 360px plot.
     expect(feasibilityPlotWidth(15, undefined)).toBeGreaterThan(360);
-  });
-});
-
-// Mirrors the plotChartWidth threshold test in PlotFigure.test.ts: the print
-// stylesheet spans a `figure--wide` map across both columns rather than
-// crushing it, and FeasibilityFigure flags that off this same width.
-describe('feasibilityPlotWidth against the print column-span threshold', () => {
-  it('keeps a comfortable single-panel map, or a modest facet count, inside one column', () => {
-    expect(feasibilityPlotWidth(6, undefined)).toBeLessThanOrEqual(WIDE_FIGURE_PRINT_PX);
-    expect(feasibilityPlotWidth(3, 2)).toBeLessThanOrEqual(WIDE_FIGURE_PRINT_PX);
-  });
-
-  it('crosses the threshold for the many-facet map the print stylesheet names as its example', () => {
-    expect(feasibilityPlotWidth(3, 6)).toBeGreaterThan(WIDE_FIGURE_PRINT_PX);
-  });
-});
-
-// Thomas's explicit read after the first pass: "the feasibility cell map …
-// should shrink into a column instead" — even a single-panel map whose own
-// tick count alone pushes its width past the threshold (a fine, many-point
-// sweep) must never span. Only a genuine small-multiples row of facets can.
-describe('isFacetedChartTooWideForColumn for a Feasibility map', () => {
-  it('never spans a single-panel map, however many ticks it has', () => {
-    const wideSinglePanel = feasibilityPlotWidth(30, undefined);
-    expect(wideSinglePanel).toBeGreaterThan(WIDE_FIGURE_PRINT_PX);
-    expect(isFacetedChartTooWideForColumn(undefined, wideSinglePanel)).toBe(false);
-  });
-
-  it('spans a many-facet map once the facet row has outgrown a column', () => {
-    const width = feasibilityPlotWidth(3, 6);
-    expect(isFacetedChartTooWideForColumn(6, width)).toBe(true);
   });
 });

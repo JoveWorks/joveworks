@@ -460,41 +460,14 @@ function seriesLegend(label: string, values: readonly (number | string)[], types
   return legend;
 }
 
-/**
- * Above this many pixels — and only for a genuinely faceted small-multiples
- * chart — shrinking into one printed column crushes its *per-facet* ticks
- * past reading rather than merely making them smaller. A single-panel chart,
- * even a Feasibility map with a fine, many-tick sweep, is one coherent image
- * with no per-panel margins to protect, so it always stays in its column and
- * scales down via the general `.figure svg` rule below instead — the first
- * pass here flagged those too (a bare width check, no facet requirement) and
- * spanned far too eagerly, leaving tall blank gaps under the spanned chart
- * where the rest of the column had nothing left to show (see the styles.css
- * comment on `.notebook .entry:has(.figure--wide)`). Set at roughly twice a
- * printed column's own width (~300px at A4 two-up): beyond that a chart
- * shrinks past half size, and Observable Plot's ~10px default tick labels
- * don't survive that.
- */
-export const WIDE_FIGURE_PRINT_PX = 600;
-
 /** The chart's own width, single-panel or faceted — pulled out of the
- * `Plot.plot` call below so `WIDE_FIGURE_PRINT_PX`'s cutoff has a plain
- * function to be tested against instead of only living inside the render
- * effect. */
+ * `Plot.plot` call below so it has a plain function to be tested against
+ * instead of only living inside the render effect. Every printed chart now
+ * shrinks into its column at whatever width this returns (`.figure svg`'s
+ * `max-width: 100%` in styles.css); nothing here decides a page layout any
+ * more, only the chart's own pixel size. */
 export function plotChartWidth(facetCount: number | undefined): number {
   return facetCount === undefined ? 360 : Math.min(180 * facetCount, 1080);
-}
-
-/**
- * Whether a chart should span both printed columns instead of shrinking into
- * one — see `WIDE_FIGURE_PRINT_PX`. Requires an actual facet axis, not just a
- * wide pixel count: a single panel never spans, however wide its own tick
- * count has pushed it, only a small-multiples chart with enough panels to
- * outgrow a column does. Shared with FeasibilityFigure, whose per-facet
- * width grows the same way.
- */
-export function isFacetedChartTooWideForColumn(facetCount: number | undefined, width: number): boolean {
-  return facetCount !== undefined && width > WIDE_FIGURE_PRINT_PX;
 }
 
 export function PlotFigure({ result: rawResult, document: graph, format, marking }: Props): ReactElement {
@@ -666,7 +639,6 @@ export function PlotFigure({ result: rawResult, document: graph, format, marking
     // never leaves the figure empty. Unmounting needs no removal of its own:
     // the host element below is React's, and goes with its children.
     container.replaceChildren(rendered);
-    container.classList.toggle('figure--wide', isFacetedChartTooWideForColumn(result.facet?.axis.length, width));
 
     // Clicking the curve marks the design under the cursor. The pointer
     // transform behind `chartTip` already publishes that datum as the chart's

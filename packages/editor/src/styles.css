@@ -4054,41 +4054,45 @@ aside.right {
     min-width: 0;
   }
 
-  /* Shrinking to fit (the max-width rule above) is the default for every
-     figure now, including a single-panel Feasibility map with a fine,
-     many-tick sweep and a contour/heatmap panel with its colour key — all of
-     those read fine smaller. The one shape that does not survive shrinking
-     is a genuinely faceted small-multiples chart: each facet keeps its own
-     axis and ticks, so squeezing the *whole row of panels* into one column
-     squeezes every panel's ticks with it. PlotFigure/FeasibilityFigure flag
-     `figure--wide` for exactly that case, once their own chart width
-     (`WIDE_FIGURE_PRINT_PX`/`isFacetedChartTooWideForColumn` in
-     PlotFigure.tsx) says a facet row has outgrown a column; span the whole
-     entry, not just the chart, so its label travels with it rather than
-     staying stranded in the narrow column. Depends on `:has()`, which the
-     same Chromium engine that renders this app's screen already supports —
-     not a separate print compatibility concern.
-     Keep this rare: a spanning element appears to reset Chromium's print
-     pagination locally — content that would otherwise have kept filling the
-     page after the span instead starts a fresh page, leaving whatever the
-     two columns had already shown sitting on a mostly blank sheet. The first
-     pass here flagged anything moderately wide (`WIDE_FIGURE_PRINT_PX` at
-     480px, no facet requirement) and produced exactly that: ordinary
-     figures spanning, then tall empty gaps underneath. There is no known CSS
-     fix for the pagination behaviour itself — the real fix is triggering it
-     as rarely as the content actually demands, which the facet requirement
-     and the now much higher threshold both do. */
-  .notebook .entry:has(.figure--wide) {
-    column-span: all;
+  /* The masthead above is the only thing in this layout that spans both
+     columns. Every figure, however wide its own natural pixel size, and the
+     Table output's data grid, however many columns a sweep gives it, sit
+     inside a column and shrink to fit — an earlier pass here spanned a
+     "wide enough" figure or the Table output across the full page instead,
+     and that turned out worse in practice on both counts: it read as an
+     arbitrary jump in a supposedly two-column article, spanning content
+     that itself became mostly blank space where a smaller version would
+     have read fine (Thomas's own read on the printed preview), and a
+     `column-span: all` element appears to reset Chromium's print pagination
+     locally — content that would otherwise have kept filling the page after
+     it instead started a fresh page, leaving whatever the two columns had
+     already shown sitting on a mostly blank sheet. Legibility at column
+     width is a real, unsolved trade-off for a many-facet small-multiples
+     chart in particular (each facet keeps its own axis and ticks, so
+     shrinking the whole row shrinks every facet's ticks with it) — solve
+     that by making the content itself read better at ~81mm (smaller type,
+     tighter padding, tabular figures for the Table output — see below), not
+     by reaching for another span. */
+
+  /* The Table output's column count is data-dependent — unlike the
+     fixed-shape summary tables just below (stress-summary,
+     best-design-margins, reliability-card), which stay legible at column
+     width because they never grow past a handful of columns, a sweep can
+     carry one column per swept axis or readout. Borrow those tables' own
+     smaller-than-body scale and tighter cell padding (`.stress-summary`'s
+     0.9em/0.28rem 0.4rem, `.reliability-card`'s 0.3rem 0.5rem) rather than
+     inventing a new ratio, so a many-column sweep has more room per cell at
+     a column's ~81mm. Numerals are already tabular here on screen
+     (`.notebook table`, styles.css above) and unaffected by print; scoped
+     to the Table output's own wrapper, not the bare `.notebook table` those
+     screen rules use, so this does not also resize the summary tables. */
+  .notebook .result.table table {
+    font-size: 0.85em;
   }
 
-  /* The Table output can carry as many columns as a sweep has axes and
-     readouts — unlike the fixed-shape summary tables below (stress-summary,
-     best-design-margins, reliability-card), there is no natural column
-     count to design a column width around, so it always gets the full page
-     rather than only past some measured threshold. */
-  .notebook .result.table {
-    column-span: all;
+  .notebook .result.table th,
+  .notebook .result.table td {
+    padding: 1px 3px;
   }
 
   /* A table can genuinely need more than one page (a sweep's every row) —
