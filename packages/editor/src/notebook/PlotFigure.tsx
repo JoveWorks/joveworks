@@ -229,12 +229,33 @@ interface Props {
   readonly marking?: FigureMarking;
 }
 
+/**
+ * Observable preserves layout whitespace around axis labels in some render
+ * paths (notably labels carried through a figure wrapper). Match the authored
+ * label after normalising that whitespace, but return the authored spelling so
+ * KaTeX receives exactly the text the user wrote.
+ */
+export function chartLabelForText(text: string, labels: readonly string[]): string | undefined {
+  const normalise = (value: string): string => value.replace(/\s+/gu, ' ').trim();
+  const rendered = normalise(text);
+  // Observable decorates axis labels with direction arrows and may append a
+  // unit it inferred itself. The authored label remains a contiguous part of
+  // that rendered string, unlike tick labels, which must stay plain text.
+  return labels
+    .slice()
+    .sort((a, b) => b.length - a.length)
+    .find((label) => rendered.includes(normalise(label)));
+}
+
 /** Replace Observable's plain SVG text with KaTeX where an axis label needs it. */
 export function typesetChartLabels(chart: SVGSVGElement, labels: readonly string[]): void {
   for (const text of chart.querySelectorAll('text')) {
-    const label = text.textContent;
-    if (label === null || !labels.includes(label)) continue;
-    const html = typesetTitleHtml(label);
+    const source = text.textContent;
+    if (source === null) continue;
+    if (chartLabelForText(source, labels) === undefined) continue;
+    // Render what Observable actually displays, not just the authored
+    // fragment: that retains its ↑/→ axis directions and any unit suffix.
+    const html = typesetTitleHtml(source);
     if (html === undefined) continue;
     const bounds = text.getBBox();
     const foreign = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
