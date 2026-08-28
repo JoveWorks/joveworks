@@ -28,6 +28,13 @@ The name is a playful nod to Jupyter notebooks: Jove is another name for
 Jupiter, and each visual calculation becomes a **NodeBook** — a notebook whose
 calculation is built from connected nodes.
 
+JoveWorks is a visual foundation for the Jupyter workflows engineers grow
+into. It lets students build intuition for the physical relationships in a
+machine-design model — seeing how formulas, units, assumptions and design
+choices connect — before they need to build efficient coding workbooks.
+Jupyter becomes the natural next step for custom methods, automation, richer
+data or open-ended analysis. **Learn the model before you write the code.**
+
 ## What it is
 
 - **Runs in the browser.** A static web app with no backend and nothing to
