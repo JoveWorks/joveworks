@@ -895,6 +895,8 @@ export interface GraphDocument {
   readonly schemaVersion: number;
   readonly id: string;
   readonly title: string;
+  /** Optional report byline, shown directly below the NodeBook title. */
+  readonly author?: string;
   /** Absent means render the NodeBook in the reader's app language. */
   readonly notebookLocale?: 'en' | 'nl';
   readonly nodes: readonly GraphNode[];
@@ -1837,6 +1839,7 @@ export function parseDocument(value: JsonValue, path = ''): GraphDocument {
     schemaVersion: readSchemaVersion(object, path, DOCUMENT_SCHEMA_VERSION, 'document'),
     id: readName(required(object, 'id', path), join(path, 'id')),
     title: readString(required(object, 'title', path), join(path, 'title')),
+    ...put('author', optional(object, 'author', path, readString)),
     nodes: readArray(required(object, 'nodes', path), join(path, 'nodes')).map((entry, i) =>
       parseNode(entry, `${join(path, 'nodes')}[${i}]`),
     ),
@@ -1862,6 +1865,7 @@ export function serializeDocument(document: GraphDocument): JsonObject {
     schemaVersion: document.schemaVersion,
     id: document.id,
     title: document.title,
+    ...put('author', document.author),
     ...put('notebookLocale', document.notebookLocale),
     nodes: document.nodes.map(serializeNode),
     edges: document.edges.map(serializeEdge),

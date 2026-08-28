@@ -2992,8 +2992,14 @@ aside.right {
   gap: 10px;
 }
 
-.notebook-title {
+.notebook-heading {
   flex: 1 1 auto;
+  min-width: 0;
+}
+
+.notebook-title {
+  display: block;
+  width: 100%;
   min-width: 0;
   border: none;
   background: transparent;
@@ -3003,8 +3009,22 @@ aside.right {
   padding: 0;
 }
 
+.notebook-author {
+  display: block;
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  font-style: italic;
+  margin: -6px 0 10px;
+  padding: 0;
+}
+
 .notebook-title:hover,
-.notebook-title:focus {
+.notebook-title:focus,
+.notebook-author:hover,
+.notebook-author:focus {
   outline: 1px dashed var(--muted);
   outline-offset: 2px;
 }
@@ -3432,6 +3452,25 @@ aside.right {
    sideways. */
 .figure {
   overflow-x: auto;
+}
+
+/* Observable Plot appends a fixed-width SVG to the figure host. Its intrinsic
+   width otherwise leaves every normal-sized chart flush with the report's
+   left edge. Auto inline margins centre figures that fit the panel; an
+   oversized faceted chart still gets zero margins and remains scrollable from
+   its left edge. */
+.figure > svg,
+.figure > figure > svg {
+  display: block;
+  margin-inline: auto;
+}
+
+/* A categorical legend makes Observable Plot return a semantic `<figure>`
+   around its SVG. Centre that wrapper as well; otherwise feasibility maps
+   bypass the direct-SVG rule above. */
+.figure > figure {
+  width: fit-content;
+  margin: 0 auto;
 }
 
 .intelligent-plot {
@@ -3874,6 +3913,7 @@ aside.right {
   .resize-handle,
   .canvas,
   .notebook-icon-button,
+  .panel-close-button,
   .notebook-section .grip,
   .notebook-section .chevron,
   .column-figures,
@@ -3962,6 +4002,10 @@ aside.right {
     height: auto;
   }
 
+  .figure > figure {
+    max-width: 100%;
+  }
+
   /* A table can genuinely need more than one page (a sweep's every row) —
      unlike a figure it is allowed to split, but not mid-row, and a reader
      turning the page needs the column headings again rather than bare
@@ -3986,8 +4030,9 @@ aside.right {
     overflow-x: visible;
   }
 
-  .notebook-control-track,
-  .notebook-control-reading {
+  /* Notebook controls are editing affordances, not report content. Their
+     current values belong in the section's prose or output readings. */
+  .notebook-controls {
     display: none !important;
   }
 
@@ -3996,7 +4041,4 @@ aside.right {
     display: none !important;
   }
 
-  .notebook-control-print {
-    display: inline;
-  }
 }
