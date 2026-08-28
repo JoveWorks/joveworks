@@ -31,7 +31,7 @@ import type { AxisCoordinate, ParetoResult } from '@joveworks/kernel';
 import type { Candidate } from '@joveworks/schema';
 import { fromCanonical, type NumberFormat } from '@joveworks/units';
 
-import { useSettings } from '../settings-context';
+import { useDisplay } from './display';
 import { chartTip, pointedRow, siAxisUnit, typesetChartLabels } from './PlotFigure';
 import { NO_MARKS, type FigureMarking, type MarkIndex } from './marks';
 
@@ -122,14 +122,13 @@ export function staircase(result: ParetoResult, data: readonly Row[]): readonly 
 
 interface Props {
   readonly result: ParetoResult;
-  readonly format: NumberFormat;
   /** Absent in the read-only viewer: the chart draws, but nothing can be marked. */
   readonly marking?: FigureMarking;
 }
 
-export function ParetoFigure({ result, format, marking }: Props): ReactElement {
+export function ParetoFigure({ result, marking }: Props): ReactElement {
   const host = useRef<HTMLDivElement>(null);
-  const { titleMathRendering } = useSettings();
+  const { format, titleMath: titleMathRendering } = useDisplay();
 
   useEffect(() => {
     const container = host.current;

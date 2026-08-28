@@ -10,7 +10,7 @@ import * as Plot from '@observablehq/plot';
 import type { SensitivityResult } from '@joveworks/kernel';
 import { fromCanonical } from '@joveworks/units';
 
-import { useSettings } from '../settings-context';
+import { useDisplay } from './display';
 import { typesetChartLabels } from './PlotFigure';
 
 interface Row {
@@ -33,7 +33,7 @@ interface Props {
 
 export function SensitivityFigure({ result }: Props): ReactElement {
   const host = useRef<HTMLDivElement>(null);
-  const { titleMathRendering } = useSettings();
+  const { titleMath: titleMathRendering } = useDisplay();
 
   useEffect(() => {
     const container = host.current;

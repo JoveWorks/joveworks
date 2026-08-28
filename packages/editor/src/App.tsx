@@ -35,6 +35,8 @@ import { documentEvents } from './analytics/documentEvents';
 import { exampleIdFromUrl, urlForExample, type ExampleId } from './exampleUrl';
 import { DOCS_BASE_URL } from './help-links';
 import { GraphContext } from './graph-context';
+import { notebookDisplayOf } from './model/notebook';
+import { DisplayProvider, type NotebookDisplay } from './present/display';
 import { SettingsContext } from './settings-context';
 import { clearAutosaveSnapshot, loadAutosaveSnapshot, saveAutosaveSnapshot } from './io/autosave';
 import { cacheCatalogue, cachedCatalogueTexts } from './io/catalogueCache';
@@ -567,7 +569,7 @@ function AppShell(): ReactElement {
   };
 
   const saveNewHubWorkspace = async (hubAddress: string): Promise<void> => {
-    const compiledNotebook = compileNotebook(documentRef.current, analyse(documentRef.current, catalogues));
+    const compiledNotebook = compileNotebook(documentRef.current, analyse(documentRef.current, catalogues), currentDisplay());
     if (compiledNotebookBytes(compiledNotebook) > 1_048_576) throw new Error('The compiled NodeBook is larger than the 1 MiB Hub limit. Reduce report data before saving.');
     const draft = {
       title: documentRef.current.title,
@@ -592,7 +594,7 @@ function AppShell(): ReactElement {
 
   const saveToHub = async (): Promise<void> => {
     if (hubWorkspace === undefined) throw new Error('Choose a Hub before saving this workspace.');
-    const compiledNotebook = compileNotebook(documentRef.current, analyse(documentRef.current, catalogues));
+    const compiledNotebook = compileNotebook(documentRef.current, analyse(documentRef.current, catalogues), currentDisplay());
     if (compiledNotebookBytes(compiledNotebook) > 1_048_576) throw new Error('The compiled NodeBook is larger than the 1 MiB Hub limit. Reduce report data before saving.');
     const draft = {
       title: documentRef.current.title,
@@ -796,6 +798,19 @@ function AppShell(): ReactElement {
   );
 
   const analysis = useMemo(() => analyse(document, catalogues), [document, catalogues]);
+
+  // Resolved once for the whole app: the canvas typesets titles by the same
+  // rule the NodeBook does, and every figure below `present/` reads its
+  // drawing facts from here rather than from the document (ROADMAP item 38).
+  const display = useMemo(
+    () => notebookDisplayOf(document, { numberFormat, contourPalette, titleMathRendering, locale }),
+    [document, numberFormat, contourPalette, titleMathRendering, locale],
+  );
+  // Saving reads `documentRef`, which can be a keystroke ahead of the
+  // rendered `document`, so a publish resolves its own display rather than
+  // shipping the one the last render happened to use.
+  const currentDisplay = (): NotebookDisplay =>
+    notebookDisplayOf(documentRef.current, { numberFormat, contourPalette, titleMathRendering, locale });
 
   const saveToFile = (): void => {
     const text = saveDocument(documentRef.current);
@@ -1253,6 +1268,7 @@ function AppShell(): ReactElement {
 
   return (
     <SettingsContext.Provider value={settingsContext}>
+      <DisplayProvider value={display}>
       <GraphContext.Provider value={context}>
         {/* Right-click opens an app menu wherever one is wired up (Canvas,
             Notebook); everywhere else it should do nothing rather than fall
@@ -1444,6 +1460,7 @@ function AppShell(): ReactElement {
           )}
         </div>
       </GraphContext.Provider>
+      </DisplayProvider>
     </SettingsContext.Provider>
   );
 }

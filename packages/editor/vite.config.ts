@@ -13,7 +13,19 @@ import type { OutputChunk } from 'rollup';
 const rootPackageJson = fileURLToPath(new URL('../../package.json', import.meta.url));
 const { version } = JSON.parse(readFileSync(rootPackageJson, 'utf-8')) as { version: string };
 
-const VIEWER_BUDGET = 250 * 1024;
+/*
+ * A ceiling to defend, not a target.
+ *
+ * It was 250 KiB when the viewer drew its own results — a hand-rolled SVG
+ * line plot and some markup that resembled the NodeBook. A published NodeBook
+ * now draws through the NodeBook's own components (ROADMAP item 38), so it
+ * carries what drawing a real figure costs: Observable Plot and its d3
+ * modules, KaTeX for typeset titles, and the kernel's indexing and
+ * mark-matching helpers. That is the price of the report being the author's
+ * report rather than an impression of it; what it must never carry is the
+ * editor's canvas or a catalogue, and those are checked below.
+ */
+const VIEWER_BUDGET = 360 * 1024;
 
 function viewerBundleGuard() {
   return {
@@ -21,7 +33,10 @@ function viewerBundleGuard() {
     generateBundle(_options: unknown, bundle: Record<string, OutputChunk | { readonly type: 'asset' }>) {
       const chunks = Object.values(bundle).filter((entry): entry is OutputChunk => entry.type === 'chunk');
       const entry = chunks.find((chunk) => chunk.isEntry);
-      const viewer = chunks.find((chunk) => chunk.facadeModuleId?.endsWith('/viewer/PublishedNotebookViewer.tsx'));
+      // By module rather than by facade: now that the viewer shares
+      // components with the editor, Rollup can drop the facade and leave
+      // `facadeModuleId` null while the module itself is still in the chunk.
+      const viewer = chunks.find((chunk) => chunk.moduleIds.some((id) => id.endsWith('/viewer/PublishedNotebookViewer.tsx')));
       if (entry === undefined || viewer === undefined) throw new Error('could not identify viewer entry chunks');
       const byFile = new Map(chunks.map((chunk) => [chunk.fileName, chunk]));
       const reachable = new Set<OutputChunk>();
@@ -35,7 +50,11 @@ function viewerBundleGuard() {
       };
       visit(entry);
       visit(viewer);
-      const forbidden = [...reachable].flatMap((chunk) => chunk.moduleIds).find((id) => id.includes('/packages/kernel/') || id.includes('/@xyflow/'));
+      // The editor's canvas library, and any catalogue at all: a reader is
+      // sent a report, never the graph editor and never the formula content
+      // it was computed from. The kernel is neither — it is the arithmetic
+      // and the index bookkeeping the figures need to draw at all.
+      const forbidden = [...reachable].flatMap((chunk) => chunk.moduleIds).find((id) => id.includes('/@xyflow/') || id.includes('/src/catalogues/'));
       if (forbidden !== undefined) throw new Error(`viewer bundle includes forbidden module ${forbidden}`);
       const compressed = [...reachable].reduce((bytes, chunk) => bytes + gzipSync(chunk.code).byteLength, 0);
       if (compressed > VIEWER_BUDGET) throw new Error(`viewer JavaScript is ${compressed} bytes gzipped; budget is ${VIEWER_BUDGET}`);

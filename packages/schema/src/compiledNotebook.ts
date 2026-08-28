@@ -1,7 +1,18 @@
 import type { JsonObject, JsonValue } from './json.js';
 
-/** The compiled report is intentionally versioned independently of graph documents. */
-export const COMPILED_NOTEBOOK_SCHEMA_VERSION = 1;
+/**
+ * The compiled report is intentionally versioned independently of graph
+ * documents.
+ *
+ * Version 2 carries everything the shared presentation components need to
+ * draw a NodeBook exactly as its author saw it (ROADMAP item 38): the display
+ * settings it was written under, how each swept axis was authored, and the
+ * titles of the Check nodes composite results reference. Version 1 carried a
+ * loose blob and a viewer that redrew plots its own way, so it is not
+ * readable here — a workspace saved under it is republished from its source
+ * document rather than migrated.
+ */
+export const COMPILED_NOTEBOOK_SCHEMA_VERSION = 2;
 
 export type EncodedNumber = number | 'NaN' | '+Infinity' | '-Infinity';
 
@@ -15,6 +26,24 @@ export interface CompiledSlider {
   readonly figures: number;
 }
 
+/**
+ * How the author's editor was writing numbers and drawing surfaces. A report
+ * reads the same on a reader's screen as it did on the author's, rather than
+ * picking up whatever that reader happens to prefer.
+ */
+export interface CompiledDisplaySettings {
+  readonly numberStyle: string;
+  readonly numberNotation: string;
+  readonly contourPalette: string;
+  readonly titleMath: boolean;
+}
+
+/** How one swept axis was authored — all a figure needs of the range behind it. */
+export interface CompiledAxisNature {
+  readonly continuous: boolean;
+  readonly logarithmic: boolean;
+}
+
 export interface CompiledOutput {
   readonly id: string;
   readonly kind: string;
@@ -24,6 +53,8 @@ export interface CompiledOutput {
   readonly unavailableReason?: string;
   /** Presentation data for the output kind. It never contains an equation expression. */
   readonly result?: JsonObject;
+  /** Digits after the decimal point per table column, as the author set them. */
+  readonly columnFigures?: Readonly<Record<string, number>>;
 }
 
 export interface CompiledSection {
@@ -34,10 +65,16 @@ export interface CompiledSection {
   readonly outputs: readonly CompiledOutput[];
 }
 
+/**
+ * One swept axis as the marks were resolved against it: the axis, its
+ * coordinates and its unit, exactly as the kernel produced them. A published
+ * NodeBook draws the marks it was published with, and matching a mark to a
+ * cell needs the coordinates it was pinned to — a bare list of values is not
+ * enough, because the match is per grid.
+ */
 export interface CompiledAxisReadout {
   readonly id: string;
-  readonly unit: string;
-  readonly coordinates: readonly (EncodedNumber | string)[];
+  readonly readout: JsonObject;
 }
 
 export interface CompiledNotebook {
@@ -45,6 +82,11 @@ export interface CompiledNotebook {
   readonly title: string;
   readonly author?: string;
   readonly locale?: 'en' | 'nl';
+  readonly display: CompiledDisplaySettings;
+  /** Swept axis id → how it was authored. */
+  readonly axes: Readonly<Record<string, CompiledAxisNature>>;
+  /** Check node id → its title, for the composite results that reference it. */
+  readonly checkLabels: Readonly<Record<string, string>>;
   readonly sections: readonly CompiledSection[];
   readonly marks: readonly Readonly<Record<string, EncodedNumber | string>>[];
   readonly axisReadouts: readonly CompiledAxisReadout[];
@@ -72,6 +114,38 @@ function object(value: JsonValue, name: string): Readonly<Record<string, JsonVal
 function string(value: JsonValue | undefined, name: string): string {
   if (typeof value !== 'string') throw new Error(`${name} must be a string`);
   return value;
+}
+
+function optionalString(value: JsonValue | undefined, fallback: string): string {
+  return typeof value === 'string' ? value : fallback;
+}
+
+function stringMap(value: JsonValue | undefined): Readonly<Record<string, string>> {
+  if (value === null || value === undefined || Array.isArray(value) || typeof value !== 'object') return {};
+  return Object.fromEntries(Object.entries(value).flatMap(([key, entry]) => (typeof entry === 'string' ? [[key, entry]] : [])));
+}
+
+function figuresMap(value: JsonValue | undefined): Readonly<Record<string, number>> {
+  if (value === null || value === undefined || Array.isArray(value) || typeof value !== 'object') return {};
+  return Object.fromEntries(Object.entries(value).flatMap(([key, entry]) => (typeof entry === 'number' && Number.isInteger(entry) ? [[key, entry]] : [])));
+}
+
+function axisNatures(value: JsonValue | undefined): Readonly<Record<string, CompiledAxisNature>> {
+  if (value === null || value === undefined || Array.isArray(value) || typeof value !== 'object') return {};
+  return Object.fromEntries(Object.entries(value).flatMap(([key, entry]) => {
+    if (entry === null || Array.isArray(entry) || typeof entry !== 'object') return [];
+    return [[key, { continuous: entry.continuous === true, logarithmic: entry.logarithmic === true }] as const];
+  }));
+}
+
+function displaySettings(value: JsonValue | undefined): CompiledDisplaySettings {
+  const raw = value === null || value === undefined || Array.isArray(value) || typeof value !== 'object' ? {} : value;
+  return {
+    numberStyle: optionalString(raw.numberStyle, 'plain'),
+    numberNotation: optionalString(raw.numberNotation, 'si'),
+    contourPalette: optionalString(raw.contourPalette, 'viridis'),
+    titleMath: raw.titleMath !== false,
+  };
 }
 
 function encoded(value: JsonValue | undefined, name: string): EncodedNumber {
@@ -110,6 +184,7 @@ export function parseCompiledNotebook(value: JsonValue): CompiledNotebook {
           ...(typeof output.caption === 'string' ? { caption: output.caption } : {}),
           ...(typeof output.unavailableReason === 'string' ? { unavailableReason: output.unavailableReason } : {}),
           ...(result === undefined ? {} : { result }),
+          ...(output.columnFigures === undefined ? {} : { columnFigures: figuresMap(output.columnFigures) }),
         };
       }),
     };
@@ -119,12 +194,14 @@ export function parseCompiledNotebook(value: JsonValue): CompiledNotebook {
     title: string(root.title, 'title'),
     ...(typeof root.author === 'string' ? { author: root.author } : {}),
     ...(root.locale === 'en' || root.locale === 'nl' ? { locale: root.locale } : {}),
+    display: displaySettings(root.display),
+    axes: axisNatures(root.axes),
+    checkLabels: stringMap(root.checkLabels),
     sections,
     marks: root.marks.map((raw) => Object.fromEntries(Object.entries(object(raw, 'mark')).map(([key, coordinate]) => [key, typeof coordinate === 'string' && !['NaN', '+Infinity', '-Infinity'].includes(coordinate) ? coordinate : encoded(coordinate, 'mark coordinate')]))),
     axisReadouts: root.axisReadouts.map((raw) => {
       const axis = object(raw, 'axis readout');
-      if (!Array.isArray(axis.coordinates)) throw new Error('axis coordinates must be an array');
-      return { id: string(axis.id, 'axis id'), unit: string(axis.unit, 'axis unit'), coordinates: axis.coordinates.map((coordinate) => typeof coordinate === 'string' && !['NaN', '+Infinity', '-Infinity'].includes(coordinate) ? coordinate : encoded(coordinate, 'axis coordinate')) };
+      return { id: string(axis.id, 'axis id'), readout: object(axis.readout ?? null, 'axis readout data') as JsonObject };
     }),
   };
 }

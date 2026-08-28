@@ -15,10 +15,10 @@
  */
 
 import { candidateMask, markLetter, type Axis, type AxisReadout } from '@joveworks/kernel';
-import type { Candidate, GraphDocument } from '@joveworks/schema';
+import type { Candidate } from '@joveworks/schema';
 
 export interface ResolvedMark {
-  /** Position in `document.marks` — the identity, and the index the toggle uses. */
+  /** Position in the document's mark list — the identity, and the index the toggle uses. */
   readonly index: number;
   /** A, B, C … as drawn. */
   readonly letter: string;
@@ -66,11 +66,11 @@ export const NO_MARKS: MarkIndex = { marks: [], at: () => NONE, any: false };
  * scalar print would highlight for a candidate it knows nothing about.
  */
 export function marksOver(
-  document: GraphDocument,
+  marks: readonly Candidate[],
   axes: readonly Axis[],
   readouts: ReadonlyMap<string, AxisReadout>,
 ): MarkIndex {
-  return axes.length === 0 ? NO_MARKS : resolveMarks(document, axes, readouts);
+  return axes.length === 0 ? NO_MARKS : resolveMarks(marks, axes, readouts);
 }
 
 /** Accepts the gesture and does nothing with it — see `readOnlyMarking`. */
@@ -89,11 +89,11 @@ const IGNORE = (): void => {};
  * themselves ignorant of which surface they are drawn on.
  */
 export function readOnlyMarking(
-  document: GraphDocument,
+  marks: readonly Candidate[],
   axes: readonly Axis[],
   readouts: ReadonlyMap<string, AxisReadout>,
 ): FigureMarking {
-  return { marks: marksOver(document, axes, readouts), readouts, toggle: IGNORE, hover: IGNORE };
+  return { marks: marksOver(marks, axes, readouts), readouts, toggle: IGNORE, hover: IGNORE };
 }
 
 /**
@@ -107,11 +107,11 @@ export function readOnlyMarking(
  * special-cased here.
  */
 export function resolveMarks(
-  document: GraphDocument,
+  candidates: readonly Candidate[],
   axes: readonly Axis[],
   readouts: ReadonlyMap<string, AxisReadout>,
 ): MarkIndex {
-  const marks = (document.marks ?? []).map((candidate, index): ResolvedMark => {
+  const marks = candidates.map((candidate, index): ResolvedMark => {
     const { mask, approximate } = candidateMask(axes, candidate, readouts);
     return {
       index,

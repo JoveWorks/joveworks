@@ -10,7 +10,7 @@
 
 import { useEffect, useMemo, useState, type ReactElement } from 'react';
 
-import type { Axis, AxisReadout, OutputResult } from '@joveworks/kernel';
+import type { Axis, AxisReadout } from '@joveworks/kernel';
 import type { GraphDocument, OutputNode } from '@joveworks/schema';
 
 import { analyse } from '../model/analysis';
@@ -23,22 +23,13 @@ import {
   platformFootprint,
   reliabilityLoadStrength,
 } from '../model/samples';
-import { display, displayNumber } from '../model/quantity';
-import { checkVerdict, summarise, summariseCheck } from '../model/values';
-import { CheckReading } from '../CheckReading';
-import { BestDesignCard } from '../notebook/BestDesignCard';
-import { CandidateReadings } from '../notebook/CandidateReadings';
-import { FeasibilityFigure, feasibilityGrid } from '../notebook/FeasibilityFigure';
-import { marksOver, readOnlyMarking, type FigureMarking, type MarkIndex } from '../notebook/marks';
-import { ParetoFigure } from '../notebook/ParetoFigure';
-import { PlotFigure, plotGrid } from '../notebook/PlotFigure';
-import { SensitivityFigure } from '../notebook/SensitivityFigure';
-import { StressFigure } from '../notebook/StressFigure';
-import { DistributionFigure } from '../notebook/DistributionFigure';
-import { ReliabilityCard } from '../notebook/ReliabilityCard';
+import { TitleText } from '../canvas/TitleField';
+import { readOnlyMarking, type FigureMarking } from '../present/marks';
+import { ResultView } from '../present/ResultView';
+import { DisplayProvider } from '../present/display';
 import { SettingsContext, type SettingsContextValue } from '../settings-context';
 import { analytics, type CourseMaterial } from '../analytics/analytics';
-import { exposedSlidersFor, notebookSectionId, readingOrder, withSliderValue } from '../model/notebook';
+import { exposedSlidersFor, notebookDisplayOf, notebookSectionId, readingOrder, withSliderValue } from '../model/notebook';
 import { NotebookSliderControl } from '../notebook/NotebookSliderControl';
 import { phrase } from '../i18n';
 
@@ -49,15 +40,6 @@ interface CourseExample {
   readonly document: GraphDocument;
 }
 
-const comparisonText: Readonly<Record<string, string>> = {
-  '<': '<',
-  '<=': '≤',
-  '>': '>',
-  '>=': '≥',
-  '==': '=',
-  '!=': '≠',
-};
-
 function outputsOf(document: GraphDocument, frameId: string | undefined): readonly OutputNode[] {
   return document.nodes
     .filter((node): node is OutputNode => node.kind === 'output' && notebookSectionId(document, node) === frameId)
@@ -65,171 +47,41 @@ function outputsOf(document: GraphDocument, frameId: string | undefined): readon
     .sort(readingOrder);
 }
 
+/**
+ * The course viewer draws results through the same component the editor's
+ * NodeBook does (`present/ResultView`) — this is the whole of what it adds:
+ * a read-only title, and marks that draw but cannot be changed.
+ *
+ * Equation outputs are deliberately absent: a public course viewer shows the
+ * conclusion and the citation, never a catalogue expression.
+ */
 function Result({
   result,
   node,
   document,
   readouts,
 }: {
-  readonly result: OutputResult;
+  readonly result: import('@joveworks/kernel').OutputResult;
   readonly node: OutputNode;
   readonly document: GraphDocument;
   /** Axis id → coordinates, for resolving the marks this NodeBook was published with. */
   readonly readouts: ReadonlyMap<string, AxisReadout>;
 }): ReactElement | null {
-  const format = toUnitsFormat(DEFAULT_NUMBER_FORMAT_SETTINGS);
-  const title = node.label ?? node.id;
+  if (result.kind === 'equation') return null;
   // The marks are part of what was published — a report whose prose argues for
   // candidate B has to arrive with B drawn on it. Nothing here can *change*
   // them, which is what `readOnlyMarking` says and the figures never have to
   // ask about.
-  const marks = (axes: readonly Axis[]): MarkIndex => marksOver(document, axes, readouts);
-  const marking = (axes: readonly Axis[]): FigureMarking => readOnlyMarking(document, axes, readouts);
-
-  if (result.kind === 'print') {
-    return (
-      <p className="viewer-result viewer-print">
-        <strong>{title}</strong>
-        {summarise(result, result.figures, format)}
-        <CandidateReadings
-          marks={marks(result.series.axes)}
-          read={(cell) => {
-            const value = result.series.data[cell];
-            return value === undefined
-              ? ''
-              : typeof value === 'number'
-                ? displayNumber(value, result.unit, result.figures, format)
-                : value;
-          }}
-        />
-      </p>
-    );
-  }
-
-  if (result.kind === 'check') {
-    const failures = result.results.filter((passed) => !passed).length;
-    const verdict = checkVerdict(result.results);
-    const mark = verdict === 'pass' ? '✓' : verdict === 'fail' ? '✗' : '!';
-    return (
-      <div className={`viewer-result viewer-check ${verdict}`}>
-        <strong><span aria-hidden="true">{mark}</span> {title}</strong>
-        <span>
-          <CheckReading
-            segments={summariseCheck({ series: result.series, unit: result.unit }, result.results, 4, format)}
-          />{' '}
-          <span className="check-threshold">
-            {comparisonText[result.comparison] ?? result.comparison} {display(result.threshold, result.unit, 4, format)}
-          </span>
-          {result.results.length > 1 && verdict !== 'pass' ? ` · fails at ${failures} of ${result.results.length} points` : ''}
-        </span>
-        <CandidateReadings
-          marks={marks(result.series.axes)}
-          read={(cell) => (
-            <>
-              {displayNumber(result.series.data[cell] as number, result.unit, 4, format)}{' '}
-              {result.results[cell] === true ? '✓' : '✗'}
-            </>
-          )}
-        />
-      </div>
-    );
-  }
-
-  if (result.kind === 'table') {
-    const rows = Math.max(...result.columns.map((column) => column.series.data.length));
-    // Row index is cell index here exactly as in the editor's notebook: every
-    // column is broadcast onto `result.axes` before it is drawn, so a row is a
-    // design and a marked design is a highlighted row.
-    const rowMarks = marks(result.axes);
-    return (
-      <div className="viewer-result viewer-table">
-        <strong>{title}</strong>
-        <div className="viewer-table-scroll">
-          <table>
-            <thead><tr>{result.columns.map((column) => <th key={column.name}>{column.name} <small>{column.unit.symbol}</small></th>)}</tr></thead>
-            <tbody>{Array.from({ length: rows }, (_unused, row) => (
-              <tr key={row} className={rowMarks.at(row).length > 0 ? 'marked' : undefined}>{result.columns.map((column, columnIndex) => {
-                const cell = column.series.data[row];
-                const letters = columnIndex === 0 ? rowMarks.at(row) : [];
-                return (
-                  <td key={column.name}>
-                    {letters.map((entry) => <span className="mark-letter" key={entry.index}>{entry.letter}</span>)}
-                    {cell === undefined ? '' : typeof cell === 'number' ? displayNumber(cell, column.unit, 4, format) : cell}
-                  </td>
-                );
-              })}</tr>
-            ))}</tbody>
-          </table>
-        </div>
-      </div>
-    );
-  }
-
-  // Equation outputs are deliberately absent: a public course viewer should
-  // show the conclusion and citation, never expose a catalogue expression.
-  if (result.kind === 'equation') return null;
-
-  if (result.kind === 'feasibility') {
-    const checkLabels = Object.fromEntries(
-      result.checks.map((id) => [id, document.nodes.find((candidate) => candidate.id === id)?.label ?? id]),
-    );
-    return (
-      <div className="viewer-result viewer-plot">
-        <strong>{title}</strong>
-        <FeasibilityFigure result={result} checkLabels={checkLabels} marking={marking(feasibilityGrid(result))} />
-      </div>
-    );
-  }
-
-  if (result.kind === 'sensitivity') {
-    return (
-      <div className="viewer-result viewer-plot">
-        <strong>{title}</strong>
-        <SensitivityFigure result={result} />
-      </div>
-    );
-  }
-
-  if (result.kind === 'stress') {
-    const checkLabels = Object.fromEntries(
-      result.checks.map((id) => [id, document.nodes.find((candidate) => candidate.id === id)?.label ?? id]),
-    );
-    return <div className="viewer-result viewer-plot"><strong>{title}</strong><StressFigure result={result} document={document} readouts={readouts} checkLabels={checkLabels} format={format} /></div>;
-  }
-
-  if (result.kind === 'bestDesign') {
-    const checkLabels = Object.fromEntries(
-      result.checks.map((id) => [id, document.nodes.find((candidate) => candidate.id === id)?.label ?? id]),
-    );
-    return (
-      <div className="viewer-result viewer-plot">
-        <strong>{title}</strong>
-        <BestDesignCard result={result} checkLabels={checkLabels} format={format} />
-      </div>
-    );
-  }
-
-  if (result.kind === 'pareto') {
-    return (
-      <div className="viewer-result viewer-plot">
-        <strong>{title}</strong>
-        <ParetoFigure result={result} format={format} marking={marking(result.axes)} />
-      </div>
-    );
-  }
-
-  if (result.kind === 'distribution') return <div className="viewer-result viewer-plot"><strong>{title}</strong><DistributionFigure result={result} /></div>;
-  if (result.kind === 'reliability') {
-    const checkLabels = Object.fromEntries(result.checks.map(({ checkId }) => [checkId, document.nodes.find((candidate) => candidate.id === checkId)?.label ?? checkId]));
-    return <div className="viewer-result viewer-plot"><strong>{title}</strong><ReliabilityCard result={result} checkLabels={checkLabels} /></div>;
-  }
-
+  const marking = (axes: readonly Axis[]): FigureMarking =>
+    readOnlyMarking(document.marks ?? [], axes, readouts);
+  const columnFigures = node.output.kind === 'table' ? node.output.figures ?? {} : {};
   return (
-    <div className="viewer-result viewer-plot">
-      <strong>{title}</strong>
-      <PlotFigure result={result} document={document} format={format} marking={marking(plotGrid(result))} />
-      {result.threshold === undefined ? null : <p>Threshold at {display(result.threshold, result.unit, 4, format)}</p>}
-    </div>
+    <ResultView
+      result={result}
+      title={<TitleText value={node.label ?? node.id} />}
+      columnFigures={columnFigures}
+      markingOver={marking}
+    />
   );
 }
 
@@ -274,6 +126,12 @@ function ExampleReport({
   readonly onReset: () => void;
 }): ReactElement {
   const analysis = useMemo(() => analyse(document, [baseCatalogue(), ...bundledCatalogues()]), [document]);
+  const display = useMemo(() => notebookDisplayOf(document, {
+    numberFormat: DEFAULT_NUMBER_FORMAT_SETTINGS,
+    contourPalette: 'viridis',
+    titleMathRendering: true,
+    locale: 'en',
+  }), [document]);
   const results = new Map((analysis.evaluation?.outputs ?? []).map((result) => [result.nodeId, result] as const));
   const readouts = analysis.evaluation?.axisReadouts ?? new Map<string, AxisReadout>();
   const hasControls = document.nodes.some(
@@ -281,7 +139,11 @@ function ExampleReport({
   );
 
   return (
-    <article className="course-report">
+    // `notebook` is what makes this the NodeBook's own typography rather than
+    // a lookalike: every result rule in styles.css is scoped to it, and this
+    // viewer draws the same components inside it (ROADMAP item 38).
+    <DisplayProvider value={display}>
+    <article className="notebook course-report">
       <header className="course-report-header">
         <p className="course-report-kicker">Course material · interactive NodeBook</p>
         <div className="course-report-title-row">
@@ -307,8 +169,10 @@ function ExampleReport({
               const result = results.get(node.id);
               return (
                 <div className="course-output" key={node.id}>
-                  {result === undefined ? <p className="viewer-pending">This result is not available.</p> : <Result result={result} node={node} document={document} readouts={readouts} />}
-                  {node.caption === undefined ? null : <p className="course-caption">{node.caption}</p>}
+                  {result === undefined
+                    ? <p className="result pending"><span className="number">This result is not available.</span></p>
+                    : <Result result={result} node={node} document={document} readouts={readouts} />}
+                  {node.caption === undefined ? null : <p className="caption">{node.caption}</p>}
                 </div>
               );
             })}
@@ -316,6 +180,7 @@ function ExampleReport({
         );
       })}
     </article>
+    </DisplayProvider>
   );
 }
 

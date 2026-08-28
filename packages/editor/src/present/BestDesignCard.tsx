@@ -18,12 +18,10 @@ import type { BestDesignCoordinate, BestDesignResult } from '@joveworks/kernel';
 import type { NumberFormat } from '@joveworks/units';
 
 import { display } from '../model/quantity';
+import { useDisplay } from './display';
 
 interface Props {
   readonly result: BestDesignResult;
-  /** Check node id → what that node calls itself, the same fallback `OutputTitle` uses. */
-  readonly checkLabels: Readonly<Record<string, string>>;
-  readonly format: NumberFormat;
 }
 
 /** `38 mm` for a numeric coordinate, the bare choice for a categorical one. */
@@ -75,7 +73,8 @@ export function detail(
   );
 }
 
-export function BestDesignCard({ result, checkLabels, format }: Props): ReactElement {
+export function BestDesignCard({ result }: Props): ReactElement {
+  const { checkLabels, format } = useDisplay();
   const label = (id: string): string => checkLabels[id] ?? id;
 
   if (result.winner === undefined) {

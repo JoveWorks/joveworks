@@ -52,10 +52,8 @@ import {
   type NumberFormat,
   type Unit,
 } from '@joveworks/units';
-import type { GraphDocument } from '@joveworks/schema';
-
 import { typesetTitleHtml } from '../canvas/TitleField';
-import { useSettings } from '../settings-context';
+import { axisNature, useDisplay } from './display';
 import { NO_MARKS, type FigureMarking } from './marks';
 
 export interface Row {
@@ -71,12 +69,6 @@ function coordinates(axis: PlotResult['x']): readonly (number | string)[] {
   return axis.coordinates.kind === 'numeric'
     ? axis.coordinates.data.map((value) => fromCanonical(value, axis.unit))
     : axis.coordinates.data;
-}
-
-/** Whether the range node behind an axis was logarithmic. */
-function isLogAxis(document: GraphDocument, axisId: string): boolean {
-  const node = document.nodes.find((candidate) => candidate.id === axisId);
-  return node?.kind === 'input' && node.value.kind === 'logarithmic';
 }
 
 /**
@@ -223,8 +215,6 @@ export function tipTitle(result: PlotResult, row: Row, xLabel: string, valueLabe
 
 interface Props {
   readonly result: PlotResult;
-  readonly document: GraphDocument;
-  readonly format: NumberFormat;
   /** Absent in the read-only viewer: the curve draws, but nothing can be marked. */
   readonly marking?: FigureMarking;
 }
@@ -470,9 +460,9 @@ export function plotChartWidth(facetCount: number | undefined): number {
   return facetCount === undefined ? 360 : Math.min(180 * facetCount, 1080);
 }
 
-export function PlotFigure({ result: rawResult, document: graph, format, marking }: Props): ReactElement {
+export function PlotFigure({ result: rawResult, marking }: Props): ReactElement {
   const host = useRef<HTMLDivElement>(null);
-  const { contourPalette, titleMathRendering } = useSettings();
+  const { format, contourPalette, titleMath: titleMathRendering, axes } = useDisplay();
   const result = useMemo(() => siResult(rawResult, format), [rawResult, format]);
 
   useEffect(() => {
@@ -585,7 +575,7 @@ export function PlotFigure({ result: rawResult, document: graph, format, marking
       marginBottom: 40,
       x: {
         label: xLabel,
-        ...(isLogAxis(graph, result.x.axis.id) ? { type: 'log' as const } : {}),
+        ...(axisNature(axes, result.x.axis.id).logarithmic ? { type: 'log' as const } : {}),
       },
       y: { label: yLabel, grid: true },
       ...(contouring || lineSeries !== undefined ? { figure: false } : {}),
@@ -677,7 +667,7 @@ export function PlotFigure({ result: rawResult, document: graph, format, marking
       chart.removeEventListener('click', handleClick);
       chart.removeEventListener('pointerleave', handleLeave);
     };
-  }, [graph, result, titleMathRendering, marking]);
+  }, [axes, contourPalette, result, titleMathRendering, marking]);
 
   return <div className="figure" ref={host} />;
 }

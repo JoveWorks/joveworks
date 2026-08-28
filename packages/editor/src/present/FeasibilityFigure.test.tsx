@@ -83,7 +83,7 @@ describe('FeasibilityFigure axis label typesetting', () => {
       root = createRoot(host);
       root.render(
         <SettingsContext.Provider value={settings}>
-          <FeasibilityFigure result={result} checkLabels={{ check1: 'ok' }} />
+          <FeasibilityFigure result={result} />
         </SettingsContext.Provider>,
       );
     });

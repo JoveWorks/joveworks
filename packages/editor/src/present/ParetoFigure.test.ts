@@ -108,15 +108,7 @@ describe('the staircase', () => {
 describe('marks on the chart', () => {
   it('carries the letter of the design under each point', () => {
     const marked = resolveMarks(
-      {
-        schemaVersion: 1,
-        id: 'g',
-        title: 'T',
-        nodes: [],
-        edges: [],
-        frames: [],
-        marks: [{ at: { d: 20 } }],
-      },
+      [{ at: { d: 20 } }],
       [d],
       new Map([
         [

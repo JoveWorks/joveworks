@@ -15,7 +15,8 @@ import { fromCanonical, type NumberFormat, type Unit } from '@joveworks/units';
 import type { GraphDocument } from '@joveworks/schema';
 
 import { useSettings } from '../settings-context';
-import { inferPlotPanels, isLogarithmicAxis, plotAxisFor, type PlotPanel } from '../model/plot';
+import { inferPlotPanels, plotAxisFor, type PlotPanel } from '../model/plot';
+import { axisNature, useDisplay } from './display';
 import { chartTip, pointedRow, siAxisUnit, typesetChartLabels } from './PlotFigure';
 import type { FigureMarking } from './marks';
 
@@ -272,19 +273,15 @@ function tipText(panel: PlotPanel, row: SmartRow, valueUnit: Unit): string {
 
 function PlotPanelFigure({
   panel,
-  document,
   width,
-  format,
   marking,
 }: {
   readonly panel: PlotPanel;
-  readonly document: GraphDocument;
   readonly width: number;
-  readonly format: NumberFormat;
   readonly marking?: FigureMarking;
 }): ReactElement {
   const host = useRef<HTMLDivElement>(null);
-  const { contourPalette, titleMathRendering } = useSettings();
+  const { format, contourPalette, titleMath: titleMathRendering, axes } = useDisplay();
 
   useEffect(() => {
     const container = host.current;
@@ -406,10 +403,10 @@ function PlotPanelFigure({
 
     const xScale = panel.roles.x === undefined
       ? 'linear'
-      : panel.scales[panel.roles.x] ?? (isLogarithmicAxis(document, panel.roles.x) ? 'log' : 'linear');
+      : panel.scales[panel.roles.x] ?? (axisNature(axes, panel.roles.x).logarithmic ? 'log' : 'linear');
     const yScale = panel.roles.y === undefined
       ? panel.valueScale
-      : panel.scales[panel.roles.y] ?? (isLogarithmicAxis(document, panel.roles.y) ? 'log' : 'linear');
+      : panel.scales[panel.roles.y] ?? (axisNature(axes, panel.roles.y).logarithmic ? 'log' : 'linear');
     const colorbar = sharesColorScaleKey(panel.type)
       ? contourColorbar(panel, valueUnit, contourPalette)
       : undefined;
@@ -460,26 +457,23 @@ function PlotPanelFigure({
       chart.removeEventListener('pointerleave', handleLeave);
       container.classList.remove('contour-figure');
     };
-  }, [panel, document, width, format, marking, contourPalette, titleMathRendering]);
+  }, [panel, axes, width, format, marking, contourPalette, titleMathRendering]);
 
   return <div className="figure intelligent-plot-panel" ref={host} />;
 }
 
 export function IntelligentPlotFigure({
   result,
-  document,
-  format,
   markingFor,
 }: {
   readonly result: PlotResult;
-  readonly document: GraphDocument;
-  readonly format: NumberFormat;
   readonly markingFor?: (axes: readonly Axis[]) => FigureMarking;
 }): ReactElement {
   const host = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(640);
+  const { axes } = useDisplay();
   const measures = result.measures ?? [];
-  const panels = useMemo(() => inferPlotPanels(document, measures), [document, measures]);
+  const panels = useMemo(() => inferPlotPanels(axes, measures), [axes, measures]);
 
   useEffect(() => {
     const element = host.current;
@@ -499,9 +493,7 @@ export function IntelligentPlotFigure({
           {panel.error === undefined ? (
             <PlotPanelFigure
               panel={panel}
-              document={document}
               width={width}
-              format={format}
               {...(markingFor === undefined ? {} : { marking: markingFor(panelGrid(panel)) })}
             />
           ) : <p className="plot-configuration-error">{panel.error}</p>}

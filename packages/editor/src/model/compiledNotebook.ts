@@ -12,6 +12,7 @@ import {
 } from '@joveworks/schema';
 import type { OutputResult } from '@joveworks/kernel';
 
+import type { NotebookDisplay } from '../present/display';
 import type { Analysis } from './analysis';
 import { exposedSlidersFor, notebookSectionId, readingOrder } from './notebook';
 
@@ -41,6 +42,13 @@ function outputNodes(document: GraphDocument, frameId: string | undefined): read
     .sort(readingOrder);
 }
 
+/** Check node ids a composite result names, so only those labels are published. */
+function referencedChecks(result: OutputResult): readonly string[] {
+  if (result.kind === 'feasibility' || result.kind === 'stress' || result.kind === 'bestDesign') return result.checks;
+  if (result.kind === 'reliability') return result.checks.map(({ checkId }) => checkId);
+  return [];
+}
+
 function compiledOutput(node: OutputNode, result: OutputResult | undefined): CompiledOutput {
   if (result === undefined) {
     return {
@@ -60,11 +68,28 @@ function compiledOutput(node: OutputNode, result: OutputResult | undefined): Com
     ...(node.caption === undefined ? {} : { caption: node.caption }),
     available: true,
     result: encoded as JsonObject,
+    ...(node.output.kind === 'table' && node.output.figures !== undefined
+      ? { columnFigures: node.output.figures }
+      : {}),
   };
 }
 
-/** Compile evaluated editor state into a report with no source graph or catalogue content. */
-export function compileNotebook(document: GraphDocument, analysis: Analysis): CompiledNotebook {
+/**
+ * Compile evaluated editor state into a report with no source graph or
+ * catalogue content.
+ *
+ * The presentation components draw from an `OutputResult` plus a handful of
+ * display facts they cannot read off one (`present/display.ts`). Both are
+ * resolved here, so a published NodeBook draws through exactly the components
+ * the editor draws through — and still carries no graph, no expression, no
+ * catalogue and no editing state. `display` is what the author saw: a report
+ * keeps its own number format and palette rather than picking up its reader's.
+ */
+export function compileNotebook(
+  document: GraphDocument,
+  analysis: Analysis,
+  display: NotebookDisplay,
+): CompiledNotebook {
   const results = new Map((analysis.evaluation?.outputs ?? []).map((result) => [result.nodeId, result] as const));
   const section = (id: string, title: string, prose: string | undefined, nodes: readonly OutputNode[]): CompiledSection => ({
     id,
@@ -82,20 +107,40 @@ export function compileNotebook(document: GraphDocument, analysis: Analysis): Co
     outputs: nodes.map((node) => compiledOutput(node, results.get(node.id))),
   });
   const unframed = outputNodes(document, undefined);
+  const sections = [
+    ...document.frames.filter((frame) => frame.kind !== 'group').map((frame) => section(frame.id, frame.title, frame.note, outputNodes(document, frame.id))).filter((entry) => entry.outputs.length > 0),
+    ...(unframed.length === 0 ? [] : [section('__unframed', 'Results', undefined, unframed)]),
+  ];
+  // Only the checks a published result actually names — a reader has no use
+  // for the titles of nodes that never reach the report, and the boundary is
+  // narrower for keeping them out.
+  const published = new Set(sections.flatMap((entry) => entry.outputs.map((output) => output.id)));
+  const checkLabels = Object.fromEntries(
+    [...results.values()]
+      .filter((result) => published.has(result.nodeId))
+      .flatMap(referencedChecks)
+      .map((id) => [id, display.checkLabels[id] ?? id] as const),
+  );
   return {
     schemaVersion: COMPILED_NOTEBOOK_SCHEMA_VERSION,
     title: document.title,
     ...(document.author === undefined ? {} : { author: document.author }),
     ...(document.notebookLocale === undefined ? {} : { locale: document.notebookLocale }),
-    sections: [
-      ...document.frames.filter((frame) => frame.kind !== 'group').map((frame) => section(frame.id, frame.title, frame.note, outputNodes(document, frame.id))).filter((entry) => entry.outputs.length > 0),
-      ...(unframed.length === 0 ? [] : [section('__unframed', 'Results', undefined, unframed)]),
-    ],
+    display: {
+      numberStyle: display.format.thousands === ',' ? 'comma-thousands'
+        : display.format.thousands === '.' ? 'dot-thousands'
+          : display.format.thousands === ' ' ? 'space-thousands' : 'plain',
+      numberNotation: display.format.notation,
+      contourPalette: display.contourPalette,
+      titleMath: display.titleMath,
+    },
+    axes: display.axes,
+    checkLabels,
+    sections,
     marks: (document.marks ?? []).map((mark) => Object.fromEntries(Object.entries(mark.at).map(([id, value]) => [id, typeof value === 'number' ? encodeCompiledNumber(value) : value]))),
     axisReadouts: [...(analysis.evaluation?.axisReadouts ?? new Map())].map(([id, readout]) => ({
       id,
-      unit: readout.unit.symbol,
-      coordinates: readout.coordinates.data.map((coordinate: number | string) => typeof coordinate === 'number' ? encodeCompiledNumber(coordinate) : coordinate),
+      readout: presentationJson(readout) as JsonObject,
     })),
   };
 }

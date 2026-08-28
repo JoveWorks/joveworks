@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { OutputResult } from '@joveworks/kernel';
 import type { GraphDocument, OutputNode } from '@joveworks/schema';
 
+import { DEFAULT_DISPLAY } from '../present/display';
 import type { Analysis } from './analysis';
 import { compileNotebook, compiledNotebookIsComplete } from './compiledNotebook';
 
@@ -20,15 +21,23 @@ describe('browser NodeBook compiler', () => {
     } as GraphDocument;
     const results = kinds.map((kind) => ({
       nodeId: kind, kind, expression: 'SECRET_EXPRESSION', catalogue: 'SECRET_CATALOGUE',
+      checks: kind === 'feasibility' ? ['bending'] : [],
       series: { axes: [], data: [kind === 'print' ? Number.NaN : 4] }, unit: { symbol: 'mm' },
     })) as unknown as OutputResult[];
     const analysis = { evaluation: { outputs: results, axisReadouts: new Map() } } as unknown as Analysis;
-    const compiled = compileNotebook(document, analysis);
+    const display = { ...DEFAULT_DISPLAY, axes: { d: { continuous: true, logarithmic: false } }, checkLabels: { bending: 'Bending', unused: 'Never referenced' } };
+    const compiled = compileNotebook(document, analysis, display);
     const json = JSON.stringify(compiled);
     expect(compiled.sections[0]?.outputs.map((output) => output.kind)).toEqual([...kinds, 'print']);
     expect(compiled.sections[0]?.outputs.at(-1)?.available).toBe(false);
     expect(compiledNotebookIsComplete(compiled)).toBe(false);
     expect(json).toContain('NaN');
+    // The display facts the shared figures need travel with the report, and
+    // nothing else does: only the Check a published result actually names.
+    expect(compiled.axes).toEqual({ d: { continuous: true, logarithmic: false } });
+    expect(compiled.checkLabels).toEqual({ bending: 'Bending' });
+    expect(json).not.toContain('Never referenced');
+    expect(compiled.display.contourPalette).toBe(DEFAULT_DISPLAY.contourPalette);
     for (const secret of ['SECRET_EXPRESSION', 'SECRET_CATALOGUE', 'secret-edge', '"edges"', '"position"', '"equation"']) expect(json).not.toContain(secret);
   });
 });

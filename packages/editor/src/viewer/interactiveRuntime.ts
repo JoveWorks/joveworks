@@ -2,8 +2,11 @@ import { loadCatalogue, loadDocument, type Catalogue, type CompiledNotebook, typ
 
 import { analyse } from '../model/analysis';
 import { builtInCatalogues, withCatalogue } from '../model/catalogues';
+import { notebookDisplayOf } from '../model/notebook';
+import { compiledDisplaySettings } from '../present/compiled';
 import { compileNotebook } from '../model/compiledNotebook';
 import { withSliderValue } from '../model/notebook';
+import { DEFAULT_NUMBER_FORMAT_SETTINGS } from '../model/numberFormat';
 
 interface SourceEnvelope {
   readonly document: GraphDocument;
@@ -48,15 +51,38 @@ export interface InteractiveNotebook {
   readonly reset: () => InteractiveNotebook;
 }
 
-function session(authored: GraphDocument, document: GraphDocument, catalogues: readonly Catalogue[]): InteractiveNotebook {
+/**
+ * The published report's own display settings drive every recompile, so
+ * moving a slider changes the numbers and nothing else about how they are
+ * written — a reader's own preferences never rewrite someone else's report.
+ * With no published report to read them from (a viewer that failed to fetch
+ * one), the editor defaults stand in.
+ */
+type DisplaySettings = Parameters<typeof notebookDisplayOf>[1];
+
+function session(
+  authored: GraphDocument,
+  document: GraphDocument,
+  catalogues: readonly Catalogue[],
+  settings: DisplaySettings,
+): InteractiveNotebook {
   return {
-    notebook: compileNotebook(document, analyse(document, catalogues)),
-    change: (sliderId, value) => session(authored, withSliderValue(document, sliderId, value), catalogues),
-    reset: () => session(authored, authored, catalogues),
+    notebook: compileNotebook(document, analyse(document, catalogues), notebookDisplayOf(document, settings)),
+    change: (sliderId, value) => session(authored, withSliderValue(document, sliderId, value), catalogues, settings),
+    reset: () => session(authored, authored, catalogues, settings),
   };
 }
 
-export async function activateNotebook(kind: 'publication' | 'share', id: string, hub: string, token?: string): Promise<InteractiveNotebook> {
+export async function activateNotebook(
+  kind: 'publication' | 'share',
+  id: string,
+  hub: string,
+  token?: string,
+  published?: CompiledNotebook,
+): Promise<InteractiveNotebook> {
   const source = await loadSource(kind, id, hub, token);
-  return session(source.document, source.document, source.catalogues);
+  const settings: DisplaySettings = published === undefined
+    ? { numberFormat: DEFAULT_NUMBER_FORMAT_SETTINGS, contourPalette: 'viridis', titleMathRendering: true, locale: 'en' }
+    : compiledDisplaySettings(published);
+  return session(source.document, source.document, source.catalogues, settings);
 }

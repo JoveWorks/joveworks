@@ -4,6 +4,7 @@ import katex from 'katex';
 import { useState, type ReactElement, type ReactNode } from 'react';
 
 import { useSettings } from '../settings-context';
+import { useDisplay } from '../present/display';
 import { phrase } from '../i18n';
 import { TextField } from './fields';
 
@@ -63,9 +64,14 @@ export function typesetTitleHtml(title: string): string | undefined {
   return renderedAny ? html.join('') : undefined;
 }
 
-/** Read-only counterpart to TitleField, used wherever a stored title is displayed. */
+/**
+ * Read-only counterpart to TitleField, used wherever a stored title is
+ * displayed. It reads the *display* setting rather than the editor's own, so
+ * it renders identically on a published NodeBook, where there is no editor
+ * settings context to ask (`present/display.ts`).
+ */
 export function TitleText({ value }: { readonly value: string }): ReactElement {
-  const { titleMathRendering } = useSettings();
+  const { titleMath: titleMathRendering } = useDisplay();
   const typeset = titleMathRendering ? typesetTitle(value) : undefined;
   return <>{typeset ?? value}</>;
 }

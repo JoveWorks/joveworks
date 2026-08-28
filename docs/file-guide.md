@@ -190,18 +190,38 @@ The React app. Largest package by far. `AGENTS.md`: desktop-only, no properties 
 - `canvas/Sparkline.tsx` — the small inline chart a swept value shows on a node body (not the plot node — no axes/interaction, just "this varies").
 - `canvas/*.test.ts`/`.test.tsx` — `Canvas.test.ts`, `QuickAddMenu.test.ts`, `Sparkline.test.ts`, `spectrumSlots.test.ts`, `TitleField.test.tsx`, `ValueEditor.test.ts`, `bundleLabels.test.ts` — unit tests for the modules above.
 
+### `src/present/` — the shared presentation layer
+
+Presentation-only, and that is the point: every component here draws an
+evaluated `OutputResult` plus the display facts in `display.ts`, and touches no
+document, node, catalogue or editing context. That is what lets the editor's
+NodeBook panel, the course-material viewer and a published NodeBook draw the
+same report through the same code instead of three renderers drifting apart
+(ROADMAP item 38).
+
+- `present/display.ts` — the display facts a figure cannot read off its own result: number format, contour palette, title-math, NodeBook language, how each swept axis was authored (`AxisNature`), and Check-node titles. Resolved from the graph by `model/notebook.ts`'s `notebookDisplayOf`, and from a published report by `present/compiled.ts` — the two ends of the boundary.
+- `present/ResultView.tsx` — the one renderer for one result, switching on kind. Editing arrives as an optional `editing` prop (rename, column reorder and figures, plot configuration); without it the same markup renders read-only. The seam where the expressions-hidden rule is enforced.
+- `present/compiled.ts` — reads a published report back into the shapes the figures draw: revives the numbers JSON destroys, refuses an `equation` result and any kind it cannot draw, and rebuilds the marks, axis readouts and display settings.
+- `present/SliderControl.tsx` — the synchronized slider/exact-value control, over plain readings rather than a node, so a published NodeBook uses the same one; print replaces its interactive fields with the current static value. `notebook/NotebookSliderControl.tsx` is the graph-node adapter over it.
+- `present/PlotFigure.tsx` — the Observable-Plot rendering of a `PlotResult`: log axes when the range was logarithmic, the threshold (a rule on a line, an isoline on a contour), contour mode, faceting, SI-prefixed axis labels, the mark overlay, and the pointer that turns a click into a mark. All computation is already done by the kernel; this file only draws.
+- `present/IntelligentPlotFigure.tsx` — the multi-measure dashboard: one panel per inferred plot type (`model/plot.ts`), with its own colorbars and legends.
+- `present/FeasibilityFigure.tsx` — the pass/fail map, its hatching and its per-check fail tip.
+- `present/ParetoFigure.tsx` — the two-objective scatter: front / dominated / infeasible drawn three ways, the staircase joining the front, and click-to-mark. Read this for why the step turns the way it does.
+- `present/DistributionFigure.tsx` — renders kernel-prepared histograms and ECDFs, percentile rules, facets, and fitted-normal summaries.
+- `present/ReliabilityCard.tsx` — renders Pf, Wilson intervals, β, resolution floors, and convergence state for referenced checks.
+- `present/StressFigure.tsx` — projects marked designs onto a deterministic challenge range, then renders normalised margin traces and raw Check readings for the first failure report.
+- `present/BestDesignCard.tsx` — the decision card: winner, why, and the runners-up it beat.
+- `present/SensitivityFigure.tsx` — the tornado chart over one-at-a-time input swings.
+- `present/marks.ts` — marking, resolved once: a document's marks against one figure's axes, into cells and A/B/C letters. Carries the `FigureMarking` prop every figure takes, and builds the read-only marking a published NodeBook draws from. One resolver, so five figures cannot drift.
+- `present/CandidateReadings.tsx` — the lettered per-candidate line under a check or print. Only draws for a mark that pins exactly one cell.
+- `present/*.test.ts` — `PlotFigure.test.ts`, `FeasibilityFigure.test.ts`, `ParetoFigure.test.ts`, `marks.test.ts`, `BestDesignCard.test.ts`, `IntelligentPlotFigure.test.ts`.
+
 ### `src/notebook/` — the notebook side panel
 
-- `notebook/Notebook.tsx` — the view-over-the-graph panel: renders group frames as sections (title/note prose, then their output nodes' results in reading order), dependency-derived exposed-slider controls once per section between its prose and its results, section reordering, table-column editing (order and per-column figures), click-a-row-to-mark, print-to-PDF export via `@media print`. Read this to understand how canvas layout becomes the exported document.
-- `notebook/NotebookSliderControl.tsx` — the shared synchronized slider/exact-value view used by the editor NodeBook and course viewer; print replaces its interactive fields with the current static value.
-- `notebook/PlotFigure.tsx` — the Observable-Plot rendering of a `PlotResult`: log axes when the range is logarithmic, the threshold (a rule on a line, an isoline on a contour), contour mode, faceting, SI-prefixed axis labels, the mark overlay, and the pointer that turns a click into a mark. All computation is already done by the kernel; this file only draws.
-- `notebook/ParetoFigure.tsx` — the two-objective scatter: front / dominated / infeasible drawn three ways, the staircase joining the front, and click-to-mark. Read this for why the step turns the way it does.
-- `notebook/DistributionFigure.tsx` — renders kernel-prepared histograms and ECDFs, percentile rules, facets, and fitted-normal summaries.
-- `notebook/ReliabilityCard.tsx` — renders Pf, Wilson intervals, β, resolution floors, and convergence state for referenced checks.
-- `notebook/StressFigure.tsx` — projects marked designs onto a deterministic challenge range, then renders normalised margin traces and raw Check readings for the first failure report.
-- `notebook/marks.ts` — the editor side of marking: resolves `document.marks` against one figure's axes into cells and A/B/C letters, carries the `FigureMarking` prop every figure takes, and builds the read-only marking a published NodeBook draws from. One resolver, so five figures cannot drift.
-- `notebook/CandidateReadings.tsx` — the lettered per-candidate line under a check or print, shared by the notebook and the published viewer. Only draws for a mark that pins exactly one cell.
-- `notebook/*.test.ts` — `Notebook.test.ts`, `PlotFigure.test.ts`, `FeasibilityFigure.test.ts`, `ParetoFigure.test.ts`, `marks.test.ts`, `BestDesignCard.test.ts`.
+- `notebook/Notebook.tsx` — the view-over-the-graph panel: renders group frames as sections (title/note prose, then their output nodes' results in reading order), dependency-derived exposed-slider controls once per section between its prose and its results, section reordering, and print-to-PDF export via `@media print`. Results themselves are drawn by `present/ResultView`; what this file adds is the editing around them — renaming an output where it is read, table-column order and figures, click-a-row-to-mark. Read this to understand how canvas layout becomes the exported document.
+- `notebook/IntelligentPlotControls.tsx` — the per-panel plot configuration (type, axis roles, scales, height) an author pins onto a plot output.
+- `notebook/NotebookSliderControl.tsx` — the graph-node adapter over `present/SliderControl`.
+- `notebook/*.test.ts` — `Notebook.test.ts`, `Notebook.expressions.test.tsx`.
 
 ### `src/palette/`
 
@@ -220,7 +240,9 @@ The React app. Largest package by far. `AGENTS.md`: desktop-only, no properties 
 
 ### `src/viewer/`
 
-- `viewer/CourseMaterialViewer.tsx` — a small read-only viewer (`?view=course`) over the bundled example documents, for sharing finished output without the full editor — not an alternate editor. It draws the marks the document was published with (`readOnlyMarking`) and refuses every gesture that would change them.
+- `viewer/CourseMaterialViewer.tsx` — a small read-only viewer (`?view=course`) over the bundled example documents, for sharing finished output without the full editor — not an alternate editor. It draws results through `present/ResultView`, with the marks the document was published with (`readOnlyMarking`), and refuses every gesture that would change them.
+- `viewer/PublishedNotebookViewer.tsx` — a NodeBook published to the Hub, drawn from the compiled report alone: no graph, no formula, no catalogue, no editing state. Same components and same stylesheet as the editor's panel, so the report is the author's report rather than an impression of it; the one gesture a reader gets is a slider, and touching it loads the calculation on demand.
+- `viewer/interactiveRuntime.ts` — that on-demand calculation: fetches the source document and the catalogues the Hub pinned, adds the libraries that ship with the app (`builtInCatalogues`), and recompiles the report under the display settings it was published with.
 
 ### `src/io/` — file/storage adapters
 

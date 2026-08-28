@@ -24,7 +24,7 @@ import {
 } from '@joveworks/kernel';
 import { fromCanonical } from '@joveworks/units';
 
-import { useSettings } from '../settings-context';
+import { useDisplay } from './display';
 import { chartTip, pointedRow, typesetChartLabels } from './PlotFigure';
 import { NO_MARKS, type FigureMarking, type MarkIndex } from './marks';
 
@@ -226,15 +226,13 @@ export function rows(
 
 interface Props {
   readonly result: FeasibilityResult;
-  /** Referenced Check node id → its display label, for the fail tip's breakdown. */
-  readonly checkLabels: Readonly<Record<string, string>>;
   /** Absent in the read-only viewer: the map draws, but nothing can be marked. */
   readonly marking?: FigureMarking;
 }
 
-export function FeasibilityFigure({ result, checkLabels, marking }: Props): ReactElement {
+export function FeasibilityFigure({ result, marking }: Props): ReactElement {
   const host = useRef<HTMLDivElement>(null);
-  const { titleMathRendering } = useSettings();
+  const { titleMath: titleMathRendering, checkLabels } = useDisplay();
   // `useId`, not a module-level constant: a notebook can hold more than one
   // Feasibility figure at once, and an SVG `id` is document-scoped — two
   // charts sharing one id would have the second chart's hatch resolve

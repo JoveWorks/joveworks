@@ -2,6 +2,8 @@ import type { PlotAxis, PlotMeasureResult } from '@joveworks/kernel';
 import type { GraphDocument, PlotScale, PlotType } from '@joveworks/schema';
 import { dimensionsEqual } from '@joveworks/units';
 
+import { axisNature, type AxisNatures } from '../present/display';
+
 export interface PlotRoles {
   readonly x?: string;
   readonly y?: string;
@@ -34,43 +36,41 @@ function numeric(axis: PlotAxis): boolean {
   return axis.coordinates.kind === 'numeric';
 }
 
-function continuous(document: GraphDocument, axis: PlotAxis): boolean {
-  const node = document.nodes.find((candidate) => candidate.id === axis.axis.id);
-  if (node?.kind === 'range') return true;
-  return node?.kind === 'input' && (node.value.kind === 'linear' || node.value.kind === 'logarithmic');
+function continuous(axes: AxisNatures, axis: PlotAxis): boolean {
+  return axisNature(axes, axis.axis.id).continuous;
 }
 
 /** Prefer numeric/continuous/high-cardinality axes for position, then document order. */
-function positional(document: GraphDocument, axes: readonly PlotAxis[]): readonly PlotAxis[] {
+function positional(natures: AxisNatures, axes: readonly PlotAxis[]): readonly PlotAxis[] {
   return [...axes].sort((a, b) => {
     const numericDifference = Number(numeric(b)) - Number(numeric(a));
     if (numericDifference !== 0) return numericDifference;
-    const continuousDifference = Number(continuous(document, b)) - Number(continuous(document, a));
+    const continuousDifference = Number(continuous(natures, b)) - Number(continuous(natures, a));
     if (continuousDifference !== 0) return continuousDifference;
     if (a.axis.length !== b.axis.length) return b.axis.length - a.axis.length;
     return a.axis.order - b.axis.order;
   });
 }
 
-function autoType(document: GraphDocument, axes: readonly PlotAxis[]): PlotType {
+function autoType(natures: AxisNatures, axes: readonly PlotAxis[]): PlotType {
   if (axes.length === 0) return 'dot';
   if (axes.length === 1) return numeric(axes[0] as PlotAxis) ? 'line' : 'dot';
-  const [first, second] = positional(document, axes);
+  const [first, second] = positional(natures, axes);
   if (first !== undefined && second !== undefined && numeric(first) !== numeric(second)) return 'line';
   if (
     first !== undefined && second !== undefined &&
-    numeric(first) && numeric(second) && continuous(document, first) && continuous(document, second)
+    numeric(first) && numeric(second) && continuous(natures, first) && continuous(natures, second)
   ) return 'contour';
   return 'heatmap';
 }
 
 function rolesFor(
-  document: GraphDocument,
+  natures: AxisNatures,
   axes: readonly PlotAxis[],
   type: PlotType,
   override: PlotMeasureResult['view'],
 ): PlotRoles {
-  const ordered = positional(document, axes);
+  const ordered = positional(natures, axes);
   if (type === 'line' || type === 'dot') {
     const x = override?.x ?? ordered[0]?.axis.id;
     const remaining = ordered.filter((axis) => axis.axis.id !== x);
@@ -136,14 +136,14 @@ function scaleReason(measure: PlotMeasureResult, axes: readonly PlotAxis[]): str
 }
 
 function panelFor(
-  document: GraphDocument,
+  natures: AxisNatures,
   measures: readonly PlotMeasureResult[],
   index: number,
 ): PlotPanel {
   const lead = measures[0] as PlotMeasureResult;
   const axes = [...lead.axes].sort((a, b) => a.axis.order - b.axis.order);
-  const type = lead.view?.type ?? autoType(document, axes);
-  const roles = rolesFor(document, axes, type, lead.view);
+  const type = lead.view?.type ?? autoType(natures, axes);
+  const roles = rolesFor(natures, axes, type, lead.view);
   const explicit = lead.view?.type !== undefined;
   const error = invalidReason(axes, type, roles, explicit) ?? scaleReason(lead, axes) ??
     (axes.length === 0 && measures.length < 2 ? 'a single scalar belongs in a Value output' : undefined);
@@ -177,7 +177,7 @@ function panelFor(
  * and contains no drawing concerns, so inference can be tested independently.
  */
 export function inferPlotPanels(
-  document: GraphDocument,
+  natures: AxisNatures,
   measures: readonly PlotMeasureResult[],
 ): readonly PlotPanel[] {
   const bySignature = new Map<string, PlotMeasureResult[]>();
@@ -188,7 +188,7 @@ export function inferPlotPanels(
 
   const groups: PlotMeasureResult[][] = [];
   for (const sameAxes of bySignature.values()) {
-    const inferred = autoType(document, sameAxes[0]?.axes ?? []);
+    const inferred = autoType(natures, sameAxes[0]?.axes ?? []);
     const surfaces = inferred === 'heatmap' || inferred === 'contour';
     if (surfaces) {
       groups.push(...sameAxes.map((measure) => [measure]));
@@ -205,15 +205,25 @@ export function inferPlotPanels(
       else compatible.push(measure);
     }
   }
-  return groups.map((group, index) => panelFor(document, group, index));
+  return groups.map((group, index) => panelFor(natures, group, index));
 }
 
 export function plotAxisFor(panel: PlotPanel, id: string | undefined): PlotAxis | undefined {
   return id === undefined ? undefined : panel.axes.find(({ axis }) => axis.id === id);
 }
 
-export function isLogarithmicAxis(document: GraphDocument, axisId: string): boolean {
-  const node = document.nodes.find((candidate) => candidate.id === axisId);
-  return (node?.kind === 'input' && node.value.kind === 'logarithmic') ||
-    (node?.kind === 'range' && node.spacing === 'logarithmic');
+/**
+ * How each swept axis of a document was authored, in the form the figures
+ * take it: the one place the graph is read for a drawing decision, so that
+ * everything downstream of it is presentation-only (`present/display.ts`).
+ */
+export function axisNaturesOf(document: GraphDocument): AxisNatures {
+  return Object.fromEntries(document.nodes.flatMap((node) => {
+    if (node.kind === 'range') {
+      return [[node.id, { continuous: true, logarithmic: node.spacing === 'logarithmic' }] as const];
+    }
+    if (node.kind !== 'input') return [];
+    const continuous = node.value.kind === 'linear' || node.value.kind === 'logarithmic';
+    return [[node.id, { continuous, logarithmic: node.value.kind === 'logarithmic' }] as const];
+  }));
 }

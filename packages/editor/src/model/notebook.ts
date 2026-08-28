@@ -2,7 +2,11 @@
 
 import type { GraphDocument, GraphNode, InputNode, Position, SliderValue } from '@joveworks/schema';
 
+import type { NotebookDisplay } from '../present/display';
 import { updateNode } from './document';
+import { axisNaturesOf } from './plot';
+import type { AppLocale, ContourPalette } from './editorSettings';
+import { toUnitsFormat, type NumberFormatSettings } from './numberFormat';
 
 export type ExposedSliderInput = InputNode & {
   readonly value: SliderValue;
@@ -115,4 +119,40 @@ export function withSliderValue(
       ? { ...input, value: { ...input.value, value } }
       : input,
   );
+}
+
+
+/**
+ * Every fact a NodeBook figure needs that is not in its own result, read off
+ * the open document and the reader's preferences.
+ *
+ * This is the *only* place a figure's drawing decisions are traced back to
+ * the graph. Beyond it the presentation layer sees resolved values, which is
+ * what lets the same components draw a published NodeBook that carries no
+ * graph at all (`present/display.ts`, ROADMAP item 38).
+ */
+export function notebookDisplayOf(
+  document: GraphDocument,
+  settings: {
+    readonly numberFormat: NumberFormatSettings;
+    readonly contourPalette: ContourPalette;
+    readonly titleMathRendering: boolean;
+    readonly locale: AppLocale;
+  },
+): NotebookDisplay {
+  return {
+    format: toUnitsFormat(settings.numberFormat),
+    contourPalette: settings.contourPalette,
+    titleMath: settings.titleMathRendering,
+    // The NodeBook's prose has its own language, chosen in its settings
+    // popover, which need not be the language of the app around it.
+    locale: document.notebookLocale ?? settings.locale,
+    axes: axisNaturesOf(document),
+    checkLabels: checkLabelsOf(document),
+  };
+}
+
+/** Every node's own title, for the composite outputs that reference checks by id. */
+export function checkLabelsOf(document: GraphDocument): Readonly<Record<string, string>> {
+  return Object.fromEntries(document.nodes.map((node) => [node.id, node.label ?? node.id]));
 }

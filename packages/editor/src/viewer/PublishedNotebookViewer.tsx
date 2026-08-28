@@ -1,56 +1,75 @@
-import { useEffect, useState, type ReactElement } from 'react';
-import { decodeCompiledNumber, parseCompiledNotebook, type CompiledNotebook, type CompiledOutput, type CompiledSlider, type JsonValue } from '@joveworks/schema';
+/**
+ * A published NodeBook, drawn by the NodeBook's own components.
+ *
+ * This page carries no graph, no formula, no catalogue and no editing state:
+ * everything on it comes from the compiled report the Hub serves
+ * (`schema/compiledNotebook.ts`), decoded in `present/compiled.ts` and drawn
+ * by `present/ResultView` — the same component the editor's NodeBook panel
+ * draws through. So a plot here is the author's plot, not a second renderer's
+ * impression of it, and the typography is the NodeBook's because the markup
+ * and the stylesheet are the NodeBook's (ROADMAP item 38).
+ *
+ * What differs is only what a reader has no business doing: nothing is
+ * renamed, no caption is written, no plot is reconfigured, and the marks draw
+ * but cannot be changed. The one gesture a reader does get is the slider —
+ * and touching it loads the calculation on demand, which is the whole of
+ * `interactiveRuntime.ts`.
+ */
 
+import { useEffect, useMemo, useState, type ReactElement } from 'react';
+
+import type { Axis } from '@joveworks/kernel';
+import { parseCompiledNotebook, type CompiledNotebook, type CompiledOutput, type JsonValue } from '@joveworks/schema';
+
+import { TitleText } from '../canvas/TitleField';
+import { phrase } from '../i18n';
+import {
+  compiledDisplay,
+  decodeAxisReadouts,
+  decodeMarks,
+  decodeResult,
+  decodeSlider,
+} from '../present/compiled';
+import { DisplayProvider, type NotebookDisplay } from '../present/display';
+import { readOnlyMarking, type FigureMarking } from '../present/marks';
+import { ResultView } from '../present/ResultView';
+import { SliderControl } from '../present/SliderControl';
 import { hubOrigin, navigate, routeHref, type AppRoute } from '../router';
 import type { InteractiveNotebook } from './interactiveRuntime';
-import { CompiledPlotFigure } from './CompiledPlotFigure';
 
 type ViewerRoute = Exclude<AppRoute, { readonly kind: 'home' }>;
 type Activation = 'static' | 'loading' | 'active' | 'failed';
 
-function object(value: JsonValue | undefined): Readonly<Record<string, JsonValue>> | undefined {
-  return value !== null && value !== undefined && !Array.isArray(value) && typeof value === 'object' ? value : undefined;
-}
-
-function values(result: Readonly<Record<string, JsonValue>>): readonly JsonValue[] {
-  const series = object(result.series);
-  return Array.isArray(series?.data) ? series.data : [];
-}
-
-function shown(value: JsonValue | undefined): string {
-  if (value === undefined || value === null) return '—';
-  if (typeof value === 'number') return new Intl.NumberFormat(undefined, { maximumSignificantDigits: 6 }).format(value);
-  if (typeof value === 'string' || typeof value === 'boolean') return String(value);
-  return '';
-}
-
-export function CompiledOutputView({ output }: { readonly output: CompiledOutput }): ReactElement | null {
-  if (!output.available || output.result === undefined) return <div className="compiled-output unavailable"><h3>{output.label}</h3><p>{output.unavailableReason ?? 'This result is not available.'}</p></div>;
-  const result = output.result;
-  const unit = shown(object(result.unit)?.symbol);
-  if (output.kind === 'print') return <div className="compiled-output value"><p><strong>{output.label}</strong><span>{values(result).map(shown).join(', ')} <small>{unit}</small></span></p>{output.caption && <p className="caption">{output.caption}</p>}</div>;
-  if (output.kind === 'check') return <div className={`compiled-output check ${result.passed === true ? 'pass' : 'fail'}`}><h3>{result.passed === true ? '✓' : '✗'} {output.label}</h3><p>{values(result).map(shown).join(', ')} {unit} {shown(result.comparison)} {shown(result.threshold)}</p></div>;
-  if (output.kind === 'table' && Array.isArray(result.columns)) {
-    const columns = result.columns.map(object).filter((column): column is Readonly<Record<string, JsonValue>> => column !== undefined);
-    const rows = Math.max(0, ...columns.map((column) => values(column).length));
-    return <div className="compiled-output"><h3>{output.label}</h3><div className="compiled-table"><table><thead><tr>{columns.map((column, i) => <th key={i}>{shown(column.name)} <small>{shown(object(column.unit)?.symbol)}</small></th>)}</tr></thead><tbody>{Array.from({ length: rows }, (_, row) => <tr key={row}>{columns.map((column, col) => <td key={col}>{shown(values(column)[row])}</td>)}</tr>)}</tbody></table></div></div>;
+/**
+ * One published result. Exported for `PublishedNotebookViewer.test.tsx`,
+ * which is the seam that proves a compiled payload reaches the shared
+ * renderer — and that a kind it cannot draw degrades to a note rather than a
+ * blank.
+ */
+export function CompiledOutputView({
+  output,
+  markingOver,
+}: {
+  readonly output: CompiledOutput;
+  readonly markingOver?: (axes: readonly Axis[]) => FigureMarking;
+}): ReactElement {
+  const result = decodeResult(output.result);
+  if (!output.available || result === undefined) {
+    return (
+      <p className="result pending">
+        <span className="label"><TitleText value={output.label} /></span>
+        <span className="number">{output.unavailableReason ?? 'This result is not available.'}</span>
+      </p>
+    );
   }
-  if (output.kind === 'plot') return <figure className="compiled-output visual"><figcaption>{output.label}</figcaption><CompiledPlotFigure result={result} label={output.label} />{output.caption && <p className="caption">{output.caption}</p>}</figure>;
-  const summary = values(result);
-  const details = summary.length > 0 ? `${summary.slice(0, 8).map(shown).join(', ')}${summary.length > 8 ? '…' : ''}` : output.kind;
-  return <div className="compiled-output visual"><h3>{output.label}</h3><div className="compiled-visual" role="img" aria-label={`${output.kind} output`}>{details}</div>{output.caption && <p className="caption">{output.caption}</p>}</div>;
-}
-
-function Slider({ slider, activation, activate, change }: { readonly slider: CompiledSlider; readonly activation: Activation; readonly activate: () => void; readonly change: (value: number) => void }): ReactElement {
-  const value = decodeCompiledNumber(slider.value);
-  const min = decodeCompiledNumber(slider.min);
-  const max = decodeCompiledNumber(slider.max);
-  const begin = (event: React.SyntheticEvent): void => {
-    if (activation === 'active') return;
-    event.preventDefault();
-    activate();
-  };
-  return <label className="compiled-slider"><span>{slider.label}</span><input aria-label={slider.label} type="range" min={min} max={max} step={(max - min) / 1000 || 1} value={value} onPointerDown={begin} onKeyDown={begin} onChange={(event) => activation === 'active' && change(Number(event.currentTarget.value))} /><output>{Number.isFinite(value) ? value.toFixed(slider.figures) : String(value)} {slider.unit}</output></label>;
+  return (
+    <ResultView
+      result={result}
+      title={<TitleText value={output.label} />}
+      columnFigures={output.columnFigures ?? {}}
+      {...(markingOver === undefined ? {} : { markingOver })}
+    />
+  );
 }
 
 export default function PublishedNotebookViewer({ route }: { readonly route: ViewerRoute }): ReactElement {
@@ -74,12 +93,12 @@ export default function PublishedNotebookViewer({ route }: { readonly route: Vie
       const runtime = await import('./interactiveRuntime');
       let loaded: InteractiveNotebook;
       try {
-        loaded = await runtime.activateNotebook(route.kind, route.id, hub);
+        loaded = await runtime.activateNotebook(route.kind, route.id, hub, undefined, notebook);
       } catch (reason) {
         if (!(reason instanceof runtime.CourseAccessRequired)) throw reason;
         const token = window.prompt('Enter the course access token');
         if (token === null || token === '') throw new Error('Interactive controls were not activated.');
-        loaded = await runtime.activateNotebook(route.kind, route.id, hub, token);
+        loaded = await runtime.activateNotebook(route.kind, route.id, hub, token, notebook);
       }
       setInteractive(loaded); setNotebook(loaded.notebook); setActivation('active');
     } catch (reason) {
@@ -87,10 +106,83 @@ export default function PublishedNotebookViewer({ route }: { readonly route: Vie
     }
   };
   const replace = (next: InteractiveNotebook): void => { setInteractive(next); setNotebook(next.notebook); };
+
+  // The marks are part of what was published — a report whose prose argues for
+  // candidate B has to arrive with B drawn on it. Nothing here can change
+  // them, which is what `readOnlyMarking` says.
+  const display: NotebookDisplay | undefined = useMemo(
+    () => (notebook === undefined ? undefined : compiledDisplay(notebook)),
+    [notebook],
+  );
+  const markingOver = useMemo(() => {
+    if (notebook === undefined) return undefined;
+    const marks = decodeMarks(notebook);
+    const readouts = decodeAxisReadouts(notebook);
+    return (axes: readonly Axis[]): FigureMarking => readOnlyMarking(marks, axes, readouts);
+  }, [notebook]);
+
   if (error !== undefined && notebook === undefined) return <main className="viewer-status"><h1>NodeBook unavailable</h1><p>{error}</p></main>;
-  if (notebook === undefined) return <main className="viewer-status">Loading NodeBook…</main>;
-  return <main className="compiled-page"><header className="compiled-header"><div><p>JoveWorks · shared NodeBook</p><h1>{notebook.title}</h1>{notebook.author && <p>By {notebook.author}</p>}</div><button type="button" onClick={() => navigate(routeHref({ ...route, edit: true }, hub === window.location.origin ? undefined : hub))}>Open in editor</button></header>
-    {notebook.sections.map((section) => <section key={section.id}><h2>{section.title}</h2>{section.prose && <p className="prose">{section.prose}</p>}{section.sliders.length > 0 && <div className="compiled-controls">{section.sliders.map((slider) => <Slider key={slider.id} slider={slider} activation={activation} activate={() => void activate()} change={(value) => interactive && replace(interactive.change(slider.id, value))} />)}{activation === 'loading' && <p>Loading interactive calculation… Use the control again when ready.</p>}{activation === 'failed' && <button type="button" onClick={() => void activate()}>Retry interactive controls</button>}{activation === 'active' && <button type="button" onClick={() => interactive && replace(interactive.reset())}>Reset</button>}</div>}{section.outputs.map((output) => <CompiledOutputView key={output.id} output={output} />)}</section>)}
-    {error && <p className="viewer-inline-error">{error}</p>}
-  </main>;
+  if (notebook === undefined || display === undefined) return <main className="viewer-status">Loading NodeBook…</main>;
+  const t = (english: string): string => phrase(display.locale, english);
+
+  return (
+    <DisplayProvider value={display}>
+      {/* `notebook` is the class every result and figure rule in styles.css is
+          scoped to. Sharing it is what makes this the NodeBook's own
+          typography rather than a lookalike — including its print rules, so a
+          reader's Ctrl-P produces the same PDF the author's export does. */}
+      <main className="notebook compiled-page" lang={display.locale}>
+        <header className="compiled-header">
+          <div>
+            <p className="compiled-kicker">JoveWorks · shared NodeBook</p>
+            <h1 className="compiled-title">{notebook.title}</h1>
+            {notebook.author === undefined ? null : <p className="compiled-author">{notebook.author}</p>}
+          </div>
+          <button
+            type="button"
+            onClick={() => navigate(routeHref({ ...route, edit: true }, hub === window.location.origin ? undefined : hub))}
+          >
+            Open in editor
+          </button>
+        </header>
+
+        {notebook.sections.map((section) => (
+          <section className="notebook-section" key={section.id}>
+            <h2>{section.title}</h2>
+            {section.prose === undefined ? null : <p className="note">{section.prose}</p>}
+            {section.sliders.length === 0 ? null : (
+              <div className="notebook-controls">
+                {section.sliders.map((slider) => (
+                  <SliderControl
+                    key={slider.id}
+                    slider={decodeSlider(slider)}
+                    format={display.format}
+                    onInteract={(event) => {
+                      if (activation === 'active') return;
+                      event.preventDefault();
+                      void activate();
+                    }}
+                    onLiveChange={(value) => { if (interactive !== undefined) replace(interactive.change(slider.id, value)); }}
+                    onExactChange={(value) => { if (interactive !== undefined) replace(interactive.change(slider.id, value)); }}
+                    onCommit={() => {}}
+                  />
+                ))}
+                {activation === 'loading' ? <p className="viewer-activation">Loading interactive calculation… Use the control again when ready.</p> : null}
+                {activation === 'failed' ? <button type="button" onClick={() => void activate()}>Retry interactive controls</button> : null}
+                {activation === 'active' ? <button type="button" onClick={() => { if (interactive !== undefined) replace(interactive.reset()); }}>{t('Reset inputs')}</button> : null}
+              </div>
+            )}
+            {section.outputs.map((output) => (
+              <div className="entry" key={output.id}>
+                <CompiledOutputView output={output} {...(markingOver === undefined ? {} : { markingOver })} />
+                {output.caption === undefined ? null : <p className="caption">{output.caption}</p>}
+              </div>
+            ))}
+          </section>
+        ))}
+
+        {error === undefined ? null : <p className="viewer-inline-error">{error}</p>}
+      </main>
+    </DisplayProvider>
+  );
 }

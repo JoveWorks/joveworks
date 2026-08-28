@@ -14,7 +14,7 @@ import {
 
 import { useGraph } from '../graph-context';
 import { useSettings } from '../settings-context';
-import { inferPlotPanels } from '../model/plot';
+import { axisNaturesOf, inferPlotPanels } from '../model/plot';
 import { updateNode } from '../model/document';
 import { toUnitsFormat } from '../model/numberFormat';
 import { display, formatAuthored, parseAuthored } from '../model/quantity';
@@ -38,7 +38,7 @@ export function IntelligentPlotControls({
   const evaluated = result.measures ?? [];
   if (node.output.kind !== 'plot' || evaluated.length === 0) return null;
   const output = node.output;
-  const panels = inferPlotPanels(document, evaluated);
+  const panels = inferPlotPanels(axisNaturesOf(document), evaluated);
 
   const changePanel = (
     ids: ReadonlySet<string>,

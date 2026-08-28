@@ -1,16 +1,24 @@
 import { useEffect, useRef, type ReactElement } from 'react';
 import * as Plot from '@observablehq/plot';
 
-import { candidateMask, indexer, markLetter, type AxisReadout, type StressResult } from '@joveworks/kernel';
-import type { GraphDocument } from '@joveworks/schema';
+import { indexer, type StressResult } from '@joveworks/kernel';
 import type { NumberFormat } from '@joveworks/units';
 
 import { display } from '../model/quantity';
+import { useDisplay } from './display';
+import { NO_MARKS, type MarkIndex } from './marks';
 
 interface Props {
   readonly result: StressResult;
-  readonly document: GraphDocument;
-  readonly readouts: ReadonlyMap<string, AxisReadout>;
+  /**
+   * The document's marks resolved over `result.designAxes` — this figure
+   * reports on marked designs, so it needs the letters, not the marking
+   * gestures.
+   */
+  readonly marks?: MarkIndex;
+}
+
+interface Drawing {
   readonly checkLabels: Readonly<Record<string, string>>;
   readonly format: NumberFormat;
 }
@@ -20,16 +28,19 @@ interface Design {
   readonly cell: number;
 }
 
-function designs(result: StressResult, document: GraphDocument, readouts: ReadonlyMap<string, AxisReadout>): readonly Design[] {
+/**
+ * A mark that identifies more than one cell of the design grid names no
+ * single design, so it gets no report — the same rule as before this took
+ * resolved marks rather than resolving them itself.
+ */
+function designs(result: StressResult, marks: MarkIndex): readonly Design[] {
   if (result.designAxes.length === 0) return [{ label: '', cell: 0 }];
   const seen = new Map<number, string[]>();
-  for (const [i, mark] of (document.marks ?? []).entries()) {
-    const { mask } = candidateMask(result.designAxes, mark, readouts);
-    const cells = mask.flatMap((matches, cell) => (matches ? [cell] : []));
-    if (cells.length !== 1) continue;
-    const cell = cells[0] as number;
+  for (const mark of marks.marks) {
+    if (mark.cells.length !== 1) continue;
+    const cell = mark.cells[0] as number;
     const letters = seen.get(cell) ?? [];
-    letters.push(markLetter(i));
+    letters.push(mark.letter);
     seen.set(cell, letters);
   }
   return [...seen.entries()].map(([cell, letters]) => ({ label: `Candidate ${letters.join('/')}`, cell }));
@@ -89,7 +100,7 @@ function MarginPlot({ result, design, labels }: { readonly result: StressResult;
   return <div className="figure stress-figure" ref={host} />;
 }
 
-function TraceTable({ result, design, checkLabels, format }: Props & { readonly design: number }): ReactElement {
+function TraceTable({ result, design, checkLabels, format }: { readonly result: StressResult } & Drawing & { readonly design: number }): ReactElement {
   const ordered = [...result.designAxes, result.along.axis];
   const base = design * result.along.axis.length;
   return <table className="stress-summary"><thead><tr><th>check</th><th>authored</th><th>at tested end</th><th>first failure</th></tr></thead><tbody>
@@ -103,8 +114,9 @@ function TraceTable({ result, design, checkLabels, format }: Props & { readonly 
   </tbody></table>;
 }
 
-export function StressFigure({ result, document, readouts, checkLabels, format }: Props): ReactElement {
-  const marked = designs(result, document, readouts);
+export function StressFigure({ result, marks = NO_MARKS }: Props): ReactElement {
+  const { checkLabels, format } = useDisplay();
+  const marked = designs(result, marks);
   if (marked.length === 0) return <p className="stress-empty">Mark a design to stress-test it.</p>;
   const baseline = result.along.coordinates.data[0] as number;
   const end = result.along.coordinates.data.at(-1) as number;
@@ -116,7 +128,7 @@ export function StressFigure({ result, document, readouts, checkLabels, format }
       const label = failure === undefined
         ? `${design.label.length === 0 ? 'The design' : design.label} has no sampled failure through ${display(end, result.along.unit, 4, format)}.`
         : `${design.label.length === 0 ? 'The design' : design.label} reaches ${checkLabels[failure.checkId] ?? failure.checkId} at ${display(failure.at, result.along.unit, 4, format)}${headroom === undefined ? '' : ` (${headroom >= 0 ? '+' : ''}${display(headroom, result.along.unit, 3, format)}${headroomPercent === undefined ? '' : `, ${(headroomPercent * 100).toFixed(1)}%`})`}.`;
-      return <section className="stress-design" key={design.cell}><p className="stress-headline">{label}</p><MarginPlot result={result} design={design.cell} labels={checkLabels} /><TraceTable result={result} design={design.cell} document={document} readouts={readouts} checkLabels={checkLabels} format={format} /></section>;
+      return <section className="stress-design" key={design.cell}><p className="stress-headline">{label}</p><MarginPlot result={result} design={design.cell} labels={checkLabels} /><TraceTable result={result} design={design.cell} checkLabels={checkLabels} format={format} /></section>;
     })}
   </div>;
 }

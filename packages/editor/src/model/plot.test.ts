@@ -4,7 +4,8 @@ import type { Axis, PlotAxis, PlotMeasureResult } from '@joveworks/kernel';
 import { DOCUMENT_SCHEMA_VERSION, type GraphDocument, type GraphNode } from '@joveworks/schema';
 import { parseUnit } from '@joveworks/units';
 
-import { inferPlotPanels } from './plot';
+import type { AxisNatures } from '../present/display';
+import { axisNaturesOf, inferPlotPanels } from './plot';
 
 const mm = parseUnit('mm');
 const stress = parseUnit('MPa');
@@ -38,8 +39,13 @@ function measure(
   };
 }
 
-function documentWith(nodes: readonly GraphNode[]): GraphDocument {
-  return { schemaVersion: DOCUMENT_SCHEMA_VERSION, id: 'plot', title: 'Plot', nodes, edges: [], frames: [] };
+/**
+ * Inference takes resolved axis natures, not a graph — so these cases go
+ * through the resolver that produces them, which is the only place the
+ * document's range semantics are read.
+ */
+function documentWith(nodes: readonly GraphNode[]): AxisNatures {
+  return axisNaturesOf({ schemaVersion: DOCUMENT_SCHEMA_VERSION, id: 'plot', title: 'Plot', nodes, edges: [], frames: [] });
 }
 
 function range(id: string, kind: 'linear' | 'logarithmic' | 'list' | 'categoricalList'): GraphNode {

@@ -1,6 +1,8 @@
 import type { ReactElement } from 'react';
 import type { ReliabilityEstimate, ReliabilityResult } from '@joveworks/kernel';
 
+import { useDisplay } from './display';
+
 function Estimate({ estimate, label }: { readonly estimate: ReliabilityEstimate; readonly label: string }): ReactElement {
   const probability = estimate.unresolved ? `< ${(1 / estimate.trials).toPrecision(3)}` : estimate.probability.toPrecision(3);
   const beta = `${estimate.unresolved ? '> ' : ''}${estimate.beta.toPrecision(3)}`;
@@ -13,7 +15,8 @@ function Estimate({ estimate, label }: { readonly estimate: ReliabilityEstimate;
   );
 }
 
-export function ReliabilityCard({ result, checkLabels = {} }: { readonly result: ReliabilityResult; readonly checkLabels?: Readonly<Record<string, string>> }): ReactElement {
+export function ReliabilityCard({ result }: { readonly result: ReliabilityResult }): ReactElement {
+  const { checkLabels } = useDisplay();
   return (
     <div className="reliability-card">
       <table><thead><tr><th>check</th><th>failures</th><th>Pf</th><th>{Math.round(result.confidence * 100)}% interval</th><th>β</th><th>estimate</th></tr></thead>

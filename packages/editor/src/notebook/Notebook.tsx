@@ -27,14 +27,7 @@ import {
   type TextareaHTMLAttributes,
 } from 'react';
 
-import {
-  candidateAt,
-  parseExpression,
-  toLatex,
-  type Axis,
-  type AxisReadout,
-  type OutputResult,
-} from '@joveworks/kernel';
+import type { Axis, AxisReadout, OutputResult } from '@joveworks/kernel';
 import type {
   Candidate,
   Frame,
@@ -49,10 +42,7 @@ import { useGraph } from '../graph-context';
 import { analytics } from '../analytics/analytics';
 import { useSettings } from '../settings-context';
 import { ContextMenu, type MenuItem } from '../canvas/ContextMenu';
-import { TitleField, TitleText, typesetTitle } from '../canvas/TitleField';
-import { Equation } from '../Equation';
-import { Symbol } from '../Symbol';
-import { ParameterLabel } from '../ParameterLabel';
+import { TitleField, typesetTitle } from '../canvas/TitleField';
 import {
   moveFrame,
   reframe,
@@ -67,25 +57,14 @@ import {
 } from '../model/document';
 import { NumberField } from '../canvas/fields';
 import { toUnitsFormat } from '../model/numberFormat';
-import { display, displayNumber } from '../model/quantity';
-import { checkVerdict, summarise, summariseCheck } from '../model/values';
-import { CheckReading } from '../CheckReading';
 import { MonteCarloReceiverPlayback } from '../canvas/MonteCarloReceiverPlayback';
-import { BestDesignCard } from './BestDesignCard';
-import { FeasibilityFigure, feasibilityGrid } from './FeasibilityFigure';
-import { marksOver as resolveMarksOver, type FigureMarking, type MarkIndex } from './marks';
-import { CandidateReadings } from './CandidateReadings';
-import { ParetoFigure } from './ParetoFigure';
-import { PlotFigure, plotGrid } from './PlotFigure';
-import { IntelligentPlotFigure } from './IntelligentPlotFigure';
+import { marksOver as resolveMarksOver, type FigureMarking } from '../present/marks';
+import { DEFAULT_COLUMN_FIGURES, ResultView } from '../present/ResultView';
+import { DisplayProvider } from '../present/display';
 import { IntelligentPlotControls } from './IntelligentPlotControls';
-import { SensitivityFigure } from './SensitivityFigure';
-import { StressFigure } from './StressFigure';
-import { DistributionFigure } from './DistributionFigure';
-import { ReliabilityCard } from './ReliabilityCard';
 import { NotebookSliderControl } from './NotebookSliderControl';
 import { phrase, ui } from '../i18n';
-import { exposedSlidersFor, notebookSectionId, readingOrder, withSliderValue } from '../model/notebook';
+import { exposedSlidersFor, notebookDisplayOf, notebookSectionId, readingOrder, withSliderValue } from '../model/notebook';
 
 /**
  * Enter finishes the field (blurs it, same as `fields.tsx`'s `TextField`);
@@ -235,35 +214,31 @@ function OutputTitle({ node }: { readonly node: OutputNode | MonteCarloReceiverN
 }
 
 /**
- * Exported for `Notebook.expressions.test.tsx` — the single place every
- * output kind's rendering funnels through, so it's the right seam to prove
+ * The NodeBook's own adapter onto the shared result renderer.
+ *
+ * Everything drawn here is drawn by `present/ResultView`, which the published
+ * NodeBook and the course viewer use too. What this adds is the editing the
+ * editor alone offers: an output's title is renamed where it is read, a
+ * table's columns are reordered and given their digits, a marked design is
+ * toggled by clicking its row, and an intelligent plot carries its
+ * configuration.
+ *
+ * Still exported for `Notebook.expressions.test.tsx` — the seam that proves
  * the expressions-hidden-by-default rule (OVERVIEW.md's "Exporting") holds:
  * only `result.kind === 'equation'` may ever reach `<Equation>`.
  */
 export function Result({ result, node }: { readonly result: OutputResult; readonly node: OutputNode }): ReactElement | null {
   const { document, edit, analysis } = useGraph();
-  const { numberFormat, locale } = useSettings();
-  const notebookLocale = document.notebookLocale ?? locale;
-  const t = (english: string): string => phrase(notebookLocale, english);
-  const format: NumberFormat = toUnitsFormat(numberFormat);
-  // A table's own drag state — one table at a time can be mid-reorder, and
-  // each Result instance owns just its own (same locality as the node
-  // panel's original column list before this moved here).
-  const [columnDrag, setColumnDrag] = useState<
-    { readonly over: string; readonly position: 'before' | 'after' } | undefined
-  >(undefined);
 
   // The one place a figure and a mark meet. Every surface below resolves the
   // document's marks against *its own* axes through this, so a candidate that
   // pins one cell of a scatter and a whole column of a map is the same
   // candidate, decided by one rule rather than five renderers' guesses.
   const readouts: ReadonlyMap<string, AxisReadout> = analysis.evaluation?.axisReadouts ?? new Map();
-  const marksOver = (axes: readonly Axis[]): MarkIndex => resolveMarksOver(document, axes, readouts);
-  const markCandidate = (candidate: Candidate): void => edit((current) => toggleCandidate(current, candidate));
   const markingOver = (axes: readonly Axis[]): FigureMarking => ({
-    marks: marksOver(axes),
+    marks: resolveMarksOver(document.marks ?? [], axes, readouts),
     readouts,
-    toggle: markCandidate,
+    toggle: (candidate: Candidate) => edit((current) => toggleCandidate(current, candidate)),
     // Candidate hover was stored in the application-wide graph context, but
     // no surface consumed that state. Updating it on every plot pointer move
     // therefore rebuilt every notebook figure just to throw the value away.
@@ -271,317 +246,35 @@ export function Result({ result, node }: { readonly result: OutputResult; readon
     hover: () => undefined,
   });
 
-  /** This result's readings for each mark that pins one of its cells — see `CandidateReadings`. */
-  const candidateReadings = (
-    axes: readonly Axis[],
-    read: (cell: number) => ReactElement | string,
-  ): ReactElement | null => <CandidateReadings marks={marksOver(axes)} read={read} />;
-
-  if (result.kind === 'print') {
-    return (
-      <p className="result print">
-        <span className="label">
-          <OutputTitle node={node} />
-        </span>
-        <span className="number">{summarise(result, result.figures, format)}</span>
-        {candidateReadings(result.series.axes, (cell) => {
-          const value = result.series.data[cell];
-          return value === undefined
-            ? ''
-            : typeof value === 'number'
-              ? displayNumber(value, result.unit, result.figures, format)
-              : value;
-        })}
-      </p>
-    );
-  }
-
-  if (result.kind === 'check') {
-    const shown = display(result.threshold, result.unit, 4, format);
-    // A scalar check has exactly one verdict, so ✓/✗ already says everything.
-    // A swept one has one verdict per point — pass, fail, or (unlike a
-    // scalar) genuinely partial, which gets its own mark rather than
-    // reading as a total failure. The count says which points and how
-    // many, matching the wording the compact node's own badge already uses
-    // (OutputNodeView.tsx), and moves below the row so the reading itself
-    // never has to compete with it for width.
-    const swept = result.results.length > 1;
-    const failures = result.results.filter((passed) => !passed).length;
-    const verdict = checkVerdict(result.results);
-    const mark = verdict === 'pass' ? '✓' : verdict === 'fail' ? '✗' : '!';
-    return (
-      <p className={`result check ${verdict}`}>
-        <span className="check-row">
-          <span className="label">
-            <OutputTitle node={node} />
-          </span>
-          <span className="mark">{mark}</span>
-          <span className="number">
-            <CheckReading
-              segments={summariseCheck({ series: result.series, unit: result.unit }, result.results, 4, format)}
-            />{' '}
-            <span className="check-threshold">
-              {COMPARISON_TEXT[result.comparison] ?? result.comparison} {shown}
-            </span>
-          </span>
-        </span>
-        {candidateReadings(result.series.axes, (cell) => (
-          <>
-            {displayNumber(result.series.data[cell] as number, result.unit, 4, format)}{' '}
-            <span className="mark">{result.results[cell] === true ? '✓' : '✗'}</span>
-          </>
-        ))}
-        {swept && verdict !== 'pass' ? (
-          <span className="count">
-            {notebookLocale === 'nl' ? `faalt op ${failures} van ${result.results.length} punten` : `fails at ${failures} of ${result.results.length} points`}
-          </span>
-        ) : null}
-      </p>
-    );
-  }
-
-  if (result.kind === 'equation') {
-    return (
-      <div className="result equation">
-        <span className="label">
-          <OutputTitle node={node} />
-        </span>
-        <Equation latex={toLatex(parseExpression(result.expression))} />
-      </div>
-    );
-  }
-
-  if (result.kind === 'table') {
-    // In sync with result.kind by construction — the kernel only produces a
-    // 'table' OutputResult from a 'table' Output.
-    const output = node.output;
-    if (output.kind !== 'table') return null;
-    const rows = Math.max(...result.columns.map((column) => column.series.data.length));
-    // Row index *is* cell index: every column is broadcast onto `result.axes`,
-    // row-major, before it gets here. So a row is a design, and marking one is
-    // marking that design everywhere — which is the whole reason this stopped
-    // being a list of row numbers on the node.
-    const marks = marksOver(result.axes);
-    return (
-      <div className="result table">
-        <span className="label">
-          <OutputTitle node={node} />
-        </span>
-        <table>
-          <thead>
-            <tr>
-              {result.columns.map((column) => (
-                <th
-                  key={column.name}
-                  className={columnDrag?.over === column.name ? `drag-over-${columnDrag.position}` : undefined}
-                  draggable
-                  onDragStart={(event) => {
-                    event.dataTransfer.setData('text/plain', column.name);
-                    event.dataTransfer.effectAllowed = 'move';
-                  }}
-                  onDragOver={(event) => {
-                    event.preventDefault();
-                    event.dataTransfer.dropEffect = 'move';
-                    const bounds = event.currentTarget.getBoundingClientRect();
-                    const position = event.clientX - bounds.left < bounds.width / 2 ? 'before' : 'after';
-                    setColumnDrag({ over: column.name, position });
-                  }}
-                  onDragLeave={() => setColumnDrag(undefined)}
-                  onDrop={(event) => {
-                    event.preventDefault();
-                    const position = columnDrag?.position;
-                    setColumnDrag(undefined);
-                    if (position === undefined) return;
-                    const source = event.dataTransfer.getData('text/plain');
-                    if (source.length === 0) return;
-                    edit((current) => reorderColumn(current, node.id, source, column.name, position));
-                  }}
-                >
-                  <ParameterLabel name={column.name} unit={column.unit} unitClassName="unit" />
-                  <NumberField
-                    className="column-figures"
-                    value={output.figures?.[column.name] ?? 4}
-                    integer
-                    minimum={0}
-                    autoSize={1}
-                    title={`digits after the decimal point for ${column.name}`}
-                    onCommit={(figures) =>
-                      edit((current) => setColumnFigures(current, node.id, column.name, figures))
-                    }
-                  />
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {Array.from({ length: rows }, (_unused, row) => (
-              <tr
-                key={row}
-                className={marks.at(row).length > 0 ? 'marked' : undefined}
-                title="Click to mark this design — it is called out on every figure."
-                onClick={() => markCandidate(candidateAt(result.axes, row, readouts))}
-              >
-                {result.columns.map((column, columnIndex) => {
-                  const cell = column.series.data[row];
-                  const figures = output.figures?.[column.name] ?? 4;
-                  const letters = columnIndex === 0 ? marks.at(row) : [];
-                  return (
-                    <td key={column.name}>
-                      {letters.map((entry) => (
-                        <span className="mark-letter" key={entry.index}>
-                          {entry.letter}
-                        </span>
-                      ))}
-                      {cell === undefined
-                        ? ''
-                        : typeof cell === 'number'
-                          ? displayNumber(cell, column.unit, figures, format)
-                          : cell}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    );
-  }
-
-  if (result.kind === 'feasibility') {
-    // Same fallback `OutputTitle` uses for an unlabelled node — the tip's
-    // failed-check breakdown should read the way the check's own row does.
-    const checkLabels = Object.fromEntries(
-      result.checks.map((id) => [id, document.nodes.find((candidate) => candidate.id === id)?.label ?? id]),
-    );
-    return (
-      <div className="result plot">
-        <span className="label">
-          <OutputTitle node={node} />
-        </span>
-        <FeasibilityFigure
-          result={result}
-          checkLabels={checkLabels}
-          marking={markingOver(feasibilityGrid(result))}
-        />
-      </div>
-    );
-  }
-
-  if (result.kind === 'sensitivity') {
-    return (
-      <div className="result plot">
-        <span className="label">
-          <OutputTitle node={node} />
-        </span>
-        <SensitivityFigure result={result} />
-      </div>
-    );
-  }
-
-  if (result.kind === 'stress') {
-    const checkLabels = Object.fromEntries(
-      result.checks.map((id) => [id, document.nodes.find((candidate) => candidate.id === id)?.label ?? id]),
-    );
-    return (
-      <div className="result plot">
-        <span className="label"><OutputTitle node={node} /></span>
-        <StressFigure result={result} document={document} readouts={readouts} checkLabels={checkLabels} format={format} />
-      </div>
-    );
-  }
-
-  if (result.kind === 'bestDesign') {
-    // Same label fallback the feasibility tip uses — a check's own row and
-    // this card should name it identically.
-    const checkLabels = Object.fromEntries(
-      result.checks.map((id) => [id, document.nodes.find((candidate) => candidate.id === id)?.label ?? id]),
-    );
-    return (
-      <div className="result plot">
-        <span className="label">
-          <OutputTitle node={node} />
-        </span>
-        <BestDesignCard result={result} checkLabels={checkLabels} format={format} />
-      </div>
-    );
-  }
-
-  if (result.kind === 'pareto') {
-    return (
-      <div className="result plot">
-        <span className="label">
-          <OutputTitle node={node} />
-        </span>
-        <ParetoFigure result={result} format={format} marking={markingOver(result.axes)} />
-        <p className="threshold">
-          {result.frontCount} {t('of')} {result.feasibleCount}{' '}
-          {t('candidates are on the front — the rest are beaten on both objectives')}
-        </p>
-      </div>
-    );
-  }
-
-  if (result.kind === 'distribution') {
-    return <div className="result plot"><span className="label"><OutputTitle node={node} /></span><DistributionFigure result={result} /></div>;
-  }
-
-  if (result.kind === 'reliability') {
-    const checkLabels = Object.fromEntries(result.checks.map(({ checkId }) => [checkId, document.nodes.find((candidate) => candidate.id === checkId)?.label ?? checkId]));
-    return <div className="result plot"><span className="label"><OutputTitle node={node} /></span><ReliabilityCard result={result} checkLabels={checkLabels} /></div>;
-  }
+  // In sync with result.kind by construction — the kernel only produces a
+  // 'table' OutputResult from a 'table' Output.
+  const table = node.output.kind === 'table' ? node.output : undefined;
 
   return (
-    <div className="result plot">
-      <span className="label">
-        <OutputTitle node={node} />
-      </span>
-      {result.measures === undefined ? (
-        <PlotFigure
-          result={result}
-          document={document}
-          format={format}
-          marking={markingOver(plotGrid(result))}
-        />
-      ) : (
-        <IntelligentPlotFigure
-          result={result}
-          document={document}
-          format={format}
-          markingFor={markingOver}
-        />
-      )}
-      {result.measures === undefined ? null : <IntelligentPlotControls node={node} result={result} />}
-      {result.measures === undefined && result.threshold !== undefined ? (
-        <p className="threshold">
-          {t('threshold at')} {display(result.threshold, result.unit, 4, format)} {t('— where the curve crosses it is the size that works')}
-        </p>
-      ) : result.measures?.every((measure) => measure.threshold === undefined) ?? true ? null : (
-        <p className="threshold">
-          {/* A measure's label is a symbol like `M_c`, authored in the same
-              notation as every node title — so it is typeset here the same
-              way (`TitleText`, honouring the title-math setting) rather than
-              printed with its subscript's underscore showing. The reading
-              beside it stays plain text: it is a formatted number and unit,
-              not notation. */}
-          {(result.measures ?? [])
-            .flatMap((measure) => measure.threshold === undefined
-              ? []
-              : [{
-                  id: measure.id,
-                  label: measure.label,
-                  reading: display(measure.threshold, measure.unit, 4, format),
-                }])
-            .map((measure, index) => (
-              <Fragment key={measure.id}>
-                {index === 0 ? null : ' · '}
-                <TitleText value={measure.label} />
-                {`: ${measure.reading}`}
-              </Fragment>
-            ))}
-        </p>
-      )}
-    </div>
+    <ResultView
+      result={result}
+      title={<OutputTitle node={node} />}
+      columnFigures={table?.figures ?? {}}
+      markingOver={markingOver}
+      editing={{
+        columnField: (name) => (
+          <NumberField
+            className="column-figures"
+            value={table?.figures?.[name] ?? DEFAULT_COLUMN_FIGURES}
+            integer
+            minimum={0}
+            autoSize={1}
+            title={`digits after the decimal point for ${name}`}
+            onCommit={(figures) => edit((current) => setColumnFigures(current, node.id, name, figures))}
+          />
+        ),
+        onReorderColumn: (source, target, position) =>
+          edit((current) => reorderColumn(current, node.id, source, target, position)),
+        ...(result.kind === 'plot' && result.measures !== undefined
+          ? { plotControls: <IntelligentPlotControls node={node} result={result} /> }
+          : {}),
+      }}
+    />
   );
 }
 

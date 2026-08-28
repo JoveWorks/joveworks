@@ -651,7 +651,11 @@ input[aria-invalid='true'] {
   box-shadow: var(--shadow-md);
 }
 
-main {
+/* The editor's three-column shell. Scoped to `.app` because a `<main>` is
+   not only ever that: the course viewer and a published NodeBook are each a
+   `<main>` of their own, on a page with no shell around them, and a bare
+   element selector laid their masthead out beside their first section. */
+.app main {
   position: relative;
   display: flex;
   flex: 1;

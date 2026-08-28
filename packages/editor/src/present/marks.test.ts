@@ -26,15 +26,8 @@ const readouts = new Map<string, AxisReadout>([
   ['T', { axis: T, coordinates: { kind: 'numeric', axes: [T], data: [20, 80] }, unit: UNIT }],
 ]);
 
-const documentWith = (marks: GraphDocument['marks']): GraphDocument => ({
-  schemaVersion: 1,
-  id: 'g',
-  title: 'T',
-  nodes: [],
-  edges: [],
-  frames: [],
-  ...(marks === undefined ? {} : { marks }),
-});
+/** What a document's `marks` field holds — all these functions ever see of it. */
+const documentWith = (marks: GraphDocument['marks']): readonly Candidate[] => marks ?? [];
 
 describe('letters', () => {
   it('numbers marks A, B, C by their position in the document', () => {
@@ -44,9 +37,9 @@ describe('letters', () => {
 
   it('gives one design the same letter on grids of different shapes', () => {
     // The whole promise of marking: A on the scatter is A in the table.
-    const document = documentWith([{ at: { d: 20, T: 80 } }]);
-    const onFullGrid = resolveMarks(document, [d, T], readouts);
-    const onCurve = resolveMarks(document, [d], readouts);
+    const marks = documentWith([{ at: { d: 20, T: 80 } }]);
+    const onFullGrid = resolveMarks(marks, [d, T], readouts);
+    const onCurve = resolveMarks(marks, [d], readouts);
     expect(onFullGrid.marks[0]?.letter).toBe('A');
     expect(onCurve.marks[0]?.letter).toBe('A');
     // …even though it pins one cell of the grid and one point of the curve.
@@ -109,28 +102,28 @@ describe('the per-cell lookup', () => {
 });
 
 describe('a published NodeBook', () => {
-  const document = documentWith([{ at: { d: 20, T: 80 } }]);
+  const marks = documentWith([{ at: { d: 20, T: 80 } }]);
 
   // The bug this guards: the read-only viewer passed no marking at all, so a
   // report published with candidate A on four figures arrived with A on none.
   it('draws the marks it was published with', () => {
-    const marking = readOnlyMarking(document, [d, T], readouts);
+    const marking = readOnlyMarking(marks, [d, T], readouts);
     expect(marking.marks.marks[0]?.letter).toBe('A');
     expect(marking.marks.at(3).map((mark) => mark.letter)).toEqual(['A']);
   });
 
   it('accepts a click and changes nothing — the reader has nowhere to write to', () => {
-    const marking = readOnlyMarking(document, [d, T], readouts);
+    const marking = readOnlyMarking(marks, [d, T], readouts);
     expect(() => marking.toggle({ at: { d: 10 } })).not.toThrow();
     expect(() => marking.hover(undefined)).not.toThrow();
-    expect(marksOver(document, [d, T], readouts).marks[0]?.cells).toEqual([3]);
+    expect(marksOver(marks, [d, T], readouts).marks[0]?.cells).toEqual([3]);
   });
 
   it('marks nothing on a result that varies along no axis', () => {
     // A scalar shares no axis with any candidate, and `candidateMask` over no
     // axes is vacuously true — so an unguarded resolve would highlight a print
     // for a design it knows nothing about.
-    expect(marksOver(document, [], readouts).any).toBe(false);
-    expect(resolveMarks(document, [], readouts).marks[0]?.cells).toEqual([0]);
+    expect(marksOver(marks, [], readouts).any).toBe(false);
+    expect(resolveMarks(marks, [], readouts).marks[0]?.cells).toEqual([0]);
   });
 });
