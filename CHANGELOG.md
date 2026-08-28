@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.23.0](https://github.com/JoveWorks/joveworks/compare/v0.22.2...v0.23.0) (2026-08-28)
+
+### Features
+
+* add compiled NodeBook viewer ([0f1aa45](https://github.com/JoveWorks/joveworks/commit/0f1aa453b88de3ecebd2aca965ba60fa65e7dc07))
+
+### Documentation
+
+* state the case against backwards calculation ([a596e70](https://github.com/JoveWorks/joveworks/commit/a596e7074328df5d3a522dd7aaa8ebe6d089c090))
 ## [0.22.2](https://github.com/JoveWorks/joveworks/compare/v0.22.1...v0.22.2) (2026-08-28)
 
 ### Features
