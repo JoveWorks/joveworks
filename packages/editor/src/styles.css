@@ -3865,9 +3865,14 @@ aside.right {
    editing chrome with no place in a submittable document. */
 @page {
   /* Hand-in pages need a readable, symmetric writing area. Browsers apply
-     this page box when their print dialog uses Default or Custom margins. */
+     this page box when their print dialog uses Default or Custom margins.
+     40mm is double the usual document margin and deliberately so: with the
+     body set in one full-width column, it is the margin that sets the
+     measure — 130mm here, close to the 65–75 characters a line a reader
+     tracks without losing their place — and it leaves a margin wide enough
+     to write a correction in. */
   size: A4 portrait;
-  margin: 20mm;
+  margin: 40mm;
 }
 
 .histogram-bars {
@@ -3965,60 +3970,48 @@ aside.right {
     border-left: none;
   }
 
-  /* A hand-in reads as a report, not a scrolled screen panel — set the body
-     in two columns like a journal article's, sized for the `@page` box
-     above (A4, 20mm margins: a 170mm writing area, so an 8mm gutter leaves
-     each column ~81mm — comfortable for the 9–10pt-equivalent type below).
-     `.notebook` has no constrained height of its own (it is exactly as tall
-     as its content, like the rest of this panel) — `column-fill`'s `auto`
-     value fills one column, then the next, but per spec it can only do that
-     against a *known* column height, which an auto-height container never
-     gives it. The first version of this rule used `auto` anyway, on the
-     assumption a page's own height would supply that — it does not: without
-     a height Chromium never starts a second column at all, so every printed
-     page came out as one narrow column with the whole right half blank and
-     the overflow clipped rather than continued, exactly the failure this is
-     meant to prevent. `balance` (the property's own initial value, restored
-     here rather than left implicit, so the reasoning stays next to it)
-     computes a workable column height itself by design, which is what an
-     auto-height container needs; each page's own fragment of the flow is
-     balanced independently under print pagination. Whether it balances
-     *well* — an early column running short, say — is a real open question
-     this rule does not resolve on its own; it wants checking against an
-     actual printed page, not a second guess stacked on top of this one.
-     A serif face is a deliberate style choice, not a technical necessity: it
-     is the one typographic cue that says "printed report" rather than "web
-     app printed as-is," and every other text style below inherits it —
-     including headings and captions, kept in one type system rather than
-     mixing with the screen's UI sans. System-only stack: no font asset to
-     bundle for what is still a print experiment. */
+  /* A hand-in reads as a report, not a scrolled screen panel: a measure set
+     for paper rather than for the side panel's width. Single column, after a two-column pass was tried and taken back out —
+     the article look was not worth what it cost the content, since a
+     NodeBook is mostly figures and readings rather than running prose, and
+     every figure had to shrink into an ~81mm column to reach the page. The
+     multicol properties are gone rather than overridden, so nothing here
+     depends on which of `column-fill`'s modes an auto-height container can
+     honour (the trap that pass kept falling into).
+
+     The measure is set by the page box's own 40mm margins (see `@page`
+     above) rather than by boxing the text in below them, so the text block
+     and the figures share one edge — which is what makes a figure at its
+     natural size look placed rather than stranded. The type keeps the
+     screen's 13px, with the leading opened a little for paper.
+
+     The face is the editor's own UI sans, inherited from `body` rather than
+     restated here. A serif was tried — the one typographic cue that reads
+     "printed report" rather than "web app printed as-is" — and dropped on
+     Thomas's call: what a student hands in should look like what they were
+     looking at while they built it, and every chart's own labels are drawn
+     in the UI sans by Plot anyway, so a serif body set the page arguing
+     with its own figures. */
   .notebook {
     width: 100%;
     padding: 0;
-    column-count: 2;
-    column-gap: 8mm;
-    column-fill: balance;
-    font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', Cambria, serif;
-    font-size: 12px;
-    line-height: 1.5;
-    /* A line left alone at the foot or head of a column is the standard
-       artefact of narrow measures; two lines either side is the usual
-       typesetter's minimum, and cheap here because the flow is mostly short
-       paragraphs between figures. */
+    font-size: 13px;
+    line-height: 1.6;
+    /* A line stranded at the foot or head of a page; two either side is the
+       usual typesetter's minimum, and cheap here because the flow is mostly
+       short paragraphs between figures. */
     orphans: 2;
     widows: 2;
   }
 
-  /* The title/author masthead reads across the full page, like a journal
-     article's own header — not squeezed into the first column with the
-     body text underneath it starting in the second. */
+  /* The title/author masthead reads across the full page, like a report's
+     own title block. */
   .notebook-header {
-    column-span: all;
     break-after: avoid;
     /* On screen this is a flex row holding the settings button out to the
        right; in print that button is gone and what is left should read as a
-       masthead — centred over both columns, closed off by a hairline rule,
-       the way an article's title block sits above its body. */
+       masthead — centred over the page, closed off by a hairline rule, the
+       way a report's title block sits above its body. */
     display: block;
     text-align: center;
     border-bottom: 1px solid var(--line);
@@ -4040,7 +4033,7 @@ aside.right {
   .notebook-title-print {
     display: block;
     margin: 0 0 4px;
-    font-size: 19px;
+    font-size: 21px;
     font-weight: 700;
     line-height: 1.25;
   }
@@ -4049,7 +4042,7 @@ aside.right {
     display: block;
     margin: 0;
     color: var(--muted);
-    font-size: 13px;
+    font-size: 14px;
     font-style: italic;
   }
 
@@ -4093,15 +4086,14 @@ aside.right {
     display: none;
   }
 
-  /* Justify the running prose, as a journal column is — but only with
-     hyphenation on, which is the whole bargain: an ~81mm measure justified
-     without it opens rivers of word space on any line holding a long term
-     (this document's prose is full of them — "doorsnede", "reliability",
-     unit names). The panel carries a `lang` for the NodeBook's own language
-     (Notebook.tsx) so the browser has a dictionary to hyphenate by. Scoped
-     to prose only: captions are short enough that justifying them mostly
-     produces one stretched line, and readings, tables and controls are not
-     running text at all. */
+  /* Justify the running prose, with hyphenation on — the two go together:
+     justifying without it opens rivers of word space on any line holding a
+     long term, and this document's prose is full of them ("doorsnede",
+     "reliability", unit names). The panel carries a `lang` for the
+     NodeBook's own language (Notebook.tsx) so the browser has a dictionary
+     to hyphenate by. Scoped to prose only: captions are short enough that
+     justifying them mostly produces one stretched line, and readings,
+     tables and controls are not running text at all. */
   .notebook-text-print:not(.caption),
   .notebook-text-display:not(.caption) {
     text-align: justify;
@@ -4110,29 +4102,24 @@ aside.right {
 
   /* A section is *not* kept whole. Asking for that reads well — a section is
      the report's own structure (a group frame; see Notebook.tsx's header
-     comment) — but the unit it applies to is far too big for a ~81mm column:
-     nearly every section with a figure or a few paragraphs in it is taller
-     than one column, and `avoid` on a box that fits no column is not a
-     preference the engine can decline gracefully. It pushes the section to
-     the next page, then balances whatever was left behind across the page it
-     came from, which is exactly the reported failure — a page ending in two
-     half-height columns with the rest of the report on later pages. The
-     `:has(.result.table)` exception that used to sit below this rule was the
-     same bug found from the table end, patched one content kind at a time;
-     the general rule replaces it. Keeping a section together is left to the
-     finer-grained rules that *can* be honoured: a heading stays with what
-     follows it, and each individual result (figure or reading, plus its
-     caption) stays whole. */
+     comment) — but the unit it applies to is too big to place: a section
+     with a figure and a few paragraphs in it easily outgrows what is left of
+     a page, and `avoid` on a box that fits nowhere is not a preference the
+     engine can decline gracefully. It moves the section on and strands the
+     space it came from, which under the two-column pass showed up as pages
+     ending in two half-height columns and the rest of the report shunted
+     onwards. The `:has(.result.table)` exception that used to sit below this
+     rule was the same bug found from the table end, patched one content kind
+     at a time; the general rule replaces it. Keeping a section together is
+     left to the finer-grained rules that *can* be honoured: a heading stays
+     with what follows it, and each individual result (figure or reading,
+     plus its caption) stays whole. */
   .notebook-section {
     break-inside: auto;
   }
 
   .notebook h2 {
     break-after: avoid;
-    /* The screen's 18px top margin is generous vertical rhythm for a single
-       wide panel; a narrow article column wants its section breaks tighter,
-       or a short section reads mostly as whitespace. */
-    margin-top: 12px;
   }
 
   .notebook .entry {
@@ -4192,46 +4179,20 @@ aside.right {
     min-width: 0;
   }
 
-  /* The masthead above is the only thing in this layout that spans both
-     columns. Every figure, however wide its own natural pixel size, and the
-     Table output's data grid, however many columns a sweep gives it, sit
-     inside a column and shrink to fit — an earlier pass here spanned a
-     "wide enough" figure or the Table output across the full page instead,
-     and that turned out worse in practice on both counts: it read as an
-     arbitrary jump in a supposedly two-column article, spanning content
-     that itself became mostly blank space where a smaller version would
-     have read fine (Thomas's own read on the printed preview), and a
-     `column-span: all` element appears to reset Chromium's print pagination
-     locally — content that would otherwise have kept filling the page after
-     it instead started a fresh page, leaving whatever the two columns had
-     already shown sitting on a mostly blank sheet. Legibility at column
-     width is a real, unsolved trade-off for a many-facet small-multiples
-     chart in particular (each facet keeps its own axis and ticks, so
-     shrinking the whole row shrinks every facet's ticks with it) — solve
-     that by making the content itself read better at ~81mm (smaller type,
-     tighter padding, tabular figures for the Table output — see below), not
-     by reaching for another span. */
+  /* Nothing here scales a figure *up*: `max-width` only shrinks an oversize
+     chart, so on a full-width page most figures now print at the natural
+     pixel size Plot drew them at, and only a genuinely wide sweep is scaled
+     down to the 170mm writing area. That is the whole reason the two-column
+     pass was taken back out — a many-facet small-multiples chart keeps its
+     own axis and ticks per facet, so shrinking the row to an ~81mm column
+     shrank every facet's ticks with it, and no retuning of the surrounding
+     type fixed that. */
 
-  /* The Table output's column count is data-dependent — unlike the
-     fixed-shape summary tables just below (stress-summary,
-     best-design-margins, reliability-card), which stay legible at column
-     width because they never grow past a handful of columns, a sweep can
-     carry one column per swept axis or readout. Borrow those tables' own
-     smaller-than-body scale and tighter cell padding (`.stress-summary`'s
-     0.9em/0.28rem 0.4rem, `.reliability-card`'s 0.3rem 0.5rem) rather than
-     inventing a new ratio, so a many-column sweep has more room per cell at
-     a column's ~81mm. Numerals are already tabular here on screen
-     (`.notebook table`, styles.css above) and unaffected by print; scoped
-     to the Table output's own wrapper, not the bare `.notebook table` those
-     screen rules use, so this does not also resize the summary tables. */
-  .notebook .result.table table {
-    font-size: 0.85em;
-  }
-
-  .notebook .result.table th,
-  .notebook .result.table td {
-    padding: 1px 3px;
-  }
+  /* The Table output used to be shrunk here — smaller type, tighter cells —
+     because a data-dependent column count had to fit a printed column's
+     ~81mm. On a full-width page it has the room the screen styles already
+     assume, so it keeps them; a sweep wide enough to overflow even this
+     wants fewer columns, not smaller type. */
 
   /* A table can genuinely need more than one page (a sweep's every row) —
      unlike a figure it is allowed to split, but not mid-row, and a reader
@@ -4255,16 +4216,6 @@ aside.right {
 
   .reliability-card {
     overflow-x: visible;
-  }
-
-  /* KaTeX sizes itself in em from the ambient font-size and has no line-
-     wrapping of its own — comfortable at the screen panel's width, a long
-     formula can run past an article column's ~81mm. Shrinking the type is
-     KaTeX's own supported way to resize (there is no single box to apply
-     the figures' `max-width: 100%` trick to), traded off against the
-     equation reading a little smaller than the body text around it. */
-  .notebook .result.equation .katex {
-    font-size: 0.9em;
   }
 
   /* Notebook controls are editing affordances, not report content. Their
