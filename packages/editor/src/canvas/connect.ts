@@ -39,7 +39,7 @@ export function connectResolvingTableColumn(
   document: GraphDocument,
   catalogues: readonly Catalogue[],
   candidate: Edge,
-  joinSpectrum: boolean,
+  joinVariadic: boolean,
 ): ConnectionResult {
   const initialTarget = document.nodes.find((node) => node.id === candidate.to.node);
   const resolvesTableColumn =
@@ -82,7 +82,7 @@ export function connectResolvingTableColumn(
 
   const apply = (current: GraphDocument): GraphDocument => {
     const latest = prepare(current);
-    return connect(latest.document, latest.edge.from, latest.edge.to, joinSpectrum);
+    return connect(latest.document, latest.edge.from, latest.edge.to, joinVariadic);
   };
   return { ok: true, document: apply(document), apply };
 }

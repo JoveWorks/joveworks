@@ -430,7 +430,7 @@ interface NodeBase {
   readonly displayUnits?: Readonly<Record<string, Unit>>;
 }
 
-/** A literal, a categorical choice, a spectrum, or a range. */
+/** A literal, a categorical choice, or a range. */
 export interface InputNode extends NodeBase {
   readonly kind: 'input';
   readonly value: ValueSpec;

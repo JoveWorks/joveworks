@@ -163,6 +163,24 @@ export function wire(from: string, to: string): JsonObject {
 
 export const scalar = (value: number, unit: string): JsonObject => ({ kind: 'scalar', value, unit });
 
+/**
+ * N one-value input nodes wired into a single variadic port — what a
+ * hand-typed spectrum input node's list of values became: there is no
+ * longer a single node that can hold several values, so a test that used
+ * to wire one spectrum node into a port wires this many instead, in order.
+ */
+export function variadicWires(
+  prefix: string,
+  target: string,
+  values: readonly number[],
+  unit: string,
+): { readonly nodes: readonly JsonObject[]; readonly wires: readonly JsonObject[] } {
+  return {
+    nodes: values.map((value, i) => input(`${prefix}${i}`, scalar(value, unit))),
+    wires: values.map((_value, i) => wire(`${prefix}${i}.value`, target)),
+  };
+}
+
 export const categorical = (value: string): JsonObject => ({ kind: 'categorical', value });
 
 export const slider = (value: number, min: number, max: number, unit: string): JsonObject => ({
@@ -290,12 +308,12 @@ export const SINE: JsonObject = {
   status: 'unverified',
 };
 
-/** A reduction over a load spectrum, with an invented weighting. */
+/** A reduction over a variadic port — every force wired in, totalled. */
 export const TOTAL: JsonObject = {
   id: 'total',
   version: 1,
   output: { kind: 'numeric', name: 'total', unit: 'N' },
-  inputs: [{ kind: 'spectrum', name: 'xs', unit: 'N' }],
+  inputs: [{ kind: 'numeric', name: 'xs', unit: 'N', variadic: true }],
   expression: 'sum(xs)',
   description: 'Total of a series of forces.',
   status: 'unverified',

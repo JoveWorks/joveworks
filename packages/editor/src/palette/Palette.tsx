@@ -71,7 +71,7 @@ type PaletteMenu =
   | { readonly action: PaletteAction; readonly x: number; readonly y: number };
 
 /** An input's starting kind, built off a plain `1`, matching `ValueKindSelect`'s own conversion. */
-function seedValue(kind: 'scalar' | 'linear' | 'list' | 'spectrum' | 'categorical', unit: Unit): ValueSpec {
+function seedValue(kind: 'scalar' | 'linear' | 'list' | 'categorical', unit: Unit): ValueSpec {
   if (kind === 'categorical') return { kind, value: 'H' };
   return converted({ kind: 'scalar', value: 1, unit }, kind);
 }
@@ -147,7 +147,7 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
       }),
     );
 
-  const addInput = (kind: 'scalar' | 'linear' | 'list' | 'spectrum' | 'categorical'): void =>
+  const addInput = (kind: 'scalar' | 'linear' | 'list' | 'categorical'): void =>
     edit((current) => {
       const id = uniqueId(current, 'input');
       return addNode(current, {
@@ -375,7 +375,6 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
       insert: addRange,
     },
     { id: 'builtin:input:list', label: copy.list, summary: copy.listSummary, insert: () => addInput('list') },
-    { id: 'builtin:input:spectrum', label: 'spectrum', summary: 'consumed whole, not swept', insert: () => addInput('spectrum') },
     { id: 'builtin:input:category', label: 'category', summary: 'a named choice', insert: () => addInput('categorical') },
     // A source like the five above it, not a routing node: it starts a graph
     // rather than doing anything to values already in one.

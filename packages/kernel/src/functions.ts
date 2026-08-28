@@ -18,10 +18,11 @@
  * - rounding **preserves** dimension.
  *
  * `sum`, `prod` and the rest of `REDUCTIONS` are apart from the whitelist above:
- * they consume a whole series at once rather than a value, so they are listed
- * separately and their first argument must be a spectrum port by name. `at` is
- * the one exception with a second argument — a plain index alongside the
- * series — which is what `ReductionSpec.extraArity` exists to declare.
+ * they consume every value wired into a port at once rather than a single
+ * value, so they are listed separately and their first argument must be a
+ * variadic port by name. `at` is the one exception with a second argument —
+ * a plain index alongside the wired values — which is what
+ * `ReductionSpec.extraArity` exists to declare.
  */
 
 import {
@@ -160,13 +161,14 @@ export const FUNCTIONS: ReadonlyMap<string, FunctionSpec> = new Map(
 );
 
 /**
- * The spectrum reductions. Separate from `FUNCTIONS` because their argument is a
- * whole series rather than a value: a sweep *produces* a series and these
- * *consume* one, so they can only be applied to a spectrum port, by name.
+ * The variadic-port reductions. Separate from `FUNCTIONS` because their
+ * argument is every value wired into a port rather than a single value: a
+ * sweep *produces* a series and these *consume* a whole set of wires, so they
+ * can only be applied to a variadic port, by name.
  */
 export interface ReductionSpec {
   readonly name: string;
-  /** How many plain scalar arguments follow the spectrum argument. Defaults to 0. */
+  /** How many plain scalar arguments follow the variadic-port argument. Defaults to 0. */
   readonly extraArity?: number;
   readonly apply: (values: readonly number[], extra: readonly number[]) => number;
   readonly dimension: (argument: Dimension, where: string | undefined, extra: readonly Dimension[]) => Dimension;
@@ -196,7 +198,7 @@ const REDUCTION_SPECS: readonly ReductionSpec[] = [
   },
   // Named `least`/`greatest`, not `min`/`max` — those already name the plain,
   // fixed-arity whitelist functions above (`min(a, b, c)`, distinct named
-  // arguments in one expression). A reduction's argument is one spectrum
+  // arguments in one expression). A reduction's argument is one variadic
   // port, a wholly different shape of call, and needs a name of its own.
   {
     name: 'least',

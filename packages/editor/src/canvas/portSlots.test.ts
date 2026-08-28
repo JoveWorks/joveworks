@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import { basePortName, slotHandleId } from './spectrumSlots';
+import { basePortName, slotHandleId } from './portSlots';
 
-describe('spectrum slot handle ids', () => {
+describe('variadic port slot handle ids', () => {
   it('round-trips a slot id back to the bare port name', () => {
     expect(basePortName(slotHandleId('a', 0))).toBe('a');
     expect(basePortName(slotHandleId('a', 3))).toBe('a');

@@ -16,20 +16,20 @@ describe('closureFormula', () => {
     expect(formula.inputs.map((port) => port.name)).toEqual(['r']);
   });
 
-  it('marks a bare reduction argument as a spectrum port', () => {
+  it('marks a bare reduction argument as a variadic port', () => {
     const formula = closureFormula('sum(xs) / n');
     const xs = formula.inputs.find((port) => port.name === 'xs');
     const n = formula.inputs.find((port) => port.name === 'n');
-    expect(xs?.kind).toBe('spectrum');
-    expect(n?.kind).toBe('numeric');
+    expect(xs?.kind === 'numeric' && xs.variadic).toBe(true);
+    expect(n?.kind === 'numeric' && n.variadic).toBeUndefined();
   });
 
-  it('marks only the spectrum argument of a two-argument reduction, not its index', () => {
+  it('marks only the variadic argument of a two-argument reduction, not its index', () => {
     const formula = closureFormula('at(xs, i)');
     const xs = formula.inputs.find((port) => port.name === 'xs');
     const i = formula.inputs.find((port) => port.name === 'i');
-    expect(xs?.kind).toBe('spectrum');
-    expect(i?.kind).toBe('numeric');
+    expect(xs?.kind === 'numeric' && xs.variadic).toBe(true);
+    expect(i?.kind === 'numeric' && i.variadic).toBeUndefined();
   });
 
   it('rejects a symbol named after the output port', () => {

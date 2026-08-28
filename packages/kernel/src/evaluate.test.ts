@@ -44,6 +44,7 @@ import {
   selectNode,
   slider,
   uniformDraw,
+  variadicWires,
   wire,
 } from './invented.fixtures.js';
 import type { CategoricalSeries, NumericSeries } from './series.js';
@@ -258,11 +259,20 @@ describe('Reliability outputs', () => {
   it('warns and falls back to equal discrete weights when lengths differ', () => {
     const document = documentOf(
       [
-        input('choices', { kind: 'spectrum', values: [1, 2, 3], unit: 'mm' }),
-        input('weights', { kind: 'spectrum', values: [1, 2], unit: '' }),
+        input('choice1', scalar(1, 'mm')),
+        input('choice2', scalar(2, 'mm')),
+        input('choice3', scalar(3, 'mm')),
+        input('weight1', scalar(1, '')),
+        input('weight2', scalar(2, '')),
         monteCarloGeneratorNode('draw', { distribution: 'discrete' }, 10, 'mm'),
       ],
-      [wire('choices.value', 'draw.values'), wire('weights.value', 'draw.weights')],
+      [
+        wire('choice1.value', 'draw.values'),
+        wire('choice2.value', 'draw.values'),
+        wire('choice3.value', 'draw.values'),
+        wire('weight1.value', 'draw.weights'),
+        wire('weight2.value', 'draw.weights'),
+      ],
     );
     const evaluation = evaluateDocument(document, catalogues);
     expect(numeric(valueAt(evaluation, 'draw', 'value')).data).toHaveLength(10);
@@ -534,8 +544,8 @@ describe('piecewise-backed formulas', () => {
       output: { kind: 'numeric', name: 'y', unit: 'N' },
       inputs: [
         { kind: 'numeric', name: 'z', unit: 'mm', default: 0 },
-        { kind: 'spectrum', name: 'position', unit: 'mm' },
-        { kind: 'spectrum', name: 'value', unit: 'N' },
+        { kind: 'numeric', name: 'position', unit: 'mm', variadic: true },
+        { kind: 'numeric', name: 'value', unit: 'N', variadic: true },
         { kind: 'numeric', name: 'extraPosition', unit: 'mm', default: 1_000_000 },
         { kind: 'numeric', name: 'extraValue', unit: 'N', default: 0 },
       ],
@@ -550,31 +560,31 @@ describe('piecewise-backed formulas', () => {
   const stepRef = refTo('runningTotal', stepCatalogue);
 
   it('totals only the breakpoints at or before z', () => {
+    const position = variadicWires('position', 'step.position', [10, 30, 50], 'mm');
+    const value = variadicWires('value', 'step.value', [100, 200, 300], 'N');
     const document = documentOf(
       [
-        input('position', { kind: 'spectrum', values: [10, 30, 50], unit: 'mm' }),
-        input('value', { kind: 'spectrum', values: [100, 200, 300], unit: 'N' }),
+        ...position.nodes,
+        ...value.nodes,
         formulaNode('step', stepRef, { inputValues: { z: { kind: 'scalar', value: 40, unit: 'mm' } } }),
       ],
-      [wire('position.value', 'step.position'), wire('value.value', 'step.value')],
+      [...position.wires, ...value.wires],
     );
     // 10 mm and 30 mm are at or before z = 40 mm; 50 mm is not.
     expect(numeric(valueAt(evaluateDocument(document, [stepCatalogue]), 'step', 'y')).data).toEqual([300]);
   });
 
   it('is closed-form at every sampled z, not a cumulative sum over the sweep', () => {
+    const position = variadicWires('position', 'step.position', [10, 30, 50], 'mm');
+    const value = variadicWires('value', 'step.value', [100, 200, 300], 'N');
     const document = documentOf(
       [
-        input('position', { kind: 'spectrum', values: [10, 30, 50], unit: 'mm' }),
-        input('value', { kind: 'spectrum', values: [100, 200, 300], unit: 'N' }),
+        ...position.nodes,
+        ...value.nodes,
         input('z', linear(0, 60, 4, 'mm')), // 0, 20, 40, 60 mm
         formulaNode('step', stepRef),
       ],
-      [
-        wire('position.value', 'step.position'),
-        wire('value.value', 'step.value'),
-        wire('z.value', 'step.z'),
-      ],
+      [...position.wires, ...value.wires, wire('z.value', 'step.z')],
     );
     expect(numeric(valueAt(evaluateDocument(document, [stepCatalogue]), 'step', 'y')).data).toEqual([
       0, 100, 300, 600,
@@ -582,23 +592,23 @@ describe('piecewise-backed formulas', () => {
   });
 
   it('reports mismatched breakpoint/value counts rather than silently truncating', () => {
+    const position = variadicWires('position', 'step.position', [10, 30], 'mm');
+    const value = variadicWires('value', 'step.value', [100, 200, 300], 'N');
     const document = documentOf(
-      [
-        input('position', { kind: 'spectrum', values: [10, 30], unit: 'mm' }),
-        input('value', { kind: 'spectrum', values: [100, 200, 300], unit: 'N' }),
-        formulaNode('step', stepRef),
-      ],
-      [wire('position.value', 'step.position'), wire('value.value', 'step.value')],
+      [...position.nodes, ...value.nodes, formulaNode('step', stepRef)],
+      [...position.wires, ...value.wires],
     );
     // Plus the fixture's own extraPosition/extraValue: 2+1 = 3 breakpoints, 3+1 = 4 values.
     expect(() => evaluateDocument(document, [stepCatalogue])).toThrow(/has 3 values but 'value\+extraValue' has 4/u);
   });
 
-  it('joins a plain numeric port to a spectrum in the same list, by declared order rather than wire order', () => {
+  it('joins a plain numeric port to a variadic one in the same list, by declared order rather than wire order', () => {
+    const position = variadicWires('position', 'step.position', [10, 30], 'mm');
+    const value = variadicWires('value', 'step.value', [100, 200], 'N');
     const document = documentOf(
       [
-        input('position', { kind: 'spectrum', values: [10, 30], unit: 'mm' }),
-        input('value', { kind: 'spectrum', values: [100, 200], unit: 'N' }),
+        ...position.nodes,
+        ...value.nodes,
         formulaNode('step', stepRef, {
           inputValues: {
             z: { kind: 'scalar', value: 50, unit: 'mm' },
@@ -607,7 +617,7 @@ describe('piecewise-backed formulas', () => {
           },
         }),
       ],
-      [wire('position.value', 'step.position'), wire('value.value', 'step.value')],
+      [...position.wires, ...value.wires],
     );
     // 10, 30 and 20 mm are all at or before z = 50 mm: 100 + 200 + 1000.
     expect(numeric(valueAt(evaluateDocument(document, [stepCatalogue]), 'step', 'y')).data).toEqual([1300]);
@@ -619,8 +629,8 @@ describe('piecewise-backed formulas', () => {
       output: { kind: 'numeric', name: 'y', unit: 'Nmm' },
       inputs: [
         { kind: 'numeric', name: 'z', unit: 'mm', default: 0 },
-        { kind: 'spectrum', name: 'position', unit: 'mm' },
-        { kind: 'spectrum', name: 'value', unit: 'N' },
+        { kind: 'numeric', name: 'position', unit: 'mm', variadic: true },
+        { kind: 'numeric', name: 'value', unit: 'N', variadic: true },
       ],
       expression: 'sum(value) * z',
       piecewise: { kind: 'cumulativeMoment', axis: 'z', breakpoints: ['position'], values: ['value'] },
@@ -630,14 +640,16 @@ describe('piecewise-backed formulas', () => {
   const momentRef = refTo('runningMoment', momentCatalogue);
 
   it('weighs each breakpoint at or before z by its distance from z', () => {
+    const position = variadicWires('position', 'moment.position', [10, 30, 50], 'mm');
+    const value = variadicWires('value', 'moment.value', [100, 200, 300], 'N');
     const document = documentOf(
       [
-        input('position', { kind: 'spectrum', values: [10, 30, 50], unit: 'mm' }),
-        input('value', { kind: 'spectrum', values: [100, 200, 300], unit: 'N' }),
+        ...position.nodes,
+        ...value.nodes,
         input('z', { kind: 'list', values: [0, 40, 60], unit: 'mm' }),
         formulaNode('moment', momentRef),
       ],
-      [wire('position.value', 'moment.position'), wire('value.value', 'moment.value'), wire('z.value', 'moment.z')],
+      [...position.wires, ...value.wires, wire('z.value', 'moment.z')],
     );
     // z = 0: no breakpoint at or before 0 → 0.
     // z = 40: 100·(40−10) + 200·(40−30) = 3000 + 2000 = 5000.
@@ -653,8 +665,8 @@ describe('piecewise-backed formulas', () => {
       output: { kind: 'numeric', name: 'y', unit: 'N*mm3' },
       inputs: [
         { kind: 'numeric', name: 'z', unit: 'mm', default: 0 },
-        { kind: 'spectrum', name: 'position', unit: 'mm' },
-        { kind: 'spectrum', name: 'value', unit: 'N' },
+        { kind: 'numeric', name: 'position', unit: 'mm', variadic: true },
+        { kind: 'numeric', name: 'value', unit: 'N', variadic: true },
       ],
       expression: 'sum(value) * z * z * z',
       piecewise: { kind: 'cumulativeCubic', axis: 'z', breakpoints: ['position'], values: ['value'] },
@@ -664,14 +676,16 @@ describe('piecewise-backed formulas', () => {
   const cubicRef = refTo('runningCubic', cubicCatalogue);
 
   it('weighs each breakpoint at or before z by the cube of its distance from z', () => {
+    const position = variadicWires('position', 'cubic.position', [0, 10], 'mm');
+    const value = variadicWires('value', 'cubic.value', [1, 2], 'N');
     const document = documentOf(
       [
-        input('position', { kind: 'spectrum', values: [0, 10], unit: 'mm' }),
-        input('value', { kind: 'spectrum', values: [1, 2], unit: 'N' }),
+        ...position.nodes,
+        ...value.nodes,
         input('z', { kind: 'list', values: [5, 15], unit: 'mm' }),
         formulaNode('cubic', cubicRef),
       ],
-      [wire('position.value', 'cubic.position'), wire('value.value', 'cubic.value'), wire('z.value', 'cubic.z')],
+      [...position.wires, ...value.wires, wire('z.value', 'cubic.z')],
     );
     // z=5: only the z=0 breakpoint qualifies: 1·5³ = 125.
     // z=15: both qualify: 1·15³ + 2·5³ = 3375 + 250 = 3625.
@@ -683,9 +697,9 @@ describe('piecewise-backed formulas', () => {
   describe('distributed loads', () => {
     const distributedInputs = [
       { kind: 'numeric', name: 'z', unit: 'mm', default: 0 },
-      { kind: 'spectrum', name: 'start', unit: 'mm' },
-      { kind: 'spectrum', name: 'end', unit: 'mm' },
-      { kind: 'spectrum', name: 'rate', unit: 'N/mm' },
+      { kind: 'numeric', name: 'start', unit: 'mm', variadic: true },
+      { kind: 'numeric', name: 'end', unit: 'mm', variadic: true },
+      { kind: 'numeric', name: 'rate', unit: 'N/mm', variadic: true },
     ];
     const distributedStepCatalogue = catalogueOf([
       {
@@ -719,15 +733,16 @@ describe('piecewise-backed formulas', () => {
 
     // A single uniform load, 10 N/mm from z = 20 to z = 60 (400 N total,
     // centroid at z = 40).
+    const loadStart = variadicWires('start', 'v.start', [20], 'mm');
+    const loadEnd = variadicWires('end', 'v.end', [60], 'mm');
+    const loadRate = variadicWires('rate', 'v.rate', [10], 'N/mm');
     const loadInputs = [
-      input('start', { kind: 'spectrum', values: [20], unit: 'mm' }),
-      input('end', { kind: 'spectrum', values: [60], unit: 'mm' }),
-      input('rate', { kind: 'spectrum', values: [10], unit: 'N/mm' }),
+      ...loadStart.nodes,
+      ...loadEnd.nodes,
+      ...loadRate.nodes,
       input('z', { kind: 'list', values: [0, 10, 20, 30, 60, 100], unit: 'mm' }),
     ];
-    const loadWires = [
-      wire('start.value', 'v.start'), wire('end.value', 'v.end'), wire('rate.value', 'v.rate'), wire('z.value', 'v.z'),
-    ];
+    const loadWires = [...loadStart.wires, ...loadEnd.wires, ...loadRate.wires, wire('z.value', 'v.z')];
 
     it('integrates a rectangular load into a shear-shaped ramp — flat, then linear, then flat again', () => {
       const document = documentOf(
@@ -756,11 +771,11 @@ describe('piecewise-backed formulas', () => {
           output: { kind: 'numeric', name: 'y', unit: 'N' },
           inputs: [
             { kind: 'numeric', name: 'z', unit: 'mm', default: 0 },
-            { kind: 'spectrum', name: 'position', unit: 'mm' },
-            { kind: 'spectrum', name: 'value', unit: 'N' },
-            { kind: 'spectrum', name: 'start', unit: 'mm' },
-            { kind: 'spectrum', name: 'end', unit: 'mm' },
-            { kind: 'spectrum', name: 'rate', unit: 'N/mm' },
+            { kind: 'numeric', name: 'position', unit: 'mm', variadic: true },
+            { kind: 'numeric', name: 'value', unit: 'N', variadic: true },
+            { kind: 'numeric', name: 'start', unit: 'mm', variadic: true },
+            { kind: 'numeric', name: 'end', unit: 'mm', variadic: true },
+            { kind: 'numeric', name: 'rate', unit: 'N/mm', variadic: true },
           ],
           expression: 'sum(value) + sum(rate) * z',
           piecewise: {
@@ -771,17 +786,19 @@ describe('piecewise-backed formulas', () => {
           description: 'Invented point-plus-distributed shear formula.', status: 'unverified',
         },
       ]);
+      const position = variadicWires('position', 'v.position', [50], 'mm');
+      const value = variadicWires('value', 'v.value', [1000], 'N');
       const document = documentOf(
         [
-          input('position', { kind: 'spectrum', values: [50], unit: 'mm' }),
-          input('value', { kind: 'spectrum', values: [1000], unit: 'N' }),
+          ...position.nodes,
+          ...value.nodes,
           ...loadInputs.filter((n) => n['id'] !== 'z'),
           input('z', { kind: 'list', values: [10, 55], unit: 'mm' }),
           formulaNode('v', refTo('combined', combinedCatalogue)),
         ],
         [
-          wire('position.value', 'v.position'), wire('value.value', 'v.value'),
-          wire('start.value', 'v.start'), wire('end.value', 'v.end'), wire('rate.value', 'v.rate'),
+          ...position.wires, ...value.wires,
+          ...loadStart.wires, ...loadEnd.wires, ...loadRate.wires,
           wire('z.value', 'v.z'),
         ],
       );
@@ -794,14 +811,12 @@ describe('piecewise-backed formulas', () => {
     });
 
     it("rejects a distributed load whose end is before its start", () => {
+      const start = variadicWires('start', 'v.start', [60], 'mm');
+      const end = variadicWires('end', 'v.end', [20], 'mm');
+      const rate = variadicWires('rate', 'v.rate', [10], 'N/mm');
       const document = documentOf(
-        [
-          input('start', { kind: 'spectrum', values: [60], unit: 'mm' }),
-          input('end', { kind: 'spectrum', values: [20], unit: 'mm' }),
-          input('rate', { kind: 'spectrum', values: [10], unit: 'N/mm' }),
-          formulaNode('v', distributedStepRef),
-        ],
-        [wire('start.value', 'v.start'), wire('end.value', 'v.end'), wire('rate.value', 'v.rate')],
+        [...start.nodes, ...end.nodes, ...rate.nodes, formulaNode('v', distributedStepRef)],
+        [...start.wires, ...end.wires, ...rate.wires],
       );
       expect(() => evaluateDocument(document, [distributedStepCatalogue])).toThrow(/end .* is before its start/u);
     });
@@ -815,8 +830,8 @@ describe('deflection-backed formulas', () => {
       output: { kind: 'numeric', name: 'y', unit: 'mm' },
       inputs: [
         { kind: 'numeric', name: 'z', unit: 'mm', default: 0 },
-        { kind: 'spectrum', name: 'position', unit: 'mm' },
-        { kind: 'spectrum', name: 'value', unit: 'N' },
+        { kind: 'numeric', name: 'position', unit: 'mm', variadic: true },
+        { kind: 'numeric', name: 'value', unit: 'N', variadic: true },
         { kind: 'numeric', name: 'supportA', unit: 'mm' },
         { kind: 'numeric', name: 'supportB', unit: 'mm' },
         { kind: 'numeric', name: 'modulus', unit: 'N/mm²' },
@@ -833,10 +848,12 @@ describe('deflection-backed formulas', () => {
   const deflectionRef = refTo('beamDeflection', deflectionCatalogue);
 
   it('is zero at both zeroAt positions by construction, and closed-form in between', () => {
+    const position = variadicWires('position', 'y.position', [0], 'mm');
+    const value = variadicWires('value', 'y.value', [6], 'N');
     const document = documentOf(
       [
-        input('position', { kind: 'spectrum', values: [0], unit: 'mm' }),
-        input('value', { kind: 'spectrum', values: [6], unit: 'N' }),
+        ...position.nodes,
+        ...value.nodes,
         input('supportA', scalar(0, 'mm')),
         input('supportB', scalar(10, 'mm')),
         input('modulus', scalar(1, 'N/mm²')),
@@ -845,7 +862,7 @@ describe('deflection-backed formulas', () => {
         formulaNode('y', deflectionRef),
       ],
       [
-        wire('position.value', 'y.position'), wire('value.value', 'y.value'),
+        ...position.wires, ...value.wires,
         wire('supportA.value', 'y.supportA'), wire('supportB.value', 'y.supportB'),
         wire('modulus.value', 'y.modulus'), wire('inertia.value', 'y.inertia'),
         wire('z.value', 'y.z'),
@@ -860,10 +877,12 @@ describe('deflection-backed formulas', () => {
   });
 
   it('rejects zeroAt positions that coincide', () => {
+    const position = variadicWires('position', 'y.position', [0], 'mm');
+    const value = variadicWires('value', 'y.value', [6], 'N');
     const document = documentOf(
       [
-        input('position', { kind: 'spectrum', values: [0], unit: 'mm' }),
-        input('value', { kind: 'spectrum', values: [6], unit: 'N' }),
+        ...position.nodes,
+        ...value.nodes,
         input('supportA', scalar(5, 'mm')),
         input('supportB', scalar(5, 'mm')),
         input('modulus', scalar(1, 'N/mm²')),
@@ -871,7 +890,7 @@ describe('deflection-backed formulas', () => {
         formulaNode('y', deflectionRef),
       ],
       [
-        wire('position.value', 'y.position'), wire('value.value', 'y.value'),
+        ...position.wires, ...value.wires,
         wire('supportA.value', 'y.supportA'), wire('supportB.value', 'y.supportB'),
         wire('modulus.value', 'y.modulus'), wire('inertia.value', 'y.inertia'),
       ],
@@ -1399,31 +1418,36 @@ describe('the Monte Carlo generator and receiver (roadmap #27)', () => {
   });
 });
 
-describe('spectra', () => {
-  it('consumes a whole series and produces one number', () => {
+describe('variadic ports', () => {
+  it('totals every wire, not just the first — the ghost-slot n-wire mechanism end to end', () => {
     const document = documentOf(
       [
-        input('loads', { kind: 'spectrum', values: [100, 200, 300], unit: 'N' }),
+        input('load1', scalar(100, 'N')),
+        input('load2', scalar(200, 'N')),
+        input('load3', scalar(300, 'N')),
         formulaNode('total', refTo('total')),
       ],
-      [wire('loads.value', 'total.xs')],
+      [
+        wire('load1.value', 'total.xs'),
+        wire('load2.value', 'total.xs'),
+        wire('load3.value', 'total.xs'),
+      ],
     );
     expect(numeric(valueAt(evaluateDocument(document, catalogues), 'total', 'total')).data).toEqual([
       600,
     ]);
   });
 
-  it('keeps a spectrum out of a numeric port — a sweep is not a spectrum', () => {
+  it('refuses a second wire into an ordinary, non-variadic numeric port', () => {
     const document = documentOf(
       [
-        input('loads', { kind: 'spectrum', values: [1, 2], unit: 'N' }),
+        input('a1', scalar(1, 'N')),
+        input('a2', scalar(2, 'N')),
         formulaNode('sum', refTo('addTwo')),
       ],
-      [wire('loads.value', 'sum.a')],
+      [wire('a1.value', 'sum.a'), wire('a2.value', 'sum.a')],
     );
-    expect(() => evaluateDocument(document, catalogues)).toThrow(
-      /spectrum value to a numeric port/u,
-    );
+    expect(() => evaluateDocument(document, catalogues)).toThrow(/two edges arrive/u);
   });
 });
 

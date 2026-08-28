@@ -85,6 +85,12 @@ describe('range kinds', () => {
     expect(lengthOf(json)).toBe(4);
   });
 
+  it('rejects an empty list', () => {
+    expect(() => parseValueSpec({ kind: 'list', values: [], unit: 'mm' }, 'v')).toThrow(
+      'v.values: is empty',
+    );
+  });
+
   it('sweeps categoricals by explicit list only', () => {
     const json = { kind: 'categoricalList', values: ['H7', 'H8', 'K7'] } as const;
     expect(roundTrip(json)).toEqual(json);
@@ -126,17 +132,3 @@ describe('range kinds', () => {
   });
 });
 
-describe('spectrum values', () => {
-  it('is an explicit list and is not a range, so it introduces no axis', () => {
-    const json = { kind: 'spectrum', values: [12, 30, 58], unit: 'kW' } as const;
-    const value = parseValueSpec(json, 'v');
-    expect(isRange(value)).toBe(false);
-    expect(serializeValueSpec(value)).toEqual(json);
-  });
-
-  it('rejects an empty spectrum', () => {
-    expect(() => parseValueSpec({ kind: 'spectrum', values: [], unit: 'kW' }, 'v')).toThrow(
-      'v.values: is empty',
-    );
-  });
-});

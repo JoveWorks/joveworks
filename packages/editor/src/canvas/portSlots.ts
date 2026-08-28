@@ -3,7 +3,7 @@
  *
  * React Flow indexes handles by `(nodeId, handleId)` — two `<Handle>`
  * elements on one node sharing an id collide, and only one is actually
- * connectable, which is what a spectrum port's several same-named slots
+ * connectable, which is what a variadic port's several same-named slots
  * would do if rendered with the bare port name. Every slot instead
  * gets a unique id, `port::index` or `port::open` for the trailing one; the
  * schema never sees it; `basePortName` is the one place that strips it back

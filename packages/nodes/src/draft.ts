@@ -5,7 +5,7 @@
  * catalogue this way; `iso286.ts` is lookup-based and does not need it.
  */
 
-import type { Formula, LocalizedText, NumericPort, OutputPort, Port, SpectrumPort } from '@joveworks/schema';
+import type { Formula, LocalizedText, NumericPort, OutputPort, Port } from '@joveworks/schema';
 import { parseGenericDimension, parseUnit } from '@joveworks/units';
 
 export function text(en: string): LocalizedText {
@@ -18,13 +18,19 @@ export function generic(name: string, variable: string, description: string): Nu
 }
 
 /**
- * A spectrum port that adopts the dimension of whatever is wired to it.
+ * A variadic port that adopts the dimension of whatever is wired to it.
  * Unlike a plain generic port it may be joined by more than one wire —
  * `minimum`/`maximum` are the two `operations.ts` nodes that need that; every
- * `arrayNodes.ts` reduction needs it for the single series it consumes.
+ * `arrayNodes.ts` reduction needs it for the values it reduces.
  */
-export function genericSpectrum(name: string, variable: string, description: string): SpectrumPort {
-  return { kind: 'spectrum', name, unit: parseGenericDimension(`$${variable}`), description: text(description) };
+export function genericVariadic(name: string, variable: string, description: string): NumericPort {
+  return {
+    kind: 'numeric',
+    name,
+    unit: parseGenericDimension(`$${variable}`),
+    description: text(description),
+    variadic: true,
+  };
 }
 
 /** A port with a fixed unit. `''` is dimensionless — declared, not absent. */
@@ -32,9 +38,9 @@ export function plain(name: string, unit: string, description: string): NumericP
   return { kind: 'numeric', name, unit: parseUnit(unit), description: text(description) };
 }
 
-/** A spectrum port bound to a fixed unit rather than a generic one — `product`'s series argument. */
-export function plainSpectrum(name: string, unit: string, description: string): SpectrumPort {
-  return { kind: 'spectrum', name, unit: parseUnit(unit), description: text(description) };
+/** A variadic port bound to a fixed unit rather than a generic one — `product`'s values. */
+export function plainVariadic(name: string, unit: string, description: string): NumericPort {
+  return { kind: 'numeric', name, unit: parseUnit(unit), description: text(description), variadic: true };
 }
 
 export interface Draft {

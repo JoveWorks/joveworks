@@ -39,7 +39,7 @@ import { axisLabel, reading, summarise } from '../model/values';
 import { NodeShell } from './NodeShell';
 import { Sparkline } from './Sparkline';
 import type { CanvasFlowNode } from './node-data';
-import { slotHandleId } from './spectrumSlots';
+import { slotHandleId } from './portSlots';
 import { TitleField, TitleText } from './TitleField';
 import { DisplayUnitPicker } from './DisplayUnitPicker';
 import { PORT_VALUE_HINT, PortValueField, UNCHOSEN } from './PortValueField';
@@ -116,7 +116,7 @@ export function FormulaNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
     const edge = document.edges.find((entry) => entry.to.node === id && entry.to.port === portName);
     return edge === undefined ? undefined : reading(analysis, edge.from.node, edge.from.port);
   };
-  /** Every edge already arriving at one port — more than one only for a spectrum port. */
+  /** Every edge already arriving at one port — more than one only for a variadic port. */
   const edgesAt = (portName: string): number =>
     document.edges.filter((edge) => edge.to.node === id && edge.to.port === portName).length;
 
@@ -253,7 +253,7 @@ export function FormulaNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
           // handle or the default field should see the same description a
           // pointer over the name would.
           const description = port.description === undefined ? undefined : localize(port.description, locale);
-          // An ordinary port is exactly one slot. A spectrum port is one
+          // An ordinary port is exactly one slot. A variadic port is one
           // slot per edge already joined to it, plus a trailing open one —
           // there is no numbered "a1, a2" identity to keep in step, since
           // every slot targets the same port name; removing a wire and
@@ -291,7 +291,7 @@ export function FormulaNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
             );
           }
 
-          if (port.kind !== 'spectrum') {
+          if (!(port.kind === 'numeric' && port.variadic === true)) {
             return (
               <li
                 key={port.name}

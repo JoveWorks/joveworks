@@ -224,7 +224,7 @@ describe('analysing a graph mid-build', () => {
     expect(analysis.states.get('out')).toBe('ok');
   });
 
-  it('blocks a spectrum port on any unready source, not just the last edge recorded', () => {
+  it('blocks a variadic port on any unready source, not just the last edge recorded', () => {
     const document = graph(
       [
         scalar('a', 2),

@@ -30,7 +30,7 @@ import {
   type NodeChange,
 } from '@xyflow/react';
 
-import { adaptInputUnit, canConnect, resolveGraph, selectPortNames, statisticPortNames, typesConnect } from '@joveworks/kernel';
+import { adaptInputUnit, canConnect, isVariadicTarget, resolveGraph, selectPortNames, statisticPortNames, typesConnect } from '@joveworks/kernel';
 import { parseUnit } from '@joveworks/units';
 import {
   ALONG_PORT,
@@ -118,11 +118,11 @@ import {
 } from './quickAdd';
 import { UnpackNodeView } from './UnpackNodeView';
 import { WaypointNodeView } from './WaypointNodeView';
-import { basePortName, slotHandleId } from './spectrumSlots';
+import { basePortName, slotHandleId } from './portSlots';
 
 /**
  * Whatever is already wired into `node.port`, by label — undefined if it is
- * free. A target port normally takes one edge (a spectrum's many-slot
+ * free. A target port normally takes one edge (a variadic port's many-slot
  * exception does not apply to any port `existingCandidates` below offers,
  * which are always a formula's or output's *first* ordinary input), so
  * picking a candidate with something already here silently replaces it —
@@ -790,7 +790,7 @@ export function Canvas({
   );
 
   const edges = useMemo<FlowEdge[]>(() => {
-    // Every port is rendered with a slot-suffixed handle id (spectrumSlots.ts),
+    // Every port is rendered with a slot-suffixed handle id (portSlots.ts),
     // even a single-occupancy one — so an edge's target handle has to name the
     // same slot FormulaNodeView assigned it: position among edges sharing this
     // (node, port), in document order, which is exactly how that view counts.
@@ -1048,16 +1048,15 @@ export function Canvas({
       const fromNode = document.nodes.find((node) => node.id === candidate.from.node);
       const fromUnwired = !document.edges.some((edge) => edge.from.node === candidate.from.node);
       if (fromNode?.kind === 'input' && hasUnit(fromNode.value) && fromUnwired) {
-        return source.kind === target.kind || (source.kind === 'numeric' && target.kind === 'spectrum');
+        return source.kind === target.kind;
       }
       return false;
     },
     [analysis.resolution, document.edges, document.nodes],
   );
 
-  /** A spectrum port's new wire joins what is already there, not replaces it. */
-  const isSpectrumTarget = (to: Edge['to']): boolean =>
-    analysis.resolution?.targets.get(`${to.node}.${to.port}`)?.kind === 'spectrum';
+  /** A variadic port's new wire joins what is already there, not replaces it. */
+  const isVariadicConnectTarget = (to: Edge['to']): boolean => isVariadicTarget(document, catalogues, to);
 
   /** The authority, when it lands: the whole graph, resolved with it added. */
   const onConnect = useCallback(
@@ -1071,7 +1070,7 @@ export function Canvas({
         document,
         catalogues,
         candidate,
-        isSpectrumTarget(candidate.to),
+        isVariadicConnectTarget(candidate.to),
       );
       if (result.ok) {
         clearRefusal();
@@ -1100,7 +1099,7 @@ export function Canvas({
       const adaptedResult =
         adapted === undefined
           ? undefined
-          : connectResolvingTableColumn(adapted, catalogues, candidate, isSpectrumTarget(candidate.to));
+          : connectResolvingTableColumn(adapted, catalogues, candidate, isVariadicConnectTarget(candidate.to));
       if (targetUnit !== undefined && adaptedResult?.ok === true) {
         clearRefusal();
         edit((current) => {
@@ -1316,7 +1315,7 @@ export function Canvas({
         current,
         catalogues,
         candidate,
-        isSpectrumTarget(candidate.to),
+        isVariadicConnectTarget(candidate.to),
       );
       if (!result.ok) {
         refuseConnection(result.refusal.edge, result.refusal.reason);
@@ -1369,7 +1368,7 @@ export function Canvas({
         next,
         catalogues,
         candidate,
-        isSpectrumTarget(candidate.to),
+        isVariadicConnectTarget(candidate.to),
       );
       if (result.ok) {
         clearRefusal();
@@ -1497,7 +1496,7 @@ export function Canvas({
               if (verdict.ok) {
                 clearRefusal();
                 edit((current) =>
-                  connect(current, candidate.from, candidate.to, isSpectrumTarget(candidate.to)),
+                  connect(current, candidate.from, candidate.to, isVariadicConnectTarget(candidate.to)),
                 );
               } else {
                 refuseConnection(candidate, verdict.reason);

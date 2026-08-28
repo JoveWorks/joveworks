@@ -176,7 +176,7 @@ describe('document edits', () => {
     expect(rewired.edges[0]?.from.node).toBe('c');
   });
 
-  it('joins a spectrum port instead of replacing it, when told to', () => {
+  it('joins a variadic port instead of replacing it, when told to', () => {
     const wired = connect(base, { node: 'a', port: 'value' }, { node: 'b', port: 'x' }, true);
     const joined = connect(
       addNode(wired, input('c', 0, 200)),

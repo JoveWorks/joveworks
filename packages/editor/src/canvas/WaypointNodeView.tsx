@@ -10,7 +10,7 @@ import { reframe, removeNodes, renameNode } from '../model/document';
 import { ParameterLabel } from '../ParameterLabel';
 import { NodeShell } from './NodeShell';
 import type { CanvasFlowNode } from './node-data';
-import { slotHandleId } from './spectrumSlots';
+import { slotHandleId } from './portSlots';
 import { TitleField } from './TitleField';
 
 export function WaypointNodeView({ id, data }: NodeProps<CanvasFlowNode>): ReactElement | null {

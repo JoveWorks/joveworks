@@ -18,11 +18,12 @@ import { text } from './draft.js';
 
 /**
  * A support's position and reaction, as two more single-valued breakpoint
- * entries alongside a diagram's load spectrum — left unwired (both default
- * to 0) for a diagram that only shows the applied loads, such as the one a
- * reaction is itself solved from. `FormulaPiecewise`'s docstring is why this
- * is two named ports per support rather than one more wire into `position`/
- * `force`: the pairing is declared once, here, not left to wire order.
+ * entries alongside a diagram's variadic `position`/`force` wires — left
+ * unwired (both default to 0) for a diagram that only shows the applied
+ * loads, such as the one a reaction is itself solved from.
+ * `FormulaPiecewise`'s docstring is why this is two named ports per support
+ * rather than one more wire into `position`/`force`: the pairing is
+ * declared once, here, not left to wire order.
  */
 function supportPorts(letter: 'A' | 'B'): readonly Port[] {
   return [
@@ -49,8 +50,8 @@ const shaftTorque: Formula = {
   outputs: [{ kind: 'numeric', name: 'T', unit: parseUnit('Nmm'), description: text('Torque at z — T(z)') }],
   inputs: [
     { kind: 'numeric', name: 'z', unit: parseUnit('mm'), default: 0, description: text('Position along the shaft') },
-    { kind: 'spectrum', name: 'position', unit: parseUnit('mm'), description: text('Position of each applied torque') },
-    { kind: 'spectrum', name: 'torque', unit: parseUnit('Nmm'), description: text('Torque applied at each position, signed') },
+    { kind: 'numeric', variadic: true, name: 'position', unit: parseUnit('mm'), description: text('Position of each applied torque') },
+    { kind: 'numeric', variadic: true, name: 'torque', unit: parseUnit('Nmm'), description: text('Torque applied at each position, signed') },
   ],
   expressions: { T: 'sum(torque)' },
   piecewise: { kind: 'cumulativeStep', axis: 'z', breakpoints: ['position'], values: ['torque'] },
@@ -69,8 +70,8 @@ const shaftShear: Formula = {
   outputs: [{ kind: 'numeric', name: 'V', unit: parseUnit('N'), description: text('Shear at z — V(z)') }],
   inputs: [
     { kind: 'numeric', name: 'z', unit: parseUnit('mm'), default: 0, description: text('Position along the shaft') },
-    { kind: 'spectrum', name: 'position', unit: parseUnit('mm'), description: text('Position of each applied point load') },
-    { kind: 'spectrum', name: 'force', unit: parseUnit('N'), description: text('Each point load, signed') },
+    { kind: 'numeric', variadic: true, name: 'position', unit: parseUnit('mm'), description: text('Position of each applied point load') },
+    { kind: 'numeric', variadic: true, name: 'force', unit: parseUnit('N'), description: text('Each point load, signed') },
     ...supportPorts('A'),
     ...supportPorts('B'),
   ],
@@ -99,8 +100,8 @@ const shaftMoment: Formula = {
   outputs: [{ kind: 'numeric', name: 'M', unit: parseUnit('Nmm'), description: text('Moment at z — M(z)') }],
   inputs: [
     { kind: 'numeric', name: 'z', unit: parseUnit('mm'), default: 0, description: text('Position along the shaft') },
-    { kind: 'spectrum', name: 'position', unit: parseUnit('mm'), description: text('Position of each applied point load') },
-    { kind: 'spectrum', name: 'force', unit: parseUnit('N'), description: text('Each point load, signed') },
+    { kind: 'numeric', variadic: true, name: 'position', unit: parseUnit('mm'), description: text('Position of each applied point load') },
+    { kind: 'numeric', variadic: true, name: 'force', unit: parseUnit('N'), description: text('Each point load, signed') },
     ...supportPorts('A'),
     ...supportPorts('B'),
   ],
@@ -132,8 +133,8 @@ const shaftDeflectionTerm: Formula = {
   outputs: [{ kind: 'numeric', name: 'S', unit: parseUnit('N*mm³'), description: text('Σ force·(z − position)³') }],
   inputs: [
     { kind: 'numeric', name: 'z', unit: parseUnit('mm'), default: 0, description: text('Position along the shaft') },
-    { kind: 'spectrum', name: 'position', unit: parseUnit('mm'), description: text('Position of each applied point load') },
-    { kind: 'spectrum', name: 'force', unit: parseUnit('N'), description: text('Each point load, signed') },
+    { kind: 'numeric', variadic: true, name: 'position', unit: parseUnit('mm'), description: text('Position of each applied point load') },
+    { kind: 'numeric', variadic: true, name: 'force', unit: parseUnit('N'), description: text('Each point load, signed') },
     ...supportPorts('A'),
     ...supportPorts('B'),
   ],
@@ -162,8 +163,8 @@ const shaftDeflection: Formula = {
   outputs: [{ kind: 'numeric', name: 'y', unit: parseUnit('mm'), description: text('Deflection at z — y(z)') }],
   inputs: [
     { kind: 'numeric', name: 'z', unit: parseUnit('mm'), default: 0, description: text('Position along the shaft') },
-    { kind: 'spectrum', name: 'position', unit: parseUnit('mm'), description: text('Position of each applied point load') },
-    { kind: 'spectrum', name: 'force', unit: parseUnit('N'), description: text('Each point load, signed') },
+    { kind: 'numeric', variadic: true, name: 'position', unit: parseUnit('mm'), description: text('Position of each applied point load') },
+    { kind: 'numeric', variadic: true, name: 'force', unit: parseUnit('N'), description: text('Each point load, signed') },
     { kind: 'numeric', name: 'supportA', unit: parseUnit('mm'), description: text('Position of support A') },
     { kind: 'numeric', name: 'reactionA', unit: parseUnit('N'), description: text("Support A's reaction, signed") },
     { kind: 'numeric', name: 'supportB', unit: parseUnit('mm'), description: text('Position of support B') },
@@ -186,10 +187,11 @@ const shaftDeflection: Formula = {
 /**
  * A distributed load's own shear/moment contribution, kept separate from
  * `shaftShear`/`shaftMoment` rather than folded in as more optional ports
- * the way a support's reaction was: a spectrum port has no `default` (only
- * a numeric port does), so an optional spectrum input would have to be
- * wired to a `[0]`-rate placeholder just to be left out — worse than
- * wiring an `add` node only when a distributed load actually exists.
+ * the way a support's reaction was: a variadic port has no `default` (only
+ * a non-variadic numeric port does), so an optional distributed-load input
+ * would have to be wired to a `[0]`-rate placeholder just to be left out —
+ * worse than wiring an `add` node only when a distributed load actually
+ * exists.
  */
 const shaftDistributedShear: Formula = {
   id: 'shaftDistributedShear',
@@ -198,14 +200,14 @@ const shaftDistributedShear: Formula = {
   description: text(
     "A uniform distributed load's own contribution to the shear diagram at a given position — " +
       "add this to shaftShear's output (an ordinary add node) for the combined diagram. Wire " +
-      'as many start/end/rate spectra as the shaft has distributed loads.',
+      'as many start/end/rate wire sets as the shaft has distributed loads.',
   ),
   outputs: [{ kind: 'numeric', name: 'V', unit: parseUnit('N'), description: text('Shear contribution at z') }],
   inputs: [
     { kind: 'numeric', name: 'z', unit: parseUnit('mm'), default: 0, description: text('Position along the shaft') },
-    { kind: 'spectrum', name: 'start', unit: parseUnit('mm'), description: text('Start of each distributed load') },
-    { kind: 'spectrum', name: 'end', unit: parseUnit('mm'), description: text('End of each distributed load') },
-    { kind: 'spectrum', name: 'rate', unit: parseUnit('N/mm'), description: text('Load per unit length, signed, over its span') },
+    { kind: 'numeric', variadic: true, name: 'start', unit: parseUnit('mm'), description: text('Start of each distributed load') },
+    { kind: 'numeric', variadic: true, name: 'end', unit: parseUnit('mm'), description: text('End of each distributed load') },
+    { kind: 'numeric', variadic: true, name: 'rate', unit: parseUnit('N/mm'), description: text('Load per unit length, signed, over its span') },
   ],
   expressions: { V: 'sum(rate) * z' },
   piecewise: { kind: 'cumulativeStep', axis: 'z', distributedStart: ['start'], distributedEnd: ['end'], distributedRate: ['rate'] },
@@ -219,14 +221,14 @@ const shaftDistributedMoment: Formula = {
   description: text(
     "A uniform distributed load's own contribution to the bending-moment diagram at a given " +
       "position — add this to shaftMoment's output (an ordinary add node) for the combined " +
-      'diagram. Wire as many start/end/rate spectra as the shaft has distributed loads.',
+      'diagram. Wire as many start/end/rate wire sets as the shaft has distributed loads.',
   ),
   outputs: [{ kind: 'numeric', name: 'M', unit: parseUnit('Nmm'), description: text('Moment contribution at z') }],
   inputs: [
     { kind: 'numeric', name: 'z', unit: parseUnit('mm'), default: 0, description: text('Position along the shaft') },
-    { kind: 'spectrum', name: 'start', unit: parseUnit('mm'), description: text('Start of each distributed load') },
-    { kind: 'spectrum', name: 'end', unit: parseUnit('mm'), description: text('End of each distributed load') },
-    { kind: 'spectrum', name: 'rate', unit: parseUnit('N/mm'), description: text('Load per unit length, signed, over its span') },
+    { kind: 'numeric', variadic: true, name: 'start', unit: parseUnit('mm'), description: text('Start of each distributed load') },
+    { kind: 'numeric', variadic: true, name: 'end', unit: parseUnit('mm'), description: text('End of each distributed load') },
+    { kind: 'numeric', variadic: true, name: 'rate', unit: parseUnit('N/mm'), description: text('Load per unit length, signed, over its span') },
   ],
   expressions: { M: 'sum(rate) * z * z' },
   piecewise: { kind: 'cumulativeMoment', axis: 'z', distributedStart: ['start'], distributedEnd: ['end'], distributedRate: ['rate'] },

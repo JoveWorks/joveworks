@@ -15,7 +15,7 @@ import { ParameterLabel } from '../ParameterLabel';
 import { NodeShell } from './NodeShell';
 import { unpackChannelLabels } from './bundleLabels';
 import type { CanvasFlowNode } from './node-data';
-import { slotHandleId } from './spectrumSlots';
+import { slotHandleId } from './portSlots';
 import { TitleField } from './TitleField';
 
 export function UnpackNodeView({ id, data }: NodeProps<CanvasFlowNode>): ReactElement | null {

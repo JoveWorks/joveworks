@@ -3,8 +3,8 @@
  * axis intact.
  *
  * This is the primitive the kernel was missing. Reductions in the base node
- * library (`arrayNodes`) run over a *spectrum*, which introduces no axis at
- * all; sweeps carry axes, but nothing collapsed one and recovered the
+ * library (`arrayNodes`) run over a *variadic port*, which introduces no axis
+ * at all; sweeps carry axes, but nothing collapsed one and recovered the
  * coordinate at which something happened. "Deflection crosses its limit at
  * 38.2 mm" needs exactly that, and so do the first passing standard size and
  * the position of an extremum.

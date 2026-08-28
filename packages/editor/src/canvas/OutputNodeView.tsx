@@ -3,12 +3,12 @@
  *
  * All four kinds are offered here. A **table**'s columns are extra
  * target ports of its own, and exist only while something is wired to them —
- * the same rule a spectrum port's slots follow. Wiring onto the
+ * the same rule a variadic port's slots follow. Wiring onto the
  * trailing ghost slot creates a column named after the *node* on the wire's
  * other end (its own title, `nodeLabel` in Canvas.tsx — never the port
  * symbol, which is not what a student typed), and deleting that wire closes
  * the column with it (`closeEmptyColumns`, model/document.ts). Unlike a
- * spectrum's anonymous slots, a table's columns are named and have an order
+ * variadic port's anonymous slots, a table's columns are named and have an order
  * a student cares about, so they get a manual rename here; order itself,
  * decimal figures and marked rows are edited in the notebook instead
  * (Notebook.tsx), where the rendered table is. Switching an output node's
@@ -71,7 +71,7 @@ import { CheckReading } from '../CheckReading';
 import { NodeShell } from './NodeShell';
 import { Sparkline } from './Sparkline';
 import type { CanvasFlowNode } from './node-data';
-import { slotHandleId } from './spectrumSlots';
+import { slotHandleId } from './portSlots';
 import { NumberField, TextField } from './fields';
 import { TitleField, TitleText } from './TitleField';
 
@@ -693,7 +693,7 @@ export function OutputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>
               onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: name })}
               onMouseLeave={() => data?.onPortHover?.()}
             >
-              {/* Every target handle is slot-suffixed now (spectrumSlots.ts),
+              {/* Every target handle is slot-suffixed now (portSlots.ts),
                   even a single-occupancy one, since Canvas's edge projection
                   does not know port kinds and suffixes uniformly. */}
               <Handle

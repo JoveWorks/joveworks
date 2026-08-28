@@ -290,7 +290,7 @@ describe('connections', () => {
     );
     const result = canConnect(document, catalogues, wire('fit.value', 'area.w'));
     expect(result.ok).toBe(false);
-    expect(result.ok === false && result.reason).toMatch(/categorical value to a numeric port/u);
+    expect(result.ok === false && result.reason).toMatch(/carries a category, but the port it lands on takes a number/u);
   });
 
   it('lets a pure number drive an angle port, and not the other way', () => {
@@ -782,10 +782,14 @@ describe('closure nodes', () => {
     expect(resolution.sources.get(endpointKey('eq', 'result'))?.dimension).toEqual(DIMENSIONLESS);
   });
 
-  it('derives a spectrum port from a bare reduction argument', () => {
-    const document = documentOf([closureNode('eq', 'sum(xs)')], []);
+  it('derives a variadic port from a bare reduction argument, taking several wires at once', () => {
+    const document = documentOf(
+      [input('x1', scalar(1, '')), input('x2', scalar(2, '')), closureNode('eq', 'sum(xs)')],
+      [wire('x1.value', 'eq.xs'), wire('x2.value', 'eq.xs')],
+    );
     const resolution = resolveGraph(document, catalogues);
-    expect(resolution.targets.get(endpointKey('eq', 'xs'))?.kind).toBe('spectrum');
+    expect(resolution.targets.get(endpointKey('eq', 'xs'))?.kind).toBe('numeric');
+    expect(resolution.incoming.get(endpointKey('eq', 'xs'))?.length).toBe(2);
   });
 
   it('reports a bad expression at the node, not the whole graph silently', () => {

@@ -45,7 +45,7 @@ import { Symbol } from '../Symbol';
 import { ParameterLabel } from '../ParameterLabel';
 import { NodeShell } from './NodeShell';
 import { Sparkline } from './Sparkline';
-import { slotHandleId } from './spectrumSlots';
+import { slotHandleId } from './portSlots';
 import { TextField } from './fields';
 import type { CanvasFlowNode } from './node-data';
 import { TitleField } from './TitleField';

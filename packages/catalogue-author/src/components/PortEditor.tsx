@@ -113,6 +113,14 @@ export function PortEditor({ port, allowedKinds, removable, onChange, onRemove, 
                   <option value="decreasing">decreasing</option>
                 </select>
               </label>
+              <label title="Takes several wires instead of one, e.g. sum's addends or a shaft's breakpoints.">
+                <input
+                  type="checkbox"
+                  checked={port.variadic}
+                  onChange={(e) => onChange({ variadic: e.target.checked })}
+                />
+                Variadic (several wires)
+              </label>
             </>
           )}
         </div>

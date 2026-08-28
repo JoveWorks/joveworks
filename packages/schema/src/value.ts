@@ -5,9 +5,6 @@
  * The range kinds are a closed set, and the closure is the point. `linspace` and
  * `logspace` are meaningless over `{H7, K7}` — there is no spacing between fit
  * classes — so a categorical sweep is an explicit list and nothing else.
- * A spectrum is an explicit list too, but for the opposite reason: it is
- * *consumed* whole by an aggregation, so it introduces no axis and cannot be
- * swept.
  *
  * Point count is the primary control rather than step size: `linspace(20,
  * 60, 21)` says exactly what it means, a two-input study is exactly `n × m`, and
@@ -37,7 +34,6 @@ export const VALUE_KINDS = [
   'scalar',
   'slider',
   'categorical',
-  'spectrum',
   'linear',
   'logarithmic',
   'list',
@@ -87,13 +83,6 @@ export const DEFAULT_SLIDER_FIGURES = 3;
 export interface CategoricalValue {
   readonly kind: 'categorical';
   readonly value: string;
-}
-
-/** A load spectrum: an explicit list consumed by an aggregation. */
-export interface SpectrumValue {
-  readonly kind: 'spectrum';
-  readonly values: readonly number[];
-  readonly unit: Unit;
 }
 
 export interface LinearRange {
@@ -203,7 +192,7 @@ export type RangeSpec =
   | TableColumnRange
   | CategoricalListRange;
 
-export type ValueSpec = ScalarValue | SliderValue | CategoricalValue | SpectrumValue | RangeSpec;
+export type ValueSpec = ScalarValue | SliderValue | CategoricalValue | RangeSpec;
 
 /** The `ValueSpec` kinds that carry a `unit` field — every one but the categorical two and `tableColumn`. */
 export type UnitedValueSpec = Exclude<ValueSpec, CategoricalValue | CategoricalListRange | TableColumnRange>;
@@ -211,8 +200,7 @@ export type UnitedValueSpec = Exclude<ValueSpec, CategoricalValue | CategoricalL
 /**
  * Whether `value` carries a `unit` field at all — false for a categorical
  * value or list (no unit to have) and a table column (its unit lives in the
- * table it names). Everything else — scalar, spectrum, and every numeric
- * range — does.
+ * table it names). Everything else — scalar and every numeric range — does.
  */
 export function hasUnit(value: ValueSpec): value is UnitedValueSpec {
   return value.kind !== 'categorical' && value.kind !== 'categoricalList' && value.kind !== 'tableColumn';
@@ -294,7 +282,6 @@ export function parseValueSpec(value: JsonValue, path: string): ValueSpec {
     case 'categorical':
       return { kind, value: readName(required(object, 'value', path), join(path, 'value')) };
 
-    case 'spectrum':
     case 'list': {
       const values = readNumberArray(required(object, 'values', path), join(path, 'values'));
       if (values.length === 0) fail(join(path, 'values'), 'is empty');
@@ -373,7 +360,6 @@ export function serializeValueSpec(value: ValueSpec): JsonObject {
       };
     case 'categorical':
       return { kind: value.kind, value: value.value };
-    case 'spectrum':
     case 'list':
       return { kind: value.kind, values: [...value.values], unit: value.unit.symbol };
     case 'linear':

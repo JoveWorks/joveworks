@@ -6,13 +6,14 @@
  * turned out to be the useful finding of this step:
  *
  * - **Operations** — arithmetic and the function whitelist — are `Formula`
- *   records, and live here as the Base nodes catalogue. Reductions over a
- *   whole series (`sum`, `mean`, `median`, …) are also `Formula` records but
- *   ship as their own Array nodes catalogue (`arrayNodes.ts`). Both are the
- *   palette's sources alongside the R&M catalogues.
+ *   records, and live here as the Base nodes catalogue. Reductions over
+ *   every value wired into a port (`sum`, `mean`, `median`, …) are also
+ *   `Formula` records but ship as their own Array nodes catalogue
+ *   (`arrayNodes.ts`). Both are the palette's sources alongside the R&M
+ *   catalogues.
  * - **Literal inputs** are *not* records. An input node carries a `ValueSpec`
- *   directly (`schema/value.ts`): a scalar, a categorical choice, a spectrum, or
- *   a range. There is no formula behind `250 kW`, so a `literal` catalogue entry
+ *   directly (`schema/value.ts`): a scalar, a categorical choice, or a range.
+ *   There is no formula behind `250 kW`, so a `literal` catalogue entry
  *   would be an empty box wrapping a field the document already has.
  * - **Output nodes** are *not* records either. The four kinds — value,
  *   check, plot, table — are an `Output` variant on the node

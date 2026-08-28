@@ -17,7 +17,7 @@ import { NODE_HELP_URLS } from '../help-links';
 import { NodeShell } from './NodeShell';
 import { NumberField, TextField } from './fields';
 import type { CanvasFlowNode } from './node-data';
-import { slotHandleId } from './spectrumSlots';
+import { slotHandleId } from './portSlots';
 import { TitleField } from './TitleField';
 
 export function StatisticNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>): ReactElement | null {

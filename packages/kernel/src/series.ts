@@ -42,13 +42,6 @@ export interface CategoricalSeries {
   readonly data: readonly string[];
 }
 
-/** A load spectrum: consumed whole, introduces no axis, cannot be swept. */
-export interface Spectrum {
-  readonly kind: 'spectrum';
-  /** Canonical values. */
-  readonly values: readonly number[];
-}
-
 /**
  * `pack`'s output and `unpack`'s input: an ordered bundle of values, one
  * per channel — `pack`'s own evaluation collects them, `unpack`'s spreads
@@ -60,7 +53,7 @@ export interface BundleValue {
   readonly values: readonly PortValue[];
 }
 
-export type PortValue = NumericSeries | CategoricalSeries | Spectrum | BundleValue;
+export type PortValue = NumericSeries | CategoricalSeries | BundleValue;
 export type Series = NumericSeries | CategoricalSeries;
 
 export function isSeries(value: PortValue): value is Series {

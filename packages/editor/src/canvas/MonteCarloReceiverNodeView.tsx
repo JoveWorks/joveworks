@@ -23,7 +23,7 @@ import { ParameterLabel } from '../ParameterLabel';
 import { MonteCarloReceiverPlayback } from './MonteCarloReceiverPlayback';
 import { NodeShell } from './NodeShell';
 import type { CanvasFlowNode } from './node-data';
-import { slotHandleId } from './spectrumSlots';
+import { slotHandleId } from './portSlots';
 import { NumberField } from './fields';
 import { TitleField } from './TitleField';
 
