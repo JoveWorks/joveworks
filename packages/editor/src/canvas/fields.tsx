@@ -122,15 +122,24 @@ export function TextField({
 
   const interactiveClassName = className === undefined ? 'nodrag' : `${className} nodrag`;
 
+  // Browsers refuse to fire hover events on a disabled control at all, so a
+  // `title` placed on the input/textarea itself is silently unreachable the
+  // moment `disabled` is true — a wired, read-only field would carry a
+  // tooltip nobody could ever trigger. The wrapping span is never disabled,
+  // so the title moves there instead for that case; the enabled case is
+  // untouched, and only one of the two ever carries it, so there is never a
+  // doubled tooltip.
+  const fieldTitle = error ?? title;
+
   return (
-    <span className="field">
+    <span className="field" title={disabled ? fieldTitle : undefined}>
       {multiline ? (
         <textarea
           ref={textarea}
           className={interactiveClassName}
           value={text}
           placeholder={placeholder}
-          title={error ?? title}
+          title={disabled ? undefined : fieldTitle}
           aria-invalid={error !== undefined}
           disabled={disabled}
           autoFocus={autoFocus}
@@ -166,7 +175,7 @@ export function TextField({
           className={interactiveClassName}
           value={text}
           placeholder={placeholder}
-          title={error ?? title}
+          title={disabled ? undefined : fieldTitle}
           aria-invalid={error !== undefined}
           disabled={disabled}
           {...(autoSize === undefined ? {} : { size: Math.max(autoSize, text.length, 1) })}
