@@ -100,6 +100,39 @@ function hatchPattern(id: string): SVGPatternElement {
   return pattern;
 }
 
+/**
+ * Observable renders categorical legends separately from the plot itself.
+ * Draw explicit lines inside its `fail` swatch rather than referring to the
+ * plot's pattern: each swatch is its own SVG, and direct strokes keep the
+ * texture visible in every browser and in greyscale print.
+ */
+function hatchFailLegendSwatch(chart: Element): void {
+  const failSwatch = Array.from(chart.querySelectorAll('.feasibility-plot-swatch')).find(
+    (swatch) => swatch.textContent?.trim() === 'fail',
+  );
+  const swatchSvg = failSwatch?.querySelector('svg');
+  if (!(swatchSvg instanceof SVGSVGElement)) return;
+
+  const strokes = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  strokes.setAttribute('stroke', 'var(--ink)');
+  // A full cell uses 3px lines; that weight overwhelms this 15px swatch.
+  strokes.setAttribute('stroke-width', '1.5');
+  // Observable's swatches default to 15 × 15 px.
+  for (const [x1, y1, x2, y2] of [
+    [0, 6, 6, 0],
+    [0, 15, 15, 0],
+    [9, 15, 15, 9],
+  ]) {
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', String(x1));
+    line.setAttribute('y1', String(y1));
+    line.setAttribute('x2', String(x2));
+    line.setAttribute('y2', String(y2));
+    strokes.append(line);
+  }
+  swatchSvg.append(strokes);
+}
+
 function coordinates(axis: PlotAxis): readonly (number | string)[] {
   return axis.coordinates.kind === 'numeric'
     ? axis.coordinates.data.map((value) => fromCanonical(value, axis.unit))
@@ -220,6 +253,10 @@ export function FeasibilityFigure({ result, checkLabels, marking }: Props): Reac
     const fx = result.facet === undefined ? undefined : 'facet';
 
     const chart = Plot.plot({
+      // Observable's default legend class is versioned (currently
+      // `plot-d6a7b5`), so name this chart's legend ourselves before looking
+      // up the fail swatch below.
+      className: 'feasibility-plot',
       width: feasibilityPlotWidth(result.x.axis.length, result.facet?.axis.length),
       height: result.series2 === undefined ? 80 : 240,
       marginLeft: 56,
@@ -281,6 +318,7 @@ export function FeasibilityFigure({ result, checkLabels, marking }: Props): Reac
       defs.append(hatchPattern(hatchId));
       svg.prepend(defs);
     }
+    hatchFailLegendSwatch(chart);
 
     const grid = feasibilityGrid(result);
     const pointed = (): Row | undefined => (chart as { value?: Row }).value;
