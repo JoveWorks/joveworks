@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.22.1](https://github.com/JoveWorks/joveworks/compare/v0.22.0...v0.22.1) (2026-08-28)
+
+### Features
+
+* **editor:** refine notebook printing ([7a9c3d9](https://github.com/JoveWorks/joveworks/commit/7a9c3d9ea127f81f020eeb9838e82a6a6b84ad74))
+
+### Fixes
+
+* **editor:** compare notebook field widths in one box model ([6ab23d9](https://github.com/JoveWorks/joveworks/commit/6ab23d90cd17ba9f6d96f9db81a8f4528a22c95b))
+* **editor:** drop transient canvas geometry on a document swap ([0774954](https://github.com/JoveWorks/joveworks/commit/077495493249407500a0a61897f5b0d2e76c77b7))
+* **editor:** hatch feasibility fail legend ([0f22ae7](https://github.com/JoveWorks/joveworks/commit/0f22ae70b3d33a3709a648cdc54ed86406f49198))
+* **editor:** keep notebook figures attached across a rerender ([51ffc4d](https://github.com/JoveWorks/joveworks/commit/51ffc4d82538b5bd394c4bac5301822eac715788))
+* **editor:** typeset decorated plot labels ([22d27bf](https://github.com/JoveWorks/joveworks/commit/22d27bfa653a7743d192e5b86d531e2621528032))
+
+### Performance
+
+* **editor:** keep layout gestures out of evaluation ([638721f](https://github.com/JoveWorks/joveworks/commit/638721f9950f7496d305485698f4d0a6cd5699ca))
+
+### Refactoring
+
+* **nodes:** namespace built-in formula ids ([14647f9](https://github.com/JoveWorks/joveworks/commit/14647f949ec6ccc47ed63be131019deebc6516c6))
 ## [0.22.0](https://github.com/JoveWorks/joveworks/compare/v0.21.0...v0.22.0) (2026-08-28)
 
 ### ⚠ BREAKING CHANGES
