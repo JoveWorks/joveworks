@@ -20,7 +20,7 @@ export default defineConfig({
       { text: "Guide", link: "/guide/getting-started" },
       {
         text: "GitHub",
-        link: "https://github.com/ThomasVanRiel/joveworks",
+        link: "https://github.com/JoveWorks/joveworks",
       },
     ],
     sidebar: [
@@ -49,7 +49,7 @@ export default defineConfig({
       },
     ],
     socialLinks: [
-      { icon: "github", link: "https://github.com/ThomasVanRiel/joveworks" },
+      { icon: "github", link: "https://github.com/JoveWorks/joveworks" },
     ],
     search: { provider: "local" },
   },
