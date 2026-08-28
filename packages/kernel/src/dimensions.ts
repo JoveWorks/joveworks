@@ -19,11 +19,19 @@
  * integers or simple fractions — nothing legitimate lands within 1e-9 of a
  * different exponent, and a genuine mismatch is off by at least a third.
  *
- * The other rule here belongs to connections alone: the base
- * library declares `sine`'s input `rad`, R&M tags belt's wrap angles `[]`, so a
- * **dimensionless source may drive an angle target**. One-directional — an angle
- * will not enter a dimensionless port, because that is the case where a stray
- * `rad` would be silently swallowed — and implemented here and nowhere else.
+ * The other rule here belongs to connections alone: angle and dimensionless
+ * connect **in both directions**, and implemented here and nowhere else. The
+ * base library declares `sine`'s input `rad`, but R&M tags belt's wrap
+ * angles `[]`, so a dimensionless source has to drive an angle target. The
+ * reverse matters too: the belt formulas that produce that wrap angle feed it
+ * straight into `exp(mu * beta)` (the capstan equation, a `pure` function)
+ * and into an arc fraction `z_k * beta_k / (2*pi)` that yields a count — both
+ * need the angle back as a plain number, because a radian *is* a ratio (m/m),
+ * which is exactly why SI calls it dimensionless. Nothing is swallowed going
+ * either way: a value's magnitude is fixed at its own canonical unit before
+ * it ever reaches this check (`toCanonical`, `evaluate.ts`), and `rad`'s
+ * canonical scale is 1 — the same as a pure number's — so the two share a
+ * magnitude, not just a name.
  */
 
 import {
@@ -64,12 +72,24 @@ export function assertSameDimension(
 /**
  * May a value of `source` dimension drive a port of `target` dimension?
  *
- * Equal dimensions connect. A dimensionless source into an angle port connects.
- * Nothing else does.
+ * Equal dimensions connect. Angle and dimensionless connect too, in either
+ * direction — see the module comment for why that bridge is sound rather
+ * than merely convenient. Nothing else does: this stays a narrow, named
+ * exception, not a loosening of the equality check above it.
+ *
+ * The equality check uses `dimensionsClose`, because this is the kernel,
+ * where exponent arithmetic (`cbrt`, `$A**(1/3)`, …) can miss `===` by
+ * floating-point dust. The angle/dimensionless check uses `dimensionsEqual`
+ * instead: `ANGLE` and `DIMENSIONLESS` are exact constants, never the
+ * product of exponent arithmetic, so there is nothing here for a tolerance
+ * to forgive.
  */
 export function connectable(source: Dimension, target: Dimension): boolean {
   if (dimensionsClose(source, target)) return true;
-  return isDimensionless(source) && dimensionsEqual(target, ANGLE);
+  return (
+    (isDimensionless(source) && dimensionsEqual(target, ANGLE)) ||
+    (dimensionsEqual(source, ANGLE) && isDimensionless(target))
+  );
 }
 
 export function assertConnectable(source: Dimension, target: Dimension, where: string): void {
