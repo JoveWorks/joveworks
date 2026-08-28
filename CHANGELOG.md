@@ -2,6 +2,41 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.22.0](https://github.com/JoveWorks/joveworks/compare/v0.21.0...v0.22.0) (2026-08-28)
+
+### ⚠ BREAKING CHANGES
+
+* delete the spectrum concept; many values arrive by wire
+
+### Features
+
+* **editor:** add machining material library ([5f7db68](https://github.com/JoveWorks/joveworks/commit/5f7db680fb278114564eed17a509fbdfae4b5be1))
+
+### Fixes
+
+* **editor:** keep a wired port value readable when it clips ([e85f071](https://github.com/JoveWorks/joveworks/commit/e85f0714fafb07ed2cd7ae3af9327f389bc45fee))
+* **editor:** move a disabled field's tooltip to its wrapper ([7f16782](https://github.com/JoveWorks/joveworks/commit/7f167826abb6efadfae51e4839cceec042b124a5))
+* **editor:** restore FeasibilityFigure width and add a greyscale-safe verdict texture ([689a11a](https://github.com/JoveWorks/joveworks/commit/689a11a2cd39b73cbe11d0801aa43b77c2baf244)), references [#46](https://github.com/JoveWorks/joveworks/issues/46) [#3ca951](https://github.com/JoveWorks/joveworks/issues/3ca951) [#ff725c](https://github.com/JoveWorks/joveworks/issues/ff725c)
+* **kernel:** let a discrete Monte Carlo generator take several choices per wire ([49e6bcf](https://github.com/JoveWorks/joveworks/commit/49e6bcfea288e45e434783b691ea00ba125eb985))
+* **kernel:** let angle and dimensionless connect in both directions ([8c19b86](https://github.com/JoveWorks/joveworks/commit/8c19b86d0a2a01f45d485ab3c165ca86e0f917e6))
+* **schema:** correct the variadic flag's stated invariant ([356ba08](https://github.com/JoveWorks/joveworks/commit/356ba089e36de13d6ad7b2315f5575dded9e0412))
+
+### Refactoring
+
+* delete the spectrum concept; many values arrive by wire ([8f66b0b](https://github.com/JoveWorks/joveworks/commit/8f66b0b5591f89dcfce26b8383e3c1094fe736ba))
+
+### Documentation
+
+* drop the content sign-off section from the roadmap ([286984a](https://github.com/JoveWorks/joveworks/commit/286984a14951d0274d2eb55fb3b0b42f21ea147d))
+* finish removing docs/PLAN.md and docs/UX-SPEC.md references ([a3228cc](https://github.com/JoveWorks/joveworks/commit/a3228cc1f3801e6fbb2ec37bd6d1ea791a69835b))
+* finish removing docs/PLAN.md and docs/UX-SPEC.md references from source ([e63d064](https://github.com/JoveWorks/joveworks/commit/e63d064d48a2f2e1d6c238436db3970ae62cc143))
+* position JoveWorks as a foundation for Jupyter ([1df4643](https://github.com/JoveWorks/joveworks/commit/1df4643e948d0cf428d71adbb691ce8cf4da7a48))
+* prune the roadmap to what is actually open ([0a9c0a4](https://github.com/JoveWorks/joveworks/commit/0a9c0a407b5ff1a7125a30d01f296df554a19fd4))
+* record 2026-08-28 and hand over the extractor drift ([3a5e39b](https://github.com/JoveWorks/joveworks/commit/3a5e39b2c03d541bce9456e7c8639902fe8578b7))
+* record the list/spectrum collapse as ROADMAP item 58 ([526c16a](https://github.com/JoveWorks/joveworks/commit/526c16acd46038ce06853d7a896c363b62b0334a))
+* rewrite item 58 to delete the spectrum concept outright ([f349c13](https://github.com/JoveWorks/joveworks/commit/f349c13fc475a227b796b05bfc92f4195acd2393))
+* true up the records that outran reality ([e284bbf](https://github.com/JoveWorks/joveworks/commit/e284bbf44ceb161937917f50102410c4cf921bdc))
+* update GitHub owner references to JoveWorks/joveworks ([7252990](https://github.com/JoveWorks/joveworks/commit/7252990b433ad8e356ba4876e981ce53726cc94f))
 ## [0.21.0](https://github.com/JoveWorks/joveworks/compare/v0.20.0...v0.21.0) (2026-08-27)
 
 ### Features
