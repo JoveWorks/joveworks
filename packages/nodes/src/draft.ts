@@ -52,8 +52,9 @@ export interface Draft {
 }
 
 function draftLabel(id: string, dutchLabels: Readonly<Record<string, string>>): LocalizedText {
-  const en = id.replace(/([A-Z])/gu, ' $1').replace(/^./u, (letter) => letter.toUpperCase());
-  return { en, nl: dutchLabels[id] ?? en };
+  const leaf = id.split('.').at(-1) ?? id;
+  const en = leaf.replace(/-/gu, ' ').replace(/([A-Z])/gu, ' $1').replace(/^./u, (letter) => letter.toUpperCase());
+  return { en, nl: dutchLabels[leaf] ?? en };
 }
 
 /**

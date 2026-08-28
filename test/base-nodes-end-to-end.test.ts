@@ -45,8 +45,14 @@ import {
 const BASE: Catalogue = loadCatalogue(baseCatalogueJson());
 const catalogues = [BASE];
 
+const BASE_IDS: Readonly<Record<string, string>> = {
+  pi: 'base.constants.pi',
+  add: 'base.math.add', subtract: 'base.math.subtract', negate: 'base.math.negate',
+  minimum: 'base.math.minimum', multiply: 'base.math.multiply', divide: 'base.math.divide', sine: 'base.math.sine',
+};
+
 const node = (id: string, operation: string): JsonObject => {
-  const formula = BASE.formulas.find((entry) => entry.id === operation);
+  const formula = BASE.formulas.find((entry) => entry.id === (BASE_IDS[operation] ?? operation));
   if (formula === undefined) throw new Error(`no base node '${operation}'`);
   return {
     kind: 'formula',
@@ -107,10 +113,10 @@ function driveGraph(diameters: readonly number[]): GraphDocument {
       input('d', { kind: 'list', values: [...diameters], unit: 'mm' }, { axisLabel: 'diameter' }),
       input('n', { kind: 'scalar', value: 1500, unit: 'rpm' }),
       input('P', { kind: 'scalar', value: 4, unit: 'kW' }),
-      node('pi', 'pi'),
-      node('piD', 'multiply'),
-      node('v', 'multiply'),
-      node('F', 'divide'),
+      node('pi', 'base.constants.pi'),
+      node('piD', 'base.math.multiply'),
+      node('v', 'base.math.multiply'),
+      node('F', 'base.math.divide'),
       output('speed', { kind: 'print', unit: 'm/s' }),
       output('force', {
         kind: 'check',
@@ -205,9 +211,9 @@ describe('the base node library through the kernel', () => {
       [
         input('d', { kind: 'list', values: [90, 100, 112], unit: 'mm' }),
         input('n', { kind: 'list', values: [1000, 1500], unit: 'rpm' }),
-        node('pi', 'pi'),
-        node('piD', 'multiply'),
-        node('v', 'multiply'),
+        node('pi', 'base.constants.pi'),
+        node('piD', 'base.math.multiply'),
+        node('v', 'base.math.multiply'),
       ],
       [
         wire('pi.value', 'piD.a'),
@@ -228,7 +234,7 @@ describe('the base node library through the kernel', () => {
       [
         input('d', { kind: 'scalar', value: 100, unit: 'mm' }),
         input('F', { kind: 'scalar', value: 500, unit: 'N' }),
-        node('sum', 'add'),
+        node('sum', 'base.math.add'),
       ],
       [wire('d.value', 'sum.a')],
     );
@@ -242,7 +248,7 @@ describe('the base node library through the kernel', () => {
       [
         input('d', { kind: 'scalar', value: 100, unit: 'mm' }),
         input('beta', { kind: 'scalar', value: 2.7, unit: '' }),
-        node('sin', 'sine'),
+        node('sin', 'base.math.sine'),
       ],
       [],
     );
@@ -258,7 +264,7 @@ describe('the base node library through the kernel', () => {
           input('a', { kind: 'scalar', value: 30, unit: 'mm' }),
           input('b', { kind: 'scalar', value: 10, unit: 'mm' }),
           input('c', { kind: 'scalar', value: 20, unit: 'mm' }),
-          node('m', 'minimum'),
+          node('m', 'base.math.minimum'),
         ],
         [wire('a.value', 'm.a'), wire('b.value', 'm.a'), wire('c.value', 'm.a')],
       );
@@ -271,7 +277,7 @@ describe('the base node library through the kernel', () => {
         [
           input('a', { kind: 'scalar', value: 30, unit: 'mm' }),
           input('b', { kind: 'scalar', value: 10, unit: 'mm' }),
-          node('m', 'minimum'),
+          node('m', 'base.math.minimum'),
         ],
         [wire('a.value', 'm.a')],
       );
@@ -289,7 +295,7 @@ describe('the base node library through the kernel', () => {
         [
           input('a', { kind: 'scalar', value: 30, unit: 'mm' }),
           input('F', { kind: 'scalar', value: 500, unit: 'N' }),
-          node('m', 'minimum'),
+          node('m', 'base.math.minimum'),
         ],
         [wire('a.value', 'm.a')],
       );
@@ -306,7 +312,7 @@ describe('the base node library through the kernel', () => {
         [
           input('a', { kind: 'scalar', value: 30, unit: 'mm' }),
           input('d', { kind: 'list', values: [10, 20], unit: 'mm' }),
-          node('m', 'minimum'),
+          node('m', 'base.math.minimum'),
         ],
         [wire('a.value', 'm.a'), wire('d.value', 'm.a')],
       );
@@ -324,7 +330,7 @@ describe('the base node library through the kernel', () => {
         [
           input('a', { kind: 'list', values: [10, 20], unit: 'mm' }),
           input('b', { kind: 'list', values: [5, 15, 25], unit: 'mm' }),
-          node('m', 'minimum'),
+          node('m', 'base.math.minimum'),
         ],
         [wire('a.value', 'm.a'), wire('b.value', 'm.a')],
       );

@@ -167,7 +167,7 @@ export function provides(catalogues: readonly Catalogue[], ids: readonly string[
 
 // --- base nodes only: a sweep and a plot -------------------------------------
 
-const PAD = ['multiply', 'divide'] as const;
+const PAD = ['base.math.multiply', 'base.math.divide'] as const;
 
 /**
  * Pressure under a rectangular pad, swept over its width.
@@ -179,8 +179,8 @@ const PAD = ['multiply', 'divide'] as const;
  * downstream of it is a series with no rewiring.
  */
 export function padPressure(catalogues: readonly Catalogue[], locale: AppLocale = 'en'): GraphDocument | undefined {
-  const multiply = lookup(catalogues, 'multiply');
-  const divide = lookup(catalogues, 'divide');
+  const multiply = lookup(catalogues, 'base.math.multiply');
+  const divide = lookup(catalogues, 'base.math.divide');
   if (multiply === undefined || divide === undefined) return undefined;
 
   const mm = parseUnit('mm');
@@ -252,8 +252,8 @@ export function padPressure(catalogues: readonly Catalogue[], locale: AppLocale 
  * does not expose catalogue or textbook content.
  */
 export function platformFootprint(catalogues: readonly Catalogue[], locale: AppLocale = 'en'): GraphDocument | undefined {
-  const multiply = lookup(catalogues, 'multiply');
-  const divide = lookup(catalogues, 'divide');
+  const multiply = lookup(catalogues, 'base.math.multiply');
+  const divide = lookup(catalogues, 'base.math.divide');
   if (multiply === undefined || divide === undefined) return undefined;
 
   const mm = parseUnit('mm');
@@ -318,8 +318,8 @@ export function platformFootprint(catalogues: readonly Catalogue[], locale: AppL
  * hand-picked ± numbers. A nominal Ø20 mm hole/shaft pair, each toleranced by
  * a chosen letter and IT grade (H7 for the hole, g6 for the shaft — an easy
  * running clearance fit), is looked up twice per feature — its `lower` and
- * `upper` limit deviation — through `iso286-hole-deviation`/
- * `iso286-shaft-deviation` (`packages/nodes/src/iso286.ts`), added back onto
+ * `upper` limit deviation — through `base.iso286.hole-deviation`/
+ * `base.iso286.shaft-deviation` (`packages/nodes/src/iso286.ts`), added back onto
  * the nominal diameter, and wired straight into a *uniform* generator's
  * `min`/`max` ports (`MIN_PORT`/`MAX_PORT`, wireable-with-typed-default the
  * same way `CompareNode.threshold` is — `packages/kernel/src/graph.ts`'s
@@ -338,10 +338,10 @@ export function platformFootprint(catalogues: readonly Catalogue[], locale: AppL
  * 1,000,000-cell grid.
  */
 export function monteCarloClearance(catalogues: readonly Catalogue[], locale: AppLocale = 'en'): GraphDocument | undefined {
-  const subtract = lookup(catalogues, 'subtract');
-  const add = lookup(catalogues, 'add');
-  const holeDeviation = lookup(catalogues, 'iso286-hole-deviation');
-  const shaftDeviation = lookup(catalogues, 'iso286-shaft-deviation');
+  const subtract = lookup(catalogues, 'base.math.subtract');
+  const add = lookup(catalogues, 'base.math.add');
+  const holeDeviation = lookup(catalogues, 'base.iso286.hole-deviation');
+  const shaftDeviation = lookup(catalogues, 'base.iso286.shaft-deviation');
   if (subtract === undefined || add === undefined || holeDeviation === undefined || shaftDeviation === undefined) {
     return undefined;
   }
@@ -464,7 +464,7 @@ export function monteCarloClearance(catalogues: readonly Catalogue[], locale: Ap
 
 /** A complete public reliability report built only from the base catalogue. */
 export function reliabilityLoadStrength(catalogues: readonly Catalogue[], locale: AppLocale = 'en'): GraphDocument | undefined {
-  const subtract = lookup(catalogues, 'subtract');
+  const subtract = lookup(catalogues, 'base.math.subtract');
   if (subtract === undefined) return undefined;
   const stress = parseUnit('N/mm²');
   const count = 2_000;
@@ -523,7 +523,7 @@ const ASSIGNMENT: readonly (readonly [string, string, number, string])[] = [
 
 /** The catalogue records the belt lab needs, by id. */
 export const BELT_LAB_FORMULAS = [
-  'multiply',
+  'base.math.multiply',
   'rm.16.19A',
   'rm.16.23',
   'rm.16.22',
@@ -549,7 +549,7 @@ export function beltLab(catalogues: readonly Catalogue[], locale: AppLocale = 'e
       input(id, label, { kind: 'scalar', value, unit: parseUnit(unit) }, at(0, i * 110)),
     ),
 
-    formulaNode('Pprime', formula('multiply'), at(380, 0)),
+    formulaNode('Pprime', formula('base.math.multiply'), at(380, 0)),
     formulaNode('ratio', formula('rm.16.19A'), at(380, 220)),
     formulaNode('theoretical', formula('rm.16.23'), at(380, 440)),
     formulaNode('shaft', formula('rm.16.22'), at(380, 660)),
@@ -708,10 +708,10 @@ export function pressfitLab(catalogues: readonly Catalogue[], locale: AppLocale 
 
 /** The catalogue records this sample needs, by id. */
 export const CANTILEVER_FORMULAS = [
-  'multiply',
-  'subtract',
-  'basic.beam.moment-of-inertia-hollow-circle',
-  'basic.beam.cantilever-deflection',
+  'base.math.multiply',
+  'base.math.subtract',
+  'mechanics.beam.moment-of-inertia-hollow-circle',
+  'mechanics.beam.cantilever-deflection',
 ] as const;
 
 /**
@@ -742,24 +742,24 @@ export function cantileverHollowSections(catalogues: readonly Catalogue[], local
     { ...input('t', 'Wall thickness t', { kind: 'list', values: [2, 3, 4, 5], unit: mm }, at(0, 180)), axisLabel: 't' },
     input('two', '2 (wall thickness on both sides)', { kind: 'scalar', value: 2, unit: parseUnit('') }, at(0, 320)),
 
-    formulaNode('twice_t', formula('multiply'), at(280, 180)),
-    formulaNode('d_i', formula('subtract'), at(520, 90)),
-    formulaNode('I', formula('basic.beam.moment-of-inertia-hollow-circle'), at(760, 0)),
+    formulaNode('twice_t', formula('base.math.multiply'), at(280, 180)),
+    formulaNode('d_i', formula('base.math.subtract'), at(520, 90)),
+    formulaNode('I', formula('mechanics.beam.moment-of-inertia-hollow-circle'), at(760, 0)),
 
     // Cross-section area stands in for mass: one material, one length, so the
     // section that uses less metal is the lighter beam. There is no
     // hollow-circle area formula in the public catalogue, so it is composed
     // from base nodes — π/4 · (d_o² − d_i²) — which is what base nodes are for.
     input('quarter_pi', 'π/4', { kind: 'scalar', value: Math.PI / 4, unit: parseUnit('') }, at(280, 1180)),
-    formulaNode('do_sq', formula('multiply'), at(520, 900)),
-    formulaNode('di_sq', formula('multiply'), at(520, 1040)),
-    formulaNode('sq_diff', formula('subtract'), at(760, 960)),
-    formulaNode('area', formula('multiply'), at(1000, 1040)),
+    formulaNode('do_sq', formula('base.math.multiply'), at(520, 900)),
+    formulaNode('di_sq', formula('base.math.multiply'), at(520, 1040)),
+    formulaNode('sq_diff', formula('base.math.subtract'), at(760, 960)),
+    formulaNode('area', formula('base.math.multiply'), at(1000, 1040)),
 
     { ...input('F', 'Tip load F', { kind: 'slider', value: 500, min: 100, max: 1000, unit: parseUnit('N') }, at(0, 460)), exposeInNotebook: true },
     input('L', 'Beam length L', { kind: 'scalar', value: 1000, unit: mm }, at(0, 600)),
     input('E', "Young's modulus E (steel)", { kind: 'scalar', value: 210000, unit: parseUnit('MPa') }, at(0, 740)),
-    formulaNode('delta', formula('basic.beam.cantilever-deflection'), at(1000, 360)),
+    formulaNode('delta', formula('mechanics.beam.cantilever-deflection'), at(1000, 360)),
 
     output('out_table', 'Section results', { kind: 'table', columns: ['d_o', 't', 'A', 'delta'] }, at(1240, 0)),
     output(

@@ -25,7 +25,7 @@ export function FormulaForm({ formula, validation, onChange }: Props) {
             type="text"
             value={formula.id}
             onChange={(e) => set('id', e.target.value)}
-            placeholder="e.g. basic.1 — pick a namespace and stick to it"
+            placeholder="e.g. mechanics.stress.normal — pick a namespace and stick to it"
           />
         </label>
         <label>

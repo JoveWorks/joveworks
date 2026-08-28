@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
-  "id": "public-basic-mechanics",
+  "id": "public-mechanics",
   "name": {
-    "en": "Basic mechanics",
-    "nl": "Basismechanica"
+    "en": "Mechanics",
+    "nl": "Mechanica"
   },
   "restricted": false,
   "formulas": [
     {
-      "id": "basic.stress.normal",
+      "id": "mechanics.stress.normal",
       "version": 1,
       "output": {
         "kind": "numeric",
@@ -45,7 +45,7 @@
       "status": "unverified"
     },
     {
-      "id": "basic.stress.shear",
+      "id": "mechanics.stress.shear",
       "version": 1,
       "output": {
         "kind": "numeric",
@@ -82,7 +82,7 @@
       "status": "unverified"
     },
     {
-      "id": "basic.stress.hookes-law",
+      "id": "mechanics.stress.hookes-law",
       "version": 1,
       "output": {
         "kind": "numeric",
@@ -116,7 +116,7 @@
       "status": "unverified"
     },
     {
-      "id": "basic.stress.shear-modulus",
+      "id": "mechanics.stress.shear-modulus",
       "version": 1,
       "output": {
         "kind": "numeric",
@@ -150,7 +150,7 @@
       "status": "unverified"
     },
     {
-      "id": "basic.stress.factor-of-safety",
+      "id": "mechanics.stress.factor-of-safety",
       "version": 1,
       "output": {
         "kind": "numeric",
@@ -187,7 +187,7 @@
       "status": "unverified"
     },
     {
-      "id": "basic.stress.thermal-strain",
+      "id": "mechanics.stress.thermal-strain",
       "version": 1,
       "output": {
         "kind": "numeric",
@@ -218,7 +218,7 @@
       "status": "unverified"
     },
     {
-      "id": "basic.stress.axial-elongation",
+      "id": "mechanics.stress.axial-elongation",
       "version": 1,
       "output": {
         "kind": "numeric",
@@ -273,7 +273,7 @@
       "status": "unverified"
     },
     {
-      "id": "basic.beam.moment-of-inertia-rectangle",
+      "id": "mechanics.beam.moment-of-inertia-rectangle",
       "version": 1,
       "output": {
         "kind": "numeric",
@@ -310,7 +310,7 @@
       "status": "unverified"
     },
     {
-      "id": "basic.beam.moment-of-inertia-circle",
+      "id": "mechanics.beam.moment-of-inertia-circle",
       "version": 1,
       "output": {
         "kind": "numeric",
@@ -338,7 +338,7 @@
       "status": "unverified"
     },
     {
-      "id": "basic.beam.moment-of-inertia-hollow-circle",
+      "id": "mechanics.beam.moment-of-inertia-hollow-circle",
       "version": 1,
       "output": {
         "kind": "numeric",
@@ -375,7 +375,7 @@
       "status": "unverified"
     },
     {
-      "id": "basic.beam.bending-stress",
+      "id": "mechanics.beam.bending-stress",
       "version": 1,
       "output": {
         "kind": "numeric",
@@ -418,7 +418,7 @@
       "status": "unverified"
     },
     {
-      "id": "basic.beam.section-modulus",
+      "id": "mechanics.beam.section-modulus",
       "version": 1,
       "output": {
         "kind": "numeric",
@@ -455,7 +455,7 @@
       "status": "unverified"
     },
     {
-      "id": "basic.beam.cantilever-deflection",
+      "id": "mechanics.beam.cantilever-deflection",
       "version": 1,
       "output": {
         "kind": "numeric",
@@ -510,7 +510,7 @@
       "status": "unverified"
     },
     {
-      "id": "basic.beam.simply-supported-deflection",
+      "id": "mechanics.beam.simply-supported-deflection",
       "version": 1,
       "output": {
         "kind": "numeric",
@@ -565,7 +565,7 @@
       "status": "unverified"
     },
     {
-      "id": "basic.beam.simply-supported-max-moment",
+      "id": "mechanics.beam.simply-supported-max-moment",
       "version": 1,
       "output": {
         "kind": "numeric",
@@ -602,7 +602,7 @@
       "status": "unverified"
     },
     {
-      "id": "basic.torsion.polar-moment-solid",
+      "id": "mechanics.torsion.polar-moment-solid",
       "version": 1,
       "output": {
         "kind": "numeric",
@@ -630,7 +630,7 @@
       "status": "unverified"
     },
     {
-      "id": "basic.torsion.polar-moment-hollow",
+      "id": "mechanics.torsion.polar-moment-hollow",
       "version": 1,
       "output": {
         "kind": "numeric",
@@ -667,7 +667,7 @@
       "status": "unverified"
     },
     {
-      "id": "basic.torsion.shear-stress",
+      "id": "mechanics.torsion.shear-stress",
       "version": 1,
       "output": {
         "kind": "numeric",
@@ -710,7 +710,7 @@
       "status": "unverified"
     },
     {
-      "id": "basic.rotation.power-from-torque",
+      "id": "mechanics.rotation.power-from-torque",
       "version": 1,
       "output": {
         "kind": "numeric",
@@ -741,11 +741,11 @@
         "nl": "Overgedragen vermogen uit koppel en toerental."
       },
       "citation": "Power from torque and speed",
-      "variantOf": "basic.rotation.power-torque-relation",
+      "variantOf": "mechanics.rotation.power-torque-relation",
       "status": "unverified"
     },
     {
-      "id": "basic.rotation.torque-from-power",
+      "id": "mechanics.rotation.torque-from-power",
       "version": 1,
       "output": {
         "kind": "numeric",
@@ -779,11 +779,11 @@
         "nl": "Koppel van overgedragen vermogen en rotatiesnelheid - dezelfde relatie, opgelost voor T."
       },
       "citation": "Torque from power and speed",
-      "variantOf": "basic.rotation.power-torque-relation",
+      "variantOf": "mechanics.rotation.power-torque-relation",
       "status": "unverified"
     },
     {
-      "id": "basic.rotation.pitch-line-velocity",
+      "id": "mechanics.rotation.pitch-line-velocity",
       "version": 1,
       "output": {
         "kind": "numeric",
@@ -820,7 +820,7 @@
       "status": "unverified"
     },
     {
-      "id": "basic.column.euler-buckling",
+      "id": "mechanics.column.euler-buckling",
       "version": 1,
       "output": {
         "kind": "numeric",
@@ -866,7 +866,7 @@
       "status": "unverified"
     },
     {
-      "id": "basic.column.radius-of-gyration",
+      "id": "mechanics.column.radius-of-gyration",
       "version": 1,
       "output": {
         "kind": "numeric",
@@ -903,7 +903,7 @@
       "status": "unverified"
     },
     {
-      "id": "basic.column.slenderness-ratio",
+      "id": "mechanics.column.slenderness-ratio",
       "version": 1,
       "output": {
         "kind": "numeric",
@@ -940,7 +940,7 @@
       "status": "unverified"
     },
     {
-      "id": "basic.spring.hookes-law",
+      "id": "mechanics.spring.hookes-law",
       "version": 1,
       "output": {
         "kind": "numeric",
@@ -977,7 +977,7 @@
       "status": "unverified"
     },
     {
-      "id": "basic.spring.energy",
+      "id": "mechanics.spring.energy",
       "version": 1,
       "output": {
         "kind": "numeric",
@@ -1014,7 +1014,7 @@
       "status": "unverified"
     },
     {
-      "id": "basic.spring.helical-rate",
+      "id": "mechanics.spring.helical-rate",
       "version": 1,
       "output": {
         "kind": "numeric",
@@ -1069,7 +1069,7 @@
       "status": "unverified"
     },
     {
-      "id": "basic.dynamics.newtons-second-law",
+      "id": "mechanics.dynamics.newtons-second-law",
       "version": 1,
       "output": {
         "kind": "numeric",
@@ -1103,7 +1103,7 @@
       "status": "unverified"
     },
     {
-      "id": "basic.dynamics.kinetic-energy",
+      "id": "mechanics.dynamics.kinetic-energy",
       "version": 1,
       "output": {
         "kind": "numeric",
@@ -1140,7 +1140,7 @@
       "status": "unverified"
     },
     {
-      "id": "basic.dynamics.momentum",
+      "id": "mechanics.dynamics.momentum",
       "version": 1,
       "output": {
         "kind": "numeric",
@@ -1174,7 +1174,7 @@
       "status": "unverified"
     },
     {
-      "id": "basic.dynamics.centripetal-acceleration",
+      "id": "mechanics.dynamics.centripetal-acceleration",
       "version": 1,
       "output": {
         "kind": "numeric",
@@ -1211,7 +1211,7 @@
       "status": "unverified"
     },
     {
-      "id": "basic.dynamics.centripetal-force",
+      "id": "mechanics.dynamics.centripetal-force",
       "version": 1,
       "output": {
         "kind": "numeric",
@@ -1257,7 +1257,7 @@
       "status": "unverified"
     },
     {
-      "id": "basic.dynamics.work",
+      "id": "mechanics.dynamics.work",
       "version": 1,
       "output": {
         "kind": "numeric",
@@ -1294,7 +1294,7 @@
       "status": "unverified"
     },
     {
-      "id": "basic.dynamics.power",
+      "id": "mechanics.dynamics.power",
       "version": 1,
       "output": {
         "kind": "numeric",
@@ -1331,7 +1331,7 @@
       "status": "unverified"
     },
     {
-      "id": "basic.machine.gear-ratio",
+      "id": "mechanics.machine.gear-ratio",
       "version": 1,
       "output": {
         "kind": "numeric",
@@ -1368,7 +1368,7 @@
       "status": "unverified"
     },
     {
-      "id": "basic.machine.torque-ratio-ideal",
+      "id": "mechanics.machine.torque-ratio-ideal",
       "version": 1,
       "output": {
         "kind": "numeric",
@@ -1405,7 +1405,7 @@
       "status": "unverified"
     },
     {
-      "id": "basic.machine.efficiency",
+      "id": "mechanics.machine.efficiency",
       "version": 1,
       "output": {
         "kind": "numeric",
@@ -1442,7 +1442,7 @@
       "status": "unverified"
     },
     {
-      "id": "basic.machine.friction-force",
+      "id": "mechanics.machine.friction-force",
       "version": 1,
       "output": {
         "kind": "numeric",

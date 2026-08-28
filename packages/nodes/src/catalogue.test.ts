@@ -48,6 +48,17 @@ import {
 /** Every hand-authored base node, across both catalogues — everything `iso286.ts`'s lookups are not. */
 const HAND_AUTHORED: readonly Formula[] = [...OPERATIONS, ...ARRAY_OPERATIONS];
 
+const MATH = 'base.math.';
+const ARRAY = 'base.array.';
+const CONSTANTS = 'base.constants.';
+const canonicalId = (id: string): string => {
+  if (id === 'pi' || id === 'e') return `${CONSTANTS}${id}`;
+  if (['sum', 'product', 'count', 'mean', 'median', 'standardDeviation', 'valueAt'].includes(id)) {
+    return `${ARRAY}${id.replace(/([A-Z])/gu, '-$1').toLowerCase()}`;
+  }
+  return `${MATH}${id.replace(/([A-Z])/gu, '-$1').toLowerCase()}`;
+};
+
 describe('ISO 286 tolerance lookups', () => {
   it('returns lower and upper deviations for common hole and shaft classes', () => {
     expect(iso286Limits('hole', 100, 'H', '7')).toEqual([0, 35]);
@@ -67,7 +78,7 @@ describe('ISO 286 tolerance lookups', () => {
 });
 
 const byId = (id: string): Formula => {
-  const found = HAND_AUTHORED.find((formula) => formula.id === id);
+  const found = HAND_AUTHORED.find((formula) => formula.id === canonicalId(id));
   if (found === undefined) throw new Error(`no base node '${id}'`);
   return found;
 };
@@ -139,6 +150,7 @@ describe('what the library carries', () => {
       'naturalLogarithm',
       'exponential',
       'pi',
+      'e',
       'sum',
       'product',
       'count',
@@ -147,7 +159,7 @@ describe('what the library carries', () => {
       'standardDeviation',
       'valueAt',
     ]) {
-      expect(ids, id).toContain(id);
+      expect(ids, id).toContain(canonicalId(id));
     }
   });
 
@@ -174,7 +186,7 @@ describe('what the library carries', () => {
     ]);
     for (const formula of HAND_AUTHORED) {
       const variadic = formula.inputs.some((port) => port.kind === 'numeric' && port.variadic === true);
-      expect(variadic, formula.id).toBe(reductions.has(formula.id));
+      expect(variadic, formula.id).toBe(reductions.has(formula.id.split('.').at(-1)?.replace(/-([a-z])/gu, (_match, letter: string) => letter.toUpperCase()) ?? formula.id));
     }
   });
 

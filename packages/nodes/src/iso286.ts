@@ -111,7 +111,7 @@ function lookup(feature: 'hole' | 'shaft', letters: readonly string[]): FormulaL
 function formula(feature: 'hole' | 'shaft', letters: readonly string[]): Formula {
   const capital = feature[0]!.toUpperCase() + feature.slice(1);
   return {
-    id: `iso286-${feature}-deviation`,
+    id: `base.iso286.${feature}-deviation`,
     version: 1,
     label: text(`ISO 286 ${feature} deviation`),
     description: text(`${capital} limit deviation for a nominal diameter, tolerance letter and IT grade.`),

@@ -196,7 +196,7 @@ describe('generatorDependentNodeIds', () => {
 describe('a playback scratch document (regression: two receivers in one MC graph)', () => {
   it('does not break a receiver watching only some of the generators another node combines', () => {
     const catalogues = [baseCatalogue()];
-    const subtract = lookup(catalogues, 'subtract');
+    const subtract = lookup(catalogues, 'base.math.subtract');
     if (subtract === undefined) throw new Error('base catalogue is missing `subtract`');
 
     const clearance: FormulaNode = {

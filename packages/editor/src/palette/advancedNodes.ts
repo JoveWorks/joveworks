@@ -8,8 +8,9 @@
  * Two id spaces are gated:
  *  - `PaletteAction` ids (`builtin:...`), matched exactly.
  *  - Catalogue formula ids (`ADVANCED_FORMULA_IDS`), matched by `Formula.id`.
- *    Empty today — the mechanics nodes (shaftTorque, shaftShear, shaftMoment,
- *    shaftDeflection, the distributed-load formulas in
+ *    Empty today — the mechanics nodes (mechanics.shaft.torque,
+ *    mechanics.shaft.shear, mechanics.shaft.moment,
+ *    mechanics.shaft.deflection, the distributed-load formulas in
  *    packages/nodes/src/mechanicsNodes.ts) are an open product decision for
  *    beta (see task notes). Gating them later is exactly one line: add their
  *    formula ids to this set.
@@ -39,7 +40,7 @@ export const ADVANCED_ACTION_IDS: ReadonlySet<string> = new Set([
 ]);
 
 // See the module docstring: add mechanics formula ids here (e.g.
-// 'shaftTorque', 'shaftShear', 'shaftMoment', 'shaftDeflection', ...) to gate
+// 'mechanics.shaft.torque', 'mechanics.shaft.shear', 'mechanics.shaft.moment', 'mechanics.shaft.deflection', ...) to gate
 // them behind the same preference. Left empty — shipping them in beta is an
 // open product decision, not part of this change.
 export const ADVANCED_FORMULA_IDS: ReadonlySet<string> = new Set([]);

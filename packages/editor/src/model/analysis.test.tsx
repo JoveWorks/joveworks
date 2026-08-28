@@ -230,7 +230,7 @@ describe('analysing a graph mid-build', () => {
         scalar('a', 2),
         scalar('b', 3),
         formulaNode('bad', 'inv.quarantined'),
-        formulaNode('m', 'minimum'),
+        formulaNode('m', 'base.math.minimum'),
       ],
       [
         wire('e1', ['a', 'value'], ['m', 'a']),

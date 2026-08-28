@@ -59,13 +59,13 @@ distribution restrictions — a repository boundary does that.
 A graph names a formula by id + version + hash, with no catalogue field, so
 ids must not collide across every catalogue that might ever be loaded
 together — R&M's `rm.*`, the base nodes, and yours. Pick a namespace prefix
-for your catalogue and stick to it, e.g. `basic.<n>` or `<catalogue-id>.<n>`.
+for your catalogue and stick to it, e.g. `mechanics.stress.normal` or `<domain>.<category>.<name>`.
 
 ## A formula record
 
 ```json
 {
-  "id": "basic.1",
+  "id": "mechanics.stress.normal",
   "version": 1,
   "output": { "kind": "numeric", "name": "sigma", "unit": "N/mm²" },
   "inputs": [

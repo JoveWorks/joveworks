@@ -148,7 +148,7 @@ function beltGraph(id: string, title: string, stockLength: number, withForces: b
     ...ASSIGNMENT.map(([name, value, unit]) => input(name, value, unit)),
     input('L_d', stockLength, 'mm'),
 
-    node('Pprime', 'multiply'),
+    node('Pprime', 'base.math.multiply'),
     node('ratio', 'rm.16.19A'),
     node('theoretical', 'rm.16.23'),
     node('shaft', 'rm.16.22'),
@@ -210,10 +210,10 @@ function beltGraph(id: string, title: string, stockLength: number, withForces: b
   if (withForces) {
     nodes.push(
       input('two', 2, ''),
-      node('pi', 'pi'),
-      node('turn', 'multiply'), // 2π
-      node('omega', 'multiply'), // 2π·n, the angular speed the torque needs
-      node('torque', 'divide'), // P'/(2π·n)
+      node('pi', 'base.constants.pi'),
+      node('turn', 'base.math.multiply'), // 2π
+      node('omega', 'base.math.multiply'), // 2π·n, the angular speed the torque needs
+      node('torque', 'base.math.divide'), // P'/(2π·n)
       node('tangential', 'rm.16.27'),
       output('out_T', 'Nm'),
       output('out_F_t', 'N'),

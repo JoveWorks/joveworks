@@ -33,56 +33,56 @@ import { ISO286_FORMULAS } from './iso286.js';
 const DRAFTS: readonly Draft[] = [
   // --- arithmetic, dimension-preserving ------------------------------------
   {
-    id: 'add',
+    id: 'base.math.add',
     description: 'Sum of two values of the same dimension.',
     expression: 'a + b',
     output: generic('sum', 'A', 'a + b'),
     inputs: [generic('a', 'A', 'First addend'), generic('b', 'A', 'Second addend')],
   },
   {
-    id: 'subtract',
+    id: 'base.math.subtract',
     description: 'Difference of two values of the same dimension.',
     expression: 'a - b',
     output: generic('difference', 'A', 'a − b'),
     inputs: [generic('a', 'A', 'Minuend'), generic('b', 'A', 'Subtrahend')],
   },
   {
-    id: 'negate',
+    id: 'base.math.negate',
     description: 'Sign reversal.',
     expression: '-a',
     output: generic('negated', 'A', '−a'),
     inputs: [generic('a', 'A', 'Value to negate')],
   },
   {
-    id: 'double',
+    id: 'base.math.double',
     description: 'Twice the value.',
     expression: 'a * 2',
     output: generic('doubled', 'A', '2a'),
     inputs: [generic('a', 'A', 'Value to double')],
   },
   {
-    id: 'half',
+    id: 'base.math.half',
     description: 'Half the value.',
     expression: 'a / 2',
     output: generic('halved', 'A', 'a / 2'),
     inputs: [generic('a', 'A', 'Value to halve')],
   },
   {
-    id: 'absolute',
+    id: 'base.math.absolute',
     description: 'Magnitude, discarding sign.',
     expression: 'abs(a)',
     output: generic('magnitude', 'A', '|a|'),
     inputs: [generic('a', 'A', 'Value')],
   },
   {
-    id: 'minimum',
+    id: 'base.math.minimum',
     description: 'The smallest of any number of values, all the same dimension.',
     expression: 'least(a)',
     output: generic('smallest', 'A', 'least(a)'),
     inputs: [genericVariadic('a', 'A', 'Values to compare — wire as many as needed')],
   },
   {
-    id: 'maximum',
+    id: 'base.math.maximum',
     description: 'The largest of any number of values, all the same dimension.',
     expression: 'greatest(a)',
     output: generic('largest', 'A', 'greatest(a)'),
@@ -91,7 +91,7 @@ const DRAFTS: readonly Draft[] = [
 
   // --- arithmetic, dimension-combining -------------------------------------
   {
-    id: 'multiply',
+    id: 'base.math.multiply',
     description: 'Product. The output dimension is the product of the input dimensions.',
     expression: 'a * b',
     output: {
@@ -103,7 +103,7 @@ const DRAFTS: readonly Draft[] = [
     inputs: [generic('a', 'A', 'First factor'), generic('b', 'B', 'Second factor')],
   },
   {
-    id: 'divide',
+    id: 'base.math.divide',
     description: 'Quotient. The output dimension is the quotient of the input dimensions.',
     expression: 'a / b',
     output: {
@@ -115,7 +115,7 @@ const DRAFTS: readonly Draft[] = [
     inputs: [generic('a', 'A', 'Numerator'), generic('b', 'B', 'Denominator')],
   },
   {
-    id: 'square',
+    id: 'base.math.square',
     description: 'Second power. Squaring a length gives an area, so the dimension squares too.',
     expression: 'a ** 2',
     output: {
@@ -127,7 +127,7 @@ const DRAFTS: readonly Draft[] = [
     inputs: [generic('a', 'A', 'Value')],
   },
   {
-    id: 'squareRoot',
+    id: 'base.math.square-root',
     description: 'Square root. The dimension is halved — the root of an area is a length.',
     expression: 'sqrt(a)',
     output: {
@@ -139,7 +139,7 @@ const DRAFTS: readonly Draft[] = [
     inputs: [generic('a', 'A', 'Radicand')],
   },
   {
-    id: 'cubeRoot',
+    id: 'base.math.cube-root',
     description: 'Cube root. The dimension is divided by three — the root of a volume is a length.',
     expression: 'cbrt(a)',
     output: {
@@ -151,7 +151,7 @@ const DRAFTS: readonly Draft[] = [
     inputs: [generic('a', 'A', 'Radicand')],
   },
   {
-    id: 'power',
+    id: 'base.math.power',
     description:
       'General exponentiation. Both operands are dimensionless: a runtime exponent gives a ' +
       'dimension that is not known until the value is, which is not a type. Use square, ' +
@@ -163,21 +163,21 @@ const DRAFTS: readonly Draft[] = [
 
   // --- rounding: dimension-preserving --------------------------------
   {
-    id: 'floor',
+    id: 'base.math.floor',
     description: 'Round down to a whole number, keeping the dimension.',
     expression: 'floor(a)',
     output: generic('rounded', 'A', '⌊a⌋'),
     inputs: [generic('a', 'A', 'Value')],
   },
   {
-    id: 'ceiling',
+    id: 'base.math.ceiling',
     description: 'Round up to a whole number, keeping the dimension.',
     expression: 'ceil(a)',
     output: generic('rounded', 'A', '⌈a⌉'),
     inputs: [generic('a', 'A', 'Value')],
   },
   {
-    id: 'round',
+    id: 'base.math.round',
     description: 'Round to the nearest whole number, keeping the dimension.',
     expression: 'round(a)',
     output: generic('rounded', 'A', 'Nearest whole value'),
@@ -186,42 +186,42 @@ const DRAFTS: readonly Draft[] = [
 
   // --- trigonometry: angle in, pure number out -----------------------
   {
-    id: 'sine',
+    id: 'base.math.sine',
     description: 'Sine of an angle.',
     expression: 'sin(theta)',
     output: plain('result', '', 'sin θ'),
     inputs: [plain('theta', 'rad', 'Angle')],
   },
   {
-    id: 'cosine',
+    id: 'base.math.cosine',
     description: 'Cosine of an angle.',
     expression: 'cos(theta)',
     output: plain('result', '', 'cos θ'),
     inputs: [plain('theta', 'rad', 'Angle')],
   },
   {
-    id: 'tangent',
+    id: 'base.math.tangent',
     description: 'Tangent of an angle.',
     expression: 'tan(theta)',
     output: plain('result', '', 'tan θ'),
     inputs: [plain('theta', 'rad', 'Angle')],
   },
   {
-    id: 'arcSine',
+    id: 'base.math.arc-sine',
     description: 'The angle whose sine is the given ratio.',
     expression: 'asin(x)',
     output: plain('angle', 'rad', 'arcsin x'),
     inputs: [plain('x', '', 'Ratio, between −1 and 1')],
   },
   {
-    id: 'arcCosine',
+    id: 'base.math.arc-cosine',
     description: 'The angle whose cosine is the given ratio.',
     expression: 'acos(x)',
     output: plain('angle', 'rad', 'arccos x'),
     inputs: [plain('x', '', 'Ratio, between −1 and 1')],
   },
   {
-    id: 'arcTangent',
+    id: 'base.math.arc-tangent',
     description: 'The angle whose tangent is the given ratio.',
     expression: 'atan(x)',
     output: plain('angle', 'rad', 'arctan x'),
@@ -230,35 +230,35 @@ const DRAFTS: readonly Draft[] = [
 
   // --- hyperbolics, logarithm, exponential: dimensionless throughout -------
   {
-    id: 'hyperbolicSine',
+    id: 'base.math.hyperbolic-sine',
     description: 'Hyperbolic sine of a pure number.',
     expression: 'sinh(x)',
     output: plain('result', '', 'sinh x'),
     inputs: [plain('x', '', 'Value')],
   },
   {
-    id: 'hyperbolicCosine',
+    id: 'base.math.hyperbolic-cosine',
     description: 'Hyperbolic cosine of a pure number.',
     expression: 'cosh(x)',
     output: plain('result', '', 'cosh x'),
     inputs: [plain('x', '', 'Value')],
   },
   {
-    id: 'hyperbolicTangent',
+    id: 'base.math.hyperbolic-tangent',
     description: 'Hyperbolic tangent of a pure number.',
     expression: 'tanh(x)',
     output: plain('result', '', 'tanh x'),
     inputs: [plain('x', '', 'Value')],
   },
   {
-    id: 'naturalLogarithm',
+    id: 'base.math.natural-logarithm',
     description: 'Natural logarithm. The argument must be dimensionless.',
     expression: 'log(x)',
     output: plain('result', '', 'ln x'),
     inputs: [plain('x', '', 'Value, greater than zero')],
   },
   {
-    id: 'exponential',
+    id: 'base.math.exponential',
     description: 'e raised to a power. The argument must be dimensionless.',
     expression: 'exp(x)',
     output: plain('result', '', 'eˣ'),
@@ -267,10 +267,17 @@ const DRAFTS: readonly Draft[] = [
 
   // --- constants -----------------------------------------------------------
   {
-    id: 'pi',
+    id: 'base.constants.pi',
     description: 'The circle constant, as a node so it can be wired rather than retyped.',
     expression: 'pi',
     output: plain('value', '', 'π'),
+    inputs: [],
+  },
+  {
+    id: 'base.constants.e',
+    description: 'Euler’s number, the base of the natural logarithm.',
+    expression: 'exp(1)',
+    output: plain('value', '', 'e'),
     inputs: [],
   },
 ];
@@ -284,7 +291,7 @@ const DUTCH_LABELS: Readonly<Record<string, string>> = {
   sine: 'Sinus', cosine: 'Cosinus', tangent: 'Tangens', arcSine: 'Boogsinus', arcCosine: 'Boogcosinus',
   arcTangent: 'Boogtangens', hyperbolicSine: 'Hyperbolische sinus', hyperbolicCosine: 'Hyperbolische cosinus',
   hyperbolicTangent: 'Hyperbolische tangens', logarithm: 'Natuurlijke logaritme', exponential: 'Exponentieel',
-  pi: 'Pi',
+  pi: 'Pi', e: 'Getal van Euler',
 };
 
 export const OPERATIONS: readonly Formula[] = [...buildFormulas(DRAFTS, DUTCH_LABELS), ...ISO286_FORMULAS];

@@ -27,8 +27,8 @@ describe('advanced-nodes gating', () => {
   });
 
   it('does not (yet) gate any catalogue formula — the mechanics nodes are an open decision', () => {
-    expect(isAdvancedFormula('shaftTorque')).toBe(false);
-    expect(isAdvancedFormula('shaftShear')).toBe(false);
+    expect(isAdvancedFormula('mechanics.shaft.torque')).toBe(false);
+    expect(isAdvancedFormula('mechanics.shaft.shear')).toBe(false);
   });
 
   describe('filterAdvancedActions', () => {

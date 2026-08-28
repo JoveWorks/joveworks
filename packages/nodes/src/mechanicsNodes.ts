@@ -39,7 +39,7 @@ function supportPorts(letter: 'A' | 'B'): readonly Port[] {
 }
 
 const shaftTorque: Formula = {
-  id: 'shaftTorque',
+  id: 'mechanics.shaft.torque',
   version: 1,
   label: text('Torque diagram'),
   description: text(
@@ -59,7 +59,7 @@ const shaftTorque: Formula = {
 };
 
 const shaftShear: Formula = {
-  id: 'shaftShear',
+  id: 'mechanics.shaft.shear',
   version: 1,
   label: text('Shear diagram'),
   description: text(
@@ -85,7 +85,7 @@ const shaftShear: Formula = {
 };
 
 const shaftMoment: Formula = {
-  id: 'shaftMoment',
+  id: 'mechanics.shaft.moment',
   version: 1,
   label: text('Bending moment diagram'),
   description: text(
@@ -115,7 +115,7 @@ const shaftMoment: Formula = {
 };
 
 const shaftDeflectionTerm: Formula = {
-  id: 'shaftDeflectionTerm',
+  id: 'mechanics.shaft.deflection-term',
   version: 1,
   label: text('Deflection term'),
   description: text(
@@ -148,7 +148,7 @@ const shaftDeflectionTerm: Formula = {
 };
 
 const shaftDeflection: Formula = {
-  id: 'shaftDeflection',
+  id: 'mechanics.shaft.deflection',
   version: 1,
   label: text('Deflection diagram'),
   description: text(
@@ -194,7 +194,7 @@ const shaftDeflection: Formula = {
  * exists.
  */
 const shaftDistributedShear: Formula = {
-  id: 'shaftDistributedShear',
+  id: 'mechanics.shaft.distributed-shear',
   version: 1,
   label: text('Distributed-load shear contribution'),
   description: text(
@@ -215,7 +215,7 @@ const shaftDistributedShear: Formula = {
 };
 
 const shaftDistributedMoment: Formula = {
-  id: 'shaftDistributedMoment',
+  id: 'mechanics.shaft.distributed-moment',
   version: 1,
   label: text('Distributed-load moment contribution'),
   description: text(

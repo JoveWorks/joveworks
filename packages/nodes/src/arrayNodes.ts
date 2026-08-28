@@ -23,14 +23,14 @@ import { buildFormulas, generic, genericVariadic, plain, plainVariadic, type Dra
 
 const DRAFTS: readonly Draft[] = [
   {
-    id: 'sum',
+    id: 'base.array.sum',
     description: 'Total of every value wired in, not a swept range.',
     expression: 'sum(xs)',
     output: generic('total', 'A', 'Σ xᵢ'),
     inputs: [genericVariadic('xs', 'A', 'Values to total')],
   },
   {
-    id: 'product',
+    id: 'base.array.product',
     description:
       'Product of every value wired in. Dimensionless only: the dimension of a product of n terms ' +
       'depends on n, which is a value rather than a type.',
@@ -39,21 +39,21 @@ const DRAFTS: readonly Draft[] = [
     inputs: [plainVariadic('xs', '', 'Values to multiply')],
   },
   {
-    id: 'count',
+    id: 'base.array.count',
     description: 'How many values are wired in. Dimensionless, whatever they hold.',
     expression: 'count(xs)',
     output: plain('n', '', '|xs|'),
     inputs: [genericVariadic('xs', 'A', 'Values to count')],
   },
   {
-    id: 'mean',
+    id: 'base.array.mean',
     description: 'Average of every value wired in, not a swept range.',
     expression: 'mean(xs)',
     output: generic('average', 'A', 'x̄'),
     inputs: [genericVariadic('xs', 'A', 'Values to average')],
   },
   {
-    id: 'median',
+    id: 'base.array.median',
     description:
       'Middle value of the wired-in values once sorted — the mean of the two middle values when ' +
       'there is an even number of them.',
@@ -62,7 +62,7 @@ const DRAFTS: readonly Draft[] = [
     inputs: [genericVariadic('xs', 'A', 'Values to find the median of')],
   },
   {
-    id: 'standardDeviation',
+    id: 'base.array.standard-deviation',
     description:
       'Sample standard deviation of the wired-in values (n − 1 in the denominator — the usual ' +
       'estimator when they are a sample of measurements, as a tolerance is built from).',
@@ -71,7 +71,7 @@ const DRAFTS: readonly Draft[] = [
     inputs: [genericVariadic('xs', 'A', 'Values to find the spread of')],
   },
   {
-    id: 'valueAt',
+    id: 'base.array.value-at',
     description: 'The value at a given position among the wired-in values. 0 is the first one.',
     expression: 'at(xs, i)',
     output: generic('value', 'A', 'xsᵢ'),

@@ -238,7 +238,7 @@ The React app. Largest package by far. `AGENTS.md`: desktop-only, no properties 
 
 ### `src/catalogues/` — bundled unrestricted catalogues
 
-- `catalogues/basic-mechanics.json` — public, textbook-independent formula catalogue (stress, etc.), auto-loaded via `import.meta.glob` in `model/catalogues.ts`.
+- `catalogues/basic-mechanics.json` — public, textbook-independent mechanics formula catalogue (stress, etc.), auto-loaded via `import.meta.glob` in `model/catalogues.ts`.
 - `catalogues/machining.json` — public machining/milling formula catalogue (speeds, feeds, power, torque) used by the `millingPowerEnvelope` sample.
 - `catalogues/running.yaml` — public YAML example catalogue for pace, race projections, route grade, and climbing rate.
 

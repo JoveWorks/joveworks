@@ -113,7 +113,7 @@ export function converted(value: ValueSpec, kind: Kind): ValueSpec {
       return { kind, values: [category] };
     }
     case 'tableColumn':
-      return { kind, table: 'iso286-hole-deviation', column: 'diameter' };
+      return { kind, table: 'base.iso286.hole-deviation', column: 'diameter' };
   }
 }
 

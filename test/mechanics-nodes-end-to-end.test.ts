@@ -29,13 +29,21 @@ const ARRAY: Catalogue = loadCatalogue(arrayCatalogueJson());
 const catalogues = [MECHANICS];
 const withBaseNodes = [MECHANICS, BASE, ARRAY];
 
+const NODE_IDS: Readonly<Record<string, string>> = {
+  shaftTorque: 'mechanics.shaft.torque', shaftShear: 'mechanics.shaft.shear', shaftMoment: 'mechanics.shaft.moment',
+  shaftDeflectionTerm: 'mechanics.shaft.deflection-term', shaftDeflection: 'mechanics.shaft.deflection',
+  shaftDistributedShear: 'mechanics.shaft.distributed-shear', shaftDistributedMoment: 'mechanics.shaft.distributed-moment',
+  add: 'base.math.add', subtract: 'base.math.subtract', negate: 'base.math.negate', multiply: 'base.math.multiply', divide: 'base.math.divide',
+  sum: 'base.array.sum',
+};
+
 const node = (
   id: string,
   operation: string,
   from: readonly Catalogue[] = [MECHANICS],
   extra: JsonObject = {},
 ): JsonObject => {
-  const formula = from.flatMap((catalogue) => catalogue.formulas).find((entry) => entry.id === operation);
+  const formula = from.flatMap((catalogue) => catalogue.formulas).find((entry) => entry.id === (NODE_IDS[operation] ?? operation));
   if (formula === undefined) throw new Error(`no node '${operation}'`);
   return {
     kind: 'formula',
