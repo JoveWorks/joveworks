@@ -28,9 +28,11 @@ restricted and must stay in the separate private catalogue repository.
   asked.
 - Never use a real R&M formula as a test fixture. Use invented formulas such as
   `y = a*b + c` instead.
-- The public extraction scripts may parse predecessor source with Python's
-  stdlib `ast`, but must never import or execute it. Their output belongs in the
-  private catalogue repository.
+- The public extraction scripts are a historical, one-off bootstrap: they parsed
+  predecessor source with Python's stdlib `ast` to seed the earliest catalogue
+  records and are not the current path for producing catalogue data, which is
+  now transcribed and maintained by hand in the private catalogue repository.
+  They must never import or execute the predecessor source.
 - The predecessor repository is transcription/reference material only. Do not
   reuse its architecture, SymPy/MySymbol layer, unit-symbol convention, or
   helpers.
@@ -46,11 +48,11 @@ packages/units/   Canonical units, dimension algebra, and port typing
 packages/kernel/  DAG evaluation, broadcasting, and expression handling
 packages/nodes/   Unrestricted base-node library
 packages/editor/  React Flow editor, notebook view, and outputs
-tools/extract/    One-off Python extraction scripts
+tools/extract/    One-off Python extraction scripts, retained for provenance, not re-run
 ```
 
-- Use TypeScript except for `tools/` extraction scripts. There is no runtime
-  computer algebra system.
+- Use TypeScript except for the retained `tools/` extraction scripts. There is
+  no runtime computer algebra system.
 - The workspace uses pnpm, TypeScript project references, Vitest, and Vite.
   Project references enforce dependency direction.
 - Internal units are `mm`, `N`, `s`, `rad`, and `K`; convert only at boundaries.

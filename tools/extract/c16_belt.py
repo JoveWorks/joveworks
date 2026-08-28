@@ -34,6 +34,12 @@ later:
 
 Ids are namespaced `rm.16.<n>`: a graph's reference carries no catalogue
 id, so an R&M id shares one namespace with `add` from the base library.
+
+Historical note: this script was a one-off bootstrap that seeded the
+earliest catalogue records. The catalogue is now transcribed and maintained
+by hand in the private repository, has since diverged from what this script
+would produce, and carries sign-off work this script knows nothing about.
+Do not re-run it against the maintained catalogue.
 """
 
 from __future__ import annotations

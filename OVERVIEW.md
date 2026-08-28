@@ -356,8 +356,8 @@ Correctness is checked against the old course notebooks, whose results are
 frozen as fixtures — the belt lab's `i = 4.444`, `v = 7.069 m/s`,
 `F_t = 435.7 N`, or the chain drive's `i = 2.478`, `a = 1007 mm`. The belt set
 is reproduced today, end to end through the kernel. The formulas
-themselves are transcribed by parsing the old Python source, which is a
-reference to read, never a system to run.
+themselves are transcribed by hand from the textbook; the old Python source is
+a reference to read, never a system to run.
 
 Reproducing those numbers proves the transcription is *faithful*. It does not
 prove a formula is *correct* — the known defects would survive it, because the

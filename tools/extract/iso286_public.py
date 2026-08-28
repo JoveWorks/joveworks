@@ -3,6 +3,12 @@
 
 Only literal ISO table assignments are read with stdlib ``ast``.  The source
 module is never imported or executed, and no R&M expression is copied.
+
+Historical note: this script is part of the same one-off extraction batch as
+the R&M catalogue bootstrap scripts, but its target is different. It
+regenerates this repo's own public `packages/nodes/src/iso286-data.ts` table,
+not the private R&M catalogue, which is now transcribed and maintained by
+hand and must not be regenerated from these scripts.
 """
 
 from __future__ import annotations

@@ -7,6 +7,12 @@ executed.  Its restricted output is written to the separate private catalogue:
     python3 tools/extract/c12_pressfit.py
 
 This public script deliberately contains no R&M expression.
+
+Historical note: this script was a one-off bootstrap that seeded the
+earliest catalogue records. The catalogue is now transcribed and maintained
+by hand in the private repository, has since diverged from what this script
+would produce, and carries sign-off work this script knows nothing about.
+Do not re-run it against the maintained catalogue.
 """
 
 from __future__ import annotations

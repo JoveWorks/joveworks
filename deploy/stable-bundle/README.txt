@@ -58,6 +58,18 @@ same rule under a different name.
     confirm it lands on a real docs page rather than a 404 — see the note
     in step 2 if it doesn't.
 
+5. If the course is served through a JoveWorks Hub
+----------------------------------------------------
+Some schools link to this bundle through a JoveWorks Hub, which turns
+short course links into full editor links automatically. If that's your
+setup, whoever administers the Hub needs to point its editor address
+setting at wherever you just put this bundle. If they don't, students
+clicking a course link will land on a different copy of the app than the
+one you deployed here — and because browsers keep saved work separate
+per address, anything a student had saved there won't show up after they
+land on this one. Let your Hub administrator know the address you used
+as soon as this bundle is live.
+
 Questions
 ---------
 thomas.van.riel@gmail.com

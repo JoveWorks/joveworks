@@ -1,7 +1,7 @@
 # Next session
 
-Beta prep. `main` is clean: build passes, 1250 tests, nothing pushed. The
-catalogue repo is 4 commits ahead of its origin, also unpushed.
+Beta prep. `main` is clean: build passes, 1250 tests, level with its origin.
+The catalogue repo is also level with its origin.
 
 ## Landed 2026-08-28
 
@@ -45,15 +45,13 @@ Yesterday's four priorities are all done, and all verified in the browser.
 >
 > Priority order:
 >
-> 1. **The extractor no longer matches the catalogue it generates.** Running
->    `tools/extract/c16_belt.py` against its source produces 559 differing
->    lines versus the committed `c16-belt.json` — different port names,
->    descriptions and statuses across many records. Record ids still match
->    1:1, so nothing was lost, but the catalogue repo's `CLAUDE.md` tells the
->    next person to "regenerate rather than edit", and following that today
->    would clobber signed-off work. Either re-sync extractor and source so
->    regeneration is safe, or stop claiming the file is generated. This is the
->    most dangerous stale instruction in either repo.
+> 1. **The extractor drift is settled, not open.** `tools/extract/c16_belt.py`
+>    still produces 559 differing lines against the committed `c16-belt.json`,
+>    but Thomas has decided the direction: catalogues are now transcribed and
+>    maintained by hand, and the extraction scripts are historical — they are
+>    not to be re-run. Nothing here needs re-syncing; the remaining work is
+>    making sure no instruction anywhere still tells the next person to
+>    regenerate rather than edit.
 > 2. **Golden values.** 23 of belt's 54 records and 14 of press-fit's 30 are
 >    `unverified`, including the two wrap-angle records. Nothing gates CI, but
 >    see the open question below before treating this as routine.
@@ -66,16 +64,22 @@ Yesterday's four priorities are all done, and all verified in the browser.
 
 - **Were the corrected readings confirmed against the book?** 16.31's
   specific power, 16.34's unit tag, 16.36B's sum. Whether each was confirmed
-  against R&M or merely applied is not recoverable from the files. If any went
-  in unconfirmed, that is a larger task than adding goldens, and a bad thing
-  to discover after students rely on the formulas.
+  against R&M or merely applied is not recoverable from the files. All three
+  are currently marked `unverified` in `formulas/c16-belt.json`, so a
+  verification pass will reach them on its own — they are not hidden behind
+  a `verified` flag. Catalogue verification is now owned by teaching staff.
+  What still has to be checked, and can't be assumed from a status flag, is
+  the correction itself: each of these three carries an applied correction
+  rather than a plain transcription, so whoever verifies them needs to check
+  the correction against R&M, not just that the record matches the old
+  source.
 - **Transfer the catalogue repo.** `joveworks` moved to the org; the catalogue
-  is still on the personal account with 4 unpushed commits. A half-migrated
-  pair is what surfaces at the worst moment, and the catalogue is what the
-  school's LMS serves.
-- **Verify the release workflow.** It has still never executed. Netlify and
-  the org's Actions policy are both confirmed fine, so nothing is in the way
-  of cutting a throwaway release.
+  is still on the personal account, though it is level with its origin (no
+  unpushed commits). A half-migrated pair is what surfaces at the worst
+  moment, and the catalogue is what the school's LMS serves.
+- **The release workflow has run.** It cut `v0.21.0`, currently the tip of
+  `production`. Netlify and the org's Actions policy were both confirmed
+  fine beforehand, and the run itself is now the confirmation.
 - **Tell the school:** nightly and stable are different origins, so
   localStorage — autosave, cached catalogues, unsaved work — does not follow a
   student between them.
@@ -85,6 +89,6 @@ Yesterday's four priorities are all done, and all verified in the browser.
 - `test/catalogue-check.test.ts` claims the kernel was built before any
   extraction ran. The dead citation behind it is gone and the claim can no
   longer be traced; flagged in `docs/REVIEW-2026-08.md` B1 for a decision.
-- The catalogue repo's `CLAUDE.md` status section still says "5 quarantined,
-  two waiting on the wrap angle". All five are resolved.
-- Nothing is pushed, in either repo.
+- The catalogue repo's `CLAUDE.md` status section has been corrected: it now
+  records the real counts (31 `verified`, 23 `unverified`, 0 quarantined for
+  `c16-belt.json`) and no longer instructs the reader to regenerate the file.
