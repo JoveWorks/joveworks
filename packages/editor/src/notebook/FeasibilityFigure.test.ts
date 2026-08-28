@@ -13,7 +13,7 @@ import { describe, expect, it } from 'vitest';
 import type { Axis, FeasibilityResult } from '@joveworks/kernel';
 import { parseUnit } from '@joveworks/units';
 
-import { WIDE_FIGURE_PRINT_PX } from './PlotFigure';
+import { isFacetedChartTooWideForColumn, WIDE_FIGURE_PRINT_PX } from './PlotFigure';
 import { feasibilityPlotWidth, rows } from './FeasibilityFigure';
 
 const mm = parseUnit('mm');
@@ -102,6 +102,23 @@ describe('feasibilityPlotWidth against the print column-span threshold', () => {
   });
 
   it('crosses the threshold for the many-facet map the print stylesheet names as its example', () => {
-    expect(feasibilityPlotWidth(3, 5)).toBeGreaterThan(WIDE_FIGURE_PRINT_PX);
+    expect(feasibilityPlotWidth(3, 6)).toBeGreaterThan(WIDE_FIGURE_PRINT_PX);
+  });
+});
+
+// Thomas's explicit read after the first pass: "the feasibility cell map …
+// should shrink into a column instead" — even a single-panel map whose own
+// tick count alone pushes its width past the threshold (a fine, many-point
+// sweep) must never span. Only a genuine small-multiples row of facets can.
+describe('isFacetedChartTooWideForColumn for a Feasibility map', () => {
+  it('never spans a single-panel map, however many ticks it has', () => {
+    const wideSinglePanel = feasibilityPlotWidth(30, undefined);
+    expect(wideSinglePanel).toBeGreaterThan(WIDE_FIGURE_PRINT_PX);
+    expect(isFacetedChartTooWideForColumn(undefined, wideSinglePanel)).toBe(false);
+  });
+
+  it('spans a many-facet map once the facet row has outgrown a column', () => {
+    const width = feasibilityPlotWidth(3, 6);
+    expect(isFacetedChartTooWideForColumn(6, width)).toBe(true);
   });
 });

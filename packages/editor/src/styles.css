@@ -4041,16 +4041,43 @@ aside.right {
     max-width: 100%;
   }
 
-  /* Scaling down to fit is the general answer above, but a two-up column is
-     narrower than the single printed page that fallback was built for —
-     past a point, "scale it down" just means "shrink the tick labels to
-     noise." PlotFigure/FeasibilityFigure flag `figure--wide` once their own
-     chart width (`WIDE_FIGURE_PRINT_PX` in PlotFigure.tsx) or fixed layout
-     (IntelligentPlotFigure's contour colorbar) can't fit a column; span the
-     whole entry, not just the chart, so its label travels with it rather
-     than staying stranded in the narrow column. Depends on `:has()`, which
-     the same Chromium engine that renders this app's screen already
-     supports — not a separate print compatibility concern. */
+  /* The contour/heatmap colour key sits in a flex row next to its chart
+     (`.contour-figure`, styles.css above) with a fixed 92px basis of its own
+     — a flex item's automatic minimum size defaults to its *content's*
+     intrinsic size, which for this chart's `<svg>` is the pixel width Plot
+     drew it at, so without this override it refuses to shrink below that and
+     pushes the row past the column instead of scaling down alongside the
+     key. This is the shrink-into-a-column case the max-width rule above
+     already handles for every other figure; the fixed-basis sibling is what
+     makes this one need help. */
+  .contour-figure svg {
+    min-width: 0;
+  }
+
+  /* Shrinking to fit (the max-width rule above) is the default for every
+     figure now, including a single-panel Feasibility map with a fine,
+     many-tick sweep and a contour/heatmap panel with its colour key — all of
+     those read fine smaller. The one shape that does not survive shrinking
+     is a genuinely faceted small-multiples chart: each facet keeps its own
+     axis and ticks, so squeezing the *whole row of panels* into one column
+     squeezes every panel's ticks with it. PlotFigure/FeasibilityFigure flag
+     `figure--wide` for exactly that case, once their own chart width
+     (`WIDE_FIGURE_PRINT_PX`/`isFacetedChartTooWideForColumn` in
+     PlotFigure.tsx) says a facet row has outgrown a column; span the whole
+     entry, not just the chart, so its label travels with it rather than
+     staying stranded in the narrow column. Depends on `:has()`, which the
+     same Chromium engine that renders this app's screen already supports —
+     not a separate print compatibility concern.
+     Keep this rare: a spanning element appears to reset Chromium's print
+     pagination locally — content that would otherwise have kept filling the
+     page after the span instead starts a fresh page, leaving whatever the
+     two columns had already shown sitting on a mostly blank sheet. The first
+     pass here flagged anything moderately wide (`WIDE_FIGURE_PRINT_PX` at
+     480px, no facet requirement) and produced exactly that: ordinary
+     figures spanning, then tall empty gaps underneath. There is no known CSS
+     fix for the pagination behaviour itself — the real fix is triggering it
+     as rarely as the content actually demands, which the facet requirement
+     and the now much higher threshold both do. */
   .notebook .entry:has(.figure--wide) {
     column-span: all;
   }

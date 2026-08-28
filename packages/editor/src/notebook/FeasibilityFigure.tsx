@@ -25,7 +25,7 @@ import {
 import { fromCanonical } from '@joveworks/units';
 
 import { useSettings } from '../settings-context';
-import { chartTip, pointedRow, typesetChartLabels, WIDE_FIGURE_PRINT_PX } from './PlotFigure';
+import { chartTip, isFacetedChartTooWideForColumn, pointedRow, typesetChartLabels } from './PlotFigure';
 import { NO_MARKS, type FigureMarking, type MarkIndex } from './marks';
 
 interface Row {
@@ -309,7 +309,7 @@ export function FeasibilityFigure({ result, checkLabels, marking }: Props): Reac
     // Swapped in place, never detached in the cleanup — see the note on this
     // in PlotFigure.tsx, which explains the scroll jump that caused.
     container.replaceChildren(chart);
-    container.classList.toggle('figure--wide', width > WIDE_FIGURE_PRINT_PX);
+    container.classList.toggle('figure--wide', isFacetedChartTooWideForColumn(result.facet?.axis.length, width));
 
     // A categorical `color.legend` makes `Plot.plot` return an HTML
     // `<figure>` wrapping the legend and then the chart, not a bare `<svg>`

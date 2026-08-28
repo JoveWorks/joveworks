@@ -16,6 +16,7 @@ import {
   chartLabelForText,
   contourGrid,
   drawsContour,
+  isFacetedChartTooWideForColumn,
   markY,
   plotChartWidth,
   plotValueLabel,
@@ -196,6 +197,25 @@ describe('plotChartWidth against the print column-span threshold', () => {
     // The width formula caps at 1080 (six-plus facets) rather than growing
     // unbounded — still comfortably past the threshold either way.
     expect(plotChartWidth(8)).toBeGreaterThan(WIDE_FIGURE_PRINT_PX);
+  });
+});
+
+// Thomas's read on the first pass (a bare width check, no facet requirement):
+// it spanned an ordinary single-panel chart just because its own tick count
+// happened to push its width past the threshold, leaving a mostly-blank page
+// under it. A single panel must never span, regardless of how wide it is —
+// only a genuinely faceted small-multiples row can.
+describe('isFacetedChartTooWideForColumn', () => {
+  it('never spans a single panel, however wide it happens to be', () => {
+    expect(isFacetedChartTooWideForColumn(undefined, WIDE_FIGURE_PRINT_PX + 1000)).toBe(false);
+  });
+
+  it('does not span a faceted chart that still fits a column', () => {
+    expect(isFacetedChartTooWideForColumn(2, plotChartWidth(2))).toBe(false);
+  });
+
+  it('spans a faceted chart once it has outgrown a column', () => {
+    expect(isFacetedChartTooWideForColumn(4, plotChartWidth(4))).toBe(true);
   });
 });
 

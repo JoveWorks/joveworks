@@ -108,3 +108,49 @@ describe('FeasibilityFigure axis label typesetting', () => {
     expect(chartSvg?.querySelector('defs pattern')).not.toBeNull();
   });
 });
+
+// Regression for the first print pass: it flagged `figure--wide` off a bare
+// pixel-width check, so a single-panel map with enough x ticks to push past
+// the threshold on its own (no facet involved) spanned both printed columns
+// — exactly the "ordinary... feasibility cell map... should shrink into a
+// column instead" case Thomas called out. `feasibilityPlotWidth`'s own tests
+// (FeasibilityFigure.test.ts) already prove 30 ticks crosses
+// WIDE_FIGURE_PRINT_PX; this proves the component itself still never adds
+// the class to a single panel, not just that the predicate says it shouldn't.
+describe('FeasibilityFigure figure--wide flag', () => {
+  it('never flags a single-panel map, however many ticks push its own width past the threshold', () => {
+    const manyTicks: Axis = { id: 'x', label: 'x', length: 30, order: 0 };
+    const wideSinglePanel: FeasibilityResult = {
+      nodeId: 'feas',
+      kind: 'feasibility',
+      checks: ['check1'],
+      axes: [manyTicks],
+      mask: Array.from({ length: 30 }, (_unused, i) => i % 2 === 0),
+      perCheck: [Array.from({ length: 30 }, (_unused, i) => i % 2 === 0)],
+      x: {
+        axis: manyTicks,
+        coordinates: { kind: 'numeric', axes: [manyTicks], data: Array.from({ length: 30 }, (_unused, i) => i) },
+        unit: mm,
+      },
+    };
+
+    const host = document.createElement('div');
+    document.body.append(host);
+    let root: Root;
+    act(() => {
+      root = createRoot(host);
+      root.render(
+        <SettingsContext.Provider value={settings}>
+          <FeasibilityFigure result={wideSinglePanel} checkLabels={{ check1: 'ok' }} />
+        </SettingsContext.Provider>,
+      );
+    });
+
+    expect(host.querySelector('.figure')?.classList.contains('figure--wide')).toBe(false);
+
+    // This test owns its own host/root pair — the outer describe's afterEach
+    // does not reach it.
+    act(() => root.unmount());
+    host.remove();
+  });
+});
