@@ -2,6 +2,37 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.22.2](https://github.com/JoveWorks/joveworks/compare/v0.22.1...v0.22.2) (2026-08-28)
+
+### Features
+
+* **editor:** print the notebook as a two-column journal article ([c720338](https://github.com/JoveWorks/joveworks/commit/c720338106ef406eb6a35f0537a5faab49be9de3))
+* **schema:** save a catalogue as YAML ([be24c0d](https://github.com/JoveWorks/joveworks/commit/be24c0d290c49fe9b91baa4f1cae5b53e9113adf))
+* **units:** offer kW in the display-unit picker ([b35712b](https://github.com/JoveWorks/joveworks/commit/b35712b928c96f617eb227d13e589d38d90bf34c))
+
+### Fixes
+
+* **editor:** compact display unit picker ([70eb07f](https://github.com/JoveWorks/joveworks/commit/70eb07f508eedfd3e8ccffe3b82506f024eb8688))
+* **editor:** give the notebook multicol a fill mode that works auto-height ([b970405](https://github.com/JoveWorks/joveworks/commit/b97040510a3c9ed35a91095047e74709e7f24d5b))
+* **editor:** let the sweep table actually fragment in print ([8b2333f](https://github.com/JoveWorks/joveworks/commit/8b2333f1abffb2824e9d63d66ed26808a72627c1))
+* **editor:** make the masthead the only thing that spans in print ([5d36f0d](https://github.com/JoveWorks/joveworks/commit/5d36f0d517871ffa0db9d0d9807d51f79c3b2826))
+* **editor:** name the last passing value at a check's crossing ([39d131e](https://github.com/JoveWorks/joveworks/commit/39d131efde0d7112e3c2b9a8275cfc4634d31072))
+* **editor:** put the heatmap's colour key beside the chart ([c0bf1fc](https://github.com/JoveWorks/joveworks/commit/c0bf1fcbb979bd0b2c79155d8da12d20df73cfe7))
+* **editor:** shorten the computed range palette summary ([2fd986e](https://github.com/JoveWorks/joveworks/commit/2fd986ed824d5a7c1b1617f2aae20bd3dac85315))
+* **editor:** shrink figures into print columns instead of spanning ([6bffe1f](https://github.com/JoveWorks/joveworks/commit/6bffe1fe7391d4721279f59134ff344b6b507da4))
+* **editor:** size the notebook's prose to the printed column ([cfbc344](https://github.com/JoveWorks/joveworks/commit/cfbc3444638b9714af96dc35e242c3f11c79234e))
+* **editor:** stop the printed notebook stranding half-empty columns ([0d53fa8](https://github.com/JoveWorks/joveworks/commit/0d53fa893a6f8d692e0df3f44eac93a0adffa9ba))
+* **editor:** typeset feasibility axis labels on the chart's own svg ([0c757a7](https://github.com/JoveWorks/joveworks/commit/0c757a719ac4196930806c442fea2887b35dd28e))
+* **editor:** typeset the plot threshold reading's measure label ([d8ea24f](https://github.com/JoveWorks/joveworks/commit/d8ea24f901300af3f39ef9dd73d207a3d82f79fc))
+* **editor:** typeset the printed notebook's masthead and columns ([dd678bc](https://github.com/JoveWorks/joveworks/commit/dd678bcd811bc4c5ba1352b3896831a825d4fcca))
+
+### Documentation
+
+* hold visual changes for review before committing them ([01eb5d5](https://github.com/JoveWorks/joveworks/commit/01eb5d5265286ea039902ff68f6dd452b37e186c))
+* record how to orchestrate parallel worktree agents ([21af10e](https://github.com/JoveWorks/joveworks/commit/21af10e0d75039b7339c4d935e2b081cb9bd46c0))
+* record roadmap item 16's catalogue update ([0f96474](https://github.com/JoveWorks/joveworks/commit/0f96474ea1ffc566ecb0dcc8a1af07bb7b01320c))
+* **test:** point the catalogue env examples at the YAML files ([6b24c6a](https://github.com/JoveWorks/joveworks/commit/6b24c6a04d1bb8d1d82ff479da4db5852ecc361a))
+* trim the roadmap to the open editor backlog ([4d6cd04](https://github.com/JoveWorks/joveworks/commit/4d6cd04ca5599bd0b10ff491c5768e4484b221ae))
 ## [0.22.1](https://github.com/JoveWorks/joveworks/compare/v0.22.0...v0.22.1) (2026-08-28)
 
 ### Features
