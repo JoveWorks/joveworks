@@ -4019,6 +4019,36 @@ aside.right {
     break-inside: avoid;
   }
 
+  /* The Table output is the one entry explicitly meant to *not* stay whole —
+     see the comment on `.notebook thead` below: "a table can genuinely need
+     more than one page … unlike a figure it is allowed to split." The
+     blanket rules just above contradict that for any section or entry that
+     happens to hold one: asking a box to avoid breaking, when it contains a
+     table that both must and expects to fragment internally (its own rows
+     are `break-inside: avoid`, not the table as a whole), is exactly the
+     shape of thing Chromium's column/page fragmentation mishandles — a
+     sweep table tall enough to outgrow the remaining column space rendered
+     overlapping the prose above it instead of continuing into the next
+     column, with the gap in between read as "everything pushed down too
+     much" (reported against the two-column pass). `:has(.result.table)`
+     makes this more specific than the blanket rules above regardless of
+     source order, but specificity alone is not enough — the property still
+     has to be declared here (`auto`, its own initial value) rather than
+     left unset, or there would be nothing to win the cascade with. */
+  .notebook-section:has(.result.table),
+  .notebook .entry:has(.result.table) {
+    break-inside: auto;
+  }
+
+  /* Freeing the table to fragment (just above) opens a new way to orphan
+     content that `break-inside: avoid` used to prevent by accident: the
+     label could now end a column with the table itself pushed entirely into
+     the next one. Same idiom as `.notebook h2` above — keep it with
+     whatever comes right after it. */
+  .notebook .result.table .label {
+    break-after: avoid;
+  }
+
   /* A wide sweep can render its plot or heatmap wider than one printed page
      (a many-facet Feasibility figure, an unbounded-by-design width per
      897e2f6/ROADMAP #46) — the screen copes by scrolling the figure
