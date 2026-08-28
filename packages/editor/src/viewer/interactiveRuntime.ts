@@ -1,6 +1,7 @@
 import { loadCatalogue, loadDocument, type Catalogue, type CompiledNotebook, type GraphDocument, type JsonValue } from '@joveworks/schema';
 
 import { analyse } from '../model/analysis';
+import { builtInCatalogues, withCatalogue } from '../model/catalogues';
 import { compileNotebook } from '../model/compiledNotebook';
 import { withSliderValue } from '../model/notebook';
 
@@ -32,7 +33,13 @@ async function loadSource(kind: 'publication' | 'share', id: string, hub: string
     if (typeof ref.id !== 'string' || typeof ref.version !== 'number') throw new Error('The Hub catalogue pin is invalid.');
     return loadCatalogue(JSON.stringify(await json(`${hub}/api/v1/catalogues/${encodeURIComponent(ref.id)}/${ref.version}`, token)));
   }));
-  return { document, catalogues };
+  // The Hub pins only what the document imported. The base, array, mechanics
+  // and bundled libraries ship with the app and are pinned by nobody, so
+  // without them every base-library node fails to resolve here and every
+  // output downstream of one arrives unavailable — a report that read
+  // correctly as published went blank the moment its controls were
+  // activated. A pinned catalogue still wins on an id collision.
+  return { document, catalogues: catalogues.reduce((all, pinned) => withCatalogue(all, pinned), builtInCatalogues()) };
 }
 
 export interface InteractiveNotebook {

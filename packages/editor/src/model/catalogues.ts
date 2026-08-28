@@ -77,6 +77,21 @@ export function bundledCatalogues(): readonly Catalogue[] {
 }
 
 /**
+ * The libraries that are always present, before anything is loaded.
+ *
+ * Every one of these ships `restricted: false` and is compiled into the app
+ * rather than fetched, so a graph that uses a base, array or mechanics node
+ * evaluates anywhere the app runs. The published-NodeBook viewer needs
+ * exactly the same set when it activates interactive controls: the Hub pins
+ * only the catalogues a document *imported*, so re-evaluating against those
+ * alone drops every base-library node — and with it every output downstream
+ * of one.
+ */
+export function builtInCatalogues(): readonly Catalogue[] {
+  return [baseCatalogue(), arrayCatalogue(), mechanicsCatalogue(), ...bundledCatalogues()];
+}
+
+/**
  * Add or replace a catalogue by id. Loading the same file twice is a normal
  * thing to do — a corrected catalogue lands the same way the first one did
  * — and it must not leave two copies lying around to trip over.

@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { formulaRef } from '@joveworks/schema';
+
+import { lookup } from '../model/analysis';
+import { baseCatalogue } from '../model/catalogues';
 import { activateNotebook, CourseAccessRequired } from './interactiveRuntime';
 
 const document = {
@@ -29,5 +33,28 @@ describe('lazy interactive runtime', () => {
   it('distinguishes a token challenge so the viewer prompts only after 401', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response('', { status: 401 })));
     await expect(activateNotebook('publication', 'private', 'https://hub.test')).rejects.toBeInstanceOf(CourseAccessRequired);
+  });
+
+  /**
+   * The Hub pins the catalogues a document imported, and nothing else: the
+   * base, array and mechanics libraries ship inside the app. Re-evaluating
+   * against the pins alone left every base-library node unresolved, so a
+   * published report's plots and tables went blank the moment its controls
+   * were activated.
+   */
+  it('re-evaluates base-library nodes the Hub does not pin', async () => {
+    const sum = { id: 'sum', kind: 'formula', position: { x: 100, y: 0 }, formula: formulaRef(lookup([baseCatalogue()], 'base.math.add') as never) };
+    const withFormula = {
+      ...document,
+      nodes: [...document.nodes.slice(0, 1), { ...document.nodes[0], id: 'b', label: 'b' }, sum, document.nodes[1]],
+      edges: [
+        { id: 'a-sum', from: { node: 'a', port: 'value' }, to: { node: 'sum', port: 'a' } },
+        { id: 'b-sum', from: { node: 'b', port: 'value' }, to: { node: 'sum', port: 'b' } },
+        { id: 'sum-answer', from: { node: 'sum', port: 'sum' }, to: { node: 'answer', port: 'value' } },
+      ],
+    };
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ document: withFormula, catalogues: [] }), { status: 200, headers: { 'Content-Type': 'application/json' } })));
+    const active = await activateNotebook('share', 'shared', 'https://hub.test');
+    expect(active.notebook.sections[0]?.outputs[0]?.available).toBe(true);
   });
 });

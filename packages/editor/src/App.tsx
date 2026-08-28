@@ -45,7 +45,7 @@ import {
   type RecentDocument,
 } from './io/recentDocuments';
 import { analyse } from './model/analysis';
-import { arrayCatalogue, bundledCatalogues, baseCatalogue, mechanicsCatalogue, withCatalogue } from './model/catalogues';
+import { baseCatalogue, builtInCatalogues, withCatalogue } from './model/catalogues';
 import { groupIntoGroup, groupIntoSection } from './model/document';
 import { edgeTouchesHiddenNode, hiddenByCollapsedGroups } from './model/collapsedGroups';
 import { autoArrange } from './model/layout';
@@ -163,7 +163,7 @@ import {
  * hand the way an R&M catalogue does, so all are always present.
  */
 function initialCatalogues(): readonly Catalogue[] {
-  let catalogues: readonly Catalogue[] = [baseCatalogue(), arrayCatalogue(), mechanicsCatalogue(), ...bundledCatalogues()];
+  let catalogues: readonly Catalogue[] = builtInCatalogues();
   for (const text of cachedCatalogueTexts()) {
     try {
       catalogues = withCatalogue(catalogues, loadCatalogue(text));
