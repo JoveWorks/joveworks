@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.23.1](https://github.com/JoveWorks/joveworks/compare/v0.23.0...v0.23.1) (2026-08-28)
+
+### Fixes
+
+* **editor:** render shared NodeBook plots ([b6142da](https://github.com/JoveWorks/joveworks/commit/b6142dabed0027ab1fe38ae00aa965cf9096f374))
+* **editor:** stop a frame re-measure stranding the canvas projection ([cfc4b82](https://github.com/JoveWorks/joveworks/commit/cfc4b826210ecb6105847fa682e08abccfd6bf21))
+
+### Performance
+
+* **test:** build one package per dependency-direction case ([65fef7d](https://github.com/JoveWorks/joveworks/commit/65fef7d882b16988bb4680d790b932718efcf0cd))
+
+### Documentation
+
+* require exact compiled NodeBook presentation ([782d40a](https://github.com/JoveWorks/joveworks/commit/782d40af52bb642ba0e382bbfaa58357bc4d97bf))
 ## [0.23.0](https://github.com/JoveWorks/joveworks/compare/v0.22.2...v0.23.0) (2026-08-28)
 
 ### Features
