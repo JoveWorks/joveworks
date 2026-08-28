@@ -210,7 +210,7 @@ function OutputTitle({ node }: { readonly node: OutputNode | MonteCarloReceiverN
  * only `result.kind === 'equation'` may ever reach `<Equation>`.
  */
 export function Result({ result, node }: { readonly result: OutputResult; readonly node: OutputNode }): ReactElement | null {
-  const { document, edit, analysis, setHoveredCandidate } = useGraph();
+  const { document, edit, analysis } = useGraph();
   const { numberFormat, locale } = useSettings();
   const notebookLocale = document.notebookLocale ?? locale;
   const t = (english: string): string => phrase(notebookLocale, english);
@@ -233,7 +233,11 @@ export function Result({ result, node }: { readonly result: OutputResult; readon
     marks: marksOver(axes),
     readouts,
     toggle: markCandidate,
-    hover: setHoveredCandidate,
+    // Candidate hover was stored in the application-wide graph context, but
+    // no surface consumed that state. Updating it on every plot pointer move
+    // therefore rebuilt every notebook figure just to throw the value away.
+    // Marks remain document state; hover stays intentionally ephemeral.
+    hover: () => undefined,
   });
 
   /** This result's readings for each mark that pins one of its cells — see `CandidateReadings`. */
@@ -385,8 +389,6 @@ export function Result({ result, node }: { readonly result: OutputResult; readon
                 className={marks.at(row).length > 0 ? 'marked' : undefined}
                 title="Click to mark this design — it is called out on every figure."
                 onClick={() => markCandidate(candidateAt(result.axes, row, readouts))}
-                onPointerEnter={() => setHoveredCandidate(candidateAt(result.axes, row, readouts))}
-                onPointerLeave={() => setHoveredCandidate(undefined)}
               >
                 {result.columns.map((column, columnIndex) => {
                   const cell = column.series.data[row];

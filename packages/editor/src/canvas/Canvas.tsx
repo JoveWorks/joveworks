@@ -15,7 +15,7 @@
  * the one exception — it is a property of looking at a graph, not of the graph.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import {
   Background,
   Controls,
@@ -441,6 +441,102 @@ function sizeOf(measured: Measurements, id: string): { measured?: { width: numbe
 }
 
 /**
+ * A document supplies positions but ordinary nodes intentionally do not
+ * persist their DOM dimensions. This conservative envelope is therefore the
+ * reliable viewport target while a replacement graph is still being measured.
+ */
+export function documentBounds(document: GraphDocument): { x: number; y: number; width: number; height: number } {
+  let left = Infinity;
+  let top = Infinity;
+  let right = -Infinity;
+  let bottom = -Infinity;
+  const include = (x: number, y: number, width: number, height: number): void => {
+    left = Math.min(left, x);
+    top = Math.min(top, y);
+    right = Math.max(right, x + width);
+    bottom = Math.max(bottom, y + height);
+  };
+  // 300 × 240 deliberately contains every collapsed node kind. A little extra
+  // space is preferable to fitting an unloaded example to a stale node list.
+  for (const node of document.nodes) include(node.position.x, node.position.y, 300, 240);
+  for (const frame of document.frames) include(frame.position.x, frame.position.y, frame.size.width, frame.size.height);
+  return left === Infinity ? { x: 0, y: 0, width: 1, height: 1 } : { x: left, y: top, width: right - left, height: bottom - top };
+}
+
+/**
+ * Apply React Flow's live geometry reports without making them document edits.
+ * The returned document is a Canvas-only preview: the kernel must never see it
+ * until the gesture ends, otherwise a single drag asks it to re-evaluate the
+ * whole study for every pointer event.
+ */
+export function previewLayoutChanges(
+  document: GraphDocument,
+  changes: readonly NodeChange[],
+  collapsedGroups: ReadonlySet<string>,
+  snapToGrid: boolean,
+): GraphDocument {
+  const frameIds = new Set(document.frames.map((frame) => frame.id));
+  const resizing = new Set(
+    changes
+      .filter((change) => change.type === 'dimensions')
+      .filter((change) => frameIds.has(change.id) && !collapsedGroups.has(change.id))
+      .map((change) => change.id),
+  );
+  const carriedFrames = new Set<string>();
+  const carriedNodes = new Set<string>();
+  for (const change of changes) {
+    if (
+      change.type !== 'position' ||
+      change.position === undefined ||
+      !frameIds.has(change.id) ||
+      resizing.has(change.id)
+    ) continue;
+    const descendants = frameDescendantIds(document, change.id);
+    for (const descendant of descendants) if (descendant !== change.id) carriedFrames.add(descendant);
+    for (const node of document.nodes) {
+      if (node.frameId !== undefined && descendants.has(node.frameId)) carriedNodes.add(node.id);
+    }
+  }
+  const gridSnap = (value: number): number => Math.round(value / CANVAS_GRID_SIZE) * CANVAS_GRID_SIZE;
+  let next = document;
+  for (const change of changes) {
+    if (change.type === 'position' && change.position !== undefined) {
+      if (carriedFrames.has(change.id) || carriedNodes.has(change.id)) continue;
+      const position =
+        frameIds.has(change.id) && resizing.has(change.id) && snapToGrid
+          ? { x: gridSnap(change.position.x), y: gridSnap(change.position.y) }
+          : change.position;
+      if (frameIds.has(change.id)) {
+        const before = next.frames.find((frame) => frame.id === change.id);
+        next = updateFrame(next, change.id, (frame) => ({ ...frame, position }));
+        if (before !== undefined && !resizing.has(change.id)) {
+          const dx = position.x - before.position.x;
+          const dy = position.y - before.position.y;
+          if (dx !== 0 || dy !== 0) next = moveFrameContents(next, change.id, dx, dy);
+        }
+      } else {
+        next = moveNode(next, change.id, position);
+      }
+    }
+    if (
+      change.type === 'dimensions' &&
+      change.dimensions !== undefined &&
+      frameIds.has(change.id) &&
+      !collapsedGroups.has(change.id)
+    ) {
+      const dimensions = snapToGrid
+        ? { width: gridSnap(change.dimensions.width), height: gridSnap(change.dimensions.height) }
+        : change.dimensions;
+      next = updateFrame(next, change.id, (frame) => ({
+        ...frame,
+        size: dimensions as { width: number; height: number },
+      }));
+    }
+  }
+  return next;
+}
+
+/**
  * React Flow reserves `input`/`output`/`default`/`group` as its own built-in
  * node types, each with its own default box styling in its base stylesheet —
  * a border, fixed width, centred text. Two of our node kinds are spelled the
@@ -588,6 +684,25 @@ export function Canvas({
    * included, which is exactly what React Flow itself needs.
    */
   const [measured, setMeasured] = useState<Measurements>(new Map());
+  const fittedDocumentId = useRef<string | undefined>(undefined);
+  // Measurements belong to React Flow's rendered node set. Do not carry sizes
+  // from a prior study into the replacement projection.
+  useLayoutEffect(() => {
+    setMeasured(new Map());
+  }, [document.id]);
+  useEffect(() => {
+    if (fittedDocumentId.current === document.id) return;
+    fittedDocumentId.current = document.id;
+    const frame = requestAnimationFrame(() => {
+      void flow.fitBounds(documentBounds(document), { padding: 0.2, duration: 200 });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [document, flow]);
+  // React Flow needs live positions while a node is moving, but the graph
+  // document (and therefore the kernel) only needs the position at rest.
+  // Keep the latter out of this high-frequency path.
+  const [layoutPreview, setLayoutPreview] = useState<GraphDocument | undefined>(undefined);
+  const layoutPreviewRef = useRef<GraphDocument | undefined>(undefined);
   /**
    * Each node's last-seen size while *not* selected — its resting state,
    * collapsed by default or however large a pin (`expanded`) keeps it, but
@@ -598,6 +713,17 @@ export function Canvas({
    * expand into node positions that are supposed to be stable once deselected.
    */
   const [restingMeasured, setRestingMeasured] = useState<Measurements>(new Map());
+
+  const commitLayoutPreview = useCallback((): void => {
+    const preview = layoutPreviewRef.current;
+    if (preview === undefined) return;
+    layoutPreviewRef.current = undefined;
+    setLayoutPreview(undefined);
+    // One discrete edit means one undo step and one analysis/evaluation pass.
+    edit(() => reframe(preview));
+  }, [edit]);
+
+  const renderedDocument = layoutPreview ?? document;
 
   const edgeEndpointIds = useMemo(() => {
     const edge = document.edges.find((candidate) => candidate.id === hoveredEdgeId);
@@ -721,18 +847,18 @@ export function Canvas({
       // layer the smallest region is the most specific one. This lets a child
       // group receive a click instead of its broad parent when they overlap.
       const frameLayer = new Map(
-        [...document.frames]
+        [...renderedDocument.frames]
           .sort((a, b) => b.size.width * b.size.height - a.size.width * a.size.height)
-          .map((frame, index) => [frame.id, -document.frames.length + index] as const),
+          .map((frame, index) => [frame.id, -renderedDocument.frames.length + index] as const),
       );
-      const hidden = hiddenByCollapsedGroups(document, collapsedGroups);
+      const hidden = hiddenByCollapsedGroups(renderedDocument, collapsedGroups);
       const portsByGroup = new Map(
-        document.frames
+        renderedDocument.frames
           .filter((frame) => frame.kind === 'group' && collapsedGroups.has(frame.id))
-          .map((frame) => [frame.id, groupPorts(document, frame.id)] as const),
+          .map((frame) => [frame.id, groupPorts(renderedDocument, frame.id)] as const),
       );
       return [
-        ...document.frames.map((frame) => {
+        ...renderedDocument.frames.map((frame) => {
           const ports = portsByGroup.get(frame.id);
           const interfacePorts = ports === undefined ? [] : [...ports.inputs, ...ports.outputs];
           const highlightedGroupPorts = interfacePorts.flatMap((port) => {
@@ -751,6 +877,8 @@ export function Canvas({
               highlighted: macroHighlighted,
               highlightedGroupPorts,
               onPortHover: setHoveredPort,
+              onLayoutGestureEnd: commitLayoutPreview,
+              layoutSize: size,
             },
             selected: selected.has(frame.id),
             selectable: true,
@@ -758,12 +886,12 @@ export function Canvas({
             // A group’s controls must sit above its wires, but ordinary nodes
             // still follow it in the projection and therefore win where they
             // overlap. Sections remain fully behind the calculation.
-            zIndex: frame.kind === 'group' ? 0 : frameLayer.get(frame.id) ?? -document.frames.length,
+            zIndex: frame.kind === 'group' ? 0 : frameLayer.get(frame.id) ?? -renderedDocument.frames.length,
             ...(hidden.has(frame.id) ? { hidden: true } : {}),
             style: { width: size.width, height: size.height },
           };
         }),
-        ...document.nodes.map((node) => {
+        ...renderedDocument.nodes.map((node) => {
           const className = nodeClasses([
             rejectedEndpointIds.has(node.id) ? 'connection-refused' : undefined,
             matchedNodeIds.has(node.id) ? 'node-search-match' : undefined,
@@ -786,7 +914,7 @@ export function Canvas({
         }),
       ];
     },
-    [collapsedGroups, connectedNodeIds, document, highlightedPorts, matchedNodeIds, measured, rejectedEndpointIds, selected],
+    [collapsedGroups, commitLayoutPreview, connectedNodeIds, highlightedPorts, matchedNodeIds, measured, rejectedEndpointIds, renderedDocument, selected],
   );
 
   const edges = useMemo<FlowEdge[]>(() => {
@@ -825,21 +953,28 @@ export function Canvas({
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
-      const frames = new Set(document.frames.map((frame) => frame.id));
       const removed = new Set(
         changes.filter((change) => change.type === 'remove').map((change) => change.id),
       );
 
       setSelected((current) => {
-        const next = new Set(current);
+        let next: Set<string> | undefined;
         for (const change of changes) {
           if (change.type === 'select') {
-            if (change.selected) next.add(change.id);
-            else next.delete(change.id);
+            if (change.selected && !(next ?? current).has(change.id)) {
+              next ??= new Set(current);
+              next.add(change.id);
+            } else if (!change.selected && (next ?? current).has(change.id)) {
+              next ??= new Set(current);
+              next.delete(change.id);
+            }
           }
-          if (change.type === 'remove') next.delete(change.id);
+          if (change.type === 'remove' && (next ?? current).has(change.id)) {
+            next ??= new Set(current);
+            next.delete(change.id);
+          }
         }
-        return next;
+        return next ?? current;
       });
 
       setMeasured((current) => {
@@ -874,105 +1009,26 @@ export function Canvas({
         return touched ? next : current;
       });
 
-      // A removal always goes through `editLive`, coalesced by the
-      // `queueMicrotask` below rather than `edit`'s usual one-call-one-step —
-      // React Flow's own `deleteElements` (`useGlobalKeyHandler`, Backspace/
-      // Delete) fires this callback for the node *and* `onEdgesChange` for
-      // its connected edges as two separate calls for one keypress, and
-      // without coalescing, undoing once would only bring the node back,
-      // leaving its wire still gone.
-      // NodeResizer reports a resize from the top or left edge as a
-      // `position` change too, alongside its `dimensions` change, to keep the
-      // opposite corner anchored — that is not a drag, and must not carry
-      // the frame's members along with it the way an actual drag does.
-      const resizing = new Set(
-        changes
-          .filter((change) => change.type === 'dimensions')
-          .filter((change) => frames.has(change.id) && !collapsedGroups.has(change.id))
-          .map((change) => change.id),
+      const hasGeometryChange = changes.some(
+        (change) =>
+          (change.type === 'position' && change.position !== undefined) ||
+          (change.type === 'dimensions' && change.dimensions !== undefined),
       );
-      // React Flow can include stale position reports for hidden or selected
-      // descendants in the same batch as a parent drag. The parent already
-      // carries that subtree in `moveFrameContents`; accepting those reports
-      // afterward would put a child straight back where it was.
-      const carriedFrames = new Set<string>();
-      const carriedNodes = new Set<string>();
-      for (const change of changes) {
-        if (
-          change.type !== 'position' ||
-          change.position === undefined ||
-          !frames.has(change.id) ||
-          resizing.has(change.id)
-        ) continue;
-        const descendants = frameDescendantIds(document, change.id);
-        for (const descendant of descendants) {
-          if (descendant !== change.id) carriedFrames.add(descendant);
-        }
-        for (const node of document.nodes) {
-          if (node.frameId !== undefined && descendants.has(node.frameId)) carriedNodes.add(node.id);
-        }
+      if (hasGeometryChange) {
+        setLayoutPreview((current) => {
+          const next = previewLayoutChanges(current ?? document, changes, collapsedGroups, snapToGrid);
+          layoutPreviewRef.current = next;
+          return next;
+        });
       }
-      // NodeResizer only snaps the pointer driving the dragged corner
-      // (@xyflow/react's own snapGrid/snapToGrid), not the resulting box —
-      // the stationary corner is wherever it already was, so width/height
-      // land in grid-size increments without the edges actually landing on
-      // grid lines. Round the frame's reported box to the grid ourselves.
-      const gridSnap = (value: number): number => Math.round(value / CANVAS_GRID_SIZE) * CANVAS_GRID_SIZE;
-      editLive((current) => {
-        let next = current;
-        for (const change of changes) {
-          if (change.type === 'position' && change.position !== undefined) {
-            if (carriedFrames.has(change.id) || carriedNodes.has(change.id)) continue;
-            const position =
-              frames.has(change.id) && resizing.has(change.id) && snapToGrid
-                ? { x: gridSnap(change.position.x), y: gridSnap(change.position.y) }
-                : change.position;
-            if (frames.has(change.id)) {
-              // A frame is passive — nothing about membership changes
-              // here, only every member's own position, by the same delta the
-              // frame itself just moved by. Fires every drag tick, not only
-              // at drop, so contents visibly travel with the frame rather
-              // than the frame abandoning them mid-drag.
-              const before = next.frames.find((frame) => frame.id === change.id);
-              next = updateFrame(next, change.id, (frame) => ({ ...frame, position }));
-              if (before !== undefined && !resizing.has(change.id)) {
-                const dx = position.x - before.position.x;
-                const dy = position.y - before.position.y;
-                if (dx !== 0 || dy !== 0) {
-                  next = moveFrameContents(next, change.id, dx, dy);
-                }
-              }
-            } else {
-              next = moveNode(next, change.id, position);
-            }
-          }
-          // A frame's size lives in the document (unlike an ordinary node's,
-          // which is measured, never authored) — NodeResizer reports it the
-          // same way a drag reports position, live change by live change, so
-          // this is the only way the resize preview is not frozen until drop.
-          if (
-            change.type === 'dimensions' &&
-            change.dimensions !== undefined &&
-            frames.has(change.id) &&
-            !collapsedGroups.has(change.id)
-          ) {
-            const dimensions = snapToGrid
-              ? { width: gridSnap(change.dimensions.width), height: gridSnap(change.dimensions.height) }
-              : change.dimensions;
-            next = updateFrame(next, change.id, (frame) => ({
-              ...frame,
-              size: dimensions as { width: number; height: number },
-            }));
-          }
-        }
-        return removed.size === 0 ? next : reframe(removeNodes(next, removed));
-      });
-      // Drag/resize ticks (removed.size === 0) are coalesced by
-      // `onNodeDragStop`/`onResizeEnd` calling `commitEdit` at gesture end;
-      // a removal has no such callback, so it commits itself, once the
-      // current synchronous burst of change events (this one and possibly
-      // `onEdgesChange`'s, for the same keypress) has fully landed.
-      if (removed.size > 0) queueMicrotask(() => commitEdit());
+      // A removal still uses a live edit because React Flow reports connected
+      // node and edge removals separately for one Delete keypress.
+      if (removed.size > 0) {
+        layoutPreviewRef.current = undefined;
+        setLayoutPreview(undefined);
+        editLive((current) => reframe(removeNodes(current, removed)));
+        queueMicrotask(() => commitEdit());
+      }
     },
     [collapsedGroups, document, editLive, commitEdit, snapToGrid, selected],
   );
@@ -980,15 +1036,23 @@ export function Canvas({
   const onEdgesChange = useCallback(
     (changes: EdgeChange[]) => {
       setSelected((current) => {
-        const next = new Set(current);
+        let next: Set<string> | undefined;
         for (const change of changes) {
           if (change.type === 'select') {
-            if (change.selected) next.add(change.id);
-            else next.delete(change.id);
+            if (change.selected && !(next ?? current).has(change.id)) {
+              next ??= new Set(current);
+              next.add(change.id);
+            } else if (!change.selected && (next ?? current).has(change.id)) {
+              next ??= new Set(current);
+              next.delete(change.id);
+            }
           }
-          if (change.type === 'remove') next.delete(change.id);
+          if (change.type === 'remove' && (next ?? current).has(change.id)) {
+            next ??= new Set(current);
+            next.delete(change.id);
+          }
         }
-        return next;
+        return next ?? current;
       });
       const removed = new Set(
         changes.filter((change) => change.type === 'remove').map((change) => change.id),
@@ -1431,10 +1495,7 @@ export function Canvas({
         // to click empty canvas first before a node inside could be reached.
         // With this off, declared zIndex is what stacking follows, always.
         elevateNodesOnSelect={false}
-        onNodeDragStop={() => {
-          editLive(reframe);
-          commitEdit();
-        }}
+        onNodeDragStop={commitLayoutPreview}
         onPaneClick={() => {
           clearRefusal();
           setMenu(undefined);

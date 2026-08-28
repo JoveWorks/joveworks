@@ -89,8 +89,6 @@ const graphContext: GraphContextValue = {
   setSelected: () => {},
   hovered: new Set(),
   setHovered: () => {},
-  hoveredCandidate: undefined,
-  setHoveredCandidate: () => {},
   marqueeActive: false,
   setMarqueeActive: () => {},
   monteCarloPlayback: { revealed: 0, playing: false },

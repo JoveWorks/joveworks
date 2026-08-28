@@ -23,7 +23,6 @@ import {
   loadDocument,
   saveCatalogue,
   saveDocument,
-  type Candidate,
   type Catalogue,
   type GraphDocument,
 } from '@joveworks/schema';
@@ -388,7 +387,6 @@ function AppShell(): ReactElement {
     setHistory(initHistory(next));
     setSavedSnapshot(saveDocument(next));
     setCollapsedGroups(new Set());
-    setFitRequest((current) => current + 1);
     setCourseWorkspaceBinding(undefined);
   };
   const openExample = (id: ExampleId): void => {
@@ -406,17 +404,6 @@ function AppShell(): ReactElement {
     lastInstrumentedDocument.current = document;
     for (const event of documentEvents(previous, document)) analytics.track(event);
   }, [document]);
-  const [fitRequest, setFitRequest] = useState(0);
-  useEffect(() => {
-    // 0 is the initial value, already covered by `<ReactFlow fitView>`'s own
-    // on-mount fit — only re-fit for a `resetDocument` that happens after.
-    if (fitRequest === 0) return;
-    // A newly swapped-in node list is measured by React Flow asynchronously
-    // after this render commits; fitting a frame later gives it that tick
-    // rather than fitting to stale (or zero-size) node bounds.
-    const frame = requestAnimationFrame(() => flow.fitView({ padding: 0.2, duration: 200 }));
-    return () => cancelAnimationFrame(frame);
-  }, [fitRequest, flow]);
   // Guards anything that calls `resetDocument` behind a confirmation once
   // there's something to lose — New, Open, a recent document, a sample, the
   // tutorial. Runs the action immediately when the graph is already clean.
@@ -429,7 +416,6 @@ function AppShell(): ReactElement {
   const [collapsedGroups, setCollapsedGroups] = useState<ReadonlySet<string>>(new Set());
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [hovered, setHovered] = useState<ReadonlySet<string>>(new Set());
-  const [hoveredCandidate, setHoveredCandidate] = useState<Candidate | undefined>(undefined);
   const [marqueeActive, setMarqueeActive] = useState(false);
   // Panel visibility is session-only: both panels start open on every load,
   // while their close buttons and the View menu make hiding them deliberate.
@@ -885,8 +871,6 @@ function AppShell(): ReactElement {
       setSelected,
       hovered,
       setHovered,
-      hoveredCandidate,
-      setHoveredCandidate,
       marqueeActive,
       setMarqueeActive,
       monteCarloPlayback,
@@ -904,7 +888,6 @@ function AppShell(): ReactElement {
       toggleGroupCollapsed,
       selected,
       hovered,
-      hoveredCandidate,
       marqueeActive,
       monteCarloPlayback,
       togglePlayback,

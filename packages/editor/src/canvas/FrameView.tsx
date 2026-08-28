@@ -15,14 +15,14 @@ import { Handle, NodeResizer, Position, type NodeProps } from '@xyflow/react';
 
 import { useGraph } from '../graph-context';
 import { phrase } from '../i18n';
-import { reframe, updateFrame } from '../model/document';
+import { updateFrame } from '../model/document';
 import type { CanvasFlowNode } from './node-data';
 import { TitleField } from './TitleField';
 import { collapsedGroupSize, groupPortHandle, groupPorts } from '../model/collapsedGroups';
 import { useSettings } from '../settings-context';
 
 export function FrameView({ id, selected, data }: NodeProps<CanvasFlowNode>): ReactElement | null {
-  const { document, edit, editLive, commitEdit, collapsedGroups, toggleGroupCollapsed, hovered: hoveredIds } = useGraph();
+  const { document, edit, collapsedGroups, toggleGroupCollapsed, hovered: hoveredIds } = useGraph();
   const { locale } = useSettings();
   const [hovered, setHovered] = useState(false);
   const frame = document.frames.find((candidate) => candidate.id === id);
@@ -31,7 +31,7 @@ export function FrameView({ id, selected, data }: NodeProps<CanvasFlowNode>): Re
   const highlighted = hoveredIds.has(id);
   const collapsed = frame.kind === 'group' && collapsedGroups.has(id);
   const ports = collapsed ? groupPorts(document, id) : undefined;
-  const size = ports === undefined ? frame.size : collapsedGroupSize(ports);
+  const size = ports === undefined ? (data?.layoutSize ?? frame.size) : collapsedGroupSize(ports);
   const collapseLabel = phrase(locale, collapsed ? 'Expand group' : 'Collapse group');
   const highlightedGroupPorts = new Set(data?.highlightedGroupPorts ?? []);
   const interfaceHighlighted = (data?.highlighted ?? false) || highlightedGroupPorts.size > 0;
@@ -48,15 +48,9 @@ export function FrameView({ id, selected, data }: NodeProps<CanvasFlowNode>): Re
         isVisible={hovered || (selected ?? false)}
         minWidth={160}
         minHeight={100}
-        // Position and size are already kept live in the document by Canvas's
-        // onNodesChange (NodeResizer reports them the same way a drag reports
-        // position). All that is left once the gesture ends is membership: a
-        // frame's bounds decide it, same as `onNodeDragStop` does for
-        // an ordinary drag.
-        onResizeEnd={() => {
-          editLive(reframe);
-          commitEdit();
-        }}
+        // Canvas keeps geometry in an ephemeral preview while the handle is
+        // moving, then commits it and assigns membership exactly once here.
+        onResizeEnd={() => data?.onLayoutGestureEnd?.()}
       /> : null}
       {frame.kind === 'group' ? (
         <span className="group-frame-outline" aria-hidden="true">

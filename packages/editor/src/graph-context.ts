@@ -10,7 +10,7 @@
 
 import { createContext, useContext } from 'react';
 
-import type { Candidate, Catalogue, GraphDocument } from '@joveworks/schema';
+import type { Catalogue, GraphDocument } from '@joveworks/schema';
 
 import type { Analysis } from './model/analysis';
 import type { MonteCarloPlaybackState } from './model/monteCarloPlayback';
@@ -56,18 +56,6 @@ export interface GraphContextValue {
    */
   readonly hovered: ReadonlySet<string>;
   readonly setHovered: (update: (current: ReadonlySet<string>) => ReadonlySet<string>) => void;
-  /**
-   * The candidate the reader is pointing at right now, if any — hovering a
-   * point on one figure lights the same design on every other.
-   *
-   * Session-local, exactly like `hovered` above and for the same reason: the
-   * notebook's figures are siblings under this context rather than parent and
-   * child, so there is nowhere closer to share it. It is deliberately *not*
-   * `document.marks`: a mark is a decision that belongs in the saved report,
-   * a hover is a glance.
-   */
-  readonly hoveredCandidate: Candidate | undefined;
-  readonly setHoveredCandidate: (candidate: Candidate | undefined) => void;
   /**
    * Whether a marquee (drag-select) rectangle is currently being dragged.
    * `NodeShell` reads this to keep a node's DOM footprint at its collapsed
