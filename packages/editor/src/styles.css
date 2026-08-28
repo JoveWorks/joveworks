@@ -3866,13 +3866,14 @@ aside.right {
 @page {
   /* Hand-in pages need a readable, symmetric writing area. Browsers apply
      this page box when their print dialog uses Default or Custom margins.
-     40mm is double the usual document margin and deliberately so: with the
-     body set in one full-width column, it is the margin that sets the
-     measure — 130mm here, close to the 65–75 characters a line a reader
-     tracks without losing their place — and it leaves a margin wide enough
-     to write a correction in. */
+     The side margins do a job the top and bottom do not: with the body set
+     in one full-width column, they are what sets the measure — 40mm a side
+     leaves 130mm, close to the 65–75 characters a line a reader tracks
+     without losing their place, and room to write a correction in. Doubling
+     the head and foot bought nothing for that and only cost lines per page,
+     so those stay at 20mm. */
   size: A4 portrait;
-  margin: 40mm;
+  margin: 20mm 40mm;
 }
 
 .histogram-bars {
