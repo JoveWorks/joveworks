@@ -20,9 +20,12 @@
  *   `variadic` flag marks a port that takes several wires instead of one —
  *   `sum`'s addends, a shaft's breakpoints — rendered by the editor's
  *   ghost-slot mechanism (`portSlots.ts`... see that file's own history
- *   for the name). Each wire still carries one value per grid cell; a
- *   variadic port introduces no axis of its own; that is unaffected by
- *   whether any of its wires happen to be swept.
+ *   for the name). Ordinarily each wire still carries one value per grid
+ *   cell; the one exception is a Monte Carlo generator's own `values` and
+ *   `weights` ports (`NumericPort.variadic`'s own comment has the reason).
+ *   A variadic port introduces no axis of its own regardless of which
+ *   reading applies; that is unaffected by whether any of its wires happen
+ *   to be swept.
  * - **categorical** — a value from an enumerated domain, `H7` and friends.
  *   Sweepable by explicit list only; there is no spacing between `H7`
  *   and `K7`.
@@ -121,13 +124,27 @@ export interface NumericPort extends PortBase {
    * This port accepts several wires instead of one — `sum`'s addends, a
    * shaft's breakpoints, Monte Carlo's discrete-distribution values and
    * weights. The editor renders it as `port::0`, `port::1`, … plus a
-   * trailing `port::open` ghost slot (`portSlots.ts`); one value per wire per
-   * grid cell, broadcast the same as any other numeric input. It still
-   * introduces no axis of its own, so a variadic port cannot itself be swept.
-   * Freely combined with a generic signature — `sum`'s addends are both,
-   * and `draft.ts`'s `genericVariadic` is how the base node library says so.
-   * Never true on an `OutputPort` though: a formula produces one value, not
-   * several, which `asOutputPort` refuses below.
+   * trailing `port::open` ghost slot (`portSlots.ts`).
+   *
+   * Ordinarily one value per wire per grid cell, broadcast the same as any
+   * other numeric input — that is the rule at a shaft's `force` port, where
+   * a multi-valued wire legitimately means "sweep this load and give me a
+   * diagram per magnitude". The one exception is a Monte Carlo generator's
+   * own `values` and `weights` ports: that node's parameters admit no swept
+   * edge at all (`generatorParam` in evaluate.ts), so there is no axis for a
+   * multi-valued wire to line up against, and every number on every wire can
+   * only mean one more choice or weight. Those two ports consume each wire
+   * whole instead — `discreteWireValues` in evaluate.ts — so one wire
+   * carrying a `list` of three, three wires of one each, or a mix, all
+   * express the same distribution. Do not generalize this: it holds only
+   * where sweeping is already impossible.
+   *
+   * It still introduces no axis of its own either way, so a variadic port
+   * cannot itself be swept. Freely combined with a generic signature —
+   * `sum`'s addends are both, and `draft.ts`'s `genericVariadic` is how the
+   * base node library says so. Never true on an `OutputPort` though: a
+   * formula produces one value, not several, which `asOutputPort` refuses
+   * below.
    */
   readonly variadic?: boolean;
 }

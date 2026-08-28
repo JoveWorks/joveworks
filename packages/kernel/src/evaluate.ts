@@ -820,31 +820,37 @@ function generatorParam(
 }
 
 /**
- * Every wire's own single value at a variadic port on a generator node —
- * `values`/`weights` for a discrete distribution, one entry per possible
- * draw. Each edge has to collapse to one number for the same reason
- * `generatorParam` requires it of its own wired edge: there is nothing on
- * this node's own axis yet for a swept edge to line up against.
+ * Every number wired into a discrete generator's `values` or `weights` port,
+ * flattened across wires in wire order. Unlike `generatorParam`, which
+ * collapses a wired edge to one number, this reads each edge whole: one wire
+ * carrying a `list` of three, three wires each carrying one scalar, and a
+ * mix of both all express the same distribution, and there is no reason to
+ * make the student split a set of choices across N single-value nodes just
+ * because they arrive by wire.
+ *
+ * Consuming an edge whole is safe here specifically, and would not be
+ * elsewhere: `generatorParam` already refuses any swept edge at this node's
+ * own parameters, because sweeping needs an axis to line up against and this
+ * node is what introduces its axis in the first place — there is nothing
+ * for a multi-valued wire to sweep. That leaves only one reading for several
+ * values arriving on one wire here: they are more choices (or more
+ * weights), not points on some other axis. A shaft's `force` port, or any
+ * other ordinary variadic port, has no such guarantee — a multi-valued wire
+ * there legitimately means "sweep this load", so those ports keep the
+ * one-value-per-wire-per-cell contract instead.
  */
-function variadicScalars(
+function discreteWireValues(
   name: string,
   key: string,
   resolution: Resolution,
   values: ReadonlyMap<string, PortValue>,
 ): readonly number[] {
-  return (resolution.incoming.get(key) ?? []).map((edge) => {
+  return (resolution.incoming.get(key) ?? []).flatMap((edge) => {
     const wired = valueAtEdge(edge, key, values);
     if (wired.kind !== 'numeric') {
       throw new KernelError(`'${name}' needs a numeric value, not a categorical one`, key);
     }
-    if (wired.data.length !== 1) {
-      throw new KernelError(
-        `'${name}' needs one number per wire, not a swept series of ${wired.data.length} — ` +
-          'nothing on the axis this generator introduces exists yet to line up against',
-        key,
-      );
-    }
-    return wired.data[0] as number;
+    return wired.data;
   });
 }
 
@@ -878,10 +884,10 @@ function generatorValue(
       : node.distribution === 'discrete'
         ? (() => {
             const valuesKey = endpointKey(node.id, VALUES_PORT);
-            const choices = variadicScalars(VALUES_PORT, valuesKey, resolution, values);
+            const choices = discreteWireValues(VALUES_PORT, valuesKey, resolution, values);
             if (choices.length === 0) throw new KernelError("'values' needs at least one wire", valuesKey);
             const weightsKey = endpointKey(node.id, WEIGHTS_PORT);
-            const weights = variadicScalars(WEIGHTS_PORT, weightsKey, resolution, values);
+            const weights = discreteWireValues(WEIGHTS_PORT, weightsKey, resolution, values);
             const invalid = weights.length > 0 && (weights.length !== choices.length || weights.some((value) => value < 0) || weights.every((value) => value === 0));
             if (invalid) warnings.push({
               kind: 'monteCarloDiscreteWeights',
