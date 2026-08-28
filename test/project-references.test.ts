@@ -13,8 +13,13 @@ import { afterAll, describe, expect, it } from 'vitest';
  * enforcement rather than the configuration.
  *
  * Each case copies the workspace to a scratch directory, drops one illegal
- * import into it and runs `tsc -b`. The copy keeps a failed run from leaving a
- * broken file behind in the real tree.
+ * import into it and builds the package that holds the import. The copy keeps a
+ * failed run from leaving a broken file behind in the real tree.
+ *
+ * That the workspace builds clean as it stands is not a case here: `pnpm build`
+ * is the validation command and CI runs it in its own step, so asserting it
+ * again would mean a second full `tsc -b` — the most expensive thing this file
+ * could do — to learn what the step before already reported.
  *
  * What the last case records is that the enforcement is **pnpm's isolated
  * `node_modules` plus each package's `dependencies`**, surfacing through the
@@ -27,11 +32,22 @@ import { afterAll, describe, expect, it } from 'vitest';
 const root = fileURLToPath(new URL('..', import.meta.url));
 const scratch: string[] = [];
 
+/** Build outputs. Copying them costs IO and leaves stale `.tsbuildinfo` behind. */
+const OUTPUT = /(?:^|[/\\])(?:dist|build)$/;
+
 function workspaceCopy(): string {
   const dir = mkdtempSync(join(tmpdir(), 'joveworks-refs-'));
   scratch.push(dir);
   for (const entry of ['packages', 'tsconfig.json', 'tsconfig.base.json']) {
-    cpSync(join(root, entry), join(dir, entry), { recursive: true, verbatimSymlinks: true });
+    cpSync(join(root, entry), join(dir, entry), {
+      recursive: true,
+      verbatimSymlinks: true,
+      // Every case compiles from source, so the ~7 MiB of `dist`/`build` in a
+      // tree that has already been built is pure copying cost — and omitting
+      // the `.tsbuildinfo` inside them is what lets the build run without
+      // `--force`.
+      filter: (src) => !OUTPUT.test(src),
+    });
   }
   // Dependencies are read-only during `tsc -b`. Copying pnpm's 200+ MiB store
   // once per case saturates a small CI runner and can starve Vitest's worker
@@ -42,13 +58,25 @@ function workspaceCopy(): string {
   return dir;
 }
 
-function build(dir: string): boolean {
+/**
+ * Build one package and its references, not the whole workspace.
+ *
+ * The barrier under test is raised while compiling the package that holds the
+ * illegal import, so nothing downstream of it needs to compile. Skipping the
+ * editor — the largest project by a wide margin, and never the one being
+ * edited — is most of the difference on a two-core runner.
+ */
+function build(dir: string, ...pkgs: readonly string[]): boolean {
   // TypeScript 5.9 can return before diagnostics flush through synchronous
   // child-process pipes. The exit status is the dependency barrier this test
   // needs to exercise, so do not make the assertion depend on captured text.
   const result = spawnSync(
     process.execPath,
-    [join(root, 'node_modules', 'typescript', 'bin', 'tsc'), '-b', '--force'],
+    [
+      join(root, 'node_modules', 'typescript', 'bin', 'tsc'),
+      '-b',
+      ...pkgs.map((pkg) => join('packages', pkg)),
+    ],
     { cwd: dir, stdio: 'ignore' },
   );
   return result.status === 0;
@@ -59,17 +87,13 @@ afterAll(() => {
 });
 
 describe('dependency direction', () => {
-  it('builds the workspace as it stands', () => {
-    expect(build(workspaceCopy())).toBe(true);
-  }, 120_000);
-
   it('fails the build when units imports schema — a package below its layer', () => {
     const dir = workspaceCopy();
     writeFileSync(
       join(dir, 'packages/units/src/illegal.ts'),
       `import { DOCUMENT_SCHEMA_VERSION } from '@joveworks/schema';\nexport const x = DOCUMENT_SCHEMA_VERSION;\n`,
     );
-    expect(build(dir)).toBe(false);
+    expect(build(dir, 'units')).toBe(false);
   }, 120_000);
 
   it('fails the build when the kernel imports the editor — React would follow', () => {
@@ -78,7 +102,7 @@ describe('dependency direction', () => {
       join(dir, 'packages/kernel/src/illegal.ts'),
       `import { EDITOR } from '@joveworks/editor';\nexport const x = EDITOR;\n`,
     );
-    expect(build(dir)).toBe(false);
+    expect(build(dir, 'kernel')).toBe(false);
   }, 120_000);
 
   it('does not catch an illegal import that binds nothing', () => {
@@ -87,7 +111,7 @@ describe('dependency direction', () => {
     // be how a dependency creeps in — but it is not caught here.
     const dir = workspaceCopy();
     writeFileSync(join(dir, 'packages/kernel/src/illegal.ts'), `import '@joveworks/editor';\n`);
-    expect(build(dir)).toBe(true);
+    expect(build(dir, 'kernel')).toBe(true);
   }, 120_000);
 
   it('records that a project reference is not itself a permission check', () => {
@@ -120,6 +144,10 @@ describe('dependency direction', () => {
       join(dir, 'packages/kernel/src/illegal.ts'),
       `import { DOCUMENT_SCHEMA_VERSION } from '@joveworks/schema';\nexport const x = DOCUMENT_SCHEMA_VERSION;\n`,
     );
-    expect(build(dir)).toBe(true);
+    // Schema is named on the command line because the reference that would
+    // have ordered its build is the very thing this case removes — which is
+    // the distinction being drawn: references schedule work, they do not
+    // grant or withhold the right to import.
+    expect(build(dir, 'schema', 'kernel')).toBe(true);
   }, 120_000);
 });
