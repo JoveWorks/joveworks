@@ -6,8 +6,6 @@ Guidance for coding agents working in this repository.
 
 Read [OVERVIEW.md](OVERVIEW.md) for the project in one pass, then
 [ROADMAP.md](ROADMAP.md) for current work and outstanding content sign-off.
-`docs/PLAN.md` and `docs/UX-SPEC.md` record completed milestone-1 work; they
-are useful history, not live status.
 
 ## Project and scope
 

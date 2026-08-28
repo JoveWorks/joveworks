@@ -121,7 +121,7 @@ for an unknown. This isn't a gap left by scope pressure — it was measured. The
 old course notebooks' SymPy-based equation reordering, the one function doing
 genuine symbolic algebra, had **zero calls** across all 23 notebooks, and
 the function itself was broken: it raised on every invocation and nobody had
-noticed (see `docs/PLAN.md`). The CAS was inherited habit, not a requirement
+noticed. The CAS was inherited habit, not a requirement
 anyone was exercising.
 
 That sounds like a limitation and mostly is not, for two reasons:
@@ -325,7 +325,7 @@ hand:
   plausible reading already proposed in ROADMAP.md's content sign-off section
   and need confirming, not reconstructing.
 
-**The code that exists** followed `docs/PLAN.md`'s deliberate order: units and
+**The code that exists** followed a deliberate build order: units and
 schema, the base node library, then the kernel — and the UI last. The core is
 testable without any interface, and that is where correctness is won.
 
@@ -372,8 +372,6 @@ golden exercises stay marked unverified rather than assumed sound.
 |---|---|
 | [ROADMAP.md](ROADMAP.md) | What's actually still open — content sign-off, milestone 2, the backlog |
 | [CLAUDE.md](CLAUDE.md) | Conventions and the distribution restriction |
-| [docs/PLAN.md](docs/PLAN.md) | Historical: the build sequence, migration strategy, verification plan |
-| [docs/UX-SPEC.md](docs/UX-SPEC.md) | Historical: editor UX findings from the hand-testing passes, all fixed |
 
 Design rationale beyond what's in these documents lives as comments at the
 code site it explains, not in a separate decisions log.

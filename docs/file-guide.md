@@ -340,4 +340,4 @@ Public scripts that **parse** the private predecessor Python source with stdlib 
 
 ## Not covered here
 
-`.claude/` contains agent/worktree configuration, not product source. Note: `AGENTS.md` still points at `docs/PLAN.md` and `docs/UX-SPEC.md` as milestone-1 history — those files no longer exist (removed in commit `fbcfe72`, "docs: Cleanup old docs"); that's a stale reference in `AGENTS.md`, not something missing from this guide.
+`.claude/` contains agent/worktree configuration, not product source. `docs/PLAN.md` and `docs/UX-SPEC.md` were removed in commit `fbcfe72` ("docs: Cleanup old docs") and were not restored; the top-level docs (`README.md`, `OVERVIEW.md`, `AGENTS.md`, this file) no longer point at them. Source comments under `packages/` may still cite them pending a separate cleanup pass.
