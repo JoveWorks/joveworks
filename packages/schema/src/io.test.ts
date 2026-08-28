@@ -47,6 +47,53 @@ describe('catalogue text formats', () => {
     expect(() => loadCatalogue(yaml)).toThrow(/not valid JSON/);
   });
 
+  it('saves JSON by default, unchanged, for callers that do not ask for YAML', () => {
+    const catalogue = loadCatalogue(yaml, 'yaml');
+
+    expect(saveCatalogue(catalogue)).toBe(saveCatalogue(catalogue, 'json'));
+    expect(() => JSON.parse(saveCatalogue(catalogue))).not.toThrow();
+  });
+
+  it('round-trips a catalogue through saved YAML, including repeated identical port shapes', () => {
+    // Two formulas sharing the exact same port object reference (same output
+    // shape, same input) is exactly the case `yaml`'s stringifier would
+    // otherwise anchor/alias by default — the trap `saveCatalogue('yaml')`
+    // must avoid, since the loader rejects any anchor. Reusing already-parsed
+    // ports (rather than hand-built literals) keeps `unit` a real `Unit`
+    // object, matching what a genuine catalogue record contains.
+    const original = loadCatalogue(yaml, 'yaml');
+    const sharedOutput = original.formulas[0]!.outputs[0]!;
+    const sharedInput = original.formulas[0]!.inputs[0]!;
+    const withRepeatedPorts = {
+      ...original,
+      formulas: [
+        {
+          ...original.formulas[0]!,
+          id: 'invented.first',
+          outputs: [sharedOutput],
+          inputs: [sharedInput],
+        },
+        {
+          ...original.formulas[0]!,
+          id: 'invented.second',
+          outputs: [sharedOutput],
+          inputs: [sharedInput],
+        },
+      ],
+    };
+
+    const savedYaml = saveCatalogue(withRepeatedPorts, 'yaml');
+
+    expect(savedYaml.endsWith('\n')).toBe(true);
+
+    // `loadCatalogue` itself throws on any anchor (see the "rejects YAML
+    // anchors" tests below), so a successful reload is proof the writer did
+    // not fall back to `yaml`'s default aliasing behaviour for these
+    // duplicate objects.
+    const reloaded = loadCatalogue(savedYaml, 'yaml');
+    expect(reloaded).toEqual(withRepeatedPorts);
+  });
+
   it.each([
     ['catalogue.yaml', 'yaml'],
     ['catalogue.YML', 'yaml'],
