@@ -3021,11 +3021,13 @@ aside.right {
   padding: 0;
 }
 
-/* Print-only twins of the title and author fields (Notebook.tsx) — the
-   printed masthead cannot use the `<input>`s themselves, which clip a long
-   title to one line. Off on screen, swapped in by the print stylesheet. */
+/* Print-only twins of the notebook's form fields (Notebook.tsx) — the page
+   cannot use the controls themselves: an `<input>` clips a long title to one
+   line, and a `<textarea>` cannot be split across a column at all. Off on
+   screen, swapped in by the print stylesheet. */
 .notebook-title-print,
-.notebook-author-print {
+.notebook-author-print,
+.notebook-text-print {
   display: none;
 }
 
@@ -4057,7 +4059,7 @@ aside.right {
     display: none;
   }
 
-  .notebook textarea,
+  .notebook-text-print,
   .notebook-text-display {
     border: none;
     resize: none;
@@ -4066,22 +4068,29 @@ aside.right {
     padding: 0;
   }
 
-  /* Prose is a textarea that auto-grows by writing its measured height as an
-     inline pixel style (`NotebookTextField`'s `resize`, Notebook.tsx). That
-     measurement is taken at the panel's on-screen width, and a printed column
-     is narrower — the same text wraps to more lines than the frozen height
-     leaves room for, so it was clipped mid-sentence and everything after it
-     was laid out from the too-short box, which is what drew the sweep table
-     on top of the intro paragraph. A textarea cannot reflow to its content
-     the way a div does, and `height: auto` alone would size it from its
-     `rows` attribute instead; `field-sizing: content` is the property that
-     makes a form control take its content's size — already relied on for the
-     quantity fields above. `!important` because the stale height is an inline
-     style, which an ordinary declaration loses to. Print-only: on screen the
-     JS measurement is correct and stays in charge. */
+  /* Prose prints as its twin block, not as the field itself (Notebook.tsx).
+     Two things made the textarea unusable on paper and only the second is
+     fixable in CSS: it auto-grows by writing its measured on-screen height
+     as an inline style, which is wrong for a narrower column (fixable —
+     `field-sizing: content`, which is what this rule used to do), and it is
+     monolithic to the fragmentation engine, so a note taller than a column
+     fits nowhere and derails the whole page's pagination (not fixable at
+     all — hence the twin). */
   .notebook textarea {
-    field-sizing: content;
-    height: auto !important;
+    display: none;
+  }
+
+  .notebook-text-print {
+    display: block;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  /* No note, or no caption: the placeholder that stands in on screen is an
+     editing prompt, not report content, and an empty field would otherwise
+     print as a blank line's worth of margin. */
+  .notebook-text-print:empty {
+    display: none;
   }
 
   /* Justify the running prose, as a journal column is — but only with
@@ -4093,22 +4102,29 @@ aside.right {
      to prose only: captions are short enough that justifying them mostly
      produces one stretched line, and readings, tables and controls are not
      running text at all. */
-  .notebook textarea:not(.caption),
+  .notebook-text-print:not(.caption),
   .notebook-text-display:not(.caption) {
     text-align: justify;
     hyphens: auto;
   }
 
-  /* A section is the report's own structure (a group frame — see
-     Notebook.tsx's own header comment), so try to keep one whole; only
-     honoured when it actually fits a page, per spec — a section longer than
-     a page still breaks rather than overflowing it. The heading is kept with
-     whatever follows it so it never ends up alone at a page's bottom, and
-     each individual result (figure or reading, plus its caption) gets the
-     same treatment at finer grain — the fallback for a section too long to
-     keep whole, so at least no single figure or reading is cut in half. */
+  /* A section is *not* kept whole. Asking for that reads well — a section is
+     the report's own structure (a group frame; see Notebook.tsx's header
+     comment) — but the unit it applies to is far too big for a ~81mm column:
+     nearly every section with a figure or a few paragraphs in it is taller
+     than one column, and `avoid` on a box that fits no column is not a
+     preference the engine can decline gracefully. It pushes the section to
+     the next page, then balances whatever was left behind across the page it
+     came from, which is exactly the reported failure — a page ending in two
+     half-height columns with the rest of the report on later pages. The
+     `:has(.result.table)` exception that used to sit below this rule was the
+     same bug found from the table end, patched one content kind at a time;
+     the general rule replaces it. Keeping a section together is left to the
+     finer-grained rules that *can* be honoured: a heading stays with what
+     follows it, and each individual result (figure or reading, plus its
+     caption) stays whole. */
   .notebook-section {
-    break-inside: avoid;
+    break-inside: auto;
   }
 
   .notebook h2 {
@@ -4125,21 +4141,9 @@ aside.right {
 
   /* The Table output is the one entry explicitly meant to *not* stay whole —
      see the comment on `.notebook thead` below: "a table can genuinely need
-     more than one page … unlike a figure it is allowed to split." The
-     blanket rules just above contradict that for any section or entry that
-     happens to hold one: asking a box to avoid breaking, when it contains a
-     table that both must and expects to fragment internally (its own rows
-     are `break-inside: avoid`, not the table as a whole), is exactly the
-     shape of thing Chromium's column/page fragmentation mishandles — a
-     sweep table tall enough to outgrow the remaining column space rendered
-     overlapping the prose above it instead of continuing into the next
-     column, with the gap in between read as "everything pushed down too
-     much" (reported against the two-column pass). `:has(.result.table)`
-     makes this more specific than the blanket rules above regardless of
-     source order, but specificity alone is not enough — the property still
-     has to be declared here (`auto`, its own initial value) rather than
-     left unset, or there would be nothing to win the cascade with. */
-  .notebook-section:has(.result.table),
+     more than one page … unlike a figure it is allowed to split." Its rows
+     carry their own `break-inside: avoid`; the table as a whole must be free
+     to fragment, so the entry wrapping it cannot be held together. */
   .notebook .entry:has(.result.table) {
     break-inside: auto;
   }

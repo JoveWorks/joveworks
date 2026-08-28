@@ -173,17 +173,39 @@ function NotebookTextField({
   }
 
   return (
-    <textarea
-      {...props}
-      ref={textarea}
-      className={className}
-      value={value}
-      autoFocus={editing}
-      onBlur={(event) => {
-        setEditing(false);
-        onBlur?.(event);
-      }}
-    />
+    <>
+      {/* A `<textarea>` is monolithic to the fragmentation engine: it cannot
+          be split across a column or page boundary at all, however tall it
+          grows. That is invisible on screen and fatal in the two-column print
+          layout — a note longer than one printed column fits no column, so
+          the browser pushes it to the next page and *balances what is left*,
+          which is what left a page with two half-empty columns and the rest
+          of the report shunted onto later pages (reported twice: once for a
+          section ending in a table, once for one ending in a plot — same
+          cause both times, the prose that followed). A plain block of the
+          same text fragments normally, so print that and hide the field.
+          `aria-hidden` because the field beside it carries the same text,
+          labelled and editable. An empty note or caption collapses rather
+          than printing its placeholder, which is an editing prompt and has
+          no place in a hand-in. */}
+      <div
+        className={`notebook-text-print${className === undefined ? '' : ` ${className}`}`}
+        aria-hidden="true"
+      >
+        {value}
+      </div>
+      <textarea
+        {...props}
+        ref={textarea}
+        className={className}
+        value={value}
+        autoFocus={editing}
+        onBlur={(event) => {
+          setEditing(false);
+          onBlur?.(event);
+        }}
+      />
+    </>
   );
 }
 
