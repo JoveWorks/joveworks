@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync, cpSync } from 'node:fs';
+import { mkdtempSync, rmSync, symlinkSync, writeFileSync, cpSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -30,9 +30,15 @@ const scratch: string[] = [];
 function workspaceCopy(): string {
   const dir = mkdtempSync(join(tmpdir(), 'joveworks-refs-'));
   scratch.push(dir);
-  for (const entry of ['packages', 'tsconfig.json', 'tsconfig.base.json', 'node_modules']) {
+  for (const entry of ['packages', 'tsconfig.json', 'tsconfig.base.json']) {
     cpSync(join(root, entry), join(dir, entry), { recursive: true, verbatimSymlinks: true });
   }
+  // Dependencies are read-only during `tsc -b`. Copying pnpm's 200+ MiB store
+  // once per case saturates a small CI runner and can starve Vitest's worker
+  // RPC long enough to hit its fixed 60-second reporting timeout. Package-local
+  // workspace links were copied with `packages`; sharing only the root install
+  // preserves the resolution boundary this suite exercises.
+  symlinkSync(join(root, 'node_modules'), join(dir, 'node_modules'), 'dir');
   return dir;
 }
 
