@@ -7,37 +7,6 @@ reasoning behind a shipped change lives in its commit message, and
 `docs/next-session.md` carries what the next session should pick up. This
 file is only ever the answer to "what is still open".
 
-## Content sign-off
-
-The quarantine mechanism now holds nothing: every record in both catalogues
-is `verified` or `unverified`, none `quarantined`. The three refused formulas
-below were corrected, the unparseable unit tags no longer appear in the
-corpus, and the wrap angle was settled on 2026-08-28. What is left is not
-sign-off of a *reading* but sign-off against *numbers*.
-
-| Formula | What the check refused | Reading taken |
-| --- | --- | --- |
-| 16.31 | A velocity where a width is declared | Specific power, not specific torque |
-| 16.34 | A length where a force is declared | Corrected the belt-type factor's unit tag |
-| 16.36B | An area where a length is declared | A sum, not a product |
-
-**Belt's wrap angle** `β₁`/`β_k` — resolved without changing the book's
-reading. R&M tags it `[]` and that tag is right: a radian is a ratio, which
-is what `exp(mu * beta_1)` and the arc fraction `z_k * beta_k / (2*pi)`
-depend on. The mismatch was the kernel's, where `acos` returns an angle while
-forward trig returns a pure number. `connectable` now bridges angle and
-dimensionless in both directions (`packages/kernel/src/dimensions.ts` — no
-magnitude is lost, `rad`'s canonical scale is 1), and `rm.16.24A`/`16.24B`
-declare `rad` outputs at version 2 while every consumer's input stays
-dimensionless.
-
-**What actually remains: golden values.** 23 of belt's 54 records and 14 of
-press-fit's 30 are `unverified` — including all three corrected above and
-both wrap-angle records. None gates CI, and `belt-goldens.test.ts` pins only
-the `VERIFIED` set. Whether each corrected reading was confirmed against the
-book or merely applied is not recoverable from the files; if any went in
-unconfirmed, that is a different and larger task than adding goldens.
-
 ## Open product questions
 
 **A read-only NodeBook viewer.** Mobile is for reading finished work, not
