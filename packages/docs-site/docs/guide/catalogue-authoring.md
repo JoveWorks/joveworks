@@ -25,7 +25,7 @@ name any output declared before it, so a total is written as the difference
 of the two limits above it rather than restating their algebra.
 
 The complete field-by-field guide and an invented example live in
-[`docs/authoring-catalogues.md`](https://github.com/ThomasVanRiel/joveworks/blob/main/docs/authoring-catalogues.md).
+[`docs/authoring-catalogues.md`](https://github.com/JoveWorks/joveworks/blob/main/docs/authoring-catalogues.md).
 
 ## Validate before distributing
 

@@ -1281,7 +1281,7 @@ function AppShell(): ReactElement {
                   "v0.21.0" is ambiguous and "nightly v0.21.0" is not. */}
               <a
                 className={`menubar-version${__APP_VERSION__.startsWith('0.') ? ' alpha' : ''}`}
-                href={`https://github.com/ThomasVanRiel/joveworks/releases/tag/v${__APP_VERSION__}`}
+                href={`https://github.com/JoveWorks/joveworks/releases/tag/v${__APP_VERSION__}`}
                 target="_blank"
                 rel="noopener"
                 title={`View the JoveWorks v${__APP_VERSION__} release on GitHub${localVersionSuffix}`}
@@ -1300,7 +1300,7 @@ function AppShell(): ReactElement {
                 </a>{' '}
                 or{' '}
                 <a
-                  href="https://github.com/ThomasVanRiel/joveworks/issues/new"
+                  href="https://github.com/JoveWorks/joveworks/issues/new"
                   target="_blank"
                   rel="noopener"
                 >
@@ -1310,7 +1310,7 @@ function AppShell(): ReactElement {
 
               <a
                 className="menubar-github"
-                href="https://github.com/ThomasVanRiel/joveworks"
+                href="https://github.com/JoveWorks/joveworks"
                 target="_blank"
                 rel="noopener"
                 aria-label="JoveWorks repository on GitHub"

@@ -11,7 +11,7 @@ hero:
       link: /guide/getting-started
     - theme: alt
       text: GitHub
-      link: https://github.com/ThomasVanRiel/joveworks
+      link: https://github.com/JoveWorks/joveworks
 
 features:
   - title: The graph is the calculation
