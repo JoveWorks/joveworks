@@ -2,6 +2,8 @@ import type { ReactElement } from 'react';
 
 import { compatibleDisplayUnits, type Unit } from '@joveworks/units';
 
+import { unitLabel } from '../model/quantity';
+
 /** A deliberately finite menu: only units matching this port's dimension appear. */
 export function DisplayUnitPicker({
   unit,
@@ -17,6 +19,11 @@ export function DisplayUnitPicker({
   const options = compatible.some((candidate) => candidate.symbol === unit.symbol)
     ? compatible
     : [unit, ...compatible];
+
+  // A port with no compatible alternative should read like every other static
+  // port label, not pretend it is an editable control.
+  if (options.length < 2) return <span className="port-unit">({unitLabel(unit)})</span>;
+
   return (
     <select
       className="port-unit-picker nodrag"

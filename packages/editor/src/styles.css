@@ -1430,7 +1430,14 @@ aside.right {
 }
 
 .node .port-unit-picker {
-  width: auto;
+  /* A `<select>`'s automatic width is its *widest* option, so a port showing
+     `mm` sat as wide as the longest unit in its dimension's menu. Sizing it
+     to the current selection instead has to leave room for the arrow the
+     engine draws inside the box — a `${symbol.length}ch` width does not, and
+     clipped `kW` to `k` with the arrow over it. `field-sizing` is the
+     property that means "size this control to its content", counting the
+     arrow, and is already what the quantity fields rely on. */
+  field-sizing: content;
   max-width: 7.5em;
   margin: 0;
   padding: 0;
