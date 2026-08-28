@@ -17,6 +17,7 @@
  */
 
 import {
+  Fragment,
   useEffect,
   useLayoutEffect,
   useRef,
@@ -48,7 +49,7 @@ import { useGraph } from '../graph-context';
 import { analytics } from '../analytics/analytics';
 import { useSettings } from '../settings-context';
 import { ContextMenu, type MenuItem } from '../canvas/ContextMenu';
-import { TitleField, typesetTitle } from '../canvas/TitleField';
+import { TitleField, TitleText, typesetTitle } from '../canvas/TitleField';
 import { Equation } from '../Equation';
 import { Symbol } from '../Symbol';
 import { ParameterLabel } from '../ParameterLabel';
@@ -557,9 +558,27 @@ export function Result({ result, node }: { readonly result: OutputResult; readon
         </p>
       ) : result.measures?.every((measure) => measure.threshold === undefined) ?? true ? null : (
         <p className="threshold">
-          {result.measures?.flatMap((measure) => measure.threshold === undefined
-            ? []
-            : [`${measure.label}: ${display(measure.threshold, measure.unit, 4, format)}`]).join(' · ')}
+          {/* A measure's label is a symbol like `M_c`, authored in the same
+              notation as every node title — so it is typeset here the same
+              way (`TitleText`, honouring the title-math setting) rather than
+              printed with its subscript's underscore showing. The reading
+              beside it stays plain text: it is a formatted number and unit,
+              not notation. */}
+          {(result.measures ?? [])
+            .flatMap((measure) => measure.threshold === undefined
+              ? []
+              : [{
+                  id: measure.id,
+                  label: measure.label,
+                  reading: display(measure.threshold, measure.unit, 4, format),
+                }])
+            .map((measure, index) => (
+              <Fragment key={measure.id}>
+                {index === 0 ? null : ' · '}
+                <TitleText value={measure.label} />
+                {`: ${measure.reading}`}
+              </Fragment>
+            ))}
         </p>
       )}
     </div>
