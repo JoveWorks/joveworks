@@ -945,6 +945,14 @@ export function Notebook({ onClose }: { readonly onClose: () => void }): ReactEl
   return (
     <div
       className="notebook"
+      // The prose in here is the NodeBook's own language, which is not
+      // necessarily the app UI's (`document.notebookLocale`, chosen in the
+      // header's settings popover). Declaring it on the panel is what lets
+      // the print stylesheet's `hyphens: auto` hyphenate by the right
+      // dictionary — a browser with no language to go on does not hyphenate
+      // at all, and justified text in an ~81mm column without hyphenation is
+      // exactly where the rivers and gaping word spaces show up.
+      lang={document.notebookLocale ?? locale}
       // A dragged section's own drop targets (the sections themselves) call
       // this already; this catch-all is for everywhere else in the panel —
       // the title, the export button, the warnings list — none of which has
@@ -956,6 +964,15 @@ export function Notebook({ onClose }: { readonly onClose: () => void }): ReactEl
     >
       <div className="notebook-header">
         <div className="notebook-heading">
+          {/* An `<input>` is a single unwrappable line: on screen a long
+              title stays reachable by scrolling inside the field, which a
+              printed page cannot do — it would simply cut the title off at
+              the page edge. Print a plain heading carrying the same text and
+              hide the field instead (styles.css, `@media print`); on screen
+              it is the other way round. `aria-hidden` because the field
+              beside it already exposes this text, labelled and editable. */}
+          <h1 className="notebook-title-print" aria-hidden="true">{document.title}</h1>
+          <p className="notebook-author-print" aria-hidden="true">{document.author ?? ''}</p>
           <input
             className="notebook-title"
             value={document.title}

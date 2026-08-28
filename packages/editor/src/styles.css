@@ -3021,6 +3021,14 @@ aside.right {
   padding: 0;
 }
 
+/* Print-only twins of the title and author fields (Notebook.tsx) — the
+   printed masthead cannot use the `<input>`s themselves, which clip a long
+   title to one line. Off on screen, swapped in by the print stylesheet. */
+.notebook-title-print,
+.notebook-author-print {
+  display: none;
+}
+
 .notebook-title:hover,
 .notebook-title:focus,
 .notebook-author:hover,
@@ -3918,6 +3926,9 @@ aside.right {
   .panel-close-button,
   .notebook-section .grip,
   .notebook-section .chevron,
+  /* The header's settings popover — printing with it left open put a
+     language `<select>` in the middle of the masthead. */
+  .notebook-language,
   .column-figures,
   /* Every dialog (`SettingsDialog`, `UnlockCatalogueDialog`, the Hub
      workspace dialogs…) and the ribbon's own dropdown share these two root
@@ -3988,6 +3999,12 @@ aside.right {
     font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', Cambria, serif;
     font-size: 12px;
     line-height: 1.5;
+    /* A line left alone at the foot or head of a column is the standard
+       artefact of narrow measures; two lines either side is the usual
+       typesetter's minimum, and cheap here because the flow is mostly short
+       paragraphs between figures. */
+    orphans: 2;
+    widows: 2;
   }
 
   /* The title/author masthead reads across the full page, like a journal
@@ -3996,6 +4013,48 @@ aside.right {
   .notebook-header {
     column-span: all;
     break-after: avoid;
+    /* On screen this is a flex row holding the settings button out to the
+       right; in print that button is gone and what is left should read as a
+       masthead — centred over both columns, closed off by a hairline rule,
+       the way an article's title block sits above its body. */
+    display: block;
+    text-align: center;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 8px;
+    margin-bottom: 14px;
+  }
+
+  /* The editable fields step aside for their print-only twins (see
+     Notebook.tsx): an `<input>` never wraps, so a title longer than the
+     page was silently cut off at the field's edge — the one piece of the
+     document a hand-in cannot afford to lose. The heading is set larger
+     than the screen's 16px because it now has the full 170mm to sit in
+     rather than a side panel's width. */
+  .notebook-title,
+  .notebook-author {
+    display: none;
+  }
+
+  .notebook-title-print {
+    display: block;
+    margin: 0 0 4px;
+    font-size: 19px;
+    font-weight: 700;
+    line-height: 1.25;
+  }
+
+  .notebook-author-print {
+    display: block;
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+    font-style: italic;
+  }
+
+  /* No author set: the placeholder is an editing affordance, and an empty
+     line under the title would just push the rule down. */
+  .notebook-author-print:empty {
+    display: none;
   }
 
   .notebook textarea,
@@ -4023,6 +4082,21 @@ aside.right {
   .notebook textarea {
     field-sizing: content;
     height: auto !important;
+  }
+
+  /* Justify the running prose, as a journal column is — but only with
+     hyphenation on, which is the whole bargain: an ~81mm measure justified
+     without it opens rivers of word space on any line holding a long term
+     (this document's prose is full of them — "doorsnede", "reliability",
+     unit names). The panel carries a `lang` for the NodeBook's own language
+     (Notebook.tsx) so the browser has a dictionary to hyphenate by. Scoped
+     to prose only: captions are short enough that justifying them mostly
+     produces one stretched line, and readings, tables and controls are not
+     running text at all. */
+  .notebook textarea:not(.caption),
+  .notebook-text-display:not(.caption) {
+    text-align: justify;
+    hyphens: auto;
   }
 
   /* A section is the report's own structure (a group frame — see
