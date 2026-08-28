@@ -135,12 +135,20 @@ function NotebookTextField({
     // Resizing the notebook changes line wrapping without changing `value`.
     // Only react to width changes: our own height update also notifies a
     // ResizeObserver and must not start an observation loop.
-    let width = element.getBoundingClientRect().width;
+    //
+    // The baseline is taken from the observer's own first callback rather
+    // than measured up front, so both sides of the comparison describe the
+    // same box: `getBoundingClientRect` reports the border box and
+    // `contentRect` the content box, and with any padding or border on the
+    // field those never compare equal — every mount then ran one pointless
+    // resize. That first callback is the initial observation, which reports
+    // the width the layout effect above has just sized the field for.
+    let width: number | undefined;
     const observer = new ResizeObserver((entries) => {
       const nextWidth = entries[0]?.contentRect.width;
       if (nextWidth === undefined || nextWidth === width) return;
+      if (width !== undefined) resize();
       width = nextWidth;
-      resize();
     });
     observer.observe(element);
     return () => observer.disconnect();
