@@ -248,6 +248,24 @@ export function chartLabelForText(text: string, labels: readonly string[]): stri
 }
 
 /** Replace Observable's plain SVG text with KaTeX where an axis label needs it. */
+/**
+ * The datum under the pointer, as Observable Plot publishes it on the chart
+ * element itself.
+ *
+ * Plot writes `null` there — not `undefined` — when the pointer selects
+ * nothing, and it does so from inside `Plot.plot`, as the pointer transform's
+ * first render settles. Casting that away as `Row | undefined` let an
+ * `=== undefined` guard pass the null through to `row.cell`, which threw.
+ * Nothing visibly broke, because the throw happens inside a dispatched event
+ * listener: the exception is reported to `window.onerror` and swallowed
+ * rather than failing the effect, so the figure just silently stopped
+ * marking. Normalising to `undefined` here keeps every caller's existing
+ * guard honest.
+ */
+export function pointedRow<Row>(chart: unknown): Row | undefined {
+  return (chart as { value?: Row | null }).value ?? undefined;
+}
+
 export function typesetChartLabels(chart: SVGSVGElement, labels: readonly string[]): void {
   for (const text of chart.querySelectorAll('text')) {
     const source = text.textContent;
@@ -600,14 +618,23 @@ export function PlotFigure({ result: rawResult, document: graph, format, marking
     } else {
       rendered = chart;
     }
-    container.append(rendered);
+    // `replaceChildren`, with no matching removal in the cleanup below: React
+    // runs every cleanup in a commit before it runs any effect, so removing
+    // the chart there detached every figure in the notebook at once. The
+    // rebuild then forced layout while they were all still detached
+    // (`typesetChartLabels` reads `getBBox`), and the browser clamped the
+    // panel's `scrollTop` to that momentarily collapsed height — scrolling to
+    // the bottom of a notebook jumped back up. Swapping the chart in place
+    // never leaves the figure empty. Unmounting needs no removal of its own:
+    // the host element below is React's, and goes with its children.
+    container.replaceChildren(rendered);
 
     // Clicking the curve marks the design under the cursor. The pointer
     // transform behind `chartTip` already publishes that datum as the chart's
     // own `value`, so the tip and the click can never disagree about which
     // point was meant — which they would if this re-derived "nearest" itself.
     const grid = plotGrid(result);
-    const pointed = (): Row | undefined => (chart as { value?: Row }).value;
+    const pointed = (): Row | undefined => pointedRow<Row>(chart);
     const handleInput = (): void => {
       const row = pointed();
       marking?.hover(row === undefined ? undefined : candidateAt(grid, row.cell, marking.readouts));
@@ -638,7 +665,6 @@ export function PlotFigure({ result: rawResult, document: graph, format, marking
       chart.removeEventListener('input', handleInput);
       chart.removeEventListener('click', handleClick);
       chart.removeEventListener('pointerleave', handleLeave);
-      rendered.remove();
     };
   }, [graph, result, titleMathRendering, marking]);
 

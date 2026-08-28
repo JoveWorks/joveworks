@@ -16,7 +16,7 @@ import type { GraphDocument } from '@joveworks/schema';
 
 import { useSettings } from '../settings-context';
 import { inferPlotPanels, isLogarithmicAxis, plotAxisFor, type PlotPanel } from '../model/plot';
-import { chartTip, siAxisUnit, typesetChartLabels } from './PlotFigure';
+import { chartTip, pointedRow, siAxisUnit, typesetChartLabels } from './PlotFigure';
 import type { FigureMarking } from './marks';
 
 export interface SmartRow {
@@ -400,9 +400,11 @@ function PlotPanelFigure({
     });
     const colorbar = contouring ? contourColorbar(panel, valueUnit, contourPalette) : undefined;
     if (colorbar !== undefined) container.classList.add('contour-figure');
-    container.append(chart, ...(colorbar === undefined ? [] : [colorbar]));
+    // Swapped in place, never detached in the cleanup — see the note on this
+    // in PlotFigure.tsx, which explains the scroll jump that caused.
+    container.replaceChildren(chart, ...(colorbar === undefined ? [] : [colorbar]));
 
-    const pointed = (): SmartRow | undefined => (chart as { value?: SmartRow }).value;
+    const pointed = (): SmartRow | undefined => pointedRow<SmartRow>(chart);
     const grid = panelGrid(panel);
     const handleInput = (): void => {
       const row = pointed();
@@ -427,8 +429,6 @@ function PlotPanelFigure({
       chart.removeEventListener('input', handleInput);
       chart.removeEventListener('click', handleClick);
       chart.removeEventListener('pointerleave', handleLeave);
-      chart.remove();
-      colorbar?.remove();
       container.classList.remove('contour-figure');
     };
   }, [panel, document, width, format, marking, contourPalette, titleMathRendering]);

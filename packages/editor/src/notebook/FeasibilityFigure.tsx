@@ -25,7 +25,7 @@ import {
 import { fromCanonical } from '@joveworks/units';
 
 import { useSettings } from '../settings-context';
-import { chartTip, typesetChartLabels } from './PlotFigure';
+import { chartTip, pointedRow, typesetChartLabels } from './PlotFigure';
 import { NO_MARKS, type FigureMarking, type MarkIndex } from './marks';
 
 interface Row {
@@ -305,7 +305,9 @@ export function FeasibilityFigure({ result, checkLabels, marking }: Props): Reac
       ],
     });
 
-    container.append(chart);
+    // Swapped in place, never detached in the cleanup — see the note on this
+    // in PlotFigure.tsx, which explains the scroll jump that caused.
+    container.replaceChildren(chart);
 
     // A categorical `color.legend` makes `Plot.plot` return an HTML
     // `<figure>` wrapping the chart and a separate legend swatch, not a bare
@@ -321,7 +323,7 @@ export function FeasibilityFigure({ result, checkLabels, marking }: Props): Reac
     hatchFailLegendSwatch(chart);
 
     const grid = feasibilityGrid(result);
-    const pointed = (): Row | undefined => (chart as { value?: Row }).value;
+    const pointed = (): Row | undefined => pointedRow<Row>(chart);
     const handleInput = (): void => {
       const row = pointed();
       marking?.hover(row === undefined ? undefined : candidateAt(grid, row.cell, marking.readouts));
@@ -346,7 +348,6 @@ export function FeasibilityFigure({ result, checkLabels, marking }: Props): Reac
       chart.removeEventListener('input', handleInput);
       chart.removeEventListener('click', handleClick);
       chart.removeEventListener('pointerleave', handleLeave);
-      chart.remove();
     };
   }, [result, checkLabels, titleMathRendering, marking]);
 

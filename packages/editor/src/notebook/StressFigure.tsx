@@ -71,8 +71,8 @@ function MarginPlot({ result, design, labels }: { readonly result: StressResult;
       const empty = document.createElement('p');
       empty.className = 'empty';
       empty.textContent = 'no referenced check has a normalised margin to plot';
-      container.append(empty);
-      return () => empty.remove();
+      container.replaceChildren(empty);
+      return undefined;
     }
     const chart = Plot.plot({
       width: 440,
@@ -83,8 +83,8 @@ function MarginPlot({ result, design, labels }: { readonly result: StressResult;
       color: { legend: true },
       marks: [Plot.ruleY([0], { stroke: '#c44e52' }), Plot.line(data, { x: 'x', y: 'margin', stroke: 'check', tip: true })],
     });
-    container.append(chart);
-    return () => chart.remove();
+    container.replaceChildren(chart);
+    return undefined;
   }, [result, design, labels]);
   return <div className="figure stress-figure" ref={host} />;
 }

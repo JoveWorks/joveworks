@@ -50,7 +50,9 @@ function DistributionPanelFigure({ panel, result }: DistributionPanelFigureProps
       marks,
     });
     element.replaceChildren(chart);
-    return () => chart.remove();
+    // Swapped in place, never detached in the cleanup — see the note on this
+    // in PlotFigure.tsx, which explains the scroll jump that caused.
+    return undefined;
   }, [panel, percentiles, result.unit, result.view]);
 
   return (

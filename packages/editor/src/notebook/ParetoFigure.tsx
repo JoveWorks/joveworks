@@ -32,7 +32,7 @@ import type { Candidate } from '@joveworks/schema';
 import { fromCanonical, type NumberFormat } from '@joveworks/units';
 
 import { useSettings } from '../settings-context';
-import { chartTip, siAxisUnit, typesetChartLabels } from './PlotFigure';
+import { chartTip, pointedRow, siAxisUnit, typesetChartLabels } from './PlotFigure';
 import { NO_MARKS, type FigureMarking, type MarkIndex } from './marks';
 
 interface Row {
@@ -187,14 +187,16 @@ export function ParetoFigure({ result, format, marking }: Props): ReactElement {
       ],
     });
 
-    container.append(chart);
+    // Swapped in place, never detached in the cleanup — see the note on this
+    // in PlotFigure.tsx, which explains the scroll jump that caused.
+    container.replaceChildren(chart);
 
     // Observable Plot's pointer transform (used by `chartTip`) publishes the
     // datum under the cursor as the plot element's own `value`, and fires
     // `input` when it changes. So hovering and clicking need no hit-testing of
     // ours — the tip and the interaction always agree on which point is meant,
     // which they would not if we re-derived "nearest" independently.
-    const pointed = (): Row | undefined => (chart as { value?: Row }).value;
+    const pointed = (): Row | undefined => pointedRow<Row>(chart);
     const handleInput = (): void => marking?.hover(pointed()?.candidate);
     const handleClick = (): void => {
       const row = pointed();
@@ -214,7 +216,6 @@ export function ParetoFigure({ result, format, marking }: Props): ReactElement {
       chart.removeEventListener('input', handleInput);
       chart.removeEventListener('click', handleClick);
       chart.removeEventListener('pointerleave', handleLeave);
-      chart.remove();
     };
   }, [result, marking, format, titleMathRendering]);
 

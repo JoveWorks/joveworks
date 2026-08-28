@@ -44,8 +44,8 @@ export function SensitivityFigure({ result }: Props): ReactElement {
       const empty = document.createElement('p');
       empty.className = 'empty';
       empty.textContent = 'no candidate inputs to rank';
-      container.append(empty);
-      return () => empty.remove();
+      container.replaceChildren(empty);
+      return undefined;
     }
 
     const yLabel = result.targetUnit.symbol.trim().length === 0 ? '' : `(${result.targetUnit.symbol})`;
@@ -62,12 +62,12 @@ export function SensitivityFigure({ result }: Props): ReactElement {
       ],
     });
 
-    container.append(chart);
+    container.replaceChildren(chart);
     const svg = chart instanceof SVGSVGElement ? chart : chart.querySelector('svg');
     if (titleMathRendering && svg !== null) {
       typesetChartLabels(svg, data.map((row) => row.label));
     }
-    return () => chart.remove();
+    return undefined;
   }, [result, titleMathRendering]);
 
   return <div className="figure" ref={host} />;
