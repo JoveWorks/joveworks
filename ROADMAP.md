@@ -26,3 +26,13 @@ monotone slice, report the crossing between adjacent samples ("σ = 200 MPa at
 d ≈ 37.4 mm") and mark it as interpolated, the way `candidates.ts` snaps to the
 nearest sample and says so. A figure-layer reading off a computed curve, not
 kernel behaviour — see the solver reasoning in [OVERVIEW.md](OVERVIEW.md).
+
+**38. Exact compiled NodeBook presentation** — extract the existing NodeBook's
+rendering into a shared, presentation-only layer used by both the editor and
+the compiled viewer. The compiler must resolve every display input the shared
+components need — formatted readings, labels, units, plot series, thresholds,
+legends, facets, marks, captions and display settings — without exposing the
+source graph, formula expressions, catalogues or editing state. The standalone
+viewer should reproduce the NodeBook's typography, layout and every output
+figure; only editor affordances such as authoring and plot configuration should
+differ.
