@@ -547,7 +547,22 @@ export function previewLayoutChanges(
  * exists to keep the decision to *open* a preview in step with what the
  * preview would actually apply. Opening one for a measurement left the canvas
  * projecting the outgoing study over a newly loaded one.
+ *
+ * A frame re-measures on its own whenever its contents reflow — a node
+ * expanding, a plot arriving, the notebook panel opening — and that is not a
+ * gesture either, however much it looks like one from the change type alone.
+ * `resizing` is what separates the two: the resize control sets it for the
+ * duration of the drag, and a measurement never carries it. Without that
+ * check a frame that merely re-measured opened a preview no drag-stop would
+ * ever close, and the canvas then drew that projection over every later edit
+ * — which is what made added nodes invisible on any document with sections.
  */
+/** A layout projection, paired with the document it was projected from. */
+interface LayoutPreview {
+  readonly projection: GraphDocument;
+  readonly base: GraphDocument;
+}
+
 export function isLayoutGesture(
   document: GraphDocument,
   changes: readonly NodeChange[],
@@ -559,6 +574,7 @@ export function isLayoutGesture(
       (change.type === 'position' && change.position !== undefined) ||
       (change.type === 'dimensions' &&
         change.dimensions !== undefined &&
+        change.resizing === true &&
         frameIds.has(change.id) &&
         !collapsedGroups.has(change.id)),
   );
@@ -725,8 +741,18 @@ export function Canvas({
   // React Flow needs live positions while a node is moving, but the graph
   // document (and therefore the kernel) only needs the position at rest.
   // Keep the latter out of this high-frequency path.
-  const [layoutPreview, setLayoutPreview] = useState<GraphDocument | undefined>(undefined);
-  const layoutPreviewRef = useRef<GraphDocument | undefined>(undefined);
+  /**
+   * The projection, and the document it was projected *from*. The canvas draws
+   * the projection in place of the document, so a preview that outlives its
+   * base is not merely stale to look at: `commitLayoutPreview` writes it back
+   * wholesale, which would discard anything edited while it was open. Carrying
+   * the base makes "is this still a projection of what is on screen?"
+   * answerable, and that is what lets an ordinary edit — adding a node — land
+   * safely even if some future path strands a preview the way a frame
+   * re-measure once did.
+   */
+  const [layoutPreview, setLayoutPreview] = useState<LayoutPreview | undefined>(undefined);
+  const layoutPreviewRef = useRef<LayoutPreview | undefined>(undefined);
   const fittedDocumentId = useRef<string | undefined>(undefined);
   /**
    * Both measurements and an in-flight layout preview describe React Flow's
@@ -758,11 +784,16 @@ export function Canvas({
     if (preview === undefined) return;
     layoutPreviewRef.current = undefined;
     setLayoutPreview(undefined);
+    // Writing a projection of a document that is no longer open would undo
+    // whatever replaced it. Dropping it loses only the gesture's own geometry,
+    // which is the smaller of the two losses by far.
+    if (preview.base !== document) return;
     // One discrete edit means one undo step and one analysis/evaluation pass.
-    edit(() => reframe(preview));
-  }, [edit]);
+    edit(() => reframe(preview.projection));
+  }, [document, edit]);
 
-  const renderedDocument = layoutPreview ?? document;
+  const renderedDocument =
+    layoutPreview !== undefined && layoutPreview.base === document ? layoutPreview.projection : document;
 
   const edgeEndpointIds = useMemo(() => {
     const edge = document.edges.find((candidate) => candidate.id === hoveredEdgeId);
@@ -1050,7 +1081,13 @@ export function Canvas({
 
       if (isLayoutGesture(document, changes, collapsedGroups)) {
         setLayoutPreview((current) => {
-          const next = previewLayoutChanges(current ?? document, changes, collapsedGroups, snapToGrid);
+          // A preview of some earlier document is not a base to build on: the
+          // gesture continues from what is on screen now.
+          const base = current?.base === document ? current.projection : document;
+          const next = {
+            projection: previewLayoutChanges(base, changes, collapsedGroups, snapToGrid),
+            base: document,
+          };
           layoutPreviewRef.current = next;
           return next;
         });

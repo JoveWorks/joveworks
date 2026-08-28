@@ -118,10 +118,26 @@ describe('layout gesture detection', () => {
     expect(
       isLayoutGesture(
         framed,
-        [{ id: 'section', type: 'dimensions', dimensions: { width: 240, height: 200 } }],
+        [{ id: 'section', type: 'dimensions', dimensions: { width: 240, height: 200 }, resizing: true }],
         new Set(),
       ),
     ).toBe(true);
+  });
+
+  // The bug this guards: a section frame re-measures on its own whenever its
+  // contents reflow, and that opened a preview no drag-stop would ever close
+  // — `renderedDocument` then drew the stale projection over every later
+  // edit, so nodes added from the palette went into the document and never
+  // appeared. A blank document has no frames, which is why it only ever
+  // showed up on the examples.
+  it('does not treat a frame re-measuring its own contents as a resize', () => {
+    expect(
+      isLayoutGesture(
+        framed,
+        [{ id: 'section', type: 'dimensions', dimensions: { width: 240, height: 200 } }],
+        new Set(),
+      ),
+    ).toBe(false);
   });
 
   it('does not open a preview a collapsed frame would leave untouched', () => {
