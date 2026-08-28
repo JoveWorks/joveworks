@@ -12,7 +12,7 @@
  * points at `JOVEWORKS_CATALOGUE` and skips when it is unset, exactly as
  * `catalogue-check.test.ts` does:
  *
- *     JOVEWORKS_CATALOGUE=~/source/machine-design-catalogue/formulas/c16-belt.json pnpm test
+ *     JOVEWORKS_CATALOGUE=~/source/machine-design-catalogue/formulas/c16-belt.yaml pnpm test
  *
  * What lives here is inputs and expected values — numbers, which carry no
  * citation and are safe in a public repo. The expressions they exercise stay in

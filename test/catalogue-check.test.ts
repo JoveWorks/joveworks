@@ -23,7 +23,7 @@ import { KernelError, checkFormulaDimensions } from '@joveworks/kernel';
  * checkout has nothing to check, and that is the boundary working rather than
  * a gap in the tests.
  *
- *     JOVEWORKS_CATALOGUE=~/source/machine-design-catalogue/formulas/c16-belt.json pnpm test
+ *     JOVEWORKS_CATALOGUE=~/source/machine-design-catalogue/formulas/c16-belt.yaml pnpm test
  *
  * Failures are collected per formula rather than thrown one at a time, because
  * a scripted extraction fails systematically — seeing all of them at once is
