@@ -537,6 +537,34 @@ export function previewLayoutChanges(
 }
 
 /**
+ * Does this batch of changes describe a layout *gesture* — a drag, or a resize
+ * of an open frame — as opposed to a measurement?
+ *
+ * React Flow reports a node's measured size as a `dimensions` change and fires
+ * a burst of them the moment a document is first projected, so "any dimensions
+ * change" is not a gesture. `previewLayoutChanges` already ignores every
+ * dimension change that is not a resize of an expanded frame; this predicate
+ * exists to keep the decision to *open* a preview in step with what the
+ * preview would actually apply. Opening one for a measurement left the canvas
+ * projecting the outgoing study over a newly loaded one.
+ */
+export function isLayoutGesture(
+  document: GraphDocument,
+  changes: readonly NodeChange[],
+  collapsedGroups: ReadonlySet<string>,
+): boolean {
+  const frameIds = new Set(document.frames.map((frame) => frame.id));
+  return changes.some(
+    (change) =>
+      (change.type === 'position' && change.position !== undefined) ||
+      (change.type === 'dimensions' &&
+        change.dimensions !== undefined &&
+        frameIds.has(change.id) &&
+        !collapsedGroups.has(change.id)),
+  );
+}
+
+/**
  * React Flow reserves `input`/`output`/`default`/`group` as its own built-in
  * node types, each with its own default box styling in its base stylesheet —
  * a border, fixed width, centred text. Two of our node kinds are spelled the
@@ -684,25 +712,6 @@ export function Canvas({
    * included, which is exactly what React Flow itself needs.
    */
   const [measured, setMeasured] = useState<Measurements>(new Map());
-  const fittedDocumentId = useRef<string | undefined>(undefined);
-  // Measurements belong to React Flow's rendered node set. Do not carry sizes
-  // from a prior study into the replacement projection.
-  useLayoutEffect(() => {
-    setMeasured(new Map());
-  }, [document.id]);
-  useEffect(() => {
-    if (fittedDocumentId.current === document.id) return;
-    fittedDocumentId.current = document.id;
-    const frame = requestAnimationFrame(() => {
-      void flow.fitBounds(documentBounds(document), { padding: 0.2, duration: 200 });
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [document, flow]);
-  // React Flow needs live positions while a node is moving, but the graph
-  // document (and therefore the kernel) only needs the position at rest.
-  // Keep the latter out of this high-frequency path.
-  const [layoutPreview, setLayoutPreview] = useState<GraphDocument | undefined>(undefined);
-  const layoutPreviewRef = useRef<GraphDocument | undefined>(undefined);
   /**
    * Each node's last-seen size while *not* selected — its resting state,
    * collapsed by default or however large a pin (`expanded`) keeps it, but
@@ -713,6 +722,36 @@ export function Canvas({
    * expand into node positions that are supposed to be stable once deselected.
    */
   const [restingMeasured, setRestingMeasured] = useState<Measurements>(new Map());
+  // React Flow needs live positions while a node is moving, but the graph
+  // document (and therefore the kernel) only needs the position at rest.
+  // Keep the latter out of this high-frequency path.
+  const [layoutPreview, setLayoutPreview] = useState<GraphDocument | undefined>(undefined);
+  const layoutPreviewRef = useRef<GraphDocument | undefined>(undefined);
+  const fittedDocumentId = useRef<string | undefined>(undefined);
+  /**
+   * Both measurements and an in-flight layout preview describe React Flow's
+   * *current* rendered node set, so neither may survive a document swap.
+   * Sizes from a prior study would be applied to same-named nodes in the
+   * replacement, and a retained preview is strictly worse: it is a whole
+   * projection of the outgoing graph, and `renderedDocument` prefers it over
+   * `document`, so the canvas would keep drawing the study the user just
+   * closed. Clearing it in a layout effect means no frame is ever painted
+   * from the stale projection.
+   */
+  useLayoutEffect(() => {
+    layoutPreviewRef.current = undefined;
+    setLayoutPreview(undefined);
+    setMeasured(new Map());
+    setRestingMeasured(new Map());
+  }, [document.id]);
+  useEffect(() => {
+    if (fittedDocumentId.current === document.id) return;
+    fittedDocumentId.current = document.id;
+    const frame = requestAnimationFrame(() => {
+      void flow.fitBounds(documentBounds(document), { padding: 0.2, duration: 200 });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [document, flow]);
 
   const commitLayoutPreview = useCallback((): void => {
     const preview = layoutPreviewRef.current;
@@ -1009,12 +1048,7 @@ export function Canvas({
         return touched ? next : current;
       });
 
-      const hasGeometryChange = changes.some(
-        (change) =>
-          (change.type === 'position' && change.position !== undefined) ||
-          (change.type === 'dimensions' && change.dimensions !== undefined),
-      );
-      if (hasGeometryChange) {
+      if (isLayoutGesture(document, changes, collapsedGroups)) {
         setLayoutPreview((current) => {
           const next = previewLayoutChanges(current ?? document, changes, collapsedGroups, snapToGrid);
           layoutPreviewRef.current = next;

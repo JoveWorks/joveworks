@@ -4,7 +4,7 @@ import { emptyDocument, type GraphDocument } from '@joveworks/schema';
 import { parseUnit } from '@joveworks/units';
 
 import { addNode } from '../model/document';
-import { nodeContextMenuKind, previewLayoutChanges, sectionActionLabel } from './Canvas';
+import { isLayoutGesture, nodeContextMenuKind, previewLayoutChanges, sectionActionLabel } from './Canvas';
 
 function documentWithNodes(): GraphDocument {
   let document = emptyDocument('study', 'Study');
@@ -87,5 +87,50 @@ describe('transient canvas geometry', () => {
       true,
     );
     expect(resized.frames[0]?.size).toEqual({ width: 220, height: 165 });
+  });
+});
+
+describe('layout gesture detection', () => {
+  const framed: GraphDocument = {
+    ...documentWithNodes(),
+    frames: [{
+      id: 'section',
+      kind: 'section',
+      title: 'Section',
+      position: { x: 0, y: 0 },
+      size: { width: 200, height: 160 },
+    }],
+  };
+
+  it('ignores the measurement burst React Flow fires for a freshly loaded document', () => {
+    const measurements = framed.nodes.map((node) => ({
+      id: node.id,
+      type: 'dimensions' as const,
+      dimensions: { width: 300, height: 240 },
+    }));
+    expect(isLayoutGesture(framed, measurements, new Set())).toBe(false);
+  });
+
+  it('treats a drag and an open-frame resize as gestures', () => {
+    expect(
+      isLayoutGesture(framed, [{ id: 'first', type: 'position', position: { x: 8, y: 8 } }], new Set()),
+    ).toBe(true);
+    expect(
+      isLayoutGesture(
+        framed,
+        [{ id: 'section', type: 'dimensions', dimensions: { width: 240, height: 200 } }],
+        new Set(),
+      ),
+    ).toBe(true);
+  });
+
+  it('does not open a preview a collapsed frame would leave untouched', () => {
+    const changes = [{
+      id: 'section',
+      type: 'dimensions' as const,
+      dimensions: { width: 240, height: 200 },
+    }];
+    expect(isLayoutGesture(framed, changes, new Set(['section']))).toBe(false);
+    expect(previewLayoutChanges(framed, changes, new Set(['section']), false)).toBe(framed);
   });
 });
