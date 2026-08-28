@@ -36,6 +36,12 @@ describe('boundary conversion', () => {
     );
   });
 
+  it('offers both W and kW for a power dimension, so a port authored in kW can be switched back', () => {
+    expect(compatibleDisplayUnits(parseUnit('kW').dimension).map((unit) => unit.symbol)).toEqual(
+      expect.arrayContaining(['W', 'kW']),
+    );
+  });
+
   it('converts into and out of canonical units', () => {
     expect(toCanonical(2.5, parseUnit('m'))).toBe(2500);
     expect(fromCanonical(2500, parseUnit('m'))).toBe(2.5);

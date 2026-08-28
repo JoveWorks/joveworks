@@ -204,10 +204,18 @@ export function knownUnitSymbols(): readonly string[] {
  * The finite set offered by the editor's display-unit picker.  Unit syntax is
  * intentionally more expressive than this list (a catalogue may declare any
  * valid expression), but a picker needs choices a student can recognise.
+ *
+ * Prefixed spellings are kept out as a rule — `MPa` is deliberately absent,
+ * since these catalogues write that dimension as `N/mm²` — but `kW` is here
+ * because power is quoted in it almost universally (a spindle, a motor, a
+ * drive) and `W` alone left a one-entry menu: a port authored in `kW` could
+ * be switched to `W` and never switched back, the picker having nothing else
+ * to offer. A unit belongs on this list when a student would expect to find
+ * it, not when it is derivable.
  */
 const DISPLAY_UNIT_SYMBOLS = [
   '', '%', 'mm', 'm', 'N', 's', 'min', 'h', 'rad', 'deg', 'K', 'g', 't',
-  'Pa', 'N/mm²', 'Nm', 'Nmm', 'J', 'W', 'Hz', 'rpm',
+  'Pa', 'N/mm²', 'Nm', 'Nmm', 'J', 'W', 'kW', 'Hz', 'rpm',
 ] as const;
 
 /** Display-unit picker choices with exactly the requested dimension. */
