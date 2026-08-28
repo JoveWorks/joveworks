@@ -127,6 +127,7 @@ import { exampleTutorialSteps, TUTORIAL_STEPS } from './tutorial/steps';
 import { loadTutorialSeen } from './tutorial/tutorialSettings';
 import { useResizableWidth } from './useResizableWidth';
 import { phrase, ui } from './i18n';
+import { hubOrigin, parseRoute } from './router';
 import { CourseMaterialViewer } from './viewer/CourseMaterialViewer';
 import { ConnectCourseDialog } from './course/ConnectCourseDialog';
 import { WorkspaceDialog } from './course/WorkspaceDialog';
@@ -146,6 +147,7 @@ import {
   type HubWorkspace,
 } from './model/hub';
 import { loadCourseSources, saveCourseSources, withCourseSource } from './model/courseSources';
+import { compileNotebook, compiledNotebookBytes } from './model/compiledNotebook';
 import { loadHubUrl, saveHubUrl } from './model/editorSettings';
 import {
   loadWorkspaceAccesses,
@@ -227,6 +229,8 @@ function startupDocument(
 
 function publicationLinkFromUrl(): { readonly hubUrl: string; readonly publicationId: string } | undefined {
   const url = new URL(window.location.href);
+  const route = parseRoute(url);
+  if (route.kind === 'publication' && route.edit) return { hubUrl: hubOrigin(url), publicationId: route.id };
   const hubUrl = url.searchParams.get('hub');
   const publicationId = url.searchParams.get('publication');
   return hubUrl === null || publicationId === null || publicationId.trim() === ''
@@ -235,6 +239,8 @@ function publicationLinkFromUrl(): { readonly hubUrl: string; readonly publicati
 }
 function studentShareLinkFromUrl(): { readonly hubUrl: string; readonly shareId: string } | undefined {
   const url = new URL(window.location.href);
+  const route = parseRoute(url);
+  if (route.kind === 'share' && route.edit) return { hubUrl: hubOrigin(url), shareId: route.id };
   const hubUrl = url.searchParams.get('hub');
   const shareId = url.searchParams.get('share');
   return hubUrl === null || shareId === null || shareId.trim() === '' ? undefined : { hubUrl, shareId };
@@ -561,9 +567,12 @@ function AppShell(): ReactElement {
   };
 
   const saveNewHubWorkspace = async (hubAddress: string): Promise<void> => {
+    const compiledNotebook = compileNotebook(documentRef.current, analyse(documentRef.current, catalogues));
+    if (compiledNotebookBytes(compiledNotebook) > 1_048_576) throw new Error('The compiled NodeBook is larger than the 1 MiB Hub limit. Reduce report data before saving.');
     const draft = {
       title: documentRef.current.title,
       document: documentRef.current,
+      compiledNotebook,
       ...(courseWorkspaceBinding === undefined ? {} : {
         courseSlug: courseWorkspaceBinding.source.slug,
         catalogues: courseWorkspaceBinding.catalogues,
@@ -583,9 +592,12 @@ function AppShell(): ReactElement {
 
   const saveToHub = async (): Promise<void> => {
     if (hubWorkspace === undefined) throw new Error('Choose a Hub before saving this workspace.');
+    const compiledNotebook = compileNotebook(documentRef.current, analyse(documentRef.current, catalogues));
+    if (compiledNotebookBytes(compiledNotebook) > 1_048_576) throw new Error('The compiled NodeBook is larger than the 1 MiB Hub limit. Reduce report data before saving.');
     const draft = {
       title: documentRef.current.title,
       document: documentRef.current,
+      compiledNotebook,
       ...(courseWorkspaceBinding === undefined ? {} : {
         courseSlug: courseWorkspaceBinding.source.slug,
         catalogues: courseWorkspaceBinding.catalogues,
@@ -638,9 +650,11 @@ function AppShell(): ReactElement {
     void openCoursePublication(source, linkedPublication.publicationId, false)
       .then(() => {
         const url = new URL(window.location.href);
-        url.searchParams.delete('hub');
-        url.searchParams.delete('publication');
-        window.history.replaceState({}, '', url);
+        if (url.searchParams.has('publication')) {
+          url.searchParams.delete('hub');
+          url.searchParams.delete('publication');
+          window.history.replaceState({}, '', url);
+        }
       })
       .catch((error) => pushNotice(`Could not open linked course material: ${messageOf(error)}`));
   // The URL is read exactly once on boot. Re-running on editor state changes

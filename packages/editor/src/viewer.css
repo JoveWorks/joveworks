@@ -1,0 +1,29 @@
+:root { color-scheme: light dark; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #f4f3ef; color: #20211f; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+button, input { font: inherit; }
+.viewer-status { max-width: 46rem; margin: 15vh auto; padding: 2rem; }
+.compiled-page { width: min(100% - 2rem, 58rem); margin: 0 auto; padding: 2rem 0 5rem; }
+.compiled-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 2rem; padding: 1rem 0 2rem; border-bottom: 1px solid #bbb; }
+.compiled-header h1 { font-size: clamp(2rem, 6vw, 3.5rem); margin: .15rem 0; }
+.compiled-header p { margin: 0; color: #62655f; }
+.compiled-header button, .compiled-controls button { border: 1px solid #315c4f; border-radius: .45rem; padding: .6rem .85rem; background: #315c4f; color: white; cursor: pointer; }
+.compiled-page section { margin-top: 2.8rem; }
+.compiled-page h2 { font-size: 1.6rem; border-bottom: 1px solid #ccc; padding-bottom: .5rem; }
+.prose { line-height: 1.65; white-space: pre-wrap; }
+.compiled-controls { padding: 1rem; border-radius: .6rem; background: #e4e9e4; display: grid; gap: .8rem; }
+.compiled-slider { display: grid; grid-template-columns: minmax(7rem, 1fr) minmax(10rem, 3fr) auto; gap: .8rem; align-items: center; }
+.compiled-output { margin: 1.2rem 0; padding: 1rem; background: #fff; border-radius: .5rem; box-shadow: 0 1px 3px #0002; }
+.compiled-output h3 { margin: 0 0 .5rem; font-size: 1rem; }
+.compiled-output.value > p { font-size: 1.35rem; }
+.compiled-output.pass { border-left: .35rem solid #258247; }
+.compiled-output.fail { border-left: .35rem solid #b33a32; }
+.compiled-output.unavailable { color: #686a66; border: 1px dashed #999; box-shadow: none; }
+.compiled-table { overflow-x: auto; }
+.compiled-table table { border-collapse: collapse; width: 100%; }
+.compiled-table th, .compiled-table td { text-align: left; padding: .45rem; border-bottom: 1px solid #ddd; }
+.compiled-visual { min-height: 7rem; padding: 1rem; display: grid; place-items: center; color: #315c4f; background: linear-gradient(135deg, #eef3ef, #dde8e2); border-radius: .35rem; }
+.caption { color: #666; font-size: .9rem; }
+.viewer-inline-error { padding: .75rem; border-left: .3rem solid #b33a32; }
+@media (max-width: 600px) { .compiled-header { display: block; } .compiled-header button { margin-top: 1rem; } .compiled-slider { grid-template-columns: 1fr auto; } .compiled-slider input { grid-column: 1 / -1; grid-row: 2; width: 100%; } }
+@media (prefers-color-scheme: dark) { :root { background: #171917; color: #eee; } .compiled-output { background: #232623; } .compiled-controls { background: #29322d; } .compiled-page h2, .compiled-header { border-color: #555; } .compiled-table th, .compiled-table td { border-color: #444; } }

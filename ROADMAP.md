@@ -9,8 +9,6 @@ repo's node library and should be referenceable from the notebook.
 **17. What about migration to newer versions?** Documents have a migration path.
 Catalogues still have no migration path and refuse an unknown schema version.
 
-**30. Change: Should we use compiled notebooks to share in the notebook viewer?**
-
 **33. Change: What is the {table XX} notation in RM catalogue?** Decide how to
 integrate tables as catalogue lookup items.
 
