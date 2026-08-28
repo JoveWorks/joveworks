@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.23.2](https://github.com/JoveWorks/joveworks/compare/v0.23.1...v0.23.2) (2026-08-28)
+
+### ⚠ BREAKING CHANGES
+
+* the compiled NodeBook contract is version 2. A report
+  saved under version 1 is refused rather than half-read, and is republished
+  from its source document.
+
+### Features
+
+* draw a published NodeBook through the NodeBook's own components ([78d7663](https://github.com/JoveWorks/joveworks/commit/78d766367fa319b37225390be11e00fd6a4e2abf))
+
+### Fixes
+
+* **editor:** keep built-in libraries when a shared NodeBook goes interactive ([9e9fb3a](https://github.com/JoveWorks/joveworks/commit/9e9fb3af0dc64871459b1d5629b0e548f8927aa2))
 ## [0.23.1](https://github.com/JoveWorks/joveworks/compare/v0.23.0...v0.23.1) (2026-08-28)
 
 ### Fixes
