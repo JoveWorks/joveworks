@@ -318,7 +318,7 @@ describe.runIf(beltPresent)('the belt lab through the editor', () => {
       return fromCanonical(result.series.data[0] as number, result.unit);
     };
 
-    // docs/PLAN.md's table, at rel=1e-3 because the stored outputs are 4 figures.
+    // From the stored notebook outputs, at rel=1e-3 because they are 4 figures.
     const golden: readonly (readonly [string, number])[] = [
       ['out_i', 4.444],
       ['out_Pprime', 3080],

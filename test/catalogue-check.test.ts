@@ -15,7 +15,7 @@ import { KernelError, checkFormulaDimensions } from '@joveworks/kernel';
  * The mechanical half of reviewing a migrated catalogue: parse it, then run the
  * dimension check over every record.
  *
- * docs/PLAN.md asks this of every migrated formula, and it is why the kernel was
+ * This is asked of every migrated formula, and it is why the kernel was
  * built before any extraction ran. It lives here rather than in `kernel`
  * because the catalogue it checks is **not in this repository** and never will
  * be: the R&M content sits in a separate private repo, so this points at
