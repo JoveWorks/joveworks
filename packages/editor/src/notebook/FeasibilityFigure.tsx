@@ -9,7 +9,7 @@
  * treatment `PlotFigure` uses.
  */
 
-import { useEffect, useRef, type ReactElement } from 'react';
+import { useEffect, useId, useRef, type ReactElement } from 'react';
 import * as Plot from '@observablehq/plot';
 
 import {
@@ -53,10 +53,51 @@ const SINGLE_ROW = '';
  * fixed-width plot just as surely as it would crush a facet panel — same
  * bug, same fix, extended from the faceted case (`perFacetWidth`, added in
  * 897e2f6) to the single-panel one instead of inventing a second approach.
+ *
+ * A single panel has no sibling panel to divide space with, though, so a
+ * facet's floor (120 — dense small multiples are expected to sit tight) is
+ * too tight for it: reusing that floor verbatim is what made c517272 read
+ * as a regression ("cramped too thin") for the common case of a handful of
+ * ticks, which used to get the old flat 360 unconditionally. Keep 360 as
+ * the single-panel floor and let the same per-tick growth push past it once
+ * the ticks actually demand more room than that.
  */
 export function feasibilityPlotWidth(xTickCount: number, facetCount: number | undefined): number {
   const perFacetWidth = Math.max(120, 22 * xTickCount + 48);
-  return facetCount === undefined ? perFacetWidth : perFacetWidth * facetCount;
+  return facetCount === undefined ? Math.max(360, perFacetWidth) : perFacetWidth * facetCount;
+}
+
+/**
+ * A diagonal hatch, injected into the chart's own `<defs>` so a `fail` cell
+ * carries a texture as well as a colour. Students hand in a printed
+ * artefact — greyscale, sometimes a bad photocopy of that — where `#3ca951`
+ * vs `#ff725c` can be the same grey; the SVG `fill` this draws prints
+ * regardless of a browser's "print backgrounds" setting (unlike a CSS
+ * `background`), which is why the texture lives here rather than as a
+ * `.notebook`/print stylesheet rule. Only `fail` gets the hatch — hatching
+ * both verdicts would just be a busier heatmap, not a more legible one; a
+ * plain fill for `pass` is already how "nothing wrong here" reads. Stroked
+ * in `--ink` rather than a fixed hex so it inherits the print stylesheet's
+ * forced-light `--ink` (styles.css's `@media print` block) the same way the
+ * rest of the report's text does.
+ */
+function hatchPattern(id: string): SVGPatternElement {
+  const svgNamespace = 'http://www.w3.org/2000/svg';
+  const pattern = document.createElementNS(svgNamespace, 'pattern') as SVGPatternElement;
+  pattern.setAttribute('id', id);
+  pattern.setAttribute('patternUnits', 'userSpaceOnUse');
+  pattern.setAttribute('width', '8');
+  pattern.setAttribute('height', '8');
+  pattern.setAttribute('patternTransform', 'rotate(45)');
+  const line = document.createElementNS(svgNamespace, 'line');
+  line.setAttribute('x1', '0');
+  line.setAttribute('y1', '0');
+  line.setAttribute('x2', '0');
+  line.setAttribute('y2', '8');
+  line.setAttribute('stroke', 'var(--ink)');
+  line.setAttribute('stroke-width', '3');
+  pattern.append(line);
+  return pattern;
 }
 
 function coordinates(axis: PlotAxis): readonly (number | string)[] {
@@ -161,6 +202,11 @@ interface Props {
 export function FeasibilityFigure({ result, checkLabels, marking }: Props): ReactElement {
   const host = useRef<HTMLDivElement>(null);
   const { titleMathRendering } = useSettings();
+  // `useId`, not a module-level constant: a notebook can hold more than one
+  // Feasibility figure at once, and an SVG `id` is document-scoped — two
+  // charts sharing one id would have the second chart's hatch resolve
+  // against the first chart's `<pattern>` (or vice versa) purely by DOM order.
+  const hatchId = useId();
 
   useEffect(() => {
     const container = host.current;
@@ -168,6 +214,7 @@ export function FeasibilityFigure({ result, checkLabels, marking }: Props): Reac
 
     const data = rows(result, checkLabels, marking?.marks ?? NO_MARKS);
     const marked = data.filter((row) => row.letter !== undefined);
+    const failed = data.filter((row) => row.mask === 'fail');
     const xLabel = result.x.axis.label;
     const seriesLabel = result.series2?.axis.label ?? '';
     const fx = result.facet === undefined ? undefined : 'facet';
@@ -182,7 +229,7 @@ export function FeasibilityFigure({ result, checkLabels, marking }: Props): Reac
       color: {
         legend: true,
         domain: ['pass', 'fail'],
-        range: ['#3ca951', '#ff725c'],
+        range: ['var(--verdict-pass)', 'var(--verdict-fail)'],
       },
       ...(result.facet === undefined ? {} : { fx: { label: result.facet.axis.label } }),
       marks: [
@@ -190,6 +237,17 @@ export function FeasibilityFigure({ result, checkLabels, marking }: Props): Reac
           x: 'x',
           y: 'series',
           fill: 'mask',
+          ...(fx === undefined ? {} : { fx }),
+        }),
+        // A second, narrower layer over just the `fail` cells: colour alone
+        // does not survive a greyscale printout, so `fail` also gets a
+        // texture (see `hatchPattern`). Drawn after the colour cells so the
+        // hatch sits on top of them, before the letters so a mark is never
+        // hatched over.
+        Plot.cell(failed as Row[], {
+          x: 'x',
+          y: 'series',
+          fill: `url(#${hatchId})`,
           ...(fx === undefined ? {} : { fx }),
         }),
         // The letter alone, no ring: a cell is already a filled block, so a
@@ -212,6 +270,18 @@ export function FeasibilityFigure({ result, checkLabels, marking }: Props): Reac
 
     container.append(chart);
 
+    // A categorical `color.legend` makes `Plot.plot` return an HTML
+    // `<figure>` wrapping the chart and a separate legend swatch, not a bare
+    // `<svg>` (unlike PlotFigure, which draws its own legend precisely to
+    // avoid this) — so the element the hatch and the typesetting below both
+    // need is the chart's own inner `<svg>`, not necessarily `chart` itself.
+    const svg = chart instanceof SVGSVGElement ? chart : chart.querySelector('svg');
+    if (svg !== null) {
+      const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+      defs.append(hatchPattern(hatchId));
+      svg.prepend(defs);
+    }
+
     const grid = feasibilityGrid(result);
     const pointed = (): Row | undefined => (chart as { value?: Row }).value;
     const handleInput = (): void => {
@@ -231,12 +301,6 @@ export function FeasibilityFigure({ result, checkLabels, marking }: Props): Reac
       chart.addEventListener('pointerleave', handleLeave);
     }
 
-    // A categorical `color.legend` makes `Plot.plot` return an HTML
-    // `<figure>` wrapping the chart and a separate legend swatch, not a bare
-    // `<svg>` (unlike PlotFigure, which draws its own legend precisely to
-    // avoid this) — so the element to typeset is the chart's own inner
-    // `<svg>`, not necessarily `chart` itself.
-    const svg = chart instanceof SVGSVGElement ? chart : chart.querySelector('svg');
     if (titleMathRendering && svg !== null) {
       typesetChartLabels(svg, [xLabel, seriesLabel, ...(result.facet === undefined ? [] : [result.facet.axis.label])]);
     }

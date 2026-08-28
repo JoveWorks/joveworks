@@ -33,6 +33,16 @@
   --kind-input: #0e7490;
   --kind-output: #7c3aed;
 
+  /* A chart's pass/fail fill, not the app-chrome badge colours above —
+     Observable's own categorical palette (`#3ca951`/`#ff725c`), the same
+     pair PlotFigure's series colours and ParetoFigure's infeasible marker
+     draw from. Kept as tokens rather than a hex literal inside
+     FeasibilityFigure.tsx so print CSS has something to retarget; unlike
+     the state/kind tokens above, these were never theme-swapped even when
+     hardcoded, so there is deliberately no dark-mode override below. */
+  --verdict-pass: #3ca951;
+  --verdict-fail: #ff725c;
+
   --notice-bg: #fff7ed;
   --hover-bg: #e8eefc;
   --badge-pass-bg: #ecfdf3;
