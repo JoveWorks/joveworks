@@ -19,8 +19,7 @@ pnpm build       # tsc -b; an undeclared cross-package import fails here
 ```
 
 **New here? Start with [OVERVIEW.md](OVERVIEW.md)** — the whole project in one
-read. Then [ROADMAP.md](ROADMAP.md) for what's still open, or
-[docs/PLAN.md](docs/PLAN.md) for the build sequence that got here.
+read. Then [ROADMAP.md](ROADMAP.md) for what's still open.
 
 ## Why JoveWorks?
 
