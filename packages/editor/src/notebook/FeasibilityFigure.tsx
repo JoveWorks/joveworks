@@ -310,11 +310,22 @@ export function FeasibilityFigure({ result, checkLabels, marking }: Props): Reac
     container.replaceChildren(chart);
 
     // A categorical `color.legend` makes `Plot.plot` return an HTML
-    // `<figure>` wrapping the chart and a separate legend swatch, not a bare
-    // `<svg>` (unlike PlotFigure, which draws its own legend precisely to
-    // avoid this) — so the element the hatch and the typesetting below both
-    // need is the chart's own inner `<svg>`, not necessarily `chart` itself.
-    const svg = chart instanceof SVGSVGElement ? chart : chart.querySelector('svg');
+    // `<figure>` wrapping the legend and then the chart, not a bare `<svg>`
+    // (unlike PlotFigure, which draws its own legend precisely to avoid
+    // this) — so the element the hatch and the typesetting below both need
+    // is the chart's own inner `<svg>`, not necessarily `chart` itself.
+    // Scoped to a direct child, not a bare descendant search: the legend's
+    // own swatches are themselves tiny `<svg>` elements (see
+    // `hatchFailLegendSwatch`) and sit earlier in document order than the
+    // chart, so an unscoped `querySelector('svg')` hands back a 15×15
+    // swatch — no axis label anywhere on it — and both the hatch and the
+    // typesetting below silently do nothing.
+    //
+    // TypeScript only maps a bare tag-name selector to its element type, not
+    // a compound one like this — `:scope > svg` comes back as plain
+    // `Element`, hence the extra `instanceof` narrowing below.
+    const directSvg = chart.querySelector(':scope > svg');
+    const svg = chart instanceof SVGSVGElement ? chart : directSvg instanceof SVGSVGElement ? directSvg : null;
     if (svg !== null) {
       const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
       defs.append(hatchPattern(hatchId));
