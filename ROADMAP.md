@@ -28,8 +28,11 @@ repo's node library and should be referenceable from the notebook.
 external site. Citations and values by default, expressions only behind an
 explicit toggle; keep it behind a console command for now.
 
-**16. Nodes expose preferred display units.** Largely implemented, but the R&M
-catalogue needs updating.
+**16. Nodes expose preferred display units.** Implemented. The R&M catalogue
+declares them on the length and power ports (2026-08-28): diameters written in
+`m` display as `mm`, drive power written in `W` displays as `kW`. Angles are
+still inconsistent between chapters — c16-belt declares `rad`, c17-chain
+declares `deg` — and that reading is not signed off.
 
 **17. What about migration to newer versions?** Documents have a migration path.
 Catalogues still have no migration path and refuse an unknown schema version.
