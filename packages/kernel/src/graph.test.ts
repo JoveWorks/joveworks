@@ -293,22 +293,25 @@ describe('connections', () => {
     expect(result.ok === false && result.reason).toMatch(/carries a category, but the port it lands on takes a number/u);
   });
 
-  it('lets a pure number drive an angle port, and not the other way', () => {
+  it('lets a pure number drive an angle port, and an angle drive a pure one', () => {
     const intoAngle = documentOf(
       [input('x', scalar(0.5, '')), formulaNode('sine', refTo('sineOf'))],
       [],
     );
     expect(canConnect(intoAngle, catalogues, wire('x.value', 'sine.theta'))).toEqual({ ok: true });
 
-    // The reverse: an angle into a port declared dimensionless. `combine`'s
-    // ports are pure numbers, and a radian arriving there would be swallowed.
+    // The reverse: an angle into a port declared dimensionless. This is not a
+    // loophole — a radian is a ratio (m/m), the reason SI calls it
+    // dimensionless, and the belt formulas that produce a wrap angle feed it
+    // straight into `exp(mu * beta)` and an arc-fraction count, both of which
+    // need it back as a plain number. Nothing is swallowed: `deg` canonicalises
+    // to `rad` at the source, and `rad`'s canonical scale is 1, same as a pure
+    // number's, so `combine.a` receives the same magnitude the angle carried.
     const intoPure = documentOf(
       [input('a', scalar(30, 'deg')), formulaNode('combine', refTo('combine'))],
       [],
     );
-    const result = canConnect(intoPure, catalogues, wire('a.value', 'combine.a'));
-    expect(result.ok).toBe(false);
-    expect(result.ok === false && result.reason).toMatch(/cannot connect angle/u);
+    expect(canConnect(intoPure, catalogues, wire('a.value', 'combine.a'))).toEqual({ ok: true });
   });
 
   it('answers the same question from two resolved port types', () => {
@@ -319,7 +322,7 @@ describe('connections', () => {
     ).toBe(true);
     expect(
       typesConnect({ kind: 'numeric', dimension: ANGLE }, { kind: 'numeric', dimension: DIMENSIONLESS }),
-    ).toBe(false);
+    ).toBe(true);
     expect(typesConnect({ kind: 'numeric' }, { kind: 'categorical' })).toBe(false);
   });
 });
