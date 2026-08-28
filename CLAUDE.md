@@ -15,6 +15,17 @@ invariants, validation commands, and working rules for every coding agent.
   on the merge result.
 - When reporting editor work, state what changed and what Thomas should verify
   in the browser.
+- In this chat, do not commit a visual change — print styles, layout,
+  typography, a node view's appearance — until Thomas has seen it and approved
+  it. Make the edit, show him what it looks like, and wait. Styling is his
+  call, and committing while he is still deciding turns his feedback into
+  history he has to read past. Functional work keeps the ordinary flow, and
+  this does not apply to worktree agents: they still commit to their own
+  branch as their brief says, and the orchestrator reviews the diff.
+- A print layout can be checked without his browser: render the notebook's own
+  DOM through `packages/editor/src/styles.css` with
+  `chromium --headless --print-to-pdf`, then `pdftoppm -png` to look at the
+  pages. That is how the half-empty-column pagination bug was found.
 
 ## Orchestrating worktree agents
 
