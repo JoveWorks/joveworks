@@ -55,20 +55,34 @@ describe('a mask that does not vary along the axis it is drawn against', () => {
 });
 
 describe('feasibilityPlotWidth', () => {
-  it('grows the single-panel width with the tick count, same as a facet panel does (897e2f6)', () => {
+  // Deliberately rewritten from the version added alongside c517272: that
+  // version gave a single panel the same 120px floor as one facet panel,
+  // which is the width regression the user reported as "cramped too thin"
+  // — a single panel has no sibling panel to divide space with, so it kept
+  // the old flat-360 comfort width as its own floor instead (see
+  // `feasibilityPlotWidth`'s own comment). A facet panel's floor is
+  // unchanged.
+  it('grows the single-panel width with the tick count once ticks exceed its floor', () => {
     // ROADMAP.md #46: a flat 360px plot crowded 10+ tick labels from a
     // two-input sweep into collision with each other and the axis title.
-    expect(feasibilityPlotWidth(3, undefined)).toBe(feasibilityPlotWidth(3, 1));
-    expect(feasibilityPlotWidth(12, undefined)).toBeGreaterThan(feasibilityPlotWidth(3, undefined));
+    expect(feasibilityPlotWidth(20, undefined)).toBeGreaterThan(feasibilityPlotWidth(3, undefined));
+    // Same 22px-per-tick rate a facet panel uses past its own floor, not a
+    // separate formula invented for the single-panel case.
+    expect(feasibilityPlotWidth(20, undefined) - feasibilityPlotWidth(19, undefined)).toBe(22);
   });
 
-  it('never shrinks a panel below the floor a couple of ticks still need', () => {
-    expect(feasibilityPlotWidth(1, undefined)).toBe(120);
-    expect(feasibilityPlotWidth(0, undefined)).toBe(120);
+  it('keeps the pre-897e2f6 comfortable width as the single-panel floor', () => {
+    expect(feasibilityPlotWidth(1, undefined)).toBe(360);
+    expect(feasibilityPlotWidth(0, undefined)).toBe(360);
+  });
+
+  it('keeps a facet panel at its own tighter floor, unchanged from 897e2f6', () => {
+    expect(feasibilityPlotWidth(1, 1)).toBe(120);
+    expect(feasibilityPlotWidth(0, 4)).toBe(480);
   });
 
   it('multiplies the per-panel width by the facet count, unchanged from 897e2f6', () => {
-    expect(feasibilityPlotWidth(5, 4)).toBe(feasibilityPlotWidth(5, undefined) * 4);
+    expect(feasibilityPlotWidth(5, 4)).toBe(feasibilityPlotWidth(5, 1) * 4);
   });
 
   it('reproduces the reported collision case: a many-point sweep with long decimal coordinates', () => {

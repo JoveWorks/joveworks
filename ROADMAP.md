@@ -281,8 +281,18 @@ Fixed: the faceted branch's own logic is now the only logic. `perFacetWidth`
 is pulled out into an exported `feasibilityPlotWidth(xTickCount, facetCount)`,
 and the single-panel case calls it with `facetCount` absent instead of
 hard-coding `360` — a facet panel and a single panel were always sizing the
-same kind of thing (a panel's own x-ticks), so there was never a real second
-case to invent. Covered in `FeasibilityFigure.test.ts`.
+same kind of thing (a panel's own x-ticks). The first pass of this fix
+(c517272) gave the single-panel case the same 120px floor a facet panel
+uses, which read as a regression ("cramped too thin") for the common case
+of a handful of ticks that used to get the old flat 360 unconditionally — a
+single panel has no sibling panel to divide space with, so it keeps 360 as
+its own floor and only grows past it once the ticks actually need more.
+Also: pass/fail cells were colour-only, unreadable once a greyscale
+printout collapses `#3ca951`/`#ff725c` to the same grey — `fail` cells now
+also carry a diagonal SVG `<pattern>` hatch (`FeasibilityFigure.tsx`'s
+`hatchPattern`), and both verdict colours moved from hex literals to
+`--verdict-pass`/`--verdict-fail` tokens (`styles.css`) so print CSS has
+something to retarget. Covered in `FeasibilityFigure.test.ts`.
 
 **48. Feature: Let's design the shaft calculations** Take a look at the shaft notebooks and equations in the /home/thomas/source/mechanical-design repo and discuss what we can do. It will need force/distance, support/distance pairs to construct the piecewise arrays. I want to be able to show the bending/load diagrams and calculate the shaft sizes from it. This is a big feature, so we must plan it meticulously.
 Planned in `~/.claude/plans/fuzzy-imagining-fountain.md`, built in the
