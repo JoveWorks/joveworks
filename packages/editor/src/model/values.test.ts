@@ -35,33 +35,52 @@ describe('summariseCheck', () => {
     ]);
   });
 
-  it('splits a single crossing into start, boundary, and end segments — the boundary is the first failing point', () => {
-    const reading = { series: series([5, 13, 30]), unit: mpa };
-    expect(summariseCheck(reading, [true, false, false])).toEqual([
-      { text: '5 MPa', state: 'pass' },
-      { text: '13 MPa', state: 'boundary' },
+  it('splits a fail→pass crossing into start, boundary, and end — the boundary is already the first passing point', () => {
+    const four: Axis = { ...axis, length: 4 };
+    const reading = { series: series([30, 13, 5, 1], [four]), unit: mpa };
+    expect(summariseCheck(reading, [false, false, true, true])).toEqual([
       { text: '30 MPa', state: 'fail' },
+      { text: '5 MPa', state: 'boundary' },
+      { text: '1 MPa', state: 'pass' },
     ]);
   });
 
-  it('finds the boundary at the first crossing when there is more than one point on either side', () => {
+  it('splits a pass→fail crossing so the boundary names the last passing point, not the first failing one', () => {
     const four: Axis = { ...axis, length: 4 };
     const reading = { series: series([1, 5, 13, 30], [four]), unit: mpa };
     expect(summariseCheck(reading, [true, true, false, false])).toEqual([
       { text: '1 MPa', state: 'pass' },
-      { text: '13 MPa', state: 'boundary' },
+      { text: '5 MPa', state: 'boundary' },
       { text: '30 MPa', state: 'fail' },
     ]);
   });
 
   it('splits two crossings into start, both boundaries, and end — a limit briefly exceeded', () => {
     const six: Axis = { ...axis, length: 6 };
-    const reading = { series: series([5, 13, 40, 38, 13, 5], [six]), unit: mpa };
+    const reading = { series: series([5, 13, 40, 35, 20, 9], [six]), unit: mpa };
     expect(summariseCheck(reading, [true, true, false, false, true, true])).toEqual([
       { text: '5 MPa', state: 'pass' },
-      { text: '40 MPa', state: 'boundary' },
       { text: '13 MPa', state: 'boundary' },
-      { text: '5 MPa', state: 'pass' },
+      { text: '20 MPa', state: 'boundary' },
+      { text: '9 MPa', state: 'pass' },
+    ]);
+  });
+
+  it('collapses the start into the boundary when the crossing happens at the very first point', () => {
+    const three: Axis = { ...axis, length: 3 };
+    const reading = { series: series([5, 30, 32], [three]), unit: mpa };
+    expect(summariseCheck(reading, [true, false, false])).toEqual([
+      { text: '5 MPa', state: 'boundary' },
+      { text: '32 MPa', state: 'fail' },
+    ]);
+  });
+
+  it('collapses the end into the boundary when the crossing happens at the very last point', () => {
+    const three: Axis = { ...axis, length: 3 };
+    const reading = { series: series([32, 30, 5], [three]), unit: mpa };
+    expect(summariseCheck(reading, [false, false, true])).toEqual([
+      { text: '32 MPa', state: 'fail' },
+      { text: '5 MPa', state: 'boundary' },
     ]);
   });
 
