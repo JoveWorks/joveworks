@@ -92,13 +92,16 @@ export interface CheckSegment {
 /**
  * A check's reading, broken into colour-coded segments so a sweep shows
  * *where* it starts failing, not just its extremes. A single pass/fail
- * transition becomes three segments — start, the point it crosses, end —
- * each in its own state colour; two transitions (one contiguous region
- * dipping into the other state, e.g. briefly exceeding a limit) becomes
- * four — start, the two points it crosses, end. A uniform sweep collapses
- * to one segment in its overall colour, and more than two crossings falls
- * back to the plain extent range (`summarise`'s own text) rather than
- * guessing which crossing matters.
+ * transition becomes three segments — start, the crossing's passing-side
+ * sample, end — each in its own state colour; two transitions (one
+ * contiguous region dipping into the other state, e.g. briefly exceeding a
+ * limit) becomes four — start, the two crossings' passing-side samples, end.
+ * The boundary segment names the last sample that still satisfies the check
+ * rather than the first one that violates it: that's the design point a
+ * student would actually read off as the limit, not the point just past it.
+ * A uniform sweep collapses to one segment in its overall colour, and more
+ * than two crossings falls back to the plain extent range (`summarise`'s
+ * own text) rather than guessing which crossing matters.
  */
 export function summariseCheck(
   reading: Reading,
@@ -128,23 +131,49 @@ export function summariseCheck(
   for (let index = 1; index <= last; index += 1) {
     if (results[index] !== results[index - 1]) transitions.push(index);
   }
+
+  // A crossing is named by the sample still on the passing side of it: for
+  // fail→pass that's already the first sample of the new state (`boundary`
+  // itself), but for pass→fail it's the *previous* sample — the last one
+  // before the check gave out.
+  const passingIndex = (boundary: number): number => (results[boundary - 1] === true ? boundary - 1 : boundary);
+
+  // Naming the passing-side sample can walk a boundary onto the sweep's
+  // start or end index (a crossing right at the first or last point). When
+  // that happens the two segments would print the same number twice for no
+  // reason, so adjacent points that land on the same sample are merged,
+  // keeping the boundary colour since it's the more specific fact.
+  type Point = { readonly index: number; state: CheckState };
+  const build = (points: readonly Point[]): CheckSegment[] => {
+    const merged: Point[] = [];
+    for (const point of points) {
+      const prev = merged[merged.length - 1];
+      if (prev !== undefined && prev.index === point.index) {
+        if (point.state === 'boundary') prev.state = 'boundary';
+      } else {
+        merged.push({ ...point });
+      }
+    }
+    return merged.map(({ index, state }) => ({ text: at(index), state }));
+  };
+
   if (transitions.length === 1) {
     const [boundary] = transitions as [number];
-    return [
-      { text: at(0), state: results[0] === true ? 'pass' : 'fail' },
-      { text: at(boundary), state: 'boundary' },
-      { text: at(last), state: results[last] === true ? 'pass' : 'fail' },
-    ];
+    return build([
+      { index: 0, state: results[0] === true ? 'pass' : 'fail' },
+      { index: passingIndex(boundary), state: 'boundary' },
+      { index: last, state: results[last] === true ? 'pass' : 'fail' },
+    ]);
   }
 
   if (transitions.length === 2) {
     const [first, second] = transitions as [number, number];
-    return [
-      { text: at(0), state: results[0] === true ? 'pass' : 'fail' },
-      { text: at(first), state: 'boundary' },
-      { text: at(second), state: 'boundary' },
-      { text: at(last), state: results[last] === true ? 'pass' : 'fail' },
-    ];
+    return build([
+      { index: 0, state: results[0] === true ? 'pass' : 'fail' },
+      { index: passingIndex(first), state: 'boundary' },
+      { index: passingIndex(second), state: 'boundary' },
+      { index: last, state: results[last] === true ? 'pass' : 'fail' },
+    ]);
   }
 
   return [{ text: range(), state: 'mixed' }];
