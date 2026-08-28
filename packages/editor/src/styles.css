@@ -3547,7 +3547,9 @@ aside.right {
   flex: 1;
 }
 
-/* Contours have a compact vertical scale; categorical series continue to use
+/* Contours — and heatmaps, which map the same kind of continuous value to
+ * colour over the same two swept axes — get this compact vertical scale
+ * instead of Observable's own legend; categorical series continue to use
  * Observable's ordinary swatch legend above their chart. */
 .notebook .contour-figure {
   display: flex;

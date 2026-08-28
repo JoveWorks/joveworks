@@ -4,7 +4,7 @@ import type { Axis, PlotAxis, PlotMeasureResult } from '@joveworks/kernel';
 import { parseUnit } from '@joveworks/units';
 
 import type { PlotPanel } from '../model/plot';
-import { contourGridForPanel, contourLegendLevels, rowsForPanel } from './IntelligentPlotFigure';
+import { chartWidth, contourGridForPanel, contourLegendLevels, rowsForPanel, sharesColorScaleKey } from './IntelligentPlotFigure';
 
 const mm = parseUnit('mm');
 const width: Axis = { id: 'width', label: 'width', length: 2, order: 0 };
@@ -85,5 +85,40 @@ describe('intelligent plot rendering rows', () => {
       roles: { x: 'width', y: 'height' },
     };
     expect(contourLegendLevels(plotted, mm)).toEqual({ minimum: 1, maximum: 6, thresholds: [2, 5] });
+  });
+
+  it('reads the same right-side color scale off a heatmap panel as off a contour', () => {
+    // A heatmap's cells and a contour's bands are the same value-to-colour
+    // mapping over the same two swept axes (bug: the heatmap used to get
+    // Observable's own legend above the chart instead of this key) — the
+    // levels behind that key must not depend on which mark draws them.
+    const plotted: PlotPanel = {
+      ...panel([{ ...measure('value', 'stress', [1, 2, 3], [width]), threshold: 2 }], [widthReadout]),
+      type: 'heatmap',
+      roles: { x: 'width', y: 'height' },
+    };
+    expect(contourLegendLevels(plotted, mm)).toEqual({ minimum: 1, maximum: 3, thresholds: [2] });
+  });
+});
+
+describe('the shared colour-scale key (heatmap legend placement)', () => {
+  it('gives a heatmap the same right-side key as a contour, and no other panel type', () => {
+    expect(sharesColorScaleKey('heatmap')).toBe(true);
+    expect(sharesColorScaleKey('contour')).toBe(true);
+    expect(sharesColorScaleKey('line')).toBe(false);
+    expect(sharesColorScaleKey('dot')).toBe(false);
+  });
+
+  it('narrows the chart to make room for the key whenever one is actually drawn', () => {
+    // Driven off "this panel got a colorbar", not off "this panel is a
+    // contour" — a heatmap with a colorbar is narrowed exactly like a
+    // contour with one.
+    expect(chartWidth(640, true)).toBe(640 - 102);
+    expect(chartWidth(640, false)).toBe(640);
+  });
+
+  it('never narrows below the 320px floor, key or no key', () => {
+    expect(chartWidth(300, true)).toBe(320);
+    expect(chartWidth(300, false)).toBe(320);
   });
 });
