@@ -4007,6 +4007,24 @@ aside.right {
     padding: 0;
   }
 
+  /* Prose is a textarea that auto-grows by writing its measured height as an
+     inline pixel style (`NotebookTextField`'s `resize`, Notebook.tsx). That
+     measurement is taken at the panel's on-screen width, and a printed column
+     is narrower — the same text wraps to more lines than the frozen height
+     leaves room for, so it was clipped mid-sentence and everything after it
+     was laid out from the too-short box, which is what drew the sweep table
+     on top of the intro paragraph. A textarea cannot reflow to its content
+     the way a div does, and `height: auto` alone would size it from its
+     `rows` attribute instead; `field-sizing: content` is the property that
+     makes a form control take its content's size — already relied on for the
+     quantity fields above. `!important` because the stale height is an inline
+     style, which an ordinary declaration loses to. Print-only: on screen the
+     JS measurement is correct and stays in charge. */
+  .notebook textarea {
+    field-sizing: content;
+    height: auto !important;
+  }
+
   /* A section is the report's own structure (a group frame — see
      Notebook.tsx's own header comment), so try to keep one whole; only
      honoured when it actually fits a page, per spec — a section longer than
