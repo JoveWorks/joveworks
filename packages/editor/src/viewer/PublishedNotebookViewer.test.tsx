@@ -12,4 +12,22 @@ describe('compiled report rendering', () => {
     expect(value).toContain('mm');
     expect(missing).toContain('not connected');
   });
+
+  it('renders compiled plot data as an actual labelled SVG figure', () => {
+    const plot = renderToStaticMarkup(<CompiledOutputView output={{
+      id: 'plot', kind: 'plot', label: 'Deflection', available: true,
+      result: {
+        kind: 'plot',
+        series: { kind: 'numeric', axes: [{ id: 'length', label: 'Length', length: 3, order: 0 }], data: [2, 4, 8] },
+        unit: { symbol: 'mm', factor: 1, dimension: { length: 1 } },
+        x: { axis: { id: 'length', label: 'Length', length: 3, order: 0 }, coordinates: { kind: 'numeric', axes: [{ id: 'length', label: 'Length', length: 3, order: 0 }], data: [100, 200, 300] }, unit: { symbol: 'mm', factor: 1, dimension: { length: 1 } } },
+        contour: false,
+      },
+    }} />);
+    expect(plot).toContain('<svg');
+    expect(plot).toContain('<path');
+    expect(plot).toContain('Length (mm)');
+    expect(plot).toContain('Deflection (mm)');
+    expect(plot).not.toContain('2, 4, 8');
+  });
 });

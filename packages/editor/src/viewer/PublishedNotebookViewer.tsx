@@ -3,6 +3,7 @@ import { decodeCompiledNumber, parseCompiledNotebook, type CompiledNotebook, typ
 
 import { hubOrigin, navigate, routeHref, type AppRoute } from '../router';
 import type { InteractiveNotebook } from './interactiveRuntime';
+import { CompiledPlotFigure } from './CompiledPlotFigure';
 
 type ViewerRoute = Exclude<AppRoute, { readonly kind: 'home' }>;
 type Activation = 'static' | 'loading' | 'active' | 'failed';
@@ -27,13 +28,14 @@ export function CompiledOutputView({ output }: { readonly output: CompiledOutput
   if (!output.available || output.result === undefined) return <div className="compiled-output unavailable"><h3>{output.label}</h3><p>{output.unavailableReason ?? 'This result is not available.'}</p></div>;
   const result = output.result;
   const unit = shown(object(result.unit)?.symbol);
-  if (output.kind === 'print') return <div className="compiled-output value"><h3>{output.label}</h3><p>{values(result).map(shown).join(', ')} <small>{unit}</small></p>{output.caption && <p className="caption">{output.caption}</p>}</div>;
+  if (output.kind === 'print') return <div className="compiled-output value"><p><strong>{output.label}</strong><span>{values(result).map(shown).join(', ')} <small>{unit}</small></span></p>{output.caption && <p className="caption">{output.caption}</p>}</div>;
   if (output.kind === 'check') return <div className={`compiled-output check ${result.passed === true ? 'pass' : 'fail'}`}><h3>{result.passed === true ? '✓' : '✗'} {output.label}</h3><p>{values(result).map(shown).join(', ')} {unit} {shown(result.comparison)} {shown(result.threshold)}</p></div>;
   if (output.kind === 'table' && Array.isArray(result.columns)) {
     const columns = result.columns.map(object).filter((column): column is Readonly<Record<string, JsonValue>> => column !== undefined);
     const rows = Math.max(0, ...columns.map((column) => values(column).length));
     return <div className="compiled-output"><h3>{output.label}</h3><div className="compiled-table"><table><thead><tr>{columns.map((column, i) => <th key={i}>{shown(column.name)} <small>{shown(object(column.unit)?.symbol)}</small></th>)}</tr></thead><tbody>{Array.from({ length: rows }, (_, row) => <tr key={row}>{columns.map((column, col) => <td key={col}>{shown(values(column)[row])}</td>)}</tr>)}</tbody></table></div></div>;
   }
+  if (output.kind === 'plot') return <figure className="compiled-output visual"><figcaption>{output.label}</figcaption><CompiledPlotFigure result={result} label={output.label} />{output.caption && <p className="caption">{output.caption}</p>}</figure>;
   const summary = values(result);
   const details = summary.length > 0 ? `${summary.slice(0, 8).map(shown).join(', ')}${summary.length > 8 ? '…' : ''}` : output.kind;
   return <div className="compiled-output visual"><h3>{output.label}</h3><div className="compiled-visual" role="img" aria-label={`${output.kind} output`}>{details}</div>{output.caption && <p className="caption">{output.caption}</p>}</div>;
