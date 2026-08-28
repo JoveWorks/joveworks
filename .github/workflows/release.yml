@@ -58,7 +58,19 @@ jobs:
           # it must advance only to the just-tagged release commit. A normal
           # Git push enforces fast-forward-only promotion and creates the
           # branch on the first release.
-          git push --follow-tags origin HEAD:main HEAD:production
+          #
+          # `--atomic` is what keeps a race from splitting the three refs
+          # apart. This job checks out `main`, then spends a couple of
+          # minutes building and testing before it pushes; a commit landing
+          # on `main` in that window makes the release commit a sibling
+          # rather than a descendant, and `main` is rejected. Without
+          # `--atomic` the other two refs still went through — leaving a tag
+          # and a `production` pointing at a release commit that was on no
+          # branch, a re-run that failed on "tag already exists", and the
+          # next release unable to fast-forward `production` at all. All
+          # three refs now succeed or fail together, so a losing race leaves
+          # nothing behind and re-running the workflow is enough.
+          git push --atomic --follow-tags origin HEAD:main HEAD:production
 
       - name: Extract release notes
         id: notes
