@@ -55,11 +55,29 @@ data or open-ended analysis. **Learn the model before you write the code.**
 
 ## What it isn't
 
-- **Not a computer algebra system.** Forward evaluation over a directed
-  acyclic graph — the kernel never rearranges a formula to solve for an
-  unknown input. A rearranged form is authored as catalogue
-  content instead, or answered by sweeping and reading off a threshold
-  crossing — see [OVERVIEW.md](OVERVIEW.md) for the reasoning.
+- **Not a computer algebra system, and not a solver.** Evaluation runs forwards
+  over a directed acyclic graph. The kernel never rearranges a formula to solve
+  for an unknown input, and it never iterates to hit a target value.
+
+  *"I want this output — what inputs give me that?"* is a real question and it
+  has three answers here, none of which is inversion:
+
+  - the **rearranged formula**, where one exists. R&M numbers its own
+    (`17.1A`/`B`/`C` are one relation in three arrangements), so solved-for
+    versions are catalogue content, offered as *same equation, solved for…*;
+  - a **sweep read against a threshold** — the curve crossing the acceptance
+    line, which also shows the sensitivity around the answer that a single
+    returned number hides;
+  - a **design study**: check nodes over a swept grid, a feasibility map, and a
+    decision card naming the constraint the design is actually up against.
+
+  Inversion would answer worse, not just differently. Catalogue lookups, fit
+  tables, categorical ports and applicability conditions make the preimage a
+  set rather than a value; a real graph has more free inputs than targets, so a
+  target picks out a region and not a point; and a root-finder converges
+  happily to a design outside the formula's declared valid range. See
+  [OVERVIEW.md](OVERVIEW.md) for the full reasoning, including the measurement
+  that settled it.
 
 ## Licence
 

@@ -124,7 +124,7 @@ the function itself was broken: it raised on every invocation and nobody had
 noticed. The CAS was inherited habit, not a requirement
 anyone was exercising.
 
-That sounds like a limitation and mostly is not, for two reasons:
+That sounds like a limitation and mostly is not, for three reasons:
 
 - R&M already numbers its own rearranged forms (`17.1A`/`B`/`C` are one relation
   in three arrangements), so the "solved for" versions are catalogue content.
@@ -133,9 +133,48 @@ That sounds like a limitation and mostly is not, for two reasons:
   a safety factor of 1.5" is answered by a curve crossing a threshold — and the
   curve shows the sensitivity around the answer, which a single returned number
   hides.
+- Where several inputs are open at once, that is a **design study**, not a
+  solve: check nodes over the swept grid, a feasibility map for the shape of the
+  region, and a decision card that names the governing constraint. The question
+  behind "solve for the input" is nearly always this one.
 
-A root-finder would also silently pick one root of a formula that has two. The
-graph shows you both.
+### Why inversion would answer worse
+
+The request keeps coming back, so the reasoning is worth stating in full rather
+than as scope.
+
+- **The inverse is not a function.** Catalogue lookups, fit tables, categorical
+  ports and `appliesWhen` variants make the graph piecewise and partly discrete.
+  The preimage of a target is a set — sometimes an interval, sometimes empty. A
+  solver returns one number and hides which of those it was. It would also
+  silently pick one root of a formula that has two; the graph shows you both.
+- **A target underdetermines the inputs.** A real graph has many free inputs, so
+  a target picks out a region, not a point. Goal seek only becomes well-posed
+  once every input but one is pinned — and by then the engineering decisions are
+  already made, and the remaining one-dimensional question is exactly what a
+  sweep answers, with its neighbourhood attached.
+- **Valid ranges are load-bearing data.** A root-finder converges happily to a
+  design outside the formula's declared range, or into a region where a
+  different `variantOf` applies. Forward evaluation re-checks applicability at
+  every sample of the grid; an inverter would have to re-derive it, which is the
+  hard half of the problem.
+- **It would dissolve the invariants underneath everything else.** Dimensions
+  are connection-time port types, so inversion makes port direction dynamic and
+  dimension checking stops being a static property of the graph. Acyclicity plus
+  determinism is why evaluation is one topological pass; a solver adds initial
+  guesses, tolerances, non-convergence as a value state, and cost multiplied by
+  every sweep cell. Candidates, document hashing and the notebook-as-a-view all
+  assume one deterministic value per node.
+- **It teaches the wrong thing.** This is a course tool. Handing a student
+  `d = 37.4` from a black box is the opposite of showing them the constraint
+  that governs the design, which the decision card already does.
+
+If a genuine need ever survives all of that, the only form that fits the
+architecture is an explicit **solver node** — one declared free input, a
+declared bracket, bisection over the existing forward pass, contained in its own
+subgraph — never a reversal of the graph's direction. That is a milestone
+decision with schema and reproducibility consequences, and nothing has argued
+for it yet.
 
 ---
 
