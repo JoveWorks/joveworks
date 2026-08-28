@@ -112,6 +112,12 @@ describe('the samples the editor opens with', () => {
     expect(millingPowerEnvelope(PUBLIC_CATALOGUES)).toBeDefined();
   });
 
+  it('uses the machining-material library for its cutting-force estimate', () => {
+    const example = millingPowerEnvelope(PUBLIC_CATALOGUES);
+    expect(example?.nodes.some((node) => node.id === 'material' && node.kind === 'formula')).toBe(true);
+    expect(example?.edges.some((edge) => edge.from.node === 'material' && edge.from.port === 'k_c' && edge.to.node === 'cutting_power')).toBe(true);
+  });
+
   it('opens the wildlife camera comparison from the bundled public catalogue', () => {
     const example = wildlifeCameraComparison(PUBLIC_CATALOGUES);
     expect(example).toBeDefined();

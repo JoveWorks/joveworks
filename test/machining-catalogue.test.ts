@@ -20,8 +20,8 @@ function formula(id: string): Formula {
 }
 
 function evaluate(id: string, inputs: Readonly<Record<string, number>>): number {
-  // Every machining record answers with one output, so its one compiled
-  // expression is the only entry in the map.
+  // This helper exercises expression-backed single-output records. The material
+  // library below is a multi-output lookup and is checked as table data instead.
   const record = formula(id);
   const only = record.outputs[0] as OutputPort;
   const compiled = compileFormula(record, new Map()).evaluate.get(only.name);
@@ -36,13 +36,35 @@ describe('the bundled machining catalogue', () => {
   it('is public, namespaced, and mechanically valid', () => {
     expect(catalogue.id).toBe('public-machining');
     expect(catalogue.restricted).toBe(false);
-    expect(catalogue.formulas).toHaveLength(17);
+    expect(catalogue.formulas).toHaveLength(18);
 
     for (const entry of catalogue.formulas) {
       expect(entry.id).toMatch(/^machining\./u);
-      expect(entry.status).toBe('verified');
+      expect(entry.status).toBe(entry.id === 'machining.material.properties' ? 'unverified' : 'verified');
       expect(() => checkFormulaDimensions(entry), entry.id).not.toThrow();
     }
+  });
+
+  it('provides a small material library for indicative cutting-force estimates', () => {
+    const material = formula('machining.material.properties');
+    expect(material.inputs[0]).toMatchObject({
+      kind: 'categorical',
+      name: 'material',
+      default: 'Carbon steel C45',
+      domain: [
+        'Aluminium 6082-T6',
+        'Brass CW508L',
+        'Structural steel S235JR',
+        'Carbon steel C45',
+        'Stainless steel 304',
+        'Stainless steel 316',
+        'Titanium Ti-6Al-4V',
+      ],
+    });
+    expect(material.lookup?.columns).toEqual({
+      k_c: [750, 1000, 1600, 1800, 2200, 2400, 2800],
+      rho: [2.7, 8.5, 7.85, 7.85, 8, 8, 4.43],
+    });
   });
 
   it('converts diameter and spindle speed to cutting speed and back', () => {

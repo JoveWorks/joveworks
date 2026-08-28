@@ -857,6 +857,7 @@ export function cantileverHollowSections(catalogues: readonly Catalogue[], local
 
 /** The catalogue records this sample needs, by id. */
 export const MILLING_STUDY_FORMULAS = [
+  'machining.material.properties',
   'machining.speed.spindle-speed',
   'machining.milling.table-feed',
   'machining.milling.removal-rate',
@@ -904,7 +905,7 @@ export function millingPowerEnvelope(catalogues: readonly Catalogue[], locale: A
     { ...input('a_p', 'Axial depth a_p', { kind: 'slider', value: 4, min: 1, max: 8, unit: mm }, at(0, 860)), exposeInNotebook: true },
     formulaNode('removal_rate', formula('machining.milling.removal-rate'), at(700, 560)),
 
-    input('k_c', 'Specific cutting force k_c', { kind: 'scalar', value: 1800, unit: parseUnit('N/mm²') }, at(360, 780)),
+    formulaNode('material', formula('machining.material.properties'), at(360, 780)),
     formulaNode('cutting_power', formula('machining.power.from-removal-rate'), at(980, 560)),
     { ...input('eta', 'Machine efficiency eta', { kind: 'slider', value: 0.85, min: 0.6, max: 0.95, unit: parseUnit('') }, at(700, 820)), exposeInNotebook: true },
     formulaNode('machine_power', formula('machining.power.machine-input'), at(1240, 480)),
@@ -974,7 +975,7 @@ export function millingPowerEnvelope(catalogues: readonly Catalogue[], locale: A
     wire('a_e.value', 'removal_rate.a_e'),
     wire('table_feed.v_f', 'removal_rate.v_f'),
 
-    wire('k_c.value', 'cutting_power.k_c'),
+    wire('material.k_c', 'cutting_power.k_c'),
     wire('removal_rate.Q', 'cutting_power.Q'),
     wire('cutting_power.P_c', 'machine_power.P_c'),
     wire('eta.value', 'machine_power.eta'),

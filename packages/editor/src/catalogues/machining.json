@@ -8,6 +8,81 @@
   "restricted": false,
   "formulas": [
     {
+      "id": "machining.material.properties",
+      "version": 1,
+      "output": [
+        {
+          "kind": "numeric",
+          "name": "k_c",
+          "unit": "N/mm²",
+          "description": {
+            "en": "Indicative specific cutting force for the selected material.",
+            "nl": "Indicatieve specifieke snijkracht voor het gekozen materiaal."
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "rho",
+          "unit": "kg/dm³",
+          "description": {
+            "en": "Nominal material density.",
+            "nl": "Nominale materiaaldichtheid."
+          }
+        }
+      ],
+      "inputs": [
+        {
+          "kind": "categorical",
+          "name": "material",
+          "domain": [
+            "Aluminium 6082-T6",
+            "Brass CW508L",
+            "Structural steel S235JR",
+            "Carbon steel C45",
+            "Stainless steel 304",
+            "Stainless steel 316",
+            "Titanium Ti-6Al-4V"
+          ],
+          "default": "Carbon steel C45",
+          "description": {
+            "en": "Workpiece material selected for this estimate.",
+            "nl": "Werkstukmateriaal gekozen voor deze schatting."
+          }
+        }
+      ],
+      "lookup": {
+        "axes": [
+          {
+            "input": "material",
+            "kind": "categorical",
+            "values": [
+              "Aluminium 6082-T6",
+              "Brass CW508L",
+              "Structural steel S235JR",
+              "Carbon steel C45",
+              "Stainless steel 304",
+              "Stainless steel 316",
+              "Titanium Ti-6Al-4V"
+            ]
+          }
+        ],
+        "values": {
+          "k_c": [750, 1000, 1600, 1800, 2200, 2400, 2800],
+          "rho": [2.7, 8.5, 7.85, 7.85, 8.0, 8.0, 4.43]
+        }
+      },
+      "label": {
+        "en": "Machining material properties",
+        "nl": "Materiaaleigenschappen voor bewerking"
+      },
+      "description": {
+        "en": "A small library of common workpiece materials. Specific cutting force values are indicative planning values only: they vary with tool geometry and grade, chip thickness, cutting speed, coolant, and the actual material condition. Replace them with validated shop or toolmaker data before production use.",
+        "nl": "Een kleine bibliotheek met courante werkstukmaterialen. Specifieke snijkrachtwaarden zijn slechts indicatieve planningswaarden: ze variëren met gereedschapsgeometrie en -kwaliteit, spaandikte, snijsnelheid, koelmiddel en de werkelijke materiaaltoestand. Vervang ze vóór productiegebruik door gevalideerde gegevens van de werkplaats of gereedschapfabrikant."
+      },
+      "citation": "Indicative machining-material data",
+      "status": "unverified"
+    },
+    {
       "id": "machining.speed.cutting-speed",
       "version": 1,
       "output": {
