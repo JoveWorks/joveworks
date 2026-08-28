@@ -1,8 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { gzipSync } from 'node:zlib';
 
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
+import type { OutputChunk } from 'rollup';
 
 // Read directly rather than `import … with { type: 'json' }` — this file
 // runs under Node/Vite, outside the tsc project (`tsconfig.json`'s
@@ -11,10 +13,40 @@ import { defineConfig } from 'vite';
 const rootPackageJson = fileURLToPath(new URL('../../package.json', import.meta.url));
 const { version } = JSON.parse(readFileSync(rootPackageJson, 'utf-8')) as { version: string };
 
+const VIEWER_BUDGET = 250 * 1024;
+
+function viewerBundleGuard() {
+  return {
+    name: 'joveworks-viewer-bundle-guard',
+    generateBundle(_options: unknown, bundle: Record<string, OutputChunk | { readonly type: 'asset' }>) {
+      const chunks = Object.values(bundle).filter((entry): entry is OutputChunk => entry.type === 'chunk');
+      const entry = chunks.find((chunk) => chunk.isEntry);
+      const viewer = chunks.find((chunk) => chunk.facadeModuleId?.endsWith('/viewer/PublishedNotebookViewer.tsx'));
+      if (entry === undefined || viewer === undefined) throw new Error('could not identify viewer entry chunks');
+      const byFile = new Map(chunks.map((chunk) => [chunk.fileName, chunk]));
+      const reachable = new Set<OutputChunk>();
+      const visit = (chunk: OutputChunk): void => {
+        if (reachable.has(chunk)) return;
+        reachable.add(chunk);
+        for (const file of chunk.imports) {
+          const imported = byFile.get(file);
+          if (imported !== undefined) visit(imported);
+        }
+      };
+      visit(entry);
+      visit(viewer);
+      const forbidden = [...reachable].flatMap((chunk) => chunk.moduleIds).find((id) => id.includes('/packages/kernel/') || id.includes('/@xyflow/'));
+      if (forbidden !== undefined) throw new Error(`viewer bundle includes forbidden module ${forbidden}`);
+      const compressed = [...reachable].reduce((bytes, chunk) => bytes + gzipSync(chunk.code).byteLength, 0);
+      if (compressed > VIEWER_BUDGET) throw new Error(`viewer JavaScript is ${compressed} bytes gzipped; budget is ${VIEWER_BUDGET}`);
+    },
+  };
+}
+
 // A static client-side app: no backend, no server-side rendering, and
 // nothing here that a `file://` or a plain static host could not serve.
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), viewerBundleGuard()],
   define: {
     __APP_VERSION__: JSON.stringify(version),
     // Lets a bug report read "nightly 0.21.0" instead of an ambiguous

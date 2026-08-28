@@ -8,7 +8,7 @@
  * itself is remembered, but a secret never joins localStorage.
  */
 
-import { loadDocument, serializeDocument, type GraphDocument, type JsonValue } from '@joveworks/schema';
+import { loadDocument, serializeDocument, type CompiledNotebook, type GraphDocument, type JsonValue } from '@joveworks/schema';
 
 const PROTOCOL_VERSION = 1;
 
@@ -83,6 +83,7 @@ export interface HubWorkspace {
 export interface HubWorkspaceDraft {
   readonly title: string;
   readonly document: GraphDocument;
+  readonly compiledNotebook: CompiledNotebook;
   readonly courseSlug?: string;
   readonly catalogues?: readonly HubCatalogueRef[];
 }
@@ -258,6 +259,7 @@ export async function createWorkspace(
     {
       title: draft.title,
       document: serializeDocument(draft.document),
+      compiledNotebook: draft.compiledNotebook as unknown as JsonValue,
       ...(draft.courseSlug === undefined ? {} : { courseSlug: draft.courseSlug, catalogues: (draft.catalogues ?? []).map((catalogue) => ({ id: catalogue.id, version: catalogue.version, hash: catalogue.hash })) }),
     },
   );
@@ -296,6 +298,7 @@ export async function saveWorkspace(
     {
       title: draft.title,
       document: serializeDocument(draft.document),
+      compiledNotebook: draft.compiledNotebook as unknown as JsonValue,
       ...(draft.courseSlug === undefined ? {} : { courseSlug: draft.courseSlug, catalogues: (draft.catalogues ?? []).map((catalogue) => ({ id: catalogue.id, version: catalogue.version, hash: catalogue.hash })) }),
     },
     workspaceToken,

@@ -226,3 +226,17 @@ export {
 export type { CatalogueFormat } from './io.js';
 export { localize, parseLocalizedText, serializeLocalizedText } from './localization.js';
 export type { LocalizedText } from './localization.js';
+export {
+  COMPILED_NOTEBOOK_SCHEMA_VERSION,
+  encodeCompiledNumber,
+  decodeCompiledNumber,
+  parseCompiledNotebook,
+} from './compiledNotebook.js';
+export type {
+  CompiledNotebook,
+  CompiledSection,
+  CompiledOutput,
+  CompiledSlider,
+  CompiledAxisReadout,
+  EncodedNumber,
+} from './compiledNotebook.js';

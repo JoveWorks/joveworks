@@ -7,12 +7,6 @@ reasoning behind a shipped change lives in its commit message, and
 `docs/next-session.md` carries what the next session should pick up. This
 file is only ever the answer to "what is still open".
 
-## Open product questions
-
-**A read-only NodeBook viewer.** Mobile is for reading finished work, not
-editing a desktop graph. Decide the portable report format and sharing route
-before expanding the course viewer into a general NodeBook viewer.
-
 ## Editor backlog
 
 **2. A range's two bounds showing different units** — `10 mm ... 1 m`, each
@@ -36,8 +30,6 @@ declares `deg` — and that reading is not signed off.
 
 **17. What about migration to newer versions?** Documents have a migration path.
 Catalogues still have no migration path and refuse an unknown schema version.
-
-**30. Change: Should we use compiled notebooks to share in the notebook viewer?**
 
 **33. Change: What is the {table XX} notation in RM catalogue?** Decide how to
 integrate tables as catalogue lookup items.
