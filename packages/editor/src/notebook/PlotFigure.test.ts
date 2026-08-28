@@ -13,6 +13,7 @@ import { PLAIN_NUMBER_FORMAT, parseUnit, type NumberFormat } from '@joveworks/un
 
 import {
   axisLabel,
+  chartLabelForText,
   contourGrid,
   drawsContour,
   markY,
@@ -30,6 +31,18 @@ const mm = parseUnit('mm');
 const axisW: Axis = { id: 'w', label: 'w', length: 3, order: 0 };
 
 const base = { nodeId: 'p', kind: 'plot' as const, unit: mm, contour: false };
+
+describe('chart label matching', () => {
+  it('keeps the authored TeX label when Observable adds layout whitespace', () => {
+    expect(chartLabelForText('chip load  f_z (mm/tooth)\n', ['chip load f_z (mm/tooth)']))
+      .toBe('chip load f_z (mm/tooth)');
+  });
+
+  it('recognises an axis label after Observable adds its direction and unit decoration', () => {
+    expect(chartLabelForText('↑ radial engagement a_e (mm) (mm)', ['radial engagement a_e (mm)']))
+      .toBe('radial engagement a_e (mm)');
+  });
+});
 
 describe('a plotted value that does not vary along the x axis', () => {
   it('renders a flat line instead of throwing', () => {

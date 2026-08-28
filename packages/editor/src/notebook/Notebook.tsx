@@ -945,15 +945,33 @@ export function Notebook({ onClose }: { readonly onClose: () => void }): ReactEl
       onDrop={(event) => event.preventDefault()}
     >
       <div className="notebook-header">
-        <input
-          className="notebook-title"
-          value={document.title}
-          onChange={(event) => {
-            const title = event.target.value;
-            editLive((current) => ({ ...current, title }));
-          }}
-          onBlur={() => commitEdit()}
-        />
+        <div className="notebook-heading">
+          <input
+            className="notebook-title"
+            value={document.title}
+            aria-label={t('Notebook title')}
+            onChange={(event) => {
+              const title = event.target.value;
+              editLive((current) => ({ ...current, title }));
+            }}
+            onBlur={() => commitEdit()}
+          />
+          <input
+            className="notebook-author"
+            value={document.author ?? ''}
+            placeholder={t('Author')}
+            aria-label={t('Author')}
+            onChange={(event) => {
+              const author = event.target.value;
+              editLive((current) => {
+                if (author.length > 0) return { ...current, author };
+                const { author: _author, ...withoutAuthor } = current;
+                return withoutAuthor;
+              });
+            }}
+            onBlur={() => commitEdit()}
+          />
+        </div>
         <button
           type="button"
           className="notebook-icon-button"

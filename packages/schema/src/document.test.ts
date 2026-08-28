@@ -23,6 +23,7 @@ const study: JsonObject = {
   schemaVersion: DOCUMENT_SCHEMA_VERSION,
   id: 'study-1',
   title: 'Sizing study',
+  author: 'Ada Lovelace',
   nodes: [
     {
       kind: 'input',
