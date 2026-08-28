@@ -25,7 +25,7 @@ import {
 import { fromCanonical } from '@joveworks/units';
 
 import { useSettings } from '../settings-context';
-import { chartTip, pointedRow, typesetChartLabels } from './PlotFigure';
+import { chartTip, pointedRow, typesetChartLabels, WIDE_FIGURE_PRINT_PX } from './PlotFigure';
 import { NO_MARKS, type FigureMarking, type MarkIndex } from './marks';
 
 interface Row {
@@ -251,13 +251,14 @@ export function FeasibilityFigure({ result, checkLabels, marking }: Props): Reac
     const xLabel = result.x.axis.label;
     const seriesLabel = result.series2?.axis.label ?? '';
     const fx = result.facet === undefined ? undefined : 'facet';
+    const width = feasibilityPlotWidth(result.x.axis.length, result.facet?.axis.length);
 
     const chart = Plot.plot({
       // Observable's default legend class is versioned (currently
       // `plot-d6a7b5`), so name this chart's legend ourselves before looking
       // up the fail swatch below.
       className: 'feasibility-plot',
-      width: feasibilityPlotWidth(result.x.axis.length, result.facet?.axis.length),
+      width,
       height: result.series2 === undefined ? 80 : 240,
       marginLeft: 56,
       marginBottom: 40,
@@ -308,6 +309,7 @@ export function FeasibilityFigure({ result, checkLabels, marking }: Props): Reac
     // Swapped in place, never detached in the cleanup — see the note on this
     // in PlotFigure.tsx, which explains the scroll jump that caused.
     container.replaceChildren(chart);
+    container.classList.toggle('figure--wide', width > WIDE_FIGURE_PRINT_PX);
 
     // A categorical `color.legend` makes `Plot.plot` return an HTML
     // `<figure>` wrapping the legend and then the chart, not a bare `<svg>`

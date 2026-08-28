@@ -460,6 +460,26 @@ function seriesLegend(label: string, values: readonly (number | string)[], types
   return legend;
 }
 
+/**
+ * Above this many pixels, a chart drawn at its own natural width no longer
+ * fits a printed journal-article column (A4, two-up, `@media print` in
+ * styles.css — a column comes out to roughly 80mm/300px there) without
+ * shrinking its ticks and facet labels past reading. Shared with
+ * FeasibilityFigure, which sizes its own chart the same width-grows-with-
+ * facets way. `.figure` hosts flag themselves `figure--wide` once they know,
+ * and styles.css spans the whole entry across both columns instead of
+ * scaling the chart down to noise.
+ */
+export const WIDE_FIGURE_PRINT_PX = 480;
+
+/** The chart's own width, single-panel or faceted — pulled out of the
+ * `Plot.plot` call below so `WIDE_FIGURE_PRINT_PX`'s cutoff has a plain
+ * function to be tested against instead of only living inside the render
+ * effect. */
+export function plotChartWidth(facetCount: number | undefined): number {
+  return facetCount === undefined ? 360 : Math.min(180 * facetCount, 1080);
+}
+
 export function PlotFigure({ result: rawResult, document: graph, format, marking }: Props): ReactElement {
   const host = useRef<HTMLDivElement>(null);
   const { contourPalette, titleMathRendering } = useSettings();
@@ -567,8 +587,9 @@ export function PlotFigure({ result: rawResult, document: graph, format, marking
       }),
     );
 
+    const width = plotChartWidth(result.facet?.axis.length);
     const chart = Plot.plot({
-      width: result.facet === undefined ? 360 : Math.min(180 * result.facet.axis.length, 1080),
+      width,
       height: 240,
       marginLeft: 56,
       marginBottom: 40,
@@ -628,6 +649,7 @@ export function PlotFigure({ result: rawResult, document: graph, format, marking
     // never leaves the figure empty. Unmounting needs no removal of its own:
     // the host element below is React's, and goes with its children.
     container.replaceChildren(rendered);
+    container.classList.toggle('figure--wide', width > WIDE_FIGURE_PRINT_PX);
 
     // Clicking the curve marks the design under the cursor. The pointer
     // transform behind `chartTip` already publishes that datum as the chart's

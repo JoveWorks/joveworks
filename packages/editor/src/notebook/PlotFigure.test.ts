@@ -17,12 +17,14 @@ import {
   contourGrid,
   drawsContour,
   markY,
+  plotChartWidth,
   plotValueLabel,
   plotYLabel,
   rows,
   siAxisUnit,
   siResult,
   tipTitle,
+  WIDE_FIGURE_PRINT_PX,
   type Row,
 } from './PlotFigure';
 
@@ -175,6 +177,25 @@ describe('a contour plot', () => {
     expect(tipTitle(result, first as Row, axisLabel(result.x), plotValueLabel(result))).toBe(
       'w (mm): 10\nh (N): 100\nstress (mm): 1',
     );
+  });
+});
+
+// The print stylesheet spans a `figure--wide` chart across both columns
+// instead of letting `.figure svg { max-width: 100% }` scale it down — see
+// PlotFigure.tsx's own comment on WIDE_FIGURE_PRINT_PX. Guards the two ends
+// of that decision: an ordinary single-panel or lightly-faceted chart still
+// fits one printed column, but enough facets outgrow it.
+describe('plotChartWidth against the print column-span threshold', () => {
+  it('stays under the threshold with no facet or only a couple of panels', () => {
+    expect(plotChartWidth(undefined)).toBeLessThanOrEqual(WIDE_FIGURE_PRINT_PX);
+    expect(plotChartWidth(2)).toBeLessThanOrEqual(WIDE_FIGURE_PRINT_PX);
+  });
+
+  it('crosses the threshold once enough facets are stacked side by side', () => {
+    expect(plotChartWidth(4)).toBeGreaterThan(WIDE_FIGURE_PRINT_PX);
+    // The width formula caps at 1080 (six-plus facets) rather than growing
+    // unbounded — still comfortably past the threshold either way.
+    expect(plotChartWidth(8)).toBeGreaterThan(WIDE_FIGURE_PRINT_PX);
   });
 });
 

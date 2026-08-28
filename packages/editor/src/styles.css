@@ -3952,9 +3952,38 @@ aside.right {
     border-left: none;
   }
 
+  /* A hand-in reads as a report, not a scrolled screen panel — set the body
+     in two columns like a journal article's, sized for the `@page` box
+     above (A4, 20mm margins: a 170mm writing area, so an 8mm gutter leaves
+     each column ~81mm — comfortable for the 9–10pt-equivalent type below).
+     `column-fill: auto` fills the first column top to bottom before
+     starting the second on the same page; the property's own initial value,
+     `balance`, tries to even out column heights within each page instead
+     and fights the page's own break points, which reads as ordinary column
+     one running short for no reason. A serif face is a deliberate style
+     choice, not a technical necessity: it is the one typographic cue that
+     says "printed report" rather than "web app printed as-is," and every
+     other text style below inherits it — including headings and captions,
+     kept in one type system rather than mixing with the screen's UI sans.
+     System-only stack: no font asset to bundle for what is still a print
+     experiment. */
   .notebook {
     width: 100%;
     padding: 0;
+    column-count: 2;
+    column-gap: 8mm;
+    column-fill: auto;
+    font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', Cambria, serif;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  /* The title/author masthead reads across the full page, like a journal
+     article's own header — not squeezed into the first column with the
+     body text underneath it starting in the second. */
+  .notebook-header {
+    column-span: all;
+    break-after: avoid;
   }
 
   .notebook textarea,
@@ -3980,6 +4009,10 @@ aside.right {
 
   .notebook h2 {
     break-after: avoid;
+    /* The screen's 18px top margin is generous vertical rhythm for a single
+       wide panel; a narrow article column wants its section breaks tighter,
+       or a short section reads mostly as whitespace. */
+    margin-top: 12px;
   }
 
   .notebook .entry {
@@ -4008,6 +4041,29 @@ aside.right {
     max-width: 100%;
   }
 
+  /* Scaling down to fit is the general answer above, but a two-up column is
+     narrower than the single printed page that fallback was built for —
+     past a point, "scale it down" just means "shrink the tick labels to
+     noise." PlotFigure/FeasibilityFigure flag `figure--wide` once their own
+     chart width (`WIDE_FIGURE_PRINT_PX` in PlotFigure.tsx) or fixed layout
+     (IntelligentPlotFigure's contour colorbar) can't fit a column; span the
+     whole entry, not just the chart, so its label travels with it rather
+     than staying stranded in the narrow column. Depends on `:has()`, which
+     the same Chromium engine that renders this app's screen already
+     supports — not a separate print compatibility concern. */
+  .notebook .entry:has(.figure--wide) {
+    column-span: all;
+  }
+
+  /* The Table output can carry as many columns as a sweep has axes and
+     readouts — unlike the fixed-shape summary tables below (stress-summary,
+     best-design-margins, reliability-card), there is no natural column
+     count to design a column width around, so it always gets the full page
+     rather than only past some measured threshold. */
+  .notebook .result.table {
+    column-span: all;
+  }
+
   /* A table can genuinely need more than one page (a sweep's every row) —
      unlike a figure it is allowed to split, but not mid-row, and a reader
      turning the page needs the column headings again rather than bare
@@ -4030,6 +4086,16 @@ aside.right {
 
   .reliability-card {
     overflow-x: visible;
+  }
+
+  /* KaTeX sizes itself in em from the ambient font-size and has no line-
+     wrapping of its own — comfortable at the screen panel's width, a long
+     formula can run past an article column's ~81mm. Shrinking the type is
+     KaTeX's own supported way to resize (there is no single box to apply
+     the figures' `max-width: 100%` trick to), traded off against the
+     equation reading a little smaller than the body text around it. */
+  .notebook .result.equation .katex {
+    font-size: 0.9em;
   }
 
   /* Notebook controls are editing affordances, not report content. Their

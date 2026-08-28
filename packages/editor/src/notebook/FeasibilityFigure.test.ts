@@ -13,6 +13,7 @@ import { describe, expect, it } from 'vitest';
 import type { Axis, FeasibilityResult } from '@joveworks/kernel';
 import { parseUnit } from '@joveworks/units';
 
+import { WIDE_FIGURE_PRINT_PX } from './PlotFigure';
 import { feasibilityPlotWidth, rows } from './FeasibilityFigure';
 
 const mm = parseUnit('mm');
@@ -88,5 +89,19 @@ describe('feasibilityPlotWidth', () => {
   it('reproduces the reported collision case: a many-point sweep with long decimal coordinates', () => {
     // 15 x-ticks like `66.667`, `73.333`, … no longer fit a flat 360px plot.
     expect(feasibilityPlotWidth(15, undefined)).toBeGreaterThan(360);
+  });
+});
+
+// Mirrors the plotChartWidth threshold test in PlotFigure.test.ts: the print
+// stylesheet spans a `figure--wide` map across both columns rather than
+// crushing it, and FeasibilityFigure flags that off this same width.
+describe('feasibilityPlotWidth against the print column-span threshold', () => {
+  it('keeps a comfortable single-panel map, or a modest facet count, inside one column', () => {
+    expect(feasibilityPlotWidth(6, undefined)).toBeLessThanOrEqual(WIDE_FIGURE_PRINT_PX);
+    expect(feasibilityPlotWidth(3, 2)).toBeLessThanOrEqual(WIDE_FIGURE_PRINT_PX);
+  });
+
+  it('crosses the threshold for the many-facet map the print stylesheet names as its example', () => {
+    expect(feasibilityPlotWidth(3, 5)).toBeGreaterThan(WIDE_FIGURE_PRINT_PX);
   });
 });
