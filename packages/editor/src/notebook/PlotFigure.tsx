@@ -460,6 +460,16 @@ function seriesLegend(label: string, values: readonly (number | string)[], types
   return legend;
 }
 
+/** The chart's own width, single-panel or faceted — pulled out of the
+ * `Plot.plot` call below so it has a plain function to be tested against
+ * instead of only living inside the render effect. Every printed chart now
+ * shrinks into its column at whatever width this returns (`.figure svg`'s
+ * `max-width: 100%` in styles.css); nothing here decides a page layout any
+ * more, only the chart's own pixel size. */
+export function plotChartWidth(facetCount: number | undefined): number {
+  return facetCount === undefined ? 360 : Math.min(180 * facetCount, 1080);
+}
+
 export function PlotFigure({ result: rawResult, document: graph, format, marking }: Props): ReactElement {
   const host = useRef<HTMLDivElement>(null);
   const { contourPalette, titleMathRendering } = useSettings();
@@ -567,8 +577,9 @@ export function PlotFigure({ result: rawResult, document: graph, format, marking
       }),
     );
 
+    const width = plotChartWidth(result.facet?.axis.length);
     const chart = Plot.plot({
-      width: result.facet === undefined ? 360 : Math.min(180 * result.facet.axis.length, 1080),
+      width,
       height: 240,
       marginLeft: 56,
       marginBottom: 40,

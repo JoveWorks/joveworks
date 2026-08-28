@@ -3952,9 +3952,50 @@ aside.right {
     border-left: none;
   }
 
+  /* A hand-in reads as a report, not a scrolled screen panel — set the body
+     in two columns like a journal article's, sized for the `@page` box
+     above (A4, 20mm margins: a 170mm writing area, so an 8mm gutter leaves
+     each column ~81mm — comfortable for the 9–10pt-equivalent type below).
+     `.notebook` has no constrained height of its own (it is exactly as tall
+     as its content, like the rest of this panel) — `column-fill`'s `auto`
+     value fills one column, then the next, but per spec it can only do that
+     against a *known* column height, which an auto-height container never
+     gives it. The first version of this rule used `auto` anyway, on the
+     assumption a page's own height would supply that — it does not: without
+     a height Chromium never starts a second column at all, so every printed
+     page came out as one narrow column with the whole right half blank and
+     the overflow clipped rather than continued, exactly the failure this is
+     meant to prevent. `balance` (the property's own initial value, restored
+     here rather than left implicit, so the reasoning stays next to it)
+     computes a workable column height itself by design, which is what an
+     auto-height container needs; each page's own fragment of the flow is
+     balanced independently under print pagination. Whether it balances
+     *well* — an early column running short, say — is a real open question
+     this rule does not resolve on its own; it wants checking against an
+     actual printed page, not a second guess stacked on top of this one.
+     A serif face is a deliberate style choice, not a technical necessity: it
+     is the one typographic cue that says "printed report" rather than "web
+     app printed as-is," and every other text style below inherits it —
+     including headings and captions, kept in one type system rather than
+     mixing with the screen's UI sans. System-only stack: no font asset to
+     bundle for what is still a print experiment. */
   .notebook {
     width: 100%;
     padding: 0;
+    column-count: 2;
+    column-gap: 8mm;
+    column-fill: balance;
+    font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', Cambria, serif;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  /* The title/author masthead reads across the full page, like a journal
+     article's own header — not squeezed into the first column with the
+     body text underneath it starting in the second. */
+  .notebook-header {
+    column-span: all;
+    break-after: avoid;
   }
 
   .notebook textarea,
@@ -3964,6 +4005,24 @@ aside.right {
     overflow: visible;
     background: transparent;
     padding: 0;
+  }
+
+  /* Prose is a textarea that auto-grows by writing its measured height as an
+     inline pixel style (`NotebookTextField`'s `resize`, Notebook.tsx). That
+     measurement is taken at the panel's on-screen width, and a printed column
+     is narrower — the same text wraps to more lines than the frozen height
+     leaves room for, so it was clipped mid-sentence and everything after it
+     was laid out from the too-short box, which is what drew the sweep table
+     on top of the intro paragraph. A textarea cannot reflow to its content
+     the way a div does, and `height: auto` alone would size it from its
+     `rows` attribute instead; `field-sizing: content` is the property that
+     makes a form control take its content's size — already relied on for the
+     quantity fields above. `!important` because the stale height is an inline
+     style, which an ordinary declaration loses to. Print-only: on screen the
+     JS measurement is correct and stays in charge. */
+  .notebook textarea {
+    field-sizing: content;
+    height: auto !important;
   }
 
   /* A section is the report's own structure (a group frame — see
@@ -3980,10 +4039,44 @@ aside.right {
 
   .notebook h2 {
     break-after: avoid;
+    /* The screen's 18px top margin is generous vertical rhythm for a single
+       wide panel; a narrow article column wants its section breaks tighter,
+       or a short section reads mostly as whitespace. */
+    margin-top: 12px;
   }
 
   .notebook .entry {
     break-inside: avoid;
+  }
+
+  /* The Table output is the one entry explicitly meant to *not* stay whole —
+     see the comment on `.notebook thead` below: "a table can genuinely need
+     more than one page … unlike a figure it is allowed to split." The
+     blanket rules just above contradict that for any section or entry that
+     happens to hold one: asking a box to avoid breaking, when it contains a
+     table that both must and expects to fragment internally (its own rows
+     are `break-inside: avoid`, not the table as a whole), is exactly the
+     shape of thing Chromium's column/page fragmentation mishandles — a
+     sweep table tall enough to outgrow the remaining column space rendered
+     overlapping the prose above it instead of continuing into the next
+     column, with the gap in between read as "everything pushed down too
+     much" (reported against the two-column pass). `:has(.result.table)`
+     makes this more specific than the blanket rules above regardless of
+     source order, but specificity alone is not enough — the property still
+     has to be declared here (`auto`, its own initial value) rather than
+     left unset, or there would be nothing to win the cascade with. */
+  .notebook-section:has(.result.table),
+  .notebook .entry:has(.result.table) {
+    break-inside: auto;
+  }
+
+  /* Freeing the table to fragment (just above) opens a new way to orphan
+     content that `break-inside: avoid` used to prevent by accident: the
+     label could now end a column with the table itself pushed entirely into
+     the next one. Same idiom as `.notebook h2` above — keep it with
+     whatever comes right after it. */
+  .notebook .result.table .label {
+    break-after: avoid;
   }
 
   /* A wide sweep can render its plot or heatmap wider than one printed page
@@ -4008,6 +4101,60 @@ aside.right {
     max-width: 100%;
   }
 
+  /* The contour/heatmap colour key sits in a flex row next to its chart
+     (`.contour-figure`, styles.css above) with a fixed 92px basis of its own
+     — a flex item's automatic minimum size defaults to its *content's*
+     intrinsic size, which for this chart's `<svg>` is the pixel width Plot
+     drew it at, so without this override it refuses to shrink below that and
+     pushes the row past the column instead of scaling down alongside the
+     key. This is the shrink-into-a-column case the max-width rule above
+     already handles for every other figure; the fixed-basis sibling is what
+     makes this one need help. */
+  .contour-figure svg {
+    min-width: 0;
+  }
+
+  /* The masthead above is the only thing in this layout that spans both
+     columns. Every figure, however wide its own natural pixel size, and the
+     Table output's data grid, however many columns a sweep gives it, sit
+     inside a column and shrink to fit — an earlier pass here spanned a
+     "wide enough" figure or the Table output across the full page instead,
+     and that turned out worse in practice on both counts: it read as an
+     arbitrary jump in a supposedly two-column article, spanning content
+     that itself became mostly blank space where a smaller version would
+     have read fine (Thomas's own read on the printed preview), and a
+     `column-span: all` element appears to reset Chromium's print pagination
+     locally — content that would otherwise have kept filling the page after
+     it instead started a fresh page, leaving whatever the two columns had
+     already shown sitting on a mostly blank sheet. Legibility at column
+     width is a real, unsolved trade-off for a many-facet small-multiples
+     chart in particular (each facet keeps its own axis and ticks, so
+     shrinking the whole row shrinks every facet's ticks with it) — solve
+     that by making the content itself read better at ~81mm (smaller type,
+     tighter padding, tabular figures for the Table output — see below), not
+     by reaching for another span. */
+
+  /* The Table output's column count is data-dependent — unlike the
+     fixed-shape summary tables just below (stress-summary,
+     best-design-margins, reliability-card), which stay legible at column
+     width because they never grow past a handful of columns, a sweep can
+     carry one column per swept axis or readout. Borrow those tables' own
+     smaller-than-body scale and tighter cell padding (`.stress-summary`'s
+     0.9em/0.28rem 0.4rem, `.reliability-card`'s 0.3rem 0.5rem) rather than
+     inventing a new ratio, so a many-column sweep has more room per cell at
+     a column's ~81mm. Numerals are already tabular here on screen
+     (`.notebook table`, styles.css above) and unaffected by print; scoped
+     to the Table output's own wrapper, not the bare `.notebook table` those
+     screen rules use, so this does not also resize the summary tables. */
+  .notebook .result.table table {
+    font-size: 0.85em;
+  }
+
+  .notebook .result.table th,
+  .notebook .result.table td {
+    padding: 1px 3px;
+  }
+
   /* A table can genuinely need more than one page (a sweep's every row) —
      unlike a figure it is allowed to split, but not mid-row, and a reader
      turning the page needs the column headings again rather than bare
@@ -4030,6 +4177,16 @@ aside.right {
 
   .reliability-card {
     overflow-x: visible;
+  }
+
+  /* KaTeX sizes itself in em from the ambient font-size and has no line-
+     wrapping of its own — comfortable at the screen panel's width, a long
+     formula can run past an article column's ~81mm. Shrinking the type is
+     KaTeX's own supported way to resize (there is no single box to apply
+     the figures' `max-width: 100%` trick to), traded off against the
+     equation reading a little smaller than the body text around it. */
+  .notebook .result.equation .katex {
+    font-size: 0.9em;
   }
 
   /* Notebook controls are editing affordances, not report content. Their

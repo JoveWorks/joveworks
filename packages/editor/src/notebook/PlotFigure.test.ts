@@ -17,6 +17,7 @@ import {
   contourGrid,
   drawsContour,
   markY,
+  plotChartWidth,
   plotValueLabel,
   plotYLabel,
   rows,
@@ -175,6 +176,21 @@ describe('a contour plot', () => {
     expect(tipTitle(result, first as Row, axisLabel(result.x), plotValueLabel(result))).toBe(
       'w (mm): 10\nh (N): 100\nstress (mm): 1',
     );
+  });
+});
+
+describe('plotChartWidth', () => {
+  it('gives a single panel a flat comfort width, unaffected by facets', () => {
+    expect(plotChartWidth(undefined)).toBe(360);
+  });
+
+  it('grows with the facet count, 180px per panel', () => {
+    expect(plotChartWidth(2)).toBe(360);
+    expect(plotChartWidth(4)).toBe(720);
+  });
+
+  it('caps at 1080 rather than growing unbounded past six-plus facets', () => {
+    expect(plotChartWidth(8)).toBe(1080);
   });
 });
 
