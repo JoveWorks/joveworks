@@ -124,8 +124,10 @@ export interface NumericPort extends PortBase {
    * trailing `port::open` ghost slot (`portSlots.ts`); one value per wire per
    * grid cell, broadcast the same as any other numeric input. It still
    * introduces no axis of its own, so a variadic port cannot itself be swept.
-   * Never set on a generic port, and never true on an `OutputPort` — a
-   * formula produces one value, not several.
+   * Freely combined with a generic signature — `sum`'s addends are both,
+   * and `draft.ts`'s `genericVariadic` is how the base node library says so.
+   * Never true on an `OutputPort` though: a formula produces one value, not
+   * several, which `asOutputPort` refuses below.
    */
   readonly variadic?: boolean;
 }

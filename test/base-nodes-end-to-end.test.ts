@@ -251,7 +251,7 @@ describe('the base node library through the kernel', () => {
     expect(canConnect(document, catalogues, wire('beta.value', 'sin.theta'))).toEqual({ ok: true });
   });
 
-  describe('a spectrum port joined by several discrete wires', () => {
+  describe('a variadic port joined by several discrete wires', () => {
     it('reduces any number of wired values, not just two', () => {
       const document = graph(
         [
@@ -319,7 +319,7 @@ describe('the base node library through the kernel', () => {
       // like any other generic node — wiring two ranges gave a grid, same
       // as `add`/`multiply` do. An earlier cut flattened every edge into
       // one bag and lost that; this is the amendment that gets it back,
-      // through a spectrum port instead of two fixed ones.
+      // through a variadic port instead of two fixed ones.
       const document = graph(
         [
           input('a', { kind: 'list', values: [10, 20], unit: 'mm' }),
