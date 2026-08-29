@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.26.2](https://github.com/JoveWorks/joveworks/compare/v0.26.1...v0.26.2) (2026-08-29)
+
+### Features
+
+* **editor:** separate published material from cloud actions in the menu ([7574a1f](https://github.com/JoveWorks/joveworks/commit/7574a1f791c887279a8de581efac521e78b07680))
+* **editor:** show a workspace's published status and lock its delete ([4ecc751](https://github.com/JoveWorks/joveworks/commit/4ecc7518e95dcee320800edd46167ff20a1bff19))
 ## [0.26.1](https://github.com/JoveWorks/joveworks/compare/v0.26.0...v0.26.1) (2026-08-29)
 
 ### Refactoring
