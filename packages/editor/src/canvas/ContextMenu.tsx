@@ -9,6 +9,7 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactElement } from 'react';
 
 import { TitleText } from './TitleField';
+import { useEscapeToClose } from '../useEscapeToClose';
 
 /** Kept clear of the viewport edge so the menu never touches the browser chrome. */
 const VIEWPORT_MARGIN = 8;
@@ -49,6 +50,7 @@ interface Props {
 
 export function ContextMenu({ x, y, items, onClose, onMouseEnter, onMouseLeave }: Props): ReactElement {
   const menuRef = useRef<HTMLDivElement>(null);
+  useEscapeToClose(onClose);
   // Rendered hidden at the click point first so its real size can be
   // measured, then clamped onto screen — a right-click near the bottom or
   // right edge would otherwise open a menu whose lower rows sit off-viewport.

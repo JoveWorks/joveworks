@@ -3,6 +3,7 @@ import { useState, type FormEvent, type ReactElement } from 'react';
 import { phrase } from '../i18n';
 import type { HubCourseSummary } from '../model/hub';
 import { useSettings } from '../settings-context';
+import { useEscapeToClose } from '../useEscapeToClose';
 
 interface Props {
   readonly initialHubUrl: string;
@@ -23,6 +24,7 @@ export function ConnectCourseDialog({ initialHubUrl, onConnect, onDiscover, onCl
   const [courseToken, setCourseToken] = useState('');
   const [error, setError] = useState<string | undefined>();
   const [pending, setPending] = useState(false);
+  useEscapeToClose(onClose);
 
   const submit = (event: FormEvent): void => {
     event.preventDefault();

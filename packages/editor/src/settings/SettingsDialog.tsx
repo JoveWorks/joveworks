@@ -25,6 +25,7 @@ import {
 import type { NumberNotation } from '@joveworks/units';
 import type { AppLocale } from '../model/editorSettings';
 import { ui } from '../i18n';
+import { useEscapeToClose } from '../useEscapeToClose';
 
 interface Props {
   readonly locale: AppLocale;
@@ -67,6 +68,7 @@ export function SettingsDialog({
   const format = toUnitsFormat(settings);
   const unit = parseUnit('mm');
   const pa = parseUnit('Pa');
+  useEscapeToClose(onClose);
 
   return (
     <>
