@@ -59,6 +59,8 @@ import {
   loadAppLocale,
   loadMinimapVisible,
   loadNotebookWidth,
+  loadPaletteAtBottom,
+  loadPaletteHeight,
   loadPaletteWidth,
   loadSnapToGrid,
   loadTitleMathRendering,
@@ -69,6 +71,8 @@ import {
   saveAppLocale,
   saveMinimapVisible,
   saveNotebookWidth,
+  savePaletteAtBottom,
+  savePaletteHeight,
   savePaletteWidth,
   saveSnapToGrid,
   saveTitleMathRendering,
@@ -436,6 +440,7 @@ function AppShell(): ReactElement {
   const t = (english: string): string => phrase(locale, english);
   const [minimapVisible, setMinimapVisibleState] = useState<boolean>(loadMinimapVisible);
   const [snapToGrid, setSnapToGridState] = useState<boolean>(loadSnapToGrid);
+  const [paletteAtBottom, setPaletteAtBottomState] = useState<boolean>(loadPaletteAtBottom);
   const [titleMathRendering, setTitleMathRenderingState] = useState<boolean>(loadTitleMathRendering);
   const [themePreference, setThemePreferenceState] =
     useState<ThemePreference>(loadThemePreference);
@@ -500,6 +505,14 @@ function AppShell(): ReactElement {
   };
   useEffect(() => cancelMenuClose, []);
   const [paletteWidth, resizePalette] = useResizableWidth(loadPaletteWidth(), 200, 480, 1, savePaletteWidth);
+  const [paletteHeight, resizePaletteHeight] = useResizableWidth(
+    loadPaletteHeight(),
+    120,
+    600,
+    -1,
+    savePaletteHeight,
+    'y',
+  );
   const [notebookWidth, resizeNotebook] = useResizableWidth(loadNotebookWidth(), 240, 800, -1, saveNotebookWidth);
   const [restoredAutosaveNoticeId] = useState(() =>
     restoredAutosave ? crypto.randomUUID() : undefined,
@@ -740,6 +753,11 @@ function AppShell(): ReactElement {
   const setSnapToGrid = (next: boolean): void => {
     setSnapToGridState(next);
     saveSnapToGrid(next);
+  };
+
+  const setPaletteAtBottom = (next: boolean): void => {
+    setPaletteAtBottomState(next);
+    savePaletteAtBottom(next);
   };
 
   const setTitleMathRendering = (next: boolean): void => {
@@ -1076,6 +1094,11 @@ function AppShell(): ReactElement {
 
   const viewMenuItems: readonly MenuItem[] = [
     { label: showPalette ? 'Hide palette' : 'Show palette', onClick: () => setShowPalette(!showPalette) },
+    {
+      label: t('Pin palette to bottom'),
+      checked: paletteAtBottom,
+      onClick: () => setPaletteAtBottom(!paletteAtBottom),
+    },
     { label: showNotebook ? 'Hide notebook' : 'Show notebook', onClick: () => setShowNotebook(!showNotebook) },
     {
       label: t('Snap nodes to grid'),
@@ -1377,7 +1400,7 @@ function AppShell(): ReactElement {
             />
           ) : null}
 
-          <main>
+          <main className={paletteAtBottom ? 'palette-bottom' : undefined}>
             {/* Overlays the workspace instead of sitting in normal flow, so
                 showing or dismissing one does not shift the canvas. Stacks rather
                 than replacing, and each clears itself after a delay. */}
@@ -1394,7 +1417,7 @@ function AppShell(): ReactElement {
               </div>
             )}
 
-            {showPalette ? (
+            {!paletteAtBottom && showPalette ? (
               <>
                 <aside className="left" style={{ width: paletteWidth, flexBasis: paletteWidth }}>
                   <Palette onClose={() => setShowPalette(false)} />
@@ -1403,17 +1426,28 @@ function AppShell(): ReactElement {
               </>
             ) : null}
 
-            <Canvas controlsVisible={showCanvasControls} tutorialActive={tutorial !== undefined} />
+            <div className="canvas-row">
+              <Canvas controlsVisible={showCanvasControls} tutorialActive={tutorial !== undefined} />
 
-            {showNotebook ? (
+              {showNotebook ? (
+                <>
+                  <div className="resize-handle" onMouseDown={resizeNotebook} />
+                  <aside
+                    className="right"
+                    data-tour="notebook"
+                    style={{ width: notebookWidth, flexBasis: notebookWidth }}
+                  >
+                    <Notebook onClose={() => setShowNotebook(false)} />
+                  </aside>
+                </>
+              ) : null}
+            </div>
+
+            {paletteAtBottom && showPalette ? (
               <>
-                <div className="resize-handle" onMouseDown={resizeNotebook} />
-                <aside
-                  className="right"
-                  data-tour="notebook"
-                  style={{ width: notebookWidth, flexBasis: notebookWidth }}
-                >
-                  <Notebook onClose={() => setShowNotebook(false)} />
+                <div className="resize-handle resize-handle-y" onMouseDown={resizePaletteHeight} />
+                <aside className="bottom" style={{ height: paletteHeight, flexBasis: paletteHeight }}>
+                  <Palette onClose={() => setShowPalette(false)} />
                 </aside>
               </>
             ) : null}

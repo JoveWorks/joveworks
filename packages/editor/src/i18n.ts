@@ -74,7 +74,7 @@ const DUTCH_PHRASES: Readonly<Record<string, string>> = {
   'Monte Carlo generator': 'Monte Carlo-generator', 'Monte Carlo receiver': 'Monte Carlo-ontvanger',
   'Selection': 'Selectie', 'Auto-arrange selection': 'Selectie automatisch schikken',
   'Space evenly horizontally': 'Horizontaal gelijkmatig verdelen', 'Space evenly vertically': 'Verticaal gelijkmatig verdelen',
-  'Canvas': 'Canvas', 'Snap nodes to grid': 'Knooppunten aan raster vastklikken', 'Node': 'Knooppunt',
+  'Canvas': 'Canvas', 'Snap nodes to grid': 'Knooppunten aan raster vastklikken', 'Pin palette to bottom': 'Palet onderaan vastzetten', 'Node': 'Knooppunt',
   'Allow auto-collapse': 'Automatisch samenvouwen toestaan', 'Keep open': 'Open houden', 'Canvas controls': 'Canvasknoppen',
   'drag to select': 'slepen om te selecteren', 'click to add to selection': 'klikken om aan selectie toe te voegen',
   'select all': 'alles selecteren', 'undo/redo': 'ongedaan maken/opnieuw uitvoeren', 'copy/paste': 'kopiëren/plakken', 'duplicate': 'dupliceren',
