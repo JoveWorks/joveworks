@@ -5,6 +5,8 @@ import {
   DEFAULT_CANVAS_CONTROLS_VISIBLE,
   DEFAULT_CONTOUR_PALETTE,
   DEFAULT_NOTEBOOK_WIDTH,
+  DEFAULT_PALETTE_AT_BOTTOM,
+  DEFAULT_PALETTE_HEIGHT,
   DEFAULT_PALETTE_WIDTH,
   DEFAULT_SNAP_TO_GRID,
   loadAdvancedNodes,
@@ -12,6 +14,8 @@ import {
   loadContourPalette,
   loadHubUrl,
   loadNotebookWidth,
+  loadPaletteAtBottom,
+  loadPaletteHeight,
   loadPaletteWidth,
   loadSnapToGrid,
   saveAdvancedNodes,
@@ -19,6 +23,8 @@ import {
   saveContourPalette,
   saveHubUrl,
   saveNotebookWidth,
+  savePaletteAtBottom,
+  savePaletteHeight,
   savePaletteWidth,
   saveSnapToGrid,
 } from './editorSettings';
@@ -98,5 +104,25 @@ describe('contour palette preference', () => {
     saveHubUrl('https://course.example.edu');
 
     expect(loadHubUrl()).toBe('https://course.example.edu');
+  });
+
+  it('defaults the palette to the left and persists pinning it to the bottom', () => {
+    expect(loadPaletteAtBottom()).toBe(DEFAULT_PALETTE_AT_BOTTOM);
+
+    savePaletteAtBottom(true);
+    expect(loadPaletteAtBottom()).toBe(true);
+
+    savePaletteAtBottom(false);
+    expect(loadPaletteAtBottom()).toBe(false);
+  });
+
+  it('restores palette height and rejects a stale value outside its usable range', () => {
+    expect(loadPaletteHeight()).toBe(DEFAULT_PALETTE_HEIGHT);
+
+    savePaletteHeight(340);
+    expect(loadPaletteHeight()).toBe(340);
+
+    window.localStorage.setItem('joveworks:settings:paletteHeight', '20');
+    expect(loadPaletteHeight()).toBe(DEFAULT_PALETTE_HEIGHT);
   });
 });

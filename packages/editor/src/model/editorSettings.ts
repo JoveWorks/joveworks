@@ -11,6 +11,8 @@ const LANGUAGE_KEY = 'joveworks:settings:language';
 const CANVAS_CONTROLS_VISIBLE_KEY = 'joveworks:settings:canvasControlsVisible';
 const SNAP_TO_GRID_KEY = 'joveworks:settings:snapToGrid';
 const PALETTE_WIDTH_KEY = 'joveworks:settings:paletteWidth';
+const PALETTE_HEIGHT_KEY = 'joveworks:settings:paletteHeight';
+const PALETTE_AT_BOTTOM_KEY = 'joveworks:settings:paletteAtBottom';
 const NOTEBOOK_WIDTH_KEY = 'joveworks:settings:notebookWidth';
 const HUB_URL_KEY = 'joveworks:settings:hubUrl';
 
@@ -112,6 +114,7 @@ export function saveAdvancedNodes(enabled: boolean): void {
 }
 
 export const DEFAULT_PALETTE_WIDTH = 360;
+export const DEFAULT_PALETTE_HEIGHT = 280;
 export const DEFAULT_NOTEBOOK_WIDTH = 540;
 
 function loadWidth(key: string, defaultValue: number, min: number, max: number): number {
@@ -147,6 +150,26 @@ export function loadNotebookWidth(): number {
 
 export function saveNotebookWidth(width: number): void {
   saveWidth(NOTEBOOK_WIDTH_KEY, width);
+}
+
+export function loadPaletteHeight(): number {
+  return loadWidth(PALETTE_HEIGHT_KEY, DEFAULT_PALETTE_HEIGHT, 120, 600);
+}
+
+export function savePaletteHeight(height: number): void {
+  saveWidth(PALETTE_HEIGHT_KEY, height);
+}
+
+/** Left-docked is the default; a bottom strip is for narrow screens where a
+ * side panel eats too much of the width the canvas needs. */
+export const DEFAULT_PALETTE_AT_BOTTOM = false;
+
+export function loadPaletteAtBottom(): boolean {
+  return loadBoolean(PALETTE_AT_BOTTOM_KEY, DEFAULT_PALETTE_AT_BOTTOM);
+}
+
+export function savePaletteAtBottom(atBottom: boolean): void {
+  saveBoolean(PALETTE_AT_BOTTOM_KEY, atBottom);
 }
 
 /** The last successful Hub address is a device preference, not course
