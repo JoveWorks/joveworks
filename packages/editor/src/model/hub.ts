@@ -77,6 +77,11 @@ export interface HubWorkspace {
   readonly document: GraphDocument;
   readonly cloudSlug?: string;
   readonly catalogues: readonly HubCatalogueRef[];
+  /** True while any publication still has this workspace as its source — the
+   * Hub refuses to delete it until the publication is retracted, so callers
+   * can show that lock proactively rather than only from a rejected delete.
+   * Defaults to `false` for a Hub predating this field. */
+  readonly published: boolean;
   readonly updatedAt?: string;
 }
 
@@ -267,7 +272,7 @@ export async function createWorkspace(
     throw new Error('The cloud did not return an edit token for the new workspace.');
   }
   return {
-    workspace: { hubUrl: base, id: value.id, title: draft.title, document: draft.document, ...(draft.cloudSlug === undefined ? { catalogues: [] } : { cloudSlug: draft.cloudSlug, catalogues: draft.catalogues ?? [] }) },
+    workspace: { hubUrl: base, id: value.id, title: draft.title, document: draft.document, published: false, ...(draft.cloudSlug === undefined ? { catalogues: [] } : { cloudSlug: draft.cloudSlug, catalogues: draft.catalogues ?? [] }) },
     editToken: value.editToken,
   };
 }
@@ -409,6 +414,7 @@ function parseWorkspace(hubUrl_: string, value: JsonValue): HubWorkspace {
     document,
     ...(typeof value.cloudSlug === 'string' ? { cloudSlug: value.cloudSlug } : {}),
     catalogues: value.catalogues.map(parseCatalogueRef),
+    published: value.published === true,
     ...(typeof value.updatedAt === 'string' ? { updatedAt: value.updatedAt } : {}),
   };
 }

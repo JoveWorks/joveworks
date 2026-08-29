@@ -129,6 +129,18 @@ describe('Hub API transport', () => {
     expect(fetch).toHaveBeenNthCalledWith(3, 'http://localhost:8080/api/v1/workspaces/Ab12Cd34Ef56', expect.objectContaining({ method: 'GET' }));
   });
 
+  it('surfaces whether a workspace is still published', async () => {
+    const fetch = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({
+      id: 'Ab12Cd34Ef56', title: 'Belt study', document: serializeDocument(emptyDocument('belt-study', 'Belt study')),
+      catalogues: [], published: true, updatedAt: '2026-08-27 12:00:00',
+    })));
+    vi.stubGlobal('fetch', fetch);
+
+    await expect(loadWorkspace('http://localhost:8080', 'Ab12Cd34Ef56', 'edit-capability')).resolves.toMatchObject({
+      published: true,
+    });
+  });
+
   it('deletes a workspace only with its edit token', async () => {
     const workspace = {
       hubUrl: 'http://localhost:8080', id: 'Ab12Cd34Ef56', title: 'Student study', document: emptyDocument('student-study', 'Student study'), catalogues: [],

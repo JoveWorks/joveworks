@@ -51,7 +51,7 @@ export function WorkspaceLibraryDialog({ accesses, onOpen, onDelete, onClose }: 
   }, [accesses, locale]);
 
   const remove = (row: Row): void => {
-    if (row.workspace === undefined || deleting !== undefined) return;
+    if (row.workspace === undefined || row.workspace.published || deleting !== undefined) return;
     if (!window.confirm(t(`Delete “${row.workspace.title}”? This cannot be undone.`))) return;
     setDeleting(row.workspace.id);
     onDelete(row.workspace)
@@ -76,12 +76,21 @@ export function WorkspaceLibraryDialog({ accesses, onOpen, onDelete, onClose }: 
                 {row.workspace === undefined ? <p className="dialog-message dialog-error">{row.access.id}: {row.error ?? t('Loading…')}</p> : <>
                   <div className="workspace-library-meta">
                     <strong>{row.workspace.title}</strong>
+                    {row.workspace.published ? <span className="workspace-published-badge" title={t('This NodeBook is published — unpublish it from the Hub admin console before deleting its workspace.')}>{t('Published')}</span> : null}
                     <small>{row.workspace.id} · {row.workspace.updatedAt ?? t('unknown date')}</small>
                   </div>
                   <div className="workspace-library-actions">
                     <button type="button" onClick={() => onOpen(row.workspace!)}>{t('Open')}</button>
                     <button type="button" onClick={() => void share(row.workspace!).catch((error) => window.alert(error instanceof Error ? error.message : t('Could not share this workspace.')))}>{t('Share')}</button>
-                    <button type="button" className="danger" disabled={deleting !== undefined} onClick={() => remove(row)}>{deleting === row.workspace.id ? t('Deleting…') : t('Delete')}</button>
+                    <button
+                      type="button"
+                      className="danger"
+                      disabled={deleting !== undefined || row.workspace.published}
+                      title={row.workspace.published ? t('Unpublish this NodeBook from the Hub admin console before deleting its workspace.') : undefined}
+                      onClick={() => remove(row)}
+                    >
+                      {deleting === row.workspace.id ? t('Deleting…') : t('Delete')}
+                    </button>
                   </div>
                 </>}
               </div>
