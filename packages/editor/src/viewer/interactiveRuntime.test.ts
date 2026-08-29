@@ -4,7 +4,7 @@ import { formulaRef } from '@joveworks/schema';
 
 import { lookup } from '../model/analysis';
 import { baseCatalogue } from '../model/catalogues';
-import { activateNotebook, CourseAccessRequired } from './interactiveRuntime';
+import { activateNotebook, CloudAccessRequired } from './interactiveRuntime';
 
 const document = {
   schemaVersion: 1, id: 'invented', title: 'Invented slider',
@@ -32,7 +32,7 @@ describe('lazy interactive runtime', () => {
 
   it('distinguishes a token challenge so the viewer prompts only after 401', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response('', { status: 401 })));
-    await expect(activateNotebook('publication', 'private', 'https://hub.test')).rejects.toBeInstanceOf(CourseAccessRequired);
+    await expect(activateNotebook('publication', 'private', 'https://hub.test')).rejects.toBeInstanceOf(CloudAccessRequired);
   });
 
   /**

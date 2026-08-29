@@ -104,8 +104,8 @@ export default function PublishedNotebookViewer({ route }: { readonly route: Vie
       try {
         loaded = await runtime.activateNotebook(route.kind, route.id, hub, undefined, notebook);
       } catch (reason) {
-        if (!(reason instanceof runtime.CourseAccessRequired)) throw reason;
-        const token = window.prompt('Enter the course access token');
+        if (!(reason instanceof runtime.CloudAccessRequired)) throw reason;
+        const token = window.prompt('Enter the cloud access token');
         if (token === null || token === '') throw new Error('Interactive controls were not activated.');
         loaded = await runtime.activateNotebook(route.kind, route.id, hub, token, notebook);
       }

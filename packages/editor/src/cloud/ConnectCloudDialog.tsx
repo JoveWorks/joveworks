@@ -1,27 +1,27 @@
 import { useState, type FormEvent, type ReactElement } from 'react';
 
 import { phrase } from '../i18n';
-import type { HubCourseSummary } from '../model/hub';
+import type { HubCloudSummary } from '../model/hub';
 import { useSettings } from '../settings-context';
 import { useEscapeToClose } from '../useEscapeToClose';
 
 interface Props {
   readonly initialHubUrl: string;
-  readonly onConnect: (hubUrl: string, courseSlug: string, courseToken: string) => Promise<void>;
-  readonly onDiscover: (hubUrl: string) => Promise<readonly HubCourseSummary[]>;
+  readonly onConnect: (hubUrl: string, cloudSlug: string, cloudToken: string) => Promise<void>;
+  readonly onDiscover: (hubUrl: string) => Promise<readonly HubCloudSummary[]>;
   readonly onClose: () => void;
 }
 
-/** Connects a browser session to a Hub course. The access token deliberately
- * stays in component/session state; only the non-secret course source is kept
+/** Connects a browser session to a Hub cloud. The access token deliberately
+ * stays in component/session state; only the non-secret cloud source is kept
  * for the next visit. */
-export function ConnectCourseDialog({ initialHubUrl, onConnect, onDiscover, onClose }: Props): ReactElement {
+export function ConnectCloudDialog({ initialHubUrl, onConnect, onDiscover, onClose }: Props): ReactElement {
   const { locale } = useSettings();
   const t = (english: string): string => phrase(locale, english);
   const [hubUrl, setHubUrl] = useState(initialHubUrl);
-  const [courses, setCourses] = useState<readonly HubCourseSummary[] | undefined>();
-  const [courseSlug, setCourseSlug] = useState('');
-  const [courseToken, setCourseToken] = useState('');
+  const [clouds, setClouds] = useState<readonly HubCloudSummary[] | undefined>();
+  const [cloudSlug, setCloudSlug] = useState('');
+  const [cloudToken, setCloudToken] = useState('');
   const [error, setError] = useState<string | undefined>();
   const [pending, setPending] = useState(false);
   useEscapeToClose(onClose);
@@ -31,9 +31,9 @@ export function ConnectCourseDialog({ initialHubUrl, onConnect, onDiscover, onCl
     if (pending) return;
     setPending(true);
     setError(undefined);
-    onConnect(hubUrl, courseSlug, courseToken)
+    onConnect(hubUrl, cloudSlug, cloudToken)
       .then(onClose)
-      .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : t('Could not connect to that course.')))
+      .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : t('Could not connect to that cloud.')))
       .finally(() => setPending(false));
   };
 
@@ -43,41 +43,41 @@ export function ConnectCourseDialog({ initialHubUrl, onConnect, onDiscover, onCl
     setError(undefined);
     onDiscover(hubUrl)
       .then((found) => {
-        setCourses(found);
-        setCourseSlug(found[0]?.slug ?? '');
-        if (found.length === 0) setError(t('No courses are available from this Hub.'));
+        setClouds(found);
+        setCloudSlug(found[0]?.slug ?? '');
+        if (found.length === 0) setError(t('No clouds are available from this Hub.'));
       })
-      .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : t('Could not connect to that course.')))
+      .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : t('Could not connect to that cloud.')))
       .finally(() => setPending(false));
   };
 
   return (
     <>
       <div className="dialog-backdrop" onClick={onClose} />
-      <form className="dialog connect-course-dialog" role="dialog" aria-label={t('Connect course…')} onSubmit={submit}>
-        <h2>{t('Connect course…')}</h2>
+      <form className="dialog connect-dialog" role="dialog" aria-label={t('Connect cloud…')} onSubmit={submit}>
+        <h2>{t('Connect cloud…')}</h2>
         <label className="dialog-field">
           <span>{t('Hub address')}</span>
-          <input autoFocus type="url" required placeholder="https://course.example.edu" value={hubUrl} onChange={(event) => { setHubUrl(event.target.value); setCourses(undefined); setCourseSlug(''); }} />
+          <input autoFocus type="url" required placeholder="https://cloud.example.edu" value={hubUrl} onChange={(event) => { setHubUrl(event.target.value); setClouds(undefined); setCloudSlug(''); }} />
         </label>
-        <button type="button" onClick={discover} disabled={pending || hubUrl.trim().length === 0}>{pending ? t('Finding courses…') : t('Find courses')}</button>
-        {courses === undefined ? null : (
+        <button type="button" onClick={discover} disabled={pending || hubUrl.trim().length === 0}>{pending ? t('Finding clouds…') : t('Find clouds')}</button>
+        {clouds === undefined ? null : (
           <label className="dialog-field">
-            <span>{t('Course')}</span>
-            <select required value={courseSlug} onChange={(event) => setCourseSlug(event.target.value)}>
-              {courses.map((course) => <option key={course.slug} value={course.slug}>{course.title}</option>)}
+            <span>{t('Cloud')}</span>
+            <select required value={cloudSlug} onChange={(event) => setCloudSlug(event.target.value)}>
+              {clouds.map((cloud) => <option key={cloud.slug} value={cloud.slug}>{cloud.title}</option>)}
             </select>
           </label>
         )}
         <label className="dialog-field">
-          <span>{t('Course access token')} <small>{t('optional')}</small></span>
-          <input type="password" placeholder={t('Only for restricted course material')} value={courseToken} onChange={(event) => setCourseToken(event.target.value)} />
+          <span>{t('Cloud access token')} <small>{t('optional')}</small></span>
+          <input type="password" placeholder={t('Only for restricted cloud material')} value={cloudToken} onChange={(event) => setCloudToken(event.target.value)} />
         </label>
-        <p className="dialog-note">{t('The address and course are remembered on this device. The access token is kept only for this visit.')}</p>
-        {error === undefined ? null : <p className="dialog-message course-error">{error}</p>}
+        <p className="dialog-note">{t('The address and cloud are remembered on this device. The access token is kept only for this visit.')}</p>
+        {error === undefined ? null : <p className="dialog-message dialog-error">{error}</p>}
         <div className="dialog-actions">
           <button type="button" onClick={onClose}>{t('Cancel')}</button>
-          <button type="submit" disabled={pending || courseSlug.length === 0}>{pending ? t('Connecting…') : t('Connect')}</button>
+          <button type="submit" disabled={pending || cloudSlug.length === 0}>{pending ? t('Connecting…') : t('Connect')}</button>
         </div>
       </form>
     </>

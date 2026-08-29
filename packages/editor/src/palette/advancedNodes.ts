@@ -27,13 +27,13 @@ export const ADVANCED_ACTION_IDS: ReadonlySet<string> = new Set([
   'builtin:general:unpack',
   'builtin:general:waypoint',
   // Analysis outputs. `feasibility` stays visible — it is the multi-check
-  // counterpart of Check and is what "dimensioning" means in this course.
+  // counterpart of Check and is what "dimensioning" means in this class.
   'builtin:output:pareto',
   'builtin:output:stress',
   'builtin:output:bestDesign',
   'builtin:output:sensitivity',
   // Selection nodes. `crossing` stays visible — "at what diameter does the
-  // safety factor cross 1.5" is the course's central question.
+  // safety factor cross 1.5" is the class's central question.
   'builtin:select:firstPassing',
   'builtin:select:argMin',
   'builtin:select:argMax',

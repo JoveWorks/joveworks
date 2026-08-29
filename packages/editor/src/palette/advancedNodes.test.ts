@@ -21,7 +21,7 @@ describe('advanced-nodes gating', () => {
     );
   });
 
-  it('leaves feasibility and threshold-crossing alone — the course keeps needing both', () => {
+  it('leaves feasibility and threshold-crossing alone — the class keeps needing both', () => {
     expect(isAdvancedAction('builtin:output:feasibility')).toBe(false);
     expect(isAdvancedAction('builtin:select:crossing')).toBe(false);
   });

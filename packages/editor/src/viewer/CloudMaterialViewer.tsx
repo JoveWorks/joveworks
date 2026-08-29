@@ -2,8 +2,8 @@
  * A deliberately small first NodeBook viewer.
  *
  * It is not an alternate editor: its inputs are bundled example documents,
- * its only state is the chosen course example, and it renders finished output
- * rather than formula nodes or wires. That makes it useful as shareable course
+ * its only state is the chosen cloud example, and it renders finished output
+ * rather than formula nodes or wires. That makes it useful as shareable cloud
  * material now without deciding how student work will later be packaged or
  * shared between devices.
  */
@@ -28,13 +28,13 @@ import { readOnlyMarking, type FigureMarking } from '../present/marks';
 import { ResultView } from '../present/ResultView';
 import { DisplayProvider } from '../present/display';
 import { SettingsContext, type SettingsContextValue } from '../settings-context';
-import { analytics, type CourseMaterial } from '../analytics/analytics';
+import { analytics, type CloudMaterial } from '../analytics/analytics';
 import { exposedSlidersFor, notebookDisplayOf, notebookSectionId, readingOrder, withSliderValue } from '../model/notebook';
 import { NotebookSliderControl } from '../notebook/NotebookSliderControl';
 import { phrase } from '../i18n';
 
-interface CourseExample {
-  readonly id: CourseMaterial;
+interface CloudExample {
+  readonly id: CloudMaterial;
   readonly title: string;
   readonly summary: string;
   readonly document: GraphDocument;
@@ -48,11 +48,11 @@ function outputsOf(document: GraphDocument, frameId: string | undefined): readon
 }
 
 /**
- * The course viewer draws results through the same component the editor's
+ * The cloud viewer draws results through the same component the editor's
  * NodeBook does (`present/ResultView`) — this is the whole of what it adds:
  * a read-only title, and marks that draw but cannot be changed.
  *
- * Equation outputs are deliberately absent: a public course viewer shows the
+ * Equation outputs are deliberately absent: a public cloud viewer shows the
  * conclusion and the citation, never a catalogue expression.
  */
 function Result({
@@ -143,10 +143,10 @@ function ExampleReport({
     // a lookalike: every result rule in styles.css is scoped to it, and this
     // viewer draws the same components inside it (ROADMAP item 38).
     <DisplayProvider value={display}>
-    <article className="notebook course-report">
-      <header className="course-report-header">
-        <p className="course-report-kicker">Course material · interactive NodeBook</p>
-        <div className="course-report-title-row">
+    <article className="notebook cloud-report">
+      <header className="cloud-report-header">
+        <p className="cloud-report-kicker">Cloud material · interactive NodeBook</p>
+        <div className="cloud-report-title-row">
           <h1>{document.title}</h1>
           {hasControls ? (
             <button type="button" disabled={!dirty} onClick={onReset}>{phrase('en', 'Reset inputs')}</button>
@@ -157,9 +157,9 @@ function ExampleReport({
         const outputs = outputsOf(document, frame.id);
         if (outputs.length === 0) return null;
         return (
-          <section className="course-section" key={frame.id}>
+          <section className="cloud-section" key={frame.id}>
             <h2>{frame.title}</h2>
-            {frame.note === undefined ? null : <p className="course-note">{frame.note}</p>}
+            {frame.note === undefined ? null : <p className="cloud-note">{frame.note}</p>}
             <ViewerControls
               document={document}
               resultNodeIds={outputs.map((node) => node.id)}
@@ -168,7 +168,7 @@ function ExampleReport({
             {outputs.map((node) => {
               const result = results.get(node.id);
               return (
-                <div className="course-output" key={node.id}>
+                <div className="cloud-output" key={node.id}>
                   {result === undefined
                     ? <p className="result pending"><span className="number">This result is not available.</span></p>
                     : <Result result={result} node={node} document={document} readouts={readouts} />}
@@ -184,7 +184,7 @@ function ExampleReport({
   );
 }
 
-export function CourseMaterialViewer(): ReactElement {
+export function CloudMaterialViewer(): ReactElement {
   const settings: SettingsContextValue = {
     locale: 'en',
     setLocale: () => {},
@@ -205,7 +205,7 @@ export function CourseMaterialViewer(): ReactElement {
     advancedNodesEnabled: false,
     setAdvancedNodesEnabled: () => {},
   };
-  const examples = useMemo<readonly CourseExample[]>(() => {
+  const examples = useMemo<readonly CloudExample[]>(() => {
     const catalogues = [baseCatalogue(), ...bundledCatalogues()];
     const candidates = [
       ['platform', 'Choose a safe platform size', 'A decision-focused sweep and threshold.', platformFootprint],
@@ -220,37 +220,37 @@ export function CourseMaterialViewer(): ReactElement {
     });
   }, []);
   const [selectedId, setSelectedId] = useState(examples[0]?.id);
-  const [editedDocuments, setEditedDocuments] = useState<Partial<Record<CourseMaterial, GraphDocument>>>({});
+  const [editedDocuments, setEditedDocuments] = useState<Partial<Record<CloudMaterial, GraphDocument>>>({});
   const selected = examples.find((example) => example.id === selectedId) ?? examples[0];
   const selectedDocument = selected === undefined ? undefined : editedDocuments[selected.id] ?? selected.document;
 
   useEffect(() => {
     analytics.track({
-      name: 'course_viewer_opened',
+      name: 'cloud_viewer_opened',
       props: { viewport: window.matchMedia('(max-width: 899px)').matches ? 'narrow' : 'wide' },
     });
   }, []);
 
   useEffect(() => {
     if (selected === undefined) return;
-    analytics.track({ name: 'course_material_selected', props: { material: selected.id } });
+    analytics.track({ name: 'cloud_material_selected', props: { material: selected.id } });
   }, [selected]);
 
-  if (selected === undefined) return <main className="course-viewer"><p>No course material is available.</p></main>;
+  if (selected === undefined) return <main className="cloud-viewer"><p>No cloud material is available.</p></main>;
 
   return (
     <SettingsContext.Provider value={settings}>
-    <main className="course-viewer">
-      <header className="course-viewer-header">
-        <a className="course-viewer-brand" href="./">JoveWorks</a>
-        <a className="course-viewer-editor" href="./">Open the desktop editor</a>
+    <main className="cloud-viewer">
+      <header className="cloud-viewer-header">
+        <a className="cloud-viewer-brand" href="./">JoveWorks</a>
+        <a className="cloud-viewer-editor" href="./">Open the desktop editor</a>
       </header>
-      <div className="course-viewer-intro">
-        <p className="course-report-kicker">Explore</p>
-        <h1>Course material, made for reading.</h1>
+      <div className="cloud-viewer-intro">
+        <p className="cloud-report-kicker">Explore</p>
+        <h1>Cloud material, made for reading.</h1>
         <p>These examples are live NodeBook reports: conclusions, checks, and plots without the graph-editing workspace.</p>
       </div>
-      <nav className="course-example-list" aria-label="Course examples">
+      <nav className="cloud-example-list" aria-label="Cloud examples">
         {examples.map((example) => (
           <button type="button" key={example.id} className={example.id === selected.id ? 'selected' : ''} onClick={() => setSelectedId(example.id)}>
             <strong>{example.title}</strong><span>{example.summary}</span>

@@ -13,11 +13,11 @@ interface SourceEnvelope {
   readonly catalogues: readonly Catalogue[];
 }
 
-export class CourseAccessRequired extends Error {}
+export class CloudAccessRequired extends Error {}
 
 async function json(url: string, token?: string): Promise<JsonValue> {
-  const response = await fetch(url, token === undefined ? {} : { headers: { 'X-JoveWorks-Course-Token': token } });
-  if (response.status === 401) throw new CourseAccessRequired('Course access is required.');
+  const response = await fetch(url, token === undefined ? {} : { headers: { 'X-JoveWorks-Cloud-Token': token } });
+  if (response.status === 401) throw new CloudAccessRequired('Cloud access is required.');
   if (!response.ok) throw new Error(`The interactive source could not be loaded (${response.status}).`);
   return await response.json() as JsonValue;
 }

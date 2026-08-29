@@ -1,7 +1,7 @@
 /**
  * One renderer for one evaluated result, wherever it is read.
  *
- * The NodeBook panel, the course-material viewer and a published NodeBook all
+ * The NodeBook panel, the cloud-material viewer and a published NodeBook all
  * used to draw results themselves, and the three drifted: the same check read
  * three ways, and a published plot arrived as a hand-rolled SVG that shared
  * nothing with the chart the author had signed off on. This is that renderer,
