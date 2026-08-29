@@ -6,7 +6,7 @@ describe('compiled notebook contract', () => {
   it('covers presentation kinds, marks, display settings, unavailable results, and non-finite values', () => {
     const kinds = ['print', 'check', 'plot', 'table', 'feasibility', 'sensitivity', 'stress', 'bestDesign', 'pareto', 'distribution', 'reliability'];
     const notebook = parseCompiledNotebook({
-      schemaVersion: 2,
+      schemaVersion: 1,
       title: 'Invented report',
       display: { numberStyle: 'dot-thousands', numberNotation: 'fixed', contourPalette: 'cividis', titleMath: false },
       axes: { a: { continuous: true, logarithmic: true }, grade: { continuous: false, logarithmic: false }, bogus: 'not an axis' },
@@ -37,13 +37,13 @@ describe('compiled notebook contract', () => {
     expect(JSON.stringify(notebook)).toContain('mm');
   });
 
-  it('refuses a report written to an older contract rather than half-reading it', () => {
-    expect(() => parseCompiledNotebook({ schemaVersion: 1, title: 'Old', sections: [], marks: [], axisReadouts: [] }))
+  it('refuses a report written to a different contract rather than half-reading it', () => {
+    expect(() => parseCompiledNotebook({ schemaVersion: 2, title: 'Newer', sections: [], marks: [], axisReadouts: [] }))
       .toThrow(/unsupported compiled notebook version/u);
   });
 
   it('defaults display settings a report does not carry', () => {
-    const notebook = parseCompiledNotebook({ schemaVersion: 2, title: 'Bare', sections: [], marks: [], axisReadouts: [] });
+    const notebook = parseCompiledNotebook({ schemaVersion: 1, title: 'Bare', sections: [], marks: [], axisReadouts: [] });
     expect(notebook.display).toEqual({ numberStyle: 'plain', numberNotation: 'si', contourPalette: 'viridis', titleMath: true });
     expect(notebook.axes).toEqual({});
   });

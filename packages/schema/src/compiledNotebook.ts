@@ -4,15 +4,12 @@ import type { JsonObject, JsonValue } from './json.js';
  * The compiled report is intentionally versioned independently of graph
  * documents.
  *
- * Version 2 carries everything the shared presentation components need to
- * draw a NodeBook exactly as its author saw it (ROADMAP item 38): the display
+ * Carries everything the shared presentation components need to draw a
+ * NodeBook exactly as its author saw it (ROADMAP item 38): the display
  * settings it was written under, how each swept axis was authored, and the
- * titles of the Check nodes composite results reference. Version 1 carried a
- * loose blob and a viewer that redrew plots its own way, so it is not
- * readable here — a workspace saved under it is republished from its source
- * document rather than migrated.
+ * titles of the Check nodes composite results reference.
  */
-export const COMPILED_NOTEBOOK_SCHEMA_VERSION = 2;
+export const COMPILED_NOTEBOOK_SCHEMA_VERSION = 1;
 
 export type EncodedNumber = number | 'NaN' | '+Infinity' | '-Infinity';
 
