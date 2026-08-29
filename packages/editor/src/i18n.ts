@@ -48,7 +48,7 @@ const DUTCH_PHRASES: Readonly<Record<string, string>> = {
   'restricted': 'beperkt', 'Nothing matches': 'Geen overeenkomst voor', 'node': 'knooppunt', 'nodes': 'knooppunten', 'catalogue': 'catalogus', 'catalogues': 'catalogi', 'loaded': 'geladen',
   'Quarantined:': 'In quarantaine:', 'Restricted content — never exported.': 'Beperkte inhoud — nooit geëxporteerd.',
   'Connect cloud…': 'Cloud verbinden…', 'Hub address': 'Hub-adres', 'Cloud slug': 'Cloudcode', 'Cloud': 'Cloud',
-  'Find clouds': 'Clouds zoeken', 'Finding clouds…': 'Clouds zoeken…', 'No clouds are available from this Hub.': 'Er zijn geen clouds beschikbaar op deze Hub.',
+  'Find clouds': 'Clouds zoeken', 'Finding clouds…': 'Clouds zoeken…', 'No clouds are available at that address.': 'Er zijn geen clouds beschikbaar op dat adres.',
   'Cloud access token': 'Toegangstoken voor cloud', 'optional': 'optioneel',
   'Only for restricted cloud material': 'Alleen voor beperkte cloudinhoud',
   'The address and cloud are remembered on this device. The access token is kept only for this visit.': 'Het adres en de cloud worden op dit apparaat onthouden. Het toegangstoken blijft alleen deze sessie bewaard.',

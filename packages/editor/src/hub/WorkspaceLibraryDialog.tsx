@@ -65,11 +65,11 @@ export function WorkspaceLibraryDialog({ accesses, onOpen, onDelete, onClose }: 
   return (
     <>
       <div className="dialog-backdrop" onClick={onClose} />
-      <div className="dialog workspace-library-dialog" role="dialog" aria-label={t('Hub workspaces')}>
-        <h2>{t('Hub workspaces')}</h2>
+      <div className="dialog workspace-library-dialog" role="dialog" aria-label={t('Cloud workspaces')}>
+        <h2>{t('Cloud workspaces')}</h2>
         <p className="dialog-note">{t('Workspaces this browser created. Open a shared workspace separately by its ID.')}</p>
         {rows.length === 0
-          ? <p className="dialog-message">{accesses.length === 0 ? t('No Hub workspaces saved from this browser.') : t('Loading workspaces…')}</p>
+          ? <p className="dialog-message">{accesses.length === 0 ? t('No cloud workspaces saved from this browser.') : t('Loading workspaces…')}</p>
           : <div className="workspace-library-list">
             {rows.map((row) => (
               <div className="workspace-library-row" key={`${row.access.hubUrl}\n${row.access.id}`}>

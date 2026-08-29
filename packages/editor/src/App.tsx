@@ -583,7 +583,7 @@ function AppShell(): ReactElement {
 
   const saveNewHubWorkspace = async (hubAddress: string): Promise<void> => {
     const compiledNotebook = compileNotebook(documentRef.current, analyse(documentRef.current, catalogues), currentDisplay());
-    if (compiledNotebookBytes(compiledNotebook) > 1_048_576) throw new Error('The compiled NodeBook is larger than the 1 MiB Hub limit. Reduce report data before saving.');
+    if (compiledNotebookBytes(compiledNotebook) > 1_048_576) throw new Error('The compiled NodeBook is larger than the 1 MiB cloud limit. Reduce report data before saving.');
     const draft = {
       title: documentRef.current.title,
       document: documentRef.current,
@@ -602,13 +602,13 @@ function AppShell(): ReactElement {
     recordRecentDocument(documentRef.current);
     clearAutosaveSnapshot();
     setSavedSnapshot(text);
-    pushNotice(`Saved to Hub workspace ${created.workspace.id}. Share: ${new URL(`/w/${created.workspace.id}`, `${created.workspace.hubUrl}/`)}`);
+    pushNotice(`Saved to cloud workspace ${created.workspace.id}. Share: ${new URL(`/w/${created.workspace.id}`, `${created.workspace.hubUrl}/`)}`);
   };
 
   const saveToHub = async (): Promise<void> => {
-    if (hubWorkspace === undefined) throw new Error('Choose a Hub before saving this workspace.');
+    if (hubWorkspace === undefined) throw new Error('Open or create a cloud workspace before saving.');
     const compiledNotebook = compileNotebook(documentRef.current, analyse(documentRef.current, catalogues), currentDisplay());
-    if (compiledNotebookBytes(compiledNotebook) > 1_048_576) throw new Error('The compiled NodeBook is larger than the 1 MiB Hub limit. Reduce report data before saving.');
+    if (compiledNotebookBytes(compiledNotebook) > 1_048_576) throw new Error('The compiled NodeBook is larger than the 1 MiB cloud limit. Reduce report data before saving.');
     const draft = {
       title: documentRef.current.title,
       document: documentRef.current,
@@ -620,7 +620,7 @@ function AppShell(): ReactElement {
     };
     const token = loadWorkspaceEditToken(hubWorkspace.hubUrl, hubWorkspace.id);
     if (token === undefined) {
-      throw new Error('This shared workspace is read-only in this browser. Choose “Save a copy to Hub…” to make your own.');
+      throw new Error('This shared workspace is read-only in this browser. Choose “Save a copy to Cloud…” to make your own.');
     }
     const saved = await saveWorkspace(hubWorkspace, draft, token);
     setHubWorkspace(saved);
@@ -628,7 +628,7 @@ function AppShell(): ReactElement {
     recordRecentDocument(documentRef.current);
     clearAutosaveSnapshot();
     setSavedSnapshot(text);
-    pushNotice(`Saved to Hub workspace ${saved.id}.`);
+    pushNotice(`Saved to cloud workspace ${saved.id}.`);
   };
 
   const openLoadedHubWorkspace = async (workspace: HubWorkspace): Promise<void> => {
@@ -650,7 +650,7 @@ function AppShell(): ReactElement {
     setCloudWorkspaceBinding(binding);
     recordRecentDocument(workspace.document);
     clearAutosaveSnapshot();
-    pushNotice(`Opened ${workspace.title} from Hub workspace ${workspace.id}.`);
+    pushNotice(`Opened ${workspace.title} from cloud workspace ${workspace.id}.`);
   };
 
   const openHubWorkspace = async (hubAddress: string, workspaceId: string): Promise<void> => {
@@ -692,7 +692,7 @@ function AppShell(): ReactElement {
     removeWorkspaceEditToken(workspace.hubUrl, workspace.id);
     setWorkspaceAccessRevision((current) => current + 1);
     if (hubWorkspace?.hubUrl === workspace.hubUrl && hubWorkspace.id === workspace.id) setHubWorkspace(undefined);
-    pushNotice(`Deleted Hub workspace ${workspace.id}.`);
+    pushNotice(`Deleted cloud workspace ${workspace.id}.`);
   };
 
   // A ref rather than a `document` dependency: restarting the interval on
@@ -1068,11 +1068,11 @@ function AppShell(): ReactElement {
 
   const cloudMenuItems: readonly MenuItem[] = [
     { label: t('Connect cloud…'), onClick: () => setShowConnectCloud(true) },
-    { heading: t('Your Hub work') },
-    { label: hubWorkspace === undefined ? t('Save to Hub…') : t('Save to Hub'), onClick: () => hubWorkspace === undefined ? setWorkspaceDialog('save') : void saveToHub().catch((error) => pushNotice(messageOf(error))) },
-    { label: t('Save a copy to Hub…'), onClick: () => setWorkspaceDialog('save') },
-    { label: t('Open Hub workspace…'), onClick: () => guardDiscard(() => setWorkspaceDialog('open')) },
-    { label: t('Manage Hub workspaces…'), onClick: () => setShowWorkspaceLibrary(true) },
+    { heading: t('Your cloud work') },
+    { label: hubWorkspace === undefined ? t('Save to Cloud…') : t('Save to Cloud'), onClick: () => hubWorkspace === undefined ? setWorkspaceDialog('save') : void saveToHub().catch((error) => pushNotice(messageOf(error))) },
+    { label: t('Save a copy to Cloud…'), onClick: () => setWorkspaceDialog('save') },
+    { label: t('Open cloud workspace…'), onClick: () => guardDiscard(() => setWorkspaceDialog('open')) },
+    { label: t('Manage cloud workspaces…'), onClick: () => setShowWorkspaceLibrary(true) },
     ...(cloudSources.length === 0
       ? [{ heading: t('No cloud connected') }]
       : cloudSources.flatMap((source) => [
@@ -1393,7 +1393,7 @@ function AppShell(): ReactElement {
               accesses={workspaceAccesses}
               onOpen={(workspace) => {
                 setShowWorkspaceLibrary(false);
-                guardDiscard(() => void openLoadedHubWorkspace(workspace).catch((error) => pushNotice(`Could not open Hub workspace: ${messageOf(error)}`)));
+                guardDiscard(() => void openLoadedHubWorkspace(workspace).catch((error) => pushNotice(`Could not open cloud workspace: ${messageOf(error)}`)));
               }}
               onDelete={deleteHubWorkspace}
               onClose={() => setShowWorkspaceLibrary(false)}

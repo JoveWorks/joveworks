@@ -131,11 +131,11 @@ export async function discoverClouds(rawHubUrl: string): Promise<readonly HubClo
   const discovery = await discover(base);
   const index = await getJson(resolve(base, `${discovery.api}/clouds`));
   if (!isObject(index) || index.protocolVersion !== PROTOCOL_VERSION || !Array.isArray(index.clouds)) {
-    throw new Error('The Hub returned an invalid cloud list.');
+    throw new Error('The cloud list returned was invalid.');
   }
   return index.clouds.map((entry) => {
     if (!isObject(entry) || typeof entry.slug !== 'string' || typeof entry.title !== 'string') {
-      throw new Error('The Hub cloud list contains an invalid cloud.');
+      throw new Error('The cloud list contains an invalid cloud.');
     }
     return { slug: entry.slug, title: entry.title };
   });
@@ -264,7 +264,7 @@ export async function createWorkspace(
     },
   );
   if (!isObject(value) || typeof value.id !== 'string' || typeof value.editToken !== 'string') {
-    throw new Error('The Hub did not return an edit token for the new workspace.');
+    throw new Error('The cloud did not return an edit token for the new workspace.');
   }
   return {
     workspace: { hubUrl: base, id: value.id, title: draft.title, document: draft.document, ...(draft.cloudSlug === undefined ? { catalogues: [] } : { cloudSlug: draft.cloudSlug, catalogues: draft.catalogues ?? [] }) },
@@ -317,7 +317,7 @@ export async function deleteWorkspace(workspace: HubWorkspace, workspaceToken: s
 
 export async function createWorkspaceShare(workspace: HubWorkspace, workspaceToken: string): Promise<string> {
   const value = await requestJson(resolve(workspace.hubUrl, `/api/v1/workspaces/${encodeURIComponent(workspace.id)}/shares`), 'POST', undefined, workspaceToken);
-  if (!isObject(value) || typeof value.url !== 'string') throw new Error('The Hub returned an invalid student share link.');
+  if (!isObject(value) || typeof value.url !== 'string') throw new Error('The cloud returned an invalid student share link.');
   return value.url;
 }
 
@@ -350,7 +350,7 @@ async function getJsonResponse(url: string, cloudToken?: string): Promise<JsonRe
     throw new Error('Could not reach that Hub. Check the address and your connection.');
   }
   if (response.status === 401) throw new Error('This cloud material needs the cloud access token. Connect again and enter it.');
-  if (response.status === 404) throw new Error('That cloud material was not found on this Hub.');
+  if (response.status === 404) throw new Error('That cloud material was not found.');
   if (!response.ok) throw new Error(`The Hub could not complete this request (${response.status}).`);
   try {
     const value = await response.json() as JsonValue;
@@ -381,26 +381,26 @@ async function requestJson(
     throw new Error('Could not reach that Hub. Check the address and your connection.');
   }
   if (response.status === 401) throw new Error('This workspace needs an access token.');
-  if (response.status === 404) throw new Error('That workspace was not found on this Hub.');
+  if (response.status === 404) throw new Error('That workspace was not found in the cloud.');
   if (response.status === 409 || response.status === 412) throw new Error('This workspace changed elsewhere; reload it before saving.');
-  if (!response.ok) throw new Error(`The Hub could not complete this workspace request (${response.status}).`);
+  if (!response.ok) throw new Error(`The cloud could not complete this workspace request (${response.status}).`);
   if (response.status === 204) return null;
   try {
     return await response.json() as JsonValue;
   } catch {
-    throw new Error('The Hub returned invalid workspace JSON.');
+    throw new Error('The cloud returned invalid workspace JSON.');
   }
 }
 
 function parseWorkspace(hubUrl_: string, value: JsonValue): HubWorkspace {
   if (!isObject(value) || typeof value.id !== 'string' || typeof value.title !== 'string' || !('document' in value) || !Array.isArray(value.catalogues)) {
-    throw new Error('The Hub returned an invalid workspace.');
+    throw new Error('The cloud returned an invalid workspace.');
   }
   let document: GraphDocument;
   try {
     document = loadDocument(JSON.stringify(value.document));
   } catch {
-    throw new Error('The Hub returned an invalid workspace document.');
+    throw new Error('The cloud returned an invalid workspace document.');
   }
   return {
     hubUrl: hubUrl_,
@@ -415,7 +415,7 @@ function parseWorkspace(hubUrl_: string, value: JsonValue): HubWorkspace {
 
 function parseCloud(hubUrl_: string, value: JsonValue): HubCloud {
   if (!isObject(value) || value.protocolVersion !== PROTOCOL_VERSION || typeof value.slug !== 'string' || typeof value.title !== 'string' || !Array.isArray(value.publications) || !Array.isArray(value.catalogues)) {
-    throw new Error('The Hub returned an invalid cloud manifest.');
+    throw new Error('The cloud manifest was invalid.');
   }
   if (value.catalogueContents !== undefined && !Array.isArray(value.catalogueContents)) {
     throw new Error('The Hub returned invalid inline catalogue contents.');
@@ -440,7 +440,7 @@ async function discover(base: string): Promise<{ readonly api: string }> {
 
 function parsePublicationSummary(value: JsonValue): HubPublicationSummary {
   if (!isObject(value) || typeof value.id !== 'string' || typeof value.title !== 'string' || !isMode(value.mode) || typeof value.publishedAt !== 'string') {
-    throw new Error('The Hub cloud manifest contains an invalid publication.');
+    throw new Error('The cloud manifest contains an invalid publication.');
   }
   return { id: value.id, title: value.title, mode: value.mode, publishedAt: value.publishedAt };
 }
@@ -461,7 +461,7 @@ function parseCatalogueContent(value: JsonValue): HubCatalogueContent {
     || typeof value.hash !== 'string'
     || !('content' in value)
   ) {
-    throw new Error('The Hub cloud manifest contains an invalid inline catalogue.');
+    throw new Error('The cloud manifest contains an invalid inline catalogue.');
   }
   return { id: value.id, version: value.version, hash: value.hash, content: value.content as JsonValue };
 }
