@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.26.0](https://github.com/JoveWorks/joveworks/compare/v0.25.0...v0.26.0) (2026-08-29)
+
+### Features
+
+* **editor:** pin the catalogue palette to the bottom of the window ([51119e2](https://github.com/JoveWorks/joveworks/commit/51119e246630e89300fa00d1f7a11a1e335204e8))
+
+### Fixes
+
+* **editor:** make Escape close whichever popup is topmost, from anywhere ([13ce5e0](https://github.com/JoveWorks/joveworks/commit/13ce5e0b188d6091dce50d509000f586fde0506d))
+
+### Refactoring
+
+* **editor:** rename course to cloud in Hub model, wiring, and wire protocol ([9ae7ff0](https://github.com/JoveWorks/joveworks/commit/9ae7ff0f6c6dd463adc1d82b7e764a2e36d38114))
+* **editor:** rename course to cloud in the viewer, dialogs, CSS, and i18n ([c2d93ba](https://github.com/JoveWorks/joveworks/commit/c2d93ba7d59bf1fbd57c958eec1a7ac6f991e08b))
+
+### Documentation
+
+* trim the roadmap of resolved items ([aabfbe9](https://github.com/JoveWorks/joveworks/commit/aabfbe969ee5743df4b01497bea806710211b404))
 ## [0.25.0](https://github.com/JoveWorks/joveworks/compare/v0.24.0...v0.25.0) (2026-08-29)
 
 ### Fixes
