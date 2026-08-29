@@ -693,9 +693,70 @@ aside.right {
   border-left: 1px solid var(--line);
 }
 
+/* Side-docked (aside.left/right) stays a plain scrolling block: the shared
+   `overflow-y: auto` above scrolls the whole panel — header, list, and
+   footer together — which is correct when it's one narrow column. Pinned to
+   the bottom the content flows sideways into columns instead (see
+   `aside.bottom .palette-list` below), so the strip itself must not also
+   scroll vertically: leaving `overflow-y: auto` here would trip CSS's
+   cross-axis rule (an axis left `visible` next to one that isn't becomes
+   `auto` too) and turn the whole strip into a box that scrolls both ways at
+   once, dragging the search box and close button sideways along with the
+   columns as you scroll through them. `overflow-y: hidden` here overrides
+   the shared rule; the flex column below hands the vertical space to
+   `.palette` so its own header/footer can stay put while only the list
+   scrolls horizontally. */
 aside.bottom {
   width: 100%;
   border-top: 1px solid var(--line);
+  overflow-y: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Stretches `.palette` (a flex column: header, list, footer) to the full
+   height of the strip so its middle section — `.palette-list` — has a
+   definite height to lay columns out against and fill before scrolling. */
+aside.bottom .palette {
+  flex: 1;
+  min-height: 0;
+}
+
+/* Multi-column layout: sections flow left-to-right into ~palette-width
+   lanes instead of stacking in one narrow column that wastes the strip's
+   width and forces heavy vertical scrolling in a deliberately shallow
+   panel. 220px roughly matches how wide a side-docked palette sits by
+   default (`DEFAULT_PALETTE_WIDTH`, 360px, at the high end of its 200-480px
+   resize range) while staying narrow enough that a typical window fits
+   several lanes side by side.
+   `column-fill: auto` (rather than the default `balance`) is what makes the
+   overflow direction sideways rather than up-down: with a definite height
+   on the container, `auto` fills one column to that height before starting
+   the next, so content that doesn't fit adds another column — extending the
+   scrollable width — instead of overflowing vertically or shrinking every
+   column to squeeze everything in. `balance` is the wrong tool here: with a
+   fixed height it aims to spread content evenly across a column count
+   computed from the container's own width, not to add lanes beyond it, so
+   it fights the "extend sideways" goal rather than serving it — unverified
+   in a live browser, since this change is CSS-only and Thomas checks the
+   editor visually; flag it if `auto` looks wrong on his screen.
+   `break-inside: avoid` on each section keeps an `<h3>` toggle glued to its
+   own `<ul>` across a column break — without it a header could strand at
+   the bottom of one column while its list starts fresh at the top of the
+   next, reading as broken rather than merely wrapped. */
+aside.bottom .palette-list {
+  flex: 1;
+  min-height: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  column-width: 220px;
+  column-gap: 16px;
+  column-fill: auto;
+}
+
+aside.bottom .palette-list section {
+  break-inside: avoid;
+  -webkit-column-break-inside: avoid;
 }
 
 .resize-handle {
