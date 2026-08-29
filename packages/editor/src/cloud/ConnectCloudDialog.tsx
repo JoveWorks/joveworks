@@ -45,7 +45,7 @@ export function ConnectCloudDialog({ initialHubUrl, onConnect, onDiscover, onClo
       .then((found) => {
         setClouds(found);
         setCloudSlug(found[0]?.slug ?? '');
-        if (found.length === 0) setError(t('No clouds are available from this Hub.'));
+        if (found.length === 0) setError(t('No clouds are available at that address.'));
       })
       .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : t('Could not connect to that cloud.')))
       .finally(() => setPending(false));

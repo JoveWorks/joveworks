@@ -46,7 +46,7 @@ export function WorkspaceDialog(props: Props): ReactElement {
       .finally(() => setPending(false));
   };
 
-  const label = opening ? t('Open Hub workspace…') : t('Save to Hub…');
+  const label = opening ? t('Open cloud workspace…') : t('Save to Cloud…');
   return (
     <>
       <div className="dialog-backdrop" onClick={props.onClose} />
@@ -65,7 +65,7 @@ export function WorkspaceDialog(props: Props): ReactElement {
         <p className="dialog-note">
           {opening
             ? t('Anyone with the Hub address and workspace ID can load a copy. Only this browser can update workspaces it created.')
-            : t('This creates a saved copy on the Hub. Its short workspace ID can be shared for read-only loading.')}
+            : t('This creates a saved copy in the cloud. Its short workspace ID can be shared for read-only loading.')}
         </p>
         {error === undefined ? null : <p className="dialog-message dialog-error">{error}</p>}
         <div className="dialog-actions">
