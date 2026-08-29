@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.26.1](https://github.com/JoveWorks/joveworks/compare/v0.26.0...v0.26.1) (2026-08-29)
+
+### Refactoring
+
+* **editor:** rename user-visible Hub wording to Cloud for the workspace save/load feature ([119c6b7](https://github.com/JoveWorks/joveworks/commit/119c6b72b167188a1db77f55cc01bf37c2163137))
 ## [0.26.0](https://github.com/JoveWorks/joveworks/compare/v0.25.0...v0.26.0) (2026-08-29)
 
 ### Features
