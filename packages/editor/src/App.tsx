@@ -134,25 +134,25 @@ import { loadTutorialSeen } from './tutorial/tutorialSettings';
 import { useResizableWidth } from './useResizableWidth';
 import { phrase, ui } from './i18n';
 import { hubOrigin, parseRoute } from './router';
-import { CourseMaterialViewer } from './viewer/CourseMaterialViewer';
-import { ConnectCourseDialog } from './course/ConnectCourseDialog';
-import { WorkspaceDialog } from './course/WorkspaceDialog';
-import { WorkspaceLibraryDialog } from './course/WorkspaceLibraryDialog';
+import { CloudMaterialViewer } from './viewer/CloudMaterialViewer';
+import { ConnectCloudDialog } from './cloud/ConnectCloudDialog';
+import { WorkspaceDialog } from './hub/WorkspaceDialog';
+import { WorkspaceLibraryDialog } from './hub/WorkspaceLibraryDialog';
 import {
-  connectCourse,
-  discoverCourses,
+  connectCloud,
+  discoverClouds,
   createWorkspace,
   deleteWorkspace,
   loadPublication as loadHubPublication,
   loadSharedWorkspace,
   loadWorkspace,
-  resolveCourseCatalogues,
+  resolveCloudCatalogues,
   saveWorkspace,
   type HubCatalogueRef,
-  type HubCourse,
+  type HubCloud,
   type HubWorkspace,
 } from './model/hub';
-import { loadCourseSources, saveCourseSources, withCourseSource } from './model/courseSources';
+import { loadCloudSources, saveCloudSources, withCloudSource } from './model/cloudSources';
 import { compileNotebook, compiledNotebookBytes } from './model/compiledNotebook';
 import { loadHubUrl, saveHubUrl } from './model/editorSettings';
 import {
@@ -271,8 +271,8 @@ function measuredNodeSizes(flow: ReturnType<typeof useReactFlow>): NodeSizes {
  * renders one around it.
  */
 export function App(): ReactElement {
-  if (new URL(window.location.href).searchParams.get('view') === 'course') {
-    return <CourseMaterialViewer />;
+  if (new URL(window.location.href).searchParams.get('view') === 'cloud') {
+    return <CloudMaterialViewer />;
   }
 
   return (
@@ -317,8 +317,8 @@ function MobileLanding(): ReactElement {
         <a className="mobile-landing-docs" href={DOCS_BASE_URL}>
           Read the documentation
         </a>
-        <a className="mobile-landing-course" href="?view=course">
-          Browse course material
+        <a className="mobile-landing-cloud" href="?view=cloud">
+          Browse cloud material
         </a>
         <p className="mobile-landing-note">Open JoveWorks on a larger screen to edit a graph.</p>
       </div>
@@ -329,20 +329,20 @@ function MobileLanding(): ReactElement {
 function AppShell(): ReactElement {
   const flow = useReactFlow();
   const [catalogues, setCatalogues] = useState<readonly Catalogue[]>(initialCatalogues);
-  const [courseSources, setCourseSourcesState] = useState<readonly HubCourse[]>(loadCourseSources);
+  const [cloudSources, setCloudSourcesState] = useState<readonly HubCloud[]>(loadCloudSources);
   const [rememberedHubUrl, setRememberedHubUrl] = useState<string | undefined>(loadHubUrl);
-  const [courseWorkspaceBinding, setCourseWorkspaceBinding] = useState<{
-    readonly source: HubCourse;
+  const [cloudWorkspaceBinding, setCloudWorkspaceBinding] = useState<{
+    readonly source: HubCloud;
     readonly catalogues: readonly HubCatalogueRef[];
   } | undefined>();
-  /** Course secrets never persist. A reload can still open public material and
+  /** Cloud secrets never persist. A reload can still open public material and
    * reuses cached catalogues, but asks the student to reconnect before fetching
    * restricted material again. */
-  const courseTokens = useRef(new Map<string, string>());
-  const setCourseSources = (update: (current: readonly HubCourse[]) => readonly HubCourse[]): void =>
-    setCourseSourcesState((current) => {
+  const cloudTokens = useRef(new Map<string, string>());
+  const setCloudSources = (update: (current: readonly HubCloud[]) => readonly HubCloud[]): void =>
+    setCloudSourcesState((current) => {
       const next = update(current);
-      saveCourseSources(next);
+      saveCloudSources(next);
       return next;
     });
   const rememberHubUrl = (url: string): void => {
@@ -399,7 +399,7 @@ function AppShell(): ReactElement {
     setHistory(initHistory(next));
     setSavedSnapshot(saveDocument(next));
     setCollapsedGroups(new Set());
-    setCourseWorkspaceBinding(undefined);
+    setCloudWorkspaceBinding(undefined);
   };
   const openExample = (id: ExampleId): void => {
     const sample = exampleDocument(id, catalogues, locale);
@@ -447,13 +447,13 @@ function AppShell(): ReactElement {
   const [contourPalette, setContourPaletteState] = useState<ContourPalette>(loadContourPalette);
   const [advancedNodesEnabled, setAdvancedNodesEnabledState] = useState<boolean>(loadAdvancedNodes);
   const [showSettings, setShowSettings] = useState(false);
-  const [showConnectCourse, setShowConnectCourse] = useState(false);
+  const [showConnectCloud, setShowConnectCloud] = useState(false);
   const [workspaceDialog, setWorkspaceDialog] = useState<'save' | 'open' | undefined>();
   const [linkedPublication] = useState(publicationLinkFromUrl);
   const [linkedStudentShare] = useState(studentShareLinkFromUrl);
   const [showWorkspaceLibrary, setShowWorkspaceLibrary] = useState(false);
   const [hubWorkspace, setHubWorkspace] = useState<HubWorkspace | undefined>();
-  const initialHubUrl = hubWorkspace?.hubUrl ?? rememberedHubUrl ?? courseSources[0]?.hubUrl ?? '';
+  const initialHubUrl = hubWorkspace?.hubUrl ?? rememberedHubUrl ?? cloudSources[0]?.hubUrl ?? '';
   const [workspaceAccessRevision, setWorkspaceAccessRevision] = useState(0);
   const workspaceAccesses = useMemo(loadWorkspaceAccesses, [workspaceAccessRevision]);
 
@@ -484,7 +484,7 @@ function AppShell(): ReactElement {
       : { kind: 'example', id: linkedExample },
   );
   const [openMenu, setOpenMenu] = useState<
-    | { readonly menu: 'file' | 'course' | 'edit' | 'view' | 'help'; readonly x: number; readonly y: number }
+    | { readonly menu: 'file' | 'cloud' | 'edit' | 'view' | 'help'; readonly x: number; readonly y: number }
     | undefined
   >(undefined);
   // The cursor crossing the gap between a ribbon button and its dropdown
@@ -532,52 +532,52 @@ function AppShell(): ReactElement {
     window.setTimeout(() => dismissNotice(id), 6000);
   };
 
-  const courseKey = (source: HubCourse): string => `${source.hubUrl}\n${source.slug}`;
-  const connectToCourse = async (hubAddress: string, slug: string, token: string): Promise<void> => {
-    const source = await connectCourse(hubAddress, slug, token);
+  const cloudKey = (source: HubCloud): string => `${source.hubUrl}\n${source.slug}`;
+  const connectToCloud = async (hubAddress: string, slug: string, token: string): Promise<void> => {
+    const source = await connectCloud(hubAddress, slug, token);
     rememberHubUrl(source.hubUrl);
-    if (token.length > 0) courseTokens.current.set(courseKey(source), token);
-    setCourseSources((current) => withCourseSource(current, source));
+    if (token.length > 0) cloudTokens.current.set(cloudKey(source), token);
+    setCloudSources((current) => withCloudSource(current, source));
     pushNotice(`Connected to ${source.title}.`);
   };
-  const refreshCourse = async (source: HubCourse): Promise<void> => {
+  const refreshCloud = async (source: HubCloud): Promise<void> => {
     try {
-      const refreshed = await connectCourse(source.hubUrl, source.slug, courseTokens.current.get(courseKey(source)));
-      setCourseSources((current) => withCourseSource(current, refreshed));
+      const refreshed = await connectCloud(source.hubUrl, source.slug, cloudTokens.current.get(cloudKey(source)));
+      setCloudSources((current) => withCloudSource(current, refreshed));
       pushNotice(`Refreshed ${refreshed.title}.`);
     } catch (error) {
       pushNotice(`Could not refresh ${source.title}: ${messageOf(error)}`);
     }
   };
-  const loadCourseCatalogues = async (source: HubCourse): Promise<void> => {
+  const loadCloudCatalogues = async (source: HubCloud): Promise<void> => {
     try {
-      const token = courseTokens.current.get(courseKey(source));
-      const resolved = await resolveCourseCatalogues(source, source.catalogues ?? [], token);
+      const token = cloudTokens.current.get(cloudKey(source));
+      const resolved = await resolveCloudCatalogues(source, source.catalogues ?? [], token);
       const loadedCatalogues = resolved.map((content) => loadCatalogue(JSON.stringify(content)));
       setCatalogues((current) => loadedCatalogues.reduce(withCatalogue, current));
       for (const catalogue of loadedCatalogues) cacheCatalogue(catalogue.id, saveCatalogue(catalogue));
       pushNotice(`Loaded ${loadedCatalogues.length} catalogue${loadedCatalogues.length === 1 ? '' : 's'} from ${source.title}.`);
     } catch (error) {
-      pushNotice(`Could not load course catalogues: ${messageOf(error)}`);
+      pushNotice(`Could not load cloud catalogues: ${messageOf(error)}`);
     }
   };
-  const openCoursePublication = async (source: HubCourse, publicationId: string, bindCourse = true): Promise<void> => {
+  const openCloudPublication = async (source: HubCloud, publicationId: string, bindCloud = true): Promise<void> => {
     try {
-      const token = courseTokens.current.get(courseKey(source));
+      const token = cloudTokens.current.get(cloudKey(source));
       const publication = await loadHubPublication(source, publicationId, token);
-      const resolved = await resolveCourseCatalogues(source, publication.catalogues, token);
+      const resolved = await resolveCloudCatalogues(source, publication.catalogues, token);
       const loadedCatalogues = resolved.map((content) => loadCatalogue(JSON.stringify(content)));
       const loadedDocument = loadDocument(JSON.stringify(publication.document));
       rememberHubUrl(source.hubUrl);
       setCatalogues((current) => loadedCatalogues.reduce(withCatalogue, current));
       for (const catalogue of loadedCatalogues) cacheCatalogue(catalogue.id, saveCatalogue(catalogue));
       resetDocument(loadedDocument);
-      if (bindCourse) setCourseWorkspaceBinding({ source, catalogues: publication.catalogues });
+      if (bindCloud) setCloudWorkspaceBinding({ source, catalogues: publication.catalogues });
       recordRecentDocument(loadedDocument);
       clearAutosaveSnapshot();
       pushNotice(`Opened ${publication.title} from ${source.title}.`);
     } catch (error) {
-      pushNotice(`Could not open course material: ${messageOf(error)}`);
+      pushNotice(`Could not open cloud material: ${messageOf(error)}`);
     }
   };
 
@@ -588,9 +588,9 @@ function AppShell(): ReactElement {
       title: documentRef.current.title,
       document: documentRef.current,
       compiledNotebook,
-      ...(courseWorkspaceBinding === undefined ? {} : {
-        courseSlug: courseWorkspaceBinding.source.slug,
-        catalogues: courseWorkspaceBinding.catalogues,
+      ...(cloudWorkspaceBinding === undefined ? {} : {
+        cloudSlug: cloudWorkspaceBinding.source.slug,
+        catalogues: cloudWorkspaceBinding.catalogues,
       }),
     };
     const created = await createWorkspace(hubAddress, draft);
@@ -613,9 +613,9 @@ function AppShell(): ReactElement {
       title: documentRef.current.title,
       document: documentRef.current,
       compiledNotebook,
-      ...(courseWorkspaceBinding === undefined ? {} : {
-        courseSlug: courseWorkspaceBinding.source.slug,
-        catalogues: courseWorkspaceBinding.catalogues,
+      ...(cloudWorkspaceBinding === undefined ? {} : {
+        cloudSlug: cloudWorkspaceBinding.source.slug,
+        catalogues: cloudWorkspaceBinding.catalogues,
       }),
     };
     const token = loadWorkspaceEditToken(hubWorkspace.hubUrl, hubWorkspace.id);
@@ -633,13 +633,13 @@ function AppShell(): ReactElement {
 
   const openLoadedHubWorkspace = async (workspace: HubWorkspace): Promise<void> => {
     rememberHubUrl(workspace.hubUrl);
-    let binding: { readonly source: HubCourse; readonly catalogues: readonly HubCatalogueRef[] } | undefined;
-    if (workspace.courseSlug !== undefined) {
-      const existing = courseSources.find((source) => source.hubUrl === workspace.hubUrl && source.slug === workspace.courseSlug);
-      const source = existing ?? await connectCourse(workspace.hubUrl, workspace.courseSlug);
-      if (existing === undefined) setCourseSources((current) => withCourseSource(current, source));
-      const token = courseTokens.current.get(courseKey(source));
-      const resolved = await resolveCourseCatalogues(source, workspace.catalogues, token);
+    let binding: { readonly source: HubCloud; readonly catalogues: readonly HubCatalogueRef[] } | undefined;
+    if (workspace.cloudSlug !== undefined) {
+      const existing = cloudSources.find((source) => source.hubUrl === workspace.hubUrl && source.slug === workspace.cloudSlug);
+      const source = existing ?? await connectCloud(workspace.hubUrl, workspace.cloudSlug);
+      if (existing === undefined) setCloudSources((current) => withCloudSource(current, source));
+      const token = cloudTokens.current.get(cloudKey(source));
+      const resolved = await resolveCloudCatalogues(source, workspace.catalogues, token);
       const loadedCatalogues = resolved.map((content) => loadCatalogue(JSON.stringify(content)));
       setCatalogues((current) => loadedCatalogues.reduce(withCatalogue, current));
       for (const catalogue of loadedCatalogues) cacheCatalogue(catalogue.id, saveCatalogue(catalogue));
@@ -647,7 +647,7 @@ function AppShell(): ReactElement {
     }
     setHubWorkspace(workspace);
     resetDocument(workspace.document);
-    setCourseWorkspaceBinding(binding);
+    setCloudWorkspaceBinding(binding);
     recordRecentDocument(workspace.document);
     clearAutosaveSnapshot();
     pushNotice(`Opened ${workspace.title} from Hub workspace ${workspace.id}.`);
@@ -661,8 +661,8 @@ function AppShell(): ReactElement {
 
   useEffect(() => {
     if (linkedPublication === undefined) return;
-    const source: HubCourse = { hubUrl: linkedPublication.hubUrl, slug: 'linked-publication', title: 'Linked material', publications: [], catalogues: [] };
-    void openCoursePublication(source, linkedPublication.publicationId, false)
+    const source: HubCloud = { hubUrl: linkedPublication.hubUrl, slug: 'linked-publication', title: 'Linked material', publications: [], catalogues: [] };
+    void openCloudPublication(source, linkedPublication.publicationId, false)
       .then(() => {
         const url = new URL(window.location.href);
         if (url.searchParams.has('publication')) {
@@ -671,7 +671,7 @@ function AppShell(): ReactElement {
           window.history.replaceState({}, '', url);
         }
       })
-      .catch((error) => pushNotice(`Could not open linked course material: ${messageOf(error)}`));
+      .catch((error) => pushNotice(`Could not open linked cloud material: ${messageOf(error)}`));
   // The URL is read exactly once on boot. Re-running on editor state changes
   // would repeatedly replace a document the student has started to edit.
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1066,28 +1066,28 @@ function AppShell(): ReactElement {
     { label: t('Redo'), disabled: !canRedo, onClick: redo },
   ];
 
-  const courseMenuItems: readonly MenuItem[] = [
-    { label: t('Connect course…'), onClick: () => setShowConnectCourse(true) },
+  const cloudMenuItems: readonly MenuItem[] = [
+    { label: t('Connect cloud…'), onClick: () => setShowConnectCloud(true) },
     { heading: t('Your Hub work') },
     { label: hubWorkspace === undefined ? t('Save to Hub…') : t('Save to Hub'), onClick: () => hubWorkspace === undefined ? setWorkspaceDialog('save') : void saveToHub().catch((error) => pushNotice(messageOf(error))) },
     { label: t('Save a copy to Hub…'), onClick: () => setWorkspaceDialog('save') },
     { label: t('Open Hub workspace…'), onClick: () => guardDiscard(() => setWorkspaceDialog('open')) },
     { label: t('Manage Hub workspaces…'), onClick: () => setShowWorkspaceLibrary(true) },
-    ...(courseSources.length === 0
-      ? [{ heading: t('No course connected') }]
-      : courseSources.flatMap((source) => [
+    ...(cloudSources.length === 0
+      ? [{ heading: t('No cloud connected') }]
+      : cloudSources.flatMap((source) => [
           { heading: source.title },
-          { label: t('Refresh course material'), onClick: () => void refreshCourse(source) },
+          { label: t('Refresh cloud material'), onClick: () => void refreshCloud(source) },
           {
-            label: t('Load course catalogues'),
+            label: t('Load cloud catalogues'),
             disabled: (source.catalogues?.length ?? 0) === 0,
-            onClick: () => void loadCourseCatalogues(source),
+            onClick: () => void loadCloudCatalogues(source),
           },
           ...(source.publications.length === 0
             ? [{ label: t('No published material'), disabled: true, onClick: () => undefined }]
             : source.publications.map((publication) => ({
                 label: publication.title,
-                onClick: () => guardDiscard(() => void openCoursePublication(source, publication.id)),
+                onClick: () => guardDiscard(() => void openCloudPublication(source, publication.id)),
               }))),
         ])),
   ];
@@ -1251,18 +1251,18 @@ function AppShell(): ReactElement {
     },
   ];
 
-  const menuItemsFor = (menu: 'file' | 'course' | 'edit' | 'view' | 'help'): readonly MenuItem[] =>
+  const menuItemsFor = (menu: 'file' | 'cloud' | 'edit' | 'view' | 'help'): readonly MenuItem[] =>
     menu === 'file'
       ? fileMenuItems
-      : menu === 'course'
-        ? courseMenuItems
+      : menu === 'cloud'
+        ? cloudMenuItems
         : menu === 'edit'
           ? editMenuItems
           : menu === 'view'
             ? viewMenuItems
             : helpMenuItems;
 
-  const menuButton = (menu: 'file' | 'course' | 'edit' | 'view' | 'help', label: string): ReactElement => (
+  const menuButton = (menu: 'file' | 'cloud' | 'edit' | 'view' | 'help', label: string): ReactElement => (
     <button
       type="button"
       className={`menu-button${openMenu?.menu === menu ? ' open' : ''}`}
@@ -1300,7 +1300,7 @@ function AppShell(): ReactElement {
         <div className="app" onContextMenu={(event) => event.preventDefault()}>
           <header className="menubar" onMouseEnter={cancelMenuClose} onMouseLeave={scheduleMenuClose}>
             {menuButton('file', 'File')}
-            {menuButton('course', 'Course')}
+            {menuButton('cloud', 'Cloud')}
             {menuButton('edit', 'Edit')}
             {menuButton('view', 'View')}
             {menuButton('help', 'Help')}
@@ -1371,7 +1371,7 @@ function AppShell(): ReactElement {
               onMouseLeave={scheduleMenuClose}
             />
           )}
-          {showConnectCourse ? <ConnectCourseDialog initialHubUrl={initialHubUrl} onConnect={connectToCourse} onDiscover={discoverCourses} onClose={() => setShowConnectCourse(false)} /> : null}
+          {showConnectCloud ? <ConnectCloudDialog initialHubUrl={initialHubUrl} onConnect={connectToCloud} onDiscover={discoverClouds} onClose={() => setShowConnectCloud(false)} /> : null}
           {workspaceDialog === 'save' ? (
             <WorkspaceDialog
               kind="save"

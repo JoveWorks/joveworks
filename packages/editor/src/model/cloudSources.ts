@@ -1,49 +1,49 @@
-/** Remember course sources and their last safe manifest, never their token. */
+/** Remember cloud sources and their last safe manifest, never their token. */
 
-import type { HubCourse } from './hub';
+import type { HubCloud } from './hub';
 
-const KEY = 'joveworks:course-sources';
+const KEY = 'joveworks:cloud-sources';
 
-export function loadCourseSources(): readonly HubCourse[] {
+export function loadCloudSources(): readonly HubCloud[] {
   try {
     const raw = window.localStorage.getItem(KEY);
     if (raw === null) return [];
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter(isHubCourse);
+    return parsed.filter(isHubCloud);
   } catch {
     return [];
   }
 }
 
-export function saveCourseSources(sources: readonly HubCourse[]): void {
+export function saveCloudSources(sources: readonly HubCloud[]): void {
   try {
     // Drop `catalogueContents` before persisting: it is the full catalogue
     // documents, already duplicated into `catalogueCache` by id once parsed,
     // and "last safe manifest" was always meant to be the small refs list —
     // not a second copy of potentially-restricted content sitting in
-    // localStorage for as long as the course source is remembered. Losing it
+    // localStorage for as long as the cloud source is remembered. Losing it
     // here just means the next session falls back to `loadCatalogue`'s
     // per-ref fetch, exactly like a Hub that never inlined it.
     window.localStorage.setItem(KEY, JSON.stringify(sources.map(withoutInlineContents)));
   } catch {
-    // A remembered source is a convenience; the current course still works.
+    // A remembered source is a convenience; the current cloud still works.
   }
 }
 
-function withoutInlineContents(source: HubCourse): HubCourse {
+function withoutInlineContents(source: HubCloud): HubCloud {
   if (source.catalogueContents === undefined) return source;
   const { catalogueContents: _catalogueContents, ...rest } = source;
   return rest;
 }
 
-export function withCourseSource(sources: readonly HubCourse[], source: HubCourse): readonly HubCourse[] {
+export function withCloudSource(sources: readonly HubCloud[], source: HubCloud): readonly HubCloud[] {
   return [source, ...sources.filter((candidate) => candidate.hubUrl !== source.hubUrl || candidate.slug !== source.slug)];
 }
 
-function isHubCourse(value: unknown): value is HubCourse {
+function isHubCloud(value: unknown): value is HubCloud {
   if (typeof value !== 'object' || value === null) return false;
-  const candidate = value as Partial<HubCourse>;
+  const candidate = value as Partial<HubCloud>;
   return typeof candidate.hubUrl === 'string'
     && typeof candidate.slug === 'string'
     && typeof candidate.title === 'string'

@@ -4,7 +4,7 @@
  * Hub deliberately returns ordinary JSON documents and catalogues. This layer
  * validates the small transport envelope; `loadDocument` and `loadCatalogue`
  * remain the authoritative schema validators when App.tsx opens the content.
- * Course access tokens are accepted for this browser session only. The source
+ * Cloud access tokens are accepted for this browser session only. The source
  * itself is remembered, but a secret never joins localStorage.
  */
 
@@ -19,12 +19,12 @@ export interface HubPublicationSummary {
   readonly publishedAt: string;
 }
 
-export interface HubCourse {
+export interface HubCloud {
   readonly hubUrl: string;
   readonly slug: string;
   readonly title: string;
   readonly publications: readonly HubPublicationSummary[];
-  /** Every immutable catalogue revision currently used by this course. */
+  /** Every immutable catalogue revision currently used by this cloud. */
   readonly catalogues?: readonly HubCatalogueRef[];
   /**
    * The same catalogues' full documents, inline — a Hub new enough to send
@@ -37,8 +37,8 @@ export interface HubCourse {
   readonly catalogueContents?: readonly HubCatalogueContent[];
 }
 
-/** Enough metadata to choose a course before loading its full manifest. */
-export interface HubCourseSummary {
+/** Enough metadata to choose a cloud before loading its full manifest. */
+export interface HubCloudSummary {
   readonly slug: string;
   readonly title: string;
 }
@@ -51,9 +51,9 @@ export interface HubCatalogueRef {
 
 /**
  * A catalogue ref plus the document it points to, both delivered in the same
- * course response. `id`/`version`/`hash` are repeated here (rather than
+ * cloud response. `id`/`version`/`hash` are repeated here (rather than
  * nesting under the ref) so this shape stands on its own the way
- * `HubCatalogueRef` does; `resolveCourseCatalogues` still cross-checks it
+ * `HubCatalogueRef` does; `resolveCloudCatalogues` still cross-checks it
  * against the matching entry in `catalogues` rather than trusting it alone —
  * see the hash note there.
  */
@@ -75,7 +75,7 @@ export interface HubWorkspace {
   readonly id: string;
   readonly title: string;
   readonly document: GraphDocument;
-  readonly courseSlug?: string;
+  readonly cloudSlug?: string;
   readonly catalogues: readonly HubCatalogueRef[];
   readonly updatedAt?: string;
 }
@@ -84,7 +84,7 @@ export interface HubWorkspaceDraft {
   readonly title: string;
   readonly document: GraphDocument;
   readonly compiledNotebook: CompiledNotebook;
-  readonly courseSlug?: string;
+  readonly cloudSlug?: string;
   readonly catalogues?: readonly HubCatalogueRef[];
 }
 
@@ -102,7 +102,7 @@ export function hubUrl(raw: string): string {
   try {
     url = new URL(raw.trim());
   } catch {
-    throw new Error('Enter a complete Hub address, such as https://course.example.edu.');
+    throw new Error('Enter a complete Hub address, such as https://cloud.example.edu.');
   }
   const local = url.hostname === 'localhost' || url.hostname === '127.0.0.1' || url.hostname === '[::1]';
   if (url.protocol !== 'https:' && !(local && url.protocol === 'http:')) {
@@ -112,43 +112,43 @@ export function hubUrl(raw: string): string {
   return url.toString().replace(/\/$/, '');
 }
 
-export async function connectCourse(
+export async function connectCloud(
   rawHubUrl: string,
-  courseSlug: string,
-  courseToken?: string,
-): Promise<HubCourse> {
+  cloudSlug: string,
+  cloudToken?: string,
+): Promise<HubCloud> {
   const base = hubUrl(rawHubUrl);
-  const slug = courseSlug.trim();
-  if (slug.length === 0) throw new Error('Enter the course slug supplied by your instructor.');
+  const slug = cloudSlug.trim();
+  if (slug.length === 0) throw new Error('Enter the cloud slug supplied by your instructor.');
   const discovery = await discover(base);
-  const course = await getJson(resolve(base, `${discovery.api}/courses/${encodeURIComponent(slug)}`), courseToken);
-  return parseCourse(base, course);
+  const manifest = await getJson(resolve(base, `${discovery.api}/clouds/${encodeURIComponent(slug)}`), cloudToken);
+  return parseCloud(base, manifest);
 }
 
-/** Discover the courses exposed by a compatible Hub without knowing a slug. */
-export async function discoverCourses(rawHubUrl: string): Promise<readonly HubCourseSummary[]> {
+/** Discover the clouds exposed by a compatible Hub without knowing a slug. */
+export async function discoverClouds(rawHubUrl: string): Promise<readonly HubCloudSummary[]> {
   const base = hubUrl(rawHubUrl);
   const discovery = await discover(base);
-  const index = await getJson(resolve(base, `${discovery.api}/courses`));
-  if (!isObject(index) || index.protocolVersion !== PROTOCOL_VERSION || !Array.isArray(index.courses)) {
-    throw new Error('The Hub returned an invalid course list.');
+  const index = await getJson(resolve(base, `${discovery.api}/clouds`));
+  if (!isObject(index) || index.protocolVersion !== PROTOCOL_VERSION || !Array.isArray(index.clouds)) {
+    throw new Error('The Hub returned an invalid cloud list.');
   }
-  return index.courses.map((course) => {
-    if (!isObject(course) || typeof course.slug !== 'string' || typeof course.title !== 'string') {
-      throw new Error('The Hub course list contains an invalid course.');
+  return index.clouds.map((entry) => {
+    if (!isObject(entry) || typeof entry.slug !== 'string' || typeof entry.title !== 'string') {
+      throw new Error('The Hub cloud list contains an invalid cloud.');
     }
-    return { slug: course.slug, title: course.title };
+    return { slug: entry.slug, title: entry.title };
   });
 }
 
 export async function loadPublication(
-  source: HubCourse,
+  source: HubCloud,
   publicationId: string,
-  courseToken?: string,
+  cloudToken?: string,
 ): Promise<HubPublication> {
   const publication = await getJson(
     resolve(source.hubUrl, `/api/v1/publications/${encodeURIComponent(publicationId)}`),
-    courseToken,
+    cloudToken,
   );
   if (!isObject(publication) || publication.protocolVersion !== PROTOCOL_VERSION) {
     throw new Error('The Hub returned an incompatible publication.');
@@ -185,13 +185,13 @@ export class HubCatalogueMismatchError extends Error {
 }
 
 export async function loadCatalogue(
-  source: HubCourse,
+  source: HubCloud,
   catalogue: HubCatalogueRef,
-  courseToken?: string,
+  cloudToken?: string,
 ): Promise<JsonValue> {
   const response = await getJsonResponse(
     resolve(source.hubUrl, `/api/v1/catalogues/${encodeURIComponent(catalogue.id)}/${catalogue.version}`),
-    courseToken,
+    cloudToken,
   );
   // A publication's catalogue reference is load-bearing. The path pins the
   // server's immutable version; ETag also proves the response is the exact
@@ -204,10 +204,10 @@ export async function loadCatalogue(
 
 /**
  * Every catalogue in `refs` (a publication's, a workspace's, or a whole
- * course's), resolved with no second round trip for any ref `source`
+ * cloud's), resolved with no second round trip for any ref `source`
  * already inlined via `catalogueContents`. `refs` is a caller-supplied list
  * rather than always `source.catalogues`, because a publication or a saved
- * workspace can reference a subset of the course's catalogues; matching is
+ * workspace can reference a subset of the cloud's catalogues; matching is
  * still against `source.catalogueContents` by id, so an inline entry helps
  * whichever ref list needs it. A ref missing from `catalogueContents` (an
  * older Hub that sent none, or one that only inlined some) falls back to the
@@ -222,15 +222,15 @@ export async function loadCatalogue(
  * throws `HubCatalogueMismatchError` instead of silently preferring the
  * inline copy or the ref.
  *
- * Restricted catalogue content is gated by the course token on the request
+ * Restricted catalogue content is gated by the cloud token on the request
  * (unchanged — see the module header), not by any client-side encryption of
  * the payload: an inline entry is a plain catalogue document like any other,
  * and this function does not special-case locked/encrypted catalogues.
  */
-export async function resolveCourseCatalogues(
-  source: HubCourse,
+export async function resolveCloudCatalogues(
+  source: HubCloud,
   refs: readonly HubCatalogueRef[],
-  courseToken?: string,
+  cloudToken?: string,
 ): Promise<readonly JsonValue[]> {
   const inline = new Map((source.catalogueContents ?? []).map((entry) => [`${entry.id}\n${entry.version}`, entry] as const));
   return Promise.all(refs.map(async (ref) => {
@@ -239,7 +239,7 @@ export async function resolveCourseCatalogues(
       if ((source.catalogueContents ?? []).some((entry) => entry.id === ref.id)) {
         throw new HubCatalogueMismatchError(ref.id);
       }
-      return loadCatalogue(source, ref, courseToken);
+      return loadCatalogue(source, ref, cloudToken);
     }
     if (content.id !== ref.id || content.version !== ref.version || content.hash !== ref.hash) {
       throw new HubCatalogueMismatchError(ref.id);
@@ -260,14 +260,14 @@ export async function createWorkspace(
       title: draft.title,
       document: serializeDocument(draft.document),
       compiledNotebook: draft.compiledNotebook as unknown as JsonValue,
-      ...(draft.courseSlug === undefined ? {} : { courseSlug: draft.courseSlug, catalogues: (draft.catalogues ?? []).map((catalogue) => ({ id: catalogue.id, version: catalogue.version, hash: catalogue.hash })) }),
+      ...(draft.cloudSlug === undefined ? {} : { cloudSlug: draft.cloudSlug, catalogues: (draft.catalogues ?? []).map((catalogue) => ({ id: catalogue.id, version: catalogue.version, hash: catalogue.hash })) }),
     },
   );
   if (!isObject(value) || typeof value.id !== 'string' || typeof value.editToken !== 'string') {
     throw new Error('The Hub did not return an edit token for the new workspace.');
   }
   return {
-    workspace: { hubUrl: base, id: value.id, title: draft.title, document: draft.document, ...(draft.courseSlug === undefined ? { catalogues: [] } : { courseSlug: draft.courseSlug, catalogues: draft.catalogues ?? [] }) },
+    workspace: { hubUrl: base, id: value.id, title: draft.title, document: draft.document, ...(draft.cloudSlug === undefined ? { catalogues: [] } : { cloudSlug: draft.cloudSlug, catalogues: draft.catalogues ?? [] }) },
     editToken: value.editToken,
   };
 }
@@ -299,7 +299,7 @@ export async function saveWorkspace(
       title: draft.title,
       document: serializeDocument(draft.document),
       compiledNotebook: draft.compiledNotebook as unknown as JsonValue,
-      ...(draft.courseSlug === undefined ? {} : { courseSlug: draft.courseSlug, catalogues: (draft.catalogues ?? []).map((catalogue) => ({ id: catalogue.id, version: catalogue.version, hash: catalogue.hash })) }),
+      ...(draft.cloudSlug === undefined ? {} : { cloudSlug: draft.cloudSlug, catalogues: (draft.catalogues ?? []).map((catalogue) => ({ id: catalogue.id, version: catalogue.version, hash: catalogue.hash })) }),
     },
     workspaceToken,
   );
@@ -330,8 +330,8 @@ function resolve(base: string, path: string): string {
   return new URL(path.replace(/^\//, ''), `${base}/`).toString();
 }
 
-async function getJson(url: string, courseToken?: string): Promise<JsonValue> {
-  return (await getJsonResponse(url, courseToken)).value;
+async function getJson(url: string, cloudToken?: string): Promise<JsonValue> {
+  return (await getJsonResponse(url, cloudToken)).value;
 }
 
 interface JsonResponse {
@@ -339,18 +339,18 @@ interface JsonResponse {
   readonly etag?: string;
 }
 
-async function getJsonResponse(url: string, courseToken?: string): Promise<JsonResponse> {
+async function getJsonResponse(url: string, cloudToken?: string): Promise<JsonResponse> {
   let response: Response;
   try {
     response = await fetch(
       url,
-      courseToken === undefined || courseToken.length === 0 ? {} : { headers: { 'X-JoveWorks-Course-Token': courseToken } },
+      cloudToken === undefined || cloudToken.length === 0 ? {} : { headers: { 'X-JoveWorks-Cloud-Token': cloudToken } },
     );
   } catch {
     throw new Error('Could not reach that Hub. Check the address and your connection.');
   }
-  if (response.status === 401) throw new Error('This course material needs the course access token. Connect again and enter it.');
-  if (response.status === 404) throw new Error('That course material was not found on this Hub.');
+  if (response.status === 401) throw new Error('This cloud material needs the cloud access token. Connect again and enter it.');
+  if (response.status === 404) throw new Error('That cloud material was not found on this Hub.');
   if (!response.ok) throw new Error(`The Hub could not complete this request (${response.status}).`);
   try {
     const value = await response.json() as JsonValue;
@@ -407,15 +407,15 @@ function parseWorkspace(hubUrl_: string, value: JsonValue): HubWorkspace {
     id: value.id,
     title: value.title,
     document,
-    ...(typeof value.courseSlug === 'string' ? { courseSlug: value.courseSlug } : {}),
+    ...(typeof value.cloudSlug === 'string' ? { cloudSlug: value.cloudSlug } : {}),
     catalogues: value.catalogues.map(parseCatalogueRef),
     ...(typeof value.updatedAt === 'string' ? { updatedAt: value.updatedAt } : {}),
   };
 }
 
-function parseCourse(hubUrl_: string, value: JsonValue): HubCourse {
+function parseCloud(hubUrl_: string, value: JsonValue): HubCloud {
   if (!isObject(value) || value.protocolVersion !== PROTOCOL_VERSION || typeof value.slug !== 'string' || typeof value.title !== 'string' || !Array.isArray(value.publications) || !Array.isArray(value.catalogues)) {
-    throw new Error('The Hub returned an invalid course manifest.');
+    throw new Error('The Hub returned an invalid cloud manifest.');
   }
   if (value.catalogueContents !== undefined && !Array.isArray(value.catalogueContents)) {
     throw new Error('The Hub returned invalid inline catalogue contents.');
@@ -440,7 +440,7 @@ async function discover(base: string): Promise<{ readonly api: string }> {
 
 function parsePublicationSummary(value: JsonValue): HubPublicationSummary {
   if (!isObject(value) || typeof value.id !== 'string' || typeof value.title !== 'string' || !isMode(value.mode) || typeof value.publishedAt !== 'string') {
-    throw new Error('The Hub course manifest contains an invalid publication.');
+    throw new Error('The Hub cloud manifest contains an invalid publication.');
   }
   return { id: value.id, title: value.title, mode: value.mode, publishedAt: value.publishedAt };
 }
@@ -461,7 +461,7 @@ function parseCatalogueContent(value: JsonValue): HubCatalogueContent {
     || typeof value.hash !== 'string'
     || !('content' in value)
   ) {
-    throw new Error('The Hub course manifest contains an invalid inline catalogue.');
+    throw new Error('The Hub cloud manifest contains an invalid inline catalogue.');
   }
   return { id: value.id, version: value.version, hash: value.hash, content: value.content as JsonValue };
 }

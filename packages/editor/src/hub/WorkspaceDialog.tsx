@@ -50,11 +50,11 @@ export function WorkspaceDialog(props: Props): ReactElement {
   return (
     <>
       <div className="dialog-backdrop" onClick={props.onClose} />
-      <form className="dialog connect-course-dialog" role="dialog" aria-label={label} onSubmit={submit}>
+      <form className="dialog connect-dialog" role="dialog" aria-label={label} onSubmit={submit}>
         <h2>{label}</h2>
         <label className="dialog-field">
           <span>{t('Hub address')}</span>
-          <input autoFocus type="url" required placeholder="https://course.example.edu" value={hubUrl} onChange={(event) => setHubUrl(event.target.value)} />
+          <input autoFocus type="url" required placeholder="https://cloud.example.edu" value={hubUrl} onChange={(event) => setHubUrl(event.target.value)} />
         </label>
         {!opening ? null : (
           <label className="dialog-field">
@@ -67,7 +67,7 @@ export function WorkspaceDialog(props: Props): ReactElement {
             ? t('Anyone with the Hub address and workspace ID can load a copy. Only this browser can update workspaces it created.')
             : t('This creates a saved copy on the Hub. Its short workspace ID can be shared for read-only loading.')}
         </p>
-        {error === undefined ? null : <p className="dialog-message course-error">{error}</p>}
+        {error === undefined ? null : <p className="dialog-message dialog-error">{error}</p>}
         <div className="dialog-actions">
           <button type="button" onClick={props.onClose}>{t('Cancel')}</button>
           <button type="submit" disabled={pending}>{pending ? (opening ? t('Opening…') : t('Saving…')) : (opening ? t('Open') : t('Save'))}</button>
