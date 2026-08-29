@@ -907,7 +907,7 @@ aside.right {
    can be moved or right-clicked. The nodes' own selected borders are enough
    feedback here; leaving the hit area visibly outlined makes it look like the
    temporary marquee is stuck on the canvas. */
-.react-flow__nodesselection-rect {
+.react-flow .react-flow__nodesselection-rect {
   background: transparent;
   border: none;
 }
@@ -1791,7 +1791,16 @@ aside.right {
 
 /* --- handles ------------------------------------------------------------ */
 
-.react-flow__handle {
+/* Scoped inside `.react-flow` wherever this file and React Flow's own
+   stylesheet name the same selector — eight of them do. At equal specificity
+   the winner is whichever stylesheet loaded last, which left these rules
+   depending on how the bundler happened to chunk CSS: the day `styles.css`
+   was pulled into the eager entry chunk while React Flow's stayed in the
+   editor's lazy one, React Flow started winning and every port on the canvas
+   collapsed from an 18px hit box to a 6px dot. One extra class each, and the
+   cascade says what it means rather than what the build produced. */
+
+.react-flow .react-flow__handle {
   /* The dot stays compact, but its 18px box is the actual pointer target.
      That gives trackpad users room to start or finish a wire without letting
      neighbouring 18px port rows overlap. */
@@ -2485,21 +2494,21 @@ aside.right {
  * spanning its full default 100% doesn't run straight through the rounded
  * corner.
  */
-.react-flow__resize-control.line.left,
-.react-flow__resize-control.line.right {
+.react-flow .react-flow__resize-control.line.left,
+.react-flow .react-flow__resize-control.line.right {
   top: 8px;
   width: 10px;
   height: calc(100% - 16px);
 }
 
-.react-flow__resize-control.line.top,
-.react-flow__resize-control.line.bottom {
+.react-flow .react-flow__resize-control.line.top,
+.react-flow .react-flow__resize-control.line.bottom {
   left: 8px;
   height: 10px;
   width: calc(100% - 16px);
 }
 
-.react-flow__resize-control.handle {
+.react-flow .react-flow__resize-control.handle {
   width: 10px;
   height: 10px;
 }
@@ -2512,8 +2521,8 @@ aside.right {
  * so every hit zone above stays exactly as sized and interactive as it
  * reads — corners included, for diagonal resize — just undrawn.
  */
-.react-flow__resize-control.line,
-.react-flow__resize-control.handle {
+.react-flow .react-flow__resize-control.line,
+.react-flow .react-flow__resize-control.handle {
   opacity: 0;
 }
 

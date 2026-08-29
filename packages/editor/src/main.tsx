@@ -1,14 +1,13 @@
 import { StrictMode, Suspense, lazy, useEffect, useState, type ReactElement } from 'react';
 import { createRoot } from 'react-dom/client';
 
-// The editor's own stylesheet, on every route. A published NodeBook is not
-// styled to resemble the NodeBook panel — it *is* the NodeBook panel's markup
-// and rules, down to the print block, which is the only way "exact" survives
-// the next change to either (ROADMAP item 38). `viewer.css` after it carries
-// what only a standalone page needs: the page frame, the header, and the
-// activation states.
-import './styles.css';
-import './viewer.css';
+// No stylesheet here. Each route imports its own, in its own order, because
+// the order is load-bearing: `styles.css` sets `.react-flow__handle` to an
+// 18px hit box at the same specificity React Flow's own stylesheet sets 6px,
+// so whichever loads last wins. Importing `styles.css` eagerly here put it in
+// this entry chunk while React Flow's stayed in the editor's lazy one — which
+// loads later, and shrank every port on the canvas. Both routes now load what
+// they need from the module that needs it.
 import { parseRoute, type AppRoute } from './router';
 
 const Editor = lazy(() => import('./EditorEntry'));

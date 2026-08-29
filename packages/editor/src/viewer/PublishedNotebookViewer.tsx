@@ -16,6 +16,15 @@
  * `interactiveRuntime.ts`.
  */
 
+// The editor's own stylesheet, then what only a standalone page needs. A
+// published NodeBook is not styled to resemble the NodeBook panel — it *is*
+// the NodeBook panel's markup and rules, down to the print block, which is the
+// only way "exact" survives the next change to either. Imported here rather
+// than from the entry module so this route's cascade is its own; see the note
+// in `main.tsx`.
+import '../styles.css';
+import '../viewer.css';
+
 import { useEffect, useMemo, useState, type ReactElement } from 'react';
 
 import type { Axis } from '@joveworks/kernel';
