@@ -2,6 +2,7 @@ import { useState, type FormEvent, type ReactElement } from 'react';
 
 import { phrase } from '../i18n';
 import { useSettings } from '../settings-context';
+import { useEscapeToClose } from '../useEscapeToClose';
 
 interface SaveProps {
   readonly kind: 'save';
@@ -29,6 +30,7 @@ export function WorkspaceDialog(props: Props): ReactElement {
   const [error, setError] = useState<string | undefined>();
   const [pending, setPending] = useState(false);
   const opening = props.kind === 'open';
+  useEscapeToClose(props.onClose);
 
   const submit = (event: FormEvent): void => {
     event.preventDefault();

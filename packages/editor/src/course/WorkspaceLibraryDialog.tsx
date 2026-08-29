@@ -4,6 +4,7 @@ import { phrase } from '../i18n';
 import { createWorkspaceShare, loadWorkspace, type HubWorkspace } from '../model/hub';
 import { loadWorkspaceEditToken, type WorkspaceAccess } from '../model/workspaceAccess';
 import { useSettings } from '../settings-context';
+import { useEscapeToClose } from '../useEscapeToClose';
 
 interface Row {
   readonly access: WorkspaceAccess;
@@ -25,6 +26,7 @@ export function WorkspaceLibraryDialog({ accesses, onOpen, onDelete, onClose }: 
   const t = (english: string): string => phrase(locale, english);
   const [rows, setRows] = useState<readonly Row[]>([]);
   const [deleting, setDeleting] = useState<string | undefined>();
+  useEscapeToClose(onClose);
   const share = async (workspace: HubWorkspace): Promise<void> => {
     const token = loadWorkspaceEditToken(workspace.hubUrl, workspace.id);
     if (token === undefined) throw new Error('This browser does not own this workspace.');

@@ -10,6 +10,7 @@ import type { ReactElement } from 'react';
 
 import { phrase } from './i18n';
 import { useSettings } from './settings-context';
+import { useEscapeToClose } from './useEscapeToClose';
 
 interface Props {
   readonly message: string;
@@ -20,6 +21,7 @@ interface Props {
 export function ConfirmDialog({ message, onConfirm, onCancel }: Props): ReactElement {
   const { locale } = useSettings();
   const t = (english: string): string => phrase(locale, english);
+  useEscapeToClose(onCancel);
   return (
     <>
       <div className="dialog-backdrop" onClick={onCancel} />

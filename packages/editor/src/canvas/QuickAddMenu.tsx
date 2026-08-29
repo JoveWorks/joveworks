@@ -27,6 +27,7 @@ import { Symbol } from '../Symbol';
 import { TitleText } from './TitleField';
 import { phrase } from '../i18n';
 import { useSettings } from '../settings-context';
+import { useEscapeToClose } from '../useEscapeToClose';
 import type { QuickAddCandidate, QuickAddChoice } from './quickAdd';
 
 /** How many ranked formula matches the menu shows — and the cap on how many pay for a kernel compatibility check. */
@@ -106,6 +107,7 @@ export function QuickAddMenu({
   const { locale } = useSettings();
   const t = (english: string): string => phrase(locale, english);
   const [query, setQuery] = useState('');
+  useEscapeToClose(onClose);
 
   // The catalogue's own `search` reads ports and descriptions too, which a
   // name-only fuzzy match would not replicate — kept as the formula list's
@@ -273,7 +275,6 @@ export function QuickAddMenu({
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           onKeyDown={(event) => {
-            if (event.key === 'Escape') onClose();
             if (event.key === 'Enter') {
               // Picking with Enter lands on whichever row is highlighted as
               // `selected` above.

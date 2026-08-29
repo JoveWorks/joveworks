@@ -19,6 +19,7 @@ import type { TutorialStep } from './steps';
 import { saveTutorialSeen } from './tutorialSettings';
 import { phrase } from '../i18n';
 import { useSettings } from '../settings-context';
+import { useEscapeToClose } from '../useEscapeToClose';
 
 interface Props {
   readonly active: boolean;
@@ -149,8 +150,6 @@ export function Tutorial({
     }
   });
 
-  if (!active || step === undefined) return null;
-
   const close = (): void => {
     if (rememberSeen) saveTutorialSeen(true);
     onClose();
@@ -158,6 +157,13 @@ export function Tutorial({
     // resuming wherever this one left off.
     setStepIndex(0);
   };
+  // Registered even while `!active`, at `active: false` — the hook itself
+  // then keeps this instance off the stack, since `Tutorial` stays mounted
+  // between tours rather than mounting only while open.
+  useEscapeToClose(close, active);
+
+  if (!active || step === undefined) return null;
+
   const last = stepIndex === steps.length - 1;
   const goToStep = (nextIndex: number, nextDirection: 'forward' | 'backward'): void => {
     // Update the target rectangle in the same render as the step. Otherwise
@@ -208,9 +214,6 @@ export function Tutorial({
         style={style}
         role="dialog"
         aria-label={t('Tutorial')}
-        onKeyDown={(event) => {
-          if (event.key === 'Escape') close();
-        }}
       >
         <div key={stepIndex} className={`tutorial-step tutorial-step-${direction}`}>
           <h2>{step.title}</h2>
