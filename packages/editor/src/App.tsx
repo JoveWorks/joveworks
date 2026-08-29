@@ -1083,6 +1083,7 @@ function AppShell(): ReactElement {
             disabled: (source.catalogues?.length ?? 0) === 0,
             onClick: () => void loadCloudCatalogues(source),
           },
+          { heading: t('Published material') },
           ...(source.publications.length === 0
             ? [{ label: t('No published material'), disabled: true, onClick: () => undefined }]
             : source.publications.map((publication) => ({

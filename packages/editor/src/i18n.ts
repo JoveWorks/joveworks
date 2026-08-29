@@ -54,7 +54,7 @@ const DUTCH_PHRASES: Readonly<Record<string, string>> = {
   'The address and cloud are remembered on this device. The access token is kept only for this visit.': 'Het adres en de cloud worden op dit apparaat onthouden. Het toegangstoken blijft alleen deze sessie bewaard.',
   'Could not connect to that cloud.': 'Kon geen verbinding maken met die cloud.',
   'Connecting…': 'Verbinden…', 'Connect': 'Verbinden', 'No cloud connected': 'Geen cloud verbonden',
-  'Refresh cloud material': 'Cloudmateriaal vernieuwen', 'Load cloud catalogues': 'Cloudcatalogi laden', 'No published material': 'Geen gepubliceerd materiaal',
+  'Refresh cloud material': 'Cloudmateriaal vernieuwen', 'Load cloud catalogues': 'Cloudcatalogi laden', 'Published material': 'Gepubliceerd materiaal', 'No published material': 'Geen gepubliceerd materiaal',
   'Insert': 'Invoegen', 'Help': 'Help', 'Remove from palette': 'Uit palet verwijderen',
   'Add to favourites': 'Aan favorieten toevoegen', 'Remove from favourites': 'Uit favorieten verwijderen',
   'input': 'invoer', 'file': 'bestand', 'equation': 'vergelijking', 'waypoint': 'tussenpunt', 'pack': 'bundel', 'unpack': 'ontbundel', 'compare': 'vergelijk',
