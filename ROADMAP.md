@@ -53,22 +53,3 @@ is a sink with its own node kind rather than an `output.kind`, so the NodeBook
 panel presents one and the compiler skips it. A section that reads complete in
 the editor arrives short. Either compile the receiver's playback as a
 presentation-only figure or say why it is editor-only.
-
-**11. v0.24.0 has no GitHub Release or stable bundle** — the release run
-tagged it and pushed `main`, then failed promoting `production` and never
-reached the steps that build the bundle and create the release. Re-running the
-workflow would bump to 0.25.0 rather than publish this tag, so v0.24.0 needs
-either a manual `gh release create` over a locally built stable bundle, or a
-workflow path that publishes an existing tag without bumping. Until then the
-latest downloadable bundle a school can self-host is v0.23.1.
-
-**12. Tag v0.23.2 names a release that is on no branch** — a race between a
-release run and a push to `main` left the tag (and, until it was forced back,
-`production`) pointing at `95e3f43`, a bump commit that never landed. It has no
-GitHub Release and no CHANGELOG entry on `main`, and every commit it covered
-shipped in v0.24.0. Delete it, or accept that `git describe` and the tag list
-name a version the changelog does not. The race itself is fixed by pushing the
-release's three refs atomically — a change that is committed but not yet
-released.
-
-**13. Feature: Let the catalogue panel be pinned to the bottom** To support less wide screen sizes. Option in `view` below show/hide panel
