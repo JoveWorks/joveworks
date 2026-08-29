@@ -239,7 +239,7 @@ body {
     outline-offset: 3px;
   }
 
-  .mobile-landing-course {
+  .mobile-landing-cloud {
     display: block;
     color: var(--accent);
     font-size: 15px;
@@ -252,63 +252,63 @@ body {
   }
 }
 
-/* --- course material viewer -------------------------------------------- */
+/* --- cloud material viewer ----------------------------------------------- */
 
-.course-viewer {
+.cloud-viewer {
   display: block;
   min-height: 100vh;
   background: var(--panel);
 }
 
-.course-viewer-header,
-.course-viewer-intro,
-.course-example-list,
-.course-report {
+.cloud-viewer-header,
+.cloud-viewer-intro,
+.cloud-example-list,
+.cloud-report {
   width: min(100% - 32px, 900px);
   margin-left: auto;
   margin-right: auto;
 }
 
-.course-viewer-header {
+.cloud-viewer-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 16px 0;
 }
 
-.course-viewer-brand {
+.cloud-viewer-brand {
   color: var(--ink);
   font-size: 16px;
   font-weight: 750;
   text-decoration: none;
 }
 
-.course-viewer-editor {
+.cloud-viewer-editor {
   color: var(--accent);
   font-size: 13px;
   font-weight: 600;
 }
 
-.course-viewer-intro {
+.cloud-viewer-intro {
   padding: 36px 0 24px;
 }
 
-.course-viewer-intro h1,
-.course-report h1 {
+.cloud-viewer-intro h1,
+.cloud-report h1 {
   margin: 6px 0 10px;
   font-size: clamp(30px, 8vw, 52px);
   line-height: 1.04;
   letter-spacing: -0.035em;
 }
 
-.course-viewer-intro > p:last-child {
+.cloud-viewer-intro > p:last-child {
   max-width: 48rem;
   margin: 0;
   color: var(--muted);
   font-size: 17px;
 }
 
-.course-report-kicker {
+.cloud-report-kicker {
   margin: 0;
   color: var(--accent);
   font-size: 12px;
@@ -317,14 +317,14 @@ body {
   text-transform: uppercase;
 }
 
-.course-example-list {
+.cloud-example-list {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
   padding-bottom: 36px;
 }
 
-.course-example-list button {
+.cloud-example-list button {
   display: grid;
   gap: 3px;
   min-height: 82px;
@@ -332,17 +332,17 @@ body {
   text-align: left;
 }
 
-.course-example-list button.selected {
+.cloud-example-list button.selected {
   border-color: var(--accent);
   box-shadow: 0 0 0 1px var(--accent);
 }
 
-.course-example-list span {
+.cloud-example-list span {
   color: var(--muted);
   font-size: 12px;
 }
 
-.course-report {
+.cloud-report {
   margin-bottom: 48px;
   padding: clamp(22px, 5vw, 46px);
   border: 1px solid var(--line);
@@ -351,39 +351,39 @@ body {
   box-shadow: var(--shadow-sm);
 }
 
-.course-section + .course-section {
+.cloud-section + .cloud-section {
   margin-top: 36px;
   padding-top: 30px;
   border-top: 1px solid var(--line);
 }
 
-.course-section h2 {
+.cloud-section h2 {
   margin: 0 0 8px;
   font-size: 22px;
 }
 
-.course-report-title-row {
+.cloud-report-title-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
 }
 
-.course-report-title-row h1 {
+.cloud-report-title-row h1 {
   min-width: 0;
 }
 
-.course-report-title-row button {
+.cloud-report-title-row button {
   flex: 0 0 auto;
 }
 
-.course-note,
-.course-caption,
+.cloud-note,
+.cloud-caption,
 .viewer-pending {
   color: var(--muted);
 }
 
-.course-output + .course-output {
+.cloud-output + .cloud-output {
   margin-top: 18px;
 }
 
@@ -443,7 +443,7 @@ body {
   font-weight: 600;
 }
 
-.course-report .mark-letter {
+.cloud-report .mark-letter {
   display: inline-block;
   min-width: 1.1em;
   margin-right: 6px;
@@ -457,7 +457,7 @@ body {
   vertical-align: baseline;
 }
 
-.course-report .candidate-readings {
+.cloud-report .candidate-readings {
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -466,7 +466,7 @@ body {
   font-weight: 400;
 }
 
-.course-report .candidate-reading .mark-letter {
+.cloud-report .candidate-reading .mark-letter {
   margin-right: 4px;
 }
 .viewer-plot > div { max-width: 100%; }
@@ -477,13 +477,13 @@ body {
 }
 
 @media (max-width: 560px) {
-  .course-viewer-header,
-  .course-viewer-intro,
-  .course-example-list,
-  .course-report { width: min(100% - 24px, 900px); }
-  .course-example-list { grid-template-columns: 1fr; }
-  .course-report { padding: 22px; }
-  .course-report-title-row { align-items: flex-start; flex-direction: column; }
+  .cloud-viewer-header,
+  .cloud-viewer-intro,
+  .cloud-example-list,
+  .cloud-report { width: min(100% - 24px, 900px); }
+  .cloud-example-list { grid-template-columns: 1fr; }
+  .cloud-report { padding: 22px; }
+  .cloud-report-title-row { align-items: flex-start; flex-direction: column; }
 }
 
 button {
@@ -652,7 +652,7 @@ input[aria-invalid='true'] {
 }
 
 /* The editor's three-column shell. Scoped to `.app` because a `<main>` is
-   not only ever that: the course viewer and a published NodeBook are each a
+   not only ever that: the cloud viewer and a published NodeBook are each a
    `<main>` of their own, on a page with no shell around them, and a bare
    element selector laid their masthead out beside their first section. */
 .app main {
@@ -1667,7 +1667,7 @@ aside.bottom {
 }
 
 /* A check's reading, coloured per segment — shared by the canvas node body,
-   the notebook, and the course viewer (CheckReading.tsx). A line break can
+   the notebook, and the cloud viewer (CheckReading.tsx). A line break can
    fall between segments (at a separator, or before the trailing comparison
    and threshold) but never inside one — a value and its unit stay together. */
 .check-segment {
@@ -2620,7 +2620,7 @@ aside.bottom {
   color: inherit;
 }
 
-.course-error {
+.dialog-error {
   color: var(--state-error);
 }
 
@@ -3506,7 +3506,7 @@ aside.bottom {
 
 /* A faceted Feasibility chart sizes itself to stay legible per facet
    rather than fitting a fixed cap, so it can end up wider than its panel
-   in both the notebook and the read-only course viewer — scroll it
+   in both the notebook and the read-only cloud viewer — scroll it
    within its own box instead of forcing the whole panel to scroll
    sideways. */
 .figure {

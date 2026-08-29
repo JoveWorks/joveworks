@@ -217,7 +217,7 @@ function OutputTitle({ node }: { readonly node: OutputNode | MonteCarloReceiverN
  * The NodeBook's own adapter onto the shared result renderer.
  *
  * Everything drawn here is drawn by `present/ResultView`, which the published
- * NodeBook and the course viewer use too. What this adds is the editing the
+ * NodeBook and the cloud viewer use too. What this adds is the editing the
  * editor alone offers: an output's title is renamed where it is read, a
  * table's columns are reordered and given their digits, a marked design is
  * toggled by clicking its row, and an intelligent plot carries its

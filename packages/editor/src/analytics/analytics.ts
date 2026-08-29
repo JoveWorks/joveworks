@@ -19,13 +19,13 @@ export type SweepKind =
   | 'tableColumn'
   | 'categoricalList';
 
-export type CourseMaterial = 'platform' | 'pad' | 'cantilever' | 'milling' | 'reliability';
+export type CloudMaterial = 'platform' | 'pad' | 'cantilever' | 'milling' | 'reliability';
 
 export type AnalyticsEvent =
   | { readonly name: 'catalogue_loaded' | 'example_opened' | 'graph_created' | 'nodes_connected' | 'document_saved' | 'notebook_exported' }
   | { readonly name: 'mobile_landing_viewed' }
-  | { readonly name: 'course_viewer_opened'; readonly props: { readonly viewport: 'narrow' | 'wide' } }
-  | { readonly name: 'course_material_selected'; readonly props: { readonly material: CourseMaterial } }
+  | { readonly name: 'cloud_viewer_opened'; readonly props: { readonly viewport: 'narrow' | 'wide' } }
+  | { readonly name: 'cloud_material_selected'; readonly props: { readonly material: CloudMaterial } }
   | { readonly name: 'node_added'; readonly props: { readonly kind: AnalyticsNodeKind } }
   | { readonly name: 'sweep_configured'; readonly props: { readonly kind: SweepKind } }
   | { readonly name: 'plot_created'; readonly props: { readonly mode: 'auto' | 'line' | 'dot' | 'heatmap' | 'contour' } }

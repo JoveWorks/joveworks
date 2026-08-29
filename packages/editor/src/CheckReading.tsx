@@ -4,7 +4,7 @@ import type { CheckSegment } from './model/values';
 
 /**
  * A check's reading, coloured by verdict — pass/fail/boundary segments,
- * shared by the canvas node body, the notebook, and the course viewer so a
+ * shared by the canvas node body, the notebook, and the cloud viewer so a
  * sweep reads the same way everywhere it appears.
  */
 export function CheckReading({ segments }: { readonly segments: readonly CheckSegment[] }): ReactElement {

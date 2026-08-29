@@ -98,12 +98,12 @@ describe('contour palette preference', () => {
     expect(loadAdvancedNodes()).toBe(false);
   });
 
-  it('remembers the last successful Hub address independently of a course or workspace', () => {
+  it('remembers the last successful Hub address independently of a cloud or workspace', () => {
     expect(loadHubUrl()).toBeUndefined();
 
-    saveHubUrl('https://course.example.edu');
+    saveHubUrl('https://cloud.example.edu');
 
-    expect(loadHubUrl()).toBe('https://course.example.edu');
+    expect(loadHubUrl()).toBe('https://cloud.example.edu');
   });
 
   it('defaults the palette to the left and persists pinning it to the bottom', () => {

@@ -73,7 +73,7 @@ export function WorkspaceLibraryDialog({ accesses, onOpen, onDelete, onClose }: 
           : <div className="workspace-library-list">
             {rows.map((row) => (
               <div className="workspace-library-row" key={`${row.access.hubUrl}\n${row.access.id}`}>
-                {row.workspace === undefined ? <p className="dialog-message course-error">{row.access.id}: {row.error ?? t('Loading…')}</p> : <>
+                {row.workspace === undefined ? <p className="dialog-message dialog-error">{row.access.id}: {row.error ?? t('Loading…')}</p> : <>
                   <div className="workspace-library-meta">
                     <strong>{row.workspace.title}</strong>
                     <small>{row.workspace.id} · {row.workspace.updatedAt ?? t('unknown date')}</small>

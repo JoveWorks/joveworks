@@ -94,7 +94,7 @@ describe('the samples the editor opens with', () => {
   // — it must never stop a document that already uses them from working.
   // `analyse` here is exactly what the editor and the NodeBook call to load
   // and render a document, and it never consults the preference, so this
-  // stands in for "opens a course-supplied NodeBook with the setting off".
+  // stands in for "opens a cloud-supplied NodeBook with the setting off".
   it('still loads, evaluates, and renders a Monte Carlo sample with advanced nodes off (the beta default)', () => {
     expect(DEFAULT_ADVANCED_NODES).toBe(false);
 
