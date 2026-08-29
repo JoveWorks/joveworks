@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.25.0](https://github.com/JoveWorks/joveworks/compare/v0.24.0...v0.25.0) (2026-08-29)
+
+### Fixes
+
+* **editor:** stop React Flow's stylesheet shrinking every port ([c7f86f0](https://github.com/JoveWorks/joveworks/commit/c7f86f018b9ec9e6f7aa02f9764a12f15396bb63))
+* **schema:** renumber the compiled NodeBook contract back to version 1 ([cdfe76e](https://github.com/JoveWorks/joveworks/commit/cdfe76e6f274435b5c774db14aa02c4f13fce2f0))
+
+### Documentation
+
+* record what the compiled NodeBook version bump left open ([b408546](https://github.com/JoveWorks/joveworks/commit/b408546c83841ec0d9b50a66298827bcbea58206))
 ## [0.24.0](https://github.com/JoveWorks/joveworks/compare/v0.23.1...v0.24.0) (2026-08-28)
 
 ### ⚠ BREAKING CHANGES
