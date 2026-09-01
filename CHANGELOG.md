@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.26.3](https://github.com/JoveWorks/joveworks/compare/v0.26.2...v0.26.3) (2026-09-01)
+
+### Documentation
+
+* record that publications don't sync with their source workspace ([e2793fe](https://github.com/JoveWorks/joveworks/commit/e2793fe9e5aebaea32296e8055d2dcfe5a07be31))
+* reorganize and expand the user guide ([f741e49](https://github.com/JoveWorks/joveworks/commit/f741e498bdce4b23e15fd267acab9a48a027c1b2))
 ## [0.26.2](https://github.com/JoveWorks/joveworks/compare/v0.26.1...v0.26.2) (2026-08-29)
 
 ### Features
