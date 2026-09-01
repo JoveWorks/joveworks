@@ -18,6 +18,9 @@ export default defineConfig({
   themeConfig: {
     nav: [
       { text: "Guide", link: "/guide/getting-started" },
+      { text: "Catalogues", link: "/guide/catalogues" },
+      { text: "Analysis", link: "/guide/analysis" },
+      { text: "Node reference", link: "/guide/node-reference" },
       {
         text: "GitHub",
         link: "https://github.com/JoveWorks/joveworks",
@@ -28,12 +31,19 @@ export default defineConfig({
         text: "Guide",
         items: [
           { text: "What this is", link: "/guide/getting-started" },
+          { text: "Using catalogues", link: "/guide/catalogues" },
           { text: "Sweeps", link: "/guide/sweeps" },
+          { text: "Creating a NodeBook", link: "/guide/nodebooks" },
+          { text: "Units", link: "/guide/units" },
+          { text: "Tips and tricks", link: "/guide/tips-and-tricks" },
+        ],
+      },
+      {
+        text: "Advanced usage",
+        items: [
           { text: "Analysis", link: "/guide/analysis" },
           { text: "Candidates and marks", link: "/guide/candidates" },
           { text: "Reliability studies", link: "/guide/reliability" },
-          { text: "Units", link: "/guide/units" },
-          { text: "Tips and tricks", link: "/guide/tips-and-tricks" },
           { text: "Node reference", link: "/guide/node-reference" },
           { text: "Catalogue authoring", link: "/guide/catalogue-authoring" },
         ],

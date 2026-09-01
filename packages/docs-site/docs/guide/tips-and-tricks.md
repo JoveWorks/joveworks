@@ -217,6 +217,8 @@ separate PDF renderer, so what you see in the panel — collapsed sections
 excluded — is what prints; exporting temporarily expands every section so
 nothing you'd forgotten was collapsed goes missing from the PDF.
 
+See [Creating a NodeBook](./nodebooks) for the complete reporting workflow.
+
 ## Settings worth knowing about
 
 Open via File → Settings (or the gear icon):

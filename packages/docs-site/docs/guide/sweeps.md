@@ -1,9 +1,8 @@
 # Sweeps
 
-The old course notebooks all do the same thing: compute a chain of formulas,
-then ask *what happens if this input changes?* — plotting safety factor
-against key length, surface pressure against diameter, and so on. That's the
-primary use case here, not an add-on.
+Most design calculations eventually ask *what happens if this input changes?*
+— plotting safety factor against a size, pressure against diameter, or power
+against speed. That is the primary use case here, not an add-on.
 
 ## How it works
 
@@ -27,10 +26,10 @@ is a size that works.
 | **Table column** | A series pulled from catalogue data |
 | **Categorical list** — `{H7, H8, K7}` | Fit classes and other named values, on an ordinal axis |
 
-Logarithmic ranges matter for this course specifically: fatigue and Wöhler
-S–N curves are log–log by construction, and bearing life is a power law.
-Sampling a decade-spanning quantity linearly puts nearly every point at one
-end and leaves the interesting part unresolved.
+Logarithmic ranges matter when the calculation spans decades. Fatigue and
+Wöhler S–N curves are log–log by construction, for example, and many life
+relations are power laws. Sampling a decade-spanning quantity linearly puts
+nearly every point at one end and leaves the interesting part unresolved.
 
 Point count, not step size, is the primary control — `linspace(20, 60, 21)`
 says exactly what you mean, and a two-input grid is simply `n × m`.
@@ -79,8 +78,8 @@ through in [Lighter or stiffer](/examples/lighter-or-stiffer).
 ## Why this replaces solving for an input
 
 The kernel only evaluates forwards; it never rearranges a formula to solve
-for an unknown. Where R&M numbers a rearranged form itself, the editor
-offers it as *same equation, solved for…*. Where no rearrangement exists,
+for an unknown. A catalogue may provide explicit variants of a relation,
+shown as *same equation, solved for…*. Where no suitable variant exists,
 sweep and read off the curve — which also shows the sensitivity around the
-answer, not just a single number. And "read off the curve" is now
-something the graph itself can do: see above.
+answer, not just a single number. And "read off the curve" is something the
+graph itself can do: see above.

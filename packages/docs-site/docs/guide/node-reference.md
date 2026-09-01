@@ -349,15 +349,14 @@ A formula's `status` tells you how much to trust it:
 Every formula the loaded catalogues carry appears in the palette, grouped
 by catalogue — one section per catalogue, in the same order as the
 palette. The catalogues that ship with JoveWorks itself are below; a
-course's own restricted catalogue (Roloff & Matek content, for instance)
-is distributed separately, through the course LMS or Hub, and loaded the
-same way.
+restricted course or project catalogue is distributed separately and loaded
+the same way. See [Using catalogues](./catalogues) for the complete workflow.
 
 ### Base nodes
 
 Ordinary arithmetic and the trigonometric/rounding function whitelist —
 unrestricted, citation-free, and evaluated through the exact same path as
-any other formula. Nothing here is textbook content:
+any other formula. All of these nodes are bundled and unrestricted:
 
 - **Arithmetic** — add, subtract, negate, double, half, absolute value,
   minimum, maximum, multiply, divide, square, square root, cube root,
@@ -451,12 +450,12 @@ solving with Base nodes) where the graph doesn't do it for you.
 
 ### Restricted catalogues
 
-A course catalogue — Roloff & Matek formulas, for instance — is
-distributed separately through the course LMS or Hub, not bundled with
-the app. Restricted content is never exported or logged outside the
-graphs that use it, and this reference intentionally says nothing about
-what any specific restricted catalogue contains — that's the textbook's
-material, not this editor's.
+A restricted catalogue is distributed separately through its course or
+project, not bundled with the app. Restricted expressions stay inside the
+loaded catalogue: graph documents reference formulas by id, version, and hash
+rather than embedding their bodies. This reference intentionally describes
+only the common JoveWorks behaviour, not the contents of any supplied
+catalogue.
 
 ## Statistics
 
