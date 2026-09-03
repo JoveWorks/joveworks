@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.26.4](https://github.com/JoveWorks/joveworks/compare/v0.26.3...v0.26.4) (2026-09-03)
+
+### Fixes
+
+* resolve five editor bugs from the ROADMAP bug list ([b59b882](https://github.com/JoveWorks/joveworks/commit/b59b882ac44395a73b805fdbf72c6dd398c748bc))
 ## [0.26.3](https://github.com/JoveWorks/joveworks/compare/v0.26.2...v0.26.3) (2026-09-01)
 
 ### Documentation
