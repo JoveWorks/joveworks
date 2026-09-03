@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.26.6](https://github.com/JoveWorks/joveworks/compare/v0.26.5...v0.26.6) (2026-09-03)
+
+### Fixes
+
+* hit-test collapsed groups by their macro box, not expanded frame ([fd9b873](https://github.com/JoveWorks/joveworks/commit/fd9b87351ab74b835a767cc94cabc93381c24a97))
 ## [0.26.5](https://github.com/JoveWorks/joveworks/compare/v0.26.4...v0.26.5) (2026-09-03)
 
 ### Fixes
