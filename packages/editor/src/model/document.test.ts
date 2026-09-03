@@ -382,6 +382,29 @@ describe('document edits', () => {
       expect(outer.size.height).toBeGreaterThan(inner.size.height);
     });
 
+    it('hit-tests a collapsed group against its small macro box, not its expanded frame, so dragging it does not absorb a distant node', () => {
+      const group = {
+        id: 'group',
+        title: 'Group',
+        kind: 'group' as const,
+        position: { x: 0, y: 0 },
+        size: { width: 800, height: 400 },
+      };
+      const document = { ...base, frames: [group] };
+
+      // Expanded: both nodes fall inside the 800x400 frame and are absorbed.
+      const expanded = reframe(document);
+      expect(expanded.nodes.find((node) => node.id === 'a')?.frameId).toBe('group');
+      expect(expanded.nodes.find((node) => node.id === 'b')?.frameId).toBe('group');
+
+      // Collapsed: the group's rendered box shrinks to its macro size (260 wide
+      // with no ports here), so node 'b' at x=400 sits well outside it and must
+      // stay unabsorbed even though it is still inside the persisted frame.size.
+      const collapsed = reframe(document, new Set(['group']));
+      expect(collapsed.nodes.find((node) => node.id === 'a')?.frameId).toBe('group');
+      expect(collapsed.nodes.find((node) => node.id === 'b')?.frameId).toBeUndefined();
+    });
+
     it('keeps an oversized group nested by its title anchor', () => {
       const outer = { ...section, id: 'outer', kind: 'group' as const, size: { width: 300, height: 200 } };
       const child = { ...outer, id: 'child', position: { x: 0, y: 0 }, size: { width: 600, height: 400 } };

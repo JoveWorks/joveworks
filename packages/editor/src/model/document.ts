@@ -43,9 +43,11 @@ import {
   type OutputNode,
   type PlotMeasure,
   type Position,
+  type Size,
   type ValueSpec,
 } from '@joveworks/schema';
 
+import { collapsedGroupSize, groupPorts } from './collapsedGroups';
 import { GAP, NODE_HEIGHT, NODE_WIDTH } from './layout-constants';
 
 /** `node.port -> node.port`, which is unique because an input takes one edge. */
@@ -1075,36 +1077,64 @@ export function reorderFrame(
   return { ...document, frames: [...sections, ...document.frames.filter((frame) => frame.kind === 'group')] };
 }
 
-function inside(position: Position, frame: Frame): boolean {
+const EMPTY_COLLAPSED_GROUPS: ReadonlySet<string> = new Set();
+
+/**
+ * A frame's on-screen size, which for a collapsed group is its small macro
+ * box rather than the expanded body dimensions still on record in
+ * `frame.size` — collapsing never rewrites that field. Containment checks
+ * that used `frame.size` directly kept absorbing nodes dropped well outside
+ * a collapsed group's visible frame, because they were still hit-testing
+ * against its last expanded rectangle.
+ */
+function frameSize(document: GraphDocument, frame: Frame, collapsedGroups: ReadonlySet<string>): Size {
+  if (frame.kind !== 'group' || !collapsedGroups.has(frame.id)) return frame.size;
+  return collapsedGroupSize(groupPorts(document, frame.id));
+}
+
+function inside(position: Position, frame: Frame, size: Size): boolean {
   return (
     position.x >= frame.position.x &&
     position.y >= frame.position.y &&
-    position.x <= frame.position.x + frame.size.width &&
-    position.y <= frame.position.y + frame.size.height
+    position.x <= frame.position.x + size.width &&
+    position.y <= frame.position.y + size.height
   );
 }
 
-function frameInside(child: Frame, parent: Frame): boolean {
+function frameInside(
+  document: GraphDocument,
+  child: Frame,
+  parent: Frame,
+  collapsedGroups: ReadonlySet<string>,
+): boolean {
   if (child.id === parent.id) return false;
+  const parentSize = frameSize(document, parent, collapsedGroups);
   // Groups are annotations anchored by their title.  Their expanded body may
   // intentionally extend beyond a parent group, while their compact macro
   // form still plainly belongs there; requiring the whole expanded rectangle
   // made that child detach (and stop travelling with its parent) on reframe.
-  if (child.kind === 'group') return inside(child.position, parent);
+  if (child.kind === 'group') return inside(child.position, parent, parentSize);
+  const childSize = frameSize(document, child, collapsedGroups);
   return (
     child.position.x >= parent.position.x &&
     child.position.y >= parent.position.y &&
-    child.position.x + child.size.width <= parent.position.x + parent.size.width &&
-    child.position.y + child.size.height <= parent.position.y + parent.size.height &&
-    child.size.width * child.size.height < parent.size.width * parent.size.height
+    child.position.x + childSize.width <= parent.position.x + parentSize.width &&
+    child.position.y + childSize.height <= parent.position.y + parentSize.height &&
+    childSize.width * childSize.height < parentSize.width * parentSize.height
   );
 }
 
 /** The smallest containing region; later frames win when areas tie. */
-function innermost(frames: readonly Frame[]): Frame | undefined {
+function innermost(
+  document: GraphDocument,
+  frames: readonly Frame[],
+  collapsedGroups: ReadonlySet<string>,
+): Frame | undefined {
   return frames.reduce<Frame | undefined>((best, frame) => {
     if (best === undefined) return frame;
-    return frame.size.width * frame.size.height <= best.size.width * best.size.height ? frame : best;
+    const frameArea = frameSize(document, frame, collapsedGroups);
+    const bestArea = frameSize(document, best, collapsedGroups);
+    return frameArea.width * frameArea.height <= bestArea.width * bestArea.height ? frame : best;
   }, undefined);
 }
 
@@ -1115,7 +1145,10 @@ function innermost(frames: readonly Frame[]): Frame | undefined {
  * the report outline, so dragging a node into a frame is how it joins that
  * section. The last frame wins where two overlap, which is the one drawn on top.
  */
-export function reframe(document: GraphDocument): GraphDocument {
+export function reframe(
+  document: GraphDocument,
+  collapsedGroups: ReadonlySet<string> = EMPTY_COLLAPSED_GROUPS,
+): GraphDocument {
   if (document.frames.length === 0) {
     return document.nodes.some((node) => node.frameId !== undefined)
       ? { ...document, nodes: document.nodes.map(withoutFrame) }
@@ -1126,15 +1159,21 @@ export function reframe(document: GraphDocument): GraphDocument {
     // A section may be wrapped in an annotation group, but never nested in
     // another report section.  It keeps its own NodeBook entry either way.
     const candidates = document.frames.filter(
-      (candidate) => frameInside(frame, candidate) && (frame.kind === 'group' || candidate.kind === 'group'),
+      (candidate) =>
+        frameInside(document, frame, candidate, collapsedGroups) &&
+        (frame.kind === 'group' || candidate.kind === 'group'),
     );
-    const containing = innermost(candidates);
+    const containing = innermost(document, candidates, collapsedGroups);
     if (containing?.id === frame.frameId) return frame;
     changed = true;
     return containing === undefined ? withoutParentFrame(frame) : { ...frame, frameId: containing.id };
   });
   const nodes = document.nodes.map((node) => {
-    const containing = innermost(frames.filter((frame) => inside(node.position, frame)));
+    const containing = innermost(
+      document,
+      frames.filter((frame) => inside(node.position, frame, frameSize(document, frame, collapsedGroups))),
+      collapsedGroups,
+    );
     if (containing?.id === node.frameId) return node;
     changed = true;
     return containing === undefined ? withoutFrame(node) : { ...node, frameId: containing.id };

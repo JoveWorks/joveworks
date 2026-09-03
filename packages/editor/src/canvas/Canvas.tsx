@@ -789,8 +789,8 @@ export function Canvas({
     // which is the smaller of the two losses by far.
     if (preview.base !== document) return;
     // One discrete edit means one undo step and one analysis/evaluation pass.
-    edit(() => reframe(preview.projection));
-  }, [document, edit]);
+    edit(() => reframe(preview.projection, collapsedGroups));
+  }, [collapsedGroups, document, edit]);
 
   const renderedDocument =
     layoutPreview !== undefined && layoutPreview.base === document ? layoutPreview.projection : document;
