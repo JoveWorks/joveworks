@@ -52,4 +52,11 @@ describe('closureFormula', () => {
     expect(a?.kind === 'numeric' && a.unit).toMatchObject({ symbol: '$a' });
     expect(b?.kind === 'numeric' && b.unit).toMatchObject({ symbol: '$b' });
   });
+
+  it('accepts an underscore-subscripted name such as a student writing F_a', () => {
+    const formula = closureFormula('F_a + F_b');
+    expect(formula.inputs.map((port) => port.name)).toEqual(['F_a', 'F_b']);
+    const fa = formula.inputs.find((port) => port.name === 'F_a');
+    expect(fa?.kind === 'numeric' && fa.unit).toMatchObject({ symbol: '$F_a' });
+  });
 });

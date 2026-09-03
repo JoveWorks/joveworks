@@ -854,7 +854,7 @@ export function resolveGraph(
       try {
         formula = closureFormula(node.expression);
       } catch (error) {
-        throw error instanceof KernelError ? new KernelError(error.message, node.id) : error;
+        throw new KernelError(error instanceof Error ? error.message : String(error), node.id);
       }
       formulas.set(node.id, formula);
       checkInputValues(node.id, formula, node.inputValues);

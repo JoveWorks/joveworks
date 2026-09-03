@@ -9,6 +9,7 @@ import { useGraph } from '../graph-context';
 import { reframe, removeNodes, renameNode } from '../model/document';
 import { ParameterLabel } from '../ParameterLabel';
 import { NodeShell } from './NodeShell';
+import { waypointChannelLabels } from './bundleLabels';
 import type { CanvasFlowNode } from './node-data';
 import { slotHandleId } from './portSlots';
 import { TitleField } from './TitleField';
@@ -22,6 +23,7 @@ export function WaypointNodeView({ id, data }: NodeProps<CanvasFlowNode>): React
   const state = analysis.states.get(id) ?? 'ok';
   const problem = analysis.problems.get(id);
   const indices = waypointChannelIndices(document, id);
+  const labels = waypointChannelLabels(document, id);
   const nextChannel = nextPackChannel(indices);
 
   return (
@@ -47,13 +49,13 @@ export function WaypointNodeView({ id, data }: NodeProps<CanvasFlowNode>): React
               onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: `in${channel}` })}
               onMouseLeave={() => data?.onPortHover?.()}
             />
-            <ParameterLabel name={`in${position}`} unit={analysis.resolution?.targets.get(`${id}.in${channel}`)?.unit} nameClassName="port-name" unitClassName="port-unit" />
+            <ParameterLabel name={labels[position] ?? `in${channel}`} unit={analysis.resolution?.targets.get(`${id}.in${channel}`)?.unit} nameClassName="port-name" unitClassName="port-unit" />
             <span
               className={`port-out${highlightedPorts.has(`out${channel}`) ? ' port-highlighted' : ''}`}
               onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: `out${channel}` })}
               onMouseLeave={() => data?.onPortHover?.()}
             >
-              <ParameterLabel name={`out${position}`} unit={analysis.resolution?.sources.get(`${id}.out${channel}`)?.unit} nameClassName="port-name" unitClassName="port-unit" />
+              <ParameterLabel name={labels[position] ?? `out${channel}`} unit={analysis.resolution?.sources.get(`${id}.out${channel}`)?.unit} nameClassName="port-name" unitClassName="port-unit" />
             </span>
             <Handle
               type="source"

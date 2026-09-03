@@ -27,6 +27,10 @@ describe('parsing', () => {
     expect(generic.variables).toEqual({ A: 1 });
   });
 
+  it('reads a variable name with an underscore, as a closure port name can carry', () => {
+    expect(parseGenericDimension('$F_a').variables).toEqual({ F_a: 1 });
+  });
+
   it('reads products and quotients, with / binding to one term', () => {
     expect(parseGenericDimension('$A*$B').variables).toEqual({ A: 1, B: 1 });
     expect(parseGenericDimension('$A/$B').variables).toEqual({ A: 1, B: -1 });

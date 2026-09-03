@@ -87,6 +87,10 @@ export function NodeShell({
     >
       <header>
         <span className="node-title">{title}</span>
+        {/* Tabbed past, not out of the header — a student tabbing from the
+            label toward a node's value and unit fields should not land on
+            these icon buttons first (ROADMAP.md: "Tab in node should go
+            from label-value-unit"). Still reachable by click. */}
         {(helpUrl ?? NODE_HELP_URLS[kind]) === undefined ? null : (
           <a
             className="help"
@@ -94,6 +98,7 @@ export function NodeShell({
             target="_blank"
             rel="noopener"
             title={copy.nodeHelp}
+            tabIndex={-1}
           >
             ?
           </a>
@@ -105,6 +110,7 @@ export function NodeShell({
             title={expanded ? copy.unpinNode : copy.keepNodeOpen}
             aria-label={expanded ? copy.unpinNode : copy.keepNodeOpen}
             aria-pressed={expanded}
+            tabIndex={-1}
             onClick={onToggleExpanded}
           >
             <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -113,7 +119,7 @@ export function NodeShell({
             </svg>
           </button>
         )}
-        <button type="button" className="delete" title={copy.deleteNode} onClick={onDelete}>
+        <button type="button" className="delete" title={copy.deleteNode} tabIndex={-1} onClick={onDelete}>
           ✕
         </button>
       </header>

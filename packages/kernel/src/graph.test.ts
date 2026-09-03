@@ -799,6 +799,22 @@ describe('closure nodes', () => {
     const document = documentOf([closureNode('eq', 'a + * b')], []);
     expect(() => resolveGraph(document, catalogues)).toThrow(KernelError);
   });
+
+  it('resolves an underscore-subscripted name such as F_a instead of crashing resolution', () => {
+    const document = documentOf(
+      [
+        closureNode('eq', 'F_a + F_b', {
+          inputValues: {
+            F_a: { kind: 'scalar', value: 10, unit: 'N' },
+            F_b: { kind: 'scalar', value: 20, unit: 'N' },
+          },
+        }),
+      ],
+      [],
+    );
+    const resolution = resolveGraph(document, catalogues);
+    expect(resolution.sources.get(endpointKey('eq', 'result'))?.dimension).toEqual(FORCE);
+  });
 });
 
 describe('what the unit package still owns', () => {

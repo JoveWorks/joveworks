@@ -19,8 +19,30 @@ export interface PickedFile {
 
 export const userEquationsFileName = 'joveworks-equations.json';
 
-export function documentFileName(id: string): string {
-  return `${id}.jove.json`;
+/** How much of a long title survives into the file name. */
+const MAX_SLUG_LENGTH = 60;
+
+/**
+ * A title, kebab-cased for a file name — the same non-letter-run-to-dash
+ * convention `model/userEquations.ts`'s `equationId` uses, truncated so a
+ * paragraph-length NodeBook title does not become an unusable file name.
+ * Empty (or entirely punctuation) falls back to `'untitled'` rather than a
+ * bare `.jove.json`.
+ */
+export function slugifyTitle(title: string): string {
+  const slug = title
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/gu, '-')
+    .replace(/^-+|-+$/gu, '')
+    .slice(0, MAX_SLUG_LENGTH)
+    .replace(/-+$/gu, '');
+  return slug.length === 0 ? 'untitled' : slug;
+}
+
+/** The NodeBook's own file name — the title a student sees, not its fixed `id`. */
+export function documentFileName(title: string): string {
+  return `${slugifyTitle(title)}.jove.json`;
 }
 
 /** Ask for a file and read it as text. Resolves `undefined` if nothing is picked. */

@@ -54,7 +54,7 @@ export function isGenericDimension(value: {
 const SEPARATORS = new Set(['*', '·', '.', ' ', '\t']);
 
 function isNameChar(c: string): boolean {
-  return /[A-Za-z0-9]/u.test(c);
+  return /[A-Za-z0-9_]/u.test(c);
 }
 
 interface Term {

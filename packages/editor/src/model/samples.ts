@@ -317,10 +317,11 @@ export function platformFootprint(catalogues: readonly Catalogue[], locale: AppL
  * The classic tolerance stack-up, on a real ISO 286 fit rather than two
  * hand-picked ± numbers. A nominal Ø20 mm hole/shaft pair, each toleranced by
  * a chosen letter and IT grade (H7 for the hole, g6 for the shaft — an easy
- * running clearance fit), is looked up twice per feature — its `lower` and
- * `upper` limit deviation — through `base.iso286.hole-deviation`/
- * `base.iso286.shaft-deviation` (`packages/nodes/src/iso286.ts`), added back onto
- * the nominal diameter, and wired straight into a *uniform* generator's
+ * running clearance fit), is looked up once per feature — both its `lower`
+ * and `upper` limit deviation, as the two outputs of one node — through
+ * `base.iso286.hole-deviation`/`base.iso286.shaft-deviation`
+ * (`packages/nodes/src/iso286.ts`), each added back onto the nominal
+ * diameter and wired straight into a *uniform* generator's
  * `min`/`max` ports (`MIN_PORT`/`MAX_PORT`, wireable-with-typed-default the
  * same way `CompareNode.threshold` is — `packages/kernel/src/graph.ts`'s
  * `monteCarloGenerator` branch). A uniform draw across the standard's hard
@@ -355,13 +356,11 @@ export function monteCarloClearance(catalogues: readonly Catalogue[], locale: Ap
     input('hole_grade', 'Hole IT grade', categorical('7'), at(0, -100)),
     input('shaft_letter', 'Shaft tolerance position', categorical('g'), at(0, 20)),
     input('shaft_grade', 'Shaft IT grade', categorical('6'), at(0, 100)),
-    input('limit_lower', 'Lower limit', categorical('lower'), at(0, 220)),
-    input('limit_upper', 'Upper limit', categorical('upper'), at(0, 300)),
 
-    formulaNode('hole_lower', holeDeviation, at(340, -220)),
-    formulaNode('hole_upper', holeDeviation, at(340, -100)),
-    formulaNode('shaft_lower', shaftDeviation, at(340, 60)),
-    formulaNode('shaft_upper', shaftDeviation, at(340, 180)),
+    // Both limit deviations off the same lookup, at once — one node per
+    // feature, not one per bound.
+    formulaNode('hole_fit', holeDeviation, at(340, -180)),
+    formulaNode('shaft_fit', shaftDeviation, at(340, 60)),
 
     formulaNode('hole_min', add, at(680, -220)),
     formulaNode('hole_max', add, at(680, -100)),
@@ -389,29 +388,21 @@ export function monteCarloClearance(catalogues: readonly Catalogue[], locale: Ap
   const nodes: GraphNode[] = [...fitNodes, ...stackUpNodes, ...distributionNodes];
 
   const edges = [
-    ...(['hole_lower', 'hole_upper'] as const).map((id) => wire('nominal_d.value', `${id}.diameter`)),
-    ...(['shaft_lower', 'shaft_upper'] as const).map((id) => wire('nominal_d.value', `${id}.diameter`)),
-    wire('hole_letter.value', 'hole_lower.letter'),
-    wire('hole_grade.value', 'hole_lower.grade'),
-    wire('limit_lower.value', 'hole_lower.limit'),
-    wire('hole_letter.value', 'hole_upper.letter'),
-    wire('hole_grade.value', 'hole_upper.grade'),
-    wire('limit_upper.value', 'hole_upper.limit'),
-    wire('shaft_letter.value', 'shaft_lower.letter'),
-    wire('shaft_grade.value', 'shaft_lower.grade'),
-    wire('limit_lower.value', 'shaft_lower.limit'),
-    wire('shaft_letter.value', 'shaft_upper.letter'),
-    wire('shaft_grade.value', 'shaft_upper.grade'),
-    wire('limit_upper.value', 'shaft_upper.limit'),
+    wire('nominal_d.value', 'hole_fit.diameter'),
+    wire('nominal_d.value', 'shaft_fit.diameter'),
+    wire('hole_letter.value', 'hole_fit.letter'),
+    wire('hole_grade.value', 'hole_fit.grade'),
+    wire('shaft_letter.value', 'shaft_fit.letter'),
+    wire('shaft_grade.value', 'shaft_fit.grade'),
 
     wire('nominal_d.value', 'hole_min.a'),
-    wire('hole_lower.deviation', 'hole_min.b'),
+    wire('hole_fit.lower', 'hole_min.b'),
     wire('nominal_d.value', 'hole_max.a'),
-    wire('hole_upper.deviation', 'hole_max.b'),
+    wire('hole_fit.upper', 'hole_max.b'),
     wire('nominal_d.value', 'shaft_min.a'),
-    wire('shaft_lower.deviation', 'shaft_min.b'),
+    wire('shaft_fit.lower', 'shaft_min.b'),
     wire('nominal_d.value', 'shaft_max.a'),
-    wire('shaft_upper.deviation', 'shaft_max.b'),
+    wire('shaft_fit.upper', 'shaft_max.b'),
 
     wire('hole_min.sum', 'hole.min'),
     wire('hole_max.sum', 'hole.max'),

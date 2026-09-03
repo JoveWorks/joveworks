@@ -7,7 +7,7 @@
  * bundle.
  */
 
-import { packChannelIndices } from '@joveworks/kernel';
+import { packChannelIndices, waypointChannelIndices } from '@joveworks/kernel';
 import type { Endpoint, GraphDocument } from '@joveworks/schema';
 
 import { nodeLabel } from '../model/document';
@@ -50,4 +50,16 @@ export function unpackChannelLabels(document: GraphDocument, unpackId: string): 
   const edge = incomingEdge(document, { node: unpackId, port: 'bundle' });
   if (edge === undefined) return [];
   return packChannelLabels(document, edge.from.node);
+}
+
+/**
+ * Labels for a waypoint's own channels, in the same order as its live
+ * `inN`/`outN` pairs — a waypoint relays a value unchanged, so one label
+ * names both ends of a channel, taken from whatever feeds its `in` side.
+ */
+export function waypointChannelLabels(document: GraphDocument, waypointId: string): readonly string[] {
+  return waypointChannelIndices(document, waypointId).map((channel) => {
+    const edge = incomingEdge(document, { node: waypointId, port: `in${channel}` });
+    return edge === undefined ? `in${channel}` : sourceLabel(document, edge.from);
+  });
 }

@@ -77,6 +77,32 @@ describe('ISO 286 tolerance lookups', () => {
   });
 });
 
+describe('ISO 286 formula records', () => {
+  it("expose both limit deviations as outputs, not one gated behind a 'limit' input", () => {
+    const hole = OPERATIONS.find((formula) => formula.id === 'base.iso286.hole-deviation');
+    if (hole === undefined) throw new Error('no base.iso286.hole-deviation formula');
+    expect(hole.outputs.map((output) => output.name)).toEqual(['lower', 'upper']);
+    expect(hole.inputs.map((input) => input.name)).toEqual(['diameter', 'letter', 'grade']);
+    expect(hole.lookup?.axes.map((axis) => axis.input)).toEqual(['diameter', 'letter', 'grade']);
+  });
+
+  it('reads the same lower/upper deviations off the formula record as iso286Limits does directly', () => {
+    const hole = OPERATIONS.find((formula) => formula.id === 'base.iso286.hole-deviation');
+    if (hole === undefined) throw new Error('no base.iso286.hole-deviation formula');
+    const axes = hole.lookup?.axes ?? [];
+    const diameterIndex = (axes[0]?.values as readonly number[]).findIndex((bound) => 100 <= bound);
+    const letterIndex = (axes[1]?.values as readonly string[]).indexOf('H');
+    const gradeIndex = (axes[2]?.values as readonly string[]).indexOf('7');
+    const flat =
+      diameterIndex * (axes[1]?.values.length as number) * (axes[2]?.values.length as number) +
+      letterIndex * (axes[2]?.values.length as number) +
+      gradeIndex;
+    expect([hole.lookup?.columns['lower']?.[flat], hole.lookup?.columns['upper']?.[flat]]).toEqual(
+      iso286Limits('hole', 100, 'H', '7'),
+    );
+  });
+});
+
 const byId = (id: string): Formula => {
   const found = HAND_AUTHORED.find((formula) => formula.id === canonicalId(id));
   if (found === undefined) throw new Error(`no base node '${id}'`);

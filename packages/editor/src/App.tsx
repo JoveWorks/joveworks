@@ -832,7 +832,7 @@ function AppShell(): ReactElement {
 
   const saveToFile = (): void => {
     const text = saveDocument(documentRef.current);
-    saveTextFile(documentFileName(documentRef.current.id), text);
+    saveTextFile(documentFileName(documentRef.current.title), text);
     recordRecentDocument(documentRef.current);
     clearAutosaveSnapshot();
     setSavedSnapshot(text);
