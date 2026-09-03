@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.26.5](https://github.com/JoveWorks/joveworks/compare/v0.26.4...v0.26.5) (2026-09-03)
+
+### Fixes
+
+* stop canConnect refusing edges over unrelated pre-existing breaks ([c92d77b](https://github.com/JoveWorks/joveworks/commit/c92d77be45099dffddce37959c7fdbaaf9bb6a38))
 ## [0.26.4](https://github.com/JoveWorks/joveworks/compare/v0.26.3...v0.26.4) (2026-09-03)
 
 ### Fixes
