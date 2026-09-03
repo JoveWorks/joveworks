@@ -325,6 +325,34 @@ describe('connections', () => {
     ).toBe(true);
     expect(typesConnect({ kind: 'numeric' }, { kind: 'categorical' })).toBe(false);
   });
+
+  it('does not let a pre-existing, unrelated break elsewhere refuse a connection nothing to do with it', () => {
+    // `sum` is unwired, so `sum.sum` has no dimension yet; `down` reading
+    // from it is exactly the stale state a later disconnect from `sum`'s own
+    // inputs would leave behind — an existing edge whose source has since
+    // lost its dimension. That must not block wiring two unrelated nodes.
+    const document = documentOf(
+      [
+        formulaNode('sum', refTo('addTwo')),
+        formulaNode('down', refTo('addTwo')),
+        input('w', scalar(20, 'mm')),
+        formulaNode('area', refTo('area')),
+      ],
+      [wire('sum.sum', 'down.a')],
+    );
+    expect(() => resolveGraph(document, catalogues)).toThrow(/has no dimension yet/u);
+    expect(canConnect(document, catalogues, wire('w.value', 'area.w'))).toEqual({ ok: true });
+  });
+
+  it('still refuses a connection the break is actually implicated in', () => {
+    const document = documentOf(
+      [formulaNode('sum', refTo('addTwo')), formulaNode('down', refTo('addTwo'))],
+      [],
+    );
+    const result = canConnect(document, catalogues, wire('sum.sum', 'down.a'));
+    expect(result.ok).toBe(false);
+    expect(result.ok === false && result.reason).toMatch(/has no dimension yet/u);
+  });
 });
 
 describe('adapting a freshly wired input node to its target', () => {

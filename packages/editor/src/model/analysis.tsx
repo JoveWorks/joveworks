@@ -27,12 +27,15 @@ import type { ReactNode } from 'react';
 import {
   KernelError,
   closureFormula,
+  descendants,
   evaluateDocument,
+  nodeOf,
   outputPortNames,
   packChannelIndices,
   resolveGraph,
   selectPortNames,
   statisticPortNames,
+  subgraph,
   waypointChannelIndices,
   type Evaluation,
   type Resolution,
@@ -141,40 +144,6 @@ function hasValue(node: GraphNode, port: Port): boolean {
   if (port.kind === 'categorical') return authored !== undefined || port.default !== undefined;
   if (authored !== undefined) return true;
   return port.default !== undefined && !isGenericPort(port);
-}
-
-/** The node a `KernelError` points at: `where` is a node id or `node.port`. */
-function nodeOf(document: GraphDocument, where: string | undefined): string | undefined {
-  if (where === undefined) return undefined;
-  const ids = new Set(document.nodes.map((node) => node.id));
-  if (ids.has(where)) return where;
-  const cut = where.lastIndexOf('.');
-  const prefix = cut === -1 ? undefined : where.slice(0, cut);
-  return prefix !== undefined && ids.has(prefix) ? prefix : undefined;
-}
-
-/** Everything downstream of a node, itself included. */
-function descendants(document: GraphDocument, from: string): ReadonlySet<string> {
-  const found = new Set([from]);
-  let growing = true;
-  while (growing) {
-    growing = false;
-    for (const edge of document.edges) {
-      if (found.has(edge.from.node) && !found.has(edge.to.node)) {
-        found.add(edge.to.node);
-        growing = true;
-      }
-    }
-  }
-  return found;
-}
-
-function subgraph(document: GraphDocument, keep: ReadonlySet<string>): GraphDocument {
-  return {
-    ...document,
-    nodes: document.nodes.filter((node) => keep.has(node.id)),
-    edges: document.edges.filter((edge) => keep.has(edge.from.node) && keep.has(edge.to.node)),
-  };
 }
 
 /**

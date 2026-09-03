@@ -407,6 +407,46 @@ export function wouldCycle(document: GraphDocument, candidate: Edge): boolean {
   return false;
 }
 
+/**
+ * The node a `KernelError` points at: `where` is a node id, a `node.port`, or
+ * something with no node at all (an edge id, or no `where` at all). Shared by
+ * `canConnect` and the editor's own render-time resolution, so a resolution
+ * failure is attributed to a node the same way in both places.
+ */
+export function nodeOf(document: GraphDocument, where: string | undefined): string | undefined {
+  if (where === undefined) return undefined;
+  const ids = new Set(document.nodes.map((node) => node.id));
+  if (ids.has(where)) return where;
+  const cut = where.lastIndexOf('.');
+  const prefix = cut === -1 ? undefined : where.slice(0, cut);
+  return prefix !== undefined && ids.has(prefix) ? prefix : undefined;
+}
+
+/** Everything downstream of a node, itself included. */
+export function descendants(document: GraphDocument, from: string): ReadonlySet<string> {
+  const found = new Set([from]);
+  let growing = true;
+  while (growing) {
+    growing = false;
+    for (const edge of document.edges) {
+      if (found.has(edge.from.node) && !found.has(edge.to.node)) {
+        found.add(edge.to.node);
+        growing = true;
+      }
+    }
+  }
+  return found;
+}
+
+/** The document restricted to `keep`, edges included only where both ends survive. */
+export function subgraph(document: GraphDocument, keep: ReadonlySet<string>): GraphDocument {
+  return {
+    ...document,
+    nodes: document.nodes.filter((node) => keep.has(node.id)),
+    edges: document.edges.filter((edge) => keep.has(edge.from.node) && keep.has(edge.to.node)),
+  };
+}
+
 // --- resolution -------------------------------------------------------------
 
 /**
@@ -1306,6 +1346,15 @@ export type ConnectionCheck = { readonly ok: true } | { readonly ok: false; read
  * makes connect time and evaluation time agree by construction: there is one set
  * of rules, not a cheap approximation in the editor and a real one in the
  * kernel. Graphs are tens of nodes, so the cost of being exact is nothing.
+ *
+ * Agreeing with evaluation time cuts both ways: render-time resolution
+ * (the editor's `analysis.tsx`) does not let one broken node — say, an input
+ * disconnected after something downstream was wired to it — blank the whole
+ * canvas, so this must not let that same pre-existing, unrelated break refuse
+ * a connection between two other nodes either. Only a failure the candidate
+ * edge is itself implicated in (as an endpoint, or upstream of one) refuses
+ * the connection; anything else is dropped and resolution is retried, same as
+ * render time drops it and carries on.
  */
 export function canConnect(
   document: GraphDocument,
@@ -1315,24 +1364,34 @@ export function canConnect(
   if (wouldCycle(document, candidate)) {
     return { ok: false, reason: 'this connection would close a cycle, which is not allowed' };
   }
-  try {
-    // A dragged wire replaces whatever already arrives at that input (an input
-    // takes one connection) rather than being refused for arriving alongside
-    // it — `connect` in the editor's document model already does this; the
-    // check has to agree, or a re-drag onto an occupied port is rejected here
-    // before it ever reaches that replace. A variadic port is the one
-    // exception: a second wire joins it, so nothing already there is
-    // displaced.
-    const displaced = isVariadicTarget(document, catalogues, candidate.to)
-      ? document.edges
-      : document.edges.filter(
-          (edge) => !(edge.to.node === candidate.to.node && edge.to.port === candidate.to.port),
-        );
-    resolveGraph({ ...document, edges: [...displaced, candidate] }, catalogues);
-    return { ok: true };
-  } catch (error) {
-    if (error instanceof KernelError) return { ok: false, reason: error.message };
-    throw error;
+  // A dragged wire replaces whatever already arrives at that input (an input
+  // takes one connection) rather than being refused for arriving alongside
+  // it — `connect` in the editor's document model already does this; the
+  // check has to agree, or a re-drag onto an occupied port is rejected here
+  // before it ever reaches that replace. A variadic port is the one
+  // exception: a second wire joins it, so nothing already there is
+  // displaced.
+  const displaced = isVariadicTarget(document, catalogues, candidate.to)
+    ? document.edges
+    : document.edges.filter(
+        (edge) => !(edge.to.node === candidate.to.node && edge.to.port === candidate.to.port),
+      );
+  let probe: GraphDocument = { ...document, edges: [...displaced, candidate] };
+  for (;;) {
+    try {
+      resolveGraph(probe, catalogues);
+      return { ok: true };
+    } catch (error) {
+      if (!(error instanceof KernelError)) throw error;
+      const nodeId = nodeOf(probe, error.where);
+      if (nodeId === undefined) return { ok: false, reason: error.message };
+      const dropped = descendants(probe, nodeId);
+      if (dropped.has(candidate.from.node) || dropped.has(candidate.to.node)) {
+        return { ok: false, reason: error.message };
+      }
+      const keep = new Set(probe.nodes.map((node) => node.id).filter((id) => !dropped.has(id)));
+      probe = subgraph(probe, keep);
+    }
   }
 }
 
