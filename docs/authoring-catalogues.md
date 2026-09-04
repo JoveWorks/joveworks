@@ -1,10 +1,13 @@
 # Authoring a formula catalogue by hand
 
-A catalogue is a JSON or YAML file of `Formula` records read by `@joveworks/schema`
+A catalogue is a YAML or JSON file of `Formula` records read by `@joveworks/schema`
 (`packages/schema/src/formula.ts`, `port.ts`). This is a guide to writing one
 directly, for the cases where there is no source script to extract from — an
 invented or textbook-independent catalogue, a demo, a course pack from a
-source other than R&M.
+source other than R&M. Every example here is written in YAML — it is the
+easier format to hand-edit, with no trailing-comma or quote-every-key
+ceremony — and a short note at the end of the next section covers writing the
+same schema as JSON instead.
 
 **This is a workaround, not the intended path.** The in-editor
 authoring UI is deferred out of milestone 1; until it exists, hand-written JSON is
@@ -18,18 +21,6 @@ This guide is for catalogues with no such source.
 
 ## File shape
 
-```json
-{
-  "schemaVersion": 1,
-  "id": "my-catalogue",
-  "name": { "en": "Human-readable name", "nl": "Leesbare naam" },
-  "restricted": false,
-  "formulas": [ /* Formula records */ ]
-}
-```
-
-The same record may be written as YAML when that is easier to edit:
-
 ```yaml
 schemaVersion: 1
 id: my-catalogue
@@ -40,19 +31,204 @@ restricted: false
 formulas: []
 ```
 
-The editor and catalogue-author app accept `.yaml` and `.yml` files as well as
-`.json`. JSON remains the canonical export and browser-cache format; YAML is an
-input syntax over the same catalogue schema, not a second data model. JoveWorks
-uses YAML 1.2, requires unique string keys, and rejects custom tags, merge keys,
-anchors, and aliases. Quote a scalar when YAML punctuation could change its
-meaning—expressions containing `#` or `:`, for example.
 `packages/editor/src/catalogues/running.yaml` is a complete bundled example
-covering pace, race-time projection, grade, and climbing rate.
+covering pace, race-time projection, grade, and climbing rate. The next
+section builds a second one from scratch, field by field.
 
 `restricted` is a statement of intent inside the app — the app refuses
 to export a restricted catalogue's expressions. Set it `false` only for
 content you actually have the right to redistribute; it is not what enforces
 distribution restrictions — a repository boundary does that.
+
+JoveWorks uses YAML 1.2, requires unique string keys, and rejects custom tags,
+merge keys, anchors, and aliases. Quote a scalar when YAML punctuation could
+change its meaning — expressions containing `#` or `:`, for example.
+
+> **JSON works too, in a short note.** The editor and catalogue-author app
+> accept `.json` files as well as `.yaml`/`.yml` — same schema, same
+> validation, the same file just written with braces and quoted keys instead
+> of indentation:
+> ```json
+> { "schemaVersion": 1, "id": "my-catalogue", "name": { "en": "Human-readable name" }, "restricted": false, "formulas": [] }
+> ```
+> JSON remains the canonical export and browser-cache format; YAML is an input
+> syntax over the same data model, not a second one. Every example from here
+> on is YAML, and it translates key for key.
+
+## A complete example
+
+A small catalogue, start to finish — four invented, unverified fastener
+formulas, not vetted for real design use. The point is the schema, not the
+engineering. Field meanings are explained in the sections below; skim this
+once for shape, then come back to it after reading them.
+
+```yaml
+schemaVersion: 1
+id: workshop-fasteners
+name:
+  en: Workshop fasteners (example)
+restricted: false
+formulas:
+  - id: workshop.stress.normal
+    version: 1
+    output:
+      kind: numeric
+      name: sigma
+      unit: MPa
+      validRange:
+        min: 0
+    inputs:
+      - kind: numeric
+        name: F
+        unit: N
+        validRange:
+          min: 0
+      - kind: numeric
+        name: A
+        unit: mm²
+        validRange:
+          min: 0
+    expression: F / A
+    description:
+      en: Normal (axial) stress from a force spread over a cross-sectional area.
+    status: unverified
+
+  - id: workshop.stress.shear
+    version: 1
+    output:
+      kind: numeric
+      name: tau
+      unit: MPa
+      validRange:
+        min: 0
+    inputs:
+      - kind: numeric
+        name: F
+        unit: N
+        validRange:
+          min: 0
+      - kind: numeric
+        name: A
+        unit: mm²
+        validRange:
+          min: 0
+    expression: F / A
+    description:
+      en: Average shear stress from a force acting across a cross-sectional area.
+    status: unverified
+
+  - id: workshop.stress.normal-solve-for-area
+    version: 1
+    output:
+      kind: numeric
+      name: A
+      unit: mm²
+      validRange:
+        min: 0
+    inputs:
+      - kind: numeric
+        name: F
+        unit: N
+        validRange:
+          min: 0
+      - kind: numeric
+        name: sigma
+        unit: MPa
+        validRange:
+          min: 0
+    expression: F / sigma
+    description:
+      en: >-
+        The same relation as workshop.stress.normal, solved for the
+        cross-sectional area needed to keep stress at or below a target.
+    variantOf: workshop.stress.normal
+    status: unverified
+
+  - id: workshop.bolt.preload-and-utilization
+    version: 1
+    output:
+      - kind: numeric
+        name: F_clamp
+        unit: N
+        validRange:
+          min: 0
+      - kind: numeric
+        name: sigma_bolt
+        unit: MPa
+        validRange:
+          min: 0
+      - kind: numeric
+        name: utilization
+        unit: ""
+        validRange:
+          min: 0
+    inputs:
+      - kind: numeric
+        name: T
+        unit: Nm
+        validRange:
+          min: 0
+      - kind: numeric
+        name: d
+        unit: mm
+        validRange:
+          min: 0
+      - kind: numeric
+        name: K
+        unit: ""
+        default: 0.2
+        validRange:
+          min: 0.1
+          max: 0.3
+      - kind: numeric
+        name: A_s
+        unit: mm²
+        validRange:
+          min: 0
+      - kind: numeric
+        name: sigma_yield
+        unit: MPa
+        validRange:
+          min: 0
+    expression:
+      F_clamp: T / (K * d)
+      sigma_bolt: F_clamp / A_s
+      utilization: sigma_bolt / sigma_yield
+    description:
+      en: >-
+        Estimated bolt preload from tightening torque, the resulting stress
+        over the bolt's stress area, and how much of the yield strength that
+        uses. K is the joint's dimensionless friction/nut factor.
+    appliesWhen:
+      sigma_bolt: T > 0
+      utilization: T > 0
+    status: unverified
+```
+
+What each record is doing, beyond its own physics:
+
+- **`workshop.stress.normal`** and **`workshop.stress.shear`** are the
+  plainest shape a formula gets: one output, a couple of numeric inputs, a
+  one-line expression. They compute the same algebra for a reason —
+  identical arithmetic is still two different formulas when it means two
+  different things, so it gets two different ids and descriptions rather than
+  one record reused.
+- **`workshop.stress.normal-solve-for-area`** is the same relation rearranged
+  to solve for a different variable, linked back with `variantOf` — this is
+  the shape a `variantOf` group takes when you author one yourself, the same
+  way R&M's `17.1A`/`B`/`C` are one relation in three arrangements.
+- **`workshop.bolt.preload-and-utilization`** answers with three outputs from
+  one record. `expression` becomes an object keyed by output name, computed
+  in declared order, and `sigma_bolt`'s expression names `F_clamp` — an
+  earlier output in the same record — rather than repeating its algebra.
+  `appliesWhen` is keyed the same way to guard only the two outputs that
+  depend on the joint actually being tightened. `K` and `utilization` both
+  declare `unit: ""` — dimensionless, quoted because an empty YAML scalar
+  needs the quotes to stay a string rather than parse as null.
+
+Save it as `workshop-fasteners.yaml` and point `JOVEWORKS_CATALOGUE` at it
+(see "Validate what you wrote" below) to confirm it loads and passes the
+dimension check before you build on it.
 
 ## Formula ids are global
 
@@ -63,22 +239,29 @@ for your catalogue and stick to it, e.g. `mechanics.stress.normal` or `<domain>.
 
 ## A formula record
 
-```json
-{
-  "id": "mechanics.stress.normal",
-  "version": 1,
-  "output": { "kind": "numeric", "name": "sigma", "unit": "N/mm²" },
-  "inputs": [
-    { "kind": "numeric", "name": "F", "unit": "N", "validRange": { "min": 0 } },
-    { "kind": "numeric", "name": "A", "unit": "mm²", "validRange": { "min": 0 } }
-  ],
-  "expression": "F / A",
-  "description": {
-    "en": "Normal stress under axial load.",
-    "nl": "Normale spanning bij axiale belasting."
-  },
-  "status": "unverified"
-}
+```yaml
+id: mechanics.stress.normal
+version: 1
+output:
+  kind: numeric
+  name: sigma
+  unit: N/mm²
+inputs:
+  - kind: numeric
+    name: F
+    unit: N
+    validRange:
+      min: 0
+  - kind: numeric
+    name: A
+    unit: mm²
+    validRange:
+      min: 0
+expression: F / A
+description:
+  en: Normal stress under axial load.
+  nl: Normale spanning bij axiale belasting.
+status: unverified
 ```
 
 Fields:
@@ -96,12 +279,11 @@ Fields:
   evaluated here. See the expression rules below. A record with several
   outputs writes an object keyed by output name instead:
 
-  ```json
-  "expression": {
-    "D_n": "(H * s) / (H + (s - f))",
-    "D_f": "(H * s) / (H - (s - f))",
-    "DoF": "D_f - D_n"
-  }
+  ```yaml
+  expression:
+    D_n: (H * s) / (H + (s - f))
+    D_f: (H * s) / (H - (s - f))
+    DoF: D_f - D_n
   ```
 
   Outputs are computed **in declared order, and each may name any output
@@ -119,14 +301,16 @@ Fields:
 - **variantOf** — links rearranged forms of one relation. Skip unless
   you are actually authoring more than one arrangement of the same equation.
 - **appliesWhen** — a boolean predicate over this formula's own input port
-  names, e.g. `"d < 50"`, for the case where a relation only holds under some
+  names, e.g. `d < 50`, for the case where a relation only holds under some
   condition. Omit if it always applies. Where a record answers with several
   outputs whose ranges differ, key it by output name the way `expression` is
   — past the hyperfocal distance a far limit is infinite while the near limit
   is still meaningful, so only the guarded outputs warn:
 
-  ```json
-  "appliesWhen": { "D_f": "s < H", "DoF": "s < H" }
+  ```yaml
+  appliesWhen:
+    D_f: s < H
+    DoF: s < H
   ```
 
   A bare string guards every output, which is what it has always meant.
@@ -147,9 +331,9 @@ Fields:
 
 ## Ports
 
-Three kinds (`packages/schema/src/port.ts`):
+Two kinds a hand-authored formula uses (`packages/schema/src/port.ts`):
 
-- **numeric** — `{ kind, name, unit, preferredUnit?, default?, validRange?, monotonic? }`.
+- **numeric** — `{ kind, name, unit, preferredUnit?, default?, validRange?, monotonic?, variadic? }`.
   `unit` is a display-unit string like `N/mm²`, `mm`, `rad`, or `""` for
   dimensionless; the dimension is derived from it, never declared
   separately. `preferredUnit` is an optional same-dimension display preference
@@ -162,14 +346,21 @@ Three kinds (`packages/schema/src/port.ts`):
   wired to it. Every numeric port takes a value typed there whether or not you
   declare one, so declare it only where a conventional starting value exists (a
   sharpness divisor of 1500, a friction coefficient) — never merely to make the
-  port editable.
+  port editable. `variadic: true` marks an input that takes several wires
+  instead of one, consumed whole by a reduction such as `sum`/`prod`/`least`/
+  `greatest`; a straightforward formula with a fixed set of named inputs will
+  not need it.
 - **categorical** — `{ kind, name, domain, default? }`. An enumerated set of
   strings, e.g. `["H7", "H8", "K7"]`. Sweeps by explicit list only. Its
   `default` reads the same way: with none declared, the port's dropdown starts
-  on no choice rather than silently on the domain's first entry.
-- **spectrum** — `{ kind, name, unit }`, input-only. A whole series consumed
-  at once by `sum`/`prod`/`least`/`greatest` — you will not need this
-  for straightforward single-value formulas.
+  on no choice rather than silently on the domain's first entry. A categorical
+  port only participates in `expression` through a `lookup` table — a
+  table-backed formula is a separate, more advanced mechanism this guide
+  doesn't cover; every formula here is expression-only and uses numeric ports
+  exclusively.
+
+There is a third kind, `bundle`, but no catalogue formula declares one — it
+is what `pack`/`unpack` synthesize for themselves at resolve time.
 
 A port's `name` is the symbol used in `expression` — keep it the way you'd
 write it in the formula (`sigma`, `F`, `A`), not a display label; a longer
@@ -194,7 +385,7 @@ expression accept either an angle-dimensioned or a dimensionless argument.
   `cbrt`, `min`, `max`, `floor`, `ceil`, `round`, `sin`, `cos`, `tan`, `asin`,
   `acos`, `atan`, `sinh`, `cosh`, `tanh`, `log`, `exp`, plus the constant
   `pi`. Reductions `sum`, `prod`, `least`, `greatest` apply only to a
-  spectrum port's whole series.
+  variadic port's whole set of wires.
 - `sin`/`cos`/`tan` accept an angle or a dimensionless argument;
   `asin`/`acos`/`atan` always *return* an angle; `log`/`exp`/`sinh` etc.
   require a dimensionless argument. `min`/`max` require identical dimensions
@@ -228,4 +419,5 @@ a similar constraint) are a repository-boundary problem, not a schema
 problem — see `CLAUDE.md`'s "Distribution restriction" section. This guide is
 about the mechanics of writing a valid catalogue; whether you may write and
 share a *particular* formula's content is a separate question this file does
-not answer.
+not answer. Table-backed (`lookup`) formulas, needed for a categorical input
+or a data-table output, are also out of scope here.
