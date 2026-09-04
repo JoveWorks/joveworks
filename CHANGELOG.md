@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.26.8](https://github.com/JoveWorks/joveworks/compare/v0.26.7...v0.26.8) (2026-09-04)
+
+### Features
+
+* **kernel:** evaluate a reduction's argument once per wired value ([25f97da](https://github.com/JoveWorks/joveworks/commit/25f97da124195a2259638092d611c55fd88dc53a))
 ## [0.26.7](https://github.com/JoveWorks/joveworks/compare/v0.26.6...v0.26.7) (2026-09-04)
 
 ### Documentation
