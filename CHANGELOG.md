@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.26.7](https://github.com/JoveWorks/joveworks/compare/v0.26.6...v0.26.7) (2026-09-04)
+
+### Documentation
+
+* rewrite catalogue-authoring guide with a complete YAML example ([441e97d](https://github.com/JoveWorks/joveworks/commit/441e97d7ee12d3bfbfcae1ed7ca1dbd2c1f16f83))
+* **site:** point catalogue authoring at the browser app, not just YAML ([131d03e](https://github.com/JoveWorks/joveworks/commit/131d03ec432d404683a5e84cf96a440108ff1ec5))
 ## [0.26.6](https://github.com/JoveWorks/joveworks/compare/v0.26.5...v0.26.6) (2026-09-03)
 
 ### Fixes
