@@ -15,6 +15,16 @@
  * a dimension that is not known until the value is, and a dimension that depends
  * on a value is not a type. So the exponent is constant-folded, and if it does
  * not fold, the base must be dimensionless.
+ *
+ * A reduction's argument is the other one. `sum(xs)` totals every value wired
+ * into `xs`, and `sum(n * q)` totals the *pairs* — wire 1 of `n` against wire 1
+ * of `q`, and so on — which is what a weighted mean over an operating cycle
+ * is, and what the four-stage load cycles in the R&M catalogue are written as.
+ * So the argument is an ordinary expression evaluated once per wired value,
+ * `index` selecting which; a name holding a single value broadcasts into every
+ * position, so `P_ref` and an exponent stay scalars beside the series. Every
+ * series it reads must be the same length, since the pairing is by wire order
+ * — the same rule a `piecewise` node's breakpoints and values already pair by.
  */
 
 import {
@@ -42,55 +52,119 @@ import { parseExpression, parsePredicate } from './parse.js';
  */
 export type Env = Readonly<Record<string, number | readonly number[]>>;
 
-export type CompiledExpression = (env: Env) => number;
+/**
+ * A compiled expression. `index` is set only while evaluating a reduction's
+ * argument, and selects which wired value each series contributes there.
+ */
+export type CompiledExpression = (env: Env, index?: number) => number;
 export type CompiledPredicate = (env: Env) => boolean;
 
-function readNumber(env: Env, name: string): number {
+/**
+ * The one number `name` stands for here: what it holds, or — inside a
+ * reduction's argument — the value at `index` of the series it holds. A
+ * series read with no index in hand is `xs + 1` outside any reduction, which
+ * is the mistake `'xs' is a series, not a value` names.
+ */
+function readNumber(env: Env, name: string, index: number | undefined): number {
   const value = env[name];
-  if (typeof value !== 'number') {
-    throw new KernelError(
-      value === undefined ? `'${name}' has no value` : `'${name}' is a series, not a value`,
-    );
-  }
-  return value;
-}
-
-function readSeries(env: Env, name: string): readonly number[] {
-  const value = env[name];
-  if (!Array.isArray(value)) {
-    throw new KernelError(
-      value === undefined ? `'${name}' has no value` : `'${name}' is a value, not a series`,
-    );
-  }
-  return value as readonly number[];
+  if (value === undefined) throw new KernelError(`'${name}' has no value`);
+  if (typeof value === 'number') return value;
+  if (index === undefined) throw new KernelError(`'${name}' is a series, not a value`);
+  return value[index] as number;
 }
 
 /**
- * The bare variadic-port name a reduction's first argument must be, plus
- * whatever plain expressions follow it (`at`'s index, for reductions that
+ * A reduction's argument — the expression evaluated once per wired value —
+ * and whatever plain expressions follow it (`at`'s index, for reductions that
  * declare an `extraArity`).
- *
- * `sum(xs)` is every wired value consumed at once, so `sum(xs * 2)` is not a
- * smaller version of the same idea — it is an elementwise operation this
- * language has no way to express. Saying so at compile time beats a
- * confusing runtime failure.
  */
 function reductionCallParts(
   expr: Expr,
   callee: string,
   extraArity: number,
   where: string | undefined,
-): { readonly name: string; readonly extra: readonly Expr[] } {
+): { readonly argument: Expr; readonly extra: readonly Expr[] } {
   const args = expr.kind === 'call' ? expr.args : [];
   const [first, ...rest] = args;
-  if (expr.kind !== 'call' || args.length !== 1 + extraArity || first === undefined || first.kind !== 'name') {
+  if (expr.kind !== 'call' || args.length !== 1 + extraArity || first === undefined) {
     const example = extraArity === 0 ? `${callee}(xs)` : `${callee}(xs, i)`;
     throw new KernelError(
-      `${callee}() takes one variadic port by name${extraArity > 0 ? ' plus an index' : ''}, as in '${example}'`,
+      `${callee}() takes one argument${extraArity > 0 ? ' plus an index' : ''}, as in '${example}'`,
       where,
     );
   }
-  return { name: first.name, extra: rest };
+  return { argument: first, extra: rest };
+}
+
+/**
+ * The names a reduction's argument reads one wired value at a time —
+ * `sum(n * q)`'s `n` and `q`, `at(xs, i)`'s `xs` but not its index. A nested
+ * reduction is skipped: it consumes its own port whole and answers with a
+ * single number, so its names are not paired with these.
+ *
+ * Which of them turn out to be series is a fact about the wiring rather than
+ * about the expression, so this is every name; `seriesLength` and the
+ * dimension pass are what sort them out.
+ */
+function elementwiseNames(expr: Expr, into: Set<string> = new Set()): Set<string> {
+  switch (expr.kind) {
+    case 'number':
+      break;
+    case 'name':
+      if (CONSTANTS[expr.name] === undefined) into.add(expr.name);
+      break;
+    case 'unary':
+      elementwiseNames(expr.operand, into);
+      break;
+    case 'binary':
+      elementwiseNames(expr.left, into);
+      elementwiseNames(expr.right, into);
+      break;
+    case 'call':
+      if (REDUCTIONS.has(expr.callee)) break;
+      for (const arg of expr.args) elementwiseNames(arg, into);
+      break;
+  }
+  return into;
+}
+
+/** Said the same way whether the static check or the actual wiring catches it. */
+function noSeriesMessage(callee: string, names: readonly string[]): string {
+  return names.length === 1
+    ? `${callee}() takes a variadic port, and '${names[0] as string}' is not one`
+    : `${callee}() takes a variadic port, and its argument mentions none`;
+}
+
+/**
+ * How many values the reduction runs over: the wire count its argument's
+ * series agree on. They have to agree, because the pairing is positional —
+ * `sum(n * q)` with three speeds and two time shares names no fourth thing
+ * that could say what to do about it.
+ */
+function seriesLength(
+  env: Env,
+  names: readonly string[],
+  callee: string,
+  where: string | undefined,
+): number {
+  let length: number | undefined;
+  let from: string | undefined;
+  for (const name of names) {
+    const value = env[name];
+    if (value === undefined || typeof value === 'number') continue;
+    if (length === undefined) {
+      length = value.length;
+      from = name;
+    } else if (value.length !== length) {
+      throw new KernelError(
+        `${callee}() pairs '${from as string}' and '${name}' wire by wire, and ${length} ` +
+          `values are wired to one against ${value.length} to the other`,
+        where,
+      );
+    }
+  }
+  if (length === undefined) throw new KernelError(noSeriesMessage(callee, names), where);
+  return length;
 }
 
 function checkArity(callee: string, count: number, where: string | undefined): void {
@@ -116,12 +190,12 @@ function compileNode(expr: Expr, where: string | undefined): CompiledExpression 
       const constant = CONSTANTS[expr.name];
       if (constant !== undefined) return () => constant;
       const { name } = expr;
-      return (env) => readNumber(env, name);
+      return (env, index) => readNumber(env, name, index);
     }
 
     case 'unary': {
       const operand = compileNode(expr.operand, where);
-      return (env) => -operand(env);
+      return (env, index) => -operand(env, index);
     }
 
     case 'binary': {
@@ -129,37 +203,48 @@ function compileNode(expr: Expr, where: string | undefined): CompiledExpression 
       const right = compileNode(expr.right, where);
       switch (expr.operator) {
         case '+':
-          return (env) => left(env) + right(env);
+          return (env, index) => left(env, index) + right(env, index);
         case '-':
-          return (env) => left(env) - right(env);
+          return (env, index) => left(env, index) - right(env, index);
         case '*':
-          return (env) => left(env) * right(env);
+          return (env, index) => left(env, index) * right(env, index);
         case '/':
-          return (env) => left(env) / right(env);
+          return (env, index) => left(env, index) / right(env, index);
         case '**':
-          return (env) => Math.pow(left(env), right(env));
+          return (env, index) => Math.pow(left(env, index), right(env, index));
       }
       break;
     }
 
     case 'call': {
-      const reduction = REDUCTIONS.get(expr.callee);
+      const { callee } = expr;
+      const reduction = REDUCTIONS.get(callee);
       if (reduction !== undefined) {
-        const { name, extra } = reductionCallParts(expr, expr.callee, reduction.extraArity ?? 0, where);
+        const { argument, extra } = reductionCallParts(expr, callee, reduction.extraArity ?? 0, where);
+        // Whatever position this call itself sits at, it answers with one
+        // number — so the index it hands its argument is its own, counting
+        // the wires, and never the one it was called with.
+        const element = compileNode(argument, where);
+        const names = [...elementwiseNames(argument)];
         const compiledExtra = extra.map((arg) => compileNode(arg, where));
-        return (env) => reduction.apply(readSeries(env, name), compiledExtra.map((arg) => arg(env)));
+        return (env) => {
+          const length = seriesLength(env, names, callee, where);
+          const values = new Array<number>(length);
+          for (let index = 0; index < length; index += 1) values[index] = element(env, index);
+          return reduction.apply(values, compiledExtra.map((arg) => arg(env)));
+        };
       }
 
-      const spec = FUNCTIONS.get(expr.callee);
+      const spec = FUNCTIONS.get(callee);
       if (spec === undefined) {
         throw new KernelError(
-          `'${expr.callee}' is not one of the functions an expression may call`,
+          `'${callee}' is not one of the functions an expression may call`,
           where,
         );
       }
-      checkArity(expr.callee, expr.args.length, where);
+      checkArity(callee, expr.args.length, where);
       const args = expr.args.map((arg) => compileNode(arg, where));
-      return (env) => spec.apply(args.map((arg) => arg(env)));
+      return (env, index) => spec.apply(args.map((arg) => arg(env, index)));
     }
   }
   // Unreachable: every AST kind is handled above.
@@ -294,7 +379,17 @@ function literalAgainstDimension(
   return undefined;
 }
 
-function dimensionOf(expr: Expr, scope: DimensionScope, where: string | undefined): Dimension {
+/**
+ * `elementwise` is set while walking a reduction's argument, where a variadic
+ * port stands for one of its wired values and so carries that value's own
+ * dimension. Everywhere else naming one bare is the error below.
+ */
+function dimensionOf(
+  expr: Expr,
+  scope: DimensionScope,
+  where: string | undefined,
+  elementwise = false,
+): Dimension {
   switch (expr.kind) {
     case 'number':
       return DIMENSIONLESS;
@@ -305,7 +400,7 @@ function dimensionOf(expr: Expr, scope: DimensionScope, where: string | undefine
       if (dimension === undefined) {
         throw new KernelError(`'${expr.name}' is not a port of this formula`, where);
       }
-      if (scope.variadic?.has(expr.name) === true) {
+      if (!elementwise && scope.variadic?.has(expr.name) === true) {
         throw new KernelError(
           `'${expr.name}' is a variadic port and can only be reduced, as in 'sum(${expr.name})'`,
           where,
@@ -315,15 +410,15 @@ function dimensionOf(expr: Expr, scope: DimensionScope, where: string | undefine
     }
 
     case 'unary':
-      return dimensionOf(expr.operand, scope, where);
+      return dimensionOf(expr.operand, scope, where, elementwise);
 
     case 'binary': {
-      const left = dimensionOf(expr.left, scope, where);
+      const left = dimensionOf(expr.left, scope, where, elementwise);
 
       if (expr.operator === '**') {
         // The base is dimensionless: any exponent is fine, including a wired one.
         if (isDimensionless(left)) {
-          dimensionOf(expr.right, scope, where);
+          dimensionOf(expr.right, scope, where, elementwise);
           return DIMENSIONLESS;
         }
         const exponent = constantValue(expr.right);
@@ -337,7 +432,7 @@ function dimensionOf(expr: Expr, scope: DimensionScope, where: string | undefine
         return powerDimension(left, exponent);
       }
 
-      const right = dimensionOf(expr.right, scope, where);
+      const right = dimensionOf(expr.right, scope, where, elementwise);
       switch (expr.operator) {
         case '+':
         case '-': {
@@ -357,18 +452,18 @@ function dimensionOf(expr: Expr, scope: DimensionScope, where: string | undefine
     case 'call': {
       const reduction = REDUCTIONS.get(expr.callee);
       if (reduction !== undefined) {
-        const { name, extra } = reductionCallParts(expr, expr.callee, reduction.extraArity ?? 0, where);
-        const dimension = scope.dimensions[name];
-        if (dimension === undefined) {
-          throw new KernelError(`'${name}' is not a port of this formula`, where);
+        const { argument, extra } = reductionCallParts(expr, expr.callee, reduction.extraArity ?? 0, where);
+        // What one wired value contributes — proven before the variadic check
+        // below, so a name that is no port at all says so rather than being
+        // reported as the wrong kind of port.
+        const dimension = dimensionOf(argument, scope, where, true);
+        const names = [...elementwiseNames(argument)];
+        if (scope.variadic !== undefined && !names.some((name) => scope.variadic?.has(name) === true)) {
+          throw new KernelError(noSeriesMessage(expr.callee, names), where);
         }
-        if (scope.variadic !== undefined && !scope.variadic.has(name)) {
-          throw new KernelError(
-            `${expr.callee}() takes a variadic port, and '${name}' is not one`,
-            where,
-          );
-        }
-        const extraDimensions = extra.map((arg) => dimensionOf(arg, scope, where));
+        // `at`'s index is one number for the whole call, not one per wired
+        // value — which is how it is evaluated, so it is checked that way too.
+        const extraDimensions = extra.map((arg) => dimensionOf(arg, scope, where, false));
         return reduction.dimension(dimension, where, extraDimensions);
       }
 
@@ -381,7 +476,7 @@ function dimensionOf(expr: Expr, scope: DimensionScope, where: string | undefine
       }
       checkArity(expr.callee, expr.args.length, where);
       return spec.dimension(
-        expr.args.map((arg) => dimensionOf(arg, scope, where)),
+        expr.args.map((arg) => dimensionOf(arg, scope, where, elementwise)),
         where,
       );
     }

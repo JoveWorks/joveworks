@@ -57,10 +57,35 @@ describe('compiled closures', () => {
     expect(() => compileExpression('sqrt(a, b)')).toThrow(/takes 1 argument/u);
   });
 
-  it('reduces every value wired into a port, and only by name', () => {
+  it('reduces every value wired into a port', () => {
     expect(compileExpression('sum(xs)')({ xs: [1, 2, 3] })).toBe(6);
     expect(compileExpression('prod(xs)')({ xs: [2, 3, 4] })).toBe(24);
-    expect(() => compileExpression('sum(xs * 2)')).toThrow(/one variadic port by name/u);
+  });
+
+  it('evaluates a reduction argument once per wired value, pairing series by wire order', () => {
+    expect(compileExpression('sum(xs * 2)')({ xs: [1, 2, 3] })).toBe(12);
+    // The weighted total a time-share cycle is written as: wire 1 of `n`
+    // against wire 1 of `q`, and so on.
+    expect(compileExpression('sum(n * q)')({ n: [10, 20], q: [0.25, 0.75] })).toBe(17.5);
+    expect(compileExpression('sum((xs / r) ** p)')({ xs: [2, 4], r: 2, p: 2 })).toBe(5);
+    // Three of them at once, and a function applied per value rather than to
+    // the total — both shapes the R&M cycle formulas are written in.
+    expect(compileExpression('sum(abs(a) * b * c)')({ a: [-1, 2], b: [3, 4], c: [10, 100] })).toBe(830);
+  });
+
+  it('broadcasts a single value into every position beside the series', () => {
+    expect(compileExpression('sum(xs * k)')({ xs: [1, 2, 3], k: 2 })).toBe(12);
+  });
+
+  it('answers a nested reduction once, the same in every position', () => {
+    // Every share of the total, totalled, is 1 — whatever the values are.
+    expect(compileExpression('sum(xs / sum(xs))')({ xs: [1, 2, 3] })).toBeCloseTo(1, 12);
+  });
+
+  it('refuses series of different lengths in one reduction', () => {
+    expect(() => compileExpression('sum(n * q)')({ n: [1, 2, 3], q: [1, 2] })).toThrow(
+      /pairs 'n' and 'q' wire by wire/u,
+    );
   });
 
   it('reduces a variadic port to the descriptive statistics', () => {
@@ -75,11 +100,11 @@ describe('compiled closures', () => {
     expect(compileExpression('at(xs, 1)')({ xs: [10, 20, 30] })).toBe(20);
     expect(compileExpression('at(xs, i)')({ xs: [10, 20, 30], i: 2 })).toBe(30);
     expect(compileExpression('at(xs, i + 1)')({ xs: [10, 20, 30], i: 0 })).toBe(20);
-    expect(() => compileExpression('at(xs)')).toThrow(/one variadic port by name/u);
+    expect(() => compileExpression('at(xs)')).toThrow(/takes one argument plus an index/u);
   });
 
   it('refuses a value where a series belongs, and the reverse', () => {
-    expect(() => compileExpression('sum(xs)')({ xs: 3 })).toThrow(/not a series/u);
+    expect(() => compileExpression('sum(xs)')({ xs: 3 })).toThrow(/takes a variadic port/u);
     expect(() => compileExpression('a + 1')({ a: [1, 2] })).toThrow(/is a series/u);
   });
 
@@ -175,6 +200,17 @@ describe('dimensions of an expression', () => {
     expect(() => dimensionOf('prod(xs)', variadic)).toThrow(/pure series/u);
     expect(() => dimensionOf('xs + xs', variadic)).toThrow(/only be reduced/u);
     expect(() => dimensionOf('sum(F)', ports)).toThrow(/takes a variadic port/u);
+  });
+
+  it('takes a reduction argument elementwise, so a weighted total keeps its dimension', () => {
+    const variadic = scope({ xs: FORCE, qs: DIMENSIONLESS, F: FORCE, n: DIMENSIONLESS }, ['xs', 'qs']);
+    expect(dimensionOf('sum(xs * qs)', variadic)).toEqual(FORCE);
+    expect(dimensionOf('sum(xs / F)', variadic)).toEqual(DIMENSIONLESS);
+    expect(dimensionOf('F * sum((xs / F) ** n) ** (1 / n)', variadic)).toEqual(FORCE);
+    // Still refused where nothing in the argument collects wires at all.
+    expect(() => dimensionOf('sum(F * 2)', variadic)).toThrow(/'F' is not one/u);
+    expect(() => dimensionOf('sum(F * n)', variadic)).toThrow(/mentions none/u);
+    expect(() => dimensionOf('sum(xs + qs)', variadic)).toThrow(/cannot add/u);
   });
 
   it('keeps a variadic-port reduction dimension-preserving for the descriptive statistics, and count always dimensionless', () => {

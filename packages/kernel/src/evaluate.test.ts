@@ -1499,6 +1499,45 @@ describe('variadic ports', () => {
     ]);
   });
 
+  describe('a reduction over more than one of them', () => {
+    const cycleCatalogue = catalogueOf([
+      {
+        id: 'weightedTotal', version: 1,
+        output: { kind: 'numeric', name: 'mean', unit: 'N' },
+        inputs: [
+          { kind: 'numeric', name: 'F', unit: 'N', variadic: true },
+          { kind: 'numeric', name: 'q', unit: '', variadic: true },
+        ],
+        expression: 'sum(F * q)',
+        description: 'Invented load averaged over the time shares it is carried for.',
+        status: 'unverified',
+      },
+    ]);
+    const cycleRef = refTo('weightedTotal', cycleCatalogue);
+
+    it('pairs the two ports wire by wire', () => {
+      const force = variadicWires('force', 'cycle.F', [100, 200], 'N');
+      const share = variadicWires('share', 'cycle.q', [0.25, 0.75], '');
+      const document = documentOf(
+        [...force.nodes, ...share.nodes, formulaNode('cycle', cycleRef)],
+        [...force.wires, ...share.wires],
+      );
+      expect(
+        numeric(valueAt(evaluateDocument(document, [cycleCatalogue]), 'cycle', 'mean')).data,
+      ).toEqual([175]);
+    });
+
+    it('refuses unequal wire counts rather than pairing what it can', () => {
+      const force = variadicWires('force', 'cycle.F', [100, 200, 300], 'N');
+      const share = variadicWires('share', 'cycle.q', [0.25, 0.75], '');
+      const document = documentOf(
+        [...force.nodes, ...share.nodes, formulaNode('cycle', cycleRef)],
+        [...force.wires, ...share.wires],
+      );
+      expect(() => evaluateDocument(document, [cycleCatalogue])).toThrow(/wire by wire/u);
+    });
+  });
+
   it('refuses a second wire into an ordinary, non-variadic numeric port', () => {
     const document = documentOf(
       [

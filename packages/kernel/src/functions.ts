@@ -19,10 +19,13 @@
  *
  * `sum`, `prod` and the rest of `REDUCTIONS` are apart from the whitelist above:
  * they consume every value wired into a port at once rather than a single
- * value, so they are listed separately and their first argument must be a
- * variadic port by name. `at` is the one exception with a second argument —
- * a plain index alongside the wired values — which is what
- * `ReductionSpec.extraArity` exists to declare.
+ * value, so they are listed separately. Their argument is an expression over
+ * at least one variadic port, evaluated once per wired value and paired by
+ * wire order — `sum(xs)`, and equally `sum(n * q)` — so what a spec here
+ * receives is already one number per wired value, whatever arithmetic
+ * produced it (`compile.ts`). `at` is the one with a second argument, a plain
+ * index alongside those values, which is what `ReductionSpec.extraArity`
+ * exists to declare.
  */
 
 import {

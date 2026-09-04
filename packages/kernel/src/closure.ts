@@ -35,30 +35,55 @@ import { CONSTANTS, REDUCTIONS } from './functions.js';
 import { parseExpression } from './parse.js';
 
 /**
- * Every free name that is ever a reduction's variadic argument — `sum(xs)`,
- * or `at(xs, i)`'s `xs` but not its plain index `i` — not `xs` alone.
+ * Which of a typed expression's names collect wires rather than hold one value.
+ *
+ * A reduction reads its argument one wired value at a time, so every name in
+ * it is a series: `sum(n * q)` totals pairs, and `n` and `q` both collect
+ * wires. Every name, except one the expression *also* uses outside a
+ * reduction — that use needs a single value, so it settles the question. In
+ * `P_ref * sum(P / P_ref)`, `P_ref` is one number and only `P` is a series.
+ *
+ * A closure node declares no ports — that is the whole point of it — so this
+ * is a reading of what was typed rather than a fact it states, and the one
+ * ambiguous case it can get wrong is a scalar used nowhere but inside a
+ * reduction (`sum(xs * k)`). Every port it decides on is drawn on the node,
+ * with a slot per wire, so a wrong reading is visible rather than silent.
  */
-function reductionArguments(expr: Expr, into: Set<string>): void {
-  switch (expr.kind) {
-    case 'number':
-    case 'name':
-      return;
-    case 'unary':
-      reductionArguments(expr.operand, into);
-      return;
-    case 'binary':
-      reductionArguments(expr.left, into);
-      reductionArguments(expr.right, into);
-      return;
-    case 'call': {
-      const [first] = expr.args;
-      const spec = REDUCTIONS.get(expr.callee);
-      if (spec !== undefined && expr.args.length === 1 + (spec.extraArity ?? 0) && first?.kind === 'name') {
-        into.add(first.name);
+function variadicNames(expr: Expr): Set<string> {
+  const reduced = new Set<string>();
+  const alone = new Set<string>();
+
+  const walk = (node: Expr, reducing: boolean): void => {
+    switch (node.kind) {
+      case 'number':
+        return;
+      case 'name':
+        (reducing ? reduced : alone).add(node.name);
+        return;
+      case 'unary':
+        walk(node.operand, reducing);
+        return;
+      case 'binary':
+        walk(node.left, reducing);
+        walk(node.right, reducing);
+        return;
+      case 'call': {
+        const spec = REDUCTIONS.get(node.callee);
+        const [argument, ...extra] = node.args;
+        if (spec !== undefined && node.args.length === 1 + (spec.extraArity ?? 0) && argument !== undefined) {
+          walk(argument, true);
+          // `at(xs, i)`'s index is a position among the values, not one of them.
+          for (const rest of extra) walk(rest, reducing);
+          return;
+        }
+        for (const arg of node.args) walk(arg, reducing);
       }
-      for (const arg of expr.args) reductionArguments(arg, into);
     }
-  }
+  };
+
+  walk(expr, false);
+  for (const name of alone) reduced.delete(name);
+  return reduced;
 }
 
 /**
@@ -72,8 +97,7 @@ export function closureFormula(expression: string): Formula {
     throw new KernelError('type an equation, e.g. a + b');
   }
   const expr = parseExpression(expression);
-  const variadicNames = new Set<string>();
-  reductionArguments(expr, variadicNames);
+  const variadic = variadicNames(expr);
 
   const names = [...expressionNames(expr)]
     .filter((name) => CONSTANTS[name] === undefined)
@@ -89,7 +113,7 @@ export function closureFormula(expression: string): Formula {
     kind: 'numeric',
     name,
     unit: parseGenericDimension(`$${name}`),
-    ...(variadicNames.has(name) ? { variadic: true } : {}),
+    ...(variadic.has(name) ? { variadic: true } : {}),
   }));
 
   return {

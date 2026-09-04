@@ -32,6 +32,21 @@ describe('closureFormula', () => {
     expect(i?.kind === 'numeric' && i.variadic).toBeUndefined();
   });
 
+  it('marks every name a reduction reads elementwise, not just a bare argument', () => {
+    const formula = closureFormula('sum(n * q)');
+    expect(
+      formula.inputs.every((port) => port.kind === 'numeric' && port.variadic === true),
+    ).toBe(true);
+  });
+
+  it('keeps a name the expression also uses outside a reduction a single value', () => {
+    const formula = closureFormula('P * sum(xs / P)');
+    const xs = formula.inputs.find((port) => port.name === 'xs');
+    const p = formula.inputs.find((port) => port.name === 'P');
+    expect(xs?.kind === 'numeric' && xs.variadic).toBe(true);
+    expect(p?.kind === 'numeric' && p.variadic).toBeUndefined();
+  });
+
   it('rejects a symbol named after the output port', () => {
     expect(() => closureFormula('result + 1')).toThrow(KernelError);
   });
