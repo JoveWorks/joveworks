@@ -107,5 +107,5 @@ If a document reports a missing catalogue or revision mismatch, load the exact
 catalogue revision used to create it. Do not substitute a newer file unless the
 person who supplied the material has explicitly migrated the graph.
 
-If you create catalogues rather than use them, see
-[Catalogue authoring for teachers](./catalogue-authoring).
+If you create catalogues rather than use them — including a small one of your
+own formulas — see [Catalogue authoring](./catalogue-authoring).
