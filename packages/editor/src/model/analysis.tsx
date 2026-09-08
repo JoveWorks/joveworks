@@ -517,6 +517,22 @@ function readiness(
   return ready;
 }
 
+/**
+ * A kernel refusal as it reads on the node it is drawn under.
+ *
+ * `KernelError` prefixes its message with `where` — `add3.b`, an internal
+ * node id and port name — because the kernel is also reached from tests and
+ * from the connect-time check, neither of which has a node to pin a message
+ * to. A canvas does: the message is already inside that node's own card, so
+ * the prefix is a technical restatement of what the student is looking at.
+ */
+export function nodeProblem(error: KernelError): string {
+  const prefix = `${error.where ?? ''}: `;
+  return error.where !== undefined && error.message.startsWith(prefix)
+    ? error.message.slice(prefix.length)
+    : error.message;
+}
+
 /** How many times a node may be dropped and the rest re-evaluated. */
 const RETRIES = 8;
 
@@ -573,7 +589,7 @@ export function analyse(document: GraphDocument, catalogues: readonly Catalogue[
         break;
       }
       states.set(nodeId, 'error');
-      problems.set(nodeId, error.message);
+      problems.set(nodeId, nodeProblem(error));
       const dropped = descendants(document, nodeId);
       for (const id of dropped) {
         if (id !== nodeId) states.set(id, 'blocked');
@@ -610,7 +626,7 @@ export function analyse(document: GraphDocument, catalogues: readonly Catalogue[
         break;
       }
       states.set(nodeId, 'error');
-      problems.set(nodeId, error.message);
+      problems.set(nodeId, nodeProblem(error));
       const dropped = descendants(document, nodeId);
       const kept = new Set([...ready].filter((id) => !dropped.has(id)));
       for (const id of dropped) {

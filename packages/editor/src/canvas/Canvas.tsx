@@ -875,9 +875,14 @@ export function Canvas({
     (candidate: Edge, reason: string): void => {
       // The kernel distinguishes a dimension failure from a kind failure with
       // "cannot connect <dimension> ..." (rather than "cannot connect a
-      // numeric value ..."). Generic-variable binding uses its own wording.
+      // numeric value ..."). Generic-variable binding uses its own wording
+      // ("the same kind of quantity"), which this has to keep recognising:
+      // the phrasing below names both ports and their units, and is the
+      // reason that message never has to.
       const unitMismatch =
-        (/^cannot connect (?!a )/u.test(reason) || reason.includes('different dimensions')) &&
+        (/^cannot connect (?!a )/u.test(reason) ||
+          reason.includes('different dimensions') ||
+          reason.includes('the same kind of quantity')) &&
         !reason.includes('would close a cycle');
       if (!unitMismatch) {
         setRejectedUnitConnection(undefined);

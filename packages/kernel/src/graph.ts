@@ -27,6 +27,7 @@ import {
   DIMENSIONLESS,
   FREQUENCY,
   bareVariable,
+  describeDimension,
   dimensionsEqual,
   formatDimension,
   genericVariables,
@@ -91,7 +92,7 @@ import {
 import { packChannelIndices, waypointChannelIndices } from './bundle.js';
 import { closureFormula } from './closure.js';
 import { expressionDimension, type DimensionScope } from './compile.js';
-import { assertConnectable, assertSameDimension, connectable } from './dimensions.js';
+import { assertConnectable, assertSameDimension, connectable, dimensionsClose } from './dimensions.js';
 import { KernelError } from './errors.js';
 import { parseExpression } from './parse.js';
 import type { Axis } from './series.js';
@@ -619,11 +620,15 @@ export function resolveGraph(
       const variable = bareVariable(unit) as string;
       const already = bound.get(variable);
       if (already === undefined) bound.set(variable, dimension);
-      else {
-        assertSameDimension(
-          already,
-          dimension,
-          `'$${variable}' is bound twice on this node and must be one dimension`,
+      else if (!dimensionsClose(already, dimension)) {
+        // A student reads this on the node, so it says what is wrong with
+        // the wiring rather than what is wrong with `$A`: the generic
+        // variable is an internal device for declaring "whatever is wired
+        // here", and naming it explains nothing to someone who never
+        // authored the formula.
+        throw new KernelError(
+          `these inputs must all be the same kind of quantity: ` +
+            `${describeDimension(already)} and ${describeDimension(dimension)} do not match`,
           key,
         );
       }

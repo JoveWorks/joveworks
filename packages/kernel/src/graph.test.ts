@@ -650,7 +650,7 @@ describe('generic signatures bind per node instance', () => {
     );
     const result = canConnect(document, catalogues, wire('d.value', 'sum.b'));
     expect(result.ok).toBe(false);
-    expect(result.ok === false && result.reason).toMatch(/bound twice/u);
+    expect(result.ok === false && result.reason).toMatch(/the same kind of quantity/u);
   });
 
   it('leaves an unbound generic port without a dimension, rather than guessing one', () => {
@@ -684,7 +684,7 @@ describe('generic signatures bind per node instance', () => {
       ],
       [wire('F.value', 'sum.a')],
     );
-    expect(() => resolveGraph(document, catalogues)).toThrow(/bound twice/u);
+    expect(() => resolveGraph(document, catalogues)).toThrow(/the same kind of quantity/u);
   });
 
   it('lets a wire override the typed value it stands in for, dimension included', () => {
