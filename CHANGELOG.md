@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.26.9](https://github.com/JoveWorks/joveworks/compare/v0.26.8...v0.26.9) (2026-09-08)
+
+### Features
+
+* add a canvas-only note field to every node's dropdown ([071c2e3](https://github.com/JoveWorks/joveworks/commit/071c2e39c52de444a37574e52966df100703a2ce))
+* **editor:** export a table output node's rows as CSV ([a9066d8](https://github.com/JoveWorks/joveworks/commit/a9066d85c5f25c9bcc85cdd42e53e56e1440e34f))
+* **schema:** remember a range's high end and point count across a value/range switch ([aeda0cc](https://github.com/JoveWorks/joveworks/commit/aeda0cc230ba41add65d3d624272d5ef00ebf7d5))
+
+### Fixes
+
+* **editor:** clip a wrapped port name instead of overprinting the next row ([32f3261](https://github.com/JoveWorks/joveworks/commit/32f32611988b03931f1b8d441c5a6c6bcc0358a4))
+* **editor:** say a mixed-dimension refusal in a student's words ([5722df5](https://github.com/JoveWorks/joveworks/commit/5722df5b6ab0289205de265e3bec879e65320238))
+* **editor:** stop a plot's single threshold label overprinting the row below ([11c2afc](https://github.com/JoveWorks/joveworks/commit/11c2afc8beff8c7d239e1a5e8660815a1a75389b))
 ## [0.26.8](https://github.com/JoveWorks/joveworks/compare/v0.26.7...v0.26.8) (2026-09-04)
 
 ### Features
