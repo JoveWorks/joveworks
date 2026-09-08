@@ -1674,6 +1674,35 @@ aside.bottom .palette-list section {
   margin-top: -4px;
 }
 
+/* The free-text working comment `NodeShell.tsx` draws last in every node's
+   detail region, after whatever detail the node itself passed — a dashed
+   rule (rather than the solid one `.node-detail` already draws above the
+   whole region) says "this part is scratch, not the node's own fields"
+   without adding a second visual language. It never reaches the NodeBook —
+   canvas nodes are hidden outright under @media print, so no print rule is
+   needed here. */
+.node .node-note-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--line);
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.node .node-note-field .field {
+  width: 100%;
+}
+
+.node .node-note {
+  width: 100%;
+  min-width: 0;
+  color: var(--ink);
+  font-size: 12px;
+}
+
 .node .description,
 .node .applies {
   margin: 0 0 4px;

@@ -40,4 +40,41 @@ describe('browser NodeBook compiler', () => {
     expect(compiled.display.contourPalette).toBe(DEFAULT_DISPLAY.contourPalette);
     for (const secret of ['SECRET_EXPRESSION', 'SECRET_CATALOGUE', 'secret-edge', '"edges"', '"position"', '"equation"']) expect(json).not.toContain(secret);
   });
+
+  it('never carries a node’s canvas-only working note into the compiled NodeBook', () => {
+    // "Comments in the node dropdown, not in final notebook." — `note` is a
+    // scratch annotation (`NodeShell.tsx`'s bottom-of-detail field); the
+    // compiler must not surface it, on any node kind, published or not.
+    const secretNote = 'DO-NOT-PUBLISH-this-scratch-annotation';
+    const nodes = [
+      {
+        id: 'result', kind: 'output', position: { x: 0, y: 0 }, frameId: 'report',
+        label: 'result', caption: 'the working value', note: secretNote,
+        output: { kind: 'print' },
+      } as unknown as OutputNode,
+      // A formula node never reaches the compiled report at all — its note
+      // should be just as absent as everything else about it.
+      {
+        id: 'unpublished', kind: 'formula', position: { x: 0, y: 1 }, frameId: 'report',
+        note: secretNote,
+        formula: { id: 'demo.sum', version: 1, hash: '0123456789abcdef' },
+      } as unknown as OutputNode,
+    ];
+    const document = {
+      schemaVersion: 1, id: 'invented', title: 'Invented y = a*b + c', nodes,
+      edges: [],
+      frames: [{ id: 'report', title: 'Report', position: { x: 0, y: 0 }, size: { width: 10, height: 10 } }],
+    } as GraphDocument;
+    const results = [
+      { nodeId: 'result', kind: 'print', series: { axes: [], data: [4] }, unit: { symbol: 'mm' } },
+    ] as unknown as OutputResult[];
+    const analysis = { evaluation: { outputs: results, axisReadouts: new Map() } } as unknown as Analysis;
+    const compiled = compileNotebook(document, analysis, DEFAULT_DISPLAY);
+    const json = JSON.stringify(compiled);
+    // The distinction the note field exists to preserve: caption is
+    // deliberately notebook copy and does travel; note never does.
+    expect(json).toContain('the working value');
+    expect(json).not.toContain(secretNote);
+    expect(json).not.toContain('note');
+  });
 });
