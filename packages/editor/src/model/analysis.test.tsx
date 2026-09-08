@@ -115,6 +115,36 @@ describe('analysing a graph mid-build', () => {
     expect(text(analysis.problems.get('half'))).toContain('not connected');
   });
 
+  it('states a mixed-dimension refusal without the port key or the generic variable', () => {
+    // `base.math.add` declares both inputs `$A`, so wiring a length into one
+    // and a plain number into the other is the classic student mistake. What
+    // it used to read was the kernel's internal account of it: the port key
+    // it happened at, and the name of a generic variable nobody outside
+    // catalogue authoring has ever seen.
+    const document = graph(
+      [
+        scalar('d', 20),
+        {
+          kind: 'input' as const,
+          id: 'n',
+          position: { x: 0, y: 0 },
+          value: { kind: 'scalar' as const, value: 3, unit: parseUnit('') },
+        },
+        formulaNode('sum', 'base.math.add'),
+      ],
+      [wire('e1', ['d', 'value'], ['sum', 'a']), wire('e2', ['n', 'value'], ['sum', 'b'])],
+    );
+    const analysis = analyse(document, CATALOGUES);
+
+    expect(analysis.states.get('sum')).toBe('error');
+    const problem = text(analysis.problems.get('sum'));
+    expect(problem).toBe(
+      'these inputs must all be the same kind of quantity: length (mm) and dimensionless (—) do not match',
+    );
+    expect(problem).not.toContain('sum.b');
+    expect(problem).not.toContain('$A');
+  });
+
   it('counts a value typed on the node as supplying that port — no wire needed', () => {
     // `b` has no declared default, so before values could be typed on any
     // port this node had no way to be complete but a second input node.
