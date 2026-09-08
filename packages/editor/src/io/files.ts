@@ -109,9 +109,16 @@ export function openBinaryFiles(accept: string): Promise<readonly PickedBinaryFi
   });
 }
 
-/** Hand the text back as a download — the export half of file I/O. */
-export function saveTextFile(name: string, text: string): void {
-  const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+/**
+ * Hand the text back as a download — the export half of file I/O.
+ *
+ * `type` defaults to JSON, the only blob type this used to hand out; a CSV
+ * export (`model/csv.ts`) passes `text/csv` instead so the browser's own
+ * save dialog offers a sane extension/handler rather than treating a table
+ * export as JSON.
+ */
+export function saveTextFile(name: string, text: string, type = 'application/json'): void {
+  const url = URL.createObjectURL(new Blob([text], { type }));
   const link = document.createElement('a');
   link.href = url;
   link.download = name;
