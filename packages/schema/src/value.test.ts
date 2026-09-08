@@ -30,6 +30,14 @@ describe('single values', () => {
   it('introduces no axis', () => {
     expect(isRange(parseValueSpec({ kind: 'scalar', value: 1, unit: 'mm' }, 'v'))).toBe(false);
   });
+
+  it('round-trips a remembered bound and point count, and omits both when unset', () => {
+    const withBoth = { kind: 'scalar', value: 20, unit: 'mm', bound: 60, points: 41 } as const;
+    expect(roundTrip(withBoth)).toEqual(withBoth);
+
+    const withNeither = { kind: 'scalar', value: 20, unit: 'mm' } as const;
+    expect(roundTrip(withNeither)).toEqual(withNeither);
+  });
 });
 
 describe('slider values', () => {

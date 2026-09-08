@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { parseUnit } from '@joveworks/units';
 
-import { converted, rescaleRange, roundToDecimalFigures } from './ValueEditor';
+import { converted, rescaleRange, rescaleScalarBound, roundToDecimalFigures, withScalarValue } from './ValueEditor';
 
 const mm = parseUnit('mm');
 
@@ -18,13 +18,14 @@ describe('rounding slider drags', () => {
 });
 
 describe('switching an input value between kinds', () => {
-  it('takes the smallest limit of a range as the value, not a hardcoded guess', () => {
+  it('takes the smallest limit of a range as the value, not a hardcoded guess — remembering the high end and point count too', () => {
     const range = { kind: 'linear' as const, start: 20, stop: 60, points: 21, unit: mm };
-    expect(converted(range, 'scalar')).toEqual({ kind: 'scalar', value: 20, unit: mm });
+    expect(converted(range, 'scalar')).toEqual({ kind: 'scalar', value: 20, unit: mm, bound: 60, points: 21 });
 
-    // Bounds are not guaranteed ordered — the smallest still wins either way.
+    // Bounds are not guaranteed ordered — the smallest still wins either way,
+    // and the largest is still what gets remembered as the bound.
     const reversed = { kind: 'linear' as const, start: 60, stop: 20, points: 21, unit: mm };
-    expect(converted(reversed, 'scalar')).toEqual({ kind: 'scalar', value: 20, unit: mm });
+    expect(converted(reversed, 'scalar')).toEqual({ kind: 'scalar', value: 20, unit: mm, bound: 60, points: 21 });
   });
 
   it('takes the smallest value of a list as the value, not the first one', () => {
@@ -83,9 +84,9 @@ describe('switching an input value between kinds', () => {
     });
   });
 
-  it('takes the smallest bound of a Renard range as the value, going back to scalar', () => {
+  it('takes the smallest bound of a Renard range as the value, going back to scalar, and remembers the high end', () => {
     const range = { kind: 'renard' as const, series: 'R20' as const, start: 60, stop: 20, unit: mm };
-    expect(converted(range, 'scalar')).toEqual({ kind: 'scalar', value: 20, unit: mm });
+    expect(converted(range, 'scalar')).toEqual({ kind: 'scalar', value: 20, unit: mm, bound: 60 });
   });
 
   it('uses the value as both the reading and the low end, doubled for the high end, switching to a slider', () => {
@@ -114,6 +115,47 @@ describe('switching an input value between kinds', () => {
     expect(converted({ kind: 'categoricalList', values: ['K', 'M'] }, 'categorical')).toEqual({
       kind: 'categorical', value: 'K',
     });
+  });
+
+  it('remembers a linear range’s high end and point count across a round trip through scalar', () => {
+    const range = { kind: 'linear' as const, start: 20, stop: 60, points: 41, unit: mm };
+    const asScalar = converted(range, 'scalar');
+    expect(asScalar).toEqual({ kind: 'scalar', value: 20, unit: mm, bound: 60, points: 41 });
+    expect(converted(asScalar, 'linear')).toEqual({ kind: 'linear', start: 20, stop: 60, points: 41, unit: mm });
+  });
+
+  it('remembers a logarithmic range the same way', () => {
+    const range = { kind: 'logarithmic' as const, start: 10, stop: 1000, points: 30, unit: mm };
+    const asScalar = converted(range, 'scalar');
+    expect(asScalar).toEqual({ kind: 'scalar', value: 10, unit: mm, bound: 1000, points: 30 });
+    expect(converted(asScalar, 'logarithmic')).toEqual({
+      kind: 'logarithmic', start: 10, stop: 1000, points: 30, unit: mm,
+    });
+  });
+
+  it('falls back to doubling the low end and the default point count when a value has never been a range', () => {
+    const scalar = { kind: 'scalar' as const, value: 20, unit: mm };
+    expect(converted(scalar, 'linear')).toEqual({ kind: 'linear', start: 20, stop: 40, points: 10, unit: mm });
+  });
+
+  it('remembers a Renard range’s high end, but not a point count it never had', () => {
+    const range = { kind: 'renard' as const, series: 'R20' as const, start: 20, stop: 60, unit: mm };
+    const asScalar = converted(range, 'scalar');
+    expect(asScalar).toEqual({ kind: 'scalar', value: 20, unit: mm, bound: 60 });
+    expect(converted(asScalar, 'renard')).toEqual({
+      kind: 'renard', series: 'R20', start: 20, stop: 60, unit: mm,
+    });
+  });
+
+  it('ignores a remembered bound and point count switching to a kind that cannot use them', () => {
+    const scalar = { kind: 'scalar' as const, value: 20, unit: mm, bound: 60, points: 41 };
+    // A list has its own values, not a bound/points pair, so this still doubles.
+    expect(converted(scalar, 'list')).toEqual({ kind: 'list', values: [20, 40], unit: mm });
+  });
+
+  it('takes a slider’s own max as the high end, switching directly to a range', () => {
+    const slider = { kind: 'slider' as const, value: 35, min: 20, max: 80, unit: mm };
+    expect(converted(slider, 'linear')).toEqual({ kind: 'linear', start: 35, stop: 80, points: 10, unit: mm });
   });
 });
 
@@ -185,5 +227,50 @@ describe('typing a unit on one bound of a range', () => {
       points: 21,
       unit: parseUnit('rev'),
     });
+  });
+});
+
+describe('retyping a scalar’s own unit', () => {
+  // A scalar's own `value` is a plain relabel on unit retype, same/different
+  // dimension alike — that is pre-existing scalar `setUnit` behaviour,
+  // unrelated to `bound`. `bound` gets the range treatment: rescaled under a
+  // same-dimension retype, dropped under a different-dimension one.
+  it('re-expresses a remembered bound under the new unit, value and points untouched', () => {
+    const scalar = { kind: 'scalar' as const, value: 10, unit: mm, bound: 1000, points: 41 };
+    // 1000 mm, retyped in metres: 1 m.
+    expect(rescaleScalarBound(scalar, 'm')).toEqual({
+      kind: 'scalar',
+      value: 10,
+      unit: parseUnit('m'),
+      bound: 1,
+      points: 41,
+    });
+  });
+
+  it('drops the bound on a different-dimension retype instead of carrying it forward wrong', () => {
+    const scalar = { kind: 'scalar' as const, value: 10, unit: mm, bound: 60, points: 41 };
+    expect(rescaleScalarBound(scalar, 'N')).toEqual({
+      kind: 'scalar',
+      value: 10,
+      unit: parseUnit('N'),
+      points: 41,
+    });
+  });
+
+  it('has no bound to drop or rescale when there was never one', () => {
+    const scalar = { kind: 'scalar' as const, value: 10, unit: mm };
+    expect(rescaleScalarBound(scalar, 'm')).toEqual({ kind: 'scalar', value: 10, unit: parseUnit('m') });
+  });
+});
+
+describe('retyping a scalar’s own number', () => {
+  it('drops a remembered bound — it belonged to the old value — but keeps the point count', () => {
+    const scalar = { kind: 'scalar' as const, value: 20, unit: mm, bound: 60, points: 41 };
+    expect(withScalarValue(scalar, 35)).toEqual({ kind: 'scalar', value: 35, unit: mm, points: 41 });
+  });
+
+  it('stays without a bound when there was never one', () => {
+    const scalar = { kind: 'scalar' as const, value: 20, unit: mm };
+    expect(withScalarValue(scalar, 35)).toEqual({ kind: 'scalar', value: 35, unit: mm });
   });
 });

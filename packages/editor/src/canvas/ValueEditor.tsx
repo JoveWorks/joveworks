@@ -13,7 +13,14 @@
 import type { ReactElement } from 'react';
 
 import { dimensionsEqual, parseUnit, type NumberFormat, type Unit } from '@joveworks/units';
-import { DEFAULT_SLIDER_FIGURES, RENARD_SERIES, localize, type RenardSeries, type ValueSpec } from '@joveworks/schema';
+import {
+  DEFAULT_SLIDER_FIGURES,
+  RENARD_SERIES,
+  localize,
+  type RenardSeries,
+  type ScalarValue,
+  type ValueSpec,
+} from '@joveworks/schema';
 
 import { useSettings } from '../settings-context';
 import { useGraph } from '../graph-context';
@@ -57,9 +64,17 @@ function smallest(value: ValueSpec): number {
   return 1;
 }
 
-/** The largest value already typed into a list, so a switch to a range can take both its ends as bounds. */
+/**
+ * The largest bound already on the value, so a switch to a range can take
+ * both its ends as bounds instead of guessing — a list's own largest entry, a
+ * slider's own travel `max`, or a scalar's remembered `bound` from the last
+ * range it was switched away from.
+ */
 function largest(value: ValueSpec): number | undefined {
-  return value.kind === 'list' ? Math.max(...value.values) : undefined;
+  if (value.kind === 'list') return Math.max(...value.values);
+  if (value.kind === 'slider') return value.max;
+  if (value.kind === 'scalar') return value.bound;
+  return undefined;
 }
 
 function firstCategory(value: ValueSpec): string {
@@ -72,17 +87,48 @@ function firstCategory(value: ValueSpec): string {
  * A first guess when the kind changes, so a switch never lands on nothing.
  *
  * Range → value takes the smallest limit, since a single number has to come
- * from somewhere and the low end is the one a range always has. Value →
- * range goes the other way: the value becomes the low end, and the high end
- * is double it — a starting range to narrow from, not a guess at where the
- * student's real bound is.
+ * from somewhere and the low end is the one a range always has. A
+ * "start/stop" range (linear, logarithmic, Renard) also carries its high end
+ * onto the resulting scalar's `bound` field, so switching kind back to a
+ * range later does not have to guess at it again — a list's own values and a
+ * slider's own `max` already have somewhere to live and need no such
+ * shadow copy. `linear`/`logarithmic` additionally carry their own point
+ * count onto the scalar's `points` field, for the same reason.
+ *
+ * Value → range goes the other way: the value becomes the low end, and the
+ * high end is a remembered bound — the value's own `bound`, a slider's own
+ * `max`, or a list's own largest entry, via `largest` — when the value has
+ * one. Only when it does not does the high end fall back to double the low
+ * end: a starting range to narrow from, not a guess at where the student's
+ * real bound is. Switching to `linear`/`logarithmic` reads a remembered
+ * `points` back the same way, falling back to the usual default of 10.
  */
 export function converted(value: ValueSpec, kind: Kind): ValueSpec {
   const unit = unitOf(value);
   const sample = smallest(value);
   switch (kind) {
-    case 'scalar':
-      return { kind, value: sample, unit };
+    case 'scalar': {
+      // Only a "start/stop" range's high end is worth remembering this way —
+      // a list's own values and a slider's own `max` already round-trip
+      // through their own fields via `largest`, without riding along on a
+      // scalar in between.
+      const stop =
+        value.kind === 'linear' || value.kind === 'logarithmic' || value.kind === 'renard'
+          ? Math.max(value.start, value.stop)
+          : undefined;
+      const bound = stop !== undefined && stop > sample ? stop : undefined;
+      // Only `linear`/`logarithmic` have a point count of their own to carry
+      // — `renard` derives its count from the series and the bounds, so
+      // there is nothing to remember for it.
+      const points = value.kind === 'linear' || value.kind === 'logarithmic' ? value.points : undefined;
+      return {
+        kind,
+        value: sample,
+        unit,
+        ...(bound === undefined ? {} : { bound }),
+        ...(points === undefined ? {} : { points }),
+      };
+    }
     case 'slider': {
       // Same "value becomes the low end, high end is double it" convention as
       // linear/list, guarded the way logarithmic guards zero: a slider needs
@@ -96,7 +142,11 @@ export function converted(value: ValueSpec, kind: Kind): ValueSpec {
       const start = kind === 'logarithmic' && sample <= 0 ? 1 : sample;
       const upper = largest(value);
       const stop = upper !== undefined && upper > start ? upper : start * 2;
-      return { kind, start, stop, points: 10, unit };
+      // A scalar remembers the point count of the linear/logarithmic range
+      // it was last switched away from — read it back the same way `stop`
+      // reads `bound` back, falling back to the same default of 10.
+      const points = value.kind === 'scalar' ? value.points ?? 10 : 10;
+      return { kind, start, stop, points, unit };
     }
     case 'list':
       return { kind, values: [sample, sample * 2], unit };
@@ -140,6 +190,47 @@ export function rescaleRange(range: Range, text: string): Range {
   if (!dimensionsEqual(parsed.dimension, range.unit.dimension)) return { ...range, unit: parsed };
   const rescale = (n: number): number => (n * range.unit.factor) / parsed.factor;
   return { ...range, start: rescale(range.start), stop: rescale(range.stop), unit: parsed };
+}
+
+/**
+ * The scalar counterpart of `rescaleRange`, for its own remembered `bound`.
+ * A same-dimension retype re-expresses `bound` under the new unit, canonical
+ * value unchanged, the same as a range's two bounds above; a
+ * different-dimension retype has no meaningful factor to convert by, so the
+ * bound — labelled in a unit that no longer applies — is dropped rather than
+ * carried forward wrong. `points` is untouched either way: it is not a
+ * magnitude, so no unit ever applies to it.
+ */
+export function rescaleScalarBound(value: ScalarValue, text: string): ScalarValue {
+  const parsed = parseUnit(text);
+  const bound =
+    value.bound !== undefined && dimensionsEqual(parsed.dimension, value.unit.dimension)
+      ? (value.bound * value.unit.factor) / parsed.factor
+      : undefined;
+  return {
+    kind: value.kind,
+    value: value.value,
+    unit: parsed,
+    ...(bound === undefined ? {} : { bound }),
+    ...(value.points === undefined ? {} : { points: value.points }),
+  };
+}
+
+/**
+ * A scalar's own number, retyped. The remembered `bound` belonged to the
+ * value being replaced, not to this one — the same reasoning `converted`
+ * above uses to set a fresh `bound` each time a value is switched away from
+ * a range — so retyping the number drops it. `points` stays: it is not a
+ * magnitude of the value, and a student who chose 41 samples still means 41
+ * samples no matter what number this field now holds.
+ */
+export function withScalarValue(value: ScalarValue, next: number): ScalarValue {
+  return {
+    kind: value.kind,
+    value: next,
+    unit: value.unit,
+    ...(value.points === undefined ? {} : { points: value.points }),
+  };
 }
 
 interface Props {
@@ -264,15 +355,16 @@ export function ValueFields({ value, onChange, onSliderChange, onSliderCommit }:
   );
 
   const setUnit = (text: string): void => {
-    const parsed = parseUnit(text); // throws, and the field shows why
     switch (value.kind) {
       case 'scalar':
+        onChange(rescaleScalarBound(value, text)); // throws, and the field shows why
+        break;
       case 'slider':
       case 'linear':
       case 'logarithmic':
       case 'list':
       case 'renard':
-        onChange({ ...value, unit: parsed });
+        onChange({ ...value, unit: parseUnit(text) }); // throws, and the field shows why
         break;
       default:
         // The categorical kinds carry no unit, and neither does a table column.
@@ -292,7 +384,7 @@ export function ValueFields({ value, onChange, onSliderChange, onSliderCommit }:
             autoSize={1}
             format={format}
             title="The value. The unit is the field beside it, and does not need retyping."
-            onCommit={(next) => onChange({ ...value, value: next })}
+            onCommit={(next) => onChange(withScalarValue(value, next))}
           />
           <TextField
             className="unit"

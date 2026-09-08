@@ -51,6 +51,32 @@ export interface ScalarValue {
   readonly kind: 'scalar';
   readonly value: number;
   readonly unit: Unit;
+  /**
+   * The high end of the range this value was last switched away from,
+   * remembered purely so switching kind back to a range does not have to
+   * guess at it again — this field has no meaning to anything downstream of
+   * the switch itself. Optional and additive: parsed with `optional(...)` in
+   * `parseValueSpec` below, so an older document with no `bound` key parses
+   * exactly as before and needs no `schemaVersion` bump (see `version.ts` for
+   * when one actually is warranted). Absent on a value that has never been a
+   * range, and dropped whenever `value` itself is retyped, since a remembered
+   * high end belongs to the value it was last a range with, not to whatever
+   * gets typed in next.
+   */
+  readonly bound?: number;
+  /**
+   * The point count of the `linear` or `logarithmic` range this value was
+   * last switched away from, remembered the same way and for the same
+   * reason as `bound`. Optional and additive, no `schemaVersion` bump, same
+   * as `bound` above.
+   *
+   * Unlike `bound`, this is not a magnitude of the value and does not reset
+   * when `value` is retyped: a student who chose 41 samples still means 41
+   * samples no matter what number the scalar now holds or where the range's
+   * low end ends up next time — only the bound, a quantity in the value's
+   * own unit, belongs to "the old value" in the sense that resets it.
+   */
+  readonly points?: number;
 }
 
 /**
@@ -257,12 +283,17 @@ export function parseValueSpec(value: JsonValue, path: string): ValueSpec {
   const kind = readEnum(required(object, 'kind', path), join(path, 'kind'), VALUE_KINDS);
 
   switch (kind) {
-    case 'scalar':
+    case 'scalar': {
+      const bound = optional(object, 'bound', path, readNumber);
+      const points = optional(object, 'points', path, (v, p) => readInteger(v, p, 2));
       return {
         kind,
         value: readNumber(required(object, 'value', path), join(path, 'value')),
         unit: parseUnitField(required(object, 'unit', path), join(path, 'unit')),
+        ...(bound === undefined ? {} : { bound }),
+        ...(points === undefined ? {} : { points }),
       };
+    }
 
     case 'slider': {
       const min = readNumber(required(object, 'min', path), join(path, 'min'));
@@ -348,7 +379,13 @@ export function parseValueSpec(value: JsonValue, path: string): ValueSpec {
 export function serializeValueSpec(value: ValueSpec): JsonObject {
   switch (value.kind) {
     case 'scalar':
-      return { kind: value.kind, value: value.value, unit: value.unit.symbol };
+      return {
+        kind: value.kind,
+        value: value.value,
+        unit: value.unit.symbol,
+        ...put('bound', value.bound),
+        ...put('points', value.points),
+      };
     case 'slider':
       return {
         kind: value.kind,
