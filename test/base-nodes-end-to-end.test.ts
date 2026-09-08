@@ -240,7 +240,7 @@ describe('the base node library through the kernel', () => {
     );
     const result = canConnect(document, catalogues, wire('F.value', 'sum.b'));
     expect(result.ok).toBe(false);
-    expect(result.ok === false && result.reason).toMatch(/bound twice/u);
+    expect(result.ok === false && result.reason).toMatch(/the same kind of quantity/u);
   });
 
   it('will not put a length into the angle port of a trig node, but will a pure number', () => {
@@ -301,7 +301,7 @@ describe('the base node library through the kernel', () => {
       );
       const result = canConnect(document, catalogues, wire('F.value', 'm.a'));
       expect(result.ok).toBe(false);
-      expect(result.ok === false && result.reason).toMatch(/one dimension/u);
+      expect(result.ok === false && result.reason).toMatch(/the same kind of quantity/u);
     });
 
     it('broadcasts a swept range pointwise against a scalar, not flattened together', () => {
