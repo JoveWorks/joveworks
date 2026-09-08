@@ -1465,6 +1465,17 @@ aside.bottom .palette-list section {
 
 .node .port-name {
   font-variant-numeric: tabular-nums;
+  /* Any node kind can carry a long label, but a plot/check's derived
+     `<measure> threshold` name is the one long enough to wrap onto a second
+     line in practice — and `.node .port`'s row is a fixed 18px with nothing
+     clipping it, so that second line painted straight over the row below,
+     overprinting two port names into one unreadable mess. Same fix and the
+     same reasoning as `.port-default` below for a long value: clip it to one
+     line with an ellipsis rather than the hard cut a plain overflow gives. */
+  min-width: 0; /* a flex item will not shrink below its content without this, so the ellipsis never engages */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .node .port-unit {
