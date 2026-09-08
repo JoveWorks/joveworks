@@ -48,6 +48,8 @@ import {
 import { useGraph } from '../graph-context';
 import { useSettings } from '../settings-context';
 import { OUTPUT_HELP_URLS } from '../help-links';
+import { saveTextFile, slugifyTitle } from '../io/files';
+import { tableCsv } from '../model/csv';
 import { toUnitsFormat } from '../model/numberFormat';
 import {
   changeOutputKind,
@@ -310,6 +312,7 @@ export function OutputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>
   const equationResult = result?.kind === 'equation' ? result : undefined;
   const feasibilityResult = result?.kind === 'feasibility' ? result : undefined;
   const sensitivityResult = result?.kind === 'sensitivity' ? result : undefined;
+  const tableResult = result?.kind === 'table' ? result : undefined;
   // Not the upstream formula's own id — a closure's is always the literal
   // 'closure' (kernel/closure.ts), which would be a useless caption default
   // repeated across every closure-sourced equation node.
@@ -615,42 +618,66 @@ export function OutputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>
           ) : null}
 
           {output.kind === 'table' ? (
-            <label className="wide">
-              columns
-              {/* Order, per-column decimal figures and marked rows are all
-                  edited in the notebook (Notebook.tsx), where the rendered
-                  table actually is — this list is rename and remove only. */}
-              <ul className="table-columns">
-                {output.columns.map((column) => (
-                  <li key={column} className="table-column nodrag">
-                    <TextField
-                      className="column-name"
-                      value={column}
-                      autoSize={1}
-                      title="Wires stay attached across a rename — a rename is a relabel, not a rewire."
-                      onCommit={(next) => {
-                        if (next.trim().length === 0) throw new Error('a column needs a name');
-                        if (next !== column && output.columns.includes(next)) {
-                          throw new Error(`'${next}' is already a column here`);
-                        }
-                        edit((current) => renameColumn(current, id, column, next));
-                      }}
-                    />
-                    <button
-                      type="button"
-                      className="column-remove"
-                      title={`remove column '${column}'`}
-                      onClick={() => edit((current) => removeColumn(current, id, column))}
-                    >
-                      ×
-                    </button>
-                  </li>
-                ))}
-                {output.columns.length === 0 ? (
-                  <li className="table-column table-column-empty">wire something to add a column</li>
-                ) : null}
-              </ul>
-            </label>
+            <>
+              <label className="wide">
+                columns
+                {/* Order, per-column decimal figures and marked rows are all
+                    edited in the notebook (Notebook.tsx), where the rendered
+                    table actually is — this list is rename and remove only. */}
+                <ul className="table-columns">
+                  {output.columns.map((column) => (
+                    <li key={column} className="table-column nodrag">
+                      <TextField
+                        className="column-name"
+                        value={column}
+                        autoSize={1}
+                        title="Wires stay attached across a rename — a rename is a relabel, not a rewire."
+                        onCommit={(next) => {
+                          if (next.trim().length === 0) throw new Error('a column needs a name');
+                          if (next !== column && output.columns.includes(next)) {
+                            throw new Error(`'${next}' is already a column here`);
+                          }
+                          edit((current) => renameColumn(current, id, column, next));
+                        }}
+                      />
+                      <button
+                        type="button"
+                        className="column-remove"
+                        title={`remove column '${column}'`}
+                        onClick={() => edit((current) => removeColumn(current, id, column))}
+                      >
+                        ×
+                      </button>
+                    </li>
+                  ))}
+                  {output.columns.length === 0 ? (
+                    <li className="table-column table-column-empty">wire something to add a column</li>
+                  ) : null}
+                </ul>
+              </label>
+              {/* Same rows the notebook's own table draws (present/ResultView.tsx)
+                  — same header ("name (unit)"), same per-column decimal figures,
+                  same broadcast rows — so what downloads here is exactly what a
+                  student already signed off on, not a re-rounded reflow of it.
+                  Absent (rather than merely disabled) until there is something to
+                  export: an un-evaluated table has no rows to name a download after. */}
+              {tableResult === undefined ? null : (
+                <button
+                  type="button"
+                  className="nodrag"
+                  title="Download this table as a CSV file."
+                  onClick={() =>
+                    saveTextFile(
+                      `${slugifyTitle(node.label ?? id)}.csv`,
+                      tableCsv(tableResult.columns, output.figures, format),
+                      'text/csv',
+                    )
+                  }
+                >
+                  export CSV
+                </button>
+              )}
+            </>
           ) : null}
 
           <label className="wide">
