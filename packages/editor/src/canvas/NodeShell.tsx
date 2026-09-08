@@ -7,13 +7,16 @@
  */
 
 import { useState, type ReactElement, type ReactNode } from 'react';
-import type { NodeKind } from '@joveworks/schema';
+import { useNodeId } from '@xyflow/react';
+import type { GraphNode, NodeKind } from '@joveworks/schema';
 
 import { NODE_HELP_URLS } from '../help-links';
 import { useGraph } from '../graph-context';
 import type { NodeState } from '../model/analysis';
+import { updateNode } from '../model/document';
 import { useSettings } from '../settings-context';
 import { phrase, ui } from '../i18n';
+import { TextField } from './fields';
 
 const STATE_LABELS: Readonly<Record<NodeState, string>> = {
   ok: '',
@@ -69,10 +72,17 @@ export function NodeShell({
   extraClassName,
 }: Props): ReactElement {
   const { locale } = useSettings();
-  const { marqueeActive } = useGraph();
+  const { marqueeActive, document, edit } = useGraph();
   const copy = ui(locale);
   const stateLabel = phrase(locale, STATE_LABELS[state]);
   const [hovered, setHovered] = useState(false);
+  // React Flow's own node-id context — every node view here is rendered as a
+  // registered node type, so this is always populated in practice. Reading it
+  // rather than taking an `id` prop is what lets one `NodeShell` edit carry
+  // the note field to every node kind without touching any of their eleven
+  // view components (CompareNodeView.tsx and friends stay untouched).
+  const nodeId = useNodeId();
+  const self = nodeId === null ? undefined : document.nodes.find((candidate) => candidate.id === nodeId);
   // A marquee drag hit-tests each node's current DOM box (Canvas.tsx), so
   // hover or the marquee's own live selection opening a node mid-drag would
   // grow that box out from under the very rectangle it was fully inside of.
@@ -135,7 +145,30 @@ export function NodeShell({
       )}
       {warning === undefined ? null : <div className="node-warning">{warning}</div>}
 
-      {open && detail !== undefined ? <div className="node-detail">{detail}</div> : null}
+      {open && detail !== undefined ? (
+        <div className="node-detail">
+          {detail}
+          {self === undefined ? null : (
+            <label className="node-note-field">
+              {copy.nodeNote}
+              <TextField
+                className="node-note"
+                value={self.note ?? ''}
+                placeholder={copy.nodeNotePlaceholder}
+                multiline
+                onCommit={(note) =>
+                  edit((current) =>
+                    updateNode<GraphNode>(current, nodeId as string, (entry) => {
+                      const { note: _cleared, ...rest } = entry;
+                      return note.trim().length === 0 ? rest : { ...rest, note };
+                    }),
+                  )
+                }
+              />
+            </label>
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }

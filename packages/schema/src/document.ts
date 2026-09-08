@@ -428,6 +428,23 @@ interface NodeBase {
   readonly label?: string;
   /** Per-port display choices made in this graph, keyed by port name. */
   readonly displayUnits?: Readonly<Record<string, Unit>>;
+  /**
+   * A free-text working comment on this node, shown at the bottom of its
+   * canvas dropdown (`NodeShell.tsx`) and nowhere else. It never reaches the
+   * compiled NodeBook (`compiledNotebook.ts` builds each published field by
+   * name and does not carry this one across) and never prints (it only ever
+   * renders inside `.canvas`, which `styles.css` hides under `@media print`).
+   * That is the opposite of two other same-shaped fields, so do not fold this
+   * one into either: `OutputNode.caption` is notebook copy, deliberately
+   * meant for the report's reader; `Frame.note` is a section's prose and is
+   * *published* as `CompiledSection.prose`. This `note` is scratch space for
+   * the author alone.
+   *
+   * Optional and additively parsed (unknown-key-tolerant `optional()`/`put()`
+   * below), so this does not warrant a `DOCUMENT_SCHEMA_VERSION` bump
+   * (`version.ts`): an older build simply never reads or writes the key.
+   */
+  readonly note?: string;
 }
 
 /** A literal, a categorical choice, or a range. */
@@ -1324,6 +1341,7 @@ function parseNode(value: JsonValue, path: string): GraphNode {
     ...put('frameId', optional(object, 'frameId', path, readName)),
     ...put('label', optional(object, 'label', path, readString)),
     ...put('displayUnits', optional(object, 'displayUnits', path, parseDisplayUnits)),
+    ...put('note', optional(object, 'note', path, readString)),
   };
   const kind = readEnum(required(object, 'kind', path), join(path, 'kind'), NODE_KINDS);
 
@@ -1513,6 +1531,7 @@ function serializeNode(node: GraphNode): JsonObject {
     ...put('frameId', node.frameId),
     ...put('label', node.label),
     ...put('displayUnits', serializeDisplayUnits(node.displayUnits)),
+    ...put('note', node.note),
   };
   switch (node.kind) {
     case 'input':

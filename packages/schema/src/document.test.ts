@@ -33,6 +33,7 @@ const study: JsonObject = {
       frameId: 'sizing',
       value: { kind: 'linear', start: 20, stop: 60, points: 21, unit: 'mm' },
       axisLabel: 'shaft diameter',
+      note: 'double-check this range against the datasheet before sign-off',
     },
     {
       kind: 'input',
