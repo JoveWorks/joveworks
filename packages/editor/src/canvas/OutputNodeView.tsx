@@ -800,7 +800,28 @@ export function OutputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>
                 onMouseLeave={() => data?.onPortHover?.()}
               >
                 <Handle type="target" position={Position.Left} id={slotHandleId(thresholdPort, 0)} />
-                <span className="port-name">{measure.label ?? measure.id} threshold</span>
+                {/* A lone measure needs no prefix — there is nothing left to
+                    disambiguate, and bare "threshold" is exactly what the
+                    check row below already renders through the same
+                    `ParameterLabel`, at a width that actually fits this row.
+                    Several measures each need their own name, since the
+                    prefix is what says which threshold field this is; that
+                    is the only case that still gets it. Do not "restore
+                    consistency" by prefixing every row again — the
+                    single-measure row used to do that (`${label} threshold`
+                    read as just `value threshold` there), it wrapped onto a
+                    second line, and `.node .port`'s fixed height meant the
+                    wrapped word printed straight over the row below it. */}
+                {(plotMeasureIds?.length ?? 0) > 1 ? (
+                  <span className="port-name">{measure.label ?? measure.id} threshold</span>
+                ) : (
+                  <ParameterLabel
+                    name={THRESHOLD_PORT}
+                    unit={analysis.resolution?.targets.get(`${id}.${thresholdPort}`)?.unit}
+                    nameClassName="port-name"
+                    unitClassName="port-unit"
+                  />
+                )}
                 <span className="quantity-split port-quantity">
                   <TextField
                     className="quantity"
