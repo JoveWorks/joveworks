@@ -259,24 +259,57 @@ describe('a hole — a generic port with no wire and no typed value', () => {
     expect(dimensionOf('a - b', holes)).toEqual(DIMENSIONLESS);
   });
 
-  it('stays unknown through * and / — nothing to adopt from a product — and still falls out dimensionless', () => {
-    expect(dimensionOf('a * b', scope({ a: UNKNOWN_DIMENSION, b: LENGTH }))).toEqual(DIMENSIONLESS);
+  it('collapses to dimensionless right at * and / — nothing to adopt from a product — keeping a real sibling dimension intact', () => {
+    // `a` (a hole) collapses to dimensionless at the multiplication itself,
+    // not at the root — so `b`'s real length survives the product instead of
+    // an unknown riding all the way up and getting declared dimensionless at
+    // the top, taking `b`'s length with it. (An end-to-end probe caught
+    // exactly this: `a * b` with `b` in mm was reporting plain 20,
+    // dimensionless, instead of 20 mm.)
+    expect(dimensionOf('a * b', scope({ a: UNKNOWN_DIMENSION, b: LENGTH }))).toEqual(LENGTH);
     expect(dimensionOf('a / b', holes)).toEqual(DIMENSIONLESS);
+  });
+
+  it('keeps a dimension alive through a function wrapped around a hole-containing product', () => {
+    // sqrt(a * b) with b in force: a collapses inside the product (force),
+    // and sqrt halves the exponent — force^(1/2), the same fractional
+    // exponent `dimensions.ts`'s tolerance already exists to compare.
+    expect(dimensionOf('sqrt(a * b)', scope({ a: UNKNOWN_DIMENSION, b: FORCE }))).toEqual(
+      dimension({ force: 1 / 2 }),
+    );
   });
 
   it('propagates through a constant power without demanding the exponent be constant', () => {
     expect(dimensionOf('a ** n', scope({ a: UNKNOWN_DIMENSION, n: DIMENSIONLESS }))).toEqual(DIMENSIONLESS);
   });
 
-  it('skips a whitelisted function\'s own dimension rule rather than testing it against a hole', () => {
-    // sin() would otherwise throw "takes an angle or a pure number" — it must
-    // not, because there is nothing yet to test that rule against.
+  it('collapses to dimensionless at a whitelisted function\'s argument and runs its rule for real', () => {
+    // sin(a) becomes sin(dimensionless) rather than bypassing the rule —
+    // still fine here, since dimensionless is a valid sin() argument.
     expect(dimensionOf('sin(a)', holes)).toEqual(DIMENSIONLESS);
   });
 
-  it('skips a reduction\'s own dimension rule the same way — prod() would otherwise refuse it', () => {
+  it('still lets a function\'s own rule catch a genuine mistake in a fellow argument, hole or not', () => {
+    // min()/max() require every argument to share one dimension. `a`
+    // collapses to dimensionless, and a dimensionless argument beside a
+    // length one is exactly the mismatch the rule exists to catch — running
+    // the rule for real (rather than skipping it because a hole is present)
+    // is what still catches this.
+    expect(() => dimensionOf('min(a, d)', scope({ a: UNKNOWN_DIMENSION, d: LENGTH }))).toThrow(/one dimension/u);
+  });
+
+  it('collapses to dimensionless at a reduction\'s argument and runs its own rule for real', () => {
     const variadic = scope({ a: UNKNOWN_DIMENSION }, ['a']);
     expect(dimensionOf('prod(a)', variadic)).toEqual(DIMENSIONLESS);
+  });
+
+  it('still lets prod() catch a genuinely non-dimensionless series composed around a hole', () => {
+    // a collapses to dimensionless inside `a * d`, so the reduction's own
+    // argument comes out as d's own length — and prod() genuinely refuses a
+    // series of lengths, hole or not (the dimension of a product depends on
+    // how many terms there are, which is a value, not a type).
+    const variadic = scope({ a: UNKNOWN_DIMENSION, d: LENGTH }, ['a']);
+    expect(() => dimensionOf('prod(a * d)', variadic)).toThrow(/pure series/u);
   });
 
   it('lets a predicate comparison through rather than refusing it, on either side', () => {
