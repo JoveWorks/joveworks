@@ -308,10 +308,57 @@ export function compilePredicate(source: string, where?: string): CompiledPredic
 
 /** What the dimension pass knows about the names an expression may mention. */
 export interface DimensionScope {
-  /** Port name → dimension. A generic port must already be resolved. */
+  /**
+   * Port name → dimension. A generic port that is actually wired (or given
+   * an inline value) must already be resolved to that dimension. One that
+   * is not — a hole: no wire, no typed value, nothing yet to say what it
+   * is — maps to `UNKNOWN_DIMENSION` instead of being omitted. Omitting the
+   * key entirely means something different: that the name is not a port of
+   * this formula at all, which `dimensionOf` must keep refusing. A hole is
+   * present but unresolved; a typo is simply absent.
+   */
   readonly dimensions: Readonly<Record<string, Dimension>>;
   /** Which of those are variadic ports, and so may only be reduced. */
   readonly variadic?: ReadonlySet<string>;
+}
+
+/**
+ * A hole: a generic port with no wire and no typed value, so nothing has
+ * ever said what dimension it is. Not an error and not dimensionless — a
+ * closure node's `a + b` derives each free name its own independent
+ * dimension variable (`closure.ts`), so nothing besides the expression
+ * itself links an unwired `a` to a wired `b`, and this is what lets `a`
+ * adopt `b`'s dimension instead of the two being compared and refused.
+ *
+ * Represented as a `Dimension` whose every exponent is `NaN`, deliberately —
+ * not a sentinel object needing identity checks, but a value that *is* the
+ * algebra's own "unknown", because `NaN` contaminates whatever arithmetic
+ * touches it. `multiplyDimensions`, `divideDimensions` and `powerDimension`
+ * are plain per-exponent arithmetic, so combining this with any dimension
+ * through `*`, `/` or `**` already comes out fully `NaN` — unknown in,
+ * unknown out — for free, with no case-by-case propagation code needed. Only
+ * `+`, `-`, a predicate comparison, and a whitelisted function or reduction
+ * (whose dimension rules validate and can throw, which `NaN` must not be
+ * allowed to trigger) need to test for it explicitly below.
+ */
+export const UNKNOWN_DIMENSION: Dimension = Object.freeze({
+  length: NaN,
+  force: NaN,
+  time: NaN,
+  angle: NaN,
+  temperature: NaN,
+});
+
+/**
+ * Whether a dimension is the unknown hole above. `NaN` never survives
+ * `===` against itself, so this checks one exponent for `NaN` rather than
+ * comparing to `UNKNOWN_DIMENSION` by reference or by value — sound because
+ * every dimension in this codebase starts either fully finite (a real unit
+ * or a resolved generic) or, from here, fully `NaN`, and the arithmetic
+ * above never mixes the two within one exponent.
+ */
+function isUnknownDimension(dimension: Dimension): boolean {
+  return Number.isNaN(dimension.length);
 }
 
 /**
@@ -416,6 +463,13 @@ function dimensionOf(
       const left = dimensionOf(expr.left, scope, where, elementwise);
 
       if (expr.operator === '**') {
+        // The base is a hole: whatever it turns out to be, raising it to a
+        // power is still unknown, constant exponent or not — there is
+        // nothing yet to require the exponent be constant against.
+        if (isUnknownDimension(left)) {
+          dimensionOf(expr.right, scope, where, elementwise);
+          return UNKNOWN_DIMENSION;
+        }
         // The base is dimensionless: any exponent is fine, including a wired one.
         if (isDimensionless(left)) {
           dimensionOf(expr.right, scope, where, elementwise);
@@ -436,12 +490,21 @@ function dimensionOf(
       switch (expr.operator) {
         case '+':
         case '-': {
+          // One side is a hole: the sum or difference is the *other* side's
+          // dimension — the adoption this whole design is for. Read the same
+          // way as `literalAgainstDimension` just below: a hole, like a bare
+          // literal, has nothing of its own to disagree with the other side.
+          if (isUnknownDimension(left)) return right;
+          if (isUnknownDimension(right)) return left;
           const adopted = literalAgainstDimension(expr.left, left, expr.right, right);
           if (adopted !== undefined) return adopted;
           assertSameDimension(left, right, `cannot ${expr.operator === '+' ? 'add' : 'subtract'}`, where);
           return left;
         }
         case '*':
+          // Plain per-exponent arithmetic: a hole (all-`NaN`) combined with
+          // anything comes out all-`NaN`, i.e. still unknown. No explicit
+          // check needed — see `UNKNOWN_DIMENSION`'s doc comment.
           return multiplyDimensions(left, right);
         case '/':
           return divideDimensions(left, right);
@@ -464,6 +527,13 @@ function dimensionOf(
         // `at`'s index is one number for the whole call, not one per wired
         // value — which is how it is evaluated, so it is checked that way too.
         const extraDimensions = extra.map((arg) => dimensionOf(arg, scope, where, false));
+        // A hole among the arguments: skip the reduction's own dimension rule
+        // (`prod`'s "must be dimensionless", `at`'s "index must be plain")
+        // rather than run it against `NaN` and risk a spurious refusal —
+        // unknown in, unknown out, uniformly, rather than per reduction.
+        if (isUnknownDimension(dimension) || extraDimensions.some(isUnknownDimension)) {
+          return UNKNOWN_DIMENSION;
+        }
         return reduction.dimension(dimension, where, extraDimensions);
       }
 
@@ -475,22 +545,34 @@ function dimensionOf(
         );
       }
       checkArity(expr.callee, expr.args.length, where);
-      return spec.dimension(
-        expr.args.map((arg) => dimensionOf(arg, scope, where, elementwise)),
-        where,
-      );
+      const argumentDimensions = expr.args.map((arg) => dimensionOf(arg, scope, where, elementwise));
+      // Same reasoning as the reduction above: a hole among the arguments
+      // skips the function's own rule (`sin`'s "angle or pure number", …)
+      // rather than testing it against `NaN`.
+      if (argumentDimensions.some(isUnknownDimension)) return UNKNOWN_DIMENSION;
+      return spec.dimension(argumentDimensions, where);
     }
   }
   throw new KernelError('unsupported expression', where);
 }
 
-/** The dimension an expression produces, given the dimensions of its ports. */
+/**
+ * The dimension an expression produces, given the dimensions of its ports.
+ *
+ * This is the one place the pass's remaining unknowns are settled: anything
+ * still a hole once the whole expression has been walked resolves to
+ * dimensionless — the fact that lets a brand-new closure node with nothing
+ * wired at all compute `a + b = 2` instead of refusing. Every internal
+ * recursive call goes through `dimensionOf`, never this function, so a hole
+ * only ever resolves here, at the top, and never partway through the pass.
+ */
 export function expressionDimension(
   expr: Expr,
   scope: DimensionScope,
   where?: string,
 ): Dimension {
-  return dimensionOf(expr, scope, where);
+  const dimension = dimensionOf(expr, scope, where);
+  return isUnknownDimension(dimension) ? DIMENSIONLESS : dimension;
 }
 
 /** Both sides of every comparison in a predicate must agree dimensionally. */
@@ -503,6 +585,10 @@ export function checkPredicateDimensions(
     case 'compare': {
       const left = dimensionOf(predicate.left, scope, where);
       const right = dimensionOf(predicate.right, scope, where);
+      // One side is a hole: there is nothing yet to compare, so the
+      // condition passes rather than being refused — the same adoption
+      // `dimensionOf`'s `+`/`-` case makes explicit.
+      if (isUnknownDimension(left) || isUnknownDimension(right)) return;
       // A band condition — `d < 50` — is a literal against a dimension, and R&M
       // states several conditions that way.
       if (literalAgainstDimension(predicate.left, left, predicate.right, right) !== undefined) {

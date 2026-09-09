@@ -991,6 +991,43 @@ describe('closure nodes', () => {
   });
 });
 
+describe('a hole — a generic port with no wire and no typed value evaluates as canonical 1', () => {
+  it('computes a + b as 2 when a brand-new closure node has nothing wired at all', () => {
+    const document = documentOf([closureNode('eq', 'a + b')], []);
+    const evaluation = evaluateDocument(document, catalogues);
+    expect(numeric(valueAt(evaluation, 'eq', 'result')).data).toEqual([2]);
+  });
+
+  it('adopts the wired side once one of a + b is wired, rather than refusing the other as not connected', () => {
+    const document = documentOf(
+      [input('F', scalar(10, 'N')), closureNode('eq', 'a + b')],
+      [wire('F.value', 'eq.b')],
+    );
+    const evaluation = evaluateDocument(document, catalogues);
+    // a contributes canonical 1 — "one of whatever this turns out to be" —
+    // adopting F's newton dimension from the expression, not from a default.
+    expect(numeric(valueAt(evaluation, 'eq', 'result')).data).toEqual([11]);
+  });
+
+  it('leaves a * b unknown-then-dimensionless the same way, and still computes', () => {
+    const document = documentOf(
+      [input('F', scalar(10, 'N')), closureNode('eq', 'a * b')],
+      [wire('F.value', 'eq.b')],
+    );
+    const evaluation = evaluateDocument(document, catalogues);
+    expect(numeric(valueAt(evaluation, 'eq', 'result')).data).toEqual([10]);
+  });
+
+  it('computes base.math.add with one input wired, instead of refusing the other as not connected', () => {
+    const document = documentOf(
+      [input('F', scalar(10, 'N')), formulaNode('sum', refTo('addTwo'))],
+      [wire('F.value', 'sum.a')],
+    );
+    const evaluation = evaluateDocument(document, catalogues);
+    expect(numeric(valueAt(evaluation, 'sum', 'sum')).data).toEqual([11]);
+  });
+});
+
 describe('file nodes', () => {
   const field = (name: string, unit: string | undefined, values: readonly (number | string | null)[]) =>
     ({ name, ...(unit === undefined ? {} : { unit }), values }) as JsonObject;

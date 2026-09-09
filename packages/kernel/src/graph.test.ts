@@ -720,10 +720,14 @@ describe('generic signatures bind per node instance', () => {
 });
 
 describe('closure nodes', () => {
-  it('leaves the output unresolved until every free name it uses is wired', () => {
+  // A dropped node computes rather than refuses: `a` and `b` are both holes
+  // (no wire, no typed value), so `a + b` adopts nothing from either side
+  // and falls out dimensionless — the same rule that makes it evaluate to a
+  // plain `2` (see evaluate.test.ts) instead of "not connected".
+  it('resolves the output as dimensionless when nothing is wired at all', () => {
     const document = documentOf([closureNode('eq', 'a + b')], []);
     const resolution = resolveGraph(document, catalogues);
-    expect(resolution.sources.get(endpointKey('eq', 'result'))?.dimension).toBeUndefined();
+    expect(resolution.sources.get(endpointKey('eq', 'result'))?.dimension).toEqual(DIMENSIONLESS);
   });
 
   it('proves the output dimension live once wired, the way a hand-authored add does', () => {
@@ -733,6 +737,24 @@ describe('closure nodes', () => {
     );
     const resolution = resolveGraph(document, catalogues);
     expect(resolution.sources.get(endpointKey('eq', 'result'))?.dimension).toEqual(FORCE);
+  });
+
+  it('adopts the wired side\'s dimension when only one of a + b is wired', () => {
+    const document = documentOf(
+      [input('F', scalar(10, 'N')), closureNode('eq', 'a + b')],
+      [wire('F.value', 'eq.b')],
+    );
+    const resolution = resolveGraph(document, catalogues);
+    expect(resolution.sources.get(endpointKey('eq', 'result'))?.dimension).toEqual(FORCE);
+  });
+
+  it('stays unknown-then-dimensionless when only one side of a * b is wired', () => {
+    const document = documentOf(
+      [input('F', scalar(10, 'N')), closureNode('eq', 'a * b')],
+      [wire('F.value', 'eq.b')],
+    );
+    const resolution = resolveGraph(document, catalogues);
+    expect(resolution.sources.get(endpointKey('eq', 'result'))?.dimension).toEqual(DIMENSIONLESS);
   });
 
   it('refuses to add two different dimensions', () => {
