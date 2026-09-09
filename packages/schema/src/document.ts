@@ -219,8 +219,12 @@ export function plotMeasures(output: PlotOutput): readonly PlotMeasure[] {
 
 /**
  * One intelligent figure containing any number of numeric measures. Measures
- * with compatible study shapes share a panel; the editor turns unrelated
- * shapes and dimensions into a small dashboard without dual axes.
+ * that sweep the same axes share a panel, and differing *dimensions* now
+ * become extra y axes on that one chart rather than extra panels — primary
+ * on the left, up to two more layered outward on the right
+ * (`editor/src/model/plot.ts`, `inferPlotPanels`). Differing *axes* are the
+ * case that no longer belongs on one node at all: the editor refuses such a
+ * wire and says to use a second Plot node (`Canvas.tsx`, `plotAxisMismatch`).
  */
 export interface PlotOutput {
   readonly kind: 'plot';
