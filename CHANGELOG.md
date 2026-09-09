@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.26.10](https://github.com/JoveWorks/joveworks/compare/v0.26.9...v0.26.10) (2026-09-09)
+
+### Features
+
+* **editor:** give a Plot node multiple y axes instead of stacked panels ([a52ca00](https://github.com/JoveWorks/joveworks/commit/a52ca0043da39199115dac329b7241556a32f47b))
+* **kernel:** treat an unwired generic port as a dimensional hole, not an error ([1abb943](https://github.com/JoveWorks/joveworks/commit/1abb943c7fd35e00293b2b3fd3ff3df73abb8e36))
+
+### Fixes
+
+* **editor:** drop a closure's removed-name inputValues alongside its edges ([9b50dd7](https://github.com/JoveWorks/joveworks/commit/9b50dd78b7d827ac468455150b9d4128711a818c))
+* **kernel:** collapse a hole to dimensionless at the point of use, not the root ([9a700ff](https://github.com/JoveWorks/joveworks/commit/9a700ff33f80306ff8cfbc747a9a8ee096c65d7c))
+
+### Refactoring
+
+* **editor:** export a table's CSV from the notebook, not the node ([978a22e](https://github.com/JoveWorks/joveworks/commit/978a22ea0716bb56bd403443c0a514e383d416b6))
+
+### Documentation
+
+* **schema:** correct PlotOutput's account of what it does with measures ([ce349ef](https://github.com/JoveWorks/joveworks/commit/ce349ef5db91e9f64b15319101cd005cebf273b1))
 ## [0.26.9](https://github.com/JoveWorks/joveworks/compare/v0.26.8...v0.26.9) (2026-09-08)
 
 ### Features
