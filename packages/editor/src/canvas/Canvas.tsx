@@ -102,6 +102,7 @@ import { CompareNodeView } from './CompareNodeView';
 import { connectResolvingTableColumn } from './connect';
 import { ContextMenu, type MenuItem } from './ContextMenu';
 import { FileNodeView } from './FileNodeView';
+import { TableNodeView } from './TableNodeView';
 import { FormulaNodeView } from './FormulaNodeView';
 import { FrameView } from './FrameView';
 import { InputNodeView } from './InputNodeView';
@@ -615,6 +616,7 @@ const NODE_TYPES = {
   'joveworks-input': InputNodeView,
   range: RangeNodeView,
   file: FileNodeView,
+  table: TableNodeView,
   formula: FormulaNodeView,
   'joveworks-output': OutputNodeView,
   compare: CompareNodeView,
