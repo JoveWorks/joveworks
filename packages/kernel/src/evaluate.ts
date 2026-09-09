@@ -65,10 +65,12 @@ import {
   type Comparison,
   type Formula,
   type FormulaNode,
+  type LookupCell,
   type NumericPort,
   type ObjectiveDirection,
   type Port,
   type RangeNode,
+  type TableNode,
   type PlotViewOverride,
 } from '@joveworks/schema';
 import {
@@ -566,6 +568,12 @@ function runEvaluation(
         }
         break;
 
+      case 'table':
+        for (const [name, value] of tableValues(node, resolution, axisByNode)) {
+          values.set(endpointKey(node.id, name), value);
+        }
+        break;
+
       case 'monteCarloGenerator':
         values.set(
           endpointKey(node.id, VALUE_PORT),
@@ -684,13 +692,13 @@ function readAxisReadouts(
   const readouts = new Map<string, AxisReadout>();
   for (const [nodeId, axis] of resolution.axes) {
     if (readouts.has(axis.id)) continue;
-    const coordinates = values.get(endpointKey(nodeId, VALUE_PORT));
+    // A table node's coordinate is its row key — the frame size that names
+    // the part — and it has no `value` port to hold it, so the port to read
+    // is the one the table's own axis is named after.
+    const key = endpointKey(nodeId, resolution.tables.get(nodeId)?.axis.input ?? VALUE_PORT);
+    const coordinates = values.get(key);
     if (coordinates === undefined || !isSeries(coordinates)) continue;
-    readouts.set(axis.id, {
-      axis,
-      coordinates,
-      unit: displayUnit(resolution.sources.get(endpointKey(nodeId, VALUE_PORT))),
-    });
+    readouts.set(axis.id, { axis, coordinates, unit: displayUnit(resolution.sources.get(key)) });
   }
   return readouts;
 }
@@ -1036,6 +1044,78 @@ function fileValues(
 }
 
 /**
+ * A table node's ports: its row key, then one series per projected column.
+ *
+ * One selected row answers with scalars, several with **one shared axis** —
+ * which is the whole point of selecting rows rather than cells. Two columns
+ * read in the same grid cell then always come from the same row of the
+ * catalogue, so a width and a depth can never be quietly taken from two
+ * different parts.
+ *
+ * An empty selection emits nothing at all. The ports still exist and still
+ * type (`resolveGraph`), so the node wires up and reads `—`; asking for a
+ * value is what fails, exactly as it does for a file field the file never
+ * recorded.
+ */
+function tableValues(
+  node: TableNode,
+  resolution: Resolution,
+  axes: ReadonlyMap<string, Axis>,
+): readonly (readonly [string, PortValue])[] {
+  const table = resolution.tables.get(node.id);
+  if (table === undefined) throw new KernelError('this table could not be resolved', node.id);
+  if (table.rows.length === 0) return [];
+  const axis = table.rows.length > 1 ? axes.get(node.id) : undefined;
+  if (table.rows.length > 1 && axis === undefined) {
+    throw new KernelError('several rows introduce an axis, and this node has none', node.id);
+  }
+  const over = axis === undefined ? [] : [axis];
+  const emitted: (readonly [string, PortValue])[] = [];
+
+  const keys = table.rows.map((row) => table.axis.values[row] as number | string);
+  if (table.axis.kind === 'categorical') {
+    emitted.push([table.axis.input, { kind: 'categorical', axes: over, data: keys as string[] }]);
+  } else {
+    const key = table.key;
+    if (key.kind !== 'numeric' || isGenericDimension(key.unit)) {
+      throw new KernelError(`'${table.axis.input}' must have a concrete numeric unit`, node.id);
+    }
+    const unit = key.unit;
+    emitted.push([
+      table.axis.input,
+      { kind: 'numeric', axes: over, data: (keys as number[]).map((value) => toCanonical(value, unit)) },
+    ]);
+  }
+
+  const columns = table.formula.lookup?.columns ?? {};
+  for (const port of table.columns) {
+    const cells = columns[port.name] as readonly LookupCell[];
+    const picked = table.rows.map((row, i) => {
+      const cell = cells[row];
+      if (cell === null || cell === undefined) {
+        // Named by row *and* column, because both are selections the student
+        // made and either one is a fix: drop the row, or drop the column.
+        throw new KernelError(`the table defines no '${port.name}' for '${keys[i]}'`, node.id);
+      }
+      return cell;
+    });
+    if (port.kind === 'categorical') {
+      emitted.push([port.name, { kind: 'categorical', axes: over, data: picked as string[] }]);
+      continue;
+    }
+    if (isGenericDimension(port.unit)) {
+      throw new KernelError('a lookup output must declare a concrete unit', node.id);
+    }
+    const unit = port.unit;
+    emitted.push([
+      port.name,
+      { kind: 'numeric', axes: over, data: (picked as number[]).map((value) => toCanonical(value, unit)) },
+    ]);
+  }
+  return emitted;
+}
+
+/**
  * A literal, a categorical choice, or a range, converted into canonical
  * units on the way in. This is the boundary.
  */
@@ -1216,11 +1296,14 @@ function evaluateFormula(
   warnings: Warning[],
   largeGrid: number,
   closure = false,
-): ReadonlyMap<string, NumericSeries> {
+): ReadonlyMap<string, PortValue> {
   const nodeId = node.id;
   assertEvaluable(formula, nodeId);
   for (const output of formula.outputs) {
-    if (output.kind === 'categorical') {
+    // A table is exactly what a categorical output needs: its column names
+    // domain members directly, so there is nothing to compute and no unit to
+    // compute it in. An expression still cannot produce one.
+    if (output.kind === 'categorical' && formula.lookup === undefined) {
       throw new KernelError(
         `'${formula.id}' produces a categorical value, which needs a table`,
         nodeId,
@@ -1230,7 +1313,7 @@ function evaluateFormula(
   // Every branch but the lookup answers with one series, for the one output
   // such a formula declares.
   const only = formula.outputs[0] as NumericPort;
-  const single = (series: NumericSeries): ReadonlyMap<string, NumericSeries> =>
+  const single = (series: NumericSeries): ReadonlyMap<string, PortValue> =>
     new Map([[only.name, series]]);
 
   // A closure's declared output has nothing real to check the expression
@@ -1457,17 +1540,18 @@ function evaluateFormula(
     );
     // The axes pick one row; every output then reads its own column of it, so
     // a camera chosen once answers with all of its properties at that cell.
+    // A categorical column carries domain members rather than quantities —
+    // nothing to convert, and no unit to convert it in.
     const columns = formula.outputs.map((output) => {
-      const unit = (output as NumericPort).unit;
+      const column = lookup.columns[output.name] as readonly LookupCell[];
+      if (output.kind === 'categorical') {
+        return { name: output.name, cells: column, categorical: new Array<string>(cells) } as const;
+      }
+      const unit = output.unit;
       if (isGenericDimension(unit)) {
         throw new KernelError('a lookup output must declare a concrete unit', nodeId);
       }
-      return {
-        name: output.name,
-        unit,
-        cells: lookup.columns[output.name] as readonly (number | null)[],
-        data: new Array<number>(cells),
-      };
+      return { name: output.name, unit, cells: column, numeric: new Array<number>(cells) } as const;
     });
     for (let cell = 0; cell < cells; cell += 1) {
       let flat = 0;
@@ -1519,11 +1603,17 @@ function evaluateFormula(
             nodeId,
           );
         }
-        column.data[cell] = toCanonical(lookedUp, column.unit);
+        if ('categorical' in column) column.categorical[cell] = lookedUp as string;
+        else column.numeric[cell] = toCanonical(lookedUp as number, column.unit);
       }
     }
     return new Map(
-      columns.map((column) => [column.name, { kind: 'numeric', axes, data: column.data } as NumericSeries]),
+      columns.map((column) => [
+        column.name,
+        ('categorical' in column
+          ? { kind: 'categorical', axes, data: column.categorical }
+          : { kind: 'numeric', axes, data: column.numeric }) as PortValue,
+      ]),
     );
   }
 

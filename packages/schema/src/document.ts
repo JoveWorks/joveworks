@@ -841,10 +841,60 @@ export interface FileNode extends NodeBase {
   readonly axisLabel?: string;
 }
 
+/**
+ * A catalogue table, drawn on the canvas, with its rows picked by pointing at
+ * them.
+ *
+ * The composition this replaces already worked: a `categoricalList` input
+ * wired into a lookup formula's axis port sweeps a set of table rows and
+ * hands back every output column correlated on one axis. What it could not do
+ * is show you the table — you had to know which rows you wanted before you
+ * could name them, which for a twenty-column table of standard sizes means
+ * having the book open beside the screen. So this node is one selection made
+ * visible, not a new evaluation concept: the rows *are* the sweep.
+ *
+ * **Rows and columns are two different selections**, which is the one place
+ * this diverges from "select cells". A free cell selection would let a
+ * student take one profile's width and another profile's depth and would
+ * present the result as a single answer; the row of a standards table is a
+ * *part*, and taking half of one is not a design. So `columns` project (which
+ * ports exist — nobody wants a twenty-port node) and `rows` select (what the
+ * ports answer). One row gives a scalar on every port; several give one
+ * shared axis, so two columns read in the same grid cell always come from the
+ * same part.
+ *
+ * **The table's content is never in the document.** `table` names a catalogue
+ * lookup formula by id, version and hash exactly as a formula node does, for
+ * the same reason `TableColumnRange` does: R&M content is restricted and
+ * lives in the private catalogue repository, so a document may store the
+ * *selection* and nothing else. A student's own supplier data is the
+ * `FileNode`-shaped sibling of this node and deliberately not this node.
+ *
+ * `rows` holds axis **coordinates**, not row indices — `'90S'`, `40` — the
+ * same choice `Candidate.at` makes and for the same reason: an index silently
+ * points at a different part the moment the catalogue gains a row, while a
+ * coordinate either still names its row or is honestly missing (which
+ * `resolveGraph` reports the way it reports a changed formula hash). Both
+ * lists may be empty: that is a node just dropped from the palette, the same
+ * unfinished-but-valid state an empty `FileNode` sits in.
+ */
+export interface TableNode extends NodeBase {
+  readonly kind: 'table';
+  /** The catalogue lookup formula whose table this draws. Never embedded. */
+  readonly table: FormulaRef;
+  /** The selected rows, as coordinates on the table's single axis. */
+  readonly rows: readonly (number | string)[];
+  /** The projected output columns — this node's ports, in the table's own order. */
+  readonly columns: readonly string[];
+  /** What the axis is called while several rows are selected. Defaults to `label`. */
+  readonly axisLabel?: string;
+}
+
 export type GraphNode =
   | InputNode
   | RangeNode
   | FileNode
+  | TableNode
   | FormulaNode
   | OutputNode
   | CompareNode
@@ -936,11 +986,12 @@ export interface GraphDocument {
 
 /**
  * Every axis in the document, in node order: a range input node, a range
- * node, a Monte Carlo generator, or a file node reading more than one file —
+ * node, a Monte Carlo generator, a file node reading more than one file —
  * several frames are a sweep over the frames, the same way a list of sizes
- * is.
+ * is — or a table node with more than one row selected, which is that same
+ * rule again over a catalogue's rows.
  */
-export type AxisNode = InputNode | RangeNode | FileNode | MonteCarloGeneratorNode;
+export type AxisNode = InputNode | RangeNode | FileNode | TableNode | MonteCarloGeneratorNode;
 
 export function axes(document: GraphDocument): readonly AxisNode[] {
   return document.nodes.filter(
@@ -948,6 +999,7 @@ export function axes(document: GraphDocument): readonly AxisNode[] {
       (node.kind === 'input' && isRange(node.value)) ||
       node.kind === 'range' ||
       (node.kind === 'file' && node.sources.length > 1) ||
+      (node.kind === 'table' && node.rows.length > 1) ||
       node.kind === 'monteCarloGenerator',
   );
 }
@@ -1294,6 +1346,7 @@ export const NODE_KINDS = [
   'input',
   'range',
   'file',
+  'table',
   'formula',
   'output',
   'compare',
@@ -1395,6 +1448,37 @@ function parseNode(value: JsonValue, path: string): GraphNode {
         reader: readName(required(object, 'reader', path), join(path, 'reader')),
         sources,
         fields,
+        ...put('axisLabel', optional(object, 'axisLabel', path, readString)),
+      };
+    }
+    case 'table': {
+      // Coordinates, not indices (`TableNode`'s own comment), so both lists
+      // are read as what they name rather than as positions: a row is a
+      // number or a domain member, a column is an output port's name. Whether
+      // the catalogue still *has* them is the kernel's question, not this
+      // one — a document is routinely parsed with no catalogue loaded.
+      const rowsPath = join(path, 'rows');
+      const rows = readArray(required(object, 'rows', path), rowsPath).map((entry, i) =>
+        typeof entry === 'number' ? entry : readString(entry, `${rowsPath}[${i}]`),
+      );
+      const seen = new Set<number | string>();
+      for (const [i, row] of rows.entries()) {
+        if (seen.has(row)) fail(`${rowsPath}[${i}]`, `'${row}' is selected twice`);
+        seen.add(row);
+      }
+      const columnsPath = join(path, 'columns');
+      const columns = readStringArray(required(object, 'columns', path), columnsPath);
+      const seenColumns = new Set<string>();
+      for (const [i, column] of columns.entries()) {
+        if (seenColumns.has(column)) fail(`${columnsPath}[${i}]`, `'${column}' is projected twice`);
+        seenColumns.add(column);
+      }
+      return {
+        ...base,
+        kind,
+        table: parseFormulaRef(required(object, 'table', path), join(path, 'table')),
+        rows,
+        columns,
         ...put('axisLabel', optional(object, 'axisLabel', path, readString)),
       };
     }
@@ -1569,6 +1653,14 @@ function serializeNode(node: GraphNode): JsonObject {
           ...put('unit', field.unit?.symbol),
           values: [...field.values],
         })),
+        ...put('axisLabel', node.axisLabel),
+      };
+    case 'table':
+      return {
+        ...base,
+        table: serializeFormulaRef(node.table),
+        rows: [...node.rows],
+        columns: [...node.columns],
         ...put('axisLabel', node.axisLabel),
       };
     case 'formula':

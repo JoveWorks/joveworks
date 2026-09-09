@@ -170,6 +170,10 @@ function searchTitle(node: GraphNode, formulas: ReadonlyMap<string, Formula>, lo
 function searchPorts(document: GraphDocument, formulas: ReadonlyMap<string, Formula>, node: GraphNode): readonly string[] {
   if (node.kind === 'input') return [VALUE_PORT];
   if (node.kind === 'file') return node.fields.map((field) => field.name);
+  if (node.kind === 'table') {
+    const axis = formulas.get(node.id)?.lookup?.axes[0]?.input;
+    return axis === undefined ? node.columns : [axis, ...node.columns];
+  }
   if (node.kind === 'formula') {
     const formula = formulas.get(node.id);
     return formula === undefined ? [] : [...formula.inputs, ...formula.outputs].map((port) => port.name);
@@ -326,6 +330,15 @@ function existingCandidates(
       // answering with several properties offers one candidate per output.
       for (const field of node.fields) {
         candidates.push({ nodeId: node.id, label: nodeLabel(node), subtitle: field.name, port: field.name });
+      }
+    } else if (node.kind === 'table') {
+      // The projected columns, and the row key ahead of them: the key is
+      // what names the part, so it is the one most often wanted for a label
+      // or for the next table's axis.
+      const axis = formulas.get(node.id)?.lookup?.axes[0]?.input;
+      const ports = axis === undefined ? node.columns : [axis, ...node.columns];
+      for (const port of ports) {
+        candidates.push({ nodeId: node.id, label: nodeLabel(node), subtitle: port, port });
       }
     } else if (node.kind === 'formula') {
       const formula = formulas.get(node.id);

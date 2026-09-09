@@ -10,6 +10,8 @@
 export const WARNING_KINDS = [
   /** The catalogue's formula no longer matches the reference the graph saved. */
   'formulaChanged',
+  /** A table node's selection names a row the catalogue's table no longer has. */
+  'tableRowMissing',
   /** The product of the axis lengths has grown large enough to warn about. */
   'largeGrid',
   /** A formula was used outside its `appliesWhen` condition. */

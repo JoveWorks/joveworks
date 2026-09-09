@@ -46,11 +46,12 @@ const MAX_FORMULA_RESULTS = 30;
 type AssertEveryNodeKindIsQuickAddable<T extends QuickAddChoice['kind']> = T;
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 type _EveryNodeKindIsQuickAddable = AssertEveryNodeKindIsQuickAddable<
-  // `file` is the other exclusion, and for a reason this menu cannot work
-  // around: a fresh file node declares no ports at all until a file has
-  // actually been read, so there is never a port for the dragged wire to
-  // land on. It is added from the palette, given a file, and wired after.
-  Exclude<GraphNode['kind'], 'formula' | 'file'>
+  // `file` and `table` are the other exclusions, and for a reason this menu
+  // cannot work around: neither declares any port until it has been given
+  // its content — a file actually read, a catalogue table chosen and a
+  // column projected off it — so there is never a port for the dragged wire
+  // to land on. Both are added from the palette, filled in, and wired after.
+  Exclude<GraphNode['kind'], 'formula' | 'file' | 'table'>
 >;
 
 /** An already-placed node the menu can offer, worked out by Canvas.tsx from the drag's direction. */

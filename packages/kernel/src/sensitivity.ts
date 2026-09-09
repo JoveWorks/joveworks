@@ -185,6 +185,12 @@ function collapseAxis(node: AxisNode, tableColumn: ResolvedTableColumn | undefin
       fields: node.fields.map((field) => ({ ...field, values: field.values.slice(0, 1) })),
     };
   }
+  if (node.kind === 'table') {
+    // The same collapse a file axis gets, for the same reason: the first
+    // selected row is the part the tornado is built around, and a table
+    // node's several ports have no single-value equivalent to become.
+    return { ...node, rows: node.rows.slice(0, 1) };
+  }
   if (node.kind === 'monteCarloGenerator') {
     if (node.distribution === 'discrete') return { ...node, count: 1 };
     const value: ValueSpec =

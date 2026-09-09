@@ -288,6 +288,100 @@ describe('round-tripping', () => {
     expect(serializeDocument(document)).toEqual(withRange);
   });
 
+  it('round-trips a table node, selection and projection intact', () => {
+    const withTable = {
+      ...study,
+      nodes: [
+        {
+          kind: 'table',
+          id: 'frames',
+          position: { x: 0, y: 0 },
+          table: { id: 'invented.frames', version: 1, hash: 'abc123' },
+          rows: ['S1', 'S3'],
+          columns: ['h', 'F'],
+          axisLabel: 'frame size',
+        },
+      ],
+      edges: [],
+    };
+    const document = parseDocument(withTable);
+    expect(serializeDocument(document)).toEqual(withTable);
+  });
+
+  it('round-trips a table node selecting numeric rows, which stay numbers', () => {
+    const withTable = {
+      ...study,
+      nodes: [
+        {
+          kind: 'table',
+          id: 'sizes',
+          position: { x: 0, y: 0 },
+          table: { id: 'invented.sizes', version: 1, hash: 'abc123' },
+          rows: [10, 20],
+          columns: ['w'],
+        },
+      ],
+      edges: [],
+    };
+    expect(serializeDocument(parseDocument(withTable))).toEqual(withTable);
+  });
+
+  it('accepts a table node with nothing selected yet — a node just dropped from the palette', () => {
+    const fresh = {
+      ...study,
+      nodes: [
+        {
+          kind: 'table',
+          id: 'frames',
+          position: { x: 0, y: 0 },
+          table: { id: 'invented.frames', version: 1, hash: 'abc123' },
+          rows: [],
+          columns: [],
+        },
+      ],
+      edges: [],
+    };
+    expect(serializeDocument(parseDocument(fresh))).toEqual(fresh);
+  });
+
+  it('rejects a table node that selects one row or projects one column twice', () => {
+    const tableWith = (rows: readonly (string | number)[], columns: readonly string[]): unknown => ({
+      ...study,
+      nodes: [
+        {
+          kind: 'table',
+          id: 'frames',
+          position: { x: 0, y: 0 },
+          table: { id: 'invented.frames', version: 1, hash: 'abc123' },
+          rows: [...rows],
+          columns: [...columns],
+        },
+      ],
+      edges: [],
+    });
+    expect(() => parseDocument(tableWith(['S1', 'S1'], ['h']))).toThrow(/selected twice/u);
+    expect(() => parseDocument(tableWith(['S1'], ['h', 'h']))).toThrow(/projected twice/u);
+  });
+
+  it('counts a table node as an axis only once it holds more than one row', () => {
+    const tableWith = (rows: readonly string[]): unknown => ({
+      ...study,
+      nodes: [
+        {
+          kind: 'table',
+          id: 'frames',
+          position: { x: 0, y: 0 },
+          table: { id: 'invented.frames', version: 1, hash: 'abc123' },
+          rows: [...rows],
+          columns: ['h'],
+        },
+      ],
+      edges: [],
+    });
+    expect(axes(parseDocument(tableWith(['S1']))).map((node) => node.id)).toEqual([]);
+    expect(axes(parseDocument(tableWith(['S1', 'S2']))).map((node) => node.id)).toEqual(['frames']);
+  });
+
   it('rejects a logarithmic range node whose literal endpoints are not both above zero', () => {
     const withRange = {
       ...study,

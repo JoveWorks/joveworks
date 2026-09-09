@@ -83,6 +83,24 @@ export function fileNode(
 
 export const fileSource = (name: string, size = 1_000): JsonObject => ({ name, size });
 
+export function tableNode(
+  id: string,
+  ref: FormulaRef,
+  rows: readonly (number | string)[],
+  columns: readonly string[],
+  extra: JsonObject = {},
+): JsonObject {
+  return {
+    kind: 'table',
+    id,
+    position: { x: 0, y: 0 },
+    table: serializeFormulaRef(ref),
+    rows: [...rows],
+    columns: [...columns],
+    ...extra,
+  };
+}
+
 export function closureNode(id: string, expression: string, extra: JsonObject = {}): JsonObject {
   return { kind: 'closure', id, position: { x: 0, y: 0 }, expression, ...extra };
 }
