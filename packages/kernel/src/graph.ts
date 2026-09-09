@@ -91,7 +91,7 @@ import {
 
 import { packChannelIndices, waypointChannelIndices } from './bundle.js';
 import { closureFormula } from './closure.js';
-import { expressionDimension, type DimensionScope } from './compile.js';
+import { expressionDimension, UNKNOWN_DIMENSION, type DimensionScope } from './compile.js';
 import { assertConnectable, assertSameDimension, connectable, dimensionsClose } from './dimensions.js';
 import { KernelError } from './errors.js';
 import { parseExpression } from './parse.js';
@@ -913,34 +913,35 @@ export function resolveGraph(
       }
 
       // No reusable template to resolve the output against (see closure.ts):
-      // once every free name the expression uses is bound, prove its
-      // dimension live, the same way `formula.ts`'s own self-check does for
-      // a hand-authored record — just against this one node's real wiring
-      // instead of a probed basis.
+      // prove its dimension live, the same way `formula.ts`'s own self-check
+      // does for a hand-authored record — just against this one node's real
+      // wiring instead of a probed basis. A port `bindInputs` left unbound is
+      // a hole, not a blocker: `expressionDimension` resolves it through the
+      // same rule `evaluate.ts`'s `inputPortValue` gives it a value under —
+      // adopted by `+`/`-`, or dimensionless if nothing ever adopts it — so
+      // a closure resolves its output dimension however much of it is wired.
       // A closure is built with exactly one output (see closure.ts).
       const closureOutput = formula.outputs[0] as OutputPort;
       const outputKey = endpointKey(node.id, closureOutput.name);
-      if (formula.inputs.every((port) => bound.has(port.name))) {
-        const scope: DimensionScope = {
-          dimensions: Object.fromEntries(bound),
-          variadic: new Set(
-            formula.inputs
-              .filter((port) => port.kind === 'numeric' && port.variadic === true)
-              .map((port) => port.name),
-          ),
-        };
-        const dimension = expressionDimension(parseExpression(node.expression), scope, node.id);
-        sources.set(
-          outputKey,
-          displayOverride(node, closureOutput.name, {
-            kind: 'numeric',
-            dimension,
-            unit: canonicalUnit(dimension),
-          }),
-        );
-      } else {
-        sources.set(outputKey, { kind: 'numeric' });
-      }
+      const scope: DimensionScope = {
+        dimensions: Object.fromEntries(
+          formula.inputs.map((port) => [port.name, bound.get(port.name) ?? UNKNOWN_DIMENSION] as const),
+        ),
+        variadic: new Set(
+          formula.inputs
+            .filter((port) => port.kind === 'numeric' && port.variadic === true)
+            .map((port) => port.name),
+        ),
+      };
+      const dimension = expressionDimension(parseExpression(node.expression), scope, node.id);
+      sources.set(
+        outputKey,
+        displayOverride(node, closureOutput.name, {
+          kind: 'numeric',
+          dimension,
+          unit: canonicalUnit(dimension),
+        }),
+      );
       continue;
     }
 

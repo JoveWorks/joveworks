@@ -19,6 +19,7 @@ import {
   compilePredicate,
   constantValue,
   expressionDimension,
+  UNKNOWN_DIMENSION,
   type DimensionScope,
 } from './compile.js';
 import { KernelError } from './errors.js';
@@ -238,6 +239,55 @@ describe('dimensions of an expression', () => {
     expect(() =>
       checkPredicateDimensions(parsePredicate('F < F and d < d'), ports),
     ).not.toThrow();
+  });
+});
+
+describe('a hole — a generic port with no wire and no typed value', () => {
+  // A closure gives each free name its own independent dimension variable
+  // (closure.ts), so `a` and `b` share nothing here unless the expression
+  // itself links them — which is exactly what the hole rule tests.
+  const holes = scope({ a: UNKNOWN_DIMENSION, b: UNKNOWN_DIMENSION });
+
+  it('adopts the other side\'s dimension across + and -, in either position', () => {
+    expect(dimensionOf('a + b', scope({ a: UNKNOWN_DIMENSION, b: FORCE }))).toEqual(FORCE);
+    expect(dimensionOf('b + a', scope({ a: UNKNOWN_DIMENSION, b: FORCE }))).toEqual(FORCE);
+    expect(dimensionOf('a - b', scope({ a: UNKNOWN_DIMENSION, b: LENGTH }))).toEqual(LENGTH);
+  });
+
+  it('resolves to dimensionless once nothing in the expression ever adopts it', () => {
+    expect(dimensionOf('a + b', holes)).toEqual(DIMENSIONLESS);
+    expect(dimensionOf('a - b', holes)).toEqual(DIMENSIONLESS);
+  });
+
+  it('stays unknown through * and / — nothing to adopt from a product — and still falls out dimensionless', () => {
+    expect(dimensionOf('a * b', scope({ a: UNKNOWN_DIMENSION, b: LENGTH }))).toEqual(DIMENSIONLESS);
+    expect(dimensionOf('a / b', holes)).toEqual(DIMENSIONLESS);
+  });
+
+  it('propagates through a constant power without demanding the exponent be constant', () => {
+    expect(dimensionOf('a ** n', scope({ a: UNKNOWN_DIMENSION, n: DIMENSIONLESS }))).toEqual(DIMENSIONLESS);
+  });
+
+  it('skips a whitelisted function\'s own dimension rule rather than testing it against a hole', () => {
+    // sin() would otherwise throw "takes an angle or a pure number" — it must
+    // not, because there is nothing yet to test that rule against.
+    expect(dimensionOf('sin(a)', holes)).toEqual(DIMENSIONLESS);
+  });
+
+  it('skips a reduction\'s own dimension rule the same way — prod() would otherwise refuse it', () => {
+    const variadic = scope({ a: UNKNOWN_DIMENSION }, ['a']);
+    expect(dimensionOf('prod(a)', variadic)).toEqual(DIMENSIONLESS);
+  });
+
+  it('lets a predicate comparison through rather than refusing it, on either side', () => {
+    expect(() => checkPredicateDimensions(parsePredicate('a < b'), holes)).not.toThrow();
+    expect(() =>
+      checkPredicateDimensions(parsePredicate('a < b'), scope({ a: UNKNOWN_DIMENSION, b: LENGTH })),
+    ).not.toThrow();
+  });
+
+  it('still refuses a genuine typo, distinct from a hole it merely has not resolved yet', () => {
+    expect(() => dimensionOf('a + typo', holes)).toThrow(/'typo' is not a port/u);
   });
 });
 

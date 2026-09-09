@@ -30,8 +30,13 @@ describe('what a port field shows', () => {
     ).toBe('38 mm');
   });
 
-  it('shows a generic port empty, since its declared default has no unit to be read in', () => {
-    expect(portFieldText({ ...generic, default: 2 } as NumericPort, undefined, format)).toBe('');
+  it('shows a generic port\'s hole as canonical 1, dimensionless, ignoring any declared default', () => {
+    // A hole (`isGenericPort`) always wins over `default` here, exactly as
+    // `evaluate.ts`'s `inputPortValue` ignores `default` for a generic port —
+    // the schema refuses one a declared default of its own, so the cast
+    // below is only there to prove that fact does not leak into what shows.
+    expect(portFieldText(generic, undefined, format)).toBe('1');
+    expect(portFieldText({ ...generic, default: 2 } as NumericPort, undefined, format)).toBe('1');
   });
 
   it('reads a slider back as the number it currently holds', () => {

@@ -634,22 +634,30 @@ export function renameNode(document: GraphDocument, nodeId: string, label: strin
  * An expression that fails to parse simply has no ports at all until it is
  * fixed: every existing wire is pruned, visibly, rather than kept pointing at
  * a port that may no longer mean the same thing.
+ *
+ * A dropped name's typed value goes with its edge, via the same
+ * `withInputValue` a student's own clearing uses — `pruneEdgesTo` only drops
+ * the edge, and leaving `inputValues` behind would let a value the student
+ * thought they had removed come back: type `5` into `b`, change `a + b` to
+ * `a + c`, then back to `a + b`, and without this the `5` reappears on a
+ * port the student never retyped.
  */
 export function setClosureExpression(
   document: GraphDocument,
   nodeId: string,
   expression: string,
 ): GraphDocument {
-  const withExpression = updateNode<ClosureNode>(document, nodeId, (node) => ({
-    ...node,
-    expression,
-  }));
   let keep: ReadonlySet<string>;
   try {
     keep = new Set(closureFormula(expression).inputs.map((port) => port.name));
   } catch {
     keep = new Set();
   }
+  const withExpression = updateNode<ClosureNode>(document, nodeId, (node) => {
+    const dropped = Object.keys(node.inputValues ?? {}).filter((name) => !keep.has(name));
+    const cleared = dropped.reduce((entry, name) => withInputValue(entry, name, undefined), node);
+    return { ...cleared, expression };
+  });
   return pruneEdgesTo(withExpression, nodeId, keep);
 }
 

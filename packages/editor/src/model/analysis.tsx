@@ -134,16 +134,24 @@ export function lookupCatalogue(catalogues: readonly Catalogue[], id: string): C
 /**
  * Whether an unwired input port already has a value to stand in with — the
  * kernel's own order (`inputPortValue`): a value typed on the node first, the
- * catalogue's declared default second. Typed beats declared, and a generic
- * port's declared default is unusable (there is no unit to read it in), which
- * is exactly why it takes a typed one.
+ * catalogue's declared default second, and — for a numeric generic port —
+ * canonical `1` last, the hole rule's own effective default (`evaluate.ts`,
+ * `inputPortValue`). A generic port can never declare a default of its own
+ * (there is no unit yet to read one in), which is exactly why the hole rule
+ * exists: without it, a port unwired this way could never reach the second
+ * step at all.
+ *
+ * A variadic port is the one numeric case this still refuses: it collects
+ * wires rather than holding one value, so with none wired there is nothing —
+ * not even a hole — to reduce over.
  */
 function hasValue(node: GraphNode, port: Port): boolean {
   const authored = 'inputValues' in node ? node.inputValues?.[port.name] : undefined;
   if (port.kind === 'bundle' || (port.kind === 'numeric' && port.variadic === true)) return false;
   if (port.kind === 'categorical') return authored !== undefined || port.default !== undefined;
   if (authored !== undefined) return true;
-  return port.default !== undefined && !isGenericPort(port);
+  if (isGenericPort(port)) return true;
+  return port.default !== undefined;
 }
 
 /**

@@ -577,14 +577,29 @@ describe('check outputs', () => {
 });
 
 describe('closure nodes', () => {
-  it('is incomplete while a name its expression uses is unwired', () => {
+  // A hole — a generic port with no wire and no typed value — is not an
+  // incomplete state any more: the kernel gives it an effective value of
+  // canonical 1, adopting whatever the expression requires of it
+  // (`kernel/src/evaluate.ts`, `inputPortValue`; `kernel/src/compile.ts`,
+  // `dimensionOf`). `readiness` has to agree with that rather than call the
+  // node incomplete while the kernel itself would happily evaluate it.
+  it('evaluates with an unwired name adopting the wired side, rather than staying incomplete', () => {
     const document = graph([scalar('a', 2), closureNode('eq', 'a + b')], [
       wire('e1', ['a', 'value'], ['eq', 'a']),
     ]);
     const analysis = analyse(document, CATALOGUES);
 
-    expect(analysis.states.get('eq')).toBe('incomplete');
-    expect(text(analysis.problems.get('eq'))).toContain('not connected');
+    expect(analysis.states.get('eq')).toBe('ok');
+    // b is a hole: canonical 1, in the mm a's wire gives the expression.
+    expect(analysis.evaluation?.values.get('eq.result')).toMatchObject({ data: [3] });
+  });
+
+  it('evaluates with nothing wired at all, both names holes and the result plain dimensionless arithmetic', () => {
+    const document = graph([closureNode('eq', 'a + b')], []);
+    const analysis = analyse(document, CATALOGUES);
+
+    expect(analysis.states.get('eq')).toBe('ok');
+    expect(analysis.evaluation?.values.get('eq.result')).toMatchObject({ data: [2] });
   });
 
   it('evaluates once every name it uses is wired, and blocks what depends on a bad one', () => {

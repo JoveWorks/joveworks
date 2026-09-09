@@ -1152,11 +1152,25 @@ function inputPortValue(
   // Not wired: a declared default stands in, in the unit it was declared in.
   // Anything else is an incomplete graph, which the editor marks on the
   // node — this is the same fact, said in an error.
-  if (port.kind === 'numeric' && port.default !== undefined && !('variables' in port.unit)) {
+  if (port.kind === 'numeric' && port.default !== undefined && !isGenericDimension(port.unit)) {
     return scalarSeries(toCanonical(port.default, port.unit as Unit));
   }
   if (port.kind === 'categorical' && port.default !== undefined) {
     return categoricalScalar(port.default);
+  }
+
+  // Still not wired, and generic: this port's dimension is not yet known —
+  // it is a hole, not an error. A hole contributes no dimension of its own;
+  // it adopts whatever the surrounding expression requires of it (see
+  // `dimensionOf`'s handling of the unknown dimension in compile.ts, and
+  // `bindInputs` in graph.ts, which leaves it unbound rather than guessing).
+  // Canonical `1` needs no unit conversion precisely because everything
+  // internal is already canonical (mm, N, s, rad, K) — "one of whatever this
+  // turns out to be" is literally the number 1. A concrete-unit numeric port
+  // with no declared default, and a categorical port, have nothing to adopt
+  // and stay genuinely incomplete below.
+  if (port.kind === 'numeric' && isGenericDimension(port.unit)) {
+    return scalarSeries(1);
   }
   throw new KernelError(`'${port.name}' is not connected and has no default`, key);
 }

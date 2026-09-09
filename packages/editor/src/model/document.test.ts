@@ -806,6 +806,40 @@ describe('setClosureExpression — a closure node’s ports follow its own expre
     const node = edited.nodes.find((entry) => entry.id === 'eq') as ClosureNode;
     expect(node.expression).toBe('a + * b');
   });
+
+  it('drops a dropped name’s typed value along with its edge, so it cannot come back', () => {
+    // Type 5 into b, change a + b to a + c (b's edge — there is none here,
+    // but its typed value — is pruned), then back to a + b: without this,
+    // b's inputValues entry survives the round trip and resurrects the 5 the
+    // student thought they had removed by editing it out of the expression.
+    const withValue: GraphDocument = {
+      ...base,
+      nodes: [
+        ...base.nodes,
+        { ...closure('eq', 'a + b', 400, 0), inputValues: { b: { kind: 'scalar', value: 5, unit: parseUnit('mm') } } },
+      ],
+    };
+    const changed = setClosureExpression(withValue, 'eq', 'a + c');
+    const droppedNode = changed.nodes.find((entry) => entry.id === 'eq') as ClosureNode;
+    expect(droppedNode.inputValues).toBeUndefined();
+
+    const restored = setClosureExpression(changed, 'eq', 'a + b');
+    const restoredNode = restored.nodes.find((entry) => entry.id === 'eq') as ClosureNode;
+    expect(restoredNode.inputValues).toBeUndefined();
+  });
+
+  it('keeps a typed value on a name the new expression still mentions', () => {
+    const withValue: GraphDocument = {
+      ...base,
+      nodes: [
+        ...base.nodes,
+        { ...closure('eq', 'a + b', 400, 0), inputValues: { b: { kind: 'scalar', value: 5, unit: parseUnit('mm') } } },
+      ],
+    };
+    const edited = setClosureExpression(withValue, 'eq', 'a - b');
+    const node = edited.nodes.find((entry) => entry.id === 'eq') as ClosureNode;
+    expect(node.inputValues).toEqual({ b: { kind: 'scalar', value: 5, unit: parseUnit('mm') } });
+  });
 });
 
 describe('removeNodes — splicing a deleted routing node', () => {

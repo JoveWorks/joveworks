@@ -15,7 +15,7 @@
 
 import type { ReactElement } from 'react';
 
-import { isDimensionless, type NumberFormat, type Unit } from '@joveworks/units';
+import { DIMENSIONLESS_UNIT, isDimensionless, type NumberFormat, type Unit } from '@joveworks/units';
 import { isGenericPort, type NumericPort, type ValueSpec } from '@joveworks/schema';
 
 import { formatAuthored, parseAuthored } from '../model/quantity';
@@ -63,7 +63,20 @@ export function portFieldText(
     return formatAuthored({ value: authored.value, unit: authored.unit }, format);
   }
   if (authored !== undefined) return '';
-  if (port.default === undefined || isGenericPort(port)) return '';
+  if (isGenericPort(port)) {
+    // A hole: no wire, no typed value — and the schema refuses a generic
+    // port a declared default of its own (schema/src/port.ts: "generic, so
+    // there is no unit for a default ... to be in"). The kernel gives it an
+    // effective one anyway, canonical 1 (evaluate.ts's `inputPortValue`), so
+    // the field shows that instead of looking empty — in the same
+    // declared-default style as the concrete case just below, so it reads as
+    // "nobody typed this" rather than as a value the student entered.
+    // Dimensionless, because which real unit the hole will end up adopting
+    // is a fact about the whole expression (`compile.ts`'s dimension pass),
+    // not about this one port — this function is never given that binding.
+    return formatAuthored({ value: 1, unit: DIMENSIONLESS_UNIT }, format);
+  }
+  if (port.default === undefined) return '';
   return formatAuthored({ value: port.default, unit: port.unit as Unit }, format);
 }
 
