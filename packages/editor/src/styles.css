@@ -3931,6 +3931,23 @@ aside.bottom .palette-list section {
   font-size: 10px;
 }
 
+/* The CSV export, under the table it exports. It sits here rather than on the
+   canvas node for the same reason `.column-figures` does: what downloads is
+   the table in front of the reader, at the digits set right here. Right
+   aligned under the table's own right edge, and quiet — this is an
+   affordance beside the report, not part of it, which is also why it is
+   suppressed under @media print below. */
+.notebook .table-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
+.notebook .table-actions button {
+  color: var(--muted);
+  font-size: 11px;
+}
+
 /* Same edge-line drag-over convention as .notebook-section's own reorder —
  * vertical here because a table's columns sit side by side, not stacked. */
 .notebook th.drag-over-before::before,
@@ -4101,6 +4118,9 @@ aside.bottom .palette-list section {
      language `<select>` in the middle of the masthead. */
   .notebook-language,
   .column-figures,
+  /* The table's CSV export — an affordance beside the report, not content
+     in it, the same as the per-column digits field above. */
+  .table-actions,
   /* Every dialog (`SettingsDialog`, `UnlockCatalogueDialog`, the Hub
      workspace dialogs…) and the ribbon's own dropdown share these two root
      classes. Both can render as a sibling of `<main>` rather than inside

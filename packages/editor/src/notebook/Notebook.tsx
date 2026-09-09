@@ -60,6 +60,8 @@ import { toUnitsFormat } from '../model/numberFormat';
 import { MonteCarloReceiverPlayback } from '../canvas/MonteCarloReceiverPlayback';
 import { marksOver as resolveMarksOver, type FigureMarking } from '../present/marks';
 import { DEFAULT_COLUMN_FIGURES, ResultView } from '../present/ResultView';
+import { saveTextFile, slugifyTitle } from '../io/files';
+import { tableCsv } from '../model/csv';
 import { DisplayProvider } from '../present/display';
 import { IntelligentPlotControls } from './IntelligentPlotControls';
 import { NotebookSliderControl } from './NotebookSliderControl';
@@ -229,6 +231,8 @@ function OutputTitle({ node }: { readonly node: OutputNode | MonteCarloReceiverN
  */
 export function Result({ result, node }: { readonly result: OutputResult; readonly node: OutputNode }): ReactElement | null {
   const { document, edit, analysis } = useGraph();
+  const { locale, numberFormat } = useSettings();
+  const t = (english: string): string => phrase(locale, english);
 
   // The one place a figure and a mark meet. Every surface below resolves the
   // document's marks against *its own* axes through this, so a candidate that
@@ -270,6 +274,28 @@ export function Result({ result, node }: { readonly result: OutputResult; readon
         ),
         onReorderColumn: (source, target, position) =>
           edit((current) => reorderColumn(current, node.id, source, target, position)),
+        // Exported from where the table is read, not from the canvas node:
+        // the rows a student downloads are the rows in front of them, at the
+        // per-column digits set right here.
+        ...(result.kind === 'table'
+          ? {
+              tableActions: (
+                <button
+                  type="button"
+                  title={t('Download this table as a CSV file.')}
+                  onClick={() =>
+                    saveTextFile(
+                      `${slugifyTitle(node.label ?? node.id)}.csv`,
+                      tableCsv(result.columns, table?.figures, toUnitsFormat(numberFormat)),
+                      'text/csv',
+                    )
+                  }
+                >
+                  {t('export CSV')}
+                </button>
+              ),
+            }
+          : {}),
         ...(result.kind === 'plot' && result.measures !== undefined
           ? { plotControls: <IntelligentPlotControls node={node} result={result} /> }
           : {}),

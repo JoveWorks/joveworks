@@ -72,6 +72,14 @@ export interface ResultEditing {
   readonly columnField?: (columnName: string) => ReactNode;
   readonly onReorderColumn?: (source: string, target: string, position: 'before' | 'after') => void;
   /**
+   * Gestures drawn under a rendered table — today just its CSV export. It
+   * lives here rather than on the canvas node for the reason the table's own
+   * schema docstring already gives for `figures`: what a table is *read* as
+   * is edited where it is read. A published NodeBook passes none, so the
+   * same markup renders without it.
+   */
+  readonly tableActions?: ReactNode;
+  /**
    * Plot configuration, drawn under an intelligent plot's panels and inside
    * its own block so the two read as one figure. Authoring, so a published
    * NodeBook has none.
@@ -282,6 +290,9 @@ export function ResultView({
             ))}
           </tbody>
         </table>
+        {editing?.tableActions === undefined ? null : (
+          <div className="table-actions">{editing.tableActions}</div>
+        )}
       </div>
     );
   }
