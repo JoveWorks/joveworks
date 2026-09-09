@@ -11,6 +11,19 @@ export interface PlotRoles {
   readonly facet?: string;
 }
 
+/**
+ * One y axis of a panel's shared chart: every measure in it is the same
+ * physical dimension, so they can share a scale. `index` is drawing order,
+ * not a fixed identity — 0 is the primary (left) axis, 1 is drawn on the
+ * right, 2+ is a further axis offset outward from it. The figure
+ * (`IntelligentPlotFigure.tsx`) is what actually draws a non-zero index by
+ * rescaling; this module only decides the grouping.
+ */
+export interface PlotValueAxis {
+  readonly index: number;
+  readonly measures: readonly PlotMeasureResult[];
+}
+
 export interface PlotPanel {
   readonly id: string;
   readonly measures: readonly PlotMeasureResult[];
@@ -19,13 +32,26 @@ export interface PlotPanel {
   readonly roles: PlotRoles;
   readonly scales: Readonly<Record<string, PlotScale>>;
   readonly valueScale: PlotScale;
+  /** This panel's measures, grouped into y axes by dimension. Always at
+   * least one entry when `measures` is non-empty. */
+  readonly valueAxes: readonly PlotValueAxis[];
   readonly height: number;
   readonly reason: string;
   readonly error?: string;
 }
 
+/**
+ * A signature for a set of swept-axis ids, order independent — two measures
+ * (or readings) with the same signature vary along the same axes. Shared
+ * with the editor's connect-time check (`Canvas.tsx`'s `plotAxisMismatch`),
+ * so both answer "do these sweep the same axes" identically.
+ */
+export function axisIdSetSignature(ids: readonly string[]): string {
+  return [...new Set(ids)].sort().join('|');
+}
+
 function signature(measure: PlotMeasureResult): string {
-  return measure.axes.map(({ axis }) => axis.id).sort().join('|');
+  return axisIdSetSignature(measure.axes.map(({ axis }) => axis.id));
 }
 
 function sameDimension(a: PlotMeasureResult, b: PlotMeasureResult): boolean {
@@ -121,6 +147,32 @@ function invalidReason(
   return undefined;
 }
 
+const MAX_VALUE_AXES = 3;
+
+/**
+ * Group a panel's measures into y axes by physical dimension, in
+ * first-appearance order — a force and a length wired into the same panel
+ * become two value axes rather than two panels. `heatmap`/`contour` reach
+ * this too, but `inferPlotPanels` never gives them more than one measure, so
+ * they always come back with exactly one axis.
+ */
+function valueAxesFor(measures: readonly PlotMeasureResult[]): readonly PlotValueAxis[] {
+  const groups: PlotMeasureResult[][] = [];
+  for (const measure of measures) {
+    const group = groups.find((candidate) => sameDimension(candidate[0] as PlotMeasureResult, measure));
+    if (group === undefined) groups.push([measure]);
+    else group.push(measure);
+  }
+  return groups.map((group, index) => ({ index, measures: group }));
+}
+
+function valueAxisReason(valueAxes: readonly PlotValueAxis[]): string | undefined {
+  if (valueAxes.length > MAX_VALUE_AXES) {
+    return `varies across ${valueAxes.length} value units; Plot supports at most ${MAX_VALUE_AXES} y axes`;
+  }
+  return undefined;
+}
+
 function scaleReason(measure: PlotMeasureResult, axes: readonly PlotAxis[]): string | undefined {
   if (measure.view?.valueScale === 'log' && measure.series.data.some((value) => !Number.isFinite(value) || value <= 0)) {
     return 'a logarithmic value scale needs every plotted value above zero';
@@ -145,7 +197,9 @@ function panelFor(
   const type = lead.view?.type ?? autoType(natures, axes);
   const roles = rolesFor(natures, axes, type, lead.view);
   const explicit = lead.view?.type !== undefined;
-  const error = invalidReason(axes, type, roles, explicit) ?? scaleReason(lead, axes) ??
+  const valueAxes = valueAxesFor(measures);
+  const error = invalidReason(axes, type, roles, explicit) ?? valueAxisReason(valueAxes) ??
+    measures.map((measure) => scaleReason(measure, axes)).find((reason) => reason !== undefined) ??
     (axes.length === 0 && measures.length < 2 ? 'a single scalar belongs in a Value output' : undefined);
   const reason = lead.view?.type !== undefined
     ? `Pinned · ${type}`
@@ -166,6 +220,7 @@ function panelFor(
     roles,
     scales: lead.view?.scales ?? {},
     valueScale: lead.view?.valueScale ?? 'linear',
+    valueAxes,
     height: lead.view?.height ?? 240,
     reason,
     ...(error === undefined ? {} : { error }),
@@ -175,6 +230,16 @@ function panelFor(
 /**
  * Turn evaluated measures into a deterministic dashboard. The result is pure
  * and contains no drawing concerns, so inference can be tested independently.
+ *
+ * One panel per axis signature — a student who wants two plots wires two
+ * Plot nodes; this never splits one axis signature into several panels
+ * itself. Dimension used to be exactly that second split (a force and a
+ * length sharing one signature became two stacked panels); now it only
+ * decides which measures share a y axis within the one panel
+ * (`valueAxesFor`, in `panelFor`), 0 primary and 1+ layered outward. `view`
+ * JSON still splits: two measures with genuinely different pinned choices
+ * (type, roles, labels) cannot share one chart's marks, so they still land
+ * in separate panels.
  */
 export function inferPlotPanels(
   natures: AxisNatures,
@@ -198,7 +263,6 @@ export function inferPlotPanels(
       const viewKey = JSON.stringify(measure.view ?? {});
       const compatible = groups.find((group) =>
         signature(group[0] as PlotMeasureResult) === signature(measure) &&
-        sameDimension(group[0] as PlotMeasureResult, measure) &&
         JSON.stringify((group[0] as PlotMeasureResult).view ?? {}) === viewKey,
       );
       if (compatible === undefined) groups.push([measure]);
