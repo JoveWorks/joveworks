@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ANGLE, AREA, DIMENSIONLESS, FORCE, FREQUENCY, LENGTH, TORQUE, parseUnit } from '@joveworks/units';
+import { ANGLE, AREA, DIMENSIONLESS, FORCE, FREQUENCY, LENGTH, TORQUE, dimension, parseUnit } from '@joveworks/units';
 import type { GraphDocument, JsonObject } from '@joveworks/schema';
 
 import { KernelError } from './errors.js';
@@ -748,13 +748,33 @@ describe('closure nodes', () => {
     expect(resolution.sources.get(endpointKey('eq', 'result'))?.dimension).toEqual(FORCE);
   });
 
-  it('stays unknown-then-dimensionless when only one side of a * b is wired', () => {
+  // `*` cannot adopt the way `+`/`-` can, so a hole on one side collapses to
+  // dimensionless right at the multiplication, and the wired side's real
+  // dimension survives — it must not be lost to a stray "unknown" that rides
+  // up to the root and gets declared dimensionless there, taking the wired
+  // side's force with it (a defect an end-to-end probe caught after the
+  // first version of this rule: `a * b` with `b` in mm was reporting plain
+  // 20, dimensionless, instead of 20 mm).
+  it("collapses the unwired side of a * b to dimensionless right there, keeping the wired side's real dimension", () => {
     const document = documentOf(
       [input('F', scalar(10, 'N')), closureNode('eq', 'a * b')],
       [wire('F.value', 'eq.b')],
     );
     const resolution = resolveGraph(document, catalogues);
-    expect(resolution.sources.get(endpointKey('eq', 'result'))?.dimension).toEqual(DIMENSIONLESS);
+    expect(resolution.sources.get(endpointKey('eq', 'result'))?.dimension).toEqual(FORCE);
+  });
+
+  it('keeps that same wired dimension through a function wrapped around the product, fractional exponent and all', () => {
+    // sqrt(a * b) with b in force: a collapses to dimensionless inside the
+    // product (force), and sqrt halves the exponent — force^(1/2), odd
+    // looking but correct (dimensions.ts's tolerance comment is for exactly
+    // this kind of fractional exponent).
+    const document = documentOf(
+      [input('F', scalar(10, 'N')), closureNode('eq', 'sqrt(a * b)')],
+      [wire('F.value', 'eq.b')],
+    );
+    const resolution = resolveGraph(document, catalogues);
+    expect(resolution.sources.get(endpointKey('eq', 'result'))?.dimension).toEqual(dimension({ force: 1 / 2 }));
   });
 
   it('refuses to add two different dimensions', () => {

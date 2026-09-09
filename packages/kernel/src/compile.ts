@@ -331,15 +331,17 @@ export interface DimensionScope {
  * adopt `b`'s dimension instead of the two being compared and refused.
  *
  * Represented as a `Dimension` whose every exponent is `NaN`, deliberately —
- * not a sentinel object needing identity checks, but a value that *is* the
- * algebra's own "unknown", because `NaN` contaminates whatever arithmetic
- * touches it. `multiplyDimensions`, `divideDimensions` and `powerDimension`
- * are plain per-exponent arithmetic, so combining this with any dimension
- * through `*`, `/` or `**` already comes out fully `NaN` — unknown in,
- * unknown out — for free, with no case-by-case propagation code needed. Only
- * `+`, `-`, a predicate comparison, and a whitelisted function or reduction
- * (whose dimension rules validate and can throw, which `NaN` must not be
- * allowed to trigger) need to test for it explicitly below.
+ * not a sentinel object needing identity checks, but a value distinct from
+ * every real dimension by construction (`Number.isNaN`), which is all this
+ * needs: `isUnknownDimension` below tests for it explicitly at every point
+ * that cares, rather than relying on `NaN` arithmetic to carry it through
+ * `multiplyDimensions`/`divideDimensions`/`powerDimension` unattended — doing
+ * that would let one hole's unknown-ness swallow a *different* operand's
+ * real, already-known dimension on the way up (`a * b` with `b` in mm must
+ * come out mm, not "unknown" and then dimensionless at the root, which is
+ * indistinguishable from having thrown `b`'s mm away). `+`, `-`, and a
+ * predicate comparison are the only places this is allowed to survive a
+ * step outward — see `dimensionOf`'s binary case and `checkPredicateDimensions`.
  */
 export const UNKNOWN_DIMENSION: Dimension = Object.freeze({
   length: NaN,
@@ -354,11 +356,29 @@ export const UNKNOWN_DIMENSION: Dimension = Object.freeze({
  * `===` against itself, so this checks one exponent for `NaN` rather than
  * comparing to `UNKNOWN_DIMENSION` by reference or by value — sound because
  * every dimension in this codebase starts either fully finite (a real unit
- * or a resolved generic) or, from here, fully `NaN`, and the arithmetic
- * above never mixes the two within one exponent.
+ * or a resolved generic) or, from here, fully `NaN`.
  */
 function isUnknownDimension(dimension: Dimension): boolean {
   return Number.isNaN(dimension.length);
+}
+
+/**
+ * Collapse a hole to dimensionless at the point an operator that cannot
+ * adopt is about to consume it — `*`, `/`, `**`, a whitelisted function's
+ * argument, a reduction's argument. Multiplication (and everything beneath
+ * it) never hands a hole someone else's dimension the way `+`/`-` do, so
+ * there is nothing left for it to wait for: it becomes plain dimensionless
+ * right here, at the leaf where it is actually used, and the ordinary rule
+ * for that operator runs against a real, concrete dimension rather than
+ * being bypassed. Doing this at the point of use rather than letting the
+ * unknown ride further up the tree is what keeps `a * b` (with `b` wired to
+ * mm) as mm rather than losing it to a collapse-to-dimensionless at the
+ * root — `expressionDimension`'s own collapse exists only as the safety net
+ * for an expression that is nothing but a bare, still-unknown hole (`a`
+ * alone), never as the mechanism ordinary arithmetic relies on.
+ */
+function orDimensionless(dimension: Dimension): Dimension {
+  return isUnknownDimension(dimension) ? DIMENSIONLESS : dimension;
 }
 
 /**
@@ -463,27 +483,24 @@ function dimensionOf(
       const left = dimensionOf(expr.left, scope, where, elementwise);
 
       if (expr.operator === '**') {
-        // The base is a hole: whatever it turns out to be, raising it to a
-        // power is still unknown, constant exponent or not — there is
-        // nothing yet to require the exponent be constant against.
-        if (isUnknownDimension(left)) {
-          dimensionOf(expr.right, scope, where, elementwise);
-          return UNKNOWN_DIMENSION;
-        }
-        // The base is dimensionless: any exponent is fine, including a wired one.
-        if (isDimensionless(left)) {
+        // `**` cannot adopt (see `orDimensionless`): a hole base becomes
+        // plain dimensionless right here, so it takes the branch below and
+        // any exponent is fine — including a wired one — exactly as a
+        // genuinely dimensionless base always has.
+        const base = orDimensionless(left);
+        if (isDimensionless(base)) {
           dimensionOf(expr.right, scope, where, elementwise);
           return DIMENSIONLESS;
         }
         const exponent = constantValue(expr.right);
         if (exponent === undefined) {
           throw new KernelError(
-            `a ${describeDimension(left)} raised to a power that is not constant has no ` +
+            `a ${describeDimension(base)} raised to a power that is not constant has no ` +
               'dimension — the exponent would have to be known before the value is',
             where,
           );
         }
-        return powerDimension(left, exponent);
+        return powerDimension(base, exponent);
       }
 
       const right = dimensionOf(expr.right, scope, where, elementwise);
@@ -494,6 +511,8 @@ function dimensionOf(
           // dimension — the adoption this whole design is for. Read the same
           // way as `literalAgainstDimension` just below: a hole, like a bare
           // literal, has nothing of its own to disagree with the other side.
+          // This is the raw, unsubstituted `left`/`right` — `+`/`-` are
+          // exactly the operators `orDimensionless` must not touch.
           if (isUnknownDimension(left)) return right;
           if (isUnknownDimension(right)) return left;
           const adopted = literalAgainstDimension(expr.left, left, expr.right, right);
@@ -502,12 +521,13 @@ function dimensionOf(
           return left;
         }
         case '*':
-          // Plain per-exponent arithmetic: a hole (all-`NaN`) combined with
-          // anything comes out all-`NaN`, i.e. still unknown. No explicit
-          // check needed — see `UNKNOWN_DIMENSION`'s doc comment.
-          return multiplyDimensions(left, right);
+          // `*` cannot adopt: a hole on either side collapses to
+          // dimensionless right here, so `a * b` with `b` wired to mm comes
+          // out mm rather than losing it to an unknown that would otherwise
+          // ride all the way up and be declared dimensionless at the root.
+          return multiplyDimensions(orDimensionless(left), orDimensionless(right));
         case '/':
-          return divideDimensions(left, right);
+          return divideDimensions(orDimensionless(left), orDimensionless(right));
       }
       break;
     }
@@ -527,14 +547,13 @@ function dimensionOf(
         // `at`'s index is one number for the whole call, not one per wired
         // value — which is how it is evaluated, so it is checked that way too.
         const extraDimensions = extra.map((arg) => dimensionOf(arg, scope, where, false));
-        // A hole among the arguments: skip the reduction's own dimension rule
-        // (`prod`'s "must be dimensionless", `at`'s "index must be plain")
-        // rather than run it against `NaN` and risk a spurious refusal —
-        // unknown in, unknown out, uniformly, rather than per reduction.
-        if (isUnknownDimension(dimension) || extraDimensions.some(isUnknownDimension)) {
-          return UNKNOWN_DIMENSION;
-        }
-        return reduction.dimension(dimension, where, extraDimensions);
+        // A reduction cannot adopt: a hole among the arguments collapses to
+        // dimensionless right here, so the reduction's own rule (`prod`'s
+        // "must be dimensionless", `at`'s "index must be plain") runs
+        // normally instead of being bypassed — it can still catch a genuine
+        // mistake in a *different* argument that skipping it entirely would
+        // have missed.
+        return reduction.dimension(orDimensionless(dimension), where, extraDimensions.map(orDimensionless));
       }
 
       const spec = FUNCTIONS.get(expr.callee);
@@ -545,11 +564,11 @@ function dimensionOf(
         );
       }
       checkArity(expr.callee, expr.args.length, where);
-      const argumentDimensions = expr.args.map((arg) => dimensionOf(arg, scope, where, elementwise));
-      // Same reasoning as the reduction above: a hole among the arguments
-      // skips the function's own rule (`sin`'s "angle or pure number", …)
-      // rather than testing it against `NaN`.
-      if (argumentDimensions.some(isUnknownDimension)) return UNKNOWN_DIMENSION;
+      // Same reasoning as the reduction above: a whitelisted function cannot
+      // adopt, so a hole among its arguments collapses to dimensionless
+      // right here rather than bypassing the function's own rule — `sin(a)`
+      // becomes `sin(dimensionless)` and is checked for real.
+      const argumentDimensions = expr.args.map((arg) => orDimensionless(dimensionOf(arg, scope, where, elementwise)));
       return spec.dimension(argumentDimensions, where);
     }
   }
@@ -559,12 +578,16 @@ function dimensionOf(
 /**
  * The dimension an expression produces, given the dimensions of its ports.
  *
- * This is the one place the pass's remaining unknowns are settled: anything
- * still a hole once the whole expression has been walked resolves to
- * dimensionless — the fact that lets a brand-new closure node with nothing
- * wired at all compute `a + b = 2` instead of refusing. Every internal
- * recursive call goes through `dimensionOf`, never this function, so a hole
- * only ever resolves here, at the top, and never partway through the pass.
+ * Every operator that cannot adopt a hole's dimension already collapses one
+ * to dimensionless the moment it consumes it (`orDimensionless`, used by
+ * `*`, `/`, `**`, and every whitelisted function and reduction) — that is
+ * what keeps `a * b`'s `b` from losing its mm to a stray unknown riding all
+ * the way up. This top-level collapse is the safety net for what is left
+ * over: an expression that is nothing but a bare, still-unadopted hole —
+ * `a` alone, or `a + b` with neither wired — which resolves to dimensionless
+ * here rather than leaving the whole formula unresolved. A brand-new closure
+ * node with nothing wired at all computes `a + b = 2` because of this, not
+ * because of anything inside the walk.
  */
 export function expressionDimension(
   expr: Expr,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatQuantity } from '@joveworks/units';
+import { DIMENSIONLESS, FORCE, dimension, formatQuantity } from '@joveworks/units';
 
 import type { JsonObject } from '@joveworks/schema';
 import {
@@ -19,7 +19,7 @@ import {
   type ReliabilityResult,
 } from './evaluate.js';
 import { KernelError } from './errors.js';
-import { resolveGraph } from './graph.js';
+import { endpointKey, resolveGraph } from './graph.js';
 import { sensitivityCandidates } from './sensitivity.js';
 import {
   CATALOGUE,
@@ -992,13 +992,25 @@ describe('closure nodes', () => {
 });
 
 describe('a hole — a generic port with no wire and no typed value evaluates as canonical 1', () => {
-  it('computes a + b as 2 when a brand-new closure node has nothing wired at all', () => {
+  // The full matrix an end-to-end probe checked after the first version of
+  // this rule shipped, pinned here so it cannot regress. `+`/`-` (and a
+  // predicate comparison) are the only operators that can hand a hole
+  // someone else's dimension; `*`, `/`, `**`, every whitelisted function and
+  // every reduction cannot adopt, so a hole collapses to dimensionless right
+  // where it is consumed — which is what keeps a real sibling dimension
+  // (`b`'s newtons) from being thrown away by the unknown riding all the way
+  // to the root and getting declared dimensionless there.
+  const dimensionOfResult = (evaluation: ReturnType<typeof evaluateDocument>, node: string, port: string) =>
+    evaluation.resolution.sources.get(endpointKey(node, port))?.dimension;
+
+  it('closure a + b, nothing wired: computes 2, dimensionless', () => {
     const document = documentOf([closureNode('eq', 'a + b')], []);
     const evaluation = evaluateDocument(document, catalogues);
     expect(numeric(valueAt(evaluation, 'eq', 'result')).data).toEqual([2]);
+    expect(dimensionOfResult(evaluation, 'eq', 'result')).toEqual(DIMENSIONLESS);
   });
 
-  it('adopts the wired side once one of a + b is wired, rather than refusing the other as not connected', () => {
+  it('closure a + b, b wired to 10 N: computes 11 N — a adopts the wired side', () => {
     const document = documentOf(
       [input('F', scalar(10, 'N')), closureNode('eq', 'a + b')],
       [wire('F.value', 'eq.b')],
@@ -1007,24 +1019,37 @@ describe('a hole — a generic port with no wire and no typed value evaluates as
     // a contributes canonical 1 — "one of whatever this turns out to be" —
     // adopting F's newton dimension from the expression, not from a default.
     expect(numeric(valueAt(evaluation, 'eq', 'result')).data).toEqual([11]);
+    expect(dimensionOfResult(evaluation, 'eq', 'result')).toEqual(FORCE);
   });
 
-  it('leaves a * b unknown-then-dimensionless the same way, and still computes', () => {
+  it('closure a * b, b wired to 10 N: computes 10 N, not 10 dimensionless — a collapses inside the product, not at the root', () => {
     const document = documentOf(
       [input('F', scalar(10, 'N')), closureNode('eq', 'a * b')],
       [wire('F.value', 'eq.b')],
     );
     const evaluation = evaluateDocument(document, catalogues);
     expect(numeric(valueAt(evaluation, 'eq', 'result')).data).toEqual([10]);
+    expect(dimensionOfResult(evaluation, 'eq', 'result')).toEqual(FORCE);
   });
 
-  it('computes base.math.add with one input wired, instead of refusing the other as not connected', () => {
+  it('closure sqrt(a * b), b wired to 10 N: computes sqrt(10) newton^(1/2), not dimensionless', () => {
     const document = documentOf(
-      [input('F', scalar(10, 'N')), formulaNode('sum', refTo('addTwo'))],
+      [input('F', scalar(10, 'N')), closureNode('eq', 'sqrt(a * b)')],
+      [wire('F.value', 'eq.b')],
+    );
+    const evaluation = evaluateDocument(document, catalogues);
+    expect(numeric(valueAt(evaluation, 'eq', 'result')).data[0]).toBeCloseTo(Math.sqrt(10), 12);
+    expect(dimensionOfResult(evaluation, 'eq', 'result')).toEqual(dimension({ force: 1 / 2 }));
+  });
+
+  it('base.math.add, a wired to 20 N: computes 21 N, instead of refusing b as not connected', () => {
+    const document = documentOf(
+      [input('F', scalar(20, 'N')), formulaNode('sum', refTo('addTwo'))],
       [wire('F.value', 'sum.a')],
     );
     const evaluation = evaluateDocument(document, catalogues);
-    expect(numeric(valueAt(evaluation, 'sum', 'sum')).data).toEqual([11]);
+    expect(numeric(valueAt(evaluation, 'sum', 'sum')).data).toEqual([21]);
+    expect(dimensionOfResult(evaluation, 'sum', 'sum')).toEqual(FORCE);
   });
 });
 
