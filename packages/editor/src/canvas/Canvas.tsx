@@ -40,6 +40,7 @@ import {
   hasUnit,
   localize,
   OBJECTIVE_PORT,
+  plotMeasures,
   X_PORT,
   Y_PORT,
   THRESHOLD_PORT,
@@ -53,6 +54,9 @@ import {
   type NodeKind,
 } from '@joveworks/schema';
 
+import type { Analysis } from '../model/analysis';
+import { axisIdSetSignature } from '../model/plot';
+import { reading, type Reading } from '../model/values';
 import { useGraph } from '../graph-context';
 import { useSettings } from '../settings-context';
 import { phrase, type AppLocale } from '../i18n';
@@ -614,6 +618,54 @@ const NODE_TYPES = {
 
 const EDGE_TYPES = { bundle: BundleEdge };
 const SNAP_GRID: [number, number] = [CANVAS_GRID_SIZE, CANVAS_GRID_SIZE];
+
+/**
+ * Whether wiring `candidate` would give a Plot node a measure that sweeps a
+ * different set of axes than the measures it already has.
+ *
+ * A Plot panel now draws every measure sharing one axis signature as one
+ * chart with up to three value axes (`inferPlotPanels`) instead of a second,
+ * stacked panel — mixing axis signatures inside one Plot node is no longer
+ * something the figure can express at all, so a student who wants that
+ * wants a second Plot node instead. `canConnect` (`@joveworks/kernel`) is
+ * port-type based and has no notion of which axes a port's *reading*
+ * sweeps, so this lives here rather than there, reading the same
+ * `analysis.evaluation` the canvas already resolves every reading from
+ * (`reading`, `model/values.ts`).
+ *
+ * Only ever an addition, never a removal: a mismatch here refuses the new
+ * wire (`refuseConnection`, in `onConnect`) rather than dropping any edge
+ * already on the node — the destructive half of "refuse or break
+ * connections" is deliberately not built.
+ */
+export function plotAxisMismatch(
+  document: GraphDocument,
+  analysis: Analysis,
+  candidate: Edge,
+): string | undefined {
+  const target = document.nodes.find((node) => node.id === candidate.to.node);
+  if (target?.kind !== 'output' || target.output.kind !== 'plot') return undefined;
+  // Not every port of a plot node is a measure: its threshold ports (one per
+  // measure, `plotThresholdPort`) carry a scalar bound to a single already-
+  // placed measure's dimension and have nothing to do with swept axes.
+  const measurePorts = new Set(plotMeasures(target.output).map((measure) => measure.id));
+  if (candidate.to.port !== NEW_PLOT_MEASURE && !measurePorts.has(candidate.to.port)) return undefined;
+
+  const incoming = reading(analysis, candidate.from.node, candidate.from.port);
+  if (incoming === undefined) return undefined;
+  const incomingSignature = axisIdSetSignature(incoming.series.axes.map((axis) => axis.id));
+
+  const existingSignatures = new Set(
+    document.edges
+      .filter((edge) => edge.to.node === candidate.to.node && edge.to.port !== candidate.to.port)
+      .map((edge) => reading(analysis, edge.from.node, edge.from.port))
+      .filter((entry): entry is Reading => entry !== undefined)
+      .map((entry) => axisIdSetSignature(entry.series.axes.map((axis) => axis.id))),
+  );
+  if (existingSignatures.size === 0 || existingSignatures.has(incomingSignature)) return undefined;
+
+  return "This measure sweeps a different axis than the plot's other measures — wire a second Plot node for it instead of mixing them here.";
+}
 
 export function Canvas({
   controlsVisible,
@@ -1204,6 +1256,12 @@ export function Canvas({
       const candidate = candidateOf(connection);
       if (candidate === undefined) return;
 
+      const axisMismatch = plotAxisMismatch(document, analysis, candidate);
+      if (axisMismatch !== undefined) {
+        refuseConnection(candidate, axisMismatch);
+        return;
+      }
+
       const tableNode = document.nodes.find((entry) => entry.id === candidate.to.node);
       const tableTarget = tableNode?.kind === 'output' && tableNode.output.kind === 'table';
       const result = connectResolvingTableColumn(
@@ -1251,7 +1309,7 @@ export function Canvas({
 
       refuseConnection(result.refusal.edge, result.refusal.reason);
     },
-    [analysis.resolution, catalogues, clearRefusal, document, edit, refuseConnection],
+    [analysis, catalogues, clearRefusal, document, edit, refuseConnection],
   );
 
   /** What a right click offers, worked out from what was clicked. */

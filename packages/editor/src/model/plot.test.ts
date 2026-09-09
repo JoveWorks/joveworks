@@ -5,7 +5,7 @@ import { DOCUMENT_SCHEMA_VERSION, type GraphDocument, type GraphNode } from '@jo
 import { parseUnit } from '@joveworks/units';
 
 import type { AxisNatures } from '../present/display';
-import { axisNaturesOf, inferPlotPanels } from './plot';
+import { axisIdSetSignature, axisNaturesOf, inferPlotPanels } from './plot';
 
 const mm = parseUnit('mm');
 const stress = parseUnit('MPa');
@@ -80,17 +80,36 @@ describe('intelligent plot inference', () => {
     expect(panel?.roles).toMatchObject({ x: 'x', series: 'grade' });
   });
 
-  it('overlays compatible measures and stacks incompatible dimensions', () => {
+  it('overlays measures sharing a dimension on one value axis, and gives a different dimension a second axis rather than a second panel', () => {
     const x = axis('x', 0, [1, 2, 3]);
     const panels = inferPlotPanels(documentWith([range('x', 'linear')]), [
       measure('stressA', [x]),
       measure('stressB', [x]),
       measure('mass', [x], mass),
     ]);
-    expect(panels.map((panel) => panel.measures.map((entry) => entry.id))).toEqual([
+    expect(panels).toHaveLength(1);
+    expect(panels[0]?.measures.map((entry) => entry.id)).toEqual(['stressA', 'stressB', 'mass']);
+    expect(panels[0]?.valueAxes.map((valueAxis) => valueAxis.measures.map((entry) => entry.id))).toEqual([
       ['stressA', 'stressB'],
       ['mass'],
     ]);
+    expect(panels[0]?.error).toBeUndefined();
+  });
+
+  it('refuses a panel that would need a fourth value axis, without dropping any measure', () => {
+    const x = axis('x', 0, [1, 2, 3]);
+    const seconds = parseUnit('s');
+    const kelvin = parseUnit('K');
+    const panels = inferPlotPanels(documentWith([range('x', 'linear')]), [
+      measure('stress', [x], stress),
+      measure('mass', [x], mass),
+      measure('time', [x], seconds),
+      measure('temperature', [x], kelvin),
+    ]);
+    expect(panels).toHaveLength(1);
+    expect(panels[0]?.measures).toHaveLength(4);
+    expect(panels[0]?.valueAxes).toHaveLength(4);
+    expect(panels[0]?.error).toMatch(/at most 3 y axes/u);
   });
 
   it('builds independent dashboard panels for different sweep signatures', () => {
@@ -140,5 +159,17 @@ describe('intelligent plot inference', () => {
       .toMatch(/numeric coordinates above zero/u);
     const negative = { ...measure('z', [], stress, { valueScale: 'log' }), series: { kind: 'numeric' as const, axes: [], data: [-1] } };
     expect(inferPlotPanels(documentWith([]), [negative])[0]?.error).toMatch(/above zero/u);
+  });
+});
+
+describe('axis signature (shared with the editor connect-time check)', () => {
+  it('is order-independent and de-duplicates', () => {
+    expect(axisIdSetSignature(['x', 'y'])).toBe(axisIdSetSignature(['y', 'x']));
+    expect(axisIdSetSignature(['x', 'x', 'y'])).toBe(axisIdSetSignature(['x', 'y']));
+  });
+
+  it('tells apart two different swept-axis sets', () => {
+    expect(axisIdSetSignature(['x'])).not.toBe(axisIdSetSignature(['y']));
+    expect(axisIdSetSignature([])).not.toBe(axisIdSetSignature(['x']));
   });
 });
