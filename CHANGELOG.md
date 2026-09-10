@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.26.11](https://github.com/JoveWorks/joveworks/compare/v0.26.10...v0.26.11) (2026-09-10)
+
+### Fixes
+
+* **editor:** keep the primary y axis when a plot gains a second one ([0399e38](https://github.com/JoveWorks/joveworks/commit/0399e38bba667b977d3249e884c8b913811e8c93))
 ## [0.26.10](https://github.com/JoveWorks/joveworks/compare/v0.26.9...v0.26.10) (2026-09-09)
 
 ### Features
