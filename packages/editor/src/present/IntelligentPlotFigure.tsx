@@ -568,6 +568,11 @@ function PlotPanelFigure({
       title: (row: SmartRow) => tipText(panel, row, valueUnits),
       ...(facetAxis === undefined ? {} : { fx: 'facet' }),
     }));
+    // Plot suppresses its *implicit* axis for a scale as soon as any explicit
+    // axis mark claims that scale, so the secondary axes above would take the
+    // primary's left-hand axis away with them. Re-declare it: with no options
+    // of its own it draws exactly the axis Plot would have, label and all.
+    if (secondaryAxes.length > 0) marks.push(Plot.axisY({ anchor: 'left' }));
     marks.push(...secondaryAxisMarks);
 
     const xScale = panel.roles.x === undefined
