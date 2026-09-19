@@ -10,7 +10,16 @@ repo's node library and should be referenceable from the notebook.
 Catalogues still have no migration path and refuse an unknown schema version.
 
 **3. Change: What is the {table XX} notation in RM catalogue?** Decide how to
-integrate tables as catalogue lookup items.
+integrate tables as catalogue lookup items. Under discussion in
+[docs/table-input-node-plan.md](docs/table-input-node-plan.md), which proposes a
+table input node over the existing `FormulaLookup` machinery and lists the open
+decisions still to settle. The shape asked for from the course side is direct
+manipulation rather than a lookup expression: the node draws the table, a
+student **selects cells**, and the selection *is* the node's output — with a
+multi-cell selection producing a range on every output port at once, so picking
+four candidate sizes out of a table sweeps them the same way a `list` range
+does. That makes the table a first-class sweep source and not just a function
+call, which is the part the plan has to answer.
 
 **4. Change: equation R&M 16.3 uses betahat_1** The hat is currently not
 present as a caret on the letter. Out of scope for this repo — R&M catalogue
@@ -63,6 +72,7 @@ material" list, and the compiled report students see all stay frozen at
 whatever the workspace looked like the moment "Publish NodeBook" was clicked
 — routine edits after that need a fresh, separate publish to reach students.
 Three ways to close the gap, in increasing order of change:
+
 - **Sync on save**: have `replace_workspace` also refresh the three copied
   columns on every publication whose `source_workspace_id` matches, re-running
   the same validation `create_publication` already does (complete compiled
@@ -108,3 +118,36 @@ source workspace's edit token, or a workspace needs to expose which
 publication(s) it sources (the new `published` flag already knows the fact;
 it would need to carry the workspace id(s) too) so the reverse lookup does
 not depend on the browser's own memory.
+
+**12. Export data out of an output node** — a table output node is getting a
+CSV button. The same question is open for every other output that holds
+numbers: a plot's underlying series, a print node's swept values, a
+distribution's samples. A student who wants to check a curve in a spreadsheet,
+or hand the numbers to a report written elsewhere, currently has no way out of
+the app at all. Decide whether export is a property of the *output kind* (a
+button per kind, each choosing its own sensible shape) or of the NodeBook (one
+"export data" that emits every numeric output at once), before a second
+per-kind button is written.
+
+**13. What happens when students collaborate?** — everything about the app is
+currently single-author. A document is a file, autosave is local, and a cloud
+workspace's edit token lives only in the browser that created it (see item 11).
+Two students on one assignment have no path but passing a `.json` around, and
+nothing detects that they both edited it. Worth deciding what is actually being
+promised — shared editing, a merge story, or an explicit "one owner, others
+read" — because the answer changes the Hub's data model, not just the UI.
+
+**14. Should print and plot outputs combine?** — a value and the curve it sits
+on are currently two nodes and two NodeBook entries, so the report reads as a
+number, then separately a chart of the same quantity. Asked as a question, not
+a request: it may be that one output kind should be able to show both, or that
+the NodeBook should pair them in a section, or that this is the section frame's
+job already and nothing needs to change. Decide before adding a fifth thing a
+Plot node can be configured to do.
+
+**15. Nice to have: link to a PDF** — a formula, a node or a section pointing at
+the page of a source document it came from. R&M citations already exist as
+metadata (`citation` on a formula); this is the step from "eq. 11.14" to
+something clickable. Out of scope for this repository as far as R&M content
+goes — the restricted catalogue lives elsewhere — so what is decided here is
+only the *field* and how the editor renders it, not any particular target.

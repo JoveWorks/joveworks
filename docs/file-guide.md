@@ -148,6 +148,7 @@ The React app. Largest package by far. `AGENTS.md`: desktop-only, no properties 
 - `model/editorSettings.ts` — small standalone `localStorage`-backed preferences: locale, minimap, canvas-controls visibility, snap-to-grid, panel widths, title-math rendering, theme, contour palette.
 - `model/numberFormat.ts` — how numbers are displayed/typed app-wide (thousands/decimal style, notation), persisted separately from `editorSettings.ts`.
 - `model/quantity.ts` — the field-level authored↔canonical boundary: `parseAuthored`/`formatAuthored` (what a document stores), `display`/`displayNumber` (what a node/table shows).
+- `model/csv.ts` — `tableCsv`/`csvSeparator`: a table output's evaluated rows as downloadable CSV, rendered exactly as the notebook's own table renders them. Open it for the separator rule — the field separator follows the *decimal* separator (`;` when the decimal point is a comma), which is what makes a double-click open into columns on a European locale.
 - `model/values.ts` — reads a node's output for display: `reading()`, `summarise()`, `summariseCheck()` (the pass/fail/boundary segment logic), `axisLabel()`.
 - `model/fuzzy.ts` — subsequence fuzzy search (`fuzzyScore`/`fuzzySearch`) used by the palette and QuickAdd menu.
 - `model/palettePreferences.ts` — palette favourites, `localStorage`-backed.
@@ -204,7 +205,7 @@ same report through the same code instead of three renderers drifting apart
 - `present/compiled.ts` — reads a published report back into the shapes the figures draw: revives the numbers JSON destroys, refuses an `equation` result and any kind it cannot draw, and rebuilds the marks, axis readouts and display settings.
 - `present/SliderControl.tsx` — the synchronized slider/exact-value control, over plain readings rather than a node, so a published NodeBook uses the same one; print replaces its interactive fields with the current static value. `notebook/NotebookSliderControl.tsx` is the graph-node adapter over it.
 - `present/PlotFigure.tsx` — the Observable-Plot rendering of a `PlotResult`: log axes when the range was logarithmic, the threshold (a rule on a line, an isoline on a contour), contour mode, faceting, SI-prefixed axis labels, the mark overlay, and the pointer that turns a click into a mark. All computation is already done by the kernel; this file only draws.
-- `present/IntelligentPlotFigure.tsx` — the multi-measure dashboard: one panel per inferred plot type (`model/plot.ts`), with its own colorbars and legends.
+- `present/IntelligentPlotFigure.tsx` — the multi-measure figure: one panel per inferred plot type (`model/plot.ts`), with its own colorbars and legends. Open it for the secondary/ternary y axis: Observable Plot gives a chart one y scale, so an extra axis is drawn by rescaling that measure's extent onto the primary's and inverting the map in the tick format (`valueAxisPlacement`/`rescaleValue`) — which is why a row carries both a `value` (chart position) and a `reading` (its own true value, for tips and thresholds).
 - `present/FeasibilityFigure.tsx` — the pass/fail map, its hatching and its per-check fail tip.
 - `present/ParetoFigure.tsx` — the two-objective scatter: front / dominated / infeasible drawn three ways, the staircase joining the front, and click-to-mark. Read this for why the step turns the way it does.
 - `present/DistributionFigure.tsx` — renders kernel-prepared histograms and ECDFs, percentile rules, facets, and fitted-normal summaries.
@@ -353,11 +354,13 @@ Public scripts that **parse** the private predecessor Python source with stdlib 
 - `docs/pareto-and-candidate-marking-plan.md` — plan for Pareto and candidate-marking work.
 - `docs/reliability-reports-plan.md` — implementation contract for swept statistics, distributions, reliability reporting, and additional random distributions.
 - `docs/catalogue-diagrams-plan.md` — plan for catalogue-provided diagrams.
+- `docs/table-input-node-plan.md` — discussion-stage plan for a table input node over catalogue lookup tables (roadmap item 3).
 - `docs/REVIEW-2026-08.md` — dated repository review.
 - `docs/feature-review.md` — exploratory product ideas beyond what is built, with a priority order at the end. A review, not a status file.
 - `docs/selection-and-best-design-plan.md` — the plan behind the selection nodes and the Best Design card (review item 1).
 - `docs/pareto-and-candidate-marking-plan.md` — the plan behind the Pareto output and document-wide candidate marking (review item 2).
 - `docs/reliability-reports-plan.md` — the plan for Monte Carlo histograms, CDFs, percentiles and failure probability (review item 4); not yet built.
+- `docs/table-input-node-plan.md` — discussion-stage plan for selecting rows out of R&M tables on the canvas; closes roadmap item 3 when built.
 - `docs/catalogue-diagrams-plan.md`, `docs/locking-catalogues.md`, `docs/REVIEW-2026-08.md` — further design notes.
 
 ## Not covered here
