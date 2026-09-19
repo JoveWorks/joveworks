@@ -45,7 +45,7 @@ import {
   type CompiledPredicate,
   type DimensionScope,
 } from './compile.js';
-import { dimensionsClose } from './dimensions.js';
+import { connectable } from './dimensions.js';
 import { KernelError } from './errors.js';
 import { parseExpression, parsePredicate } from './parse.js';
 
@@ -200,7 +200,11 @@ function checkRecord(formula: Formula, bindings: Bindings, where: string): Dimen
     const expression = expressionOf(formula, output.name);
     if (expression !== undefined && formula.lookup?.columns[output.name] === undefined) {
       const produced = expressionDimension(parseExpression(expression), scope, where);
-      if (declared !== undefined && !dimensionsClose(produced, declared)) {
+      // `connectable`, not equality: an angle output may be computed as a pure
+      // number (`2 * pi / z`), exactly as a pure value may drive an angle port.
+      // `pi` is dimensionless, so without this a formula that states an angle
+      // in its own terms could not declare one.
+      if (declared !== undefined && !connectable(produced, declared)) {
         throw new KernelError(
           `'${formula.id}' declares ${formula.outputs.length === 1 ? 'its output' : `'${output.name}'`} as ` +
             `${describeDimension(declared)} but its expression produces ${describeDimension(produced)}`,

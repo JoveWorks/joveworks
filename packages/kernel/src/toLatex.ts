@@ -88,6 +88,14 @@ function renderName(name: string): string {
 
 const SCIENTIFIC = /^(-?\d+(?:\.\d+)?)e([+-]?\d+)$/;
 
+/**
+ * A unit symbol inside `\mathrm{}`: TeX-escaped, with `µ` spelled as the
+ * upright micro sign so KaTeX does not stumble on it.
+ */
+function renderUnitSymbol(symbol: string): string {
+  return symbol.replace(/[%\\{}_#&$]/gu, (c) => `\\${c}`).replace(/[µμ]/gu, '\\mu ');
+}
+
 function renderNumber(value: number): string {
   const source = String(value);
   const match = SCIENTIFIC.exec(source);
@@ -167,7 +175,11 @@ function renderBinary(expr: BinaryExpr): string {
 export function toLatex(expr: Expr): string {
   switch (expr.kind) {
     case 'number':
-      return renderNumber(expr.value);
+      // A typed literal is shown as written — `15000\,\mathrm{h}` — never as
+      // the canonical number it was converted to.
+      return expr.quantity === undefined
+        ? renderNumber(expr.value)
+        : `${renderNumber(expr.quantity.written)}\\,\\mathrm{${renderUnitSymbol(expr.quantity.unit.symbol)}}`;
     case 'name':
       return renderName(expr.name);
     case 'unary': {

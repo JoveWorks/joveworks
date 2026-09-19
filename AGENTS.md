@@ -69,7 +69,9 @@ tools/extract/    One-off Python extraction scripts, retained for provenance, no
   grids. Support only the defined sweep forms rather than inventing ad hoc
   stepping behavior.
 - Expressions are strings parsed to an AST and compiled safely. Never use
-  `eval` or `new Function`. Numbers in expressions are canonical-unit values.
+  `eval` or `new Function`. Bare numbers in expressions are canonical-unit
+  values; a typed literal such as `15000[h]` states its own unit and is
+  converted at parse time.
 - Formula applicability belongs in `appliesWhen`, not expression conditionals.
   Formula metadata and valid ranges are load-bearing data, not optional UI
   decoration.

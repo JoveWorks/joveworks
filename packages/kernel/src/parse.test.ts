@@ -14,6 +14,19 @@ describe('value expressions', () => {
     });
   });
 
+  it('reads a typed literal as its canonical value, keeping what was written', () => {
+    const parsed = parseExpression('2[m]');
+    expect(parsed).toMatchObject({ kind: 'number', value: 2000, quantity: { written: 2, unit: { symbol: 'm' } } });
+    expect(parseExpression('1.5 [kN]')).toMatchObject({ kind: 'number', value: 1500 });
+    expect(parseExpression('x / 3[h]')).toMatchObject({ right: { value: 10800 } });
+  });
+
+  it('refuses an empty, unclosed or unknown literal unit', () => {
+    expect(() => parseExpression('2[]')).toThrow(/states no unit/u);
+    expect(() => parseExpression('2[mm')).toThrow(/unclosed/u);
+    expect(() => parseExpression('2[furlong]')).toThrow(KernelError);
+  });
+
   it('binds * tighter than +', () => {
     expect(parseExpression('a + b * c')).toEqual({
       kind: 'binary',

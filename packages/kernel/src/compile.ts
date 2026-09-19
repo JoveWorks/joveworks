@@ -441,9 +441,45 @@ function literalAgainstDimension(
   right: Expr,
   rightDimension: Dimension,
 ): Dimension | undefined {
-  if (isDimensionless(rightDimension) && constantValue(right) !== undefined) return leftDimension;
-  if (isDimensionless(leftDimension) && constantValue(left) !== undefined) return rightDimension;
+  if (isDimensionless(rightDimension) && isBareConstant(right)) return leftDimension;
+  if (isDimensionless(leftDimension) && isBareConstant(left)) return rightDimension;
   return undefined;
+}
+
+/**
+ * A constant written without a unit, the only kind that may adopt one. A
+ * typed literal has stated its unit, so it is checked like a port — even a
+ * dimensionless one such as `5[%]`, which would otherwise quietly become
+ * 0.05 mm beside a length.
+ */
+function isBareConstant(expr: Expr): boolean {
+  return constantValue(expr) !== undefined && !hasTypedLiteral(expr);
+}
+
+function hasTypedLiteral(expr: Expr): boolean {
+  switch (expr.kind) {
+    case 'number':
+      return expr.quantity !== undefined;
+    case 'name':
+      return false;
+    case 'unary':
+      return hasTypedLiteral(expr.operand);
+    case 'binary':
+      return hasTypedLiteral(expr.left) || hasTypedLiteral(expr.right);
+    case 'call':
+      return expr.args.some(hasTypedLiteral);
+  }
+}
+
+/**
+ * An exponent with a unit is meaningless — `d ** 2[mm]` — and only a typed
+ * literal can bring one into a constant exponent. A wired exponent keeps the
+ * leniency it has always had: its dimension is the wiring's business, and
+ * narrowing that here would be a separate decision.
+ */
+function assertPureExponent(exponent: Expr, dimension: Dimension, where: string | undefined): void {
+  if (!hasTypedLiteral(exponent) || isUnknownDimension(dimension) || isDimensionless(dimension)) return;
+  throw new KernelError(`an exponent must be a pure number, not ${describeDimension(dimension)}`, where);
 }
 
 /**
@@ -459,7 +495,7 @@ function dimensionOf(
 ): Dimension {
   switch (expr.kind) {
     case 'number':
-      return DIMENSIONLESS;
+      return expr.quantity?.unit.dimension ?? DIMENSIONLESS;
 
     case 'name': {
       if (CONSTANTS[expr.name] !== undefined) return DIMENSIONLESS;
@@ -489,8 +525,11 @@ function dimensionOf(
         // genuinely dimensionless base always has.
         const base = orDimensionless(left);
         if (isDimensionless(base)) {
-          dimensionOf(expr.right, scope, where, elementwise);
+          assertPureExponent(expr.right, dimensionOf(expr.right, scope, where, elementwise), where);
           return DIMENSIONLESS;
+        }
+        if (hasTypedLiteral(expr.right)) {
+          assertPureExponent(expr.right, dimensionOf(expr.right, scope, where, elementwise), where);
         }
         const exponent = constantValue(expr.right);
         if (exponent === undefined) {

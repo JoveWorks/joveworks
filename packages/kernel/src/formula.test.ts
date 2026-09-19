@@ -54,6 +54,80 @@ describe('a record checked against its own expression', () => {
     expect(() => checkFormulaDimensions(wrong)).toThrow(/declares its output as force/u);
   });
 
+  it('lets a pure-number expression declare an angle output, as a connection may', () => {
+    const sector = only({
+      id: 'sector',
+      version: 1,
+      output: { kind: 'numeric', name: 'theta', unit: 'deg' },
+      inputs: [{ kind: 'numeric', name: 'k', unit: '' }],
+      expression: '2 * pi / k',
+      description: 'Invented: the angle of one of k equal sectors.',
+      status: 'unverified',
+    });
+    expect(() => checkFormulaDimensions(sector)).not.toThrow();
+  });
+
+  it('still refuses a length declared as an angle', () => {
+    const wrong = only({
+      id: 'wrong-angle',
+      version: 1,
+      output: { kind: 'numeric', name: 'theta', unit: 'rad' },
+      inputs: [{ kind: 'numeric', name: 'a', unit: 'mm' }],
+      expression: '2 * a',
+      description: 'Invented, and wrong on purpose.',
+      status: 'unverified',
+    });
+    expect(() => checkFormulaDimensions(wrong)).toThrow(/declares its output as angle/u);
+  });
+
+  it('gives a typed literal its own dimension, so a stated reference cancels a port', () => {
+    const ratio = (expression: string): Formula =>
+      only({
+        id: 'ratio',
+        version: 1,
+        output: { kind: 'numeric', name: 'f', unit: '' },
+        inputs: [{ kind: 'numeric', name: 't', unit: 'h' }],
+        expression,
+        description: 'Invented: a factor against a reference duration.',
+        status: 'unverified',
+      });
+    expect(() => checkFormulaDimensions(ratio('(500[h] / t) ** (1 / 2)'))).not.toThrow();
+    // Canonical time is seconds: a 2000 h port arrives as 7.2e6 s, and the
+    // literal was converted the same way, so the ratio is the plain 1/4.
+    const evaluate = compileFormula(ratio('(500[h] / t) ** (1 / 2)'), new Map()).evaluate.get('f');
+    expect(evaluate?.({ t: 2000 * 3600 })).toBeCloseTo(0.5, 12);
+    expect(() => checkFormulaDimensions(ratio('(500 / t) ** (1 / 2)'))).toThrow(/declares its output/u);
+  });
+
+  it('does not let a typed literal adopt a dimension the way a bare one does', () => {
+    const sum = (expression: string): Formula =>
+      only({
+        id: 'typed-sum',
+        version: 1,
+        output: { kind: 'numeric', name: 'y', unit: 'mm' },
+        inputs: [{ kind: 'numeric', name: 'a', unit: 'mm' }],
+        expression,
+        description: 'Invented.',
+        status: 'unverified',
+      });
+    expect(() => checkFormulaDimensions(sum('a + 5[%]'))).toThrow(/cannot add/u);
+    expect(() => checkFormulaDimensions(sum('a + 5'))).not.toThrow();
+    expect(() => checkFormulaDimensions(sum('a + 5[mm]'))).not.toThrow();
+  });
+
+  it('refuses a typed literal as an exponent', () => {
+    const power = only({
+      id: 'power',
+      version: 1,
+      output: { kind: 'numeric', name: 'y', unit: 'mm²' },
+      inputs: [{ kind: 'numeric', name: 'a', unit: 'mm' }],
+      expression: 'a ** 2[mm]',
+      description: 'Invented, and wrong on purpose.',
+      status: 'unverified',
+    });
+    expect(() => checkFormulaDimensions(power)).toThrow(/exponent must be a pure number/u);
+  });
+
   /**
    * A table declares each column's unit, so there is nothing for an expression
    * to vouch for — and a record whose only input is a dropdown has no numeric

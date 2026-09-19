@@ -12,10 +12,19 @@
  */
 
 import type { Comparison } from '@joveworks/schema';
+import type { Unit } from '@joveworks/units';
 
 export interface NumberExpr {
   readonly kind: 'number';
+  /** Canonical, always — a typed literal is converted once, at parse time. */
   readonly value: number;
+  /**
+   * Present on a typed literal, `15000[h]`: the number as written and the unit
+   * it was written in. The value above is already canonical; this is kept for
+   * the dimension check, which gives the literal its unit's dimension instead
+   * of letting it adopt one, and for rendering it the way the author wrote it.
+   */
+  readonly quantity?: { readonly written: number; readonly unit: Unit };
 }
 
 /** A port name, or one of the constants the language defines (`pi`). */

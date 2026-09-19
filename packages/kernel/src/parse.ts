@@ -13,7 +13,7 @@
  *     term       := unary (('*' | '/') unary)*
  *     unary      := ('-' | '+') unary | power
  *     power      := primary (('**' | '^') unary)?      -- right associative
- *     primary    := number | name | name '(' args ')' | '(' expression ')'
+ *     primary    := number | number '[' unit ']' | name | name '(' args ')' | '(' expression ')'
  *
  * Predicate grammar, layered on top and never inside it — "no conditionals
  * in an expression" is this separation:
@@ -25,9 +25,18 @@
  *
  * `**` and `^` both mean exponentiation, matching the unit grammar next door.
  * There is no implicit multiplication: `2 pi r` is a typo, not a product.
+ *
+ * A bare number is canonical. A number followed by a bracketed unit,
+ * `15000[h]`, is a **typed literal**: a reference value the source states in
+ * a unit of its own, such as a rated life in hours. It is converted to
+ * canonical here, once, and carries its unit's dimension from then on — so
+ * `(15000[h] / L_h)` is a pure ratio instead of a count of hours divided by a
+ * time. The brackets mirror the `[unit]` tags the corpus was transcribed from,
+ * and cannot be read as a port name the way `15000 h` could.
  */
 
 import { COMPARISONS, type Comparison } from '@joveworks/schema';
+import { parseUnit, toCanonical, UnitError, type Unit } from '@joveworks/units';
 
 import type { Expr, Predicate } from './ast.js';
 import { KernelError } from './errors.js';
@@ -42,6 +51,33 @@ interface Token {
   readonly text: string;
   readonly value: number;
   readonly at: number;
+  /** A number token's unit, when it was written as a typed literal. */
+  readonly unit?: Unit;
+}
+
+/**
+ * The bracketed unit after a number, if there is one: `[h]`, `[N/mm²]`.
+ * Returns the unit and how many characters it spans, brackets and any space
+ * before them included.
+ */
+function typedLiteralUnit(source: string, start: number): { unit: Unit; length: number } | undefined {
+  const rest = source.slice(start);
+  const open = /^\s*\[/u.exec(rest);
+  if (open === null) return undefined;
+  const close = rest.indexOf(']', open[0].length);
+  if (close < 0) throw new KernelError(`unclosed '[' at position ${start + open[0].length - 1}`, source);
+  const text = rest.slice(open[0].length, close).trim();
+  if (text.length === 0) {
+    throw new KernelError(`'[]' after a number states no unit — leave the brackets out`, source);
+  }
+  let unit: Unit;
+  try {
+    unit = parseUnit(text);
+  } catch (error) {
+    if (error instanceof UnitError) throw new KernelError(`literal unit: ${error.message}`, source);
+    throw error;
+  }
+  return { unit, length: close + 1 };
 }
 
 const NUMBER = /^(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?/u;
@@ -64,8 +100,15 @@ function tokenize(source: string): readonly Token[] {
 
     const number = NUMBER.exec(rest);
     if (number !== null && (c === '.' ? /^\.\d/u.test(rest) : /\d/u.test(c))) {
-      tokens.push({ kind: 'number', text: number[0], value: Number(number[0]), at: i });
-      i += number[0].length;
+      const typed = typedLiteralUnit(source, i + number[0].length);
+      tokens.push({
+        kind: 'number',
+        text: number[0],
+        value: Number(number[0]),
+        at: i,
+        ...(typed === undefined ? {} : { unit: typed.unit }),
+      });
+      i += number[0].length + (typed?.length ?? 0);
       continue;
     }
 
@@ -204,6 +247,13 @@ class Parser {
 
     if (token.kind === 'number') {
       this.take();
+      if (token.unit !== undefined) {
+        return {
+          kind: 'number',
+          value: toCanonical(token.value, token.unit),
+          quantity: { written: token.value, unit: token.unit },
+        };
+      }
       return { kind: 'number', value: token.value };
     }
 

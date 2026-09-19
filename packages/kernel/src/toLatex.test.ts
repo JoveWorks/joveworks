@@ -8,6 +8,10 @@ function latex(source: string): string {
 }
 
 describe('toLatex', () => {
+  it('shows a typed literal as written, not as its canonical value', () => {
+    expect(latex('x / 2[m]')).toBe('\\frac{x}{2\\,\\mathrm{m}}');
+  });
+
   it('joins multiplication with \\cdot', () => {
     expect(latex('a*b + c')).toBe('a \\cdot b + c');
   });
