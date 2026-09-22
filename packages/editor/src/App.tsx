@@ -136,6 +136,7 @@ import { phrase, ui } from './i18n';
 import { hubOrigin, parseRoute } from './router';
 import { CloudMaterialViewer } from './viewer/CloudMaterialViewer';
 import { ConnectCloudDialog } from './cloud/ConnectCloudDialog';
+import { CLOUD_ENABLED } from './cloud/enabled';
 import { WorkspaceDialog } from './hub/WorkspaceDialog';
 import { WorkspaceLibraryDialog } from './hub/WorkspaceLibraryDialog';
 import {
@@ -271,7 +272,7 @@ function measuredNodeSizes(flow: ReturnType<typeof useReactFlow>): NodeSizes {
  * renders one around it.
  */
 export function App(): ReactElement {
-  if (new URL(window.location.href).searchParams.get('view') === 'cloud') {
+  if (CLOUD_ENABLED && new URL(window.location.href).searchParams.get('view') === 'cloud') {
     return <CloudMaterialViewer />;
   }
 
@@ -317,9 +318,11 @@ function MobileLanding(): ReactElement {
         <a className="mobile-landing-docs" href={DOCS_BASE_URL}>
           Read the documentation
         </a>
-        <a className="mobile-landing-cloud" href="?view=cloud">
-          Browse cloud material
-        </a>
+        {CLOUD_ENABLED ? (
+          <a className="mobile-landing-cloud" href="?view=cloud">
+            Browse cloud material
+          </a>
+        ) : null}
         <p className="mobile-landing-note">Open JoveWorks on a larger screen to edit a graph.</p>
       </div>
     </section>
@@ -449,8 +452,11 @@ function AppShell(): ReactElement {
   const [showSettings, setShowSettings] = useState(false);
   const [showConnectCloud, setShowConnectCloud] = useState(false);
   const [workspaceDialog, setWorkspaceDialog] = useState<'save' | 'open' | undefined>();
-  const [linkedPublication] = useState(publicationLinkFromUrl);
-  const [linkedStudentShare] = useState(studentShareLinkFromUrl);
+  // Parsed only when there is a Hub to resolve them against. Without this a
+  // course link pasted into a cloud-free build would open, fail to fetch, and
+  // report a network error rather than simply being inert.
+  const [linkedPublication] = useState(() => (CLOUD_ENABLED ? publicationLinkFromUrl() : undefined));
+  const [linkedStudentShare] = useState(() => (CLOUD_ENABLED ? studentShareLinkFromUrl() : undefined));
   const [showWorkspaceLibrary, setShowWorkspaceLibrary] = useState(false);
   const [hubWorkspace, setHubWorkspace] = useState<HubWorkspace | undefined>();
   const initialHubUrl = hubWorkspace?.hubUrl ?? rememberedHubUrl ?? cloudSources[0]?.hubUrl ?? '';
@@ -1301,7 +1307,7 @@ function AppShell(): ReactElement {
         <div className="app" onContextMenu={(event) => event.preventDefault()}>
           <header className="menubar" onMouseEnter={cancelMenuClose} onMouseLeave={scheduleMenuClose}>
             {menuButton('file', 'File')}
-            {menuButton('cloud', 'Cloud')}
+            {CLOUD_ENABLED ? menuButton('cloud', 'Cloud') : null}
             {menuButton('edit', 'Edit')}
             {menuButton('view', 'View')}
             {menuButton('help', 'Help')}
@@ -1372,6 +1378,11 @@ function AppShell(): ReactElement {
               onMouseLeave={scheduleMenuClose}
             />
           )}
+          {/* Unreachable without the Cloud menu, but gated explicitly so a
+              future entry point can't quietly reintroduce a Hub dialog into a
+              build that has no Hub. */}
+          {!CLOUD_ENABLED ? null : (
+          <>
           {showConnectCloud ? <ConnectCloudDialog initialHubUrl={initialHubUrl} onConnect={connectToCloud} onDiscover={discoverClouds} onClose={() => setShowConnectCloud(false)} /> : null}
           {workspaceDialog === 'save' ? (
             <WorkspaceDialog
@@ -1400,6 +1411,8 @@ function AppShell(): ReactElement {
               onClose={() => setShowWorkspaceLibrary(false)}
             />
           ) : null}
+          </>
+          )}
 
           <main className={paletteAtBottom ? 'palette-bottom' : undefined}>
             {/* Overlays the workspace instead of sitting in normal flow, so

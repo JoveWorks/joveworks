@@ -6,6 +6,12 @@
   command = "pnpm install && pnpm build:bundle"
   publish = "packages/editor/build"
 
+[build.environment]
+  # Cloud is opt-in (see src/cloud/enabled.ts): nightly talks to a Hub, so it
+  # asks for the Cloud menu explicitly. A self-hosting school leaves this
+  # unset and gets a build with no cloud surface at all — see HOSTING.md.
+  VITE_CLOUD = "hub"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
