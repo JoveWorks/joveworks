@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.27.0](https://github.com/JoveWorks/joveworks/compare/v0.26.11...v0.27.0) (2026-09-22)
+
+### Features
+
+* **editor:** gate cloud features behind VITE_CLOUD ([0102213](https://github.com/JoveWorks/joveworks/commit/0102213ca5ddda49a1e2489e597b62315082bf25))
+* **kernel:** add typed unit literals and accept pure-number angle outputs ([8845bbc](https://github.com/JoveWorks/joveworks/commit/8845bbc2ccfcf9606678e72e6851f77e74595a1a))
+
+### Documentation
+
+* add HOSTING.md for schools self-hosting the editor ([f8a00d9](https://github.com/JoveWorks/joveworks/commit/f8a00d96b83dc5ec3e137ae63baa509cfdd0cf55))
+* plan the table input node and add roadmap items 12-15 ([f66cabc](https://github.com/JoveWorks/joveworks/commit/f66cabcc27b3f0196bb35b1139b5b3f7cfc4fe14))
 ## [0.26.11](https://github.com/JoveWorks/joveworks/compare/v0.26.10...v0.26.11) (2026-09-10)
 
 ### Fixes
