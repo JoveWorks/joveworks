@@ -21,28 +21,29 @@ runs the build and how updates reach students, not about what the app needs.
 
 ## Comparison
 
-| | 1. Static web server | 2. Docker container | 3. Netlify-like platform | 4. Fork in self-hosted GitLab |
+| | 1. Static web server | 2. Docker container | 3. Netlify-like platform | 4. Fork in self-hosted GitLab (**recommended**) |
 |---|---|---|---|---|
 | **What you operate** | A folder of files on a web server you already run | A container image and whatever runs it | A Git repo connected to a hosted build service | A GitLab project, its CI runners and registry |
 | **Who runs the build** | Nobody — you deploy a prebuilt zip | Your build pipeline, inside the image | The platform, on every push | Your GitLab CI |
 | **Node toolchain needed** | No | Only inside the build stage; never on a host | No | Only inside CI |
-| **Effort to stand up** | Lowest — unzip, one rewrite rule | Medium — write a Dockerfile once | Low — connect repo, set build command | Highest — fork, CI config, registry, deploy target |
-| **Effort to update** | Download new zip, replace folder | Bump a version arg, rebuild, redeploy | `git push`, or click redeploy | Merge upstream, CI rebuilds |
-| **Ongoing maintenance** | Essentially none | Base-image patching (nginx, Node) | None on your side | Base images **and** keeping the fork merged |
-| **Custom formula catalogue** | Must be built in beforehand — ask for a custom bundle | Copied in at build time; you control it | Committed to your repo; you control it | Copied in at build time; you control it |
+| **Effort to stand up** | Lowest — unzip, one rewrite rule | Medium — write a Dockerfile once | Low — connect repo, set build command | Medium — clone, add remotes, CI config, registry |
+| **Effort to update** | Download new zip, replace folder | Bump a version arg, rebuild, redeploy | `git push`, or click redeploy | Merge the new release tag, CI rebuilds |
+| **Ongoing maintenance** | Essentially none | Base-image patching (nginx, Node) | None on your side | Base images, plus merging releases — conflict-free if you only add catalogue files |
+| **Custom formula catalogue** | Must be built in beforehand — ask for a custom bundle | Copied in at build time; you control it | Committed to your repo; you control it | Committed to your fork; you control it |
 | **Local code changes** | No | No | No | **Yes** |
 | **Can contribute changes upstream** | No | No | No | **Yes** |
 | **Reproducible builds** | N/A (prebuilt) | Yes — pinned upstream ref, pinned base image | Partial — depends on platform image | Yes |
 | **Works air-gapped / on-prem only** | Yes | Yes | No | Yes |
-| **Restricted course content stays on your infrastructure** | Yes | Yes | **No** — build and files live with a third party | Yes, if the catalogue stays out of the fork |
-| **Best when** | You have a web server and want the least to maintain | You already run containers and want your own catalogue | You want zero infrastructure and content is unrestricted | You intend to modify JoveWorks itself |
+| **Restricted course content stays on your infrastructure** | Yes | Yes | **No** — build and files live with a third party | Yes — contribution branches never carry it |
+| **Best when** | You have a web server and want the least to maintain | You already run containers and want your own catalogue | You want zero infrastructure and content is unrestricted | You want your own catalogue, a simple update path, and the option to change or contribute to JoveWorks |
 
-**Short version:** if your course catalogue is unrestricted and you want no
-infrastructure, use option 3. If you need your own formula catalogue built in,
-use option 2. If you just want it online with the least possible maintenance,
-use option 1. Choose option 4 only if you intend to change JoveWorks' own
-source — it is the only option that carries a permanent merge burden, and
-you do not need it merely to add your own catalogue.
+**Short version:** use option 4. A copy of JoveWorks in your own GitLab, with
+the public repository as an `upstream` remote, gives you your own catalogue
+(commit the files, done), updates by merging a release tag, and a direct path
+for sending fixes back. The other options suit narrower cases: option 1 if you
+want a folder of files on a server and nothing else, option 2 if you run
+containers but would rather not keep a Git repository of JoveWorks, and
+option 3 if your catalogue is unrestricted and you want no infrastructure.
 
 ---
 
@@ -81,7 +82,7 @@ clearing.
 **Limitation:** you get the catalogue that ships in the bundle. If your course
 needs its own formula catalogue — particularly one that can't be published
 publicly — a stable bundle has to be built with it included, which means either
-requesting a custom bundle or moving to option 2.
+requesting a custom bundle or moving to option 4 (or option 2).
 
 **Subpath caveat:** the built-in documentation assumes domain-root hosting. The
 app's "?" help buttons resolve to `https://your-domain/docs/...` regardless of
@@ -93,16 +94,17 @@ subpath, tell us the subpath and we'll produce a matching docs build.
 
 ## Option 2 — Docker container
 
-Best when you maintain your own formula catalogue, especially one that is
-licensed to your institution and must not leave your infrastructure. The
+Best when you already run containers and want your own formula catalogue,
+without keeping a repository of JoveWorks' source. The
 container is just a web server plus static files; the interesting part is the
 build stage.
 
-**Do not fork JoveWorks for this.** A fork means every upstream update is a
-merge, and merges conflict eventually — reliably at the worst point in a
-semester. You only need that burden if you intend to change JoveWorks' own
-source, which is [option 4](#option-4--fork-in-a-self-hosted-gitlab). To add a
-catalogue, keep a small private repo that *composes* instead:
+This option keeps no copy of JoveWorks' source. Instead, a small private repo
+clones a pinned upstream release at build time and copies your catalogue in.
+If you're comfortable with Git, [option 4](#option-4--fork-in-a-self-hosted-gitlab)
+is usually simpler overall: the catalogue lives in your fork, and updating is
+a merge. Choose option 2 when you'd rather not maintain a repository of
+JoveWorks at all.
 
 ```
 your-joveworks/
@@ -188,104 +190,188 @@ applies and option 3 is the easiest path available.
 
 ## Option 4 — Fork in a self-hosted GitLab
 
-Choose this when you intend to **change JoveWorks itself** — fix something,
-add a node type, adapt the interface — and to send those changes back
-upstream. It is the only option that gives you that. It is also the only one
-with a permanent cost: a fork must be kept merged with upstream, forever.
+**This is the recommended setup.** You keep a copy of JoveWorks in your own
+GitLab, with the public repository added as a second remote called
+`upstream`. Updating means merging the next release from `upstream`. Your
+catalogue is a set of files committed to your copy. If you later want to fix
+something or contribute a change, the same repository already supports that.
 
-You do **not** need a fork to add your own formula catalogue. That is option 2
-and it requires no source changes at all. If a catalogue is the only reason
-you were considering a fork, use option 2 instead.
+Everything stays on your own infrastructure: the source, the catalogue, the
+build and the served files.
 
-### Two repositories, not one
+### Setting it up
 
-This is the important structural point, and the rest of the section depends
-on it.
+Create an empty project in your GitLab, then:
+
+```bash
+git clone https://github.com/joveworks/joveworks
+cd joveworks
+git remote rename origin upstream
+git remote add origin https://gitlab.your-university.be/your-group/joveworks
+git remote set-url --push upstream DISABLED   # pull from upstream, never push to it
+git push origin main --tags
+```
+
+`git remote -v` should now show:
 
 ```
-joveworks/            ← fork of upstream. Source changes only.
-                        NEVER contains your catalogue.
-joveworks-deploy/     ← Dockerfile, nginx.conf, CI config,
-                        catalogue as a submodule.
+origin    https://gitlab.your-university.be/your-group/joveworks  (fetch)
+origin    https://gitlab.your-university.be/your-group/joveworks  (push)
+upstream  https://github.com/joveworks/joveworks                  (fetch)
+upstream  DISABLED                                                 (push)
 ```
 
-Keep the catalogue out of the fork. The fork is the repository whose branches
-you will push to a public upstream when you open a merge request, and a
-licensed catalogue committed there — even on a branch, even deleted later —
-is in the history and is effectively published. Separating the two makes that
-mistake structurally impossible rather than a matter of care: there is simply
-nothing in the fork to leak.
+That is the whole model: **pull from `upstream`, push to `origin`.** You have
+no write access to upstream anyway. Disabling the push URL makes a mistaken
+push fail on your side, without anything being sent.
 
-This mirrors how the upstream project handles the same problem — the
-restricted catalogue lives in its own repository for exactly this reason, not
-behind a `.gitignore`, because one `git add -A` defeats a `.gitignore` and a
-repository boundary cannot be defeated that way.
+### Adding your catalogue
 
-The deployment repo then composes the two, as in option 2:
+The editor bundles every `*.json`, `*.yaml` and `*.yml` file found directly in
+`packages/editor/src/catalogues/` at build time. Adding a catalogue means
+putting your files there and committing them:
+
+```bash
+cp ~/course/your-institution-*.yaml packages/editor/src/catalogues/
+git add packages/editor/src/catalogues/your-institution-*.yaml
+git commit -m "Add course catalogue"
+git push origin main
+```
+
+Changing a formula works the same way: edit the file, commit, push, and CI
+rebuilds. Students get the change on their next page load, because asset
+filenames are content-hashed.
+
+Give your files a distinctive prefix, like `your-institution-` above. Upstream
+never edits files it didn't create, so with prefixed names your catalogue
+commits cannot conflict when you merge a release.
+
+### Updating to a new release
+
+```bash
+git fetch upstream --tags
+git merge v0.27.0            # the release you want
+git push origin main         # CI rebuilds and deploys
+```
+
+Two rules:
+
+- **Merge a release tag, not `upstream/main`.** Upstream's `main` is the
+  development branch, which the public site serves as its nightly build.
+  Release tags are the tested versions. Merging a tag also means you choose
+  when an update happens: a quiet week between semesters is better than the
+  week a bug needs fixing. The
+  [releases page](https://github.com/joveworks/joveworks/releases) lists the
+  tags and what changed in each one.
+- **Merge, don't rebase.** Your `main` has already been pushed and your CI
+  builds from it. Rebasing onto upstream rewrites that history, so every
+  update would need a force push, and anyone else with a clone would have to
+  reset theirs.
+
+If your only changes are catalogue files, a merge never conflicts, and
+updating takes the three commands above. Conflicts are possible only once you
+change JoveWorks' own source. Keep those changes small and on named branches,
+so a conflict shows up as one focused edit rather than a wall of unrelated
+ones.
+
+GitLab can automate the fetch with **pull mirroring**, but pull mirroring
+(remote → GitLab) is a paid-tier feature. Push mirroring goes the other way
+and does not help here. On the free tier, the manual `git fetch upstream`
+above is enough.
+
+### Merge requests inside your GitLab
+
+Your merge requests are ordinary GitLab merge requests: branch from your
+`main`, open a merge request into your `main`, review, merge. They stay inside
+your GitLab and never reach upstream.
+
+### Contributing changes back
+
+Upstream is on GitHub, and a GitHub pull request can only be opened from a
+branch that is itself on GitHub. Your GitLab branches cannot be offered to
+upstream directly. To contribute, fork
+`joveworks/joveworks` on GitHub (a personal or departmental account is fine)
+and add that fork as a third remote:
+
+```bash
+git remote add github https://github.com/<your-account>/joveworks
+```
+
+Then, for each change:
+
+1. **Branch from `upstream/main`, not from your own `main`.** Your `main`
+   contains your catalogue, local changes and merge commits. A branch cut from
+   it carries all of them into the pull request.
+
+   ```bash
+   git fetch upstream
+   git switch -c fix-axis-labels upstream/main
+   git cherry-pick <sha-of-your-fix>      # or redo the change here
+   ```
+
+2. **Check the branch against upstream before pushing.** Both commands below
+   must print nothing:
+
+   ```bash
+   git log upstream/main..fix-axis-labels -- packages/editor/src/catalogues/
+   git diff upstream/main...fix-axis-labels | grep -i your-institution
+   ```
+
+   Also confirm by eye that the change contains **no catalogue content**: no
+   formula expressions and no fixtures taken from your textbook, not even as
+   a test case. Invented formulas like `y = a*b + c` test the code just as
+   well and don't bring any licence restrictions with them.
+
+3. **Run upstream's checks:** `pnpm typecheck` and `pnpm test`. Both are
+   fast.
+
+4. **Push to your GitHub fork and open the pull request there:**
+
+   ```bash
+   git push github fix-axis-labels
+   ```
+
+   Open the pull request from `<your-account>:fix-axis-labels` into
+   `joveworks:main`.
+
+5. **After it lands**, the change reaches you again in the next release you
+   merge. If upstream took it unchanged, Git usually resolves it cleanly. If
+   upstream edited or squashed it, you may get a small conflict. Resolve it in
+   favour of upstream's version, which drops your local copy of the patch.
+
+Only ever push a branch that was cut from `upstream/main` to `github`, and
+never `main`. Git sends only the commits reachable from the branch you push,
+so a branch cut from `upstream/main` has no path back to your catalogue
+commits. Pushing your own `main` would publish the entire history, catalogue
+included, and a deleted branch on GitHub does not reliably undo that.
+
+If pushing to GitHub is awkward under your policies, send a patch series
+instead. The output of `git format-patch upstream/main..fix-axis-labels`,
+attached to an email, works just as well and needs no GitHub account.
+
+### Building in GitLab CI
+
+Because the catalogue is already in the repository, the Dockerfile can build
+from the checkout directly, with no clone step. Keep it under a directory
+upstream won't use, for example `deploy/your-institution/Dockerfile`:
 
 ```dockerfile
 FROM node:22-alpine AS build
-ARG JOVEWORKS_REF=main
-RUN corepack enable && apk add --no-cache git
-RUN git clone --depth 1 --branch $JOVEWORKS_REF \
-    https://gitlab.your-university.be/your-group/joveworks /src
+RUN corepack enable
 WORKDIR /src
-COPY catalogue/*.yaml packages/editor/src/catalogues/
+COPY . .
 ENV JOVEWORKS_CHANNEL=your-institution
 RUN pnpm install --frozen-lockfile && pnpm build:bundle
 
 FROM nginx:alpine
 COPY --from=build /src/packages/editor/build /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY deploy/your-institution/nginx.conf /etc/nginx/conf.d/default.conf
 ```
 
-The only change from option 2 is that the clone now points at your fork
-instead of upstream.
-
-### Tracking upstream
-
-Add upstream as a second remote in your fork and merge from it:
-
-```bash
-git remote add upstream https://github.com/joveworks/joveworks
-git fetch upstream
-git merge upstream/main        # or: git rebase upstream/main
-```
-
-Merge on a schedule you choose — a quiet week between semesters is better
-than the week a bug needs fixing. The longer between merges, the larger the
-conflicts.
-
-GitLab can automate the fetch half with **pull mirroring**, but note that
-pull mirroring (remote → GitLab) is a paid-tier feature; push mirroring in
-the opposite direction is not the same thing and will not help here. On the
-free tier, the manual `git fetch upstream` above is the whole workflow and is
-perfectly adequate.
-
-Keep your own changes on top of upstream rather than interleaved with it —
-small, focused commits, ideally on named branches — so a merge conflict is
-legible instead of a wall of unrelated edits.
-
-### Contributing changes back
-
-Merge requests inside your GitLab stay inside your GitLab; they do not reach
-upstream. To send a change up:
-
-1. Make the change on a branch in your fork, against current upstream.
-2. Confirm it contains **no catalogue content** — no formula expressions, no
-   fixtures derived from your textbook, not even as a test case. Invented
-   formulas like `y = a*b + c` exercise the code just as well and carry no
-   licence with them.
-3. Push that branch to a fork of the upstream repository on the platform
-   upstream uses, and open the merge/pull request there.
-4. Once it lands upstream, drop your local version on the next merge so you
-   are not carrying a patch that is now redundant.
-
-If pushing to an external platform is awkward under your policies, send a
-patch series instead — `git format-patch` output attached to an email works
-fine and needs no account anywhere.
-
-### Building in GitLab CI
+`nginx.conf` is a `server { }` block that includes the SPA fallback from
+`deploy/stable-bundle/nginx.conf.snippet`. The build settings in the table
+under option 2 (`JOVEWORKS_CHANNEL`, `JOVEWORKS_BASE_PATH`, `VITE_CLOUD`)
+apply here too.
 
 A container build with Kaniko, which needs no privileged runner:
 
@@ -298,16 +384,13 @@ build:
   script:
     - /kaniko/executor
       --context "$CI_PROJECT_DIR"
-      --dockerfile "$CI_PROJECT_DIR/Dockerfile"
+      --dockerfile "$CI_PROJECT_DIR/deploy/your-institution/Dockerfile"
       --destination "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA"
       --destination "$CI_REGISTRY_IMAGE:latest"
 ```
 
-If the catalogue is a submodule, set `GIT_SUBMODULE_STRATEGY: recursive` and
-give the job credentials that can read that project.
-
-Run upstream's checks before you propose anything back — `pnpm typecheck` and
-`pnpm test` are the two that matter, and they are fast.
+Keep `.gitlab-ci.yml` and anything else you add at the repository root to
+files upstream doesn't have. That keeps release merges conflict-free.
 
 ---
 
@@ -332,8 +415,8 @@ nothing calls them, so no Hub request is ever made.
 
 Note that the prebuilt stable bundle of option 1 is built **with**
 `VITE_CLOUD=hub`, because some schools do link to it through a Hub. If you want
-a cloud-free deployment, that is option 2 — or ask for a bundle built without
-the flag.
+a cloud-free deployment, build it yourself with option 4 or 2, or ask for a
+bundle built without the flag.
 
 This also means the app makes **no outbound network requests** beyond loading
 its own assets from your server — worth stating plainly if your security review
