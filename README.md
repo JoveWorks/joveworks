@@ -79,6 +79,36 @@ data or open-ended analysis. **Learn the model before you write the code.**
   [OVERVIEW.md](OVERVIEW.md) for the full reasoning, including the measurement
   that settled it.
 
+## Building the site
+
+`pnpm build:bundle` produces the complete static site: the editor, the docs
+under `docs/` and the catalogue-author tool under `author/`. The release
+workflow builds the stable bundle with:
+
+```
+JOVEWORKS_CHANNEL=stable VITE_CLOUD=hub JOVEWORKS_BASE_PATH=./ pnpm build:bundle
+```
+
+- `JOVEWORKS_CHANNEL`: the text in the version badge. Use something other
+  than `stable` for a local build.
+- `VITE_CLOUD=hub`: includes the Hub cloud features. Leave it unset to compile
+  them out.
+- `JOVEWORKS_BASE_PATH=./`: relative asset paths, so one build works at a
+  domain root or under a subpath.
+
+The output is `packages/editor/build/`. Every catalogue file in
+`packages/editor/src/catalogues/` is bundled into it. To reproduce the release
+zip, add the server-config files and zip the folder:
+
+```
+cp deploy/stable-bundle/{nginx.conf.snippet,.htaccess,README.txt} packages/editor/build/
+(cd packages/editor/build && zip -rq ../../../joveworks-local.zip .)
+```
+
+To preview the build, serve the folder with any static server, for example
+`cd packages/editor/build && python -m http.server 8080`. For deploying it, see
+[HOSTING.md](HOSTING.md).
+
 ## Licence
 
 Engine and editor: **MIT.** This repository contains no textbook content.
