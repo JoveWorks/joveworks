@@ -1,5 +1,7 @@
 import { defineConfig } from "vitepress";
 
+const docsBase = process.env.JOVEWORKS_DOCS_BASE_PATH ?? '/docs/';
+
 export default defineConfig({
   title: "JoveWorks Docs",
   description: "Docs for the node-editor design tool for dimensioning machine parts.",
@@ -12,9 +14,9 @@ export default defineConfig({
   // this — and the DOCS_BASE_URL in packages/editor/src/help-links.ts that
   // has to agree with it — are the one part of the release bundle that
   // assumes domain-root hosting.
-  base: "/docs/",
+  base: docsBase,
   cleanUrls: true,
-  head: [["link", { rel: "icon", href: "/docs/favicon.svg", type: "image/svg+xml" }]],
+  head: [["link", { rel: "icon", href: docsBase + "favicon.svg", type: "image/svg+xml" }]],
   themeConfig: {
     nav: [
       { text: "Guide", link: "/guide/getting-started" },

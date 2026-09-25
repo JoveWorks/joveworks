@@ -18,7 +18,7 @@ import type { NodeKind } from '@joveworks/schema';
 
 export const DOCS_BASE_URL = import.meta.env.DEV
   ? 'http://localhost:5174/docs'
-  : `${window.location.origin}/docs`;
+  : new URL('docs', new URL(import.meta.env.BASE_URL, window.location.origin)).toString();
 
 export const NODE_HELP_URLS: Readonly<Record<NodeKind, string>> = {
   input: `${DOCS_BASE_URL}/guide/node-reference#input`,
