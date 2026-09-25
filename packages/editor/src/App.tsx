@@ -1137,7 +1137,7 @@ function AppShell(): ReactElement {
     {
       label: t('Documentation'),
       onClick: () => {
-        window.open(DOCS_BASE_URL, '_blank', 'noopener');
+        window.open(DOCS_BASE_URL + '/', '_blank', 'noopener');
       },
     },
     {
