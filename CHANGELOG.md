@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.28.0](https://github.com/JoveWorks/joveworks/compare/v0.27.0...v0.28.0) (2026-09-26)
+
+### Features
+
+* **editor:** label the version badge beta instead of alpha ([df402e7](https://github.com/JoveWorks/joveworks/commit/df402e79576a42eb79179cfcb7ca1342e2d475fa))
+* **editor:** make the example catalogues opt-in ([be84b35](https://github.com/JoveWorks/joveworks/commit/be84b354a914498a00bfe169587ba1384bfdba41))
+
+### Fixes
+
+* **editor:** include trailing slash on docs url ([5dae3bb](https://github.com/JoveWorks/joveworks/commit/5dae3bb86e036049f70d858e44fb5a9c10e88a0f))
+* resolve docs links against the page and derive the docs base ([dc95ad5](https://github.com/JoveWorks/joveworks/commit/dc95ad55a63752045b1ef37a1dc45c0c1f49f154))
+
+### Documentation
+
+* explain building the static site locally in README ([a600397](https://github.com/JoveWorks/joveworks/commit/a600397fe4985fdfce8d4c4149e291202b028951))
+* recommend the upstream-remote fork in HOSTING.md ([5128a01](https://github.com/JoveWorks/joveworks/commit/5128a017ae3cc5295f48029b6dbcbadacd2c99c0))
 ## [0.27.0](https://github.com/JoveWorks/joveworks/compare/v0.26.11...v0.27.0) (2026-09-22)
 
 ### Features
