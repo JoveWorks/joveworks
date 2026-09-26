@@ -3,7 +3,7 @@
 #
 # Usage: ./release.sh [patch|minor]
 #   Defaults to "minor" when no argument is given.
-#   Prerelease is always true (project is still alpha).
+#   Prerelease is always true (project is still in beta).
 
 set -euo pipefail
 

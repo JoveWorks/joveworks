@@ -9,7 +9,7 @@ on:
         options: ["", patch, minor, major]
         default: ""
       prerelease:
-        description: "Mark the GitHub Release as a pre-release (project is still alpha)"
+        description: "Mark the GitHub Release as a pre-release (project is still in beta)"
         type: boolean
         default: true
 
