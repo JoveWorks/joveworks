@@ -602,7 +602,7 @@ input[aria-invalid='true'] {
   text-decoration: underline;
 }
 
-.menubar-version.alpha {
+.menubar-version.prerelease {
   color: var(--state-quarantined);
 }
 

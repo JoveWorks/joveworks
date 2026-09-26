@@ -1323,13 +1323,13 @@ function AppShell(): ReactElement {
                   (separate localStorage, separate bugs), so a report of just
                   "v0.21.0" is ambiguous and "nightly v0.21.0" is not. */}
               <a
-                className={`menubar-version${__APP_VERSION__.startsWith('0.') ? ' alpha' : ''}`}
+                className={`menubar-version${__APP_VERSION__.startsWith('0.') ? ' prerelease' : ''}`}
                 href={`https://github.com/JoveWorks/joveworks/releases/tag/v${__APP_VERSION__}`}
                 target="_blank"
                 rel="noopener"
                 title={`View the JoveWorks v${__APP_VERSION__} release on GitHub${localVersionSuffix}`}
               >
-                {__APP_VERSION__.startsWith('0.') ? 'alpha · ' : ''}{t(__APP_CHANNEL__)} v{__APP_VERSION__}
+                {__APP_VERSION__.startsWith('0.') ? 'beta · ' : ''}{t(__APP_CHANNEL__)} v{__APP_VERSION__}
                 {localVersionSuffix}
               </a>
 
