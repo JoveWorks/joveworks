@@ -137,7 +137,7 @@ The React app. Largest package by far. `AGENTS.md`: desktop-only, no properties 
 
 - `model/document.ts` — every graph edit as a pure function over `GraphDocument`: `connect`, `removeNodes`, table-column management, frame/section grouping (`groupIntoSection`, `reframe`), renaming with column-label sync. **Edit here for any "what happens when you do X on the canvas" logic that isn't rendering.**
 - `model/analysis.tsx` — runs the kernel over a graph that's still being built: per-node readiness (`ok`/`incomplete`/`quarantined`/`blocked`/`error`), retrying with bad nodes dropped rather than blanking the whole canvas. `analyse()` is what every node view reads to know its state/problem text.
-- `model/catalogues.ts` — loaded-catalogue management: `baseCatalogue()`, `bundledCatalogues()` (auto-glob of `src/catalogues/*.json`), `withCatalogue`/`removeCatalogue`, palette `search()`.
+- `model/catalogues.ts` — loaded-catalogue management: `baseCatalogue()`, `bundledCatalogues()` (auto-glob of `src/catalogues/*.{json,yaml,yml}`, plus `examples/` when `VITE_EXAMPLE_CATALOGUES=on`), `withCatalogue`/`removeCatalogue`, palette `search()`.
 - `model/layout.ts` — `autoArrange`: maps a `GraphDocument` onto the abstract layered-layout algorithm (frames as compound blocks, loose outputs pulled to a bottom row), with a grid-pack fallback for cyclic documents.
 - `model/layered-layout.ts` — the actual Sugiyama-style algorithm (longest-path ranking, barycenter crossing reduction) over abstract `LayoutBlock`/`LayoutEdge`, independent of `GraphDocument`.
 - `model/layout-constants.ts` — shared nominal node size/gap constants every layout pass must agree on.
@@ -261,9 +261,12 @@ same report through the same code instead of three renderers drifting apart
 
 ### `src/catalogues/` — bundled unrestricted catalogues
 
-- `catalogues/basic-mechanics.json` — public, textbook-independent mechanics formula catalogue (stress, etc.), auto-loaded via `import.meta.glob` in `model/catalogues.ts`.
-- `catalogues/machining.json` — public machining/milling formula catalogue (speeds, feeds, power, torque) used by the `millingPowerEnvelope` sample.
-- `catalogues/running.yaml` — public YAML example catalogue for pace, race projections, route grade, and climbing rate.
+Files directly in `src/catalogues/` are always bundled (this is where a school's fork drops its own); files in `examples/` are bundled only when the build sets `VITE_EXAMPLE_CATALOGUES=on` (Netlify does; the vitest config does too). Both via `import.meta.glob` in `model/catalogues.ts`.
+
+- `catalogues/examples/basic-mechanics.json` — public, textbook-independent mechanics formula catalogue (stress, etc.).
+- `catalogues/examples/machining.json` — public machining/milling formula catalogue (speeds, feeds, power, torque) used by the `millingPowerEnvelope` sample.
+- `catalogues/examples/photography.json` — public photography catalogue (thin lens, depth of field, sensor format, exposure, flash, macro, diffraction) used by the depth-of-field, aperture-decision and wildlife-camera samples.
+- `catalogues/examples/running.yaml` — public YAML example catalogue for pace, race projections, route grade, and climbing rate.
 
 ### Package root
 
@@ -329,7 +332,7 @@ Live here (not inside a package) because each needs more than one package, or ne
 - `test/base-nodes-end-to-end.test.ts` — the base node library run through the whole kernel stack (catalogue load → typed ports → generic binding → sweep → check → plot), with zero textbook content, proving the public stack works standalone.
 - `test/belt-goldens.test.ts` — milestone 1's acceptance criterion: the belt-lab graph reproduced end-to-end against known golden values. Requires `JOVEWORKS_CATALOGUE` env var pointing at the private catalogue; skips otherwise.
 - `test/catalogue-check.test.ts` — runs the kernel's dimension checker over every formula in an externally-supplied (private) catalogue. Also gated on `JOVEWORKS_CATALOGUE`.
-- `test/machining-catalogue.test.ts` — validates the *public* `packages/editor/src/catalogues/machining.json` bundle mechanically (namespacing, dimension soundness) — runs unconditionally, no private catalogue needed.
+- `test/machining-catalogue.test.ts` — validates the *public* `packages/editor/src/catalogues/examples/machining.json` bundle mechanically (namespacing, dimension soundness) — runs unconditionally, no private catalogue needed.
 - `test/project-references.test.ts` — copies the workspace to a scratch dir, injects an illegal cross-package import, and asserts `tsc -b` refuses it — verifies the dependency-direction enforcement actually works, not just that the config exists.
 
 ---

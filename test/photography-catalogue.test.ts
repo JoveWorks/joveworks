@@ -30,7 +30,7 @@ import {
 import { fromCanonical } from '@joveworks/units';
 
 const catalogue = loadCatalogue(
-  readFileSync(new URL('../packages/editor/src/catalogues/photography.json', import.meta.url), 'utf8'),
+  readFileSync(new URL('../packages/editor/src/catalogues/examples/photography.json', import.meta.url), 'utf8'),
 );
 
 function formula(id: string): Formula {

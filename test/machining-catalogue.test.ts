@@ -8,7 +8,7 @@ import { fromCanonical, parseUnit, toCanonical } from '@joveworks/units';
 
 const catalogue = loadCatalogue(
   readFileSync(
-    new URL('../packages/editor/src/catalogues/machining.json', import.meta.url),
+    new URL('../packages/editor/src/catalogues/examples/machining.json', import.meta.url),
     'utf8',
   ),
 );

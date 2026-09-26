@@ -11,6 +11,10 @@
   # asks for the Cloud menu explicitly. A self-hosting school leaves this
   # unset and gets a build with no cloud surface at all — see HOSTING.md.
   VITE_CLOUD = "hub"
+  # The example catalogues (photography, running, machining, basic
+  # mechanics) and the samples built on them are opt-in too: the public site
+  # shows them, a school's build leaves them out unless it asks.
+  VITE_EXAMPLE_CATALOGUES = "on"
 
 [[redirects]]
   from = "/*"

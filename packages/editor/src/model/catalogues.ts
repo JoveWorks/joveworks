@@ -62,17 +62,37 @@ const bundledYamlCatalogueModules = import.meta.glob<string>('../catalogues/*.{y
 });
 
 /**
+ * The example catalogues in `src/catalogues/examples/` — photography,
+ * running, machining and basic mechanics — ship only when the build sets
+ * `VITE_EXAMPLE_CATALOGUES=on`. The public Netlify build asks for them; a
+ * school deploying its own course catalogue leaves the flag unset. Vite
+ * replaces the env check with a literal, so without the flag the ternary
+ * folds to `{}` and Rollup drops the example files from the bundle entirely
+ * rather than just hiding them. The samples built on them hide themselves
+ * through `provides`.
+ */
+const EXAMPLES_ENABLED = import.meta.env.VITE_EXAMPLE_CATALOGUES === 'on';
+
+const exampleCatalogueModules = EXAMPLES_ENABLED
+  ? import.meta.glob<JsonValue>('../catalogues/examples/*.json', { eager: true, import: 'default' })
+  : {};
+
+const exampleYamlCatalogueModules = EXAMPLES_ENABLED
+  ? import.meta.glob<string>('../catalogues/examples/*.{yaml,yml}', { eager: true, import: 'default', query: '?raw' })
+  : {};
+
+/**
  * Every catalogue that ships with the app alongside the base nodes: files
- * dropped in `src/catalogues/` — textbook-independent, `restricted: false`,
- * hand-authored per `docs/authoring-catalogues.md` rather than extracted
- * from a source. Unlike the R&M catalogue these need no LMS handout —
- * nothing in them is restricted, so there is no reason to make a student
- * import them by hand.
+ * dropped in `src/catalogues/`, plus the examples when they are switched
+ * on — textbook-independent, `restricted: false`, hand-authored per
+ * `docs/authoring-catalogues.md` rather than extracted from a source. Unlike
+ * the R&M catalogue these need no LMS handout — nothing in them is
+ * restricted, so there is no reason to make a student import them by hand.
  */
 export function bundledCatalogues(): readonly Catalogue[] {
   return [
-    ...Object.values(bundledCatalogueModules).map((data) => parseCatalogue(data)),
-    ...Object.values(bundledYamlCatalogueModules).map((text) => loadCatalogue(text, 'yaml')),
+    ...[...Object.values(bundledCatalogueModules), ...Object.values(exampleCatalogueModules)].map((data) => parseCatalogue(data)),
+    ...[...Object.values(bundledYamlCatalogueModules), ...Object.values(exampleYamlCatalogueModules)].map((text) => loadCatalogue(text, 'yaml')),
   ];
 }
 

@@ -95,9 +95,13 @@ JOVEWORKS_CHANNEL=stable VITE_CLOUD=hub JOVEWORKS_BASE_PATH=./ pnpm build:bundle
   them out.
 - `JOVEWORKS_BASE_PATH=./`: relative asset paths, so one build works at a
   domain root or under a subpath.
+- `VITE_EXAMPLE_CATALOGUES=on` (set on Netlify, not for releases): includes
+  the example catalogues in `packages/editor/src/catalogues/examples/` and the
+  samples built on them.
 
 The output is `packages/editor/build/`. Every catalogue file in
-`packages/editor/src/catalogues/` is bundled into it. To reproduce the release
+`packages/editor/src/catalogues/` is bundled into it, plus the examples in its
+`examples/` subfolder when they are switched on. To reproduce the release
 zip, add the server-config files and zip the folder:
 
 ```

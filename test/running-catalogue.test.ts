@@ -8,7 +8,7 @@ import { fromCanonical, parseUnit, toCanonical } from '@joveworks/units';
 
 const catalogue = loadCatalogue(
   readFileSync(
-    new URL('../packages/editor/src/catalogues/running.yaml', import.meta.url),
+    new URL('../packages/editor/src/catalogues/examples/running.yaml', import.meta.url),
     'utf8',
   ),
   'yaml',

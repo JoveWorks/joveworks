@@ -31,7 +31,7 @@ restricted: false
 formulas: []
 ```
 
-`packages/editor/src/catalogues/running.yaml` is a complete bundled example
+`packages/editor/src/catalogues/examples/running.yaml` is a complete bundled example
 covering pace, race-time projection, grade, and climbing rate. The next
 section builds a second one from scratch, field by field.
 

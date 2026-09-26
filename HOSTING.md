@@ -141,7 +141,7 @@ merge, ever.
 **Updating a formula:** edit the YAML in `catalogue/` and rebuild. Students get
 it on their next page load, because asset filenames are content-hashed.
 
-Four build settings are available as environment variables, so none of this
+Five build settings are available as environment variables, so none of this
 needs source changes:
 
 | Variable | Effect |
@@ -150,6 +150,7 @@ needs source changes:
 | `JOVEWORKS_BASE_PATH` | Where the editor is served. Defaults to `/`. For a subpath, give the absolute path (`/joveworks/`): the docs then build for `/joveworks/docs/` too. `./` makes the editor itself work at any path, but leaves the docs built for `/docs/`. |
 | `JOVEWORKS_DOCS_BASE_PATH` | Overrides where the docs are built for; must be absolute. Only needed with a relative `JOVEWORKS_BASE_PATH`, e.g. `JOVEWORKS_BASE_PATH=./ JOVEWORKS_DOCS_BASE_PATH=/joveworks/docs/`. |
 | `VITE_CLOUD` | Leave unset to compile out all cloud features. See below. |
+| `VITE_EXAMPLE_CATALOGUES` | Set to `on` to include the example catalogues in `packages/editor/src/catalogues/examples/` (photography, running, machining, basic mechanics) and the samples built on them. Leave unset to leave them out. Your own catalogues in `src/catalogues/` are bundled either way. |
 
 **The cost to weigh:** you now own a container image, which means patching its
 base images on your usual schedule. That is strictly more ongoing work than a
@@ -248,6 +249,11 @@ filenames are content-hashed.
 Give your files a distinctive prefix, like `your-institution-` above. Upstream
 never edits files it didn't create, so with prefixed names your catalogue
 commits cannot conflict when you merge a release.
+
+The example catalogues upstream ships live in the `examples/` subfolder and
+are left out of the build unless you set `VITE_EXAMPLE_CATALOGUES=on`. Leave
+the files there even if you never use them: deleting them from your fork
+would conflict on every release that touches them.
 
 ### Updating to a new release
 
@@ -373,7 +379,8 @@ COPY deploy/your-institution/nginx.conf /etc/nginx/conf.d/default.conf
 
 `nginx.conf` is a `server { }` block that includes the SPA fallback from
 `deploy/stable-bundle/nginx.conf.snippet`. The build settings in the table
-under option 2 (`JOVEWORKS_CHANNEL`, `JOVEWORKS_BASE_PATH`, `VITE_CLOUD`)
+under option 2 (`JOVEWORKS_CHANNEL`, `JOVEWORKS_BASE_PATH`, `VITE_CLOUD`,
+`VITE_EXAMPLE_CATALOGUES`)
 apply here too.
 
 A container build with Kaniko, which needs no privileged runner:
