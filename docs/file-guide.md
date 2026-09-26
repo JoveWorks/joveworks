@@ -261,7 +261,7 @@ same report through the same code instead of three renderers drifting apart
 
 ### `src/catalogues/` — bundled unrestricted catalogues
 
-Files directly in `src/catalogues/` are always bundled (this is where a school's fork drops its own); files in `examples/` are bundled only when the build sets `VITE_EXAMPLE_CATALOGUES=on` (Netlify does; the vitest config does too). Both via `import.meta.glob` in `model/catalogues.ts`.
+Files directly in `src/catalogues/` are always bundled (this is where a school's fork drops its own); files in `examples/` are bundled only when the build sets `VITE_EXAMPLE_CATALOGUES=on` (Netlify does, as do the vitest config and `packages/editor/.env.development` for the dev server). Both via `import.meta.glob` in `model/catalogues.ts`.
 
 - `catalogues/examples/basic-mechanics.json` — public, textbook-independent mechanics formula catalogue (stress, etc.).
 - `catalogues/examples/machining.json` — public machining/milling formula catalogue (speeds, feeds, power, torque) used by the `millingPowerEnvelope` sample.
