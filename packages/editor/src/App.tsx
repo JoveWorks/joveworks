@@ -33,7 +33,7 @@ import { ConfirmDialog } from './ConfirmDialog';
 import { analytics } from './analytics/analytics';
 import { documentEvents } from './analytics/documentEvents';
 import { exampleIdFromUrl, urlForExample, type ExampleId } from './exampleUrl';
-import { DOCS_BASE_URL } from './help-links';
+import { DOCS_HOME_URL } from './help-links';
 import { GraphContext } from './graph-context';
 import { notebookDisplayOf } from './model/notebook';
 import { DisplayProvider, type NotebookDisplay } from './present/display';
@@ -315,7 +315,7 @@ function MobileLanding(): ReactElement {
           Build and export NodeBooks on a computer. The guide is designed to be useful from any
           screen.
         </p>
-        <a className="mobile-landing-docs" href={DOCS_BASE_URL}>
+        <a className="mobile-landing-docs" href={DOCS_HOME_URL}>
           Read the documentation
         </a>
         {CLOUD_ENABLED ? (
@@ -1137,7 +1137,7 @@ function AppShell(): ReactElement {
     {
       label: t('Documentation'),
       onClick: () => {
-        window.open(DOCS_BASE_URL, '_blank', 'noopener');
+        window.open(DOCS_HOME_URL, '_blank', 'noopener');
       },
     },
     {

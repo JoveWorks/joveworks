@@ -92,7 +92,8 @@ jobs:
         # domain root or under any subpath. (This overrides the "/" default
         # in vite.config.ts, which stays as-is for Netlify.) The docs
         # sub-site under build/docs/ is the one part of this bundle that
-        # still assumes domain-root hosting — see the comment on `base` in
+        # still assumes domain-root hosting: a relative editor base leaves
+        # it at `/docs/`. See the comment on `base` in
         # packages/docs-site/docs/.vitepress/config.ts for why, and
         # deploy/stable-bundle/README.txt for what that means for a school
         # hosting under a subpath.

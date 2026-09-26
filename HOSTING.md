@@ -84,11 +84,13 @@ needs its own formula catalogue — particularly one that can't be published
 publicly — a stable bundle has to be built with it included, which means either
 requesting a custom bundle or moving to option 4 (or option 2).
 
-**Subpath caveat:** the built-in documentation assumes domain-root hosting. The
-app's "?" help buttons resolve to `https://your-domain/docs/...` regardless of
-subpath, and will 404 if JoveWorks lives under one. The editor and the
-catalogue-author tool are unaffected. If you need the docs working under a
-subpath, tell us the subpath and we'll produce a matching docs build.
+**Subpath caveat:** the bundle's built-in documentation is built for
+domain-root hosting. Under a subpath the app's "?" help buttons still resolve to
+`https://your-domain/joveworks/docs/...`, but the docs pages load their assets
+from `/docs/` and break. The editor and the catalogue-author tool are
+unaffected. To get working docs under a subpath, build the bundle yourself with
+an absolute `JOVEWORKS_BASE_PATH` for that subpath (see the table under option
+2), or tell us the subpath and we'll produce a matching build.
 
 ---
 
@@ -139,13 +141,14 @@ merge, ever.
 **Updating a formula:** edit the YAML in `catalogue/` and rebuild. Students get
 it on their next page load, because asset filenames are content-hashed.
 
-Three build settings are available as environment variables, so none of this
+Four build settings are available as environment variables, so none of this
 needs source changes:
 
 | Variable | Effect |
 |---|---|
 | `JOVEWORKS_CHANNEL` | The text in the version badge. Distinguishes your deployment from the public nightly and stable builds. |
-| `JOVEWORKS_BASE_PATH` | Set to `./` for subpath hosting, or an absolute path if you prefer one. Defaults to `/`. |
+| `JOVEWORKS_BASE_PATH` | Where the editor is served. Defaults to `/`. For a subpath, give the absolute path (`/joveworks/`): the docs then build for `/joveworks/docs/` too. `./` makes the editor itself work at any path, but leaves the docs built for `/docs/`. |
+| `JOVEWORKS_DOCS_BASE_PATH` | Overrides where the docs are built for; must be absolute. Only needed with a relative `JOVEWORKS_BASE_PATH`, e.g. `JOVEWORKS_BASE_PATH=./ JOVEWORKS_DOCS_BASE_PATH=/joveworks/docs/`. |
 | `VITE_CLOUD` | Leave unset to compile out all cloud features. See below. |
 
 **The cost to weigh:** you now own a container image, which means patching its
