@@ -18,14 +18,15 @@ either way, and no rebuild needed if you decide to move it later. Just make
 sure index.html is reachable directly wherever you put it (e.g.
 https://your-domain/joveworks/index.html), not nested one level further.
 
-The one exception is the built-in documentation: the "?" help buttons in
-the app, and the docs/ folder if browsed directly, are built assuming
-domain-root hosting. Under a subpath they'll point at
-https://your-domain/docs/... instead of https://your-domain/joveworks/docs/...
-and 404. Nothing else in the app is affected — the editor itself and the
-author/ tool work regardless. If you need the docs to work correctly under
-a subpath too, let us know the subpath and we'll produce a docs build for
-it.
+The one exception is the built-in documentation in docs/, which is built
+for domain-root hosting. Under a subpath the app's "?" help buttons still
+point at the right place (https://your-domain/joveworks/docs/...), but the
+docs pages load their styles and scripts from https://your-domain/docs/...
+and break. Nothing else in the app is affected — the editor itself and the
+author/ tool work regardless. If you need the docs to work under a subpath
+too, rebuild the bundle from source for that subpath (for
+https://your-domain/joveworks/, build with JOVEWORKS_BASE_PATH=/joveworks/),
+or let us know the subpath and we'll produce a build for it.
 
 3. Add the single-page-app fallback rule
 ------------------------------------------
@@ -55,8 +56,8 @@ same rule under a different name.
     page instead of JoveWorks, the SPA fallback rule from step 3 isn't
     active yet.
   - If you're hosting under a subpath, click a node's "?" help button and
-    confirm it lands on a real docs page rather than a 404 — see the note
-    in step 2 if it doesn't.
+    confirm it opens a properly styled docs page — see the note in step 2
+    if it doesn't.
 
 5. If the course is served through a JoveWorks Hub
 ----------------------------------------------------

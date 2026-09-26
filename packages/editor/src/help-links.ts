@@ -5,20 +5,28 @@
  * separate Vite servers (editor on 5173, docs on 5174 — `pnpm docs:dev`),
  * so DOCS_BASE_URL can't just be the editor's own origin there.
  *
- * `window.location.origin` has no path component, so this always points at
- * /docs/ off the domain root — correct for Netlify and for a stable bundle
- * hosted at a school's domain root, but not for one hosted under a subpath
- * (the docs site's own `base` has the same domain-root assumption, and for
- * the same reason; see the comment there). The editor's own UI and the
- * catalogue-author build don't have this limitation — only these help links
- * and the docs pages themselves do.
+ * In production the docs sit in docs/ next to the editor's index.html, so
+ * this resolves the editor's base (JOVEWORKS_BASE_PATH) against the current
+ * page, not the bare origin: an absolute base like `/joveworks/` resolves the
+ * same either way, and the stable bundle's relative `./` base then follows
+ * wherever the bundle is hosted. The app never routes by path (only
+ * `?example=`), so the current page is always the editor's own index. The
+ * docs pages themselves still need their absolute `base` to match; see
+ * JOVEWORKS_DOCS_BASE_PATH in packages/docs-site/docs/.vitepress/config.ts.
+ *
+ * No trailing slash: every use below appends `/guide/...`, and a bare link
+ * to the docs home must add its own `/` (DOCS_HOME_URL).
  */
 
 import type { NodeKind } from '@joveworks/schema';
 
 export const DOCS_BASE_URL = import.meta.env.DEV
   ? 'http://localhost:5174/docs'
-  : new URL('docs', new URL(import.meta.env.BASE_URL, window.location.origin)).toString();
+  : new URL('docs', new URL(import.meta.env.BASE_URL, window.location.href)).toString();
+
+/** The docs home page. The trailing slash matters on static hosts that
+ *  don't redirect `/docs` to `/docs/`. */
+export const DOCS_HOME_URL = `${DOCS_BASE_URL}/`;
 
 export const NODE_HELP_URLS: Readonly<Record<NodeKind, string>> = {
   input: `${DOCS_BASE_URL}/guide/node-reference#input`,

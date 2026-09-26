@@ -1,19 +1,35 @@
 import { defineConfig } from "vitepress";
 
-const docsBase = process.env.JOVEWORKS_DOCS_BASE_PATH ?? '/docs/';
+// Must stay an absolute path, unlike the editor and catalogue-author builds.
+// Verified experimentally: with a relative base VitePress still emits a
+// uniform `./assets/...` on every page regardless of nesting depth, so a
+// page one directory down (e.g. guide/units.html) ends up looking for
+// guide/assets/... — which doesn't exist, only docs/assets/... does. That
+// makes a relative base actively wrong here, not just unnecessary.
+//
+// The bundle copies this site into docs/ next to the editor, so by default
+// it follows an absolute JOVEWORKS_BASE_PATH (`/joveworks/` gives
+// `/joveworks/docs/`). A relative editor base (the stable bundle's `./`) says
+// nothing about where the bundle will live, so that falls back to `/docs/`;
+// set JOVEWORKS_DOCS_BASE_PATH to build the docs for a known subpath. The
+// editor's help links (DOCS_BASE_URL in packages/editor/src/help-links.ts)
+// resolve docs/ next to the editor on their own.
+function docsBasePath(): string {
+  const editorBase = process.env.JOVEWORKS_BASE_PATH ?? "/";
+  const base =
+    process.env.JOVEWORKS_DOCS_BASE_PATH ??
+    (editorBase.startsWith("/") ? `${editorBase.replace(/\/?$/, "/")}docs/` : "/docs/");
+  if (!base.startsWith("/")) {
+    throw new Error(`JOVEWORKS_DOCS_BASE_PATH must be an absolute path, got "${base}"`);
+  }
+  return base.replace(/\/?$/, "/");
+}
+
+const docsBase = docsBasePath();
 
 export default defineConfig({
   title: "JoveWorks Docs",
   description: "Docs for the node-editor design tool for dimensioning machine parts.",
-  // Stays an absolute path, unlike the editor and catalogue-author builds.
-  // Verified experimentally: with a relative base VitePress still emits a
-  // uniform `./assets/...` on every page regardless of nesting depth, so a
-  // page one directory down (e.g. guide/units.html) ends up looking for
-  // guide/assets/... — which doesn't exist, only docs/assets/... does. That
-  // makes a relative base actively wrong here, not just unnecessary, so
-  // this — and the DOCS_BASE_URL in packages/editor/src/help-links.ts that
-  // has to agree with it — are the one part of the release bundle that
-  // assumes domain-root hosting.
   base: docsBase,
   cleanUrls: true,
   head: [["link", { rel: "icon", href: docsBase + "favicon.svg", type: "image/svg+xml" }]],
