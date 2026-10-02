@@ -118,7 +118,12 @@ export function openBinaryFiles(accept: string): Promise<readonly PickedBinaryFi
  * export as JSON.
  */
 export function saveTextFile(name: string, text: string, type = 'application/json'): void {
-  const url = URL.createObjectURL(new Blob([text], { type }));
+  saveBlobFile(name, new Blob([text], { type }));
+}
+
+/** The same download for bytes that are not text — a figure's PNG (`present/figurePng.ts`). */
+export function saveBlobFile(name: string, blob: Blob): void {
+  const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
   link.download = name;

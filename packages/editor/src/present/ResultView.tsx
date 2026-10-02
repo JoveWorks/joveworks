@@ -20,7 +20,7 @@
  * is compiled, not by what is drawn.
  */
 
-import { Fragment, useState, type ReactElement, type ReactNode } from 'react';
+import { Fragment, useRef, useState, type ReactElement, type ReactNode } from 'react';
 
 import {
   candidateAt,
@@ -85,6 +85,14 @@ export interface ResultEditing {
    * NodeBook has none.
    */
   readonly plotControls?: ReactNode;
+  /**
+   * Gestures drawn under a plot — its CSV and PNG exports, the plot's
+   * counterpart to `tableActions`. Handed a way to reach the figure as it is
+   * drawn, because a picture of the plot can only be taken of the element on
+   * the page; the call is deferred so it is read when a gesture fires, not
+   * while rendering.
+   */
+  readonly plotActions?: (figure: () => HTMLElement | null) => ReactNode;
 }
 
 export interface ResultViewProps {
@@ -126,6 +134,9 @@ export function ResultView({
   const [columnDrag, setColumnDrag] = useState<
     { readonly over: string; readonly position: 'before' | 'after' } | undefined
   >(undefined);
+  // The drawn plot, for `editing.plotActions` — every panel of it, and
+  // nothing of the title, controls or caption around it.
+  const plotFigure = useRef<HTMLDivElement>(null);
 
   const markingFor = (axes: readonly Axis[]): FigureMarking => markingOver?.(axes) ?? NO_MARKING;
   const marksOver = (axes: readonly Axis[]): MarkIndex => markingFor(axes).marks;
@@ -347,10 +358,15 @@ export function ResultView({
   return (
     <div className="result plot">
       {label}
-      {result.measures === undefined ? (
-        <PlotFigure result={result} marking={markingFor(plotGrid(result))} />
-      ) : (
-        <IntelligentPlotFigure result={result} markingFor={markingFor} />
+      <div className="plot-figure" ref={plotFigure}>
+        {result.measures === undefined ? (
+          <PlotFigure result={result} marking={markingFor(plotGrid(result))} />
+        ) : (
+          <IntelligentPlotFigure result={result} markingFor={markingFor} />
+        )}
+      </div>
+      {editing?.plotActions === undefined ? null : (
+        <div className="plot-actions">{editing.plotActions(() => plotFigure.current)}</div>
       )}
       {result.measures === undefined ? null : editing?.plotControls}
       {result.measures === undefined && result.threshold !== undefined ? (

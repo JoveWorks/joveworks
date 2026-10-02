@@ -57,6 +57,15 @@ function csvField(text: string, separator: string): string {
   return `"${text.replace(/"/gu, '""')}"`;
 }
 
+/**
+ * Rows of already-formatted fields as CSV text — the half of `tableCsv` a
+ * plot's export (`present/plotCsv.ts`) shares, so both files quote and
+ * terminate lines identically.
+ */
+export function csvText(rows: readonly (readonly string[])[], separator: string): string {
+  return rows.map((row) => row.map((field) => csvField(field, separator)).join(separator)).join('\r\n');
+}
+
 function cellText(
   series: Series,
   row: number,
@@ -82,16 +91,11 @@ export function tableCsv(
 ): string {
   const separator = csvSeparator(format);
   const rows = columns.reduce((max, column) => Math.max(max, column.series.data.length), 0);
-  const header = columns.map((column) =>
-    csvField(`${column.name} (${unitLabel(column.unit)})`, separator),
+  const header = columns.map((column) => `${column.name} (${unitLabel(column.unit)})`);
+  const body = Array.from({ length: rows }, (_unused, row) =>
+    columns.map((column) =>
+      cellText(column.series, row, column.unit, figures?.[column.name] ?? DEFAULT_COLUMN_FIGURES, format),
+    ),
   );
-  const lines = [header.join(separator)];
-  for (let row = 0; row < rows; row += 1) {
-    const cells = columns.map((column) => {
-      const columnFigures = figures?.[column.name] ?? DEFAULT_COLUMN_FIGURES;
-      return csvField(cellText(column.series, row, column.unit, columnFigures, format), separator);
-    });
-    lines.push(cells.join(separator));
-  }
-  return lines.join('\r\n');
+  return csvText([header, ...body], separator);
 }

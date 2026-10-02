@@ -27,7 +27,7 @@ import {
   type TextareaHTMLAttributes,
 } from 'react';
 
-import type { Axis, AxisReadout, OutputResult } from '@joveworks/kernel';
+import type { Axis, AxisReadout, OutputResult, PlotResult } from '@joveworks/kernel';
 import type {
   Candidate,
   Frame,
@@ -60,9 +60,11 @@ import { toUnitsFormat } from '../model/numberFormat';
 import { MonteCarloReceiverPlayback } from '../canvas/MonteCarloReceiverPlayback';
 import { marksOver as resolveMarksOver, type FigureMarking } from '../present/marks';
 import { DEFAULT_COLUMN_FIGURES, ResultView } from '../present/ResultView';
-import { saveTextFile, slugifyTitle } from '../io/files';
+import { saveBlobFile, saveTextFile, slugifyTitle } from '../io/files';
 import { tableCsv } from '../model/csv';
-import { DisplayProvider } from '../present/display';
+import { DisplayProvider, useDisplay } from '../present/display';
+import { figurePng } from '../present/figurePng';
+import { plotCsv } from '../present/plotCsv';
 import { IntelligentPlotControls } from './IntelligentPlotControls';
 import { NotebookSliderControl } from './NotebookSliderControl';
 import { phrase, ui } from '../i18n';
@@ -296,11 +298,69 @@ export function Result({ result, node }: { readonly result: OutputResult; readon
               ),
             }
           : {}),
+        ...(result.kind === 'plot'
+          ? {
+              plotActions: (figure) => (
+                <PlotExports name={slugifyTitle(node.label ?? node.id)} result={result} figure={figure} />
+              ),
+            }
+          : {}),
         ...(result.kind === 'plot' && result.measures !== undefined
           ? { plotControls: <IntelligentPlotControls node={node} result={result} /> }
           : {}),
       }}
     />
+  );
+}
+
+/**
+ * A plot's two exports, under the figure they export — the plot's answer to
+ * the table's CSV button, and beside the report for the same reason: what
+ * downloads is the plot in front of the reader. The CSV is the points the
+ * figure draws; the PNG is the figure itself, on white whatever the theme.
+ */
+function PlotExports({
+  name,
+  result,
+  figure,
+}: {
+  readonly name: string;
+  readonly result: PlotResult;
+  readonly figure: () => HTMLElement | null;
+}): ReactElement {
+  const { format, axes, locale } = useDisplay();
+  const t = (english: string): string => phrase(locale, english);
+  // Rasterising runs in the browser's own image pipeline and can refuse; a
+  // click that produced no file has to say so rather than do nothing.
+  const [failed, setFailed] = useState(false);
+  return (
+    <>
+      {failed ? <span role="alert">{t('could not export this plot as PNG')}</span> : null}
+      <button
+        type="button"
+        title={t('Download the plotted points as a CSV file.')}
+        onClick={() => saveTextFile(`${name}.csv`, plotCsv(result, axes, format), 'text/csv')}
+      >
+        {t('export CSV')}
+      </button>
+      <button
+        type="button"
+        title={t('Download this plot as a PNG image.')}
+        onClick={() => {
+          const element = figure();
+          if (element === null) return;
+          figurePng(element).then(
+            (blob) => {
+              setFailed(false);
+              saveBlobFile(`${name}.png`, blob);
+            },
+            () => setFailed(true),
+          );
+        }}
+      >
+        {t('export PNG')}
+      </button>
+    </>
   );
 }
 

@@ -138,18 +138,18 @@ export function valueAxisPlacement(panel: PlotPanel, valueUnits: readonly Unit[]
   return { axisIndexOf, toChartValue, toOwnValue, invertChartValue };
 }
 
-function displayedCoordinates(readout: PlotAxis): readonly (number | string)[] {
+export function displayedCoordinates(readout: PlotAxis): readonly (number | string)[] {
   return readout.coordinates.kind === 'numeric'
     ? readout.coordinates.data.map((value) => fromCanonical(value, readout.unit))
     : readout.coordinates.data;
 }
 
-function labelOf(axis: PlotAxis, panel: PlotPanel): string {
+export function labelOf(axis: PlotAxis, panel: PlotPanel): string {
   const label = panel.measures[0]?.view?.axisLabels?.[axis.axis.id] ?? axis.axis.label;
   return `${label}${axis.unit.symbol.trim() === '' ? '' : ` (${axis.unit.symbol})`}`;
 }
 
-function panelGrid(panel: PlotPanel): readonly Axis[] {
+export function panelGrid(panel: PlotPanel): readonly Axis[] {
   return unionAxes(...panel.measures.map((measure) => measure.series.axes));
 }
 
@@ -371,6 +371,19 @@ function contourColorbar(panel: PlotPanel, valueUnit: Unit, palette: string): HT
   return colorbar;
 }
 
+/**
+ * One SI-prefixed unit per value axis, chosen from that axis's own
+ * measures — a force axis and a length axis pick their own prefix
+ * independently, exactly as they would as separate panels.
+ */
+export function panelValueUnits(panel: PlotPanel, format: NumberFormat): readonly Unit[] {
+  return panel.valueAxes.map((valueAxis) => siAxisUnit(
+    (valueAxis.measures[0] as PlotMeasureResult).unit,
+    valueAxis.measures.flatMap((measure) => measure.series.data),
+    format,
+  ));
+}
+
 /** The primary value axis's label — every existing single-axis caller
  * (contour/heatmap's colorbar title, the left y label). */
 function measuredLabel(panel: PlotPanel, valueUnit: Unit): string {
@@ -423,14 +436,7 @@ function PlotPanelFigure({
   useEffect(() => {
     const container = host.current;
     if (container === null || panel.error !== undefined) return undefined;
-    // One SI-prefixed unit per value axis, chosen from that axis's own
-    // measures — a force axis and a length axis pick their own prefix
-    // independently, exactly as they would as separate panels.
-    const valueUnits = panel.valueAxes.map((valueAxis) => siAxisUnit(
-      (valueAxis.measures[0] as PlotMeasureResult).unit,
-      valueAxis.measures.flatMap((measure) => measure.series.data),
-      format,
-    ));
+    const valueUnits = panelValueUnits(panel, format);
     const primaryUnit = valueUnits[0] as Unit;
     const placement = valueAxisPlacement(panel, valueUnits);
     const data = rowsForPanel(panel, valueUnits);

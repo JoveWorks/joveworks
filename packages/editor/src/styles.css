@@ -3937,14 +3937,28 @@ aside.bottom .palette-list section {
    aligned under the table's own right edge, and quiet — this is an
    affordance beside the report, not part of it, which is also why it is
    suppressed under @media print below. */
-.notebook .table-actions {
+.notebook .table-actions,
+.notebook .plot-actions {
   display: flex;
   justify-content: flex-end;
   margin-top: 4px;
 }
 
-.notebook .table-actions button {
+.notebook .table-actions button,
+.notebook .plot-actions button {
   color: var(--muted);
+  font-size: 11px;
+}
+
+/* A plot's CSV and PNG exports — the same quiet row as the table's, under
+   the figure rather than the table, and likewise suppressed in print. */
+.notebook .plot-actions {
+  align-items: baseline;
+  gap: 6px;
+}
+
+.notebook .plot-actions [role='alert'] {
+  color: var(--state-error);
   font-size: 11px;
 }
 
@@ -4121,6 +4135,7 @@ aside.bottom .palette-list section {
   /* The table's CSV export — an affordance beside the report, not content
      in it, the same as the per-column digits field above. */
   .table-actions,
+  .plot-actions,
   /* Every dialog (`SettingsDialog`, `UnlockCatalogueDialog`, the Hub
      workspace dialogs…) and the ribbon's own dropdown share these two root
      classes. Both can render as a sibling of `<main>` rather than inside
