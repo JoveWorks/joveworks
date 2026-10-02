@@ -328,7 +328,10 @@ function PlotExports({
   readonly result: PlotResult;
   readonly figure: () => HTMLElement | null;
 }): ReactElement {
-  const { format, axes, locale } = useDisplay();
+  const { format, axes } = useDisplay();
+  // The app's language, not the NodeBook's: these are editor controls, like
+  // the table's own export button, and never part of the report.
+  const { locale } = useSettings();
   const t = (english: string): string => phrase(locale, english);
   // Rasterising runs in the browser's own image pipeline and can refuse; a
   // click that produced no file has to say so rather than do nothing.
