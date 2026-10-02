@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.29.0](https://github.com/JoveWorks/joveworks/compare/v0.28.0...v0.29.0) (2026-10-02)
+
+### Features
+
+* a table node whose selected rows are the sweep ([9c7f9f2](https://github.com/JoveWorks/joveworks/commit/9c7f9f2ea061b3ff9dedb60618696e58249baaed))
+* **editor:** draw a catalogue table on the node and pick rows from it ([65f3479](https://github.com/JoveWorks/joveworks/commit/65f3479c84facb0e2c6e2dc7a8bd154ecc9c00ec))
+* **editor:** export a NodeBook plot as CSV or PNG ([7f1d6e1](https://github.com/JoveWorks/joveworks/commit/7f1d6e16b673782a923163b8497ead14fcd2e8e6))
+* **editor:** translate the export controls and Pareto caption to Dutch ([4749f98](https://github.com/JoveWorks/joveworks/commit/4749f98f1731d0cd681df9fa99f27f9c99b251fd))
+* pick a table column's unit, SI prefix included, in its header ([5282d07](https://github.com/JoveWorks/joveworks/commit/5282d07647241973182708757a0036be3a3e1529))
+* pick an output table column's unit, SI prefix included, in its heading ([eda62b9](https://github.com/JoveWorks/joveworks/commit/eda62b9eef427760a70f9c5f9712bb140dadd7e2))
 ## [0.28.0](https://github.com/JoveWorks/joveworks/compare/v0.27.0...v0.28.0) (2026-09-26)
 
 ### Features
