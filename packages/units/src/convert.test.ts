@@ -14,11 +14,13 @@ import {
   parseUnit,
   prefixableAtomOf,
   siPrefixedUnit,
+  siPrefixSteps,
   stripNumberFormatting,
   toCanonical,
   toDecimalPlaces,
   toSignificantFigures,
   type NumberFormat,
+  type Unit,
 } from './index.js';
 
 describe('boundary conversion', () => {
@@ -154,6 +156,21 @@ describe("'si' notation", () => {
     // 250 N/mm² of canonical stress is 2.5e8 Pa = 250 MPa.
     expect(siPrefixedUnit('Pa', 250).symbol).toBe('MPa');
     expect(fromCanonical(250, siPrefixedUnit('Pa', 250))).toBeCloseTo(250, 9);
+  });
+
+  it('lists every engineering step of an atom, whichever prefix it was written with', () => {
+    const steps = ['GPa', 'MPa', 'kPa', 'Pa', 'mPa', 'µPa', 'nPa'];
+    expect(siPrefixSteps('Pa').map((unit) => unit.symbol)).toEqual(steps);
+    expect(siPrefixSteps('MPa').map((unit) => unit.symbol)).toEqual(steps);
+    // Each step is the same quantity respelled: 250 N/mm² is 250 MPa and 0.25 GPa.
+    const [giga, mega] = siPrefixSteps('Pa');
+    expect(fromCanonical(250, mega as Unit)).toBeCloseTo(250, 9);
+    expect(fromCanonical(250, giga as Unit)).toBeCloseTo(0.25, 9);
+  });
+
+  it('offers no prefix steps for a unit that takes no prefix', () => {
+    expect(siPrefixSteps('N/mm²')).toEqual([]);
+    expect(siPrefixSteps('rpm')).toEqual([]);
   });
 
   it('prints a prefixed unit with a fixed-style mantissa, no exponent', () => {

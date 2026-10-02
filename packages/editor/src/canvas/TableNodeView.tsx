@@ -37,7 +37,14 @@ import {
   type LookupCell,
   type TableNode,
 } from '@joveworks/schema';
-import { isGenericDimension, toSignificantFigures, type NumberFormat } from '@joveworks/units';
+import {
+  convert,
+  dimensionsEqual,
+  isGenericDimension,
+  toSignificantFigures,
+  type NumberFormat,
+  type Unit,
+} from '@joveworks/units';
 
 import { useGraph } from '../graph-context';
 import { useSettings } from '../settings-context';
@@ -63,10 +70,38 @@ export function selectableTables(catalogues: readonly Catalogue[]): readonly For
   );
 }
 
-/** A cell exactly as the catalogue writes it, in its column's own unit. */
-function cellText(cell: LookupCell | undefined, format: NumberFormat): string {
+/**
+ * The unit a column is read in: the one picked in its header, else the one
+ * the catalogue prefers. Undefined for a categorical column, which has none.
+ *
+ * Asked of the node rather than of the analysis because every column is drawn
+ * and only the projected ones are ports — an unprojected column still has a
+ * header to click, and keeps what was chosen there for when it is projected.
+ */
+export function columnUnit(node: TableNode, port: Formula['outputs'][number]): Unit | undefined {
+  if (port.kind !== 'numeric' || isGenericDimension(port.unit)) return undefined;
+  const picked = node.displayUnits?.[port.name];
+  // A picked unit of another dimension is the kernel's error to report, on
+  // the port; the grid falls back rather than fail to draw the table.
+  return picked !== undefined && dimensionsEqual(picked.dimension, port.unit.dimension)
+    ? picked
+    : port.preferredUnit ?? port.unit;
+}
+
+/**
+ * A cell as the catalogue writes it, respelled in the unit its header shows —
+ * the grid and the port underneath it must not disagree about one number.
+ */
+export function cellText(
+  cell: LookupCell | undefined,
+  format: NumberFormat,
+  written?: Unit,
+  shown?: Unit,
+): string {
   if (cell === undefined || cell === null) return '—';
-  return typeof cell === 'string' ? cell : toSignificantFigures(cell, 4, format);
+  if (typeof cell === 'string') return cell;
+  const value = written === undefined || shown === undefined ? cell : convert(cell, written, shown);
+  return toSignificantFigures(value, 4, format);
 }
 
 /**
@@ -168,16 +203,16 @@ export function TableNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>)
     const picked = selectableTables(catalogues).find((candidate) => candidate.id === formulaId);
     if (picked === undefined) return;
     edit((current) =>
-      updateNode<TableNode>(current, id, (entry) => ({
-        ...entry,
-        table: formulaRef(picked),
-        rows: [],
-        columns: [],
-      })),
+      updateNode<TableNode>(current, id, (entry) => {
+        // Nor a unit: a column of the same name in the other table need not
+        // be the same quantity, and a unit of the wrong dimension is an error.
+        const { displayUnits: _stale, ...rest } = entry;
+        return { ...rest, table: formulaRef(picked), rows: [], columns: [] };
+      }),
     );
   };
 
-  const setDisplayUnit = (name: string, unit: Parameters<typeof DisplayUnitPicker>[0]['unit']): void =>
+  const setDisplayUnit = (name: string, unit: Unit): void =>
     edit((current) =>
       updateNode<TableNode>(current, id, (entry) => ({
         ...entry,
@@ -263,27 +298,38 @@ export function TableNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>)
                   <th className="row-key" title="Each row is one entry of the table — one part.">
                     <ParameterLabel name={axis.input} />
                   </th>
-                  {formula?.outputs.map((port) => (
-                    <th
-                      key={port.name}
-                      className={`${projected.has(port.name) ? 'projected' : ''}${wired.has(port.name) ? ' wired' : ''}`}
-                      title={
-                        wired.has(port.name)
-                          ? `'${port.name}' has a wire attached — disconnect it before dropping the column.`
-                          : projected.has(port.name)
-                            ? `Stop reading '${port.name}' off this table.`
-                            : `Read '${port.name}' off this table.`
-                      }
-                      onClick={() => toggleColumn(port.name)}
-                    >
-                      <ParameterLabel
-                        name={port.name}
-                        {...(port.kind === 'numeric' && !isGenericDimension(port.unit)
-                          ? { unit: port.unit }
-                          : {})}
-                      />
-                    </th>
-                  ))}
+                  {formula?.outputs.map((port) => {
+                    const unit = columnUnit(node, port);
+                    return (
+                      <th
+                        key={port.name}
+                        className={`${projected.has(port.name) ? 'projected' : ''}${wired.has(port.name) ? ' wired' : ''}`}
+                        title={
+                          wired.has(port.name)
+                            ? `'${port.name}' has a wire attached — disconnect it before dropping the column.`
+                            : projected.has(port.name)
+                              ? `Stop reading '${port.name}' off this table.`
+                              : `Read '${port.name}' off this table.`
+                        }
+                        onClick={() => toggleColumn(port.name)}
+                      >
+                        <ParameterLabel name={port.name} />
+                        {unit === undefined ? null : (
+                          // The unit is its own control inside a header that is
+                          // itself a button: choosing MPa must not also toggle
+                          // the column it was chosen for.
+                          <span onClick={(event) => event.stopPropagation()}>
+                            {' '}
+                            <DisplayUnitPicker
+                              unit={unit}
+                              prefixes
+                              onChange={(next) => setDisplayUnit(port.name, next)}
+                            />
+                          </span>
+                        )}
+                      </th>
+                    );
+                  })}
                 </tr>
               </thead>
               <tbody>
@@ -302,7 +348,12 @@ export function TableNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>)
                         className={projected.has(port.name) ? 'projected' : undefined}
                         onClick={() => pickCell(key, port.name)}
                       >
-                        {cellText(lookup.columns[port.name]?.[keys.indexOf(key)], format)}
+                        {cellText(
+                          lookup.columns[port.name]?.[keys.indexOf(key)],
+                          format,
+                          port.kind === 'numeric' && !isGenericDimension(port.unit) ? port.unit : undefined,
+                          columnUnit(node, port),
+                        )}
                       </td>
                     ))}
                   </tr>
@@ -352,7 +403,7 @@ export function TableNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>)
               <span className={`port-out${highlighted ? ' port-highlighted' : ''}`}>
                 <ParameterLabel name={name} />
                 {unit === undefined ? null : (
-                  <DisplayUnitPicker unit={unit} onChange={(next) => setDisplayUnit(name, next)} />
+                  <DisplayUnitPicker unit={unit} prefixes onChange={(next) => setDisplayUnit(name, next)} />
                 )}
               </span>
               <Handle

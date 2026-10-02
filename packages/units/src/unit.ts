@@ -285,6 +285,25 @@ export function siPrefixedUnit(atomSymbol: string, canonicalValue: number): Unit
 }
 
 /**
+ * Every engineering-prefixed spelling of the atom `symbol` names, largest
+ * first — `GPa` … `nPa` for `Pa` or for `MPa`. Empty for anything
+ * `prefixableAtomOf` refuses, so a compound unit offers no ladder at all
+ * rather than a guessed one.
+ *
+ * This is the choice `siPrefixedUnit` makes from a magnitude, handed to a
+ * person instead: a column of a catalogue table has no single magnitude to
+ * pick a prefix from, and whoever reads it knows which one the book uses.
+ */
+export function siPrefixSteps(symbol: string): readonly Unit[] {
+  const atomSymbol = prefixableAtomOf(symbol.trim());
+  const base = atomSymbol === undefined ? undefined : ATOMS[atomSymbol];
+  if (atomSymbol === undefined || base === undefined) return [];
+  return ENGINEERING_PREFIXES.map(([prefix, scale]) =>
+    unit(`${prefix}${atomSymbol}`, base.dimension, base.factor * scale),
+  );
+}
+
+/**
  * Reject a connection whose dimensions differ. `source` and `target` are
  * named so the message reads in wiring order.
  */
