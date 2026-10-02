@@ -210,6 +210,24 @@ function readiness(
       continue;
     }
 
+    if (node.kind === 'table') {
+      // Two selections, two ways to be unfinished, and they are worth
+      // distinguishing: a node with no row picked has nothing to answer
+      // with, and one with no column projected has nowhere to answer.
+      if (node.rows.length === 0) {
+        states.set(node.id, 'incomplete');
+        problems.set(node.id, 'select a row of the table');
+        continue;
+      }
+      if (node.columns.length === 0) {
+        states.set(node.id, 'incomplete');
+        problems.set(node.id, 'pick a column to read off it');
+        continue;
+      }
+      ready.add(node.id);
+      continue;
+    }
+
     if (node.kind === 'input' || (node.kind === 'monteCarloGenerator' && node.distribution !== 'discrete')) {
       ready.add(node.id);
       continue;
@@ -564,6 +582,27 @@ export function analyse(document: GraphDocument, catalogues: readonly Catalogue[
       }
       formulas.set(node.id, formula);
       const catalogue = lookupCatalogue(catalogues, node.formula.id);
+      if (catalogue !== undefined) sources.set(node.id, catalogue);
+      continue;
+    }
+    if (node.kind === 'table') {
+      // A table node names a catalogue formula exactly as a formula node
+      // does, so it is registered the same way and fails the same way when
+      // the catalogue is missing. `analysis.formulas` is what the node's
+      // view draws the table from and what `searchPorts` reads its row-key
+      // port off, neither of which should be a second catalogue lookup.
+      const formula = lookup(catalogues, node.table.id);
+      if (formula === undefined) {
+        states.set(node.id, 'error');
+        problems.set(
+          node.id,
+          `no formula '${node.table.id}' in the loaded catalogues — a graph needs its ` +
+            'catalogue to open',
+        );
+        continue;
+      }
+      formulas.set(node.id, formula);
+      const catalogue = lookupCatalogue(catalogues, node.table.id);
       if (catalogue !== undefined) sources.set(node.id, catalogue);
       continue;
     }

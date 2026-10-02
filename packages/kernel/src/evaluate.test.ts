@@ -43,6 +43,7 @@ import {
   scalar,
   selectNode,
   slider,
+  tableNode,
   uniformDraw,
   variadicWires,
   wire,
@@ -497,6 +498,193 @@ describe('table-backed formulas', () => {
     const classes = valueAt(evaluation, 'classes', 'value');
     expect(classes?.kind).toBe('categorical');
     if (classes?.kind === 'categorical') expect(classes.data).toEqual(['A', 'B']);
+  });
+});
+
+/**
+ * The table node: a catalogue table with its rows picked by pointing, and
+ * every projected column answered on one shared axis. Invented throughout —
+ * three frame sizes that exist nowhere but this file.
+ */
+describe('table nodes', () => {
+  const framesCatalogue = catalogueOf([
+    {
+      id: 'frames', version: 1,
+      output: [
+        { kind: 'numeric', name: 'h', unit: 'mm' },
+        { kind: 'numeric', name: 'F', unit: 'kN' },
+        { kind: 'categorical', name: 'profile', domain: ['P1', 'P2'] },
+      ],
+      inputs: [{ kind: 'categorical', name: 'frame', domain: ['S1', 'S2', 'S3'], default: 'S1' }],
+      lookup: {
+        axes: [{ input: 'frame', kind: 'categorical', values: ['S1', 'S2', 'S3'] }],
+        values: { h: [71, 80, 90], F: [1, 2, 4], profile: ['P1', null, 'P2'] },
+      },
+      description: 'Invented frame table.', status: 'unverified',
+    },
+  ]);
+  const framesRef = refTo('frames', framesCatalogue);
+
+  /** Rows keyed by a number rather than a name — the other shape a table takes. */
+  const boresCatalogue = catalogueOf([
+    {
+      id: 'bores', version: 1,
+      output: { kind: 'numeric', name: 'load', unit: 'kN' },
+      inputs: [{ kind: 'numeric', name: 'bore', unit: 'mm', default: 10 }],
+      lookup: {
+        axes: [{ input: 'bore', kind: 'numeric', values: [10, 20, 30] }],
+        values: [1, 3, 9],
+      },
+      description: 'Invented bore table.', status: 'unverified',
+    },
+  ], 'bores-test');
+  const boresRef = refTo('bores', boresCatalogue);
+
+  const categorical = (value: ReturnType<typeof valueAt>): CategoricalSeries => {
+    if (value === undefined || value.kind !== 'categorical') throw new Error('not a categorical series');
+    return value;
+  };
+
+  it('answers with a scalar on every port when one row is selected', () => {
+    const document = documentOf([tableNode('frames', framesRef, ['S2'], ['h', 'F'])], []);
+    const evaluation = evaluateDocument(document, [framesCatalogue]);
+    const h = numeric(valueAt(evaluation, 'frames', 'h'));
+    expect(h.data).toEqual([80]);
+    expect(h.axes).toEqual([]);
+    // kN read into canonical N, the same boundary conversion every other
+    // value crosses on the way in.
+    expect(numeric(valueAt(evaluation, 'frames', 'F')).data).toEqual([2000]);
+    expect(categorical(valueAt(evaluation, 'frames', 'frame')).data).toEqual(['S2']);
+  });
+
+  it('sweeps several rows on one shared axis, every column correlated on it', () => {
+    const document = documentOf(
+      [tableNode('frames', framesRef, ['S1', 'S3'], ['h', 'F', 'profile'], { axisLabel: 'frame size' })],
+      [],
+    );
+    const evaluation = evaluateDocument(document, [framesCatalogue]);
+    const h = numeric(valueAt(evaluation, 'frames', 'h'));
+    const f = numeric(valueAt(evaluation, 'frames', 'F'));
+    expect(h.data).toEqual([71, 90]);
+    expect(f.data).toEqual([1000, 4000]);
+    // One axis, shared: cell 1 is S3's height *and* S3's force, never S1's
+    // height beside S3's force.
+    expect(h.axes.map((axis) => axis.id)).toEqual(['frames']);
+    expect(f.axes).toEqual(h.axes);
+    expect(h.axes[0]?.label).toBe('frame size');
+    expect(categorical(valueAt(evaluation, 'frames', 'profile')).data).toEqual(['P1', 'P2']);
+  });
+
+  it('answers with the row key itself, in the table’s own coordinates', () => {
+    const named = documentOf([tableNode('frames', framesRef, ['S1', 'S3'], ['h'])], []);
+    const key = categorical(valueAt(evaluateDocument(named, [framesCatalogue]), 'frames', 'frame'));
+    expect(key.data).toEqual(['S1', 'S3']);
+    expect(key.axes.map((axis) => axis.id)).toEqual(['frames']);
+
+    const numbered = documentOf([tableNode('bores', boresRef, [10, 30], ['load'])], []);
+    const bore = numeric(valueAt(evaluateDocument(numbered, [boresCatalogue]), 'bores', 'bore'));
+    expect(bore.data).toEqual([10, 30]);
+  });
+
+  it('gives a port to the projected columns only, and to the row key', () => {
+    const document = documentOf([tableNode('frames', framesRef, ['S1'], ['h'])], []);
+    const resolution = resolveGraph(document, [framesCatalogue]);
+    expect(resolution.sources.has(endpointKey('frames', 'h'))).toBe(true);
+    expect(resolution.sources.has(endpointKey('frames', 'frame'))).toBe(true);
+    // The whole point of projecting: a table of many columns is a small node
+    // until you ask for more of it.
+    expect(resolution.sources.has(endpointKey('frames', 'F'))).toBe(false);
+    expect(resolution.sources.get(endpointKey('frames', 'frame'))?.kind).toBe('categorical');
+    expect(resolution.sources.get(endpointKey('frames', 'h'))?.unit?.symbol).toBe('mm');
+  });
+
+  it('reads a column into another node, correlated with the rest of the row', () => {
+    const document = documentOf(
+      [
+        tableNode('frames', framesRef, ['S1', 'S3'], ['h']),
+        input('t', scalar(2, 'mm')),
+        formulaNode('area', refTo('area')),
+      ],
+      [wire('frames.h', 'area.w'), wire('t.value', 'area.h')],
+    );
+    const area = numeric(valueAt(evaluateDocument(document, [framesCatalogue, CATALOGUE]), 'area', 'A'));
+    expect(area.data).toEqual([142, 180]);
+    expect(area.axes.map((axis) => axis.id)).toEqual(['frames']);
+  });
+
+  it('drops a row the catalogue no longer has, and says so rather than guessing', () => {
+    const document = documentOf([tableNode('frames', framesRef, ['S1', 'S9', 'S3'], ['h'])], []);
+    const evaluation = evaluateDocument(document, [framesCatalogue]);
+    expect(numeric(valueAt(evaluation, 'frames', 'h')).data).toEqual([71, 90]);
+    expect(evaluation.warnings.filter((warning) => warning.kind === 'tableRowMissing')).toEqual([
+      expect.objectContaining({ nodeId: 'frames', message: expect.stringContaining("'S9'") }),
+    ]);
+  });
+
+  it('refuses a selection whose rows have all gone', () => {
+    const document = documentOf([tableNode('frames', framesRef, ['S8', 'S9'], ['h'])], []);
+    expect(() => evaluateDocument(document, [framesCatalogue])).toThrow(/none of this selection's rows/u);
+  });
+
+  it('refuses a column the table does not have', () => {
+    const document = documentOf([tableNode('frames', framesRef, ['S1'], ['nope'])], []);
+    expect(() => evaluateDocument(document, [framesCatalogue])).toThrow(/has no column 'nope'/u);
+  });
+
+  it('names both the row and the column when a cell is undefined', () => {
+    const document = documentOf([tableNode('frames', framesRef, ['S1', 'S2'], ['profile'])], []);
+    expect(() => evaluateDocument(document, [framesCatalogue])).toThrow(
+      /defines no 'profile' for 'S2'/u,
+    );
+  });
+
+  it('refuses a table of more than one axis, which has no single row to pick', () => {
+    const gridCatalogue = catalogueOf([
+      {
+        id: 'grid', version: 1,
+        output: { kind: 'numeric', name: 'w', unit: 'mm' },
+        inputs: [
+          { kind: 'categorical', name: 'profile', domain: ['P1', 'P2'], default: 'P1' },
+          { kind: 'numeric', name: 'band', unit: 'mm', default: 10 },
+        ],
+        lookup: {
+          axes: [
+            { input: 'profile', kind: 'categorical', values: ['P1', 'P2'] },
+            { input: 'band', kind: 'numeric', values: [10, 20] },
+          ],
+          values: [1, 2, 3, 4],
+        },
+        description: 'Invented two-axis table.', status: 'unverified',
+      },
+    ], 'grid-test');
+    const document = documentOf([tableNode('grid', refTo('grid', gridCatalogue), ['P1'], ['w'])], []);
+    expect(() => evaluateDocument(document, [gridCatalogue])).toThrow(/table of 2 axes/u);
+  });
+
+  it('emits nothing at all for a selection not yet made, ports and all', () => {
+    const document = documentOf([tableNode('frames', framesRef, [], [])], []);
+    const evaluation = evaluateDocument(document, [framesCatalogue]);
+    expect(valueAt(evaluation, 'frames', 'frame')).toBeUndefined();
+    expect(evaluation.warnings).toEqual([]);
+  });
+
+  it('reduces the row axis with firstPassing — the smallest row that passes', () => {
+    const document = documentOf(
+      [
+        tableNode('bores', boresRef, [10, 20, 30], ['load']),
+        compareNode('ok', '>=', { value: 2.5, unit: 'kN' }),
+        selectNode('first', 'firstPassing'),
+      ],
+      [
+        wire('bores.load', 'ok.value'),
+        wire('ok.verdict', 'first.value'),
+        wire('bores.bore', 'first.along'),
+      ],
+    );
+    const evaluation = evaluateDocument(document, [boresCatalogue]);
+    // 1, 3 and 9 kN against a 2.5 kN bound: the 20 mm bore is the first that
+    // passes, and the answer is a bore the table actually holds.
+    expect(numeric(valueAt(evaluation, 'first', 'at')).data).toEqual([20]);
   });
 });
 

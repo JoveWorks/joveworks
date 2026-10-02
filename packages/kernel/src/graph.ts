@@ -82,10 +82,12 @@ import {
   type GraphDocument,
   type GraphNode,
   type InputNode,
+  type LookupAxis,
   type MonteCarloGeneratorNode,
   type OutputPort,
   type Port,
   type PortKind,
+  type TableNode,
   type ValueSpec,
 } from '@joveworks/schema';
 
@@ -168,12 +170,36 @@ export interface Resolution {
    */
   readonly axes: ReadonlyMap<string, Axis>;
   readonly tableColumns: ReadonlyMap<string, ResolvedTableColumn>;
+  /** node id → the catalogue table a `table` node draws, and what it selected. */
+  readonly tables: ReadonlyMap<string, ResolvedTable>;
   readonly warnings: readonly Warning[];
 }
 
 export type ResolvedTableColumn =
   | { readonly kind: 'numeric'; readonly values: readonly number[]; readonly unit: Unit }
   | { readonly kind: 'categorical'; readonly values: readonly string[] };
+
+/**
+ * A `table` node's selection, resolved against the catalogue it names.
+ *
+ * `rows` are *indices into the table*, which is the one place indices are the
+ * right currency: the document stores coordinates precisely so that they
+ * survive the catalogue changing under them (`TableNode`'s own comment), and
+ * this is the step that turns each surviving coordinate back into the row it
+ * still names. A coordinate that names nothing is dropped with a warning
+ * rather than refused, the same degrade `lookupFormula` gives a changed hash.
+ */
+export interface ResolvedTable {
+  readonly formula: Formula;
+  /** The table's single axis. A multi-axis lookup is refused for a table node. */
+  readonly axis: LookupAxis;
+  /** The declared input the axis reads — the row key's own port, and its unit. */
+  readonly key: Port;
+  /** Row indices, in the node's own selection order. */
+  readonly rows: readonly number[];
+  /** The projected columns' output ports, in the node's own order. */
+  readonly columns: readonly OutputPort[];
+}
 
 // --- catalogue lookup -------------------------------------------------------
 
@@ -221,6 +247,70 @@ function lookupFormula(
       `${ref.version}, hash ${ref.hash}) — results may differ from the ones recorded`,
   });
   return first;
+}
+
+/**
+ * A `table` node's catalogue table, and what its selection still names.
+ *
+ * Rows degrade and columns do not, which is deliberate. A row that has
+ * vanished from the catalogue leaves a shorter sweep — every other row still
+ * means what it meant — so it warns and carries on, exactly as a changed
+ * formula hash does. A column that has vanished would leave a *wire* pointing
+ * at a port that no longer exists, and there is no honest shorter answer to
+ * give: that is refused by name.
+ */
+function resolveTable(
+  node: TableNode,
+  index: ReadonlyMap<string, readonly Formula[]>,
+  warnings: Warning[],
+): ResolvedTable {
+  const formula = lookupFormula(index, node.table, node.id, warnings);
+  const lookup = formula.lookup;
+  if (lookup === undefined) {
+    throw new KernelError(`'${formula.id}' is not a lookup table`, node.id);
+  }
+  const [axis, ...rest] = lookup.axes;
+  if (axis === undefined || rest.length > 0) {
+    // Two axes means a row is not a part: picking a profile still leaves the
+    // diameter band unanswered, and a source node has nothing to answer it
+    // with. Such a table stays an ordinary formula node with wired inputs.
+    throw new KernelError(
+      `'${formula.id}' is a table of ${lookup.axes.length} axes, and a table node picks rows of one`,
+      node.id,
+    );
+  }
+  const key = formula.inputs.find((candidate) => candidate.name === axis.input);
+  if (key === undefined) {
+    throw new KernelError(`'${formula.id}' has no input '${axis.input}' for its own axis`, node.id);
+  }
+
+  const rows: number[] = [];
+  for (const coordinate of node.rows) {
+    const row = axis.values.indexOf(coordinate);
+    if (row < 0) {
+      warnings.push({
+        kind: 'tableRowMissing',
+        nodeId: node.id,
+        message:
+          `'${formula.id}' no longer has a row '${coordinate}' — it is left out of this ` +
+          'selection, so the sweep is shorter than it was when this was saved',
+      });
+      continue;
+    }
+    rows.push(row);
+  }
+  if (node.rows.length > 0 && rows.length === 0) {
+    throw new KernelError(`none of this selection's rows are in '${formula.id}' any more`, node.id);
+  }
+
+  const columns = node.columns.map((name) => {
+    const port = formula.outputs.find((candidate) => candidate.name === name);
+    if (port === undefined || lookup.columns[name] === undefined) {
+      throw new KernelError(`'${formula.id}' has no column '${name}'`, node.id);
+    }
+    return port;
+  });
+  return { formula, axis, key, rows, columns };
 }
 
 // --- port inventories -------------------------------------------------------
@@ -321,6 +411,13 @@ export function statisticPortNames(node: StatisticNode): {
     outputs: [STATISTIC_RESULT_PORT],
   };
 }
+
+/**
+ * No generic variables to bind. A catalogue formula declares a concrete unit
+ * on every port (`schema/src/port.ts`), so a table node's ports — which are a
+ * catalogue table's own ports — never have anything to resolve against.
+ */
+const EMPTY_BINDINGS: ReadonlyMap<string, Dimension> = new Map();
 
 function portType(port: Port, bindings: ReadonlyMap<string, Dimension>): PortType {
   if (port.kind === 'categorical') return { kind: 'categorical' };
@@ -459,6 +556,7 @@ function axisOf(
   node: AxisNode,
   order: number,
   tableColumn: ResolvedTableColumn | undefined,
+  table: ResolvedTable | undefined,
   mcTrialId: string | undefined,
   rangeLengths: ReadonlyMap<string, number> | undefined,
 ): Axis {
@@ -481,6 +579,13 @@ function axisOf(
     // the frames themselves, so its length is `sources`, not anything the
     // fields say.
     return { id: node.id, label: node.axisLabel ?? node.label ?? node.id, length: node.sources.length, order };
+  }
+  if (node.kind === 'table') {
+    // The rows that survived resolution, not the rows the document names —
+    // a selection can outlive a row (`resolveTable`), and the axis has to be
+    // as long as the values actually are.
+    if (table === undefined) throw new KernelError('this table could not be resolved', node.id);
+    return { id: node.id, label: node.axisLabel ?? node.label ?? node.id, length: table.rows.length, order };
   }
   if (!isRange(node.value)) throw new KernelError('not a range node', node.id);
   const length = node.value.kind === 'tableColumn' ? tableColumn?.values.length : axisLength(node.value);
@@ -532,11 +637,23 @@ export function resolveGraph(
     }
   }
 
+  // Every table node, not only the ones that introduce an axis: a single-row
+  // selection has no axis and still has ports to type and cells to read.
+  const tables = new Map<string, ResolvedTable>();
+  for (const node of document.nodes) {
+    if (node.kind !== 'table') continue;
+    tables.set(node.id, resolveTable(node, index, warnings));
+  }
+
   const axisNodes = documentAxes(document);
   const mcTrialId = axisNodes.find((node) => node.kind === 'monteCarloGenerator')?.id;
   const axes = new Map(
     axisNodes.map(
-      (node, i) => [node.id, axisOf(node, i, tableColumns.get(node.id), mcTrialId, rangeLengths)] as const,
+      (node, i) =>
+        [
+          node.id,
+          axisOf(node, i, tableColumns.get(node.id), tables.get(node.id), mcTrialId, rangeLengths),
+        ] as const,
     ),
   );
   const formulas = new Map<string, Formula>();
@@ -732,6 +849,30 @@ export function resolveGraph(
               ? { kind: 'categorical' }
               : { kind: 'numeric', dimension: field.unit.dimension, unit: field.unit },
           ),
+        );
+      }
+      continue;
+    }
+
+    if (node.kind === 'table') {
+      const table = tables.get(node.id) as ResolvedTable;
+      // The row key is a port like any other: the frame size that names the
+      // part is what a report labels its rows with, and — when it is
+      // categorical — what the *next* table's axis takes as its input, which
+      // is how a chain of catalogue tables gets walked with one selection.
+      // It can never collide with a column name; a formula's inputs and
+      // outputs share one namespace (`parseFormula`).
+      sources.set(
+        endpointKey(node.id, table.axis.input),
+        displayOverride(node, table.axis.input, portType(table.key, EMPTY_BINDINGS)),
+      );
+      // Only the projected columns. A twenty-column table of standard sizes
+      // is a three-port node until you say otherwise — projection is the
+      // whole reason the node is usable at that width.
+      for (const port of table.columns) {
+        sources.set(
+          endpointKey(node.id, port.name),
+          displayOverride(node, port.name, portType(port, EMPTY_BINDINGS)),
         );
       }
       continue;
@@ -1295,7 +1436,7 @@ export function resolveGraph(
     sourceType(edge);
   }
 
-  return { document, order, formulas, sources, targets, incoming, bindings, axes, tableColumns, warnings };
+  return { document, order, formulas, sources, targets, incoming, bindings, axes, tableColumns, tables, warnings };
 }
 
 /**

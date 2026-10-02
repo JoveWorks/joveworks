@@ -103,6 +103,7 @@ export type {
   Catalogue,
   FormulaLookup,
   LookupAxis,
+  LookupCell,
 } from './formula.js';
 
 export { fnv1a64, hashRecord } from './hash.js';
@@ -159,6 +160,7 @@ export type {
   FileNode,
   FileField,
   FileSource,
+  TableNode,
   FormulaNode,
   OutputNode,
   CompareNode,

@@ -83,6 +83,13 @@ export interface LookupAxis {
   readonly lowerExclusive?: number;
 }
 
+/**
+ * One cell of a lookup column: a number in its output's declared unit, a
+ * domain member when that output is categorical, or `null` for "undefined
+ * for this row".
+ */
+export type LookupCell = number | string | null;
+
 export interface FormulaLookup {
   readonly axes: readonly LookupAxis[];
   /**
@@ -90,8 +97,15 @@ export interface FormulaLookup {
    * own declared unit. `null` means undefined. The axes are shared: a camera
    * table names its models once and answers with every property of the model
    * picked, rather than repeating the model list per property.
+   *
+   * A column answering a **categorical** output carries domain members rather
+   * than numbers, which is how a table of standard parts states the things
+   * that are names and not quantities — a motor frame's belt profile, a
+   * coupling size. That column wires straight into the categorical axis of
+   * the next table, so one selection walks a chain of catalogue tables the
+   * way a design actually does.
    */
-  readonly columns: Readonly<Record<string, readonly (number | null)[]>>;
+  readonly columns: Readonly<Record<string, readonly LookupCell[]>>;
 }
 
 /**
@@ -314,10 +328,20 @@ function parseLookup(value: JsonValue, path: string, outputs: readonly OutputPor
   });
   if (axes.length === 0) fail(join(path, 'axes'), 'is empty');
   const expected = axes.reduce((size, axis) => size * axis.values.length, 1);
-  const readColumn = (cells: JsonValue, columnPath: string): readonly (number | null)[] => {
-    const column = readArray(cells, columnPath).map((cell, i) =>
-      cell === null ? null : readNumber(cell, `${columnPath}[${i}]`),
-    );
+  // A column is read the way its own output port is typed: a categorical
+  // output's column names domain members, every other column is numeric in
+  // that output's declared unit. Reading it port-first is what keeps `'SPA'`
+  // out of a numeric column and a bare number out of a categorical one, at
+  // the point where the mistake is still nameable.
+  const readColumn = (cells: JsonValue, columnPath: string, port: OutputPort): readonly LookupCell[] => {
+    const column = readArray(cells, columnPath).map((cell, i) => {
+      const cellPath = `${columnPath}[${i}]`;
+      if (cell === null) return null;
+      if (port.kind !== 'categorical') return readNumber(cell, cellPath);
+      const member = readString(cell, cellPath);
+      if (!port.domain.includes(member)) fail(cellPath, `'${member}' is outside the output domain`);
+      return member;
+    });
     if (column.length !== expected) fail(columnPath, `has ${column.length} entries; axes require ${expected}`);
     return column;
   };
@@ -326,19 +350,21 @@ function parseLookup(value: JsonValue, path: string, outputs: readonly OutputPor
   // catalogues on disk stay valid untouched; several outputs name their columns.
   const values = required(object, 'values', path);
   const valuesPath = join(path, 'values');
-  const columns: Record<string, readonly (number | null)[]> = {};
+  const columns: Record<string, readonly LookupCell[]> = {};
   if (Array.isArray(values)) {
     if (outputs.length !== 1) {
       fail(valuesPath, `must name a column per output when a formula declares ${outputs.length} of them`);
     }
-    columns[(outputs[0] as OutputPort).name] = readColumn(values, valuesPath);
+    const only = outputs[0] as OutputPort;
+    columns[only.name] = readColumn(values, valuesPath, only);
   } else {
     const named = readObject(values, valuesPath);
     for (const [name, cells] of Object.entries(named)) {
-      if (!outputs.some((port) => port.name === name)) {
+      const port = outputs.find((candidate) => candidate.name === name);
+      if (port === undefined) {
         fail(join(valuesPath, name), `'${name}' is not a declared output`);
       }
-      columns[name] = readColumn(cells, join(valuesPath, name));
+      columns[name] = readColumn(cells, join(valuesPath, name), port);
     }
     for (const port of outputs) {
       if (columns[port.name] === undefined) fail(valuesPath, `has no column for output '${port.name}'`);
@@ -359,8 +385,8 @@ function serializeLookup(lookup: FormulaLookup): JsonObject {
     })),
     values:
       only === undefined
-        ? Object.fromEntries(names.map((name) => [name, [...(lookup.columns[name] as readonly (number | null)[])]]))
-        : [...(lookup.columns[only] as readonly (number | null)[])],
+        ? Object.fromEntries(names.map((name) => [name, [...(lookup.columns[name] as readonly LookupCell[])]]))
+        : [...(lookup.columns[only] as readonly LookupCell[])],
   };
 }
 
@@ -495,7 +521,7 @@ function entryOf(
 }
 
 /** The lookup column answering for `name`, when a table answers for it at all. */
-export function lookupColumn(formula: Formula, name: string): readonly (number | null)[] | undefined {
+export function lookupColumn(formula: Formula, name: string): readonly LookupCell[] | undefined {
   return formula.lookup?.columns[name];
 }
 
@@ -567,8 +593,16 @@ export function parseFormula(value: JsonValue, path: string): Formula {
 
   if (lookup !== undefined) {
     for (const [i, output] of outputs.entries()) {
+      // A categorical output answers with a name from its own domain, which
+      // needs no unit to be concrete about. Everything else must still name
+      // the unit its column is written in — a generic signature has none, and
+      // a lookup has no expression to infer one from.
+      if (output.kind === 'categorical') continue;
       if (output.kind !== 'numeric' || isGenericDimension(output.unit)) {
-        fail(outputs.length === 1 ? join(path, 'output') : `${join(path, 'output')}[${i}]`, 'a lookup needs a concrete numeric output');
+        fail(
+          outputs.length === 1 ? join(path, 'output') : `${join(path, 'output')}[${i}]`,
+          'a lookup needs a concrete numeric or categorical output',
+        );
       }
     }
     const seenAxes = new Set<string>();

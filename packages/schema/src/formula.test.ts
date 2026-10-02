@@ -176,6 +176,76 @@ describe('several outputs', () => {
     expect(() => parse(json)).toThrow(/values: must name a column per output when a formula declares 2 of them/);
   });
 
+  /**
+   * The chain a catalogue of standard parts is walked by: a table answers
+   * with a *name* — a belt profile, a coupling size — and that name is the
+   * axis of the next table. A number could not say it and an expression
+   * could not compute it.
+   */
+  describe('a column that answers with a name', () => {
+    const named: JsonObject = {
+      ...table,
+      output: [
+        { kind: 'numeric', name: 'w', unit: 'mm' },
+        { kind: 'categorical', name: 'profile', domain: ['P1', 'P2'] },
+      ],
+      lookup: {
+        axes: [{ input: 'pick', kind: 'categorical', values: ['first', 'second'] }],
+        values: { w: [10, 20], profile: ['P1', 'P2'] },
+      },
+    };
+
+    it('round-trips a categorical column', () => {
+      expect(serializeFormula(parse(named))).toEqual(named);
+    });
+
+    it('keeps null meaning undefined in a categorical column', () => {
+      const json = {
+        ...named,
+        lookup: { ...(named['lookup'] as JsonObject), values: { w: [10, 20], profile: ['P1', null] } },
+      };
+      expect(serializeFormula(parse(json))).toEqual(json);
+    });
+
+    it('rejects a name the output domain does not have', () => {
+      const json = {
+        ...named,
+        lookup: { ...(named['lookup'] as JsonObject), values: { w: [10, 20], profile: ['P1', 'P9'] } },
+      };
+      expect(() => parse(json)).toThrow(/values\.profile\[1\]: 'P9' is outside the output domain/);
+    });
+
+    it('rejects a number in a categorical column, and a name in a numeric one', () => {
+      const numberInNames = {
+        ...named,
+        lookup: { ...(named['lookup'] as JsonObject), values: { w: [10, 20], profile: ['P1', 2] } },
+      };
+      expect(() => parse(numberInNames)).toThrow(/values\.profile\[1\]/);
+      const nameInNumbers = {
+        ...named,
+        lookup: { ...(named['lookup'] as JsonObject), values: { w: [10, 'P1'], profile: ['P1', 'P2'] } },
+      };
+      expect(() => parse(nameInNumbers)).toThrow(/values\.w\[1\]/);
+    });
+
+    it('still refuses a generic numeric output, which has no unit to be read in', () => {
+      const generic = {
+        ...named,
+        output: [
+          { kind: 'numeric', name: 'w', unit: '$A' },
+          { kind: 'categorical', name: 'profile', domain: ['P1', 'P2'] },
+        ],
+        // Bound by an input, so the generic signature itself is legal here
+        // and the lookup's own "concrete unit" rule is what refuses it.
+        inputs: [
+          { kind: 'categorical', name: 'pick', domain: ['first', 'second'], default: 'first' },
+          { kind: 'numeric', name: 'span', unit: '$A' },
+        ],
+      };
+      expect(() => parse(generic)).toThrow(/a lookup needs a concrete numeric or categorical output/);
+    });
+  });
+
   it('refuses a curve evaluator on a record answering with several things', () => {
     const json = {
       ...table,

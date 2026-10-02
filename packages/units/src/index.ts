@@ -47,6 +47,7 @@ export {
   namedUnit,
   prefixableAtomOf,
   siPrefixedUnit,
+  siPrefixSteps,
   compatibleDisplayUnits,
 } from './unit.js';
 export type { Unit } from './unit.js';

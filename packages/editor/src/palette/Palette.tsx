@@ -42,6 +42,7 @@ import { monteCarloSampleCount, monteCarloSampleLimit } from '../model/monteCarl
 import { DEFAULT_READER } from '../files/readers';
 import { loadFavourites, saveFavourites } from '../model/palettePreferences';
 import { converted } from '../canvas/ValueEditor';
+import { selectableTables } from '../canvas/TableNodeView';
 import { ContextMenu } from '../canvas/ContextMenu';
 import { DOCS_BASE_URL } from '../help-links';
 import { Symbol } from '../Symbol';
@@ -332,6 +333,29 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
       });
     });
 
+  /**
+   * Bound to a table on the way in — a table node without one has no ports
+   * and nothing to draw, and the first single-axis table is as good a
+   * starting point as any, since the node's own dropdown switches it. The
+   * selection starts empty: the two clicks that fill it in are the feature.
+   */
+  const addTable = (): void => {
+    const [first] = selectableTables(catalogues);
+    if (first === undefined) return;
+    edit((current) => {
+      const id = uniqueId(current, 'table');
+      return addNode(current, {
+        kind: 'table',
+        id,
+        label: id,
+        table: formulaRef(first),
+        rows: [],
+        columns: [],
+        position: position(),
+      });
+    });
+  };
+
   const addMonteCarloGenerator = (): void =>
     edit((current) => {
       const id = uniqueId(current, 'draw');
@@ -379,6 +403,17 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
     // A source like the five above it, not a routing node: it starts a graph
     // rather than doing anything to values already in one.
     { id: 'builtin:input:file', label: copy.file, summary: copy.fileSummary, insert: addFile },
+    {
+      id: 'builtin:input:table',
+      label: copy.catalogueTable,
+      summary: copy.catalogueTableSummary,
+      insert: addTable,
+      disabled: selectableTables(catalogues).length === 0,
+      title:
+        selectableTables(catalogues).length === 0
+          ? 'Needs a loaded catalogue with a table in it'
+          : undefined,
+    },
     { id: 'builtin:general:compare', label: copy.compare, summary: copy.compareSummary, insert: addCompare },
     { id: 'builtin:general:equation', label: copy.equation, summary: copy.equationSummary, insert: addClosure },
     { id: 'builtin:general:waypoint', label: copy.waypoint, summary: copy.waypointSummary, insert: addWaypoint },
