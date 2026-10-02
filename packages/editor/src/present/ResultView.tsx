@@ -29,6 +29,7 @@ import {
   type Axis,
   type OutputResult,
 } from '@joveworks/kernel';
+import type { Unit } from '@joveworks/units';
 
 import { Equation } from '../Equation';
 import { ParameterLabel } from '../ParameterLabel';
@@ -70,6 +71,12 @@ export const DEFAULT_COLUMN_FIGURES = 4;
 export interface ResultEditing {
   /** The per-column significant-figures field drawn inside a table heading. */
   readonly columnField?: (columnName: string) => ReactNode;
+  /**
+   * The unit of a numeric table column as something to pick rather than
+   * read — `Pa` to `MPa`. Returning nothing leaves the plain label, which is
+   * what a column with no alternative unit should keep showing.
+   */
+  readonly columnUnit?: (columnName: string, unit: Unit) => ReactNode;
   readonly onReorderColumn?: (source: string, target: string, position: 'before' | 'after') => void;
   /**
    * Gestures drawn under a rendered table — today just its CSV export. It
@@ -233,39 +240,49 @@ export function ResultView({
         <table>
           <thead>
             <tr>
-              {result.columns.map((column) => (
-                <th
-                  key={column.name}
-                  className={columnDrag?.over === column.name ? `drag-over-${columnDrag.position}` : undefined}
-                  {...(reorder === undefined ? {} : {
-                    draggable: true,
-                    onDragStart: (event) => {
-                      event.dataTransfer.setData('text/plain', column.name);
-                      event.dataTransfer.effectAllowed = 'move';
-                    },
-                    onDragOver: (event) => {
-                      event.preventDefault();
-                      event.dataTransfer.dropEffect = 'move';
-                      const bounds = event.currentTarget.getBoundingClientRect();
-                      const position = event.clientX - bounds.left < bounds.width / 2 ? 'before' : 'after';
-                      setColumnDrag({ over: column.name, position });
-                    },
-                    onDragLeave: () => setColumnDrag(undefined),
-                    onDrop: (event) => {
-                      event.preventDefault();
-                      const position = columnDrag?.position;
-                      setColumnDrag(undefined);
-                      if (position === undefined) return;
-                      const source = event.dataTransfer.getData('text/plain');
-                      if (source.length === 0) return;
-                      reorder(source, column.name, position);
-                    },
-                  })}
-                >
-                  <ParameterLabel name={column.name} unit={column.unit} unitClassName="unit" />
-                  {editing?.columnField?.(column.name)}
-                </th>
-              ))}
+              {result.columns.map((column) => {
+                const unitPicker =
+                  column.series.kind === 'numeric' ? editing?.columnUnit?.(column.name, column.unit) : undefined;
+                return (
+                  <th
+                    key={column.name}
+                    className={columnDrag?.over === column.name ? `drag-over-${columnDrag.position}` : undefined}
+                    {...(reorder === undefined ? {} : {
+                      draggable: true,
+                      onDragStart: (event) => {
+                        event.dataTransfer.setData('text/plain', column.name);
+                        event.dataTransfer.effectAllowed = 'move';
+                      },
+                      onDragOver: (event) => {
+                        event.preventDefault();
+                        event.dataTransfer.dropEffect = 'move';
+                        const bounds = event.currentTarget.getBoundingClientRect();
+                        const position = event.clientX - bounds.left < bounds.width / 2 ? 'before' : 'after';
+                        setColumnDrag({ over: column.name, position });
+                      },
+                      onDragLeave: () => setColumnDrag(undefined),
+                      onDrop: (event) => {
+                        event.preventDefault();
+                        const position = columnDrag?.position;
+                        setColumnDrag(undefined);
+                        if (position === undefined) return;
+                        const source = event.dataTransfer.getData('text/plain');
+                        if (source.length === 0) return;
+                        reorder(source, column.name, position);
+                      },
+                    })}
+                  >
+                    {unitPicker === undefined || unitPicker === null ? (
+                      <ParameterLabel name={column.name} unit={column.unit} unitClassName="unit" />
+                    ) : (
+                      <>
+                        <ParameterLabel name={column.name} /> {unitPicker}
+                      </>
+                    )}
+                    {editing?.columnField?.(column.name)}
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>

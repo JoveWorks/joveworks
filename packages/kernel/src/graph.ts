@@ -355,6 +355,19 @@ function displayOverride(node: GraphNode, port: string, type: PortType): PortTyp
 }
 
 /**
+ * The unit a table column was told to read in, where it still fits what is
+ * wired to it. Unlike `displayOverride` a mismatch is not an error: a column
+ * is a slot that can be rewired to another quantity, and the unit picked for
+ * the old one is then simply stale — refusing would hide the very table
+ * whose heading is where a new unit gets picked.
+ */
+function columnDisplayOverride(node: GraphNode, port: string, type: PortType): PortType {
+  const unit = node.displayUnits?.[port];
+  if (unit === undefined || type.dimension === undefined) return type;
+  return dimensionsEqual(unit.dimension, type.dimension) ? { ...type, unit } : type;
+}
+
+/**
  * The input port names an output node offers: one, or one per table column —
  * plus a `threshold` port on a plot or check, the wire that can override its
  * typed line (mirrors `CompareNode.threshold`, the first port with both a
@@ -1344,7 +1357,8 @@ export function resolveGraph(
     for (const name of outputPortNames(node)) {
       const key = endpointKey(node.id, name);
       const edge = oneEdge(key);
-      const type: PortType = edge === undefined ? { kind: 'numeric' } : sourceType(edge);
+      const wired: PortType = edge === undefined ? { kind: 'numeric' } : sourceType(edge);
+      const type = node.output.kind === 'table' ? columnDisplayOverride(node, name, wired) : wired;
       targets.set(key, type);
 
       // A check's threshold is mandatory but still wireable — the same

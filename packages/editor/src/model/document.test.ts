@@ -51,6 +51,7 @@ import {
   reorderColumn,
   setClosureExpression,
   setColumnFigures,
+  setColumnUnit,
   syncColumnLabels,
   toggleCandidate,
   uniqueId,
@@ -554,6 +555,21 @@ describe('table output columns', () => {
     const removed = removeColumn(figured, 't', 'value');
     const removedNode = removed.nodes.find((entry) => entry.id === 't') as OutputNode;
     expect(removedNode.output.kind === 'table' && removedNode.output.figures).toBeUndefined();
+  });
+
+  it('carries a column unit forward across a rename, and drops it on removal', () => {
+    const picked = setColumnUnit(withTable, 't', 'value', parseUnit('m'));
+    const node = picked.nodes.find((entry) => entry.id === 't') as OutputNode;
+    expect(node.displayUnits?.['value']?.symbol).toBe('m');
+
+    const renamed = renameColumn(picked, 't', 'value', 'width');
+    const renamedNode = renamed.nodes.find((entry) => entry.id === 't') as OutputNode;
+    expect(Object.keys(renamedNode.displayUnits ?? {})).toEqual(['width']);
+    expect(renamedNode.displayUnits?.['width']?.symbol).toBe('m');
+
+    const removed = removeColumn(picked, 't', 'value');
+    const removedNode = removed.nodes.find((entry) => entry.id === 't') as OutputNode;
+    expect(removedNode.displayUnits).toBeUndefined();
   });
 
 });

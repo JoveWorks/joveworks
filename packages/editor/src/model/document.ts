@@ -437,8 +437,10 @@ export function renameColumn(
   const renamed = updateNode<OutputNode>(document, nodeId, (node) => {
     if (node.output.kind !== 'table') return node;
     const { [from]: figuresForColumn, ...otherFigures } = node.output.figures ?? {};
+    const { [from]: unitForColumn, ...otherUnits } = node.displayUnits ?? {};
     return {
       ...node,
+      ...(unitForColumn === undefined ? {} : { displayUnits: { ...otherUnits, [to]: unitForColumn } }),
       output: {
         ...node.output,
         columns: node.output.columns.map((column) => (column === from ? to : column)),
@@ -462,8 +464,11 @@ export function removeColumn(document: GraphDocument, nodeId: string, name: stri
     if (node.output.kind !== 'table') return node;
     const { [name]: _dropped, ...otherFigures } = node.output.figures ?? {};
     const { figures: _current, ...withoutFigures } = node.output;
+    const { [name]: _droppedUnit, ...otherUnits } = node.displayUnits ?? {};
+    const { displayUnits: _currentUnits, ...withoutUnits } = node;
     return {
-      ...node,
+      ...withoutUnits,
+      ...(Object.keys(otherUnits).length === 0 ? {} : { displayUnits: otherUnits }),
       output: {
         ...withoutFigures,
         columns: node.output.columns.filter((column) => column !== name),
@@ -702,6 +707,25 @@ export function setColumnFigures(
       output: Object.keys(next).length === 0 ? withoutFigures : { ...withoutFigures, figures: next },
     };
   });
+}
+
+/**
+ * The unit a table column is read in, picked in its heading. Stored with the
+ * node's other per-port display choices — a column *is* one of its ports —
+ * so the kernel hands every reader of the table (the notebook, the CSV
+ * export, a published NodeBook) the same unit without being told twice.
+ */
+export function setColumnUnit(
+  document: GraphDocument,
+  nodeId: string,
+  column: string,
+  unit: Unit,
+): GraphDocument {
+  return updateNode<OutputNode>(document, nodeId, (node) =>
+    node.output.kind === 'table'
+      ? { ...node, displayUnits: { ...node.displayUnits, [column]: unit } }
+      : node,
+  );
 }
 
 /**

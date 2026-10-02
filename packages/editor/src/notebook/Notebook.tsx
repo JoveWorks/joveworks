@@ -51,11 +51,13 @@ import {
   reorderColumn,
   reorderFrame,
   setColumnFigures,
+  setColumnUnit,
   toggleCandidate,
   updateFrame,
   updateNode,
 } from '../model/document';
 import { NumberField } from '../canvas/fields';
+import { DisplayUnitPicker, displayUnitChoices } from '../canvas/DisplayUnitPicker';
 import { toUnitsFormat } from '../model/numberFormat';
 import { MonteCarloReceiverPlayback } from '../canvas/MonteCarloReceiverPlayback';
 import { marksOver as resolveMarksOver, type FigureMarking } from '../present/marks';
@@ -274,6 +276,21 @@ export function Result({ result, node }: { readonly result: OutputResult; readon
             onCommit={(figures) => edit((current) => setColumnFigures(current, node.id, name, figures))}
           />
         ),
+        // The unit a column is read in is picked where the column is read,
+        // SI prefixes included: a stress a catalogue hands over in Pa is a
+        // column of nine-digit numbers until it is asked for in MPa.
+        columnUnit: (name, unit) =>
+          displayUnitChoices(unit, true).length < 2 ? null : (
+            <span className="unit">
+              (
+              <DisplayUnitPicker
+                unit={unit}
+                prefixes
+                onChange={(next) => edit((current) => setColumnUnit(current, node.id, name, next))}
+              />
+              )
+            </span>
+          ),
         onReorderColumn: (source, target, position) =>
           edit((current) => reorderColumn(current, node.id, source, target, position)),
         // Exported from where the table is read, not from the canvas node:

@@ -4053,6 +4053,20 @@ aside.bottom .palette-list section {
   font-weight: 400;
 }
 
+/* A column's unit, as a control: the same quiet text the plain label is,
+   sized to the unit it shows (see `.node .port-unit-picker`) so `MPa` does
+   not sit as wide as the longest unit on its menu. */
+.notebook th .port-unit-picker {
+  field-sizing: content;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+
 .notebook .column-figures {
   display: block;
   margin: 0 0 0 auto;
@@ -4279,6 +4293,12 @@ aside.bottom .palette-list section {
   .tutorial-cutout,
   .tutorial-caption {
     display: none !important;
+  }
+
+  /* On paper the unit is a label again: the arrow is a gesture, and there
+     is nothing to click. */
+  .notebook th .port-unit-picker {
+    appearance: none;
   }
 
   .app {

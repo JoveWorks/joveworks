@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DIMENSIONLESS, FORCE, dimension, formatQuantity } from '@joveworks/units';
+import { DIMENSIONLESS, FORCE, dimension, formatQuantity, parseUnit } from '@joveworks/units';
 
 import type { JsonObject } from '@joveworks/schema';
 import {
@@ -2127,6 +2127,41 @@ describe('output nodes', () => {
     expect(table.columns[0]?.unit.symbol).toBe('N');
     expect(table.columns[1]?.series.data).toEqual([50, 100]);
     expect(table.axes.map((axis) => axis.id)).toEqual(['F']);
+  });
+
+  it('reads a table column in the unit picked for it, values untouched', () => {
+    const base = documentOf(
+      [
+        input('F', list([1000, 2000], 'N')),
+        input('A', scalar(20, 'mm²')),
+        formulaNode('p', refTo('pressure')),
+        outputNode('table', { kind: 'table', columns: ['load', 'pressure'] }),
+      ],
+      [
+        wire('F.value', 'p.F'),
+        wire('A.value', 'p.A'),
+        wire('F.value', 'table.load'),
+        wire('p.p', 'table.pressure'),
+      ],
+    );
+    const picked = (units: Record<string, string>) => ({
+      ...base,
+      nodes: base.nodes.map((node) =>
+        node.id === 'table'
+          ? { ...node, displayUnits: Object.fromEntries(Object.entries(units).map(([k, v]) => [k, parseUnit(v)])) }
+          : node,
+      ),
+    });
+
+    const table = evaluateDocument(picked({ pressure: 'MPa', load: 'kN' }), catalogues).outputs[0] as TableResult;
+    expect(table.columns.map((column) => column.unit.symbol)).toEqual(['kN', 'MPa']);
+    // Canonical still: the unit is how the column is read, not what it holds.
+    expect(table.columns[1]?.series.data).toEqual([50, 100]);
+
+    // A unit left over from whatever the column was wired to before is
+    // stale, not an error — the table still draws, in the source's own unit.
+    const stale = evaluateDocument(picked({ load: 'mm' }), catalogues).outputs[0] as TableResult;
+    expect(stale.columns[0]?.unit.symbol).toBe('N');
   });
 
   it('broadcasts every table column across the union of its axes', () => {
