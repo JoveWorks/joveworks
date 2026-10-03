@@ -65,3 +65,48 @@ Before exporting, check that:
 
 The saved graph remains the editable calculation. The exported NodeBook is its
 reading copy.
+
+## Continue in Python
+
+**File → Export Jupyter notebook…** compiles the graph to a `.ipynb` file for
+when you want a step the editor does not offer: your own figure, an extra
+calculation, a different way of presenting a result. It is a starting point to
+edit, not a second copy to keep in sync — changes made in Python do not come
+back into the graph.
+
+**File → Export Python script…** writes the same thing as one plain `.py`
+file, with the prose as comments. Run it with `python`, or open it in Spyder
+or VS Code, where the `# %%` markers let you run it a cell at a time. Outside
+a notebook an equation prints as text rather than typeset.
+
+The notebook follows the NodeBook's sections and reading order, and the
+working style of the course's MechDesign notebooks: each catalogue equation is
+built symbolically, shown with `HM.EqPrint`, and then evaluated. It runs in the
+MechDesign environment, and falls back to plain SymPy where that library is
+not installed.
+
+| In the graph | In the notebook |
+|---|---|
+| Input, slider | `d = 90*mm_` |
+| Range input | `d = sweep(np.linspace(20, 60, 21), 0)*mm_` — one array axis per sweep, so two sweeps form a grid |
+| Catalogue formula | a symbolic equation, `HM.EqPrint`, then `evaluate(...)` |
+| Base node, your own equation | one line of NumPy |
+| Value, Check, Table, Plot output | `show`, `check`, `table`, and Matplotlib code you can restyle |
+| Table lookups, selections, statistics, Monte Carlo, file nodes | **carried over as values** |
+
+Every number is in millimetres, newtons, seconds, radians and kelvin. A unit is
+a conversion factor: multiply by one to enter a value (`2.2*kW_`), divide by
+one to read it (`F_t/N_`).
+
+A node that is *carried over* is written as the numbers JoveWorks computed, not
+recomputed, so changing an input above it does not update it. The first cell
+lists every node this applies to. Figures JoveWorks draws itself — feasibility,
+Pareto, sensitivity and the like — are left as a comment pointing back to the
+NodeBook.
+
+::: warning Restricted catalogues
+A PDF export carries citations and numbers. A notebook that recomputes has to
+carry the expressions too. When the graph uses a restricted catalogue the
+editor says so before saving, and the notebook states it on its first page:
+the file is for your own study and may not be shared. Hand in the PDF.
+:::

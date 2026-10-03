@@ -22,7 +22,7 @@ export type SweepKind =
 export type CloudMaterial = 'platform' | 'pad' | 'cantilever' | 'milling' | 'reliability';
 
 export type AnalyticsEvent =
-  | { readonly name: 'catalogue_loaded' | 'example_opened' | 'graph_created' | 'nodes_connected' | 'document_saved' | 'notebook_exported' }
+  | { readonly name: 'catalogue_loaded' | 'example_opened' | 'graph_created' | 'nodes_connected' | 'document_saved' | 'notebook_exported' | 'jupyter_exported' | 'python_exported' }
   | { readonly name: 'mobile_landing_viewed' }
   | { readonly name: 'cloud_viewer_opened'; readonly props: { readonly viewport: 'narrow' | 'wide' } }
   | { readonly name: 'cloud_material_selected'; readonly props: { readonly material: CloudMaterial } }
