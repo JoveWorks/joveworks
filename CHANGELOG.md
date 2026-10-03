@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.30.0](https://github.com/JoveWorks/joveworks/compare/v0.29.0...v0.30.0) (2026-10-03)
+
+### Features
+
+* **editor:** export the graph as a Jupyter notebook in the MechDesign style ([23dc221](https://github.com/JoveWorks/joveworks/commit/23dc221b0376c3e5dc16140fdbb724c084d10ce5))
+* **editor:** export the graph as a plain Python script ([957de64](https://github.com/JoveWorks/joveworks/commit/957de64785f9ff06e36da570c748f9305e23d667))
 ## [0.29.0](https://github.com/JoveWorks/joveworks/compare/v0.28.0...v0.29.0) (2026-10-02)
 
 ### Features
