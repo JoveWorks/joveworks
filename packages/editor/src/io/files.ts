@@ -50,6 +50,11 @@ export function jupyterFileName(title: string): string {
   return `${slugifyTitle(title)}.ipynb`;
 }
 
+/** The Python export's name — underscores, so the script is also importable as a module. */
+export function pythonFileName(title: string): string {
+  return `${slugifyTitle(title).replace(/-/gu, '_')}.py`;
+}
+
 /** Ask for a file and read it as text. Resolves `undefined` if nothing is picked. */
 export function openTextFile(accept = 'application/json,.json'): Promise<PickedFile | undefined> {
   return new Promise((resolve) => {

@@ -290,7 +290,8 @@ circulates. The default export is safe to hand in. Expressions can be revealed
 for personal use, and doing so is explicitly marked as restricted content.
 
 The **Jupyter export** is that personal-use path taken all the way: the graph
-compiled to a notebook in the working style of the old course notebooks, for a
+compiled to a notebook — or the same thing as a plain Python script — in the
+working style of the old course notebooks, for a
 student who wants to carry a calculation further than the editor goes. It
 recomputes, so it has to contain the expressions — which is why it asks first
 when a restricted catalogue is involved, and says so on its first page.

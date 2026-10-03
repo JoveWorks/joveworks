@@ -25,7 +25,7 @@ import {
 
 import { analyse } from './analysis';
 import { baseCatalogue } from './catalogues';
-import { compileJupyter, jupyterText, type JupyterExport } from './jupyter';
+import { compileJupyter, jupyterText, pythonText, type JupyterExport } from './jupyter';
 
 const port = (name: string, unit: string, extra: JsonObject = {}): JsonObject => ({
   kind: 'numeric',
@@ -256,6 +256,20 @@ describe('compiling a graph to a Jupyter notebook', () => {
     // Wired to an equation output, so this one is built symbolically after all.
     expect(code).toContain('result_eq = sym.g/2');
     expect(code.trim().endsWith('HM.EqPrint("result", result_eq)')).toBe(true);
+  });
+
+  it('writes the same cells as one plain script, prose as comments, the restriction still on top', () => {
+    const result = study();
+    const script = pythonText(result.notebook);
+    expect(script.startsWith('# %% [markdown]\n# # Invented study\n#\n# Compiled from')).toBe(true);
+    expect(script).toContain('# > **Restricted content.** This file contains expressions from *Invented course pack*.');
+    expect(script).toContain('# %% [markdown]\n# ## Givens\n#\n# What we start from.\n');
+    expect(script).toContain('# %%\n# INV 1.1 — An invented length\nsym = symbols(');
+    // Nothing but comments and the notebook's own code: every code cell survives verbatim.
+    for (const cell of result.notebook.cells) {
+      if (cell.cell_type === 'code') expect(script).toContain(`# %%\n${cell.source.join('')}\n`);
+    }
+    expect(script.split('\n').some((line) => line.endsWith(' '))).toBe(false);
   });
 
   it('is a well-formed nbformat 4.5 file', () => {

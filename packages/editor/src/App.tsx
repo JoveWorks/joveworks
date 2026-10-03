@@ -40,14 +40,14 @@ import { DisplayProvider, type NotebookDisplay } from './present/display';
 import { SettingsContext } from './settings-context';
 import { clearAutosaveSnapshot, loadAutosaveSnapshot, saveAutosaveSnapshot } from './io/autosave';
 import { cacheCatalogue, cachedCatalogueTexts } from './io/catalogueCache';
-import { documentFileName, jupyterFileName, openTextFile, saveTextFile, userEquationsFileName } from './io/files';
+import { documentFileName, jupyterFileName, openTextFile, pythonFileName, saveTextFile, userEquationsFileName } from './io/files';
 import {
   loadRecentDocuments,
   recordRecentDocument,
   type RecentDocument,
 } from './io/recentDocuments';
 import { analyse } from './model/analysis';
-import { compileJupyter, jupyterText, type JupyterExport } from './model/jupyter';
+import { compileJupyter, jupyterText, pythonText, type JupyterExport } from './model/jupyter';
 import { baseCatalogue, builtInCatalogues, withCatalogue } from './model/catalogues';
 import { groupIntoGroup, groupIntoSection } from './model/document';
 import { edgeTouchesHiddenNode, hiddenByCollapsedGroups } from './model/collapsedGroups';
@@ -1023,17 +1023,25 @@ function AppShell(): ReactElement {
   // The notebook a student keeps working in (`model/jupyter.ts`). It reads the
   // rendered `document` rather than `documentRef`, because the analysis beside
   // it — the carried-over values — was computed from exactly that one.
-  const [pendingJupyter, setPendingJupyter] = useState<JupyterExport | undefined>(undefined);
-  const saveJupyter = (result: JupyterExport): void => {
-    saveTextFile(jupyterFileName(document.title), jupyterText(result.notebook), 'application/x-ipynb+json');
-    analytics.track({ name: 'jupyter_exported' });
+  // One compilation, two files: a notebook, or the same cells as a plain script.
+  type PythonFormat = 'jupyter' | 'python';
+  const [pendingJupyter, setPendingJupyter] = useState<
+    { readonly result: JupyterExport; readonly format: PythonFormat } | undefined
+  >(undefined);
+  const saveJupyter = (result: JupyterExport, format: PythonFormat): void => {
+    if (format === 'jupyter') {
+      saveTextFile(jupyterFileName(document.title), jupyterText(result.notebook), 'application/x-ipynb+json');
+    } else {
+      saveTextFile(pythonFileName(document.title), pythonText(result.notebook), 'text/x-python');
+    }
+    analytics.track({ name: format === 'jupyter' ? 'jupyter_exported' : 'python_exported' });
   };
-  const exportJupyter = (): void => {
+  const exportJupyter = (format: PythonFormat): void => {
     const result = compileJupyter(document, analysis, { locale, generatedOn: new Date().toISOString().slice(0, 10) });
     // A PDF carries citations and numbers; this file carries the expressions
     // themselves, so a restricted catalogue is named before anything is written.
-    if (result.restricted.length > 0) setPendingJupyter(result);
-    else saveJupyter(result);
+    if (result.restricted.length > 0) setPendingJupyter({ result, format });
+    else saveJupyter(result, format);
   };
 
   const addSection = (): void => {
@@ -1064,7 +1072,12 @@ function AppShell(): ReactElement {
     {
       label: t('Export Jupyter notebook…'),
       disabled: analysis.resolution === undefined,
-      onClick: exportJupyter,
+      onClick: () => exportJupyter('jupyter'),
+    },
+    {
+      label: t('Export Python script…'),
+      disabled: analysis.resolution === undefined,
+      onClick: () => exportJupyter('python'),
     },
     { heading: t('Recent') },
     ...(recentDocuments.length === 0
@@ -1530,12 +1543,12 @@ function AppShell(): ReactElement {
           )}
           {pendingJupyter === undefined ? null : (
             <ConfirmDialog
-              message={`${t('This notebook will contain formula expressions from a restricted catalogue:')} ${pendingJupyter.restricted.join(', ')}. ${t('It is for your own study only and may never be distributed or shared. Hand in the NodeBook PDF, not this file.')}`}
+              message={`${t('This file will contain formula expressions from a restricted catalogue:')} ${pendingJupyter.result.restricted.join(', ')}. ${t('It is for your own study only and may never be distributed or shared. Hand in the NodeBook PDF, not this file.')}`}
               confirmLabel={t('Export')}
               onConfirm={() => {
-                const result = pendingJupyter;
+                const { result, format } = pendingJupyter;
                 setPendingJupyter(undefined);
-                saveJupyter(result);
+                saveJupyter(result, format);
               }}
               onCancel={() => setPendingJupyter(undefined)}
             />

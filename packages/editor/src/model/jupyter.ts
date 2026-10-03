@@ -1086,7 +1086,7 @@ export function compileJupyter(
     ...(document.author === undefined ? [] : ['', document.author]),
     '',
     `Compiled from the JoveWorks NodeBook *${document.title}*${options.generatedOn === undefined ? '' : ` on ${options.generatedOn}`}. ` +
-      'It recomputes the graph in Python so you can take it further: change a value, add a step, draw your own figure, and run the cells again.',
+      'It recomputes the graph in Python so you can take it further: change a value, add a step, draw your own figure, and run it again.',
     '',
     'It follows the working style of the MechDesign course notebooks — an equation is built symbolically, shown with `HM.EqPrint`, ' +
       'and then given its numbers — and runs in that environment. Without MechDesign installed it falls back to plain SymPy.',
@@ -1097,7 +1097,7 @@ export function compileJupyter(
   if (restricted.size > 0) {
     intro.push(
       '',
-      `> **Restricted content.** This notebook contains expressions from ${[...restricted].map((name) => `*${name}*`).join(', ')}. ` +
+      `> **Restricted content.** This file contains expressions from ${[...restricted].map((name) => `*${name}*`).join(', ')}. ` +
         'They are for your own study only and may never be distributed or shared — the same condition the catalogue itself comes under. ' +
         'Hand in the NodeBook PDF, not this file.',
     );
@@ -1139,6 +1139,24 @@ export function compileJupyter(
     restricted: [...restricted],
     carried,
   };
+}
+
+/**
+ * The same compilation as one plain `.py` file, for a student who would
+ * rather work in an editor than in Jupyter.
+ *
+ * Not a second compiler: the cells are written out in order, prose as
+ * comments. Each keeps a `# %%` marker, which Spyder and VS Code run cell by
+ * cell and plain `python file.py` reads as an ordinary comment — so the
+ * script loses nothing of the notebook's structure by not being one.
+ */
+export function pythonText(notebook: JupyterNotebook): string {
+  const blocks = notebook.cells.map((cell) => {
+    const text = cell.source.join('');
+    if (cell.cell_type === 'code') return `# %%\n${text}`;
+    return `# %% [markdown]\n${text.split('\n').map((line) => `# ${line}`.trimEnd()).join('\n')}`;
+  });
+  return `${blocks.join('\n\n')}\n`;
 }
 
 /** The `.ipynb` file's text. */

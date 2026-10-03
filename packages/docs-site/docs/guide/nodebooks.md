@@ -66,13 +66,18 @@ Before exporting, check that:
 The saved graph remains the editable calculation. The exported NodeBook is its
 reading copy.
 
-## Continue in Jupyter
+## Continue in Python
 
 **File → Export Jupyter notebook…** compiles the graph to a `.ipynb` file for
 when you want a step the editor does not offer: your own figure, an extra
 calculation, a different way of presenting a result. It is a starting point to
-edit, not a second copy to keep in sync — changes made in Jupyter do not come
+edit, not a second copy to keep in sync — changes made in Python do not come
 back into the graph.
+
+**File → Export Python script…** writes the same thing as one plain `.py`
+file, with the prose as comments. Run it with `python`, or open it in Spyder
+or VS Code, where the `# %%` markers let you run it a cell at a time. Outside
+a notebook an equation prints as text rather than typeset.
 
 The notebook follows the NodeBook's sections and reading order, and the
 working style of the course's MechDesign notebooks: each catalogue equation is
