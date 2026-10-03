@@ -45,6 +45,11 @@ export function documentFileName(title: string): string {
   return `${slugifyTitle(title)}.jove.json`;
 }
 
+/** The Jupyter export's name: the same slug, so it sorts beside the graph it came from. */
+export function jupyterFileName(title: string): string {
+  return `${slugifyTitle(title)}.ipynb`;
+}
+
 /** Ask for a file and read it as text. Resolves `undefined` if nothing is picked. */
 export function openTextFile(accept = 'application/json,.json'): Promise<PickedFile | undefined> {
   return new Promise((resolve) => {

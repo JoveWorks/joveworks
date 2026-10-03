@@ -2,7 +2,7 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { documentFileName, saveTextFile, slugifyTitle, userEquationsFileName } from './files';
+import { documentFileName, jupyterFileName, saveTextFile, slugifyTitle, userEquationsFileName } from './files';
 
 describe('JoveWorks file names', () => {
   it('uses the JoveWorks suffix for NodeBooks', () => {
@@ -12,6 +12,10 @@ describe('JoveWorks file names', () => {
   it('kebab-cases a title a student actually typed, not the fixed document id', () => {
     expect(documentFileName('C16 Belt Drive')).toBe('c16-belt-drive.jove.json');
     expect(documentFileName('Untitled')).toBe('untitled.jove.json');
+  });
+
+  it('names a Jupyter export after the same title', () => {
+    expect(jupyterFileName('C16 Belt Drive')).toBe('c16-belt-drive.ipynb');
   });
 
   it('uses the JoveWorks equation-library name', () => {
