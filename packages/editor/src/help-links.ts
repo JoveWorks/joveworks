@@ -33,6 +33,8 @@ export const NODE_HELP_URLS: Readonly<Record<NodeKind, string>> = {
   range: `${DOCS_BASE_URL}/guide/node-reference#range`,
   file: `${DOCS_BASE_URL}/guide/node-reference#file`,
   table: `${DOCS_BASE_URL}/guide/node-reference#table`,
+  lut: `${DOCS_BASE_URL}/guide/node-reference#lookup-table`,
+  interpolate: `${DOCS_BASE_URL}/guide/node-reference#interpolate`,
   formula: `${DOCS_BASE_URL}/guide/node-reference#formula`,
   output: `${DOCS_BASE_URL}/guide/node-reference#output`,
   compare: `${DOCS_BASE_URL}/guide/node-reference#compare`,

@@ -30,7 +30,7 @@ import {
   type NodeChange,
 } from '@xyflow/react';
 
-import { adaptInputUnit, canConnect, isVariadicTarget, resolveGraph, selectPortNames, statisticPortNames, typesConnect } from '@joveworks/kernel';
+import { adaptInputUnit, canConnect, interpolatePortNames, isVariadicTarget, resolveGraph, selectPortNames, statisticPortNames, typesConnect } from '@joveworks/kernel';
 import { parseUnit } from '@joveworks/units';
 import {
   ALONG_PORT,
@@ -43,6 +43,8 @@ import {
   plotMeasures,
   X_PORT,
   Y_PORT,
+  XS_PORT,
+  YS_PORT,
   THRESHOLD_PORT,
   VALUE_PORT,
   VERDICT_PORT,
@@ -103,6 +105,8 @@ import { connectResolvingTableColumn } from './connect';
 import { ContextMenu, type MenuItem } from './ContextMenu';
 import { FileNodeView } from './FileNodeView';
 import { TableNodeView } from './TableNodeView';
+import { LutNodeView } from './LutNodeView';
+import { InterpolateNodeView } from './InterpolateNodeView';
 import { FormulaNodeView } from './FormulaNodeView';
 import { FrameView } from './FrameView';
 import { InputNodeView } from './InputNodeView';
@@ -171,6 +175,11 @@ function searchTitle(node: GraphNode, formulas: ReadonlyMap<string, Formula>, lo
 function searchPorts(document: GraphDocument, formulas: ReadonlyMap<string, Formula>, node: GraphNode): readonly string[] {
   if (node.kind === 'input') return [VALUE_PORT];
   if (node.kind === 'file') return node.fields.map((field) => field.name);
+  if (node.kind === 'lut') return node.columns.map((column) => column.name);
+  if (node.kind === 'interpolate') {
+    const { inputs, outputs } = interpolatePortNames(node);
+    return [...inputs, ...outputs];
+  }
   if (node.kind === 'table') {
     const axis = formulas.get(node.id)?.lookup?.axes[0]?.input;
     return axis === undefined ? node.columns : [axis, ...node.columns];
@@ -316,6 +325,18 @@ function existingCandidates(
             ...replacesField(occupantOf(document, formulas, { node: node.id, port })),
           });
         }
+      } else if (node.kind === 'interpolate') {
+        // `x` first: a dragged quantity is most often the point to look up;
+        // the two table columns come from the table node itself.
+        for (const port of [X_PORT, XS_PORT, YS_PORT]) {
+          candidates.push({
+            nodeId: node.id,
+            label: nodeLabel(node),
+            subtitle: `interpolate (${port})`,
+            port,
+            ...replacesField(occupantOf(document, formulas, { node: node.id, port })),
+          });
+        }
       } else if (node.kind === 'statistic') {
         for (const port of [VALUE_PORT, ALONG_PORT]) {
           candidates.push({ nodeId: node.id, label: nodeLabel(node), subtitle: `${node.statistic} (${port})`, port, ...replacesField(occupantOf(document, formulas, { node: node.id, port })) });
@@ -332,6 +353,12 @@ function existingCandidates(
       for (const field of node.fields) {
         candidates.push({ nodeId: node.id, label: nodeLabel(node), subtitle: field.name, port: field.name });
       }
+    } else if (node.kind === 'lut') {
+      for (const column of node.columns) {
+        candidates.push({ nodeId: node.id, label: nodeLabel(node), subtitle: column.name, port: column.name });
+      }
+    } else if (node.kind === 'interpolate') {
+      candidates.push({ nodeId: node.id, label: nodeLabel(node), subtitle: 'interpolate', port: Y_PORT });
     } else if (node.kind === 'table') {
       // The projected columns, and the row key ahead of them: the key is
       // what names the part, so it is the one most often wanted for a label
@@ -617,6 +644,8 @@ const NODE_TYPES = {
   range: RangeNodeView,
   file: FileNodeView,
   table: TableNodeView,
+  lut: LutNodeView,
+  interpolate: InterpolateNodeView,
   formula: FormulaNodeView,
   'joveworks-output': OutputNodeView,
   compare: CompareNodeView,
@@ -1379,7 +1408,7 @@ export function Canvas({
     if (target.kind === 'node') {
       const { id } = target;
       const graphNode = document.nodes.find((node) => node.id === id);
-      const hasDetails = graphNode !== undefined && ['input', 'formula', 'output', 'compare', 'select', 'closure'].includes(graphNode.kind);
+      const hasDetails = graphNode !== undefined && ['input', 'formula', 'output', 'compare', 'select', 'closure', 'lut', 'interpolate'].includes(graphNode.kind);
       return [
         ...(hasDetails ? [{
           label: t(expanded.has(id) ? 'Allow auto-collapse' : 'Keep open'),

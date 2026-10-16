@@ -34,6 +34,7 @@ import {
   packChannelIndices,
   resolveGraph,
   selectPortNames,
+  interpolatePortNames,
   statisticPortNames,
   subgraph,
   waypointChannelIndices,
@@ -47,6 +48,9 @@ import {
   isGenericPort,
   localize,
   ALONG_PORT,
+  XS_PORT,
+  YS_PORT,
+  lutRows,
   MONTE_CARLO_SAMPLE_PORT,
   START_PORT,
   STOP_PORT,
@@ -338,6 +342,36 @@ function readiness(
         continue;
       }
       const inputs = selectPortNames(node).inputs;
+      if (inputs.some((port) => isWired(node.id, port) && !upstreamReady(node.id, port))) {
+        states.set(node.id, 'blocked');
+        continue;
+      }
+      ready.add(node.id);
+      continue;
+    }
+
+    if (node.kind === 'lut') {
+      // A fresh table has nothing to answer with, the same "not finished" a
+      // file node with no file picked is in.
+      if (node.columns.length === 0 || lutRows(node) === 0) {
+        states.set(node.id, 'incomplete');
+        problems.set(node.id, 'type a row into the table');
+        continue;
+      }
+      ready.add(node.id);
+      continue;
+    }
+
+    if (node.kind === 'interpolate') {
+      // Three required wires — the table's two columns and the point — and
+      // `mode`, which has its typed default on the node.
+      const missing = [XS_PORT, YS_PORT, X_PORT].filter((port) => !isWired(node.id, port));
+      if (missing.length > 0) {
+        states.set(node.id, 'incomplete');
+        problems.set(node.id, notConnected(missing));
+        continue;
+      }
+      const inputs = interpolatePortNames(node).inputs;
       if (inputs.some((port) => isWired(node.id, port) && !upstreamReady(node.id, port))) {
         states.set(node.id, 'blocked');
         continue;

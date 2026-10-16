@@ -149,6 +149,23 @@ Pick several files at once and the node becomes a sweep: one point per
 file, and every field an axis you can plot against — how depth of field
 moved across a bracket, straight from the frames.
 
+### Lookup table
+
+A table you type in yourself: shaft diameter against key width, your own
+supplier's sizes, anything a catalogue does not carry. Every column is a
+port. The header of each column holds its name and its unit — type `names`
+as the unit for a column of names (a profile, a key designation) rather than
+numbers. The first column names the rows.
+
+You can paste a block straight out of a spreadsheet into any cell: the table
+grows to fit. Leave a cell empty where the table has no value.
+
+Wired straight into a formula, the rows are a sweep, exactly like a
+[list](#range-vs-list-vs-spectrum): the columns travel together, so a width
+and a height read in the same point always come from the same row. Wired
+into an [Interpolate](#interpolate) node, the table becomes a function of
+some other quantity.
+
 ### Range
 
 Like the linear/logarithmic range on an Input node, except `start`, `stop`
@@ -326,6 +343,36 @@ Use it right where a bundled value is actually consumed — after a Pack has
 carried a load case's force, position and angle across a crowded canvas,
 an Unpack at the destination exposes all three again, and you only need
 to wire the `outN` ports the formulas there actually use.
+
+### Interpolate
+
+Reads a table column at a point. Wire a table's key column into `xs`, the
+column you want answered into `ys`, and the point to look up into `x`; the
+answer comes out on `y`, in `ys`'s own unit. The table can come from a
+[lookup table](#lookup-table), a catalogue table, or anything else that
+varies along one set of rows. Sweep `x` and the answer is swept too.
+
+The `mode` picks how a point becomes a row:
+
+| Mode | Takes | Reads like |
+|---|---|---|
+| linear | a straight line between the rows either side | a material curve |
+| next row up | the first row whose key is at or above `x` | "over 10 up to 12 → 4" |
+| next row down | the last row whose key is at or below `x` | "from 10 → 4" |
+| exact match | only a row whose key is exactly `x` | a list of standard sizes |
+
+A standard written as bands — "over 10 up to 12" — is **next row up**, with
+each band keyed by its upper limit. To say where the first band *starts*,
+add a row for the lower limit and leave its value empty: `10 → —, 12 → 4,
+17 → 5` refuses anything at or below 10. A key column of names only matches
+exactly, and a column of names in `ys` can be stepped through but not
+interpolated.
+
+A point outside the table is refused by default, because a key width read off
+the end of its table is not a key width. The node's settings can hold the
+end row instead, or — in linear mode — extrapolate along the end segment.
+`mode` is also a port: wire a categorical list such as `{linear, nextUp}` into
+it to compare two readings of one table on one graph.
 
 ## Formula
 

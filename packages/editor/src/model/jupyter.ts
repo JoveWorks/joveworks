@@ -507,6 +507,8 @@ const NODE_NAMES: Readonly<Record<GraphNode['kind'], string>> = {
   range: 'range',
   file: 'file',
   table: 'table',
+  lut: 'lookup table',
+  interpolate: 'interpolation',
   formula: 'formula',
   output: 'output',
   compare: 'comparison',

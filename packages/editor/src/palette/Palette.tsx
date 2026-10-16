@@ -43,6 +43,7 @@ import { DEFAULT_READER } from '../files/readers';
 import { loadFavourites, saveFavourites } from '../model/palettePreferences';
 import { converted } from '../canvas/ValueEditor';
 import { selectableTables } from '../canvas/TableNodeView';
+import { starterColumns } from '../model/lut';
 import { ContextMenu } from '../canvas/ContextMenu';
 import { DOCS_BASE_URL } from '../help-links';
 import { Symbol } from '../Symbol';
@@ -356,6 +357,23 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
     });
   };
 
+  /**
+   * Dropped with a two-row starter table rather than empty, unlike a file
+   * node: there is no dialog to fill it from, and an empty grid gives a
+   * student nothing to overtype.
+   */
+  const addLut = (): void =>
+    edit((current) => {
+      const id = uniqueId(current, 'lookup');
+      return addNode(current, { kind: 'lut', id, label: id, columns: [...starterColumns()], position: position() });
+    });
+
+  const addInterpolate = (): void =>
+    edit((current) => {
+      const id = uniqueId(current, 'interpolate');
+      return addNode(current, { kind: 'interpolate', id, label: id, mode: 'linear', position: position() });
+    });
+
   const addMonteCarloGenerator = (): void =>
     edit((current) => {
       const id = uniqueId(current, 'draw');
@@ -414,6 +432,8 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
           ? 'Needs a loaded catalogue with a table in it'
           : undefined,
     },
+    { id: 'builtin:input:lut', label: copy.lookupTable, summary: copy.lookupTableSummary, insert: addLut },
+    { id: 'builtin:general:interpolate', label: copy.interpolate, summary: copy.interpolateSummary, insert: addInterpolate },
     { id: 'builtin:general:compare', label: copy.compare, summary: copy.compareSummary, insert: addCompare },
     { id: 'builtin:general:equation', label: copy.equation, summary: copy.equationSummary, insert: addClosure },
     { id: 'builtin:general:waypoint', label: copy.waypoint, summary: copy.waypointSummary, insert: addWaypoint },

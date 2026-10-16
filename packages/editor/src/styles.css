@@ -1045,6 +1045,7 @@ aside.bottom .palette-list section {
 .node-input::before,
 .node-range::before,
 .node-file::before,
+.node-lut::before,
 .node-monteCarloGenerator::before,
 .node-picker::before {
   background: var(--kind-input);
@@ -1659,6 +1660,66 @@ aside.bottom .palette-list section {
    screen" problem the node exists to remove. */
 .node-table {
   width: 300px;
+}
+
+/* A typed-in table is the catalogue table's grid with a field in every cell,
+   so it takes the same width and the same scrolling, and its fields lose
+   their boxes: a grid of bordered inputs reads as a form, not a table. */
+.node-lut {
+  width: 300px;
+}
+
+.node .node-lut-grid th,
+.node .node-lut-grid td {
+  cursor: default;
+  padding: 0 2px;
+}
+
+.node .node-lut-grid input {
+  border: 0;
+  background: transparent;
+  font: inherit;
+  padding: 1px 2px;
+  min-width: 0;
+}
+
+.node .node-lut-grid td input {
+  text-align: right;
+}
+
+.node .node-lut-grid input:focus {
+  outline: 1px solid var(--accent);
+  background: var(--paper);
+}
+
+.node .node-lut-grid .node-lut-heading {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.node .node-lut-grid .node-lut-unit {
+  color: var(--muted);
+  text-align: right;
+}
+
+.node .node-lut-grid button {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0 2px;
+  font: inherit;
+}
+
+.node .node-lut-grid button:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+
+.node .node-lut-grid .node-lut-add {
+  width: 1px;
+  border-bottom: 0;
 }
 
 /* Scrolls in both directions: a catalogue table runs to a couple of dozen

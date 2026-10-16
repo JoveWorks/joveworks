@@ -46,12 +46,13 @@ const MAX_FORMULA_RESULTS = 30;
 type AssertEveryNodeKindIsQuickAddable<T extends QuickAddChoice['kind']> = T;
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 type _EveryNodeKindIsQuickAddable = AssertEveryNodeKindIsQuickAddable<
-  // `file` and `table` are the other exclusions, and for a reason this menu
-  // cannot work around: neither declares any port until it has been given
-  // its content — a file actually read, a catalogue table chosen and a
-  // column projected off it — so there is never a port for the dragged wire
-  // to land on. Both are added from the palette, filled in, and wired after.
-  Exclude<GraphNode['kind'], 'formula' | 'file' | 'table'>
+  // `file`, `table` and `lut` are the other exclusions, and for a reason
+  // this menu cannot work around: none declares a port until it has been
+  // given its content — a file actually read, a catalogue table chosen and a
+  // column projected off it, a lookup table's columns typed in — so there is
+  // never a port for the dragged wire to land on. All three are added from
+  // the palette, filled in, and wired after.
+  Exclude<GraphNode['kind'], 'formula' | 'file' | 'table' | 'lut'>
 >;
 
 /** An already-placed node the menu can offer, worked out by Canvas.tsx from the drag's direction. */
@@ -187,6 +188,7 @@ export function QuickAddMenu({
       { label: t('smallest at'), choice: { kind: 'select', mode: 'argMin' } },
       { label: t('largest at'), choice: { kind: 'select', mode: 'argMax' } },
       { label: t('statistic over sweep'), choice: { kind: 'statistic' } },
+      { label: t('interpolate'), choice: { kind: 'interpolate' } },
       { label: t('print output'), choice: { kind: 'output', outputKind: 'print' } },
       { label: t('check output'), choice: { kind: 'output', outputKind: 'check' } },
       {

@@ -135,7 +135,7 @@ function buildLayoutBlocks(document: GraphDocument, sizes: NodeSizes): readonly 
       height: frame.size.height,
       origin: frame.position,
       hasInput: members.some(
-        (node) => node.kind === 'input' || node.kind === 'file' || node.kind === 'table',
+        (node) => node.kind === 'input' || node.kind === 'file' || node.kind === 'table' || node.kind === 'lut',
       ),
       hasOutput: members.some((node) => node.kind === 'output'),
       bottomRow: false,
@@ -148,7 +148,7 @@ function buildLayoutBlocks(document: GraphDocument, sizes: NodeSizes): readonly 
       key: `node:${node.id}`,
       ...measuredSizeOf(node, sizes),
       origin: node.position,
-      hasInput: node.kind === 'input' || node.kind === 'file' || node.kind === 'table',
+      hasInput: node.kind === 'input' || node.kind === 'file' || node.kind === 'table' || node.kind === 'lut',
       hasOutput: node.kind === 'output',
       bottomRow: node.kind === 'output',
     }));

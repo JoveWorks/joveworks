@@ -7,6 +7,7 @@ import {
   MONTE_CARLO_SAMPLE_PORT,
   OBJECTIVE_PORT,
   X_PORT,
+  Y_PORT,
   START_PORT,
   STOP_PORT,
   COUNT_PORT,
@@ -43,6 +44,7 @@ export type QuickAddChoice =
   | { readonly kind: 'compare' }
   | { readonly kind: 'select'; readonly mode: SelectMode }
   | { readonly kind: 'statistic' }
+  | { readonly kind: 'interpolate' }
   | { readonly kind: 'closure' }
   | { readonly kind: 'waypoint' }
   | { readonly kind: 'pack' }
@@ -199,6 +201,15 @@ export function quickAddNodeSpec(document: GraphDocument, choice: QuickAddCandid
         idPrefix: 'mean',
         ports: { source: [VALUE_PORT, ALONG_PORT], target: [STATISTIC_RESULT_PORT] },
         make: (id, position, label) => ({ kind: 'statistic', id, statistic: 'mean', position, ...labelField(label) }),
+      };
+    case 'interpolate':
+      return {
+        idPrefix: 'interpolate',
+        // A dragged quantity is most often the point to look up; a dragged
+        // table column lands on `x` too when it fits, and the student moves
+        // it — `xs`/`ys` are the two wires drawn from the table afterwards.
+        ports: { source: [X_PORT], target: [Y_PORT] },
+        make: (id, position, label) => ({ kind: 'interpolate', id, mode: 'linear', position, ...labelField(label) }),
       };
     case 'closure':
       return {
