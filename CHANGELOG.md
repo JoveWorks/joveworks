@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.31.0](https://github.com/JoveWorks/joveworks/compare/v0.30.0...v0.31.0) (2026-10-16)
+
+### Features
+
+* a typed-in lookup table node and an interpolate node ([b6f21f5](https://github.com/JoveWorks/joveworks/commit/b6f21f5ec0957977fd358ac6816604d748dc25fd))
+* **editor:** edit lookup tables on the canvas and interpolate them ([a92c3eb](https://github.com/JoveWorks/joveworks/commit/a92c3eb51f1dab2ce5ba4c19248d1ad2048557b7))
+* let marked designs be cleared and say where they were marked ([b97983f](https://github.com/JoveWorks/joveworks/commit/b97983ff3524793090ea9a27d9f238681ae3e860))
+
+### Fixes
+
+* **editor:** format a marked design's print and check reading like the reading beside it ([6471cf4](https://github.com/JoveWorks/joveworks/commit/6471cf4a61f56b8de46a80af3428416461f2429f))
+* **editor:** give an intelligent plot's swept axes their SI prefix ([1543363](https://github.com/JoveWorks/joveworks/commit/1543363f5ae66d1fd4582613d1427297ee77ebda))
+
+### Documentation
+
+* backlog SI prefixes for compound units ([72c5ccf](https://github.com/JoveWorks/joveworks/commit/72c5ccf833905d5476bc9eb603f4239d628e25b9))
+* require saved documents and catalogues to stay readable ([8e1e79d](https://github.com/JoveWorks/joveworks/commit/8e1e79d4d88f379e3880fb1229756b3bfc8db02c))
 ## [0.30.0](https://github.com/JoveWorks/joveworks/compare/v0.29.0...v0.30.0) (2026-10-03)
 
 ### Features
