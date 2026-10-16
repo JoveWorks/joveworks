@@ -15,6 +15,7 @@ import {
   parseCatalogue,
   loadCatalogue,
   ports,
+  sourceHref,
   type Catalogue,
   type Formula,
   type JsonValue,
@@ -132,6 +133,25 @@ export function removeCatalogue(
   id: string,
 ): readonly Catalogue[] {
   return catalogues.filter((catalogue) => catalogue.id !== id || PERMANENT_CATALOGUE_IDS.has(catalogue.id));
+}
+
+/**
+ * Where a formula's "?" opens, when its catalogue links into the book it
+ * cites, and the tooltip that says so. Found by identity rather than id —
+ * ids are only unique within one catalogue, and the formulas a graph
+ * resolves to are the very objects its catalogues were parsed into.
+ */
+export function formulaSource(
+  catalogues: readonly Catalogue[],
+  formula: Formula,
+  locale: AppLocale,
+): { readonly href: string; readonly title?: string } | undefined {
+  const catalogue = catalogues.find((candidate) => candidate.formulas.includes(formula));
+  if (catalogue === undefined) return undefined;
+  const href = sourceHref(catalogue, formula);
+  if (href === undefined) return undefined;
+  const title = catalogue.source?.title;
+  return title === undefined ? { href } : { href, title: localize(title, locale) };
 }
 
 export function entries(catalogues: readonly Catalogue[]): readonly PaletteEntry[] {

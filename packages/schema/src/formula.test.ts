@@ -21,6 +21,7 @@ import {
   ports,
   serializeCatalogue,
   serializeFormula,
+  sourceHref,
   type Formula,
 } from './formula.js';
 import { localize } from './localization.js';
@@ -49,6 +50,8 @@ describe('the formula record', () => {
     const json: JsonObject = {
       ...product,
       citation: 'Invented 1.2B',
+      page: 412,
+      href: 'https://library.example/invented#eq-1.2B',
       variantOf: 'demo.product-relation',
       appliesWhen: 'b > 0',
       inputs: [
@@ -364,6 +367,13 @@ describe('references by id, version and hash', () => {
     expect(matchRef(formulaRef(formula), translated)).toBe('match');
   });
 
+  it('does not change a reference when a link into the source is added', () => {
+    const formula = parse();
+    const linked = parse({ ...product, page: 412, href: 'https://library.example/invented#p412' });
+    expect(formulaHash(linked)).toBe(formulaHash(formula));
+    expect(matchRef(formulaRef(formula), linked)).toBe('match');
+  });
+
   /**
    * The one-record pin above (`asItAlwaysWas`) covers a single shape. This
    * extends it into an actual regression guard: a small corpus of serialized
@@ -462,6 +472,59 @@ describe('catalogues', () => {
     expect(() => parseCatalogue({ ...catalogue, schemaVersion: CATALOGUE_SCHEMA_VERSION + 1 })).toThrow(
       /schemaVersion: is 2, but this build reads catalogue schemaVersion 1 only/,
     );
+  });
+
+  describe('a link into the source', () => {
+    const template = 'https://library.example/invented.pdf#page={page}';
+    const linked = (source: JsonObject, formula: JsonObject = { ...product, page: 412 }) =>
+      parseCatalogue({ ...catalogue, source, formulas: [formula] });
+    const hrefOf = (parsed: ReturnType<typeof parseCatalogue>) =>
+      sourceHref(parsed, parsed.formulas[0] as Formula);
+
+    it('round-trips', () => {
+      const json: JsonObject = {
+        ...catalogue,
+        source: { title: { en: 'An invented handbook' }, url: template, pageOffset: 18 },
+        formulas: [{ ...product, page: 412 }],
+      };
+      expect(serializeCatalogue(parseCatalogue(json))).toEqual(json);
+    });
+
+    it('is absent from a catalogue that never had one', () => {
+      const parsed = parseCatalogue(catalogue);
+      expect(parsed.source).toBeUndefined();
+      expect(hrefOf(parsed)).toBeUndefined();
+    });
+
+    it('fills the printed page plus the offset into the template', () => {
+      expect(hrefOf(linked({ url: template }))).toBe('https://library.example/invented.pdf#page=412');
+      expect(hrefOf(linked({ url: template, pageOffset: 18 }))).toBe('https://library.example/invented.pdf#page=430');
+    });
+
+    it('gives no link for a templated url and a formula without a page', () => {
+      expect(hrefOf(linked({ url: template }, product))).toBeUndefined();
+    });
+
+    it('links every formula to the book when the url has no page in it', () => {
+      expect(hrefOf(linked({ url: 'https://library.example/invented' }, product))).toBe('https://library.example/invented');
+    });
+
+    it('prefers a formula’s own href', () => {
+      const own = 'https://library.example/reader?chapter=1';
+      expect(hrefOf(linked({ url: template }, { ...product, page: 412, href: own }))).toBe(own);
+      expect(hrefOf(parseCatalogue({ ...catalogue, formulas: [{ ...product, href: own }] }))).toBe(own);
+    });
+
+    it('refuses anything but a web link', () => {
+      expect(() => linked({ url: 'javascript:alert(1)' })).toThrow('source.url: must be an http or https link');
+      expect(() => parse({ ...product, href: 'javascript:alert(1)' })).toThrow('formulas[0].href: must be an http or https link');
+      expect(() => linked({ url: 'book.pdf#page={page}' })).toThrow('is not an absolute URL');
+    });
+
+    it('refuses a page that is not a positive whole number', () => {
+      expect(() => parse({ ...product, page: 0 })).toThrow('formulas[0].page');
+      expect(() => parse({ ...product, page: 4.5 })).toThrow('formulas[0].page');
+    });
   });
 });
 

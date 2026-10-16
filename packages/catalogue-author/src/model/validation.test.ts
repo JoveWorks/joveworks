@@ -79,4 +79,20 @@ describe('validateCatalogue', () => {
     expect(validation.catalogueErrors.length).toBeGreaterThan(0);
     expect(validation.catalogue).toBeUndefined();
   });
+
+  it('keeps the link into the book through a load and save', () => {
+    const source = { url: 'https://library.example/invented.pdf#page={page}', pageOffset: 18 };
+    const validation = validateCatalogue({
+      ...catalogueWith([{ ...validFormula(), page: '412', href: '' }]),
+      sourceJson: source,
+    });
+    expect(validation.catalogueErrors).toEqual([]);
+    expect(validation.catalogue?.source).toEqual(source);
+    expect(validation.catalogue?.formulas[0]?.page).toBe(412);
+  });
+
+  it('refuses a page that is not a page number', () => {
+    const validation = validateCatalogue(catalogueWith([{ ...validFormula(), page: 'four' }]));
+    expect(validation.formulas[0]?.errors[0]?.message).toMatch(/page/);
+  });
 });

@@ -36,7 +36,7 @@ import { Equation } from '../Equation';
 import { Symbol } from '../Symbol';
 import { ParameterLabel, UnitInLabel } from '../ParameterLabel';
 import { axisLabel, reading, summarise } from '../model/values';
-import { NodeShell } from './NodeShell';
+import { NodeShell, formulaHelp } from './NodeShell';
 import { Sparkline } from './Sparkline';
 import type { CanvasFlowNode } from './node-data';
 import { slotHandleId } from './portSlots';
@@ -45,7 +45,7 @@ import { DisplayUnitPicker } from './DisplayUnitPicker';
 import { PORT_VALUE_HINT, PortValueField, UNCHOSEN } from './PortValueField';
 
 export function FormulaNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>): ReactElement | null {
-  const { document, analysis, edit, expanded, toggleExpanded, hovered } = useGraph();
+  const { document, analysis, catalogues, edit, expanded, toggleExpanded, hovered } = useGraph();
   const { numberFormat, locale } = useSettings();
   const format = toUnitsFormat(numberFormat);
   const node = document.nodes.find((candidate) => candidate.id === id);
@@ -169,6 +169,7 @@ export function FormulaNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
   return (
     <NodeShell
       kind="formula"
+      {...formulaHelp(catalogues, formula, locale)}
       {...(pickerPorts.size === 0 ? {} : { extraClassName: 'node-picker' })}
       state={state}
       {...(problem === undefined ? {} : { problem })}

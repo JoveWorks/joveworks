@@ -19,7 +19,6 @@
 import {
   parseCatalogue,
   parseFormula,
-  parseLocalizedText,
   SchemaError,
   CATALOGUE_SCHEMA_VERSION,
   type Catalogue,
@@ -126,6 +125,9 @@ function formulaJson(formula: DraftFormula): JsonObject {
   const label = localizedTextJson(formula.label);
   if (Object.keys(label).length > 0) out['label'] = label;
   if (formula.citation.trim().length > 0) out['citation'] = formula.citation;
+  const page = numberField(formula.page);
+  if (page !== undefined) out['page'] = page;
+  if (formula.href.trim().length > 0) out['href'] = formula.href.trim();
   if (formula.variantOf.trim().length > 0) out['variantOf'] = formula.variantOf;
   if (formula.appliesWhen.trim().length > 0) out['appliesWhen'] = formula.appliesWhen;
   const quarantineReason = localizedTextJson(formula.quarantineReason);
@@ -140,6 +142,7 @@ function catalogueMetaJson(draft: DraftCatalogue): JsonObject {
     id: draft.id,
     name: localizedTextJson(draft.name),
     restricted: draft.restricted,
+    ...(draft.sourceJson === undefined ? {} : { source: draft.sourceJson }),
     formulas: [],
   };
 }
@@ -147,8 +150,9 @@ function catalogueMetaJson(draft: DraftCatalogue): JsonObject {
 export function validateCatalogue(draft: DraftCatalogue): CatalogueValidation {
   const catalogueErrors: ValidationMessage[] = [];
 
+  let meta: Catalogue | undefined;
   try {
-    parseCatalogue(catalogueMetaJson(draft));
+    meta = parseCatalogue(catalogueMetaJson(draft));
   } catch (error) {
     catalogueErrors.push({ message: describeError(error) });
   }
@@ -202,12 +206,9 @@ export function validateCatalogue(draft: DraftCatalogue): CatalogueValidation {
   const ready = catalogueErrors.length === 0 && formulaValidations.every((f) => f.errors.length === 0);
 
   let catalogue: Catalogue | undefined;
-  if (ready) {
+  if (ready && meta !== undefined) {
     catalogue = {
-      schemaVersion: CATALOGUE_SCHEMA_VERSION,
-      id: draft.id,
-      name: parseLocalizedText(localizedTextJson(draft.name), 'name'),
-      restricted: draft.restricted,
+      ...meta,
       formulas: parsedFormulas.filter((formula): formula is Formula => formula !== undefined),
     };
   }

@@ -12,6 +12,7 @@
 import {
   appliesWhenOf,
   soleExpression,
+  serializeCatalogue,
   serializeFormula,
   type Formula,
   type FormulaStatus,
@@ -59,6 +60,10 @@ export interface DraftFormula {
   readonly label: DraftLocalizedText;
   readonly description: DraftLocalizedText;
   readonly citation: string;
+  /** The printed page the citation points at; see `Formula.page`. */
+  readonly page: string;
+  /** A full link into the source, overriding the page; see `Formula.href`. */
+  readonly href: string;
   readonly variantOf: string;
   readonly appliesWhen: string;
   readonly status: FormulaStatus;
@@ -83,6 +88,12 @@ export interface DraftCatalogue {
   readonly id: string;
   readonly name: DraftLocalizedText;
   readonly restricted: boolean;
+  /**
+   * The catalogue's link into its book (`Catalogue.source`), round-tripped
+   * untouched like `lookupJson` — dropping it on save would silently cut
+   * every formula's "?" off from the book.
+   */
+  readonly sourceJson?: JsonValue;
   readonly formulas: readonly DraftFormula[];
 }
 
@@ -119,6 +130,8 @@ export function emptyFormula(): DraftFormula {
     label: {},
     description: {},
     citation: '',
+    page: '',
+    href: '',
     variantOf: '',
     appliesWhen: '',
     status: 'unverified',
@@ -206,6 +219,8 @@ export function draftFormulaFromReal(formula: Formula): DraftFormula {
     label: draftLocalizedTextFromReal(formula.label),
     description: draftLocalizedTextFromReal(formula.description),
     citation: formula.citation ?? '',
+    page: formula.page === undefined ? '' : String(formula.page),
+    href: formula.href ?? '',
     variantOf: formula.variantOf ?? '',
     appliesWhen: soleAppliesWhen(formula) ?? '',
     status: formula.status,
@@ -220,6 +235,7 @@ export function draftCatalogueFromReal(catalogue: Catalogue): DraftCatalogue {
     id: catalogue.id,
     name: draftLocalizedTextFromReal(catalogue.name),
     restricted: catalogue.restricted,
+    ...(catalogue.source === undefined ? {} : { sourceJson: serializeCatalogue(catalogue).source }),
     formulas: catalogue.formulas.map(draftFormulaFromReal),
   };
 }

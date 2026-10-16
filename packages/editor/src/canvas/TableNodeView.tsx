@@ -52,7 +52,7 @@ import { toUnitsFormat } from '../model/numberFormat';
 import { nodeLabel, reframe, removeNodes, syncColumnLabels, updateNode } from '../model/document';
 import { axisLabel, reading, summarise } from '../model/values';
 import { ParameterLabel } from '../ParameterLabel';
-import { NodeShell } from './NodeShell';
+import { NodeShell, formulaHelp } from './NodeShell';
 import { Sparkline } from './Sparkline';
 import type { CanvasFlowNode } from './node-data';
 import { TitleField, TitleText } from './TitleField';
@@ -229,6 +229,7 @@ export function TableNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>)
   return (
     <NodeShell
       kind="table"
+      {...formulaHelp(catalogues, formula, locale)}
       state={analysis.states.get(id) ?? 'ok'}
       selected={selected ?? false}
       highlighted={data?.highlighted === true || hovered.has(id)}

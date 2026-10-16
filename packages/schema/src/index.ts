@@ -94,6 +94,7 @@ export {
   matchRef,
   parseCatalogue,
   serializeCatalogue,
+  sourceHref,
 } from './formula.js';
 export type {
   Formula,
@@ -101,6 +102,7 @@ export type {
   FormulaRef,
   RefMatch,
   Catalogue,
+  CatalogueSource,
   FormulaLookup,
   LookupAxis,
   LookupCell,

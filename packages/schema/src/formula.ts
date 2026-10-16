@@ -250,6 +250,18 @@ export interface Formula {
   readonly description: LocalizedText;
   /** `R&M 17.1B`. Absent on the base node library, which cites nothing. */
   readonly citation?: string;
+  /**
+   * The printed page of the source the citation points at — what a reader
+   * would find in the book, not where a PDF viewer counts from. Combined with
+   * the catalogue's `source.url` into the link the node's "?" opens; see
+   * `sourceHref`. Reader-facing like `description`, so outside the hash.
+   */
+  readonly page?: number;
+  /**
+   * A full link to this formula in the source, for a platform that cannot be
+   * reached by page number alone. Wins over `page`. Outside the hash.
+   */
+  readonly href?: string;
   /** Groups the rearranged forms of one relation. */
   readonly variantOf?: string;
   /**
@@ -785,6 +797,8 @@ export function parseFormula(value: JsonValue, path: string): Formula {
     description: parseLocalizedText(required(object, 'description', path), join(path, 'description')),
     ...put('label', optional(object, 'label', path, parseLocalizedText)),
     ...put('citation', optional(object, 'citation', path, readString)),
+    ...put('page', optional(object, 'page', path, (value_, path_) => readInteger(value_, path_, 1))),
+    ...put('href', optional(object, 'href', path, readLink)),
     ...put('variantOf', optional(object, 'variantOf', path, readName)),
     ...put(
       'appliesWhen',
@@ -834,6 +848,8 @@ export function serializeFormula(formula: Formula): JsonObject {
     ...(formula.label === undefined ? {} : { label: serializeLocalizedText(formula.label) }),
     description: serializeLocalizedText(formula.description),
     ...put('citation', formula.citation),
+    ...put('page', formula.page),
+    ...put('href', formula.href),
     ...put('variantOf', formula.variantOf),
     ...put('appliesWhen', serializePerOutput(formula.outputs, formula.appliesWhen)),
     status: formula.status,
@@ -867,7 +883,8 @@ export function formulaHash(formula: Formula): string {
 
   // A graph reference pins calculation semantics, not words shown to a reader.
   // Catalogue translators must be able to correct text without invalidating
-  // students' saved graphs.
+  // students' saved graphs. `page` and `href` stay out for the same reason: a
+  // school adding links to the book must not flag every saved graph changed.
   const withoutText = (port: Port): JsonObject => {
     const { description: _description, ...semantic } = serializePort(port);
     return semantic;
@@ -944,7 +961,73 @@ export interface Catalogue {
   readonly id: string;
   readonly name: LocalizedText;
   readonly restricted: boolean;
+  /** The book the citations point into, when it can be opened online. */
+  readonly source?: CatalogueSource;
   readonly formulas: readonly Formula[];
+}
+
+/**
+ * Where a catalogue's citations can be read. `url` is a template: `{page}`
+ * stands for a formula's printed page plus `pageOffset` — the front matter a
+ * PDF counts and the printed numbering does not — so
+ * `https://library.example/book.pdf#page={page}` opens the right page in a
+ * browser's PDF viewer. A url without `{page}` links every formula to the
+ * book itself. Changing platform is then one line, not every formula.
+ */
+export interface CatalogueSource {
+  readonly title?: LocalizedText;
+  readonly url: string;
+  readonly pageOffset?: number;
+}
+
+const PAGE_PLACEHOLDER = '{page}';
+
+/**
+ * Only web links. A catalogue is a file students pass to each other, and an
+ * href read from one is put straight into the page, so `javascript:` and the
+ * like are refused here rather than trusted there.
+ */
+function readLink(value: JsonValue, path: string): string {
+  const text = readString(value, path).trim();
+  let url: URL;
+  try {
+    url = new URL(text.replaceAll(PAGE_PLACEHOLDER, '1'));
+  } catch {
+    fail(path, `'${text}' is not an absolute URL`);
+  }
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') fail(path, 'must be an http or https link');
+  return text;
+}
+
+function parseCatalogueSource(value: JsonValue, path: string): CatalogueSource {
+  const object = readObject(value, path);
+  return {
+    ...put('title', optional(object, 'title', path, parseLocalizedText)),
+    url: readLink(required(object, 'url', path), join(path, 'url')),
+    ...put('pageOffset', optional(object, 'pageOffset', path, (value_, path_) => readInteger(value_, path_, Number.MIN_SAFE_INTEGER))),
+  };
+}
+
+function serializeCatalogueSource(source: CatalogueSource): JsonObject {
+  return {
+    ...(source.title === undefined ? {} : { title: serializeLocalizedText(source.title) }),
+    url: source.url,
+    ...put('pageOffset', source.pageOffset),
+  };
+}
+
+/**
+ * The link a formula's help opens: its own `href`, else the catalogue's
+ * source url with the page filled in. A templated url and no page gives
+ * nothing — guessing a page would open the wrong one.
+ */
+export function sourceHref(catalogue: Catalogue, formula: Formula): string | undefined {
+  if (formula.href !== undefined) return formula.href;
+  const source = catalogue.source;
+  if (source === undefined) return undefined;
+  if (!source.url.includes(PAGE_PLACEHOLDER)) return source.url;
+  if (formula.page === undefined) return undefined;
+  return source.url.replaceAll(PAGE_PLACEHOLDER, String(formula.page + (source.pageOffset ?? 0)));
 }
 
 export function parseCatalogue(value: JsonValue, path = ''): Catalogue {
@@ -967,6 +1050,7 @@ export function parseCatalogue(value: JsonValue, path = ''): Catalogue {
     id: readName(required(object, 'id', path), join(path, 'id')),
     name: parseLocalizedText(required(object, 'name', path), join(path, 'name')),
     restricted: readBoolean(required(object, 'restricted', path), join(path, 'restricted')),
+    ...put('source', optional(object, 'source', path, parseCatalogueSource)),
     formulas,
   };
 }
@@ -977,6 +1061,7 @@ export function serializeCatalogue(catalogue: Catalogue): JsonObject {
     id: catalogue.id,
     name: serializeLocalizedText(catalogue.name),
     restricted: catalogue.restricted,
+    ...(catalogue.source === undefined ? {} : { source: serializeCatalogueSource(catalogue.source) }),
     formulas: catalogue.formulas.map(serializeFormula),
   };
 }

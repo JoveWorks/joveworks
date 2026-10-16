@@ -8,12 +8,14 @@
 
 import { useState, type ReactElement, type ReactNode } from 'react';
 import { useNodeId } from '@xyflow/react';
-import type { GraphNode, NodeKind } from '@joveworks/schema';
+import type { Catalogue, Formula, GraphNode, NodeKind } from '@joveworks/schema';
 
 import { NODE_HELP_URLS } from '../help-links';
 import { useGraph } from '../graph-context';
 import type { NodeState } from '../model/analysis';
 import { updateNode } from '../model/document';
+import { formulaSource } from '../model/catalogues';
+import type { AppLocale } from '../model/editorSettings';
 import { useSettings } from '../settings-context';
 import { phrase, ui } from '../i18n';
 import { TextField } from './fields';
@@ -30,6 +32,8 @@ interface Props {
   readonly kind: NodeKind;
   /** Overrides `NODE_HELP_URLS[kind]` — an output node needs a link specific to its own `output.kind`. */
   readonly helpUrl?: string;
+  /** Overrides the "?" tooltip — a link into a catalogue's book is not our help page. */
+  readonly helpTitle?: string;
   readonly state: NodeState;
   readonly title: ReactNode;
   readonly subtitle?: ReactNode;
@@ -53,9 +57,29 @@ interface Props {
   readonly extraClassName?: string;
 }
 
+/**
+ * The "?" of a node built on a catalogue formula: the page of the book it
+ * cites, when the catalogue links there — for a catalogue formula that is
+ * the help a student actually needs — else the node kind's own docs entry.
+ */
+export function formulaHelp(
+  catalogues: readonly Catalogue[],
+  formula: Formula | undefined,
+  locale: AppLocale,
+): { readonly helpUrl?: string; readonly helpTitle?: string } {
+  const source = formula === undefined ? undefined : formulaSource(catalogues, formula, locale);
+  if (source === undefined) return {};
+  const copy = ui(locale);
+  return {
+    helpUrl: source.href,
+    helpTitle: source.title === undefined ? copy.openSource : `${copy.openSourceIn} ${source.title}`,
+  };
+}
+
 export function NodeShell({
   kind,
   helpUrl,
+  helpTitle,
   state,
   title,
   subtitle,
@@ -107,7 +131,7 @@ export function NodeShell({
             href={helpUrl ?? NODE_HELP_URLS[kind]}
             target="_blank"
             rel="noopener"
-            title={copy.nodeHelp}
+            title={helpTitle ?? copy.nodeHelp}
             tabIndex={-1}
           >
             ?

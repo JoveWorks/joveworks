@@ -40,6 +40,34 @@ to export a restricted catalogue's expressions. Set it `false` only for
 content you actually have the right to redistribute; it is not what enforces
 distribution restrictions — a repository boundary does that.
 
+### Linking to the book
+
+When the source a catalogue cites can be opened online — a school's licensed
+e-book, say — give the catalogue a `source`, and each formula's "?" opens the
+page that formula is on instead of the general JoveWorks help:
+
+```yaml
+source:
+  title:
+    en: the course handbook
+  url: "https://library.example/handbook.pdf#page={page}"
+  pageOffset: 18
+```
+
+- **url** — an `http`/`https` link. `{page}` is replaced by the formula's
+  `page` plus `pageOffset`; `#page=` is what browsers' built-in PDF viewers
+  understand, and other e-book platforms have their own deep-link shape.
+  A url without `{page}` links every formula to the book as a whole.
+- **pageOffset** — optional. Write `page` as the number printed in the book,
+  and set this to how far the PDF's own page count runs ahead of it (the front
+  matter), so the numbers in the catalogue can be checked against the book.
+- **title** — optional. Shown in the "?" tooltip: "Open this formula in the
+  course handbook".
+
+The link is only a link: whether a student can open it — a library login,
+a licence — is up to wherever it points. A formula with a templated url and
+no `page` keeps the ordinary help link.
+
 JoveWorks uses YAML 1.2, requires unique string keys, and rejects custom tags,
 merge keys, anchors, and aliases. Quote a scalar when YAML punctuation could
 change its meaning — expressions containing `#` or `:`, for example.
@@ -298,6 +326,12 @@ Fields:
   prose most users read; write it as such.
 - **citation** — optional. Omit it entirely for invented formulas — base
   nodes cite nothing; do not invent a fake one.
+- **page** — optional. The printed page the citation is on, filled into the
+  catalogue's `source.url` (see [Linking to the book](#linking-to-the-book)).
+- **href** — optional. A full link to this formula, for a platform a page
+  number cannot reach; it wins over `page`. Neither field is part of the
+  formula's hash, so adding or correcting them never flags a saved graph as
+  changed.
 - **variantOf** — links rearranged forms of one relation. Skip unless
   you are actually authoring more than one arrangement of the same equation.
 - **appliesWhen** — a boolean predicate over this formula's own input port
