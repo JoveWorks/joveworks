@@ -185,6 +185,12 @@ function collapseAxis(node: AxisNode, tableColumn: ResolvedTableColumn | undefin
       fields: node.fields.map((field) => ({ ...field, values: field.values.slice(0, 1) })),
     };
   }
+  if (node.kind === 'lut') {
+    // Not collapsed: a lookup table's rows are data the design reads, not a
+    // design variable — an interpolator collapsing them to one row would
+    // stop being a lookup at all.
+    return node;
+  }
   if (node.kind === 'table') {
     // The same collapse a file axis gets, for the same reason: the first
     // selected row is the part the tornado is built around, and a table

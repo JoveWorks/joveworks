@@ -861,6 +861,56 @@ describe('file nodes', () => {
   });
 });
 
+describe('lookup table and interpolate nodes', () => {
+  const only = (...nodes: JsonObject[]): JsonObject => ({ ...study, nodes, edges: [] });
+  const table = {
+    kind: 'lut',
+    id: 'keys',
+    position: { x: 0, y: 0 },
+    columns: [
+      { name: 'd', unit: 'mm', values: [10, 20, 30] },
+      { name: 'b', unit: 'mm', values: [null, 3, 7] },
+      { name: 'grade', values: ['A', 'B', null] },
+    ],
+    axisLabel: 'size band',
+  };
+  const interpolator = { kind: 'interpolate', id: 'k', position: { x: 0, y: 0 }, mode: 'nextUp', outOfRange: 'clamp' };
+
+  it('round-trips both, empty cells and an out-of-range rule included', () => {
+    expect(serializeDocument(parseDocument(only(table, interpolator)))).toEqual(only(table, interpolator));
+  });
+
+  it('reads an interpolator with no out-of-range rule as one that refuses', () => {
+    const { outOfRange: _rule, ...bare } = interpolator;
+    const parsed = parseDocument(only(bare)).nodes[0];
+    expect(parsed?.kind === 'interpolate' ? parsed.outOfRange : 'set').toBeUndefined();
+  });
+
+  it('accepts a table just dropped from the palette', () => {
+    const fresh = { kind: 'lut', id: 'keys', position: { x: 0, y: 0 }, columns: [] };
+    expect(serializeDocument(parseDocument(only(fresh)))).toEqual(only(fresh));
+  });
+
+  it('is a sweep axis only once it has more than one row', () => {
+    expect(axes(parseDocument(only(table))).map((node) => node.id)).toEqual(['keys']);
+    const single = { ...table, columns: [{ name: 'd', unit: 'mm', values: [10] }] };
+    expect(axes(parseDocument(only(single)))).toEqual([]);
+  });
+
+  it('refuses columns of different lengths, and one name twice', () => {
+    const ragged = { ...table, columns: [{ name: 'd', unit: 'mm', values: [10, 20] }, { name: 'b', unit: 'mm', values: [1] }] };
+    expect(() => parseDocument(only(ragged))).toThrow(/has 1 rows; the first column has 2/);
+    const twice = { ...table, columns: [{ name: 'd', unit: 'mm', values: [10] }, { name: 'd', unit: 'mm', values: [1] }] };
+    expect(() => parseDocument(only(twice))).toThrow(/names 'd' twice/);
+  });
+
+  it('refuses a cell that disagrees with its column’s unit, and an unknown mode', () => {
+    const wrong = { ...table, columns: [{ name: 'd', unit: 'mm', values: ['10'] }] };
+    expect(() => parseDocument(only(wrong))).toThrow(/expected a finite number/);
+    expect(() => parseDocument(only({ ...interpolator, mode: 'cubic' }))).toThrow(/mode/);
+  });
+});
+
 describe('structural integrity', () => {
   it('rejects a dangling edge', () => {
     const broken = {

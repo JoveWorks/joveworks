@@ -42,6 +42,9 @@ import {
   START_PORT,
   STOP_PORT,
   COUNT_PORT,
+  XS_PORT,
+  YS_PORT,
+  lutRows,
   appliesWhenOf,
   domainMember,
   expressionOf,
@@ -71,6 +74,8 @@ import {
   type Port,
   type RangeNode,
   type TableNode,
+  type LutNode,
+  type InterpolateNode,
   type PlotViewOverride,
 } from '@joveworks/schema';
 import {
@@ -90,6 +95,7 @@ import { assertEvaluable, compileClosureFormula, compileFormula } from './formul
 import { canonicalUnit, endpointKey, resolveGraph, type PortType, type Resolution } from './graph.js';
 import { evaluateSensitivity, type SensitivityRankingResult } from './sensitivity.js';
 import { crossingsAlong, select, type SelectResult } from './select.js';
+import { interpolate } from './interpolate.js';
 import { reduceAlong } from './statistics.js';
 import { buildDistribution, type DistributionPanel } from './distribution.js';
 import { inverseNormal, wilsonInterval } from './normal.js';
@@ -574,6 +580,16 @@ function runEvaluation(
         }
         break;
 
+      case 'lut':
+        for (const [name, value] of lutValues(node, axisByNode)) {
+          values.set(endpointKey(node.id, name), value);
+        }
+        break;
+
+      case 'interpolate':
+        values.set(endpointKey(node.id, Y_PORT), evaluateInterpolate(node, resolution, values));
+        break;
+
       case 'monteCarloGenerator':
         values.set(
           endpointKey(node.id, VALUE_PORT),
@@ -695,7 +711,13 @@ function readAxisReadouts(
     // A table node's coordinate is its row key — the frame size that names
     // the part — and it has no `value` port to hold it, so the port to read
     // is the one the table's own axis is named after.
-    const key = endpointKey(nodeId, resolution.tables.get(nodeId)?.axis.input ?? VALUE_PORT);
+    const node = resolution.document.nodes.find((candidate) => candidate.id === nodeId);
+    const key = endpointKey(
+      nodeId,
+      node?.kind === 'lut'
+        ? (node.columns[0]?.name ?? VALUE_PORT)
+        : (resolution.tables.get(nodeId)?.axis.input ?? VALUE_PORT),
+    );
     const coordinates = values.get(key);
     if (coordinates === undefined || !isSeries(coordinates)) continue;
     readouts.set(axis.id, { axis, coordinates, unit: displayUnit(resolution.sources.get(key)) });
@@ -1041,6 +1063,83 @@ function fileValues(
     ]);
   }
   return emitted;
+}
+
+/**
+ * A lookup table's ports: every column, over the node's own row axis when it
+ * has more than one row — `fileValues` again, row for file.
+ *
+ * Unlike a file field, a column with an empty cell is still emitted: an
+ * empty cell is a row the table leaves undefined, which is meaningful to an
+ * interpolator (`interpolate.ts` refuses to land on it), and refusing the
+ * whole column would make the band-start row (`10 → —`) impossible to write.
+ * It travels as `NaN`, or as an empty name in a categorical column.
+ */
+function lutValues(
+  node: LutNode,
+  axes: ReadonlyMap<string, Axis>,
+): readonly (readonly [string, PortValue])[] {
+  const rows = lutRows(node);
+  if (rows === 0) return [];
+  const axis = rows > 1 ? axes.get(node.id) : undefined;
+  if (rows > 1 && axis === undefined) {
+    throw new KernelError('several rows introduce an axis, and this node has none', node.id);
+  }
+  return node.columns.map((column) => {
+    const unit = column.unit;
+    if (unit === undefined) {
+      const data = column.values.map((value) => (typeof value === 'string' ? value : ''));
+      return [
+        column.name,
+        axis === undefined ? categoricalScalar(data[0] as string) : { kind: 'categorical', axes: [axis], data },
+      ] as const;
+    }
+    const data = column.values.map((value) => (typeof value === 'number' ? toCanonical(value, unit) : Number.NaN));
+    return [
+      column.name,
+      axis === undefined ? scalarSeries(data[0] as number) : { kind: 'numeric', axes: [axis], data },
+    ] as const;
+  });
+}
+
+/**
+ * An interpolator's one answer. The table's own rules live in
+ * `interpolate.ts`; this only gathers the four wires, the way
+ * `evaluateSelect` gathers its two.
+ */
+function evaluateInterpolate(
+  node: InterpolateNode,
+  resolution: Resolution,
+  values: ReadonlyMap<string, PortValue>,
+): Series {
+  const wired = (port: string): Series | undefined => {
+    const key = endpointKey(node.id, port);
+    const edge = resolution.incoming.get(key)?.[0];
+    if (edge === undefined) return undefined;
+    const value = valueAtEdge(edge, key, values);
+    if (!isSeries(value)) throw new KernelError(`'${port}' is a ${value.kind}, which cannot be looked up`, key);
+    return value;
+  };
+  const required = (port: string, what: string): Series => {
+    const value = wired(port);
+    if (value === undefined) throw new KernelError(`'${port}' is not connected — wire ${what} into it`, endpointKey(node.id, port));
+    return value;
+  };
+  const xs = required(XS_PORT, "the table's key column");
+  const ys = required(YS_PORT, "the table's value column");
+  const x = required(X_PORT, 'the point to look up');
+  const mode = wired(MODE_PORT);
+  if (mode !== undefined && mode.kind !== 'categorical') {
+    throw new KernelError("'mode' takes a name — linear, nextUp, nextDown or exact", endpointKey(node.id, MODE_PORT));
+  }
+  return interpolate({
+    xs,
+    ys,
+    x,
+    mode: mode ?? node.mode,
+    outOfRange: node.outOfRange ?? 'error',
+    nodeId: node.id,
+  });
 }
 
 /**

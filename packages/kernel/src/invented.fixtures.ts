@@ -101,6 +101,14 @@ export function tableNode(
   };
 }
 
+export function lutNode(id: string, columns: readonly JsonObject[], extra: JsonObject = {}): JsonObject {
+  return { kind: 'lut', id, position: { x: 0, y: 0 }, columns: [...columns], ...extra };
+}
+
+export function interpolateNode(id: string, mode: string, extra: JsonObject = {}): JsonObject {
+  return { kind: 'interpolate', id, position: { x: 0, y: 0 }, mode, ...extra };
+}
+
 export function closureNode(id: string, expression: string, extra: JsonObject = {}): JsonObject {
   return { kind: 'closure', id, position: { x: 0, y: 0 }, expression, ...extra };
 }

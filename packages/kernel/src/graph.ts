@@ -64,6 +64,9 @@ import {
   START_PORT,
   STOP_PORT,
   COUNT_PORT,
+  XS_PORT,
+  YS_PORT,
+  lutRows,
   plotMeasures,
   plotThresholdPort,
   axes as documentAxes,
@@ -74,6 +77,7 @@ import {
   type AxisNode,
   type Catalogue,
   type CompareNode,
+  type InterpolateNode,
   type SelectNode,
   type StatisticNode,
   type Edge,
@@ -413,6 +417,14 @@ export function selectPortNames(node: SelectNode): {
   };
 }
 
+/** An interpolator's ports — the same four in every mode, so changing mode never strands a wire. */
+export function interpolatePortNames(_node: InterpolateNode): {
+  readonly inputs: readonly string[];
+  readonly outputs: readonly string[];
+} {
+  return { inputs: [XS_PORT, YS_PORT, X_PORT, MODE_PORT], outputs: [Y_PORT] };
+}
+
 export function statisticPortNames(node: StatisticNode): {
   readonly inputs: readonly string[];
   readonly outputs: readonly string[];
@@ -592,6 +604,9 @@ function axisOf(
     // the frames themselves, so its length is `sources`, not anything the
     // fields say.
     return { id: node.id, label: node.axisLabel ?? node.label ?? node.id, length: node.sources.length, order };
+  }
+  if (node.kind === 'lut') {
+    return { id: node.id, label: node.axisLabel ?? node.label ?? node.id, length: lutRows(node), order };
   }
   if (node.kind === 'table') {
     // The rows that survived resolution, not the rows the document names —
@@ -864,6 +879,69 @@ export function resolveGraph(
           ),
         );
       }
+      continue;
+    }
+
+    if (node.kind === 'lut') {
+      // `file`'s branch again: every port is declared on the node, a column
+      // with a unit is numeric in it and one without is categorical.
+      for (const column of node.columns) {
+        sources.set(
+          endpointKey(node.id, column.name),
+          displayOverride(
+            node,
+            column.name,
+            column.unit === undefined
+              ? { kind: 'categorical' }
+              : { kind: 'numeric', dimension: column.unit.dimension, unit: column.unit },
+          ),
+        );
+      }
+      continue;
+    }
+
+    if (node.kind === 'interpolate') {
+      // `xs` and `x` are one quantity — the key, and a point on it — so they
+      // must agree in kind and dimension; `y` is whatever `ys` is. Nothing
+      // binds until a wire arrives, the state `select`'s inputs sit in.
+      const typeAt = (port: string, fallback: PortType): PortType => {
+        const key = endpointKey(node.id, port);
+        const edge = oneEdge(key);
+        const type = edge === undefined ? fallback : sourceType(edge);
+        targets.set(key, type);
+        return type;
+      };
+      const xsType = typeAt(XS_PORT, { kind: 'numeric' });
+      const ysType = typeAt(YS_PORT, { kind: 'numeric' });
+      const xKey = endpointKey(node.id, X_PORT);
+      const xType = typeAt(X_PORT, xsType.kind === 'categorical' ? { kind: 'categorical' } : { kind: 'numeric' });
+      const modeKey = endpointKey(node.id, MODE_PORT);
+      checkKind(typeAt(MODE_PORT, { kind: 'categorical' }), { kind: 'categorical' }, modeKey);
+      if (xsType.kind === 'bundle') checkKind(xsType, { kind: 'numeric' }, endpointKey(node.id, XS_PORT));
+      if (ysType.kind === 'bundle') checkKind(ysType, { kind: 'numeric' }, endpointKey(node.id, YS_PORT));
+      if (oneEdge(xKey) !== undefined && oneEdge(endpointKey(node.id, XS_PORT)) !== undefined) {
+        checkKind(xType, xsType, xKey);
+        if (xsType.dimension !== undefined && xType.dimension !== undefined) {
+          assertSameDimension(
+            xsType.dimension,
+            xType.dimension,
+            "'x' has to be the same kind of quantity as the table's key column 'xs'",
+            xKey,
+          );
+        }
+      }
+      sources.set(
+        endpointKey(node.id, Y_PORT),
+        ysType.kind === 'categorical'
+          ? { kind: 'categorical' }
+          : ysType.dimension === undefined
+            ? { kind: 'numeric' }
+            : displayOverride(node, Y_PORT, {
+                kind: 'numeric',
+                dimension: ysType.dimension,
+                unit: ysType.unit ?? canonicalUnit(ysType.dimension),
+              }),
+      );
       continue;
     }
 

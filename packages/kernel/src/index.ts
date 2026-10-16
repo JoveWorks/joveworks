@@ -114,6 +114,7 @@ export {
   outputPortNames,
   resolveGraph,
   selectPortNames,
+  interpolatePortNames,
   statisticPortNames,
   subgraph,
   topologicalOrder,
@@ -130,6 +131,8 @@ export { inverseNormal, normalCdf, wilsonInterval } from './normal.js';
 
 export { COARSE_SWEEP_TOLERANCE, select } from './select.js';
 export type { SelectRequest, SelectResult } from './select.js';
+export { interpolate } from './interpolate.js';
+export type { InterpolateRequest } from './interpolate.js';
 
 export { candidateAt, candidateMask, coordinatesAt, sameCandidate } from './candidates.js';
 export type { AxisCoordinate, AxisReadout, CandidateMatch } from './candidates.js';

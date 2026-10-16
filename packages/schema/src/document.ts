@@ -115,6 +115,16 @@ export const OBJECTIVE_PORT = 'objective';
 export const X_PORT = 'x';
 export const Y_PORT = 'y';
 
+/**
+ * An interpolator's ports. `xs`/`ys` are a table's key and value columns —
+ * two series over one shared row axis — `x` is the point asked about, and
+ * `mode` overrides the node's own `mode` field when a wire arrives, the same
+ * typed-default-with-overriding-wire every `threshold` port is. The answer
+ * goes out on `Y_PORT`, which is just `y`.
+ */
+export const XS_PORT = 'xs';
+export const YS_PORT = 'ys';
+
 export interface Position {
   readonly x: number;
   readonly y: number;
@@ -890,11 +900,101 @@ export interface TableNode extends NodeBase {
   readonly axisLabel?: string;
 }
 
+/**
+ * One column of a lookup table: a port, and its value once per row.
+ *
+ * `FileField`'s shape exactly, and for the same reason: `unit` absent means a
+ * categorical column — a key designation, a profile name — and `null` is a
+ * cell the table leaves undefined. A step lookup that lands on such a cell
+ * fails rather than answering, which is also how a table states where its
+ * first band *starts*: `10 → —, 12 → 4` reads "over 10 up to 12 is 4".
+ */
+export interface LutColumn {
+  readonly name: string;
+  readonly unit?: Unit;
+  /** One entry per row, the same length in every column. */
+  readonly values: readonly (number | string | null)[];
+}
+
+/**
+ * A lookup table the student types in: shaft diameter against key width,
+ * their own supplier's sizes, anything a catalogue does not carry.
+ *
+ * **The content is in the document**, unlike `TableNode`'s. That is the line
+ * `ClosureNode` already draws: the never-embed rule exists to keep R&M
+ * content inside the private catalogue, and a student's own table is the
+ * student's own content.
+ *
+ * It is a *source*, `FileNode`'s sibling: every column is a port, and several
+ * rows are one shared axis, so `b` and `h` read in the same grid cell always
+ * come from the same row. Wired straight into a formula it sweeps its rows,
+ * the way a catalogue table node does. Wired into an `InterpolateNode` as
+ * `xs` and `ys` it becomes a function of some other quantity — which is the
+ * reason for keeping the two halves apart: the interpolator reads any two
+ * series over one axis, a catalogue table's or a file's as readily as this.
+ *
+ * The **first column is the row key**: what a plot labels the rows with, and
+ * the coordinate a mark records. An empty `columns` is a node just dropped
+ * from the palette, the same unfinished-but-valid state an empty `FileNode`
+ * sits in.
+ */
+export interface LutNode extends NodeBase {
+  readonly kind: 'lut';
+  readonly columns: readonly LutColumn[];
+  /** What the row axis is called while there are several rows. Defaults to `label`. */
+  readonly axisLabel?: string;
+}
+
+/**
+ * How an interpolator turns a point into a row:
+ *
+ * - `linear` — a straight line between the two rows either side.
+ * - `nextUp` — the first row whose key is at or above the point. The way
+ *   standards write bands: "over 10 up to 12" is the row keyed 12.
+ * - `nextDown` — the last row whose key is at or below the point: "from 10".
+ * - `exact` — the key must equal the point; a categorical key only ever
+ *   matches this way.
+ */
+export const INTERPOLATION_MODES = ['linear', 'nextUp', 'nextDown', 'exact'] as const;
+export type InterpolationMode = (typeof INTERPOLATION_MODES)[number];
+
+/**
+ * What a point beyond the table's first or last key gets: refused, held at
+ * the end row, or — `linear` only — continued along the end segment. A step
+ * mode has no slope to continue along, so `extrapolate` holds the end row
+ * there, exactly as `clamp` does; `exact` has no "beyond" and misses either
+ * way.
+ */
+export const OUT_OF_RANGE_RULES = ['error', 'clamp', 'extrapolate'] as const;
+export type OutOfRangeRule = (typeof OUT_OF_RANGE_RULES)[number];
+
+/**
+ * Reads `ys` at `x`, using `xs` as the key: a table turned into a function.
+ *
+ * Learns the table's row axis from the wire, as `SelectNode` learns its axis
+ * from `along`: whatever single axis `xs` varies along is the one looked up
+ * and reduced away. Every other axis broadcasts, so sweeping `x` gives a
+ * series of answers and a `ys` that also varies per material gives one per
+ * material. Rows need not arrive sorted; duplicate keys are refused.
+ *
+ * `mode` is the typed default of the `mode` port. A categorical wire into it
+ * overrides it per point, which is how "linear against next up" becomes one
+ * swept comparison rather than two copies of the graph.
+ */
+export interface InterpolateNode extends NodeBase {
+  readonly kind: 'interpolate';
+  readonly mode: InterpolationMode;
+  /** Absent means `error`. */
+  readonly outOfRange?: OutOfRangeRule;
+}
+
 export type GraphNode =
   | InputNode
   | RangeNode
   | FileNode
   | TableNode
+  | LutNode
+  | InterpolateNode
   | FormulaNode
   | OutputNode
   | CompareNode
@@ -999,7 +1099,12 @@ export interface GraphDocument {
  * is — or a table node with more than one row selected, which is that same
  * rule again over a catalogue's rows.
  */
-export type AxisNode = InputNode | RangeNode | FileNode | TableNode | MonteCarloGeneratorNode;
+export type AxisNode = InputNode | RangeNode | FileNode | TableNode | LutNode | MonteCarloGeneratorNode;
+
+/** How many rows a lookup table has — every column is the same length. */
+export function lutRows(node: LutNode): number {
+  return node.columns[0]?.values.length ?? 0;
+}
 
 export function axes(document: GraphDocument): readonly AxisNode[] {
   return document.nodes.filter(
@@ -1008,6 +1113,7 @@ export function axes(document: GraphDocument): readonly AxisNode[] {
       node.kind === 'range' ||
       (node.kind === 'file' && node.sources.length > 1) ||
       (node.kind === 'table' && node.rows.length > 1) ||
+      (node.kind === 'lut' && lutRows(node) > 1) ||
       node.kind === 'monteCarloGenerator',
   );
 }
@@ -1318,6 +1424,24 @@ function serializeOutput(output: Output): JsonObject {
   }
 }
 
+function parseLutColumn(value: JsonValue, path: string): LutColumn {
+  const object = readObject(value, path);
+  const unit = optional(object, 'unit', path, parseUnitField);
+  const values = readArray(required(object, 'values', path), join(path, 'values')).map(
+    (cell, i) => {
+      if (cell === null) return null;
+      // Numeric or categorical exactly as the unit says, as a file field is.
+      const cellPath = `${join(path, 'values')}[${i}]`;
+      return unit === undefined ? readString(cell, cellPath) : readNumber(cell, cellPath);
+    },
+  );
+  return {
+    name: readName(required(object, 'name', path), join(path, 'name')),
+    ...put('unit', unit),
+    values,
+  };
+}
+
 function parseFileSource(value: JsonValue, path: string): FileSource {
   const object = readObject(value, path);
   return {
@@ -1355,6 +1479,8 @@ export const NODE_KINDS = [
   'range',
   'file',
   'table',
+  'lut',
+  'interpolate',
   'formula',
   'output',
   'compare',
@@ -1490,6 +1616,37 @@ function parseNode(value: JsonValue, path: string): GraphNode {
         ...put('axisLabel', optional(object, 'axisLabel', path, readString)),
       };
     }
+    case 'lut': {
+      const columnsPath = join(path, 'columns');
+      const columns = readArray(required(object, 'columns', path), columnsPath).map((entry, i) =>
+        parseLutColumn(entry, `${columnsPath}[${i}]`),
+      );
+      const rows = columns[0]?.values.length ?? 0;
+      for (const [i, column] of columns.entries()) {
+        if (column.values.length !== rows) {
+          fail(`${columnsPath}[${i}]`, `has ${column.values.length} rows; the first column has ${rows}`);
+        }
+        if (columns.findIndex((other) => other.name === column.name) !== i) {
+          fail(`${columnsPath}[${i}]`, `names '${column.name}' twice`);
+        }
+      }
+      return {
+        ...base,
+        kind,
+        columns,
+        ...put('axisLabel', optional(object, 'axisLabel', path, readString)),
+      };
+    }
+    case 'interpolate':
+      return {
+        ...base,
+        kind,
+        mode: readEnum(required(object, 'mode', path), join(path, 'mode'), INTERPOLATION_MODES),
+        ...put(
+          'outOfRange',
+          optional(object, 'outOfRange', path, (entry, at) => readEnum(entry, at, OUT_OF_RANGE_RULES)),
+        ),
+      };
     case 'formula':
       return {
         ...base,
@@ -1671,6 +1828,18 @@ function serializeNode(node: GraphNode): JsonObject {
         columns: [...node.columns],
         ...put('axisLabel', node.axisLabel),
       };
+    case 'lut':
+      return {
+        ...base,
+        columns: node.columns.map((column) => ({
+          name: column.name,
+          ...put('unit', column.unit?.symbol),
+          values: [...column.values],
+        })),
+        ...put('axisLabel', node.axisLabel),
+      };
+    case 'interpolate':
+      return { ...base, mode: node.mode, ...put('outOfRange', node.outOfRange) };
     case 'formula':
       return {
         ...base,
