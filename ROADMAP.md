@@ -151,3 +151,13 @@ metadata (`citation` on a formula); this is the step from "eq. 11.14" to
 something clickable. Out of scope for this repository as far as R&M content
 goes — the restricted catalogue lives elsewhere — so what is decided here is
 only the *field* and how the editor renders it, not any particular target.
+
+**16. SI prefixes for compound units** — under the 'si' number format a
+single prefixable unit picks its prefix (`12500 N` reads `12.50 kN`), but a
+compound one never does: `prefixableAtomOf` refuses anything that is not one
+atom, so a stress in `N/mm²` stays `N/mm²` and a moment reads `1000000 N·mm`
+rather than `1 kN·m`. Deciding it is a content question as much as a code
+one — whether `N/mm²` should become `MPa` (R&M itself writes `N/mm²`), and
+which atom of a product takes the prefix (`kN·m` versus `N·km`). Needs a
+rule from the course side before anything in `formatQuantity` or
+`siAxisUnit` changes.
