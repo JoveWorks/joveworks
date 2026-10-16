@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { Axis, PlotAxis, PlotMeasureResult } from '@joveworks/kernel';
-import { parseUnit } from '@joveworks/units';
+import { PLAIN_NUMBER_FORMAT, parseUnit } from '@joveworks/units';
 
 import type { PlotPanel, PlotValueAxis } from '../model/plot';
 import {
@@ -11,6 +11,7 @@ import {
   rescaleValue,
   rowsForPanel,
   sharesColorScaleKey,
+  siPanel,
   tipText,
   valueAxisPlacement,
 } from './IntelligentPlotFigure';
@@ -239,5 +240,27 @@ describe('a secondary value axis (a force and a length sharing one panel)', () =
     expect(lengthLines).toContain('length (mm): 300');
     expect(lengthLines).not.toContain('length (mm): 30');
     expect(lengthLines).not.toContain('length (N): 300');
+  });
+});
+
+describe("a swept axis under the 'si' number format", () => {
+  const force: Axis = { id: 'force', label: 'force', length: 2, order: 0 };
+  const forceReadout: PlotAxis = {
+    axis: force,
+    coordinates: { kind: 'numeric', axes: [force], data: [1000, 20000] },
+    unit: newton,
+  };
+  const swept = { ...panel([measure('m', 'deflection', [1, 2], [force])], [forceReadout]), roles: { x: 'force' } };
+
+  it('takes its own prefix, like the value axis beside it, in its title and its coordinates', () => {
+    const si = siPanel(swept, { ...PLAIN_NUMBER_FORMAT, notation: 'si' });
+    const rows = rowsForPanel(si, [mm]);
+    expect(rows.map((row) => row.x)).toEqual([1, 20]);
+    expect(tipText(si, rows[1]!, [mm]).split('\n')[0]).toBe('force (kN): 20');
+  });
+
+  it('keeps the authored unit outside si notation', () => {
+    const plain = siPanel(swept, PLAIN_NUMBER_FORMAT);
+    expect(rowsForPanel(plain, [mm]).map((row) => row.x)).toEqual([1000, 20000]);
   });
 });

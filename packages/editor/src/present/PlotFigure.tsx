@@ -121,7 +121,7 @@ export function siAxisUnit(unit: Unit, data: readonly number[], format: NumberFo
   return largest === 0 ? unit : siPrefixedUnit(atom, largest);
 }
 
-function siAxis(axis: PlotAxis, format: NumberFormat): PlotAxis {
+export function siAxis(axis: PlotAxis, format: NumberFormat): PlotAxis {
   if (axis.coordinates.kind !== 'numeric') return axis;
   return { ...axis, unit: siAxisUnit(axis.unit, axis.coordinates.data, format) };
 }

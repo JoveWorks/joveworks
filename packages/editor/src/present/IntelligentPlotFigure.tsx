@@ -17,7 +17,7 @@ import type { GraphDocument } from '@joveworks/schema';
 import { useSettings } from '../settings-context';
 import { inferPlotPanels, plotAxisFor, type PlotPanel, type PlotValueAxis } from '../model/plot';
 import { axisNature, useDisplay } from './display';
-import { chartTip, plotGrid, pointedRow, siAxisUnit, typesetChartLabels } from './PlotFigure';
+import { chartTip, plotGrid, pointedRow, siAxis, siAxisUnit, typesetChartLabels } from './PlotFigure';
 import { markTipLines, type FigureMarking } from './marks';
 
 export interface SmartRow {
@@ -383,6 +383,17 @@ function contourColorbar(panel: PlotPanel, valueUnit: Unit, palette: string): HT
 }
 
 /**
+ * `panel`, with every swept axis re-scaled to its own SI prefix — what
+ * `siResult` does for the single-measure figure. The value axes already pick
+ * theirs in `panelValueUnits`; without this the coordinates beside them were
+ * drawn in the unit they were authored in, so a force swept 1000–20000 N read
+ * as 20000 under a value axis that had already become kN.
+ */
+export function siPanel(panel: PlotPanel, format: NumberFormat): PlotPanel {
+  return { ...panel, axes: panel.axes.map((axis) => siAxis(axis, format)) };
+}
+
+/**
  * One SI-prefixed unit per value axis, chosen from that axis's own
  * measures — a force axis and a length axis pick their own prefix
  * independently, exactly as they would as separate panels.
@@ -433,7 +444,7 @@ export function tipText(panel: PlotPanel, row: SmartRow, valueUnits: readonly Un
 }
 
 function PlotPanelFigure({
-  panel,
+  panel: authored,
   width,
   marking,
 }: {
@@ -446,6 +457,7 @@ function PlotPanelFigure({
 
   useEffect(() => {
     const container = host.current;
+    const panel = siPanel(authored, format);
     if (container === null || panel.error !== undefined) return undefined;
     const valueUnits = panelValueUnits(panel, format);
     const primaryUnit = valueUnits[0] as Unit;
@@ -665,7 +677,7 @@ function PlotPanelFigure({
       chart.removeEventListener('pointerleave', handleLeave);
       container.classList.remove('contour-figure');
     };
-  }, [panel, axes, width, format, marking, contourPalette, titleMathRendering, locale]);
+  }, [authored, axes, width, format, marking, contourPalette, titleMathRendering, locale]);
 
   return <div className="figure intelligent-plot-panel" ref={host} />;
 }

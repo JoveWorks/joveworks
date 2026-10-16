@@ -32,6 +32,7 @@ import {
   labelOf,
   panelGrid,
   panelValueUnits,
+  siPanel,
   valueAxisPlacement,
 } from './IntelligentPlotFigure';
 import { axisLabel, plotValueLabel, rows, siResult } from './PlotFigure';
@@ -70,7 +71,9 @@ function classicRows(raw: PlotResult, format: NumberFormat): readonly (readonly 
   ];
 }
 
-function panelRows(panel: PlotPanel, format: NumberFormat): readonly (readonly string[])[] {
+function panelRows(authored: PlotPanel, format: NumberFormat): readonly (readonly string[])[] {
+  // The swept axes in the prefix the figure draws them in, as the values are.
+  const panel = siPanel(authored, format);
   const valueUnits = panelValueUnits(panel, format);
   const placement = valueAxisPlacement(panel, valueUnits);
   const target = panelGrid(panel);
