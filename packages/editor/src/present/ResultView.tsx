@@ -164,12 +164,15 @@ export function ResultView({
       <p className="result print">
         {label}
         <span className="number">{summarise(result, result.figures, format)}</span>
+        {/* Formatted like the reading beside it — significant figures, the
+            unit, and its SI prefix — not like a table cell, whose unit sits
+            once in the column header. */}
         {candidateReadings(result.series.axes, (cell) => {
           const value = result.series.data[cell];
           return value === undefined
             ? ''
             : typeof value === 'number'
-              ? displayNumber(value, result.unit, result.figures, format)
+              ? display(value, result.unit, result.figures, format)
               : value;
         })}
       </p>
@@ -205,7 +208,7 @@ export function ResultView({
         </span>
         {candidateReadings(result.series.axes, (cell) => (
           <>
-            {displayNumber(result.series.data[cell] as number, result.unit, 4, format)}{' '}
+            {display(result.series.data[cell] as number, result.unit, 4, format)}{' '}
             <span className="mark">{result.results[cell] === true ? '✓' : '✗'}</span>
           </>
         ))}
