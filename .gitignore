@@ -6,3 +6,4 @@ ref/
 .vite/
 **/.vitepress/cache/
 /.claude/worktrees
+/.pnpm-store/
