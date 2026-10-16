@@ -4105,6 +4105,44 @@ aside.bottom .palette-list section {
   font-size: 11px;
 }
 
+/* The designs this plot has marked, each with its own × — clicking the curve
+   adds one, and this is where it is taken back. Quiet like the exports row,
+   and likewise suppressed in print: the letters on the figure are the report. */
+.notebook .plot-marks {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.notebook .plot-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 2px 0 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-weight: bold;
+  color: var(--ink);
+}
+
+.notebook .plot-mark button,
+.notebook .plot-marks-clear {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 11px;
+  padding: 0 4px;
+  cursor: pointer;
+}
+
+.notebook .plot-mark button:hover {
+  color: var(--state-error);
+}
+
 /* Same edge-line drag-over convention as .notebook-section's own reorder —
  * vertical here because a table's columns sit side by side, not stacked. */
 .notebook th.drag-over-before::before,
@@ -4279,6 +4317,7 @@ aside.bottom .palette-list section {
      in it, the same as the per-column digits field above. */
   .table-actions,
   .plot-actions,
+  .plot-marks,
   /* Every dialog (`SettingsDialog`, `UnlockCatalogueDialog`, the Hub
      workspace dialogs…) and the ribbon's own dropdown share these two root
      classes. Both can render as a sibling of `<main>` rather than inside

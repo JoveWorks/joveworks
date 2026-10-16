@@ -54,7 +54,7 @@ import {
 } from '@joveworks/units';
 import { typesetTitleHtml } from '../canvas/TitleField';
 import { axisNature, useDisplay } from './display';
-import { NO_MARKS, type FigureMarking } from './marks';
+import { markTipLines, NO_MARKS, type FigureMarking } from './marks';
 
 export interface Row {
   /** Which cell of `plotGrid` this point is — what turns a click into a mark. */
@@ -462,7 +462,7 @@ export function plotChartWidth(facetCount: number | undefined): number {
 
 export function PlotFigure({ result: rawResult, marking }: Props): ReactElement {
   const host = useRef<HTMLDivElement>(null);
-  const { format, contourPalette, titleMath: titleMathRendering, axes } = useDisplay();
+  const { format, contourPalette, titleMath: titleMathRendering, axes, locale } = useDisplay();
   const result = useMemo(() => siResult(rawResult, format), [rawResult, format]);
 
   useEffect(() => {
@@ -562,7 +562,10 @@ export function PlotFigure({ result: rawResult, marking }: Props): ReactElement 
       chartTip(data, 'x', {
         x: 'x',
         y: markY(result),
-        title: (row: Row) => tipTitle(result, row, xLabel, valueLabel),
+        title: (row: Row) => [
+          tipTitle(result, row, xLabel, valueLabel),
+          ...markTipLines((marking?.marks ?? NO_MARKS).at(row.cell), locale),
+        ].join('\n'),
         ...(result.facet === undefined || contouring ? {} : { fx: 'facet' }),
       }),
     );
@@ -667,7 +670,7 @@ export function PlotFigure({ result: rawResult, marking }: Props): ReactElement 
       chart.removeEventListener('click', handleClick);
       chart.removeEventListener('pointerleave', handleLeave);
     };
-  }, [axes, contourPalette, result, titleMathRendering, marking]);
+  }, [axes, contourPalette, result, titleMathRendering, marking, locale]);
 
   return <div className="figure" ref={host} />;
 }

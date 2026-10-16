@@ -17,8 +17,8 @@ import type { GraphDocument } from '@joveworks/schema';
 import { useSettings } from '../settings-context';
 import { inferPlotPanels, plotAxisFor, type PlotPanel, type PlotValueAxis } from '../model/plot';
 import { axisNature, useDisplay } from './display';
-import { chartTip, pointedRow, siAxisUnit, typesetChartLabels } from './PlotFigure';
-import type { FigureMarking } from './marks';
+import { chartTip, plotGrid, pointedRow, siAxisUnit, typesetChartLabels } from './PlotFigure';
+import { markTipLines, type FigureMarking } from './marks';
 
 export interface SmartRow {
   readonly cell: number;
@@ -151,6 +151,17 @@ export function labelOf(axis: PlotAxis, panel: PlotPanel): string {
 
 export function panelGrid(panel: PlotPanel): readonly Axis[] {
   return unionAxes(...panel.measures.map((measure) => measure.series.axes));
+}
+
+/**
+ * The grid a whole plot output's marks are resolved over: every panel's axes
+ * at once, or the legacy single-measure grid. Only for asking *which* marks the
+ * plot draws — each panel still resolves its own cells against `panelGrid`.
+ */
+export function plotMarkGrid(result: PlotResult): readonly Axis[] {
+  return result.measures === undefined
+    ? plotGrid(result)
+    : unionAxes(...result.measures.map((measure) => measure.series.axes));
 }
 
 /**
@@ -431,7 +442,7 @@ function PlotPanelFigure({
   readonly marking?: FigureMarking;
 }): ReactElement {
   const host = useRef<HTMLDivElement>(null);
-  const { format, contourPalette, titleMath: titleMathRendering, axes } = useDisplay();
+  const { format, contourPalette, titleMath: titleMathRendering, axes, locale } = useDisplay();
 
   useEffect(() => {
     const container = host.current;
@@ -571,7 +582,10 @@ function PlotPanelFigure({
     marks.push(chartTip(data, 'x', {
       x: 'x',
       y: panel.type === 'line' || panel.type === 'dot' ? 'value' : 'y',
-      title: (row: SmartRow) => tipText(panel, row, valueUnits),
+      title: (row: SmartRow) => [
+        tipText(panel, row, valueUnits),
+        ...(marking === undefined ? [] : markTipLines(marking.marks.at(row.cell), locale)),
+      ].join('\n'),
       ...(facetAxis === undefined ? {} : { fx: 'facet' }),
     }));
     // Plot suppresses its *implicit* axis for a scale as soon as any explicit
@@ -651,7 +665,7 @@ function PlotPanelFigure({
       chart.removeEventListener('pointerleave', handleLeave);
       container.classList.remove('contour-figure');
     };
-  }, [panel, axes, width, format, marking, contourPalette, titleMathRendering]);
+  }, [panel, axes, width, format, marking, contourPalette, titleMathRendering, locale]);
 
   return <div className="figure intelligent-plot-panel" ref={host} />;
 }

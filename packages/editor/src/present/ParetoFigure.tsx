@@ -33,7 +33,8 @@ import { fromCanonical, type NumberFormat } from '@joveworks/units';
 
 import { useDisplay } from './display';
 import { chartTip, pointedRow, siAxisUnit, typesetChartLabels } from './PlotFigure';
-import { NO_MARKS, type FigureMarking, type MarkIndex } from './marks';
+import { markTipLines, NO_MARKS, type FigureMarking, type MarkIndex } from './marks';
+import type { AppLocale } from '../i18n';
 
 interface Row {
   readonly cell: number;
@@ -61,7 +62,12 @@ function formatCoordinate(coordinate: AxisCoordinate, format: NumberFormat): str
 }
 
 /** Ready-to-draw rows, in the kernel's own cell order. */
-export function rows(result: ParetoResult, marks: MarkIndex, format: NumberFormat): readonly Row[] {
+export function rows(
+  result: ParetoResult,
+  marks: MarkIndex,
+  format: NumberFormat,
+  locale: AppLocale = 'en',
+): readonly Row[] {
   const xUnit = siAxisUnit(
     result.xUnit,
     result.points.map((point) => point.x),
@@ -89,6 +95,7 @@ export function rows(result: ParetoResult, marks: MarkIndex, format: NumberForma
         : standing === 'dominated'
           ? 'beaten on both objectives'
           : 'fails a referenced check',
+      ...markTipLines(marks.at(point.cell), locale),
     ];
     return [
       {
@@ -128,14 +135,14 @@ interface Props {
 
 export function ParetoFigure({ result, marking }: Props): ReactElement {
   const host = useRef<HTMLDivElement>(null);
-  const { format, titleMath: titleMathRendering } = useDisplay();
+  const { format, titleMath: titleMathRendering, locale } = useDisplay();
 
   useEffect(() => {
     const container = host.current;
     if (container === null) return undefined;
 
     const marks = marking?.marks ?? NO_MARKS;
-    const data = rows(result, marks, format);
+    const data = rows(result, marks, format, locale);
     const front = staircase(result, data);
     const marked = data.filter((row) => row.letter !== undefined);
     const xLabel = `${result.xLabel} (${result.xDirection === 'minimize' ? 'lower is better' : 'higher is better'})`;
@@ -216,7 +223,7 @@ export function ParetoFigure({ result, marking }: Props): ReactElement {
       chart.removeEventListener('click', handleClick);
       chart.removeEventListener('pointerleave', handleLeave);
     };
-  }, [result, marking, format, titleMathRendering]);
+  }, [result, marking, format, titleMathRendering, locale]);
 
   return <div className="figure pareto" ref={host} />;
 }

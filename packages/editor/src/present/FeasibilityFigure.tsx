@@ -26,7 +26,8 @@ import { fromCanonical } from '@joveworks/units';
 
 import { useDisplay } from './display';
 import { chartTip, pointedRow, typesetChartLabels } from './PlotFigure';
-import { NO_MARKS, type FigureMarking, type MarkIndex } from './marks';
+import { markTipLines, NO_MARKS, type FigureMarking, type MarkIndex } from './marks';
+import type { AppLocale } from '../i18n';
 
 interface Row {
   /** Which cell of the drawn grid this is — what turns a click into a mark. */
@@ -179,6 +180,7 @@ export function rows(
   result: FeasibilityResult,
   checkLabels: Readonly<Record<string, string>>,
   marks: MarkIndex = NO_MARKS,
+  locale: AppLocale = 'en',
 ): readonly Row[] {
   const target = feasibilityGrid(result);
   // Onto that grid, so a mask that varies along fewer axes than the figure
@@ -211,6 +213,7 @@ export function rows(
       lines.push(`→ fail (${failed.join(', ')})`);
     }
 
+    lines.push(...markTipLines(marks.at(cell), locale));
     const letter = marks.at(cell)[0]?.letter;
     return {
       cell,
@@ -232,7 +235,7 @@ interface Props {
 
 export function FeasibilityFigure({ result, marking }: Props): ReactElement {
   const host = useRef<HTMLDivElement>(null);
-  const { titleMath: titleMathRendering, checkLabels } = useDisplay();
+  const { titleMath: titleMathRendering, checkLabels, locale } = useDisplay();
   // `useId`, not a module-level constant: a notebook can hold more than one
   // Feasibility figure at once, and an SVG `id` is document-scoped — two
   // charts sharing one id would have the second chart's hatch resolve
@@ -243,7 +246,7 @@ export function FeasibilityFigure({ result, marking }: Props): ReactElement {
     const container = host.current;
     if (container === null) return undefined;
 
-    const data = rows(result, checkLabels, marking?.marks ?? NO_MARKS);
+    const data = rows(result, checkLabels, marking?.marks ?? NO_MARKS, locale);
     const marked = data.filter((row) => row.letter !== undefined);
     const failed = data.filter((row) => row.mask === 'fail');
     const xLabel = result.x.axis.label;
@@ -358,7 +361,7 @@ export function FeasibilityFigure({ result, marking }: Props): ReactElement {
       chart.removeEventListener('click', handleClick);
       chart.removeEventListener('pointerleave', handleLeave);
     };
-  }, [result, checkLabels, titleMathRendering, marking]);
+  }, [result, checkLabels, titleMathRendering, marking, locale]);
 
   return <div className="figure" ref={host} />;
 }

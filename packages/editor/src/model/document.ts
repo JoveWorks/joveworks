@@ -751,6 +751,19 @@ export function toggleCandidate(document: GraphDocument, candidate: Candidate): 
 }
 
 /**
+ * Unmark several designs at once — a figure's "clear" gesture, one edit and so
+ * one undo step rather than a toggle per mark. Later marks keep their place in
+ * the list, so their letters shift down only as far as a removal implies.
+ */
+export function removeCandidates(document: GraphDocument, candidates: readonly Candidate[]): GraphDocument {
+  const marks = document.marks ?? [];
+  const next = marks.filter((mark) => !candidates.some((candidate) => sameCandidate(mark, candidate)));
+  if (next.length === marks.length) return document;
+  const { marks: _dropped, ...withoutMarks } = document;
+  return next.length === 0 ? withoutMarks : { ...withoutMarks, marks: next };
+}
+
+/**
  * Drop every edge into `nodeId` whose target port is not in `keep` — for when
  * an output node's port set itself changes shape, such as switching away from
  * `table`'s several named columns to a single `value` port.

@@ -13,7 +13,8 @@
 
 import type { ReactElement } from 'react';
 
-import type { MarkIndex } from './marks';
+import { useDisplay } from './display';
+import { markTitle, type MarkIndex } from './marks';
 
 export function CandidateReadings({
   marks,
@@ -23,13 +24,14 @@ export function CandidateReadings({
   /** This result's own reading at one cell — a number, a verdict, whatever it prints. */
   readonly read: (cell: number) => ReactElement | string;
 }): ReactElement | null {
+  const { locale } = useDisplay();
   const found = marks.marks.filter((entry) => entry.cells.length === 1);
   if (found.length === 0) return null;
   return (
     <span className="candidate-readings">
       {found.map((entry) => (
         <span className="candidate-reading" key={entry.index}>
-          <span className="mark-letter">{entry.letter}</span>
+          <span className="mark-letter" title={markTitle(entry, locale)}>{entry.letter}</span>
           {read(entry.cells[0] as number)}
         </span>
       ))}

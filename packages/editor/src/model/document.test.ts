@@ -53,6 +53,7 @@ import {
   setColumnFigures,
   setColumnUnit,
   syncColumnLabels,
+  removeCandidates,
   toggleCandidate,
   uniqueId,
   updateNode,
@@ -603,6 +604,23 @@ describe('toggleCandidate — one marked design, document-wide', () => {
     const first = toggleCandidate(base, { at: { d: 40 } });
     const second = toggleCandidate(first, { at: { d: 50 } });
     expect(second.marks?.[0]).toEqual({ at: { d: 40 } });
+  });
+});
+
+describe('removeCandidates — a figure clearing its marks in one edit', () => {
+  const base: GraphDocument = { schemaVersion: 1, id: 'd', title: 'T', nodes: [], edges: [], frames: [] };
+  const marked: GraphDocument = { ...base, marks: [{ at: { d: 40 } }, { at: { d: 50 } }, { at: { d: 60 } }] };
+
+  it('removes only the named designs, keeping the order of the rest', () => {
+    expect(removeCandidates(marked, [{ at: { d: 50 } }]).marks).toEqual([{ at: { d: 40 } }, { at: { d: 60 } }]);
+  });
+
+  it('drops the field once nothing is left marked', () => {
+    expect(removeCandidates(marked, marked.marks ?? []).marks).toBeUndefined();
+  });
+
+  it('returns the same document when none of the designs is marked', () => {
+    expect(removeCandidates(marked, [{ at: { d: 70 } }])).toBe(marked);
   });
 });
 

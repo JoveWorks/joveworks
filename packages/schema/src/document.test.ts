@@ -921,6 +921,14 @@ describe('Pareto outputs and document-wide marks', () => {
     expect(serializeDocument(parseDocument(study))).toEqual(study);
   });
 
+  it('round-trips the output a mark was made on, and loads marks written without one', () => {
+    const study = {
+      ...base({ kind: 'print' }),
+      marks: [{ at: { d: 40 }, origin: 'front' }, { at: { d: 50 } }],
+    };
+    expect(serializeDocument(parseDocument(study))).toEqual(study);
+  });
+
   it('refuses a mark that names no axis, since it would identify every point', () => {
     expect(() => parseDocument({ ...base({ kind: 'print' }), marks: [{ at: {} }] })).toThrow(/names no axis/u);
   });

@@ -960,6 +960,14 @@ export interface Frame {
 export interface Candidate {
   /** Axis node id → the coordinate on that axis, canonical. */
   readonly at: Readonly<Record<string, number | string>>;
+  /**
+   * The output node whose figure or table the design was marked on — so a
+   * mark drawn on another figure can say where it came from. Provenance only:
+   * identity stays the coordinate (`sameCandidate` ignores this), and the id
+   * may outlive its node, in which case the mark simply says nothing about
+   * its origin. Absent in documents written before it existed.
+   */
+  readonly origin?: string;
 }
 
 export interface GraphDocument {
@@ -1829,7 +1837,10 @@ function parseCandidate(value: JsonValue, path: string): Candidate {
     return [axisId, readString(coordinate, cellPath)] as const;
   });
   if (entries.length === 0) fail(join(path, 'at'), 'names no axis, so it identifies every point rather than one');
-  return { at: Object.fromEntries(entries) };
+  return {
+    at: Object.fromEntries(entries),
+    ...put('origin', optional(object, 'origin', path, readName)),
+  };
 }
 
 function parseFrame(value: JsonValue, path: string): Frame {
@@ -1989,7 +2000,7 @@ export function serializeDocument(document: GraphDocument): JsonObject {
       'marks',
       document.marks === undefined || document.marks.length === 0
         ? undefined
-        : document.marks.map((candidate) => ({ at: { ...candidate.at } })),
+        : document.marks.map((candidate) => ({ at: { ...candidate.at }, ...put('origin', candidate.origin) })),
     ),
   };
 }

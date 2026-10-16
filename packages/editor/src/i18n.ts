@@ -91,6 +91,7 @@ const DUTCH_PHRASES: Readonly<Record<string, string>> = {
   'Click to edit the raw title': 'Klik om de onbewerkte titel te bewerken',
   'caption — what this result says': 'bijschrift — wat dit resultaat zegt', 'Expand section': 'Sectie uitvouwen', 'Collapse section': 'Sectie samenvouwen',
   'result': 'resultaat', 'results': 'resultaten', 'not yet computed': 'nog niet berekend',
+  'Clear marked designs': 'Gemarkeerde ontwerpen wissen', 'Unmark': 'Markering verwijderen:', 'clear all': 'alles wissen', 'marked on': 'gemarkeerd op',
   'export CSV': 'exporteer csv', 'export PNG': 'exporteer png',
   'Download this table as a CSV file.': 'Download deze tabel als csv-bestand.',
   'Download the plotted points as a CSV file.': 'Download de geplotte punten als csv-bestand.',

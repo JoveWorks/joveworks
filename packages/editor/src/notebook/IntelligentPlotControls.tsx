@@ -10,12 +10,15 @@ import {
   type PlotScale,
   type PlotType,
   type PlotViewOverride,
+  type GraphDocument,
 } from '@joveworks/schema';
 
 import { useGraph } from '../graph-context';
 import { useSettings } from '../settings-context';
 import { axisNaturesOf, inferPlotPanels } from '../model/plot';
-import { updateNode } from '../model/document';
+import { removeCandidates, updateNode } from '../model/document';
+import { plotMarkGrid } from '../present/IntelligentPlotFigure';
+import { drawnMarks, marksOver } from '../present/marks';
 import { toUnitsFormat } from '../model/numberFormat';
 import { display, formatAuthored, parseAuthored } from '../model/quantity';
 import { NumberField, TextField } from '../canvas/fields';
@@ -32,7 +35,7 @@ export function IntelligentPlotControls({
   readonly node: OutputNode;
   readonly result: PlotResult;
 }): ReactElement | null {
-  const { document, edit } = useGraph();
+  const { document, edit, analysis } = useGraph();
   const { numberFormat } = useSettings();
   const format = toUnitsFormat(numberFormat);
   const evaluated = result.measures ?? [];
@@ -40,10 +43,11 @@ export function IntelligentPlotControls({
   const output = node.output;
   const panels = inferPlotPanels(axisNaturesOf(document), evaluated);
 
-  const changePanel = (
+  const withPanel = (
+    current: GraphDocument,
     ids: ReadonlySet<string>,
     change: (view: PlotViewOverride) => PlotViewOverride | undefined,
-  ): void => edit((current) => updateNode<OutputNode>(current, node.id, (entry) => {
+  ): GraphDocument => updateNode<OutputNode>(current, node.id, (entry) => {
     if (entry.output.kind !== 'plot') return entry;
     const measures = plotMeasures(entry.output).map((measure): PlotMeasure => {
       if (!ids.has(measure.id)) return measure;
@@ -52,7 +56,24 @@ export function IntelligentPlotControls({
       return view === undefined ? rest : { ...rest, view };
     });
     return { ...entry, output: { kind: 'plot', measures } };
-  }));
+  });
+
+  const changePanel = (
+    ids: ReadonlySet<string>,
+    change: (view: PlotViewOverride) => PlotViewOverride | undefined,
+  ): void => edit((current) => withPanel(current, ids, change));
+
+  // "Reset to Auto" puts the plot back as it first drew, and that includes
+  // the designs marked by clicking it: the marks this plot draws go in the
+  // same edit, so one undo restores both.
+  const resetPanel = (ids: ReadonlySet<string>): void => {
+    const readouts = analysis.evaluation?.axisReadouts ?? new Map();
+    const shown = drawnMarks(marksOver(document.marks ?? [], plotMarkGrid(result), readouts));
+    edit((current) => removeCandidates(
+      withPanel(current, ids, () => undefined),
+      shown.map((mark) => mark.candidate),
+    ));
+  };
 
   const changeMeasure = (id: string, change: (measure: PlotMeasure) => PlotMeasure): void =>
     edit((current) => updateNode<OutputNode>(current, node.id, (entry) => {
@@ -207,7 +228,7 @@ export function IntelligentPlotControls({
                 }}
               />
             </label>
-            <button type="button" onClick={() => changePanel(ids, () => undefined)}>Reset to Auto</button>
+            <button type="button" onClick={() => resetPanel(ids)}>Reset to Auto</button>
           </fieldset>
         );
       })}

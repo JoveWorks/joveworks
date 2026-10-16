@@ -13,7 +13,7 @@ import { describe, expect, it } from 'vitest';
 import type { AxisReadout } from '@joveworks/kernel';
 import type { GraphDocument } from '@joveworks/schema';
 
-import { marksOver, readOnlyMarking, resolveMarks } from './marks';
+import { drawnMarks, markTitle, marksOver, readOnlyMarking, resolveMarks } from './marks';
 
 const axis = (id: string, length: number, order: number) => ({ id, label: id, length, order });
 const UNIT = { symbol: '', dimension: {}, scale: 1, offset: 0 } as unknown as AxisReadout['unit'];
@@ -125,5 +125,34 @@ describe('a published NodeBook', () => {
     // for a design it knows nothing about.
     expect(marksOver(marks, [], readouts).any).toBe(false);
     expect(resolveMarks(marks, [], readouts).marks[0]?.cells).toEqual([0]);
+  });
+});
+
+describe('where a mark came from', () => {
+  const titles = (id: string): string | undefined => (id === 'stress' ? 'Shaft stress' : undefined);
+
+  it('names the output a mark was made on, wherever the mark is drawn', () => {
+    const index = resolveMarks(documentWith([{ at: { d: 10 }, origin: 'stress' }]), [d, T], readouts, titles);
+    const [mark] = index.marks;
+    expect(mark?.origin).toBe('Shaft stress');
+    expect(markTitle(mark!, 'en')).toBe('A — marked on Shaft stress');
+    expect(markTitle(mark!, 'nl')).toBe('A — gemarkeerd op Shaft stress');
+  });
+
+  it('falls back to the bare letter for an older mark or a deleted output', () => {
+    const index = resolveMarks(
+      documentWith([{ at: { d: 10 } }, { at: { d: 20 }, origin: 'gone' }]),
+      [d],
+      readouts,
+      titles,
+    );
+    expect(index.marks.map((mark) => markTitle(mark, 'en'))).toEqual(['A', 'B']);
+  });
+});
+
+describe('drawnMarks', () => {
+  it('keeps only the marks that land on the grid', () => {
+    const index = resolveMarks(documentWith([{ at: { d: 10 } }, { at: { d: 99 } }]), [d], readouts);
+    expect(drawnMarks(index).map((mark) => mark.letter)).toEqual(['A']);
   });
 });

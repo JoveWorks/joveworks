@@ -46,6 +46,7 @@ import { TitleField, typesetTitle } from '../canvas/TitleField';
 import {
   moveFrame,
   reframe,
+  removeCandidates,
   removeNodes,
   renameNode,
   reorderColumn,
@@ -243,10 +244,16 @@ export function Result({ result, node }: { readonly result: OutputResult; readon
   // pins one cell of a scatter and a whole column of a map is the same
   // candidate, decided by one rule rather than five renderers' guesses.
   const readouts: ReadonlyMap<string, AxisReadout> = analysis.evaluation?.axisReadouts ?? new Map();
+  const originTitle = (nodeId: string): string | undefined => {
+    const origin = document.nodes.find((entry) => entry.id === nodeId);
+    return origin === undefined ? undefined : origin.label ?? origin.id;
+  };
   const markingOver = (axes: readonly Axis[]): FigureMarking => ({
-    marks: resolveMarksOver(document.marks ?? [], axes, readouts),
+    marks: resolveMarksOver(document.marks ?? [], axes, readouts, originTitle),
     readouts,
-    toggle: (candidate: Candidate) => edit((current) => toggleCandidate(current, candidate)),
+    // Recorded so the same mark, drawn on another figure, can say where it was made.
+    toggle: (candidate: Candidate) => edit((current) => toggleCandidate(current, { ...candidate, origin: node.id })),
+    unmark: (candidates) => edit((current) => removeCandidates(current, candidates)),
     // Candidate hover was stored in the application-wide graph context, but
     // no surface consumed that state. Updating it on every plot pointer move
     // therefore rebuilt every notebook figure just to throw the value away.

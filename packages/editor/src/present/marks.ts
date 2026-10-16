@@ -17,6 +17,8 @@
 import { candidateMask, markLetter, type Axis, type AxisReadout } from '@joveworks/kernel';
 import type { Candidate } from '@joveworks/schema';
 
+import { phrase, type AppLocale } from '../i18n';
+
 export interface ResolvedMark {
   /** Position in the document's mark list — the identity, and the index the toggle uses. */
   readonly index: number;
@@ -27,6 +29,13 @@ export interface ResolvedMark {
   readonly cells: readonly number[];
   /** A coordinate had to be snapped to a neighbouring sample to land at all. */
   readonly approximate: boolean;
+  /**
+   * The title of the output the design was marked on, when the document says
+   * and that output still exists. Marks propagate to every figure that shares
+   * an axis, so without this a reader finds an **A** on a plot they never
+   * clicked and no way to tell where it came from.
+   */
+  readonly origin?: string;
 }
 
 export interface MarkIndex {
@@ -51,6 +60,8 @@ export interface FigureMarking {
   /** Axis id → coordinates, for turning a clicked cell back into a candidate. */
   readonly readouts: ReadonlyMap<string, AxisReadout>;
   readonly toggle: (candidate: Candidate) => void;
+  /** Unmark these designs in one edit — the figure's "clear" gesture. */
+  readonly unmark: (candidates: readonly Candidate[]) => void;
   readonly hover: (candidate: Candidate | undefined) => void;
 }
 
@@ -69,8 +80,24 @@ export function marksOver(
   marks: readonly Candidate[],
   axes: readonly Axis[],
   readouts: ReadonlyMap<string, AxisReadout>,
+  originTitle?: (nodeId: string) => string | undefined,
 ): MarkIndex {
-  return axes.length === 0 ? NO_MARKS : resolveMarks(marks, axes, readouts);
+  return axes.length === 0 ? NO_MARKS : resolveMarks(marks, axes, readouts, originTitle);
+}
+
+/** "A — marked on Shaft stress", or the bare letter when the origin is unknown. */
+export function markTitle(mark: ResolvedMark, locale: AppLocale): string {
+  return mark.origin === undefined ? mark.letter : `${mark.letter} — ${phrase(locale, 'marked on')} ${mark.origin}`;
+}
+
+/** The lines a figure's hover tip adds for the marks on one cell — none for an unmarked cell. */
+export function markTipLines(marks: readonly ResolvedMark[], locale: AppLocale): readonly string[] {
+  return marks.map((mark) => markTitle(mark, locale));
+}
+
+/** The marks that land on at least one cell — the ones a figure actually draws. */
+export function drawnMarks(index: MarkIndex): readonly ResolvedMark[] {
+  return index.marks.filter((mark) => mark.cells.length > 0);
 }
 
 /** Accepts the gesture and does nothing with it — see `readOnlyMarking`. */
@@ -93,7 +120,7 @@ export function readOnlyMarking(
   axes: readonly Axis[],
   readouts: ReadonlyMap<string, AxisReadout>,
 ): FigureMarking {
-  return { marks: marksOver(marks, axes, readouts), readouts, toggle: IGNORE, hover: IGNORE };
+  return { marks: marksOver(marks, axes, readouts), readouts, toggle: IGNORE, unmark: IGNORE, hover: IGNORE };
 }
 
 /**
@@ -110,15 +137,18 @@ export function resolveMarks(
   candidates: readonly Candidate[],
   axes: readonly Axis[],
   readouts: ReadonlyMap<string, AxisReadout>,
+  originTitle?: (nodeId: string) => string | undefined,
 ): MarkIndex {
   const marks = candidates.map((candidate, index): ResolvedMark => {
     const { mask, approximate } = candidateMask(axes, candidate, readouts);
+    const origin = candidate.origin === undefined ? undefined : originTitle?.(candidate.origin);
     return {
       index,
       letter: markLetter(index),
       candidate,
       cells: mask.flatMap((hit, cell) => (hit ? [cell] : [])),
       approximate: approximate.length > 0,
+      ...(origin === undefined ? {} : { origin }),
     };
   });
 

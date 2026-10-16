@@ -20,7 +20,7 @@
  * is compiled, not by what is drawn.
  */
 
-import { Fragment, useRef, useState, type ReactElement, type ReactNode } from 'react';
+import { Fragment, useRef, useState, type MouseEvent, type ReactElement, type ReactNode } from 'react';
 
 import {
   candidateAt,
@@ -33,6 +33,7 @@ import type { Unit } from '@joveworks/units';
 
 import { Equation } from '../Equation';
 import { ParameterLabel } from '../ParameterLabel';
+import { ContextMenu, type MenuItem } from '../canvas/ContextMenu';
 import { TitleText } from '../canvas/TitleField';
 import { CheckReading } from '../CheckReading';
 import { display, displayNumber } from '../model/quantity';
@@ -42,8 +43,8 @@ import { BestDesignCard } from './BestDesignCard';
 import { CandidateReadings } from './CandidateReadings';
 import { DistributionFigure } from './DistributionFigure';
 import { FeasibilityFigure, feasibilityGrid } from './FeasibilityFigure';
-import { IntelligentPlotFigure } from './IntelligentPlotFigure';
-import { NO_MARKS, type FigureMarking, type MarkIndex } from './marks';
+import { IntelligentPlotFigure, plotMarkGrid } from './IntelligentPlotFigure';
+import { drawnMarks, markTitle, NO_MARKS, type FigureMarking, type MarkIndex } from './marks';
 import { ParetoFigure } from './ParetoFigure';
 import { PlotFigure, plotGrid } from './PlotFigure';
 import { ReliabilityCard } from './ReliabilityCard';
@@ -124,6 +125,7 @@ const NO_MARKING: FigureMarking = {
   marks: NO_MARKS,
   readouts: new Map(),
   toggle: () => undefined,
+  unmark: () => undefined,
   hover: () => undefined,
 };
 
@@ -144,6 +146,7 @@ export function ResultView({
   // The drawn plot, for `editing.plotActions` — every panel of it, and
   // nothing of the title, controls or caption around it.
   const plotFigure = useRef<HTMLDivElement>(null);
+  const [plotMenu, setPlotMenu] = useState<{ readonly x: number; readonly y: number } | undefined>(undefined);
 
   const markingFor = (axes: readonly Axis[]): FigureMarking => markingOver?.(axes) ?? NO_MARKING;
   const marksOver = (axes: readonly Axis[]): MarkIndex => markingFor(axes).marks;
@@ -302,7 +305,7 @@ export function ResultView({
                   return (
                     <td key={column.name}>
                       {letters.map((entry) => (
-                        <span className="mark-letter" key={entry.index}>
+                        <span className="mark-letter" key={entry.index} title={markTitle(entry, locale)}>
                           {entry.letter}
                         </span>
                       ))}
@@ -372,16 +375,70 @@ export function ResultView({
     return <div className="result plot">{label}<ReliabilityCard result={result} /></div>;
   }
 
+  // A click on the curve marks a design, and nothing on the figure itself
+  // says how to take that back. In the editor, each mark the plot draws gets a
+  // removable chip under it, and a right-click on the figure offers the same.
+  // The read-only viewer has no `editing` and shows neither.
+  const plotMarking = markingFor(plotMarkGrid(result));
+  const shown = editing === undefined ? [] : drawnMarks(plotMarking.marks);
+  const plotMenuItems: readonly MenuItem[] = [
+    {
+      label: t('Clear marked designs'),
+      disabled: shown.length === 0,
+      onClick: () => plotMarking.unmark(shown.map((mark) => mark.candidate)),
+    },
+    ...shown.map((mark) => ({
+      label: `${t('Unmark')} ${mark.letter}`,
+      onClick: () => plotMarking.unmark([mark.candidate]),
+    })),
+  ];
+
   return (
     <div className="result plot">
       {label}
-      <div className="plot-figure" ref={plotFigure}>
+      <div
+        className="plot-figure"
+        ref={plotFigure}
+        {...(editing === undefined
+          ? {}
+          : {
+              onContextMenu: (event: MouseEvent) => {
+                event.preventDefault();
+                setPlotMenu({ x: event.clientX, y: event.clientY });
+              },
+            })}
+      >
         {result.measures === undefined ? (
           <PlotFigure result={result} marking={markingFor(plotGrid(result))} />
         ) : (
           <IntelligentPlotFigure result={result} markingFor={markingFor} />
         )}
       </div>
+      {plotMenu === undefined ? null : (
+        <ContextMenu x={plotMenu.x} y={plotMenu.y} items={plotMenuItems} onClose={() => setPlotMenu(undefined)} />
+      )}
+      {shown.length === 0 ? null : (
+        <div className="plot-marks">
+          {shown.map((mark) => (
+            <span className="plot-mark" key={mark.index} title={markTitle(mark, locale)}>
+              {mark.letter}
+              <button
+                type="button"
+                aria-label={`${t('Unmark')} ${mark.letter}`}
+                title={`${t('Unmark')} ${mark.letter}`}
+                onClick={() => plotMarking.unmark([mark.candidate])}
+              >
+                ×
+              </button>
+            </span>
+          ))}
+          {shown.length > 1 ? (
+            <button type="button" className="plot-marks-clear" onClick={() => plotMarking.unmark(shown.map((mark) => mark.candidate))}>
+              {t('clear all')}
+            </button>
+          ) : null}
+        </div>
+      )}
       {editing?.plotActions === undefined ? null : (
         <div className="plot-actions">{editing.plotActions(() => plotFigure.current)}</div>
       )}
