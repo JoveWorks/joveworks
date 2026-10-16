@@ -78,6 +78,15 @@ tools/extract/    One-off Python extraction scripts, retained for provenance, no
 - Graphs reference formulas by global ID, version, and hash; never embed formula
   bodies. Documents carry an integer schema version. The notebook is a view of
   graph group frames, not a second document.
+- Saved documents and published catalogues must stay readable. JoveWorks is
+  used by hundreds of students, whose NodeBooks and cached catalogues nobody
+  can reach in to rewrite. Grow the format by adding optional fields, where an
+  absent field means the old behaviour; the parsers ignore unknown keys, so an
+  older build still opens a newer file. Never rename, remove, or change the
+  meaning of a persisted field without a `DOCUMENT_SCHEMA_VERSION` bump and a
+  step in `packages/schema/src/migration.ts`, covered by a fixture under
+  `packages/schema/fixtures/documents/`. Catalogues have no migration path yet, so a
+  catalogue change that is not additive needs a decision from the user first.
 - The editor is desktop-only. Preserve its palette/canvas/notebook layout and
   avoid introducing a permanent inspector without an explicit product decision.
 

@@ -36,7 +36,8 @@ No evaluation logic lives here — just types, parsing (untrusted JSON → typed
 - `src/json.ts` — the hand-written JSON boundary readers (`readObject`, `readString`, `required`, `optional`, `canonicalJson`, `put`, etc.) every other parser in this package is built from. Edit when you need a new primitive-reading helper or change how required/optional fields are handled.
 - `src/errors.ts` — `SchemaError`, the one error type for anything this package rejects; carries a dotted field path.
 - `src/hash.ts` — `fnv1a64`/`hashRecord`: the content hash a graph stores alongside a formula id+version, used to detect when a catalogue has changed under a saved graph.
-- `src/version.ts` — `SCHEMA_VERSION` and the version-stamp check on load. Bump this (deliberately, no migration chain yet) when the document format changes shape.
+- `src/version.ts` — `DOCUMENT_SCHEMA_VERSION`, `CATALOGUE_SCHEMA_VERSION` and the version-stamp check on load. Prefer an additive, optional field; bump the document version only for a change that is not additive, together with a step in `src/migration.ts` (saved documents must stay readable — see AGENTS.md).
+- `src/migration.ts` — `migrateDocument`, the per-version upgrade chain a saved document walks before `parseDocument` validates it. Add a step here for every document version bump.
 - `src/localization.ts` — `LocalizedText` (a `{en, nl, ...}` map), `localize()`. Edit when adding a new UI locale or changing fallback resolution.
 - `src/quantity.ts` — `Quantity` (authored magnitude + unit), `parseUnitField`/`parsePortUnitField`, `canonicalValue` — the one place a document's authored number crosses into the kernel's canonical units.
 - `src/port.ts` — `Port` (numeric/categorical/spectrum/bundle), `PortUnit`, `ValidRange`, `portDimension`, generic-signature rules (`asInputPort`/`asOutputPort`). Edit when adding a new port kind or changing what a formula's inputs/outputs can declare.

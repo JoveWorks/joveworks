@@ -20,12 +20,12 @@
  * reasoning applies to the document version alone — a catalogue on a version
  * this build does not understand still gets the same
  * hard, named refusal `readSchemaVersion` below always gave, because nothing
- * here migrates catalogue content. The course beta is still being prepped:
- * no student has a saved graph and no school has a cached catalogue yet, so
- * "regenerate the file" is still an acceptable answer to "the version
- * changed" — the window for a plain format break, rather than a migration,
- * is still open. That changes the moment real files exist, and this file's
- * reasoning above is already written for that day.
+ * here migrates catalogue content.
+ *
+ * Real files exist now: hundreds of students save NodeBooks, so "regenerate
+ * the file" is no longer an answer. A format change is additive (an optional
+ * field, absent meaning the old behaviour) or it bumps the version and ships
+ * a migration step with a fixture — see AGENTS.md.
  */
 
 import { fail, join, readInteger, required, type JsonObject } from './json.js';
