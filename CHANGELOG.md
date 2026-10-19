@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.31.1](https://github.com/JoveWorks/joveworks/compare/v0.31.0...v0.31.1) (2026-10-19)
+
+### Features
+
+* let a catalogue link each formula's help to the page of its book ([7b33b02](https://github.com/JoveWorks/joveworks/commit/7b33b0297ddb1986130d4adc283691b6eaed845c))
+* **nodes:** convert between rpm and rad/s ([4f6941e](https://github.com/JoveWorks/joveworks/commit/4f6941eda4e1912aa2f4854838787e1863352a89)), closes [#4](https://github.com/JoveWorks/joveworks/issues/4)
+
+### Fixes
+
+* **nodes:** keep pi and e lowercase in the palette ([fd050ff](https://github.com/JoveWorks/joveworks/commit/fd050ffd9ea156be0bc7e982bfff9f7b54518410))
+* **nodes:** label the pi node with its symbol, π ([fe0fb50](https://github.com/JoveWorks/joveworks/commit/fe0fb50eb90c0b17e70820b790e6cb2d3a12dcbc))
 ## [0.31.0](https://github.com/JoveWorks/joveworks/compare/v0.30.0...v0.31.0) (2026-10-16)
 
 ### Features
