@@ -257,6 +257,43 @@ describe('the base node library through the kernel', () => {
     expect(canConnect(document, catalogues, wire('beta.value', 'sin.theta'))).toEqual({ ok: true });
   });
 
+  describe('rpm ↔ rad/s', () => {
+    const convert = (value: number, unit: string, node_: string): GraphDocument =>
+      graph(
+        [input('x', { kind: 'scalar', value, unit }), node('c', node_)],
+        [wire('x.value', node_ === 'base.convert.angular-velocity' ? 'c.n' : 'c.omega')],
+      );
+
+    it('turns 1450 rpm into 2π·1450/60 rad/s', () => {
+      const evaluation = evaluateDocument(convert(1450, 'rpm', 'base.convert.angular-velocity'), catalogues);
+      const omega = numeric(valueAt(evaluation, 'c', 'omega')).data[0] as number;
+      expect(omega).toBeCloseTo((2 * Math.PI * 1450) / 60, 9);
+      expect(omega).toBeCloseTo(151.84, 2);
+    });
+
+    it('turns 100 rad/s into 100·60/2π rpm', () => {
+      const evaluation = evaluateDocument(convert(100, 'rad/s', 'base.convert.rotational-speed'), catalogues);
+      // Canonical frequency is s⁻¹; ×60 reads it in rpm.
+      const n = numeric(valueAt(evaluation, 'c', 'n')).data[0] as number;
+      expect(n * 60).toBeCloseTo((100 * 60) / (2 * Math.PI), 9);
+      expect(n * 60).toBeCloseTo(954.93, 2);
+    });
+
+    it('will not wire rpm straight into a rad/s port, nor rad/s into an rpm one', () => {
+      const document = graph(
+        [
+          input('n', { kind: 'scalar', value: 1450, unit: 'rpm' }),
+          input('omega', { kind: 'scalar', value: 100, unit: 'rad/s' }),
+          node('toN', 'base.convert.rotational-speed'),
+          node('toOmega', 'base.convert.angular-velocity'),
+        ],
+        [],
+      );
+      expect(canConnect(document, catalogues, wire('n.value', 'toN.omega')).ok).toBe(false);
+      expect(canConnect(document, catalogues, wire('omega.value', 'toOmega.n')).ok).toBe(false);
+    });
+  });
+
   describe('a variadic port joined by several discrete wires', () => {
     it('reduces any number of wired values, not just two', () => {
       const document = graph(

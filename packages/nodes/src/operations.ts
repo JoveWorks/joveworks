@@ -265,6 +265,33 @@ const DRAFTS: readonly Draft[] = [
     inputs: [plain('x', '', 'Exponent')],
   },
 
+  // --- rotational speed ↔ angular velocity --------------------------------
+  // `rpm` is a frequency (revolutions per unit time) and `rad/s` is an angle
+  // per unit time. Angle is a dimension of its own, so the two do not connect:
+  // a bridge that let them would read 150 rad/s as 150 revolutions per second,
+  // off by 2π. These two nodes are where the 2π lives instead. The `1[rad]`
+  // literal is what turns a count of turns into an angle.
+  {
+    id: 'base.convert.angular-velocity',
+    label: text('rpm → rad/s'),
+    description:
+      'Angular velocity from rotational speed, ω = 2π·n — one revolution is 2π rad. ' +
+      'Turns a speed in rpm into rad/s, which do not connect directly.',
+    expression: '2 * pi * n * 1[rad]',
+    output: plain('omega', 'rad/s', 'Angular velocity, ω = 2π·n'),
+    inputs: [plain('n', 'rpm', 'Rotational speed')],
+  },
+  {
+    id: 'base.convert.rotational-speed',
+    label: text('rad/s → rpm'),
+    description:
+      'Rotational speed from angular velocity, n = ω / 2π — one revolution is 2π rad. ' +
+      'Turns a speed in rad/s into rpm, which do not connect directly.',
+    expression: 'omega / (2 * pi * 1[rad])',
+    output: plain('n', 'rpm', 'Rotational speed, n = ω / 2π'),
+    inputs: [plain('omega', 'rad/s', 'Angular velocity')],
+  },
+
   // --- constants -----------------------------------------------------------
   {
     id: 'base.constants.pi',

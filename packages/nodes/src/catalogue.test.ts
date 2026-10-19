@@ -226,7 +226,9 @@ describe('what the library carries', () => {
       for (const port of formula.inputs) {
         expect(expression, formula.id).toContain(port.name);
       }
-      const identifiers = new Set(expression.match(/[A-Za-z_][A-Za-z0-9_]*/gu) ?? []);
+      // A typed literal's unit (`1[rad]`) is not a name the expression reads.
+      const names = expression.replace(/\[[^\]]*\]/gu, '');
+      const identifiers = new Set(names.match(/[A-Za-z_][A-Za-z0-9_]*/gu) ?? []);
       const inputs = new Set(formula.inputs.map((port) => port.name));
       for (const name of identifiers) {
         if (FUNCTIONS.has(name)) continue;
@@ -278,6 +280,29 @@ function resolved(port: Port, bindings: Readonly<Record<string, Dimension>>): Di
   if (port.kind === 'categorical') return DIMENSIONLESS;
   return isGenericDimension(port.unit) ? resolveGeneric(port.unit, bindings) : port.unit.dimension;
 }
+
+describe('rotational speed and angular velocity', () => {
+  const formula = (id: string): Formula => {
+    const found = OPERATIONS.find((entry) => entry.id === id);
+    if (found === undefined) throw new Error(`no base node '${id}'`);
+    return found;
+  };
+
+  it('takes rpm to rad/s and back, as a frequency and an angle per time', () => {
+    const toOmega = formula('base.convert.angular-velocity');
+    const toN = formula('base.convert.rotational-speed');
+    expect(toOmega.label.en).toBe('rpm → rad/s');
+    expect(toN.label.en).toBe('rad/s → rpm');
+    expect(resolved(toOmega.inputs[0] as Port, {})).toEqual(parseUnit('rpm').dimension);
+    expect(resolved(toOmega.outputs[0]!, {})).toEqual(parseUnit('rad/s').dimension);
+    expect(resolved(toN.inputs[0] as Port, {})).toEqual(parseUnit('rad/s').dimension);
+    expect(resolved(toN.outputs[0]!, {})).toEqual(parseUnit('rpm').dimension);
+  });
+
+  it('keeps rpm and rad/s different dimensions, which is why the nodes exist', () => {
+    expect(dimensionsEqual(parseUnit('rpm').dimension, parseUnit('rad/s').dimension)).toBe(false);
+  });
+});
 
 describe('dimensions are consistent with the expression, by inspection', () => {
   /**

@@ -45,6 +45,8 @@ export function plainVariadic(name: string, unit: string, description: string): 
 
 export interface Draft {
   readonly id: string;
+  /** Overrides the label derived from the id, for a node whose name reads better as notation (`rpm → rad/s`). */
+  readonly label?: LocalizedText;
   readonly description: string;
   readonly expression: string;
   readonly output: OutputPort;
@@ -75,7 +77,7 @@ export function buildFormulas(
     // Keyed by the one output it answers for — every base node states one
     // relation, so this is the single-output shape, written out.
     expressions: { [draft.output.name]: draft.expression },
-    label: draftLabel(draft.id, dutchLabels),
+    label: draft.label ?? draftLabel(draft.id, dutchLabels),
     description: text(draft.description),
     status: 'unverified' as const,
   }));
