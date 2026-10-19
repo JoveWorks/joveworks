@@ -295,8 +295,9 @@ const DRAFTS: readonly Draft[] = [
   // --- constants -----------------------------------------------------------
   {
     id: 'base.constants.pi',
-    // A symbol, so its case is meaning: the id-derived label would read `Pi`.
-    label: { en: 'pi', nl: 'pi' },
+    // The symbol itself; the id-derived label would read `Pi`. Search still finds
+    // it as `pi` through the id.
+    label: { en: 'π', nl: 'π' },
     description: 'The circle constant, as a node so it can be wired rather than retyped.',
     expression: 'pi',
     output: plain('value', '', 'π'),

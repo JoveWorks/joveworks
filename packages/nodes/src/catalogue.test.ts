@@ -283,7 +283,7 @@ function resolved(port: Port, bindings: Readonly<Record<string, Dimension>>): Di
 
 describe('constants keep the case of their symbol', () => {
   it.each([
-    ['pi', 'pi'],
+    ['pi', 'π'],
     ['e', 'e'],
   ])('labels %s as %s in every language', (id, label) => {
     const formula = byId(id);
