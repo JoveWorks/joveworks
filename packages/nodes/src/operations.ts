@@ -295,6 +295,8 @@ const DRAFTS: readonly Draft[] = [
   // --- constants -----------------------------------------------------------
   {
     id: 'base.constants.pi',
+    // A symbol, so its case is meaning: the id-derived label would read `Pi`.
+    label: { en: 'pi', nl: 'pi' },
     description: 'The circle constant, as a node so it can be wired rather than retyped.',
     expression: 'pi',
     output: plain('value', '', 'π'),
@@ -302,6 +304,8 @@ const DRAFTS: readonly Draft[] = [
   },
   {
     id: 'base.constants.e',
+    // Lowercase — `E` reads as Young's modulus, not Euler's number.
+    label: { en: 'e', nl: 'e' },
     description: 'Euler’s number, the base of the natural logarithm.',
     expression: 'exp(1)',
     output: plain('value', '', 'e'),
@@ -318,7 +322,6 @@ const DUTCH_LABELS: Readonly<Record<string, string>> = {
   sine: 'Sinus', cosine: 'Cosinus', tangent: 'Tangens', arcSine: 'Boogsinus', arcCosine: 'Boogcosinus',
   arcTangent: 'Boogtangens', hyperbolicSine: 'Hyperbolische sinus', hyperbolicCosine: 'Hyperbolische cosinus',
   hyperbolicTangent: 'Hyperbolische tangens', logarithm: 'Natuurlijke logaritme', exponential: 'Exponentieel',
-  pi: 'Pi', e: 'Getal van Euler',
 };
 
 export const OPERATIONS: readonly Formula[] = [...buildFormulas(DRAFTS, DUTCH_LABELS), ...ISO286_FORMULAS];

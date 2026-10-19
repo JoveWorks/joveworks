@@ -281,6 +281,17 @@ function resolved(port: Port, bindings: Readonly<Record<string, Dimension>>): Di
   return isGenericDimension(port.unit) ? resolveGeneric(port.unit, bindings) : port.unit.dimension;
 }
 
+describe('constants keep the case of their symbol', () => {
+  it.each([
+    ['pi', 'pi'],
+    ['e', 'e'],
+  ])('labels %s as %s in every language', (id, label) => {
+    const formula = byId(id);
+    expect(formula.label.en).toBe(label);
+    expect(formula.label.nl).toBe(label);
+  });
+});
+
 describe('rotational speed and angular velocity', () => {
   const formula = (id: string): Formula => {
     const found = OPERATIONS.find((entry) => entry.id === id);
