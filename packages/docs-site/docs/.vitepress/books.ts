@@ -1,10 +1,12 @@
 /*
  * The books the bundled catalogues cite, published under /docs/books/.
  *
- * A catalogue's book lives beside it, with the same name: `photography.html`
- * next to `photography.json`, or — for a book of several pages, with its own
- * stylesheet and figures — a folder `rm/` next to `rm.yaml`. The editor
- * resolves a bundled catalogue's relative `source.url` against
+ * A catalogue's book lives beside it in the catalogues folder: an `.html`
+ * file — `photography.html` next to `photography.json` — or, for a book of
+ * several pages with its own stylesheet and figures, a folder with an
+ * `index.html`. Each is published under its own name, so several catalogue
+ * files can share one book: the chapters of a textbook all citing `rm/`.
+ * The editor resolves a bundled catalogue's relative `source.url` against
  * `<docs>/books/` (see `hostedLink` in packages/editor/src/model/catalogues.ts),
  * and this is what puts the book there: copied unchanged at build, so links
  * between its pages keep working and its address never changes, and served
@@ -20,7 +22,6 @@ import { fileURLToPath } from "node:url";
 import type { Plugin } from "vite";
 
 const CATALOGUES = fileURLToPath(new URL("../../../editor/src/catalogues/", import.meta.url));
-const CATALOGUE_EXTENSIONS = [".json", ".yaml", ".yml"];
 
 /** Book name (as published) → its file or folder on disk. */
 function books(): ReadonlyMap<string, string> {
@@ -28,17 +29,10 @@ function books(): ReadonlyMap<string, string> {
   if (process.env.VITE_EXAMPLE_CATALOGUES === "on") folders.push(join(CATALOGUES, "examples"));
   const found = new Map<string, string>();
   for (const folder of folders) {
-    const entries = readdirSync(folder);
-    const catalogues = new Set(
-      entries.filter((entry) => CATALOGUE_EXTENSIONS.includes(extname(entry))).map((entry) => entry.slice(0, -extname(entry).length)),
-    );
-    for (const entry of entries) {
+    for (const entry of readdirSync(folder)) {
       const path = join(folder, entry);
-      if (statSync(path).isDirectory()) {
-        if (catalogues.has(entry)) found.set(entry, path);
-      } else if (extname(entry) === ".html" && catalogues.has(entry.slice(0, -".html".length))) {
-        found.set(entry, path);
-      }
+      const book = statSync(path).isDirectory() ? existsSync(join(path, "index.html")) : extname(entry) === ".html";
+      if (book) found.set(entry, path);
     }
   }
   return found;

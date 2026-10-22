@@ -113,6 +113,7 @@ your-joveworks/
   Dockerfile
   nginx.conf          # from deploy/stable-bundle/nginx.conf.snippet
   catalogue/*.yaml    # your formula catalogue (a submodule works well)
+  book/               # optional: the HTML textbook it cites
 ```
 
 ```dockerfile
@@ -126,6 +127,9 @@ WORKDIR /src
 # The editor globs src/catalogues/ at build time, so copying files in is the
 # entire integration — no patching of JoveWorks source is required.
 COPY catalogue/*.yaml packages/editor/src/catalogues/
+# The textbook, published at /docs/books/your-institution-book/; drop this
+# line if you have none. See "Adding your course book" under option 4.
+COPY book/ packages/editor/src/catalogues/your-institution-book/
 
 ENV JOVEWORKS_CHANNEL=your-institution
 RUN pnpm install --frozen-lockfile && pnpm build:bundle
@@ -254,6 +258,114 @@ The example catalogues upstream ships live in the `examples/` subfolder and
 are left out of the build unless you set `VITE_EXAMPLE_CATALOGUES=on`. Leave
 the files there even if you never use them: deleting them from your fork
 would conflict on every release that touches them.
+
+### Adding your course book
+
+If the textbook your catalogue cites exists as an HTML site, JoveWorks can
+publish it with the docs. Each formula's "?" then opens the equation the
+formula comes from, and resting on the "?" shows a preview of it. The book
+must be HTML; a PDF cannot be linked to an equation.
+
+Four steps: put the book in the catalogues folder, point the catalogue at it,
+give each formula its anchor, and check.
+
+**1. Put the book next to your catalogue.** Copy the book's whole built site,
+as one folder, into `packages/editor/src/catalogues/`. The folder must
+contain an `index.html`; that is how it is recognised as a book. Give it the
+same prefix as your catalogue files:
+
+```bash
+# The book's build output: index.html (the contents), one page per chapter,
+# and its stylesheet, scripts and figures. For a LaTeX book built with its
+# own HTML script, this is typically html/_site/ after the build.
+cp -r ~/course/book/html/_site packages/editor/src/catalogues/your-institution-book
+git add packages/editor/src/catalogues/your-institution-book
+git commit -m "Add course book"
+```
+
+The build publishes the folder unchanged at
+`/docs/books/your-institution-book/`, next to the JoveWorks docs. Links
+between its pages, its stylesheet and its figures keep working. A book that
+is a single page can be one file instead: `your-institution-book.html`,
+published as `/docs/books/your-institution-book.html`.
+
+**2. Point each catalogue file at the book.** Add a `source` to every
+catalogue file that cites it. A catalogue split over several files, one per
+chapter, shares one book:
+
+```yaml
+schemaVersion: 1
+id: your-institution-c2-tolerance
+name: Chapter 2, tolerances and fits
+restricted: true
+source:
+  title:
+    en: the course textbook     # shown on the "?": "Open this formula in the course textbook"
+  url: your-institution-book/index.html
+formulas:
+  # …
+```
+
+`url` is relative to the books folder, so it is the book's folder name and
+its start page. A formula without an anchor (step 3) opens this page, so make
+it the contents.
+
+**3. Give each formula its anchor.** A formula's `href` is the page and
+anchor it is on, relative to the book's folder:
+
+```yaml
+  - id: your-institution.c2.hole-upper-limit
+    citation: R&M 2.1A
+    href: ch02.html#eq-2.1
+```
+
+The anchors are whatever the book's HTML uses. A book built from LaTeX with
+numbered equations, sections, figures and tables typically has one page per
+chapter and anchors like these:
+
+| The book says | `href` |
+|---|---|
+| Equation (8.20) | `ch08.html#eq-8.20` |
+| Section 8.3.1 | `ch08.html#8.3.1` |
+| Fig. 8.5 | `ch08.html#fig-8.5` |
+| Table 20.1 | `ch20.html#table-20.1` |
+| Table TB 8-1, part a) | `tb08.html#TB8-1a` |
+
+Check your book's own documentation for the exact shapes. Rearranged forms
+of one equation (`2.1A`, `2.1B`) all point to the equation itself
+(`#eq-2.1`). Open a page in the browser, hover a heading or equation, and
+the address bar or its link button shows the anchor.
+
+With hundreds of formulas, do not type these by hand. When the citations
+follow the book's numbering (`R&M 2.1A` is equation 2.1 in chapter 2),
+derive each `href` from the citation with a short script. Then fix by hand
+the few the script cannot place, such as an unnumbered equation.
+
+**4. Check it.** Run `pnpm build:bundle` and open
+`packages/editor/build/docs/books/your-institution-book/index.html`. Then,
+in the running editor, rest on the "?" of a few formula nodes. Each should
+preview its own equation, highlighted if the book highlights a linked
+equation. A preview that opens at the top of a page means the anchor does not
+exist on that page.
+
+Things to know:
+
+- **Whoever can open your JoveWorks can open the book.** It is served from
+  the same address as the editor and its docs. A licensed or translated
+  textbook belongs on a deployment that only your students can reach, and in
+  a private fork. Never put it on a public host.
+- **Updating the book** means rebuilding it, copying the folder again and
+  committing. Anchors generated from the book's numbering stay valid as long
+  as the numbering does.
+- **Size.** A textbook with figures can be tens of megabytes. That is fine
+  for your GitLab. If you would rather keep it out of the repository, copy
+  it in during the build instead, as in option 2.
+- **Under a subpath**, the books move with the docs: see
+  `JOVEWORKS_BASE_PATH` in the table under option 2.
+- **A catalogue handed out as a file** rather than built in cannot bring its
+  book along. Give its `url` the book's full address instead,
+  `https://joveworks.your-university.be/docs/books/your-institution-book/index.html`;
+  the anchors stay the same.
 
 ### Updating to a new release
 
