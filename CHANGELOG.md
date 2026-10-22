@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.32.0](https://github.com/JoveWorks/joveworks/compare/v0.31.1...v0.32.0) (2026-10-22)
+
+### Features
+
+* a wider, scrollable help preview ([07bea81](https://github.com/JoveWorks/joveworks/commit/07bea81a84f2d9a6be0be9e3e0f3ca6fd54b65c4))
+* link a catalogue to an HTML book and preview the node's "?" ([169d0a4](https://github.com/JoveWorks/joveworks/commit/169d0a4652da29ae92577d6c1885f29cd6e93551)), references [#eq-2](https://github.com/JoveWorks/joveworks/issues/eq-2) [ch02.html#eq-2](https://github.com/JoveWorks/joveworks/issues/eq-2)
+* publish the catalogues' books under /docs/books/ ([23495b8](https://github.com/JoveWorks/joveworks/commit/23495b867fcea3f736e662e354085d5f3efd8bcb))
+
+### Fixes
+
+* preview only a help page the catalogue names ([5f5a3a3](https://github.com/JoveWorks/joveworks/commit/5f5a3a38a6e6cc8b0072d27599709df2555bf787))
+
+### Refactoring
+
+* link catalogues to HTML books only ([19fb449](https://github.com/JoveWorks/joveworks/commit/19fb44931fd6e924450d39de103b7a217da6f92d))
+
+### Documentation
+
+* explain each formula in the photography book ([dd2abe8](https://github.com/JoveWorks/joveworks/commit/dd2abe803e956e3d7d1b12053fcf443047188faf))
+* walk a school through adding its course book ([25fa1ab](https://github.com/JoveWorks/joveworks/commit/25fa1abe135576ae9aee7397a0d79069522d3cba))
 ## [0.31.1](https://github.com/JoveWorks/joveworks/compare/v0.31.0...v0.31.1) (2026-10-19)
 
 ### Features
