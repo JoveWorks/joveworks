@@ -1,5 +1,7 @@
 import { defineConfig } from "vitepress";
 
+import { copyBooks, serveBooks } from "./books";
+
 // Must stay an absolute path, unlike the editor and catalogue-author builds.
 // Verified experimentally: with a relative base VitePress still emits a
 // uniform `./assets/...` on every page regardless of nesting depth, so a
@@ -33,6 +35,9 @@ export default defineConfig({
   base: docsBase,
   cleanUrls: true,
   head: [["link", { rel: "icon", href: docsBase + "favicon.svg", type: "image/svg+xml" }]],
+  // The catalogues' books, at /docs/books/ — see books.ts.
+  vite: { plugins: [serveBooks(docsBase)] },
+  buildEnd: (site) => copyBooks(site.outDir),
   themeConfig: {
     nav: [
       { text: "Guide", link: "/guide/getting-started" },

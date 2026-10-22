@@ -30,6 +30,7 @@ import {
   baseCatalogueJson,
   mechanicsCatalogueJson,
 } from '@joveworks/nodes';
+import { DOCS_BASE_URL } from '../help-links';
 import { fuzzySearch } from './fuzzy';
 
 export interface PaletteEntry {
@@ -84,39 +85,25 @@ const exampleYamlCatalogueModules = EXAMPLES_ENABLED
   : {};
 
 /**
- * The books that ship beside the bundled catalogues: `photography.html` next
- * to `photography.json`, cited by a relative `source.url`. Vite hashes the
- * emitted file name, so a relative link cannot simply be resolved against
- * the catalogue's directory — it is looked up here by file name instead.
- * Gated like the catalogues, so a school's build carries no example book.
+ * A relative source link made absolute. A bundled catalogue's book ships
+ * beside it and is published by the docs site at `<docs>/books/` (see
+ * packages/docs-site/docs/.vitepress/books.ts): `photography.html#eq-1.1`
+ * becomes `<docs>/books/photography.html#eq-1.1`, and a book of several pages,
+ * `rm/ch02.html#eq-2.1`, keeps its own folder. A loaded file cannot bring its
+ * book along, so its relative link resolves to nothing and the "?" falls back
+ * to the ordinary help.
  */
-const bundledBookModules = import.meta.glob<string>('../catalogues/*.html', {
-  eager: true,
-  import: 'default',
-  query: '?url',
-});
-
-const exampleBookModules = EXAMPLES_ENABLED
-  ? import.meta.glob<string>('../catalogues/examples/*.html', { eager: true, import: 'default', query: '?url' })
-  : {};
-
-const BUNDLED_BOOKS: ReadonlyMap<string, string> = new Map(
-  Object.entries({ ...bundledBookModules, ...exampleBookModules }).map(([path, url]) => [path.slice(path.lastIndexOf('/') + 1), url]),
-);
-
-/**
- * A relative source link made absolute: `photography.html#eq-1.1` becomes
- * the hosted book plus its anchor. A relative link to a book the app does not
- * host — a loaded file cannot bring its book along — resolves to nothing, so
- * the "?" falls back to the ordinary help.
- */
-function hostedLink(link: string): string | undefined {
+function hostedLink(catalogue: Catalogue, link: string): string | undefined {
   if (!isRelativeLink(link)) return link;
-  const split = link.search(/[?#]/);
-  const file = split === -1 ? link : link.slice(0, split);
-  const book = BUNDLED_BOOKS.get(file);
-  if (book === undefined) return undefined;
-  return new URL(book + (split === -1 ? '' : link.slice(split)), window.location.href).href;
+  if (!bundledCatalogueIds().has(catalogue.id)) return undefined;
+  return new URL(link, `${DOCS_BASE_URL}/books/`).href;
+}
+
+let bundledIds: ReadonlySet<string> | undefined;
+
+function bundledCatalogueIds(): ReadonlySet<string> {
+  bundledIds ??= new Set(bundledCatalogues().map(({ id }) => id));
+  return bundledIds;
 }
 
 /**
@@ -186,7 +173,7 @@ export function formulaSource(
   const catalogue = catalogues.find((candidate) => candidate.formulas.includes(formula));
   if (catalogue === undefined) return undefined;
   const link = sourceHref(catalogue, formula);
-  const href = link === undefined ? undefined : hostedLink(link);
+  const href = link === undefined ? undefined : hostedLink(catalogue, link);
   if (href === undefined) return undefined;
   const title = catalogue.source?.title;
   return title === undefined ? { href } : { href, title: localize(title, locale) };

@@ -59,8 +59,11 @@ formulas:
 
 - **url** — the book. A relative url means a book that ships beside the
   catalogue, with the same name: `photography.html` next to
-  `photography.json` in `packages/editor/src/catalogues/examples/`. The
-  editor hosts it, so editing the book is editing that one file. A catalogue
+  `photography.json` in `packages/editor/src/catalogues/examples/`, or, for a
+  book of several pages with its own stylesheet and figures, a folder `rm/`
+  next to `rm.yaml`, with `url: rm/index.html`. The docs site publishes it
+  unchanged at `/docs/books/` (`/docs/books/photography.html`), so editing
+  the book is editing that file and its address never changes. A catalogue
   loaded from a file cannot bring its book along; give it an absolute
   `http`/`https` url instead.
 - **title** — optional. Shown on the "?": "Open this formula in the
