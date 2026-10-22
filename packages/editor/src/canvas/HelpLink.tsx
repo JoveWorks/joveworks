@@ -1,12 +1,14 @@
 /**
  * A node's "?": a link to its help — the docs entry for the node kind, or the
- * page of the book a catalogue formula cites — that previews where it goes.
+ * page of the book a catalogue formula cites.
  *
- * Resting on the "?" shows a small snapshot of the target, scrolled to its
- * anchor, so a student can glance at the equation the node computes without
- * leaving the canvas; a click opens it in a new tab, as before. The snapshot
- * is an iframe drawn at a reading width and scaled down, with pointer events
- * off: it is a picture of the page, and the card around it is the link.
+ * Only a page the catalogue names is previewed; the docs entry stays a plain
+ * link with a tooltip. With `preview`, resting on the "?" shows a small
+ * snapshot of the target, scrolled to its anchor, so a student can glance at
+ * the equation the node computes without leaving the canvas; a click opens it
+ * in a new tab, as before. The snapshot is an iframe drawn at a reading width
+ * and scaled down, with pointer events off: it is a picture of the page, and
+ * the card around it is the link.
  *
  * The card is portalled to the body. Inside the node it would inherit the
  * canvas zoom and be clipped by the node's own box.
@@ -30,6 +32,8 @@ interface Props {
   readonly href: string;
   /** What the link opens: "Help for this node", "Open this formula in the photography book". */
   readonly label: string;
+  /** Show the snapshot card on hover. Off, the "?" is a plain link with a tooltip. */
+  readonly preview: boolean;
 }
 
 interface Placement {
@@ -46,7 +50,7 @@ function place(anchor: DOMRect): Placement {
   return { left, top };
 }
 
-export function HelpLink({ href, label }: Props): ReactElement {
+export function HelpLink({ href, label, preview }: Props): ReactElement {
   const anchor = useRef<HTMLAnchorElement>(null);
   const timer = useRef<number | undefined>(undefined);
   const [placement, setPlacement] = useState<Placement | undefined>(undefined);
@@ -82,10 +86,8 @@ export function HelpLink({ href, label }: Props): ReactElement {
         target="_blank"
         rel="noopener"
         aria-label={label}
+        {...(preview ? { onMouseEnter: show, onMouseLeave: hide, onClick: close } : { title: label })}
         tabIndex={-1}
-        onMouseEnter={show}
-        onMouseLeave={hide}
-        onClick={close}
       >
         ?
       </a>

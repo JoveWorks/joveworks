@@ -35,6 +35,8 @@ interface Props {
   readonly helpUrl?: string;
   /** Overrides the "?" tooltip — a link into a catalogue's book is not our help page. */
   readonly helpTitle?: string;
+  /** Preview the help on hover: only for a page the catalogue itself names, see `formulaHelp`. */
+  readonly helpPreview?: boolean;
   readonly state: NodeState;
   readonly title: ReactNode;
   readonly subtitle?: ReactNode;
@@ -67,12 +69,13 @@ export function formulaHelp(
   catalogues: readonly Catalogue[],
   formula: Formula | undefined,
   locale: AppLocale,
-): { readonly helpUrl?: string; readonly helpTitle?: string } {
+): { readonly helpUrl?: string; readonly helpTitle?: string; readonly helpPreview?: boolean } {
   const source = formula === undefined ? undefined : formulaSource(catalogues, formula, locale);
   if (source === undefined) return {};
   const copy = ui(locale);
   return {
     helpUrl: source.href,
+    helpPreview: true,
     helpTitle: source.title === undefined ? copy.openSource : `${copy.openSourceIn} ${source.title}`,
   };
 }
@@ -81,6 +84,7 @@ export function NodeShell({
   kind,
   helpUrl,
   helpTitle,
+  helpPreview = false,
   state,
   title,
   subtitle,
@@ -123,7 +127,7 @@ export function NodeShell({
     >
       <header>
         <span className="node-title">{title}</span>
-        {help === undefined ? null : <HelpLink href={help} label={helpTitle ?? copy.nodeHelp} />}
+        {help === undefined ? null : <HelpLink href={help} label={helpTitle ?? copy.nodeHelp} preview={helpPreview} />}
         {detail === undefined ? null : (
           <button
             type="button"
