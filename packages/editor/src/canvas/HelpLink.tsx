@@ -6,9 +6,10 @@
  * link with a tooltip. With `preview`, resting on the "?" shows a small
  * snapshot of the target, scrolled to its anchor, so a student can glance at
  * the equation the node computes without leaving the canvas; a click opens it
- * in a new tab, as before. The snapshot is an iframe drawn at a reading width
- * and scaled down, with pointer events off: it is a picture of the page, and
- * the card around it is the link.
+ * in a new tab, as before. The snapshot is the live page in an iframe, so it
+ * scrolls — a student can read on past the equation — and the card's title
+ * bar is the link that opens it in full. `SCALE` can shrink it; at 1 the text
+ * is the book's own size.
  *
  * The card is portalled to the body. Inside the node it would inherit the
  * canvas zoom and be clipped by the node's own box.
@@ -22,9 +23,9 @@ const OPEN_DELAY_MS = 350;
 /** Long enough to move from the "?" onto the card without it closing. */
 const CLOSE_DELAY_MS = 150;
 
-const FRAME_WIDTH = 640;
+const FRAME_WIDTH = 600;
 const FRAME_HEIGHT = 448;
-const SCALE = 0.625;
+const SCALE = 1;
 const CARD_WIDTH = FRAME_WIDTH * SCALE;
 const GAP = 8;
 
@@ -94,20 +95,16 @@ export function HelpLink({ href, label, preview }: Props): ReactElement {
       {placement === undefined
         ? null
         : createPortal(
-            <a
+            <div
               className="help-preview"
-              href={href}
-              target="_blank"
-              rel="noopener"
               style={{ left: placement.left, top: placement.top, width: CARD_WIDTH }}
               onMouseEnter={stay}
               onMouseLeave={hide}
-              onClick={close}
             >
-              <span className="help-preview-label">
+              <a className="help-preview-label" href={href} target="_blank" rel="noopener" onClick={close}>
                 {label}
                 <span aria-hidden="true"> ↗</span>
-              </span>
+              </a>
               <span className="help-preview-page" style={{ height: FRAME_HEIGHT * SCALE }}>
                 <iframe
                   src={href}
@@ -119,7 +116,7 @@ export function HelpLink({ href, label, preview }: Props): ReactElement {
                   style={{ width: FRAME_WIDTH, height: FRAME_HEIGHT, transform: `scale(${SCALE})` }}
                 />
               </span>
-            </a>,
+            </div>,
             document.body,
           )}
     </>

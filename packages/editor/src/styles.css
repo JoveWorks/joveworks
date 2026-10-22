@@ -1123,7 +1123,8 @@ aside.bottom .palette-list section {
 }
 
 /* The "?"'s snapshot of where it goes (HelpLink.tsx). Fixed and portalled:
-   the canvas zoom must not shrink it a second time. */
+   the canvas zoom must not shrink it a second time. The page in it scrolls;
+   the title bar is the link. */
 .help-preview {
   position: fixed;
   z-index: 1000;
@@ -1134,11 +1135,11 @@ aside.bottom .palette-list section {
   border-radius: 6px;
   background: var(--paper);
   box-shadow: var(--shadow-lg);
-  color: var(--ink);
-  text-decoration: none;
 }
 
 .help-preview-label {
+  color: var(--ink);
+  text-decoration: none;
   padding: 6px 10px;
   border-bottom: 1px solid var(--line);
   background: var(--panel);
@@ -1148,7 +1149,7 @@ aside.bottom .palette-list section {
   text-overflow: ellipsis;
 }
 
-.help-preview:hover .help-preview-label {
+.help-preview-label:hover {
   color: var(--accent);
 }
 
@@ -1165,7 +1166,6 @@ aside.bottom .palette-list section {
   left: 0;
   border: 0;
   transform-origin: 0 0;
-  pointer-events: none;
 }
 
 .node .node-pin {
