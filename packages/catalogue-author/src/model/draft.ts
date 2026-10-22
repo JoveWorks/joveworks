@@ -60,9 +60,7 @@ export interface DraftFormula {
   readonly label: DraftLocalizedText;
   readonly description: DraftLocalizedText;
   readonly citation: string;
-  /** The printed page the citation points at; see `Formula.page`. */
-  readonly page: string;
-  /** A full link into the source, overriding the page; see `Formula.href`. */
+  /** Where the formula is in the catalogue's book; see `Formula.href`. */
   readonly href: string;
   readonly variantOf: string;
   readonly appliesWhen: string;
@@ -130,7 +128,6 @@ export function emptyFormula(): DraftFormula {
     label: {},
     description: {},
     citation: '',
-    page: '',
     href: '',
     variantOf: '',
     appliesWhen: '',
@@ -219,7 +216,6 @@ export function draftFormulaFromReal(formula: Formula): DraftFormula {
     label: draftLocalizedTextFromReal(formula.label),
     description: draftLocalizedTextFromReal(formula.description),
     citation: formula.citation ?? '',
-    page: formula.page === undefined ? '' : String(formula.page),
     href: formula.href ?? '',
     variantOf: formula.variantOf ?? '',
     appliesWhen: soleAppliesWhen(formula) ?? '',

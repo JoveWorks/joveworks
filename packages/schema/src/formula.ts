@@ -251,15 +251,10 @@ export interface Formula {
   /** `R&M 17.1B`. Absent on the base node library, which cites nothing. */
   readonly citation?: string;
   /**
-   * The printed page of the source the citation points at — what a reader
-   * would find in the book, not where a PDF viewer counts from. Combined with
-   * the catalogue's `source.url` into the link the node's "?" opens; see
-   * `sourceHref`. Reader-facing like `description`, so outside the hash.
-   */
-  readonly page?: number;
-  /**
-   * A full link to this formula in the source, for a platform that cannot be
-   * reached by page number alone. Wins over `page`. Outside the hash.
+   * Where this formula is in the catalogue's book: an anchor relative to its
+   * `source.url` (`#eq-1.1`, `ch02.html#eq-2.1`), or a full link. The node's
+   * "?" opens it; see `sourceHref`. Reader-facing like `description`, so
+   * outside the hash.
    */
   readonly href?: string;
   /** Groups the rearranged forms of one relation. */
@@ -797,7 +792,6 @@ export function parseFormula(value: JsonValue, path: string): Formula {
     description: parseLocalizedText(required(object, 'description', path), join(path, 'description')),
     ...put('label', optional(object, 'label', path, parseLocalizedText)),
     ...put('citation', optional(object, 'citation', path, readString)),
-    ...put('page', optional(object, 'page', path, (value_, path_) => readInteger(value_, path_, 1))),
     ...put('href', optional(object, 'href', path, readLink)),
     ...put('variantOf', optional(object, 'variantOf', path, readName)),
     ...put(
@@ -848,7 +842,6 @@ export function serializeFormula(formula: Formula): JsonObject {
     ...(formula.label === undefined ? {} : { label: serializeLocalizedText(formula.label) }),
     description: serializeLocalizedText(formula.description),
     ...put('citation', formula.citation),
-    ...put('page', formula.page),
     ...put('href', formula.href),
     ...put('variantOf', formula.variantOf),
     ...put('appliesWhen', serializePerOutput(formula.outputs, formula.appliesWhen)),
@@ -883,8 +876,8 @@ export function formulaHash(formula: Formula): string {
 
   // A graph reference pins calculation semantics, not words shown to a reader.
   // Catalogue translators must be able to correct text without invalidating
-  // students' saved graphs. `page` and `href` stay out for the same reason: a
-  // school adding links to the book must not flag every saved graph changed.
+  // students' saved graphs. `href` stays out for the same reason: a school
+  // adding links to the book must not flag every saved graph changed.
   const withoutText = (port: Port): JsonObject => {
     const { description: _description, ...semantic } = serializePort(port);
     return semantic;
@@ -967,26 +960,17 @@ export interface Catalogue {
 }
 
 /**
- * Where a catalogue's citations can be read. `url` is a template: `{page}`
- * stands for a formula's printed page plus `pageOffset` — the front matter a
- * PDF counts and the printed numbering does not — so
- * `https://library.example/book.pdf#page={page}` opens the right page in a
- * browser's PDF viewer. A url without `{page}` links every formula to the
- * book itself. Changing platform is then one line, not every formula.
- *
- * An HTML book is addressed by anchor rather than page: the url names the
- * book and each formula's `href` is relative to it — `#eq-1.1`, or
- * `ch02.html#eq-2.1` for a book of several pages. The url may itself be
+ * The HTML book a catalogue's citations can be read in. Books are addressed
+ * by anchor: the url names the book and each formula's `href` is relative to
+ * it — `#eq-1.1`, or `ch02.html#eq-2.1` for a book of several pages — so
+ * moving the book is one line, not every formula. The url may itself be
  * relative, `photography.html`, for a book that ships beside the catalogue
  * file; whoever hosts the catalogue resolves that against where it lives.
  */
 export interface CatalogueSource {
   readonly title?: LocalizedText;
   readonly url: string;
-  readonly pageOffset?: number;
 }
-
-const PAGE_PLACEHOLDER = '{page}';
 
 /**
  * Only web links. A catalogue is a file students pass to each other, and an
@@ -999,7 +983,7 @@ function readLink(value: JsonValue, path: string): string {
   const text = readString(value, path).trim();
   let url: URL;
   try {
-    url = new URL(text.replaceAll(PAGE_PLACEHOLDER, '1'), RELATIVE_BASE);
+    url = new URL(text, RELATIVE_BASE);
   } catch {
     fail(path, `'${text}' is not a URL`);
   }
@@ -1021,7 +1005,6 @@ function parseCatalogueSource(value: JsonValue, path: string): CatalogueSource {
   return {
     ...put('title', optional(object, 'title', path, parseLocalizedText)),
     url: readLink(required(object, 'url', path), join(path, 'url')),
-    ...put('pageOffset', optional(object, 'pageOffset', path, (value_, path_) => readInteger(value_, path_, Number.MIN_SAFE_INTEGER))),
   };
 }
 
@@ -1029,27 +1012,20 @@ function serializeCatalogueSource(source: CatalogueSource): JsonObject {
   return {
     ...(source.title === undefined ? {} : { title: serializeLocalizedText(source.title) }),
     url: source.url,
-    ...put('pageOffset', source.pageOffset),
   };
 }
 
 /**
- * The link a formula's help opens: its own `href` — resolved against the
- * catalogue's source url, so an HTML book needs only the anchor — else the
- * source url with the page filled in. A templated url and no page gives
- * nothing — guessing a page would open the wrong one. The result is
- * relative when the source url is; `isRelativeLink` tells the caller to
- * resolve it against wherever the catalogue was loaded from.
+ * The link a formula's help opens: its own `href`, resolved against the
+ * catalogue's source url so an HTML book needs only the anchor, else the
+ * book as a whole. The result is relative when the source url is;
+ * `isRelativeLink` tells the caller to resolve it against wherever the
+ * catalogue was loaded from.
  */
 export function sourceHref(catalogue: Catalogue, formula: Formula): string | undefined {
   const source = catalogue.source;
-  if (formula.href !== undefined) {
-    return source === undefined ? formula.href : resolveLink(formula.href, source.url.replaceAll(PAGE_PLACEHOLDER, '1'));
-  }
-  if (source === undefined) return undefined;
-  if (!source.url.includes(PAGE_PLACEHOLDER)) return source.url;
-  if (formula.page === undefined) return undefined;
-  return source.url.replaceAll(PAGE_PLACEHOLDER, String(formula.page + (source.pageOffset ?? 0)));
+  if (formula.href !== undefined) return source === undefined ? formula.href : resolveLink(formula.href, source.url);
+  return source?.url;
 }
 
 /** True for a link with no scheme of its own: `photography.html#eq-1.1`, `#eq-1.1`. */

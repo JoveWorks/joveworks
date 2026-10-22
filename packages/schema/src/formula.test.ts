@@ -51,7 +51,6 @@ describe('the formula record', () => {
     const json: JsonObject = {
       ...product,
       citation: 'Invented 1.2B',
-      page: 412,
       href: 'https://library.example/invented#eq-1.2B',
       variantOf: 'demo.product-relation',
       appliesWhen: 'b > 0',
@@ -370,7 +369,7 @@ describe('references by id, version and hash', () => {
 
   it('does not change a reference when a link into the source is added', () => {
     const formula = parse();
-    const linked = parse({ ...product, page: 412, href: 'https://library.example/invented#p412' });
+    const linked = parse({ ...product, href: '#eq-1.2B' });
     expect(formulaHash(linked)).toBe(formulaHash(formula));
     expect(matchRef(formulaRef(formula), linked)).toBe('match');
   });
@@ -476,8 +475,8 @@ describe('catalogues', () => {
   });
 
   describe('a link into the source', () => {
-    const template = 'https://library.example/invented.pdf#page={page}';
-    const linked = (source: JsonObject, formula: JsonObject = { ...product, page: 412 }) =>
+    const book = 'https://library.example/invented/';
+    const linked = (source: JsonObject, formula: JsonObject = { ...product, href: '#eq-1.2' }) =>
       parseCatalogue({ ...catalogue, source, formulas: [formula] });
     const hrefOf = (parsed: ReturnType<typeof parseCatalogue>) =>
       sourceHref(parsed, parsed.formulas[0] as Formula);
@@ -485,8 +484,8 @@ describe('catalogues', () => {
     it('round-trips', () => {
       const json: JsonObject = {
         ...catalogue,
-        source: { title: { en: 'An invented handbook' }, url: template, pageOffset: 18 },
-        formulas: [{ ...product, page: 412 }],
+        source: { title: { en: 'An invented handbook' }, url: 'invented.html' },
+        formulas: [{ ...product, href: '#eq-1.2' }],
       };
       expect(serializeCatalogue(parseCatalogue(json))).toEqual(json);
     });
@@ -497,22 +496,12 @@ describe('catalogues', () => {
       expect(hrefOf(parsed)).toBeUndefined();
     });
 
-    it('fills the printed page plus the offset into the template', () => {
-      expect(hrefOf(linked({ url: template }))).toBe('https://library.example/invented.pdf#page=412');
-      expect(hrefOf(linked({ url: template, pageOffset: 18 }))).toBe('https://library.example/invented.pdf#page=430');
+    it('links a formula without an anchor to the book as a whole', () => {
+      expect(hrefOf(linked({ url: book }, product))).toBe(book);
     });
 
-    it('gives no link for a templated url and a formula without a page', () => {
-      expect(hrefOf(linked({ url: template }, product))).toBeUndefined();
-    });
-
-    it('links every formula to the book when the url has no page in it', () => {
-      expect(hrefOf(linked({ url: 'https://library.example/invented' }, product))).toBe('https://library.example/invented');
-    });
-
-    it('prefers a formula’s own href', () => {
+    it('takes a formula’s own full link when the catalogue names no book', () => {
       const own = 'https://library.example/reader?chapter=1';
-      expect(hrefOf(linked({ url: template }, { ...product, page: 412, href: own }))).toBe(own);
       expect(hrefOf(parseCatalogue({ ...catalogue, formulas: [{ ...product, href: own }] }))).toBe(own);
     });
 
@@ -523,7 +512,7 @@ describe('catalogues', () => {
     });
 
     describe('in an HTML book', () => {
-      const anchored = (href: string, url = 'https://library.example/invented/') =>
+      const anchored = (href: string, url = book) =>
         hrefOf(linked({ url }, { ...product, href }));
 
       it('resolves a formula’s anchor against the book', () => {
@@ -542,11 +531,6 @@ describe('catalogues', () => {
       it('lets an absolute href escape the book', () => {
         expect(anchored('https://elsewhere.example/#x', 'invented.html')).toBe('https://elsewhere.example/#x');
       });
-    });
-
-    it('refuses a page that is not a positive whole number', () => {
-      expect(() => parse({ ...product, page: 0 })).toThrow('formulas[0].page');
-      expect(() => parse({ ...product, page: 4.5 })).toThrow('formulas[0].page');
     });
   });
 });

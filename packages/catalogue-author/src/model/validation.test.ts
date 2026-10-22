@@ -81,18 +81,13 @@ describe('validateCatalogue', () => {
   });
 
   it('keeps the link into the book through a load and save', () => {
-    const source = { url: 'https://library.example/invented.pdf#page={page}', pageOffset: 18 };
+    const source = { url: 'invented.html' };
     const validation = validateCatalogue({
-      ...catalogueWith([{ ...validFormula(), page: '412', href: '' }]),
+      ...catalogueWith([{ ...validFormula(), href: '#eq-1.2' }]),
       sourceJson: source,
     });
     expect(validation.catalogueErrors).toEqual([]);
     expect(validation.catalogue?.source).toEqual(source);
-    expect(validation.catalogue?.formulas[0]?.page).toBe(412);
-  });
-
-  it('refuses a page that is not a page number', () => {
-    const validation = validateCatalogue(catalogueWith([{ ...validFormula(), page: 'four' }]));
-    expect(validation.formulas[0]?.errors[0]?.message).toMatch(/page/);
+    expect(validation.catalogue?.formulas[0]?.href).toBe('#eq-1.2');
   });
 });

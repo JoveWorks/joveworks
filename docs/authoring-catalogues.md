@@ -42,34 +42,10 @@ distribution restrictions — a repository boundary does that.
 
 ### Linking to the book
 
-When the source a catalogue cites can be opened online — a school's licensed
-e-book, say — give the catalogue a `source`, and each formula's "?" opens the
-page that formula is on instead of the general JoveWorks help:
-
-```yaml
-source:
-  title:
-    en: the course handbook
-  url: "https://library.example/handbook.pdf#page={page}"
-  pageOffset: 18
-```
-
-- **url** — an `http`/`https` link. `{page}` is replaced by the formula's
-  `page` plus `pageOffset`; `#page=` is what browsers' built-in PDF viewers
-  understand, and other e-book platforms have their own deep-link shape.
-  A url without `{page}` links every formula to the book as a whole.
-- **pageOffset** — optional. Write `page` as the number printed in the book,
-  and set this to how far the PDF's own page count runs ahead of it (the front
-  matter), so the numbers in the catalogue can be checked against the book.
-- **title** — optional. Shown in the "?" tooltip: "Open this formula in the
-  course handbook".
-
-The link is only a link: whether a student can open it — a library login,
-a licence — is up to wherever it points. A formula with a templated url and
-no `page` keeps the ordinary help link.
-
-An HTML book is addressed by anchor instead of page. Name the book in
-`source.url` and give each formula an `href` relative to it:
+A catalogue can link each formula to the place it is explained, in an HTML
+book. Give the catalogue a `source` naming the book, and each formula an
+`href` pointing into it; the formula's "?" then opens that equation instead
+of the general JoveWorks help, and resting on the "?" previews it:
 
 ```yaml
 source:
@@ -81,13 +57,23 @@ formulas:
     href: "#eq-2.3"
 ```
 
-A relative `url` means a book that ships beside the catalogue, with the same
-name: `photography.html` next to `photography.json` in
-`packages/editor/src/catalogues/examples/`. The editor hosts it, so editing
-the book is editing that one file. A catalogue loaded from a file cannot
-bring its book along; give it an absolute `url` instead, and `href` still
-only needs the anchor (`ch02.html#eq-2.1` for a book of several pages).
-Resting on a node's "?" previews the linked equation; a click opens it.
+- **url** — the book. A relative url means a book that ships beside the
+  catalogue, with the same name: `photography.html` next to
+  `photography.json` in `packages/editor/src/catalogues/examples/`. The
+  editor hosts it, so editing the book is editing that one file. A catalogue
+  loaded from a file cannot bring its book along; give it an absolute
+  `http`/`https` url instead.
+- **title** — optional. Shown on the "?": "Open this formula in the
+  photography book".
+
+A formula's `href` is relative to the book, so it only needs the anchor —
+`#eq-2.3`, or `ch02.html#eq-2.1` for a book of several pages — and moving the
+book is one line, not every formula. A formula without an `href` links to
+the book as a whole. Only HTML books are supported; a PDF cannot be linked
+to an equation or previewed.
+
+The link is only a link: whether a student can open it — a library login,
+a licence — is up to wherever it points.
 
 JoveWorks uses YAML 1.2, requires unique string keys, and rejects custom tags,
 merge keys, anchors, and aliases. Quote a scalar when YAML punctuation could
@@ -347,12 +333,10 @@ Fields:
   prose most users read; write it as such.
 - **citation** — optional. Omit it entirely for invented formulas — base
   nodes cite nothing; do not invent a fake one.
-- **page** — optional. The printed page the citation is on, filled into the
-  catalogue's `source.url` (see [Linking to the book](#linking-to-the-book)).
-- **href** — optional. A full link to this formula, for a platform a page
-  number cannot reach; it wins over `page`. Neither field is part of the
-  formula's hash, so adding or correcting them never flags a saved graph as
-  changed.
+- **href** — optional. Where the formula is in the catalogue's book, usually
+  just an anchor (see [Linking to the book](#linking-to-the-book)). Not part
+  of the formula's hash, so adding or correcting it never flags a saved graph
+  as changed.
 - **variantOf** — links rearranged forms of one relation. Skip unless
   you are actually authoring more than one arrangement of the same equation.
 - **appliesWhen** — a boolean predicate over this formula's own input port

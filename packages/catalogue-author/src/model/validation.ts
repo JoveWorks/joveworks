@@ -125,8 +125,6 @@ function formulaJson(formula: DraftFormula): JsonObject {
   const label = localizedTextJson(formula.label);
   if (Object.keys(label).length > 0) out['label'] = label;
   if (formula.citation.trim().length > 0) out['citation'] = formula.citation;
-  const page = numberField(formula.page);
-  if (page !== undefined) out['page'] = page;
   if (formula.href.trim().length > 0) out['href'] = formula.href.trim();
   if (formula.variantOf.trim().length > 0) out['variantOf'] = formula.variantOf;
   if (formula.appliesWhen.trim().length > 0) out['appliesWhen'] = formula.appliesWhen;
