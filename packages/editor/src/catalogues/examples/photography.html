@@ -12,8 +12,9 @@
   shape (`eq-<chapter>.<n>`, sections by number), so a course book built
   that way links the same.
 
-  Self-contained on purpose: no scripts, no fonts, no CDN. A school that
-  edits this file to suit its course needs nothing but a text editor.
+  Self-contained on purpose: no fonts, no CDN, and one small script at the
+  end that nobody editing the text needs to touch. A school that edits this
+  file to suit its course needs nothing but a text editor.
 -->
 <style>
   :root {
@@ -23,6 +24,7 @@
     --accent: #2a6f97;
     --paper: #fbfbf9;
     --mark: #fff3c4;
+    --wash: #f1f5f8;
     color-scheme: light dark;
   }
   @media (prefers-color-scheme: dark) {
@@ -33,6 +35,7 @@
       --accent: #7fb8d8;
       --paper: #161a1e;
       --mark: #3d3518;
+      --wash: #1d242a;
     }
   }
   /* Room above a linked equation for the sentence that introduces it. */
@@ -70,6 +73,20 @@
   dl.symbols { display: grid; grid-template-columns: max-content 1fr; gap: 0.1rem 1rem; font-size: 0.92rem; }
   dl.symbols dt { font-style: italic; }
   dl.symbols dd { margin: 0; color: var(--muted); }
+  .where { margin: -0.3rem 0 0.8rem; }
+  .example {
+    margin: 1rem 0;
+    padding: 0.6rem 0.9rem;
+    border-left: 3px solid var(--accent);
+    background: var(--wash);
+    font-size: 0.95rem;
+  }
+  .example > :first-child { margin-top: 0; }
+  .example > :last-child { margin-bottom: 0; }
+  .example b { font-weight: normal; font-variant: small-caps; letter-spacing: 0.03em; color: var(--accent); }
+  table { border-collapse: collapse; font-size: 0.92rem; margin: 0.8rem 0; }
+  th, td { padding: 0.2rem 0.8rem; border-bottom: 1px solid var(--rule); text-align: right; }
+  th:first-child, td:first-child { text-align: left; }
 </style>
 </head>
 <body>
@@ -80,7 +97,8 @@
 </header>
 
 <nav>
-  <ol>
+  <ol start="0">
+    <li><a href="#0">Conventions</a></li>
     <li><a href="#1">Lenses</a></li>
     <li><a href="#2">Depth of field</a></li>
     <li><a href="#3">Sensor format</a></li>
@@ -91,6 +109,11 @@
   </ol>
 </nav>
 
+<h2 id="0">0 Conventions</h2>
+<p>Lengths are in millimetres unless a formula says otherwise; a distance is measured from the lens, and the flash chapter alone works in metres, as flash makers do. The <em>f-number</em> <var>N</var> is the focal length divided by the diameter of the entrance pupil, <var>N</var> = <var>f</var>&#8239;/&#8239;<var>D</var>: f/8 on a 50 mm lens is an opening 6.25 mm across. A larger <var>N</var> is a smaller opening.</p>
+<p>A <em>stop</em> is a factor of two in light. The light through the opening goes with its area, so with 1&#8239;/&#8239;<var>N</var><sup>2</sup>, and one stop is a factor √2 in <var>N</var>: the familiar series f/1.4, 2, 2.8, 4, 5.6, 8, 11, 16.</p>
+<p>Every lens here is treated as a <em>thin lens</em>: a single plane where the bending happens. A real photographic lens has two principal planes some distance apart, and its distances are measured from those; the formulas are unchanged, only the point they are measured from moves. The worked examples use a full-frame sensor, 36 × 24 mm, unless they say otherwise.</p>
+
 <h2 id="1">1 Lenses</h2>
 
 <h3 id="1.1">1.1 The thin-lens equation</h3>
@@ -99,22 +122,36 @@
   <span class="math"><span class="frac"><span>1</span><span><var>f</var></span></span> = <span class="frac"><span>1</span><span><var>d</var><sub>o</sub></span></span> + <span class="frac"><span>1</span><span><var>d</var><sub>i</sub></span></span></span>
   <span class="num">(1.1)</span>
 </div>
+<dl class="symbols where">
+  <dt>f</dt><dd>focal length: where the lens focuses light from infinitely far away</dd>
+  <dt>d<sub>o</sub></dt><dd>object distance, from the subject to the lens</dd>
+  <dt>d<sub>i</sub></dt><dd>image distance, from the lens to where the image is sharp (the sensor)</dd>
+</dl>
 <p>Solved for each of the three, it gives the image distance <var>d</var><sub>i</sub> = <var>f</var>&#8239;<var>d</var><sub>o</sub>&#8239;/&#8239;(<var>d</var><sub>o</sub> − <var>f</var>), the object distance, or the focal length from a pair of conjugate distances. A negative image distance is a virtual image, on the same side as the object.</p>
+<p>This is what focusing does. With the subject at infinity, 1&#8239;/&#8239;<var>d</var><sub>o</sub> vanishes and the image lies exactly <var>f</var> behind the lens. As the subject comes closer, the image moves back, and the focusing ring moves the lens forward to follow it. A subject closer than <var>f</var> cannot be focused at all: <var>d</var><sub>i</sub> turns negative.</p>
+<div class="example">
+  <p><b>Example.</b> A 50 mm lens focused on a subject 2 m away: <var>d</var><sub>i</sub> = 50 · 2000&#8239;/&#8239;1950 = 51.3 mm. The lens has moved 1.3 mm forward of its infinity position. At 0.5 m it is 55.6 mm, more than 5 mm out, which is why close-focusing lenses have long focusing travel.</p>
+</div>
 
 <h3 id="1.2">1.2 Magnification</h3>
-<p>The transverse magnification is the ratio of image to object size, and so of their distances. Eliminating <var>d</var><sub>i</sub> with (1.1) gives it from the focal length alone:</p>
+<p>The transverse magnification is the ratio of image to object size, and so of their distances: a ray through the centre of the lens is not bent, so object and image are similar triangles on either side of it. Eliminating <var>d</var><sub>i</sub> with (1.1) gives it from the focal length alone:</p>
 <div class="eq" id="eq-1.2">
   <span class="math"><var>m</var> = <span class="frac"><span><var>d</var><sub>i</sub></span><span><var>d</var><sub>o</sub></span></span> = <span class="frac"><span><var>f</var></span><span><var>d</var><sub>o</sub> − <var>f</var></span></span></span>
   <span class="num">(1.2)</span>
 </div>
 <p class="note">Magnitude only: a real image is inverted.</p>
+<p>Far from the lens, <var>d</var><sub>o</sub> ≫ <var>f</var>, the second form is close to <var>f</var>&#8239;/&#8239;<var>d</var><sub>o</sub>: doubling the focal length doubles the size of the subject in the frame, and so does halving the distance to it.</p>
 <div class="eq" id="eq-1.3">
   <span class="math"><var>h</var><sub>i</sub> = <var>m</var>&#8239;<var>h</var><sub>o</sub></span>
   <span class="num">(1.3)</span>
 </div>
-<p>The height of the image on the sensor, from the height of the object.</p>
+<p>The height of the image on the sensor, from the height of the object. Compared with the sensor's own height it answers the framing question: does the subject fit?</p>
+<div class="example">
+  <p><b>Example.</b> A person 1.8 m tall, 2 m from a 50 mm lens: <var>m</var> = 50&#8239;/&#8239;1950 = 0.0256, about 1 : 39, and <var>h</var><sub>i</sub> = 0.0256 · 1800 = 46 mm. That is nearly twice the 24 mm height of the sensor. Turning the camera to portrait gives 36 mm, still not enough; a full-length portrait at 50 mm needs a distance of about 4 m.</p>
+</div>
 
 <h2 id="2">2 Depth of field</h2>
+<p>A lens is sharp at exactly one distance. Points in front of it and behind it are focused before or after the sensor, and reach it as small discs instead of points. Depth of field is the range of distances where those discs are small enough to pass for points. Where that line is drawn is a choice, the circle of confusion, and every number in this chapter depends on it.</p>
 
 <h3 id="2.1">2.1 Circle of confusion</h3>
 <p>A point that is not exactly in focus is drawn as a small disc. The largest disc that still looks like a point is the circle of confusion <var>c</var>. The classic rule of thumb takes a fixed fraction of the sensor diagonal <var>d</var>, with <var>k</var> commonly 1500:</p>
@@ -122,10 +159,15 @@
   <span class="math"><var>c</var> = <span class="frac"><span><var>d</var></span><span><var>k</var></span></span></span>
   <span class="num">(2.1)</span>
 </div>
+<p>The rule comes from viewing a print: a 20 × 25 cm print held at about 25 cm, by someone with normal eyesight, shows detail down to a fraction of a millimetre, and scaled back to the sensor that is about 1&#8239;/&#8239;1500 of its diagonal. Because it is tied to the diagonal, a smaller sensor gets a proportionally smaller <var>c</var>: it is enlarged more to make the same print. Some makers use <var>k</var> = 1730; a print looked at closely, or cropped, needs a larger <var>k</var> still.</p>
 <p>On a digital sensor it can instead be sized in pixels: a blur of <var>n</var> photosites of pitch <var>p</var>.</p>
 <div class="eq" id="eq-2.2">
   <span class="math"><var>c</var> = <var>n</var>&#8239;<var>p</var></span>
   <span class="num">(2.2)</span>
+</div>
+<p>This is the stricter question of whether the blur shows when the picture is viewed at 100 % on a screen. With <var>n</var> = 1 the blur is smaller than a pixel; in practice <var>n</var> = 2 is a common compromise, since the colour filter in front of the sensor already spreads detail over about two photosites.</p>
+<div class="example">
+  <p><b>Example.</b> Full frame, 43.3 mm diagonal: <var>c</var> = 43.3&#8239;/&#8239;1500 = 0.029 mm, the "0.03 mm" quoted on lens scales. A 24-megapixel full-frame sensor has a pitch of 6.0 µm (§ 3.4); with <var>n</var> = 2, <var>c</var> = 0.012 mm, less than half. The pixel criterion gives a much shallower depth of field for the same lens and settings.</p>
 </div>
 
 <h3 id="2.2">2.2 Hyperfocal distance</h3>
@@ -133,6 +175,11 @@
 <div class="eq" id="eq-2.3">
   <span class="math"><var>H</var> = <span class="frac"><span><var>f</var><sup>2</sup></span><span><var>N</var>&#8239;<var>c</var></span></span> + <var>f</var></span>
   <span class="num">(2.3)</span>
+</div>
+<p>It is also, very nearly, the distance of the nearest sharp point when the lens is focused at infinity. Focusing there instead moves the far limit out to infinity and brings the near limit in to half of <var>H</var>, the most depth of field the lens can give at that aperture. Landscape photographers use it to keep both the foreground and the horizon sharp.</p>
+<p><var>H</var> grows with the square of the focal length: a long lens has a hyperfocal distance far away, and a wide one close by. Stopping down brings it in proportionally.</p>
+<div class="example">
+  <p><b>Example.</b> 50 mm at f/8, <var>c</var> = 0.029 mm: <var>H</var> = 2500&#8239;/&#8239;(8 · 0.029) + 50 = 10&#8239;826 mm, about 10.8 m. Focused there, everything from 5.4 m to infinity is sharp. A 24 mm lens at the same aperture has <var>H</var> ≈ 2.5 m, sharp from 1.25 m on.</p>
 </div>
 
 <h3 id="2.3">2.3 Near and far limits</h3>
@@ -146,14 +193,30 @@
   <span class="num">(2.5)</span>
 </div>
 <p class="note">Beyond the hyperfocal distance the far limit is infinite, and (2.4) for <var>D</var><sub>f</sub> and (2.5) no longer apply; the near limit still does.</p>
+<p>Both limits follow from (1.1): the far and near points are those whose images lie just far enough from the sensor that the cone of light, narrowed by the aperture, has spread to a disc of diameter <var>c</var> where it meets it. Written with <var>H</var>, the result is the pair above. The zone is not centred on <var>s</var>: it reaches further behind the subject than in front of it, and the further away the subject, the more lopsided it gets, until at <var>s</var> = <var>H</var> the far side is infinite.</p>
+<p>The formulas assume the subject is well beyond the focal length. Close to the lens, at macro magnifications, depth of field is better estimated from the magnification instead.</p>
+<div class="example">
+  <p><b>Example.</b> 50 mm at f/8, <var>c</var> = 0.029 mm (<var>H</var> = 10&#8239;826 mm), focused at 3 m: <var>D</var><sub>n</sub> = 2.36 m and <var>D</var><sub>f</sub> = 4.12 m, so 1.77 m is sharp. Only 0.64 m of it is in front of the subject; 1.12 m is behind it.</p>
+  <table>
+    <tr><th>Aperture</th><th><var>H</var></th><th><var>D</var><sub>n</sub></th><th><var>D</var><sub>f</sub></th><th>DoF</th></tr>
+    <tr><td>f/2.8</td><td>30.8 m</td><td>2.74 m</td><td>3.32 m</td><td>0.58 m</td></tr>
+    <tr><td>f/8</td><td>10.8 m</td><td>2.36 m</td><td>4.12 m</td><td>1.77 m</td></tr>
+    <tr><td>f/16</td><td>5.44 m</td><td>1.94 m</td><td>6.56 m</td><td>4.61 m</td></tr>
+  </table>
+</div>
 
 <h2 id="3">3 Sensor format</h2>
+<p>The same lens draws the same image whatever sits behind it. A smaller sensor simply takes a smaller part of that image, and enlarging it to the same print size enlarges the blur, the grain and the diffraction with it. This chapter turns those comparisons into numbers.</p>
 
 <h3 id="3.1">3.1 Angle of view</h3>
 <p>Along a sensor dimension of extent <var>w</var> (width, height or diagonal):</p>
 <div class="eq" id="eq-3.1">
   <span class="math"><var>φ</var> = 2&#8239;arctan <span class="frac"><span><var>w</var></span><span>2&#8239;<var>f</var></span></span></span>
   <span class="num">(3.1)</span>
+</div>
+<p>Half the sensor and the focal length form a right triangle with its apex at the lens; <var>φ</var> is twice its angle there. It holds for a lens focused at infinity: focused closer, the image distance grows (§ 1.1) and the angle narrows a little, which is the "focus breathing" some lenses show. A fisheye does not follow it at all, since it is not a rectilinear lens.</p>
+<div class="example">
+  <p><b>Example.</b> A 50 mm lens on full frame: across the 36 mm width, <var>φ</var> = 2 arctan(0.36) = 39.6°; across the 43.3 mm diagonal, 46.8°. That diagonal angle, close to how much of a scene the eye takes in at a glance, is why 50 mm is called a "normal" lens on this format.</p>
 </div>
 
 <h3 id="3.2">3.2 Diagonal and crop factor</h3>
@@ -162,10 +225,15 @@
   <span class="math"><var>d</var> = <var>h</var>&#8239;√<span class="root">1 + <var>a</var><sup>2</sup></span></span>
   <span class="num">(3.2)</span>
 </div>
+<p>Pythagoras, with the width written as <var>a</var>&#8239;<var>h</var>. Common ratios are 3 : 2 (<var>a</var> = 1.5) for full frame and APS-C, and 4 : 3 for Micro Four Thirds and most phones.</p>
 <p>The crop factor compares a sensor with a reference format, usually 36 × 24 mm full frame (<var>d</var><sub>ref</sub> ≈ 43.3 mm):</p>
 <div class="eq" id="eq-3.3">
   <span class="math"><var>c</var> = <span class="frac"><span><var>d</var><sub>ref</sub></span><span><var>d</var><sub>sensor</sub></span></span></span>
   <span class="num">(3.3)</span>
+</div>
+<p>It is how much more a picture from the smaller sensor has to be enlarged to make the same print. Comparing diagonals keeps sensors of different aspect ratios comparable.</p>
+<div class="example">
+  <p><b>Example.</b> An APS-C sensor of 23.5 × 15.6 mm has a diagonal of 28.2 mm and a crop factor of 43.3&#8239;/&#8239;28.2 = 1.53. Micro Four Thirds, 17.3 × 13.0 mm, has 21.6 mm and a crop factor of 2.0.</p>
 </div>
 
 <h3 id="3.3">3.3 Equivalence</h3>
@@ -174,6 +242,11 @@
   <span class="math"><var>f</var><sub>eq</sub> = <var>c</var>&#8239;<var>f</var>, &#8195; <var>N</var><sub>eq</sub> = <var>c</var>&#8239;<var>N</var></span>
   <span class="num">(3.4)</span>
 </div>
+<p>The first follows from (3.1): scaling both the sensor and the focal length by <var>c</var> leaves the angle unchanged. The second comes from (2.1) and (2.3): the smaller sensor has a <var>c</var> times smaller circle of confusion and a <var>c</var> times shorter lens, and the reference format matches its hyperfocal distance, and so its depth of field, only at an f-number <var>c</var> times larger. The same factor describes the total light that makes up the picture, which is what decides its noise.</p>
+<p class="note">An equivalent f-number is not an exposure setting. f/2.8 on any sensor gives the same brightness per square millimetre and the same shutter time for a correct exposure (chapter 4). What changes with the format is how much depth of field and how much total light that brightness comes with.</p>
+<div class="example">
+  <p><b>Example.</b> A 35 mm f/1.8 lens on APS-C (<var>c</var> = 1.53) frames like a 54 mm lens on full frame and has the depth of field of f/2.8 there. It is metered and exposed as f/1.8.</p>
+</div>
 
 <h3 id="3.4">3.4 Pixel pitch</h3>
 <p>For square photosites, the sensor area divided by the pixel count gives the area of one, here with the pixel count in megapixels <var>MP</var>:</p>
@@ -181,8 +254,13 @@
   <span class="math"><var>p</var> = √<span class="root"><span class="frac"><span><var>a</var>&#8239;<var>d</var><sup>2</sup></span><span>(1 + <var>a</var><sup>2</sup>)&#8239;<var>MP</var>&#8239;·&#8239;10<sup>6</sup></span></span></span></span>
   <span class="num">(3.5)</span>
 </div>
+<p>The numerator over (1 + <var>a</var><sup>2</sup>) is the width times the height, recovered from the diagonal with (3.2). The pitch is the centre-to-centre spacing of the photosites; it sets the finest detail the sensor can record and is the yardstick of the pixel criteria in (2.2) and (7.2).</p>
+<div class="example">
+  <p><b>Example.</b> A 24-megapixel full-frame sensor: area 36 · 24 = 864 mm², divided over 24 · 10<sup>6</sup> photosites gives 3.6 · 10<sup>−5</sup> mm² each, and <var>p</var> = 0.0060 mm = 6.0 µm. A 24-megapixel APS-C sensor has 3.9 µm; a 50-megapixel phone sensor of 9.8 × 7.3 mm, about 1.2 µm.</p>
+</div>
 
 <h2 id="4">4 Exposure</h2>
+<p>Three settings decide how bright a picture comes out: the aperture, which sets how much light per second reaches the sensor; the shutter time, how long it is let in; and the sensitivity (ISO), how strongly the sensor's signal is amplified. Exposure is about trading them against each other.</p>
 
 <h3 id="4.1">4.1 Exposure value</h3>
 <p>Aperture and shutter time combine into one number on a base-2 scale, with <var>t</var> in seconds (<var>t</var><sub>ref</sub> = 1 s):</p>
@@ -190,9 +268,23 @@
   <span class="math">EV = log<sub>2</sub> <span class="frac"><span><var>N</var><sup>2</sup></span><span><var>t</var>&#8239;/&#8239;<var>t</var><sub>ref</sub></span></span></span>
   <span class="num">(4.1)</span>
 </div>
+<p>One step of EV is one stop. A higher EV lets in <em>less</em> light: it is the setting for a brighter scene. Every combination with the same EV gives the same exposure, so f/8 at 1/125 s, f/5.6 at 1/250 s and f/11 at 1/60 s are, near enough, one setting: EV 13. <var>t</var><sub>ref</sub> is only there to keep the units honest; the scale is defined with times in seconds.</p>
 <div class="eq" id="eq-4.2">
   <span class="math">EV<sub>ISO</sub> = EV<sub>100</sub> + log<sub>2</sub> <span class="frac"><span>ISO</span><span>100</span></span></span>
   <span class="num">(4.2)</span>
+</div>
+<p>Light meters and tables of typical scenes quote EV at ISO 100. Each doubling of the sensitivity needs one stop less light, so the settings move one EV up.</p>
+<table>
+  <tr><th>Scene</th><th>EV<sub>100</sub></th></tr>
+  <tr><td>Bright sun on snow or sand</td><td>16</td></tr>
+  <tr><td>Full sun, distinct shadows</td><td>15</td></tr>
+  <tr><td>Overcast day</td><td>12–13</td></tr>
+  <tr><td>Bright interior, daytime</td><td>8–10</td></tr>
+  <tr><td>Home interior at night</td><td>5–7</td></tr>
+  <tr><td>Street at night</td><td>3–5</td></tr>
+</table>
+<div class="example">
+  <p><b>Example.</b> f/8 at 1/125 s: EV = log<sub>2</sub>(64 · 125) = log<sub>2</sub> 8000 = 13.0, right for an overcast day at ISO 100. At ISO 400 the same scene wants EV 15: f/8 at 1/500 s.</p>
 </div>
 
 <h3 id="4.2">4.2 Reciprocity</h3>
@@ -202,43 +294,83 @@
   <span class="num">(4.3)</span>
 </div>
 <p>and the first solved for the aperture, <var>N</var><sub>2</sub> = <var>N</var><sub>1</sub>&#8239;√(<var>t</var><sub>2</sub>&#8239;/&#8239;<var>t</var><sub>1</sub>).</p>
+<p>Both are (4.1) held constant. The trades are not free: a longer shutter time blurs motion, a larger <var>N</var> deepens the depth of field and eventually softens the picture through diffraction (chapter 7), and a higher ISO amplifies noise along with the signal.</p>
+<p class="note">Film departs from reciprocity at very long and very short times and needs more exposure than (4.3) predicts. Digital sensors follow it closely.</p>
+<div class="example">
+  <p><b>Example.</b> f/4 at 1/125 s, stopped down to f/8 for more depth of field: <var>t</var><sub>2</sub> = 1/125 · (8/4)<sup>2</sup> = 1/31 s, two stops longer. Too slow to hand-hold a long lens? Raise ISO 100 to 400 and it is back to 1/125 s. Or, to freeze motion at 1/500 s from f/4 at 1/125 s: <var>N</var><sub>2</sub> = 4 · √(1/4) = f/2.</p>
+</div>
 
 <h2 id="5">5 Flash</h2>
+<p>Light from a small flash spreads out in all directions, and the illumination it gives falls with the square of the distance: twice as far away is a quarter of the light, two stops. The f-number that exposes correctly falls with it, and since exposure goes with 1&#8239;/&#8239;<var>N</var><sup>2</sup>, distance times f-number stays constant. That constant is the flash's guide number.</p>
 <p>A flash's guide number is the product of the distance it correctly exposes and the f-number that takes, at ISO 100:</p>
 <div class="eq" id="eq-5.1">
   <span class="math"><var>GN</var> = <var>d</var>&#8239;<var>N</var></span>
   <span class="num">(5.1)</span>
 </div>
 <p>so that either one follows from the other: <var>d</var> = <var>GN</var>&#8239;/&#8239;<var>N</var>, <var>N</var> = <var>GN</var>&#8239;/&#8239;<var>d</var>.</p>
+<p>Shutter time does not appear: the flash is far shorter than any usual shutter time, so all of it lands inside the exposure. Makers quote the guide number in metres, at ISO 100 and at one zoom-head setting, often the longest, which flatters it. At a higher sensitivity it grows with √(ISO&#8239;/&#8239;100): ISO 400 doubles it. Light bounced off a ceiling or softened by a diffuser travels further and loses some on the way, so the formula only holds for direct flash.</p>
+<div class="example">
+  <p><b>Example.</b> A flash with a guide number of 36 m, a subject 4.5 m away: <var>N</var> = 36&#8239;/&#8239;4.5 = f/8. At f/5.6 the flash reaches 36&#8239;/&#8239;5.6 = 6.4 m.</p>
+</div>
 
 <h2 id="6">6 Macro</h2>
+<p>Close-up photography is where the far-subject approximations of the earlier chapters stop holding. The image moves well back from the focal plane, magnification becomes the natural measure of distance, and the extension that brings the lens close costs light.</p>
 <div class="eq" id="eq-6.1">
   <span class="math"><var>R</var> = <span class="frac"><span><var>h</var><sub>i</sub></span><span><var>h</var><sub>o</sub></span></span></span>
   <span class="num">(6.1)</span>
 </div>
-<p>The reproduction ratio is magnification under its macro name: 1 : 1 is life size. Extension <var>e</var> behind a lens focused at infinity adds</p>
+<p>The reproduction ratio is magnification under its macro name: 1 : 1 is life size. A lens sold as "macro" reaches 1 : 1 on its own; most ordinary lenses stop near 1 : 4 to 1 : 8. At 1 : 1 a full-frame sensor covers 36 × 24 mm of the subject, whatever the focal length; a longer macro lens does it from further away.</p>
+<p>Extension <var>e</var> behind a lens focused at infinity adds</p>
 <div class="eq" id="eq-6.2">
   <span class="math"><var>m</var> = <span class="frac"><span><var>e</var></span><span><var>f</var></span></span></span>
   <span class="num">(6.2)</span>
 </div>
-<p>and spreads the light over a larger image, so the lens behaves as a slower one:</p>
+<p>This is (1.1) and (1.2) together: moving the image distance from <var>f</var> to <var>f</var> + <var>e</var> gives <var>m</var> = <var>e</var>&#8239;/&#8239;<var>f</var>. Extension tubes and bellows do exactly that. A tube does more on a short lens than on a long one; with the lens focused closer than infinity the tube adds to the magnification it already had.</p>
+<p>The extension spreads the light over a larger image, so the lens behaves as a slower one:</p>
 <div class="eq" id="eq-6.3">
   <span class="math"><var>N</var><sub>eff</sub> = <var>N</var>&#8239;(1 + <var>m</var>)</span>
   <span class="num">(6.3)</span>
 </div>
+<p>The aperture is the same size, but now <var>f</var>&#8239;(1 + <var>m</var>) away from the image instead of <var>f</var>. A camera that meters through the lens accounts for it by itself; it matters for a hand-held meter, for a flash set by guide number, and for diffraction, which follows the effective f-number. The formula assumes a symmetric lens; many macro lenses are not, and lose a little more or less.</p>
+<div class="example">
+  <p><b>Example.</b> A 25 mm extension tube on a 50 mm lens set to infinity: <var>m</var> = 0.5, half life size. At 1 : 1, f/8 behaves as f/16: two stops less light, and the diffraction of f/16.</p>
+</div>
 
 <h2 id="7">7 Diffraction</h2>
+<p>Light passing through an opening spreads out a little at its edges. A perfect lens therefore does not focus a point to a point, but to a small pattern of a bright disc ringed by fainter circles, the Airy pattern. The smaller the opening, the larger the pattern. At wide apertures it is too small to matter and lens defects dominate; stopped far down, it sets the limit on sharpness however good the lens.</p>
 <p>Stopping down narrows the aperture until diffraction spreads every point into an Airy disc of diameter</p>
 <div class="eq" id="eq-7.1">
   <span class="math"><var>b</var> = 2.44&#8239;<var>λ</var>&#8239;<var>N</var></span>
   <span class="num">(7.1)</span>
 </div>
+<p>The disc is measured to its first dark ring; 2.44 comes from the optics of a circular opening. Only the f-number appears, not the focal length or the sensor: f/16 blurs the same on every lens. Two points closer than half this diameter, the Rayleigh criterion, can no longer be told apart.</p>
 <p>which is larger than a photosite of pitch <var>p</var> from</p>
 <div class="eq" id="eq-7.2">
   <span class="math"><var>N</var><sub>max</sub> = <span class="frac"><span><var>p</var></span><span>2.44&#8239;<var>λ</var></span></span></span>
   <span class="num">(7.2)</span>
 </div>
 <p class="note">Green light, <var>λ</var> ≈ 550 nm, is the usual choice.</p>
+<p>Beyond this f-number, a sensor with more pixels stops recording more detail. It is an onset, not a wall: the loss is gradual, usually visible at 100 % from about twice <var>N</var><sub>max</sub>, and often a fair price for depth of field. The point also moves with the format: a smaller sensor has smaller photosites and reaches it at a wider aperture, which is why compact cameras seldom stop down beyond f/8.</p>
+<div class="example">
+  <p><b>Example.</b> At f/8, <var>b</var> = 2.44 · 0.00055 · 8 = 0.0107 mm, 10.7 µm, close to two photosites on a 24-megapixel full-frame sensor (6.0 µm). For that sensor <var>N</var><sub>max</sub> = 0.006&#8239;/&#8239;(2.44 · 0.00055) = f/4.5; on the 3.9 µm of APS-C, f/2.9.</p>
+</div>
 
+<script>
+  // A link to an equation lands on the equation; bring its section heading
+  // into view with it, so the snapshot in the editor says what it is
+  // looking at. Only when both fit — otherwise the equation wins.
+  function revealHeading() {
+    const target = document.querySelector(':target');
+    if (target === null || !target.classList.contains('eq')) return;
+    let heading = target.previousElementSibling;
+    while (heading !== null && !/^H[23]$/.test(heading.tagName)) heading = heading.previousElementSibling;
+    if (heading === null) return;
+    const top = heading.getBoundingClientRect().top + window.scrollY - 8;
+    const bottom = target.getBoundingClientRect().bottom + window.scrollY;
+    if (bottom - top <= window.innerHeight) window.scrollTo(0, top);
+  }
+  window.addEventListener('load', revealHeading);
+  window.addEventListener('hashchange', revealHeading);
+</script>
 </body>
 </html>
