@@ -19,6 +19,7 @@ import type { AppLocale } from '../model/editorSettings';
 import { useSettings } from '../settings-context';
 import { phrase, ui } from '../i18n';
 import { TextField } from './fields';
+import { HelpLink } from './HelpLink';
 
 const STATE_LABELS: Readonly<Record<NodeState, string>> = {
   ok: '',
@@ -112,6 +113,7 @@ export function NodeShell({
   // grow that box out from under the very rectangle it was fully inside of.
   // Freeze at collapsed-or-pinned for the drag; a pin (`expanded`) still wins.
   const open = expanded || (!marqueeActive && (selected || hovered));
+  const help: string | undefined = helpUrl ?? NODE_HELP_URLS[kind];
   return (
     <div
       className={`node node-${kind} state-${state}${open ? ' open' : ''}${highlighted ? ' highlighted' : ''}${extraClassName === undefined ? '' : ` ${extraClassName}`}`}
@@ -121,22 +123,7 @@ export function NodeShell({
     >
       <header>
         <span className="node-title">{title}</span>
-        {/* Tabbed past, not out of the header — a student tabbing from the
-            label toward a node's value and unit fields should not land on
-            these icon buttons first (ROADMAP.md: "Tab in node should go
-            from label-value-unit"). Still reachable by click. */}
-        {(helpUrl ?? NODE_HELP_URLS[kind]) === undefined ? null : (
-          <a
-            className="help"
-            href={helpUrl ?? NODE_HELP_URLS[kind]}
-            target="_blank"
-            rel="noopener"
-            title={helpTitle ?? copy.nodeHelp}
-            tabIndex={-1}
-          >
-            ?
-          </a>
-        )}
+        {help === undefined ? null : <HelpLink href={help} label={helpTitle ?? copy.nodeHelp} />}
         {detail === undefined ? null : (
           <button
             type="button"

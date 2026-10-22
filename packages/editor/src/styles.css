@@ -1122,6 +1122,52 @@ aside.bottom .palette-list section {
   color: var(--accent);
 }
 
+/* The "?"'s snapshot of where it goes (HelpLink.tsx). Fixed and portalled:
+   the canvas zoom must not shrink it a second time. */
+.help-preview {
+  position: fixed;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--paper);
+  box-shadow: var(--shadow-lg);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.help-preview-label {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.help-preview:hover .help-preview-label {
+  color: var(--accent);
+}
+
+.help-preview-page {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  background: #fff;
+}
+
+.help-preview-page iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border: 0;
+  transform-origin: 0 0;
+  pointer-events: none;
+}
+
 .node .node-pin {
   border: none;
   color: var(--line);

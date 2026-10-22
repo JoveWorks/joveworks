@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Photography — the formulas</title>
+<!--
+  The book the photography catalogue (photography.json, next to this file)
+  cites. A formula's `href` names an anchor here — `#eq-1.1` — and the
+  catalogue's `source.url` names this file, so the editor's "?" opens the
+  equation the node computes. Anchors follow the Roloff/Matek HTML book's
+  shape (`eq-<chapter>.<n>`, sections by number), so a course book built
+  that way links the same.
+
+  Self-contained on purpose: no scripts, no fonts, no CDN. A school that
+  edits this file to suit its course needs nothing but a text editor.
+-->
+<style>
+  :root {
+    --ink: #1d232a;
+    --muted: #5b6672;
+    --rule: #d9dee3;
+    --accent: #2a6f97;
+    --paper: #fbfbf9;
+    --mark: #fff3c4;
+    color-scheme: light dark;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ink: #e4e7eb;
+      --muted: #9aa5b1;
+      --rule: #3a434d;
+      --accent: #7fb8d8;
+      --paper: #161a1e;
+      --mark: #3d3518;
+    }
+  }
+  /* Room above a linked equation for the sentence that introduces it. */
+  html { scroll-padding-top: 5rem; }
+  body {
+    margin: 0 auto;
+    max-width: 44rem;
+    padding: 1.5rem 1rem 4rem;
+    font: 17px/1.55 Georgia, "Times New Roman", serif;
+    color: var(--ink);
+    background: var(--paper);
+  }
+  h1 { font-size: 1.8rem; margin: 0 0 0.25rem; }
+  h2 { font-size: 1.3rem; margin: 2.5rem 0 0.5rem; border-bottom: 1px solid var(--rule); padding-bottom: 0.2rem; }
+  h3 { font-size: 1.05rem; margin: 1.6rem 0 0.4rem; }
+  .byline, .note { color: var(--muted); font-size: 0.9rem; }
+  nav ol { padding-left: 1.2rem; }
+  a { color: var(--accent); }
+  var { font-style: italic; }
+  .eq {
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+    margin: 0.8rem 0;
+    padding: 0.4rem 0.6rem;
+    border-radius: 4px;
+  }
+  .eq .math { flex: 1; text-align: center; font-size: 1.08rem; }
+  .eq .num { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .eq:target { background: var(--mark); }
+  .frac { display: inline-flex; flex-direction: column; vertical-align: middle; text-align: center; margin: 0 0.15em; }
+  .frac > span:first-child { border-bottom: 1px solid currentColor; padding: 0 0.2em; }
+  .frac > span:last-child { padding: 0 0.2em; }
+  .root { border-top: 1px solid currentColor; padding: 0 0.1em; }
+  dl.symbols { display: grid; grid-template-columns: max-content 1fr; gap: 0.1rem 1rem; font-size: 0.92rem; }
+  dl.symbols dt { font-style: italic; }
+  dl.symbols dd { margin: 0; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<header id="top">
+  <h1>Photography — the formulas</h1>
+  <p class="byline">The reference behind the JoveWorks photography catalogue. Every equation has a link of its own: <code>photography.html#eq-1.1</code>.</p>
+</header>
+
+<nav>
+  <ol>
+    <li><a href="#1">Lenses</a></li>
+    <li><a href="#2">Depth of field</a></li>
+    <li><a href="#3">Sensor format</a></li>
+    <li><a href="#4">Exposure</a></li>
+    <li><a href="#5">Flash</a></li>
+    <li><a href="#6">Macro</a></li>
+    <li><a href="#7">Diffraction</a></li>
+  </ol>
+</nav>
+
+<h2 id="1">1 Lenses</h2>
+
+<h3 id="1.1">1.1 The thin-lens equation</h3>
+<p>A thin lens of focal length <var>f</var> brings an object at distance <var>d</var><sub>o</sub> in front of it to focus at distance <var>d</var><sub>i</sub> behind it:</p>
+<div class="eq" id="eq-1.1">
+  <span class="math"><span class="frac"><span>1</span><span><var>f</var></span></span> = <span class="frac"><span>1</span><span><var>d</var><sub>o</sub></span></span> + <span class="frac"><span>1</span><span><var>d</var><sub>i</sub></span></span></span>
+  <span class="num">(1.1)</span>
+</div>
+<p>Solved for each of the three, it gives the image distance <var>d</var><sub>i</sub> = <var>f</var>&#8239;<var>d</var><sub>o</sub>&#8239;/&#8239;(<var>d</var><sub>o</sub> − <var>f</var>), the object distance, or the focal length from a pair of conjugate distances. A negative image distance is a virtual image, on the same side as the object.</p>
+
+<h3 id="1.2">1.2 Magnification</h3>
+<p>The transverse magnification is the ratio of image to object size, and so of their distances. Eliminating <var>d</var><sub>i</sub> with (1.1) gives it from the focal length alone:</p>
+<div class="eq" id="eq-1.2">
+  <span class="math"><var>m</var> = <span class="frac"><span><var>d</var><sub>i</sub></span><span><var>d</var><sub>o</sub></span></span> = <span class="frac"><span><var>f</var></span><span><var>d</var><sub>o</sub> − <var>f</var></span></span></span>
+  <span class="num">(1.2)</span>
+</div>
+<p class="note">Magnitude only: a real image is inverted.</p>
+<div class="eq" id="eq-1.3">
+  <span class="math"><var>h</var><sub>i</sub> = <var>m</var>&#8239;<var>h</var><sub>o</sub></span>
+  <span class="num">(1.3)</span>
+</div>
+<p>The height of the image on the sensor, from the height of the object.</p>
+
+<h2 id="2">2 Depth of field</h2>
+
+<h3 id="2.1">2.1 Circle of confusion</h3>
+<p>A point that is not exactly in focus is drawn as a small disc. The largest disc that still looks like a point is the circle of confusion <var>c</var>. The classic rule of thumb takes a fixed fraction of the sensor diagonal <var>d</var>, with <var>k</var> commonly 1500:</p>
+<div class="eq" id="eq-2.1">
+  <span class="math"><var>c</var> = <span class="frac"><span><var>d</var></span><span><var>k</var></span></span></span>
+  <span class="num">(2.1)</span>
+</div>
+<p>On a digital sensor it can instead be sized in pixels: a blur of <var>n</var> photosites of pitch <var>p</var>.</p>
+<div class="eq" id="eq-2.2">
+  <span class="math"><var>c</var> = <var>n</var>&#8239;<var>p</var></span>
+  <span class="num">(2.2)</span>
+</div>
+
+<h3 id="2.2">2.2 Hyperfocal distance</h3>
+<p>Focused at the hyperfocal distance <var>H</var>, a lens at f-number <var>N</var> renders everything from <var>H</var>/2 to infinity acceptably sharp:</p>
+<div class="eq" id="eq-2.3">
+  <span class="math"><var>H</var> = <span class="frac"><span><var>f</var><sup>2</sup></span><span><var>N</var>&#8239;<var>c</var></span></span> + <var>f</var></span>
+  <span class="num">(2.3)</span>
+</div>
+
+<h3 id="2.3">2.3 Near and far limits</h3>
+<p>Focused at a distance <var>s</var>, the zone of acceptable sharpness runs from <var>D</var><sub>n</sub> to <var>D</var><sub>f</sub>:</p>
+<div class="eq" id="eq-2.4">
+  <span class="math"><var>D</var><sub>n</sub> = <span class="frac"><span><var>H</var>&#8239;<var>s</var></span><span><var>H</var> + (<var>s</var> − <var>f</var>)</span></span>, &#8195; <var>D</var><sub>f</sub> = <span class="frac"><span><var>H</var>&#8239;<var>s</var></span><span><var>H</var> − (<var>s</var> − <var>f</var>)</span></span></span>
+  <span class="num">(2.4)</span>
+</div>
+<div class="eq" id="eq-2.5">
+  <span class="math">DoF = <var>D</var><sub>f</sub> − <var>D</var><sub>n</sub></span>
+  <span class="num">(2.5)</span>
+</div>
+<p class="note">Beyond the hyperfocal distance the far limit is infinite, and (2.4) for <var>D</var><sub>f</sub> and (2.5) no longer apply; the near limit still does.</p>
+
+<h2 id="3">3 Sensor format</h2>
+
+<h3 id="3.1">3.1 Angle of view</h3>
+<p>Along a sensor dimension of extent <var>w</var> (width, height or diagonal):</p>
+<div class="eq" id="eq-3.1">
+  <span class="math"><var>φ</var> = 2&#8239;arctan <span class="frac"><span><var>w</var></span><span>2&#8239;<var>f</var></span></span></span>
+  <span class="num">(3.1)</span>
+</div>
+
+<h3 id="3.2">3.2 Diagonal and crop factor</h3>
+<p>From the sensor height <var>h</var> and its width-to-height aspect ratio <var>a</var>:</p>
+<div class="eq" id="eq-3.2">
+  <span class="math"><var>d</var> = <var>h</var>&#8239;√<span class="root">1 + <var>a</var><sup>2</sup></span></span>
+  <span class="num">(3.2)</span>
+</div>
+<p>The crop factor compares a sensor with a reference format, usually 36 × 24 mm full frame (<var>d</var><sub>ref</sub> ≈ 43.3 mm):</p>
+<div class="eq" id="eq-3.3">
+  <span class="math"><var>c</var> = <span class="frac"><span><var>d</var><sub>ref</sub></span><span><var>d</var><sub>sensor</sub></span></span></span>
+  <span class="num">(3.3)</span>
+</div>
+
+<h3 id="3.3">3.3 Equivalence</h3>
+<p>A lens on the smaller sensor frames like a lens <var>c</var> times longer on the reference format, and gives the depth of field of an f-number <var>c</var> times larger:</p>
+<div class="eq" id="eq-3.4">
+  <span class="math"><var>f</var><sub>eq</sub> = <var>c</var>&#8239;<var>f</var>, &#8195; <var>N</var><sub>eq</sub> = <var>c</var>&#8239;<var>N</var></span>
+  <span class="num">(3.4)</span>
+</div>
+
+<h3 id="3.4">3.4 Pixel pitch</h3>
+<p>For square photosites, the sensor area divided by the pixel count gives the area of one, here with the pixel count in megapixels <var>MP</var>:</p>
+<div class="eq" id="eq-3.5">
+  <span class="math"><var>p</var> = √<span class="root"><span class="frac"><span><var>a</var>&#8239;<var>d</var><sup>2</sup></span><span>(1 + <var>a</var><sup>2</sup>)&#8239;<var>MP</var>&#8239;·&#8239;10<sup>6</sup></span></span></span></span>
+  <span class="num">(3.5)</span>
+</div>
+
+<h2 id="4">4 Exposure</h2>
+
+<h3 id="4.1">4.1 Exposure value</h3>
+<p>Aperture and shutter time combine into one number on a base-2 scale, with <var>t</var> in seconds (<var>t</var><sub>ref</sub> = 1 s):</p>
+<div class="eq" id="eq-4.1">
+  <span class="math">EV = log<sub>2</sub> <span class="frac"><span><var>N</var><sup>2</sup></span><span><var>t</var>&#8239;/&#8239;<var>t</var><sub>ref</sub></span></span></span>
+  <span class="num">(4.1)</span>
+</div>
+<div class="eq" id="eq-4.2">
+  <span class="math">EV<sub>ISO</sub> = EV<sub>100</sub> + log<sub>2</sub> <span class="frac"><span>ISO</span><span>100</span></span></span>
+  <span class="num">(4.2)</span>
+</div>
+
+<h3 id="4.2">4.2 Reciprocity</h3>
+<p>The same exposure is reached by trading shutter time against aperture or sensitivity. Changing the aperture from <var>N</var><sub>1</sub> to <var>N</var><sub>2</sub>, or the sensitivity from ISO<sub>1</sub> to ISO<sub>2</sub>:</p>
+<div class="eq" id="eq-4.3">
+  <span class="math"><var>t</var><sub>2</sub> = <var>t</var><sub>1</sub> <span class="frac"><span><var>N</var><sub>2</sub><sup>2</sup></span><span><var>N</var><sub>1</sub><sup>2</sup></span></span>, &#8195; <var>t</var><sub>2</sub> = <var>t</var><sub>1</sub> <span class="frac"><span>ISO<sub>1</sub></span><span>ISO<sub>2</sub></span></span></span>
+  <span class="num">(4.3)</span>
+</div>
+<p>and the first solved for the aperture, <var>N</var><sub>2</sub> = <var>N</var><sub>1</sub>&#8239;√(<var>t</var><sub>2</sub>&#8239;/&#8239;<var>t</var><sub>1</sub>).</p>
+
+<h2 id="5">5 Flash</h2>
+<p>A flash's guide number is the product of the distance it correctly exposes and the f-number that takes, at ISO 100:</p>
+<div class="eq" id="eq-5.1">
+  <span class="math"><var>GN</var> = <var>d</var>&#8239;<var>N</var></span>
+  <span class="num">(5.1)</span>
+</div>
+<p>so that either one follows from the other: <var>d</var> = <var>GN</var>&#8239;/&#8239;<var>N</var>, <var>N</var> = <var>GN</var>&#8239;/&#8239;<var>d</var>.</p>
+
+<h2 id="6">6 Macro</h2>
+<div class="eq" id="eq-6.1">
+  <span class="math"><var>R</var> = <span class="frac"><span><var>h</var><sub>i</sub></span><span><var>h</var><sub>o</sub></span></span></span>
+  <span class="num">(6.1)</span>
+</div>
+<p>The reproduction ratio is magnification under its macro name: 1 : 1 is life size. Extension <var>e</var> behind a lens focused at infinity adds</p>
+<div class="eq" id="eq-6.2">
+  <span class="math"><var>m</var> = <span class="frac"><span><var>e</var></span><span><var>f</var></span></span></span>
+  <span class="num">(6.2)</span>
+</div>
+<p>and spreads the light over a larger image, so the lens behaves as a slower one:</p>
+<div class="eq" id="eq-6.3">
+  <span class="math"><var>N</var><sub>eff</sub> = <var>N</var>&#8239;(1 + <var>m</var>)</span>
+  <span class="num">(6.3)</span>
+</div>
+
+<h2 id="7">7 Diffraction</h2>
+<p>Stopping down narrows the aperture until diffraction spreads every point into an Airy disc of diameter</p>
+<div class="eq" id="eq-7.1">
+  <span class="math"><var>b</var> = 2.44&#8239;<var>λ</var>&#8239;<var>N</var></span>
+  <span class="num">(7.1)</span>
+</div>
+<p>which is larger than a photosite of pitch <var>p</var> from</p>
+<div class="eq" id="eq-7.2">
+  <span class="math"><var>N</var><sub>max</sub> = <span class="frac"><span><var>p</var></span><span>2.44&#8239;<var>λ</var></span></span></span>
+  <span class="num">(7.2)</span>
+</div>
+<p class="note">Green light, <var>λ</var> ≈ 550 nm, is the usual choice.</p>
+
+</body>
+</html>

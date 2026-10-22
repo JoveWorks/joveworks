@@ -973,6 +973,12 @@ export interface Catalogue {
  * `https://library.example/book.pdf#page={page}` opens the right page in a
  * browser's PDF viewer. A url without `{page}` links every formula to the
  * book itself. Changing platform is then one line, not every formula.
+ *
+ * An HTML book is addressed by anchor rather than page: the url names the
+ * book and each formula's `href` is relative to it — `#eq-1.1`, or
+ * `ch02.html#eq-2.1` for a book of several pages. The url may itself be
+ * relative, `photography.html`, for a book that ships beside the catalogue
+ * file; whoever hosts the catalogue resolves that against where it lives.
  */
 export interface CatalogueSource {
   readonly title?: LocalizedText;
@@ -985,18 +991,29 @@ const PAGE_PLACEHOLDER = '{page}';
 /**
  * Only web links. A catalogue is a file students pass to each other, and an
  * href read from one is put straight into the page, so `javascript:` and the
- * like are refused here rather than trusted there.
+ * like are refused here rather than trusted there. A relative link is
+ * allowed — it cannot carry a scheme of its own — and is resolved by
+ * `sourceHref` against the catalogue's source.
  */
 function readLink(value: JsonValue, path: string): string {
   const text = readString(value, path).trim();
   let url: URL;
   try {
-    url = new URL(text.replaceAll(PAGE_PLACEHOLDER, '1'));
+    url = new URL(text.replaceAll(PAGE_PLACEHOLDER, '1'), RELATIVE_BASE);
   } catch {
-    fail(path, `'${text}' is not an absolute URL`);
+    fail(path, `'${text}' is not a URL`);
   }
   if (url.protocol !== 'https:' && url.protocol !== 'http:') fail(path, 'must be an http or https link');
   return text;
+}
+
+/** A stand-in origin for resolving one relative link against another; never shown. */
+const RELATIVE_BASE = 'https://relative.invalid/';
+
+/** `href` against `base`, either of which may be relative; relative in, relative out. */
+function resolveLink(href: string, base: string): string {
+  const resolved = new URL(href, new URL(base, RELATIVE_BASE)).href;
+  return resolved.startsWith(RELATIVE_BASE) ? resolved.slice(RELATIVE_BASE.length) : resolved;
 }
 
 function parseCatalogueSource(value: JsonValue, path: string): CatalogueSource {
@@ -1017,17 +1034,27 @@ function serializeCatalogueSource(source: CatalogueSource): JsonObject {
 }
 
 /**
- * The link a formula's help opens: its own `href`, else the catalogue's
+ * The link a formula's help opens: its own `href` — resolved against the
+ * catalogue's source url, so an HTML book needs only the anchor — else the
  * source url with the page filled in. A templated url and no page gives
- * nothing — guessing a page would open the wrong one.
+ * nothing — guessing a page would open the wrong one. The result is
+ * relative when the source url is; `isRelativeLink` tells the caller to
+ * resolve it against wherever the catalogue was loaded from.
  */
 export function sourceHref(catalogue: Catalogue, formula: Formula): string | undefined {
-  if (formula.href !== undefined) return formula.href;
   const source = catalogue.source;
+  if (formula.href !== undefined) {
+    return source === undefined ? formula.href : resolveLink(formula.href, source.url.replaceAll(PAGE_PLACEHOLDER, '1'));
+  }
   if (source === undefined) return undefined;
   if (!source.url.includes(PAGE_PLACEHOLDER)) return source.url;
   if (formula.page === undefined) return undefined;
   return source.url.replaceAll(PAGE_PLACEHOLDER, String(formula.page + (source.pageOffset ?? 0)));
+}
+
+/** True for a link with no scheme of its own: `photography.html#eq-1.1`, `#eq-1.1`. */
+export function isRelativeLink(link: string): boolean {
+  return new URL(link, RELATIVE_BASE).href.startsWith(RELATIVE_BASE);
 }
 
 export function parseCatalogue(value: JsonValue, path = ''): Catalogue {

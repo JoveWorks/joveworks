@@ -95,6 +95,7 @@ export {
   parseCatalogue,
   serializeCatalogue,
   sourceHref,
+  isRelativeLink,
 } from './formula.js';
 export type {
   Formula,

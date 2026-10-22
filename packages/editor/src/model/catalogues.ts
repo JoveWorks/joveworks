@@ -14,6 +14,7 @@ import {
   localize,
   parseCatalogue,
   loadCatalogue,
+  isRelativeLink,
   ports,
   sourceHref,
   type Catalogue,
@@ -83,6 +84,42 @@ const exampleYamlCatalogueModules = EXAMPLES_ENABLED
   : {};
 
 /**
+ * The books that ship beside the bundled catalogues: `photography.html` next
+ * to `photography.json`, cited by a relative `source.url`. Vite hashes the
+ * emitted file name, so a relative link cannot simply be resolved against
+ * the catalogue's directory — it is looked up here by file name instead.
+ * Gated like the catalogues, so a school's build carries no example book.
+ */
+const bundledBookModules = import.meta.glob<string>('../catalogues/*.html', {
+  eager: true,
+  import: 'default',
+  query: '?url',
+});
+
+const exampleBookModules = EXAMPLES_ENABLED
+  ? import.meta.glob<string>('../catalogues/examples/*.html', { eager: true, import: 'default', query: '?url' })
+  : {};
+
+const BUNDLED_BOOKS: ReadonlyMap<string, string> = new Map(
+  Object.entries({ ...bundledBookModules, ...exampleBookModules }).map(([path, url]) => [path.slice(path.lastIndexOf('/') + 1), url]),
+);
+
+/**
+ * A relative source link made absolute: `photography.html#eq-1.1` becomes
+ * the hosted book plus its anchor. A relative link to a book the app does not
+ * host — a loaded file cannot bring its book along — resolves to nothing, so
+ * the "?" falls back to the ordinary help.
+ */
+function hostedLink(link: string): string | undefined {
+  if (!isRelativeLink(link)) return link;
+  const split = link.search(/[?#]/);
+  const file = split === -1 ? link : link.slice(0, split);
+  const book = BUNDLED_BOOKS.get(file);
+  if (book === undefined) return undefined;
+  return new URL(book + (split === -1 ? '' : link.slice(split)), window.location.href).href;
+}
+
+/**
  * Every catalogue that ships with the app alongside the base nodes: files
  * dropped in `src/catalogues/`, plus the examples when they are switched
  * on — textbook-independent, `restricted: false`, hand-authored per
@@ -148,7 +185,8 @@ export function formulaSource(
 ): { readonly href: string; readonly title?: string } | undefined {
   const catalogue = catalogues.find((candidate) => candidate.formulas.includes(formula));
   if (catalogue === undefined) return undefined;
-  const href = sourceHref(catalogue, formula);
+  const link = sourceHref(catalogue, formula);
+  const href = link === undefined ? undefined : hostedLink(link);
   if (href === undefined) return undefined;
   const title = catalogue.source?.title;
   return title === undefined ? { href } : { href, title: localize(title, locale) };

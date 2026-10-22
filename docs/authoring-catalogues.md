@@ -68,6 +68,27 @@ The link is only a link: whether a student can open it — a library login,
 a licence — is up to wherever it points. A formula with a templated url and
 no `page` keeps the ordinary help link.
 
+An HTML book is addressed by anchor instead of page. Name the book in
+`source.url` and give each formula an `href` relative to it:
+
+```yaml
+source:
+  title:
+    en: the photography book
+  url: photography.html
+formulas:
+  - id: photography.dof.hyperfocal-distance
+    href: "#eq-2.3"
+```
+
+A relative `url` means a book that ships beside the catalogue, with the same
+name: `photography.html` next to `photography.json` in
+`packages/editor/src/catalogues/examples/`. The editor hosts it, so editing
+the book is editing that one file. A catalogue loaded from a file cannot
+bring its book along; give it an absolute `url` instead, and `href` still
+only needs the anchor (`ch02.html#eq-2.1` for a book of several pages).
+Resting on a node's "?" previews the linked equation; a click opens it.
+
 JoveWorks uses YAML 1.2, requires unique string keys, and rejects custom tags,
 merge keys, anchors, and aliases. Quote a scalar when YAML punctuation could
 change its meaning — expressions containing `#` or `:`, for example.

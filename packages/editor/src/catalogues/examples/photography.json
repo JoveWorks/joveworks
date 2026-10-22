@@ -5,6 +5,12 @@
     "en": "Photography"
   },
   "restricted": false,
+  "source": {
+    "title": {
+      "en": "the photography book"
+    },
+    "url": "photography.html"
+  },
   "formulas": [
     {
       "id": "photography.lens.image-distance",
@@ -48,6 +54,7 @@
       "description": {
         "en": "Thin-lens (Gaussian) equation: image distance from focal length and object distance. A negative result is a virtual image behind the lens."
       },
+      "href": "#eq-1.1",
       "citation": "Thin lens equation",
       "variantOf": "photography.lens.gaussian",
       "status": "unverified"
@@ -94,6 +101,7 @@
       "description": {
         "en": "Thin-lens equation solved for object distance, given focal length and image distance."
       },
+      "href": "#eq-1.1",
       "citation": "Thin lens equation",
       "variantOf": "photography.lens.gaussian",
       "status": "unverified"
@@ -140,6 +148,7 @@
       "description": {
         "en": "Thin-lens equation solved for focal length, given conjugate object and image distances."
       },
+      "href": "#eq-1.1",
       "citation": "Thin lens equation",
       "variantOf": "photography.lens.gaussian",
       "status": "unverified"
@@ -186,6 +195,7 @@
       "description": {
         "en": "Transverse magnification as the ratio of image to object distance. Magnitude only; a real image is inverted."
       },
+      "href": "#eq-1.2",
       "citation": "Thin lens magnification",
       "status": "unverified"
     },
@@ -231,6 +241,7 @@
       "description": {
         "en": "Transverse magnification from focal length and object distance alone."
       },
+      "href": "#eq-1.2",
       "citation": "Thin lens magnification",
       "status": "unverified"
     },
@@ -273,6 +284,7 @@
       "description": {
         "en": "Image height on the sensor from magnification and object height."
       },
+      "href": "#eq-1.3",
       "status": "unverified"
     },
     {
@@ -328,6 +340,7 @@
       "description": {
         "en": "Distance beyond which everything is acceptably sharp when focused at the hyperfocal distance."
       },
+      "href": "#eq-2.3",
       "citation": "Hyperfocal distance",
       "status": "unverified"
     },
@@ -406,6 +419,7 @@
       "description": {
         "en": "Near limit, far limit and total depth of field for a lens focused at distance s, from one hyperfocal distance. The total is the difference between the two limits rather than a restatement of their algebra. Beyond the hyperfocal distance the far limit is effectively infinite: only it and the total stop applying there, while the near limit still holds."
       },
+      "href": "#eq-2.4",
       "citation": "Depth of field",
       "appliesWhen": {
         "D_f": "s < H",
@@ -456,6 +470,7 @@
       "description": {
         "en": "Rule-of-thumb acceptable circle of confusion from the sensor diagonal."
       },
+      "href": "#eq-2.1",
       "citation": "Circle of confusion, diagonal rule",
       "status": "unverified"
     },
@@ -502,6 +517,7 @@
       "description": {
         "en": "Acceptable circle of confusion sized to a chosen number of pixels of blur, from the sensor's pixel pitch."
       },
+      "href": "#eq-2.2",
       "citation": "Circle of confusion, pixel-based criterion",
       "status": "unverified"
     },
@@ -547,6 +563,7 @@
       "description": {
         "en": "Angle of view along one sensor dimension from focal length and that dimension's extent."
       },
+      "href": "#eq-3.1",
       "citation": "Angle of view",
       "status": "unverified"
     },
@@ -593,6 +610,7 @@
       "description": {
         "en": "Sensor diagonal from sensor height and its width-to-height aspect ratio."
       },
+      "href": "#eq-3.2",
       "status": "unverified"
     },
     {
@@ -638,6 +656,7 @@
       "description": {
         "en": "Crop factor of a sensor relative to a reference format, from diagonal measurements."
       },
+      "href": "#eq-3.3",
       "status": "unverified"
     },
     {
@@ -682,6 +701,7 @@
       "description": {
         "en": "Focal length in the reference format's equivalent field of view."
       },
+      "href": "#eq-3.4",
       "status": "unverified"
     },
     {
@@ -726,6 +746,7 @@
       "description": {
         "en": "Aperture in the reference format's equivalent depth-of-field and light-gathering terms."
       },
+      "href": "#eq-3.4",
       "status": "unverified"
     },
     {
@@ -782,6 +803,7 @@
       "description": {
         "en": "Pixel pitch (photosite spacing) from sensor diagonal, aspect ratio and total pixel count."
       },
+      "href": "#eq-3.5",
       "status": "unverified"
     },
     {
@@ -1208,6 +1230,7 @@
       "description": {
         "en": "Exposure value at ISO 100 from aperture and shutter time, on the standard log base-2 scale."
       },
+      "href": "#eq-4.1",
       "citation": "Exposure value",
       "status": "unverified"
     },
@@ -1251,6 +1274,7 @@
       "description": {
         "en": "Exposure value adjusted from ISO 100 to an arbitrary sensitivity."
       },
+      "href": "#eq-4.2",
       "citation": "Exposure value, ISO correction",
       "status": "unverified"
     },
@@ -1307,6 +1331,7 @@
       "description": {
         "en": "Shutter time that keeps exposure constant after changing the aperture."
       },
+      "href": "#eq-4.3",
       "citation": "Reciprocity, aperture for shutter time",
       "status": "unverified"
     },
@@ -1363,6 +1388,7 @@
       "description": {
         "en": "Shutter time that keeps exposure constant after changing sensitivity."
       },
+      "href": "#eq-4.3",
       "citation": "Reciprocity, ISO for shutter time",
       "status": "unverified"
     },
@@ -1419,6 +1445,7 @@
       "description": {
         "en": "Aperture that keeps exposure constant after changing the shutter time."
       },
+      "href": "#eq-4.3",
       "citation": "Reciprocity, shutter time for aperture",
       "status": "unverified"
     },
@@ -1464,6 +1491,7 @@
       "description": {
         "en": "Flash guide number from a correctly exposed distance and aperture pair, at ISO 100."
       },
+      "href": "#eq-5.1",
       "citation": "Guide number",
       "status": "unverified"
     },
@@ -1509,6 +1537,7 @@
       "description": {
         "en": "Correctly exposed flash distance from guide number and aperture."
       },
+      "href": "#eq-5.1",
       "citation": "Guide number",
       "status": "unverified"
     },
@@ -1554,6 +1583,7 @@
       "description": {
         "en": "Correctly exposed aperture from guide number and subject distance."
       },
+      "href": "#eq-5.1",
       "citation": "Guide number",
       "status": "unverified"
     },
@@ -1599,6 +1629,7 @@
       "description": {
         "en": "Reproduction ratio, the macro-photography name for magnification."
       },
+      "href": "#eq-6.1",
       "status": "unverified"
     },
     {
@@ -1643,6 +1674,7 @@
       "description": {
         "en": "Additional magnification gained from extension behind a lens focused at infinity."
       },
+      "href": "#eq-6.2",
       "status": "unverified"
     },
     {
@@ -1687,6 +1719,7 @@
       "description": {
         "en": "Effective aperture, accounting for the light lost to lens extension at macro magnifications."
       },
+      "href": "#eq-6.3",
       "citation": "Effective f-number",
       "status": "unverified"
     },
@@ -1733,6 +1766,7 @@
       "description": {
         "en": "Diameter of the Airy disk, the diffraction-limited blur spot at a given aperture."
       },
+      "href": "#eq-7.1",
       "citation": "Rayleigh criterion",
       "status": "unverified"
     },
@@ -1779,6 +1813,7 @@
       "description": {
         "en": "Widest aperture (largest f-number) below which diffraction blur exceeds one pixel."
       },
+      "href": "#eq-7.2",
       "citation": "Rayleigh criterion",
       "status": "unverified"
     }

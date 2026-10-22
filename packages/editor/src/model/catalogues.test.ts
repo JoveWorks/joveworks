@@ -1,4 +1,7 @@
+import { readFileSync } from 'node:fs';
+
 import { describe, expect, it } from 'vitest';
+import { sourceHref } from '@joveworks/schema';
 
 import { baseCatalogue, bundledCatalogues, entries, search } from './catalogues';
 
@@ -10,6 +13,29 @@ describe('bundled public catalogues', () => {
       'public-photography',
       'public-running',
     ]);
+  });
+});
+
+describe('the photography book', () => {
+  const catalogue = bundledCatalogues().find(({ id }) => id === 'public-photography');
+  const book = readFileSync(new URL('../catalogues/examples/photography.html', import.meta.url), 'utf-8');
+
+  it('is the book the catalogue cites, next to it', () => {
+    expect(catalogue?.source?.url).toBe('photography.html');
+  });
+
+  // A renumbered equation in the book must not leave a formula's "?" opening
+  // the top of the page.
+  it('has every anchor a formula links to', () => {
+    const links = (catalogue?.formulas ?? []).flatMap((formula) => {
+      const href = catalogue === undefined ? undefined : sourceHref(catalogue, formula);
+      return href === undefined || !href.includes('#') ? [] : [href];
+    });
+    expect(links.length).toBeGreaterThan(20);
+    const missing = links
+      .map((href) => href.replace(/^photography\.html#/, ''))
+      .filter((anchor) => !book.includes(`id="${anchor}"`));
+    expect(missing).toEqual([]);
   });
 });
 

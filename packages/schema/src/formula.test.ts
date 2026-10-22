@@ -22,6 +22,7 @@ import {
   serializeCatalogue,
   serializeFormula,
   sourceHref,
+  isRelativeLink,
   type Formula,
 } from './formula.js';
 import { localize } from './localization.js';
@@ -518,7 +519,29 @@ describe('catalogues', () => {
     it('refuses anything but a web link', () => {
       expect(() => linked({ url: 'javascript:alert(1)' })).toThrow('source.url: must be an http or https link');
       expect(() => parse({ ...product, href: 'javascript:alert(1)' })).toThrow('formulas[0].href: must be an http or https link');
-      expect(() => linked({ url: 'book.pdf#page={page}' })).toThrow('is not an absolute URL');
+      expect(() => linked({ url: 'data:text/html,<p>' })).toThrow('source.url: must be an http or https link');
+    });
+
+    describe('in an HTML book', () => {
+      const anchored = (href: string, url = 'https://library.example/invented/') =>
+        hrefOf(linked({ url }, { ...product, href }));
+
+      it('resolves a formula’s anchor against the book', () => {
+        expect(anchored('#eq-1.2')).toBe('https://library.example/invented/#eq-1.2');
+        expect(anchored('ch01.html#eq-1.2')).toBe('https://library.example/invented/ch01.html#eq-1.2');
+        expect(anchored('#eq-1.2', 'https://library.example/invented/ch01.html')).toBe('https://library.example/invented/ch01.html#eq-1.2');
+      });
+
+      it('keeps a book beside the catalogue relative, for its host to resolve', () => {
+        const href = anchored('#eq-1.2', 'invented.html');
+        expect(href).toBe('invented.html#eq-1.2');
+        expect(isRelativeLink(href as string)).toBe(true);
+        expect(isRelativeLink(anchored('#eq-1.2') as string)).toBe(false);
+      });
+
+      it('lets an absolute href escape the book', () => {
+        expect(anchored('https://elsewhere.example/#x', 'invented.html')).toBe('https://elsewhere.example/#x');
+      });
     });
 
     it('refuses a page that is not a positive whole number', () => {
