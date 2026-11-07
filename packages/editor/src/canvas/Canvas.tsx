@@ -126,6 +126,7 @@ import {
   type QuickAddChoice,
 } from './quickAdd';
 import { UnpackNodeView } from './UnpackNodeView';
+import { ZipNodeView } from './ZipNodeView';
 import { WaypointNodeView } from './WaypointNodeView';
 import { basePortName, slotHandleId } from './portSlots';
 
@@ -655,6 +656,7 @@ const NODE_TYPES = {
   waypoint: WaypointNodeView,
   pack: PackNodeView,
   unpack: UnpackNodeView,
+  zip: ZipNodeView,
   monteCarloGenerator: MonteCarloGeneratorNodeView,
   monteCarloReceiver: MonteCarloReceiverNodeView,
   frame: FrameView,

@@ -2233,7 +2233,8 @@ aside.bottom .palette-list section {
 
 /* Clears the out-handle now docked at the row's right edge, mirroring the
    left clearance every `.port` row already gets. */
-.node-waypoint .port {
+.node-waypoint .port,
+.node-zip .port {
   padding-right: 14px;
 }
 

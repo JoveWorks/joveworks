@@ -309,6 +309,12 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
       return addNode(current, { kind: 'pack', id, label: id, position: position() });
     });
 
+  const addZip = (): void =>
+    edit((current) => {
+      const id = uniqueId(current, 'zip');
+      return addNode(current, { kind: 'zip', id, label: id, position: position() });
+    });
+
   const addUnpack = (): void =>
     edit((current) => {
       const id = uniqueId(current, 'unpack');
@@ -436,6 +442,7 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
     { id: 'builtin:general:interpolate', label: copy.interpolate, summary: copy.interpolateSummary, insert: addInterpolate },
     { id: 'builtin:general:compare', label: copy.compare, summary: copy.compareSummary, insert: addCompare },
     { id: 'builtin:general:equation', label: copy.equation, summary: copy.equationSummary, insert: addClosure },
+    { id: 'builtin:general:zip', label: copy.zip, summary: copy.zipSummary, insert: addZip },
     { id: 'builtin:general:waypoint', label: copy.waypoint, summary: copy.waypointSummary, insert: addWaypoint },
     { id: 'builtin:general:pack', label: copy.pack, summary: copy.packSummary, insert: addPack },
     { id: 'builtin:general:unpack', label: copy.unpack, summary: copy.unpackSummary, insert: addUnpack },
