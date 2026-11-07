@@ -117,6 +117,7 @@ import {
   cantileverHollowSections,
   millingPowerEnvelope,
   depthOfField,
+  zoomDepthOfField,
   apertureDecision,
   wildlifeCameraComparison,
   monteCarloClearance,
@@ -206,6 +207,7 @@ function exampleDocument(
   if (id === 'pressfit-lab') return pressfitLab(catalogues, locale);
   if (id === 'cantilever-hollow-sections') return cantileverHollowSections(catalogues, locale);
   if (id === 'depth-of-field') return depthOfField(catalogues, locale);
+  if (id === 'zoom-depth-of-field') return zoomDepthOfField(catalogues, locale);
   if (id === 'aperture-decision') return apertureDecision(catalogues, locale);
   if (id === 'wildlife-camera-comparison') return wildlifeCameraComparison(catalogues, locale);
   return millingPowerEnvelope(catalogues, locale);
@@ -1168,6 +1170,28 @@ function AppShell(): ReactElement {
   // Every sample graph lives here rather than scattered under File — one
   // place a student (or a colleague seeing a demo) looks for "show me
   // something that already works".
+  // An example whose catalogue is not loaded is left out of the menu rather
+  // than greyed out: there is nothing a student could do from here to enable it.
+  const exampleItem = (id: ExampleId, label: string, available = true): readonly MenuItem[] =>
+    available
+      ? [
+          {
+            label: t(label),
+            onClick: () =>
+              guardDiscard(() => {
+                openExample(id);
+                setShowNotebook(true);
+                setTutorial({ kind: 'example', id });
+              }),
+          },
+        ]
+      : [];
+  const photographyExamples = [
+    ...exampleItem('depth-of-field', 'Depth of field — aperture and focal length', depthOfFieldAvailable),
+    ...exampleItem('zoom-depth-of-field', 'Depth of field — a zoom lens wide open', depthOfFieldAvailable),
+    ...exampleItem('aperture-decision', 'Choose an aperture — depth versus diffraction', apertureDecisionAvailable),
+  ];
+
   const helpMenuItems: readonly MenuItem[] = [
     {
       label: t('Documentation'),
@@ -1194,103 +1218,15 @@ function AppShell(): ReactElement {
       onClick: () => setShowCanvasControls(!showCanvasControls),
     },
     { heading: t('Examples') },
-    {
-      label: t('Choose a safe platform size'),
-      onClick: () =>
-        guardDiscard(() => {
-          openExample('platform-footprint');
-          setShowNotebook(true);
-          setTutorial({ kind: 'example', id: 'platform-footprint' });
-        }),
-    },
-    {
-      label: t('Pad pressure sweep'),
-      onClick: () =>
-        guardDiscard(() => {
-          openExample('pad-pressure');
-          setShowNotebook(true);
-          setTutorial({ kind: 'example', id: 'pad-pressure' });
-        }),
-    },
-    {
-      label: t('Clearance-fit stack-up'),
-      onClick: () =>
-        guardDiscard(() => {
-          openExample('monte-carlo-clearance');
-          setShowNotebook(true);
-          setTutorial({ kind: 'example', id: 'monte-carlo-clearance' });
-        }),
-    },
-    {
-      label: t('Load against strength'),
-      onClick: () =>
-        guardDiscard(() => {
-          openExample('reliability-load-strength');
-          setShowNotebook(true);
-          setTutorial({ kind: 'example', id: 'reliability-load-strength' });
-        }),
-    },
-    {
-      label: t('Belt lab'),
-      disabled: !beltAvailable,
-      onClick: () =>
-        guardDiscard(() => {
-          openExample('belt-lab');
-          setShowNotebook(true);
-          setTutorial({ kind: 'example', id: 'belt-lab' });
-        }),
-    },
-    {
-      label: t('Cylindrical press-fit lab'),
-      disabled: !pressfitAvailable,
-      onClick: () =>
-        guardDiscard(() => {
-          openExample('pressfit-lab');
-          setShowNotebook(true);
-          setTutorial({ kind: 'example', id: 'pressfit-lab' });
-        }),
-    },
-    {
-      label: t('Cantilever — hollow sections'),
-      disabled: !cantileverAvailable,
-      onClick: () =>
-        guardDiscard(() => {
-          openExample('cantilever-hollow-sections');
-          setShowNotebook(true);
-          setTutorial({ kind: 'example', id: 'cantilever-hollow-sections' });
-        }),
-    },
-    {
-      label: t('Pocket milling — power envelope'),
-      disabled: !millingAvailable,
-      onClick: () =>
-        guardDiscard(() => {
-          openExample('milling-power-envelope');
-          setShowNotebook(true);
-          setTutorial({ kind: 'example', id: 'milling-power-envelope' });
-        }),
-    },
-    { heading: t('Photography') },
-    {
-      label: t('Depth of field — aperture and focal length'),
-      disabled: !depthOfFieldAvailable,
-      onClick: () =>
-        guardDiscard(() => {
-          openExample('depth-of-field');
-          setShowNotebook(true);
-          setTutorial({ kind: 'example', id: 'depth-of-field' });
-        }),
-    },
-    {
-      label: t('Choose an aperture — depth versus diffraction'),
-      disabled: !apertureDecisionAvailable,
-      onClick: () =>
-        guardDiscard(() => {
-          openExample('aperture-decision');
-          setShowNotebook(true);
-          setTutorial({ kind: 'example', id: 'aperture-decision' });
-        }),
-    },
+    ...exampleItem('platform-footprint', 'Choose a safe platform size'),
+    ...exampleItem('pad-pressure', 'Pad pressure sweep'),
+    ...exampleItem('monte-carlo-clearance', 'Clearance-fit stack-up'),
+    ...exampleItem('reliability-load-strength', 'Load against strength'),
+    ...exampleItem('belt-lab', 'Belt lab', beltAvailable),
+    ...exampleItem('pressfit-lab', 'Cylindrical press-fit lab', pressfitAvailable),
+    ...exampleItem('cantilever-hollow-sections', 'Cantilever — hollow sections', cantileverAvailable),
+    ...exampleItem('milling-power-envelope', 'Pocket milling — power envelope', millingAvailable),
+    ...(photographyExamples.length === 0 ? [] : [{ heading: t('Photography') }, ...photographyExamples]),
   ];
 
   const menuItemsFor = (menu: 'file' | 'cloud' | 'edit' | 'view' | 'help'): readonly MenuItem[] =>

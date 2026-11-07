@@ -47,6 +47,8 @@ and export the result without copying values into another tool.
 
 - [Choose an aperture](/examples/choosing-an-aperture) — select the first
   available setting that satisfies two competing requirements.
+- [Follow a zoom lens wide open](/examples/zoom-lens-depth-of-field) — read
+  a zoom's widest aperture off a lookup table of its aperture bands.
 - [Map a milling power envelope](/examples/milling-power-envelope) — use a
   two-input sweep and checks to find a feasible operating region.
 - [Compare a lighter and stiffer cantilever](/examples/lighter-or-stiffer) —

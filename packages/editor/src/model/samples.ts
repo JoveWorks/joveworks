@@ -1203,6 +1203,143 @@ export function depthOfField(catalogues: readonly Catalogue[], locale: AppLocale
   return localizeExample(document('depth-of-field', 'Depth of field — aperture and focal length', withFrames, edges, frames), locale);
 }
 
+// --- depth of field through a zoom, from the public Photography catalogue ---
+
+/**
+ * The Canon RF 100-500mm F4.5-7.1 L IS USM's widest aperture, by where each
+ * band starts: f/4.5 from 100 mm, f/5 from 151 mm, and so on. As listed by
+ * The-Digital-Picture's specification table for the lens. A last row at
+ * 500 mm closes the table at the long end, so a focal length past it is
+ * refused rather than read as f/7.1.
+ */
+const RF_100_500_FOCAL = [100, 151, 254, 363, 472, 500];
+const RF_100_500_APERTURE = [4.5, 5, 5.6, 6.3, 7.1, 7.1];
+
+/**
+ * Depth of field across the Canon RF 100–500 mm zoom, used wide open.
+ *
+ * The companion to `depthOfField` above. That study crosses focal length with
+ * aperture because any pairing is a setting you could choose. Here the
+ * aperture is not a choice: it is the widest the zoom allows at that focal
+ * length, which the lens steps down a third of a stop at a time. So it is a
+ * function of focal length, read from a lookup table of the lens's own bands
+ * with "next row down", and lands on the focal-length axis by itself.
+ *
+ * The subject distance is a slider up to 75 m, which stays below the
+ * hyperfocal distance at every setting (77 m at 100 mm, f/4.5), so the far
+ * limit is finite throughout.
+ */
+export function zoomDepthOfField(catalogues: readonly Catalogue[], locale: AppLocale = 'en'): GraphDocument | undefined {
+  if (!provides(catalogues, DEPTH_OF_FIELD_FORMULAS)) return undefined;
+  const formula = (id: string): Formula => lookup(catalogues, id) as Formula;
+
+  const mm = parseUnit('mm');
+  const m = parseUnit('m');
+
+  const nodes: GraphNode[] = [
+    {
+      ...input('f', 'Focal length f', { kind: 'linear', start: 100, stop: 500, points: 17, unit: mm }, at(-110, 0)),
+      axisLabel: 'focal length f (mm)',
+    },
+    {
+      kind: 'lut',
+      id: 'lens',
+      label: 'RF 100–500 mm widest aperture',
+      columns: [
+        { name: 'f', unit: mm, values: RF_100_500_FOCAL },
+        { name: 'N', unit: parseUnit(''), values: RF_100_500_APERTURE },
+      ],
+      position: at(-110, 165),
+    },
+    { kind: 'interpolate', id: 'aperture', label: 'Widest aperture N', mode: 'nextDown', position: at(275, 165) },
+    {
+      ...input('s', 'Subject distance s', { kind: 'slider', value: 50, min: 1, max: 75, unit: m }, at(660, 0)),
+      exposeInNotebook: true,
+    },
+    input('d', 'Sensor diagonal d', { kind: 'scalar', value: 43.27, unit: mm }, at(-110, 550)),
+    formulaNode('coc', formula('photography.dof.circle-of-confusion'), at(275, 495)),
+    formulaNode('hyperfocal', formula('photography.dof.hyperfocal-distance'), at(660, 275)),
+    formulaNode('dof', formula('photography.dof.limits'), at(1045, 165)),
+
+    {
+      ...output(
+        'out_table',
+        'Depth of field at each zoom setting',
+        { kind: 'table', columns: ['f', 'N', 'DoF'], figures: { f: 0, N: 1, DoF: 2 } },
+        at(1540, -55),
+      ),
+      displayUnits: { DoF: m },
+      caption:
+        'Each focal length with the widest aperture the lens allows there, and the depth of field ' +
+        'that leaves at the chosen subject distance.',
+    },
+    {
+      ...output('out_plot', 'Depth of field across the zoom', { kind: 'plot', x: 'f', unit: m }, at(1540, 330)),
+      caption:
+        'Zooming in narrows the depth of field far faster than the closing aperture can win it ' +
+        'back. The small rise at 475 mm is the aperture closing to f/7.1.',
+    },
+  ];
+
+  const edges = [
+    wire('lens.f', 'aperture.xs'),
+    wire('lens.N', 'aperture.ys'),
+    wire('f.value', 'aperture.x'),
+
+    wire('d.value', 'coc.d'),
+    wire('f.value', 'hyperfocal.f'),
+    wire('aperture.y', 'hyperfocal.N'),
+    wire('coc.c', 'hyperfocal.c'),
+
+    wire('hyperfocal.H', 'dof.H'),
+    wire('s.value', 'dof.s'),
+    wire('f.value', 'dof.f'),
+
+    wire('f.value', 'out_table.f'),
+    wire('aperture.y', 'out_table.N'),
+    wire('dof.DoF', 'out_table.DoF'),
+    wire('dof.DoF', 'out_plot.value'),
+  ];
+
+  const frames = [
+    {
+      id: 'zoom-settings',
+      title: '1. The widest aperture at each focal length',
+      note:
+        'The RF 100–500 mm closes its widest aperture in third stops as it zooms: f/4.5 up to ' +
+        '150 mm, f/5 from 151 mm, f/5.6 from 254 mm, f/6.3 from 363 mm and f/7.1 from 472 mm. ' +
+        'The lookup table holds those bands, and the interpolate node reads the one each focal ' +
+        'length falls in, so the aperture follows the focal-length sweep.',
+      position: at(1485, -110),
+      size: { width: 330, height: 385 },
+    },
+    {
+      id: 'depth-across-zoom',
+      title: '2. What zooming in costs',
+      note:
+        'Move the subject distance to see how the trade-off changes. It stops at 75 m, just ' +
+        'short of the 77 m hyperfocal distance at 100 mm wide open, beyond which the far limit ' +
+        'runs to infinity.',
+      position: at(1485, 275),
+      size: { width: 330, height: 385 },
+    },
+  ];
+
+  const frameForOutput: Readonly<Record<string, string>> = {
+    out_table: 'zoom-settings',
+    out_plot: 'depth-across-zoom',
+  };
+  const withFrames = nodes.map((node) => {
+    const frameId = frameForOutput[node.id];
+    return node.kind === 'output' && frameId !== undefined ? { ...node, frameId } : node;
+  });
+
+  return localizeExample(
+    document('zoom-depth-of-field', 'Depth of field — a zoom lens wide open', withFrames, edges, frames),
+    locale,
+  );
+}
+
 // --- choose an aperture, from the public Photography catalogue --------------
 
 export const APERTURE_DECISION_FORMULAS = [

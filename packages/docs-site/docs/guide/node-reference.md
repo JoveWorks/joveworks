@@ -381,6 +381,11 @@ Rules worth knowing:
 - A [Select](#select) can search along a zip: wire one of its outputs into
   `along`, and the answer is that output's value for the winning lens.
 
+When one list follows from the other, such as a zoom's widest aperture from
+its focal length, a [lookup table](#lookup-table) read through
+[Interpolate](#interpolate) is the better tool: see
+[A zoom lens wide open](/examples/zoom-lens-depth-of-field).
+
 ### Interpolate
 
 Reads a table column at a point. Wire a table's key column into `xs`, the

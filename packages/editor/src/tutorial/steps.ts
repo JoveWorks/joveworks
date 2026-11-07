@@ -159,6 +159,16 @@ const EXAMPLE_COPY = {
     studyBody: 'Hyperfocal distance, near limit, far limit and total depth of field are evaluated for every focal-length × aperture pair in the grid.',
     resultBody: 'The 0.5 m check turns the contour into a decision: the wide end clears it at almost any aperture, while the 105 mm end never does in this grid — the sensitivity tornado says which dial moves the result more.',
   },
+  'zoom-depth-of-field': {
+    title: 'Depth of field — a zoom lens wide open',
+    opening: 'This example follows a Canon RF 100–500 mm zoom used wide open, where the widest aperture closes from f/4.5 to f/7.1 as you zoom in.',
+    inputTarget: '[data-tour="input-f"]',
+    inputTitle: 'The aperture follows the focal length',
+    inputBody: 'Focal length sweeps from 100 to 500 mm. The widest aperture is not a second sweep: a lookup table holds the lens’s aperture bands, and an interpolate node in “next row down” mode reads the band each focal length falls in.',
+    studyTitle: 'One axis, not a grid',
+    studyBody: 'Because the aperture is read from the focal length, both vary along the same axis. Hyperfocal distance and depth of field are evaluated once per focal length.',
+    resultBody: 'Move the subject-distance slider in the notebook to see how the trade-off changes. Zooming in costs depth far faster than the closing aperture wins it back.',
+  },
   'aperture-decision': {
     title: 'Choose an aperture — depth versus diffraction',
     opening: 'This example chooses one real f-stop by balancing the depth gained from stopping down against the diffraction blur that stopping down also introduces.',

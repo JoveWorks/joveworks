@@ -75,6 +75,7 @@ export default defineConfig({
         text: "Examples",
         items: [
           { text: "Choosing an aperture", link: "/examples/choosing-an-aperture" },
+          { text: "A zoom lens wide open", link: "/examples/zoom-lens-depth-of-field" },
           { text: "Pocket milling — power envelope", link: "/examples/milling-power-envelope" },
           { text: "Lighter or stiffer — a cantilever", link: "/examples/lighter-or-stiffer" },
           { text: "Load against strength", link: "/examples/load-against-strength" },

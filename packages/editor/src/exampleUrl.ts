@@ -8,6 +8,7 @@ export const EXAMPLE_IDS = [
   'cantilever-hollow-sections',
   'milling-power-envelope',
   'depth-of-field',
+  'zoom-depth-of-field',
   'aperture-decision',
   'wildlife-camera-comparison',
 ] as const;

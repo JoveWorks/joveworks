@@ -32,6 +32,7 @@ import {
   beltLab,
   cantileverHollowSections,
   depthOfField,
+  zoomDepthOfField,
   wildlifeCameraComparison,
   millingPowerEnvelope,
   monteCarloClearance,
@@ -284,6 +285,41 @@ describe('the depth-of-field study through the editor', () => {
     expect(table?.kind).toBe('table');
     if (table?.kind !== 'table') throw new Error('missing depth-of-field table');
     expect(table.axes.map((axis) => axis.id)).toEqual(['f', 'N']);
+  });
+});
+
+describe('the zoom-lens depth-of-field study through the editor', () => {
+  it('reads the widest aperture off the lens\'s own bands, one per focal length', () => {
+    const document = zoomDepthOfField(PUBLIC_CATALOGUES);
+    expect(document).toBeDefined();
+    const analysis = analyse(document as NonNullable<typeof document>, PUBLIC_CATALOGUES);
+
+    expect(analysis.message).toBeUndefined();
+    expect([...analysis.states.values()].every((state) => state === 'ok')).toBe(true);
+
+    const aperture = analysis.evaluation?.values.get('aperture.y');
+    const dof = analysis.evaluation?.values.get('dof.DoF');
+    const depths = dof?.kind === 'numeric' ? dof.data.map((value) => fromCanonical(value, parseUnit('m'))) : [];
+    // f = 100, 125, … 500 mm, against the bands in `samples.ts`.
+    expect(aperture?.kind === 'numeric' ? aperture.data : undefined).toEqual([
+      4.5, 4.5, 4.5, 5, 5, 5, 5, 5.6, 5.6, 5.6, 5.6, 6.3, 6.3, 6.3, 6.3, 7.1, 7.1,
+    ]);
+    expect(aperture?.kind === 'numeric' ? aperture.axes.map((axis) => axis.id) : undefined).toEqual(['f']);
+
+    // The numbers `docs/examples/zoom-lens-depth-of-field.md` quotes, at 50 m.
+    const at = (focal: number): number => Number((depths[(focal - 100) / 25] as number).toFixed(2));
+    expect([at(100), at(200), at(300), at(400), at(450), at(475), at(500)]).toEqual([
+      111.25, 18.54, 8.99, 5.65, 4.45, 4.5, 4.06,
+    ]);
+
+    const outputs = analysis.evaluation?.outputs ?? [];
+    const plot = outputs.find((entry) => entry.nodeId === 'out_plot');
+    if (plot?.kind !== 'plot') throw new Error('missing plot');
+    expect(plot.x.axis.id).toBe('f');
+    expect(document?.nodes.find((node) => node.id === 's')).toMatchObject({
+      value: { kind: 'slider', min: 1, max: 75 },
+      exposeInNotebook: true,
+    });
   });
 });
 
