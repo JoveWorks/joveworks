@@ -61,6 +61,40 @@ export function nodeLabel(node: GraphNode): string {
   return node.kind === 'formula' ? node.formula.id : node.id;
 }
 
+/**
+ * The endpoint a value really comes from, followed back through the nodes
+ * that only pass it on: a waypoint's or zip's `outN` is whatever is wired
+ * into its `inN`, and an unpack's `outN` is the matching channel of the pack
+ * that feeds it. Any other endpoint is its own source.
+ */
+export function valueSource(document: GraphDocument, endpoint: Endpoint, seen = new Set<string>()): Endpoint {
+  const node = document.nodes.find((candidate) => candidate.id === endpoint.node);
+  const channel = /^out(\d+)$/u.exec(endpoint.port);
+  if (node === undefined || channel === null || seen.has(node.id)) return endpoint;
+  const into = (target: Endpoint): Endpoint | undefined =>
+    document.edges.find((edge) => edge.to.node === target.node && edge.to.port === target.port)?.from;
+  let upstream: Endpoint | undefined;
+  if (node.kind === 'waypoint' || node.kind === 'zip') {
+    upstream = into({ node: node.id, port: `in${channel[1]}` });
+  } else if (node.kind === 'unpack') {
+    const pack = into({ node: node.id, port: 'bundle' });
+    const index = pack === undefined ? undefined : packChannelIndices(document, pack.node)[Number(channel[1])];
+    upstream = pack === undefined || index === undefined ? undefined : into({ node: pack.node, port: `in${index}` });
+  }
+  return upstream === undefined ? endpoint : valueSource(document, upstream, new Set([...seen, node.id]));
+}
+
+/**
+ * What a table column or plot measure wired from `endpoint` is called: the
+ * title of the node the value really comes from, so a focal length routed
+ * through a zip still reads "Focal lengths", not "zip".
+ */
+export function endpointLabel(document: GraphDocument, endpoint: Endpoint): string {
+  const source = valueSource(document, endpoint);
+  const node = document.nodes.find((candidate) => candidate.id === source.node);
+  return node === undefined ? source.port : nodeLabel(node);
+}
+
 /** A readable id that is not taken: `input`, `input2`, `input3`… */
 export function uniqueId(document: GraphDocument, prefix: string): string {
   const taken = new Set([
@@ -609,7 +643,8 @@ export function syncColumnLabels(
     for (const column of node.output.columns) {
       if (column !== oldLabel) continue;
       const wiredFromRenamed = next.edges.some(
-        (edge) => edge.to.node === node.id && edge.to.port === column && edge.from.node === nodeId,
+        (edge) =>
+          edge.to.node === node.id && edge.to.port === column && valueSource(next, edge.from).node === nodeId,
       );
       if (wiredFromRenamed) next = relabelColumn(next, node.id, column, newLabel).document;
     }

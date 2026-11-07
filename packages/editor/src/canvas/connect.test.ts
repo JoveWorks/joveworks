@@ -13,7 +13,7 @@ import {
 } from '@joveworks/schema';
 import { parseUnit } from '@joveworks/units';
 
-import { connect, edgeId, NEW_COLUMN, NEW_PLOT_MEASURE } from '../model/document';
+import { connect, edgeId, NEW_COLUMN, NEW_PLOT_MEASURE, syncColumnLabels } from '../model/document';
 import { connectResolvingTableColumn } from './connect';
 
 const input = (id: string, label = id): InputNode => ({
@@ -187,5 +187,53 @@ describe('connectResolvingTableColumn', () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.document.edges.map((entry) => entry.from.node)).toEqual(['first', 'second']);
+  });
+
+  describe('through a node that only passes values on', () => {
+    const through = (kind: 'zip' | 'waypoint'): GraphDocument => ({
+      ...documentWith(input('f', 'Focal lengths'), input('N', 'Apertures'), { kind, id: 'via', label: 'zip', position: { x: 100, y: 0 } }, table()),
+      edges: [edge('f', VALUE_PORT, 'via', 'in0'), edge('N', VALUE_PORT, 'via', 'in1')],
+    });
+
+    for (const kind of ['zip', 'waypoint'] as const) {
+      it(`names the column after the value's own source, not the ${kind}`, () => {
+        const result = connectResolvingTableColumn(through(kind), [], edge('via', 'out1', 'table', NEW_COLUMN), false);
+        expect(result.ok).toBe(true);
+        if (!result.ok) return;
+        expect(result.document.nodes.find((node) => node.id === 'table')).toMatchObject({
+          output: { kind: 'table', columns: ['Apertures'] },
+        });
+      });
+    }
+
+    it('follows an unpack back to the pack channel it came from', () => {
+      const document: GraphDocument = {
+        ...documentWith(
+          input('f', 'Focal lengths'),
+          input('N', 'Apertures'),
+          { kind: 'pack', id: 'pack', position: { x: 100, y: 0 } },
+          { kind: 'unpack', id: 'unpack', position: { x: 200, y: 0 } },
+          table(),
+        ),
+        edges: [
+          edge('f', VALUE_PORT, 'pack', 'in0'),
+          edge('N', VALUE_PORT, 'pack', 'in2'),
+          edge('pack', 'bundle', 'unpack', 'bundle'),
+        ],
+      };
+      const result = connectResolvingTableColumn(document, [], edge('unpack', 'out1', 'table', NEW_COLUMN), false);
+      expect(result.ok && result.document.nodes.find((node) => node.id === 'table')).toMatchObject({
+        output: { kind: 'table', columns: ['Apertures'] },
+      });
+    });
+
+    it('keeps the column following the source when it is renamed', () => {
+      const result = connectResolvingTableColumn(through('zip'), [], edge('via', 'out0', 'table', NEW_COLUMN), false);
+      if (!result.ok) throw new Error('expected the wire to land');
+      const renamed = syncColumnLabels(result.document, 'f', 'Focal lengths', 'Focal length');
+      expect(renamed.nodes.find((node) => node.id === 'table')).toMatchObject({
+        output: { kind: 'table', columns: ['Focal length'] },
+      });
+    });
   });
 });

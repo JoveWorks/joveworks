@@ -6,9 +6,9 @@ import {
   addPlotMeasure,
   connect,
   edgeId,
+  endpointLabel,
   NEW_COLUMN,
   NEW_PLOT_MEASURE,
-  nodeLabel,
   relabelColumn,
 } from '../model/document';
 
@@ -51,8 +51,7 @@ export function connectResolvingTableColumn(
     let to = candidate.to;
 
     if (resolvesTableColumn) {
-      const source = current.nodes.find((node) => node.id === candidate.from.node);
-      const base = source === undefined ? candidate.from.port : nodeLabel(source);
+      const base = endpointLabel(current, candidate.from);
       const resolved =
         to.port === NEW_COLUMN
           ? addNamedColumn(current, to.node, base)
@@ -60,8 +59,7 @@ export function connectResolvingTableColumn(
       attempted = resolved.document;
       to = { node: to.node, port: resolved.column };
     } else if (resolvesPlotMeasure && to.port === NEW_PLOT_MEASURE) {
-      const source = current.nodes.find((node) => node.id === candidate.from.node);
-      const label = source === undefined ? candidate.from.port : nodeLabel(source);
+      const label = endpointLabel(current, candidate.from);
       const resolved = addPlotMeasure(current, to.node, label);
       attempted = resolved.document;
       to = { node: to.node, port: resolved.measure.id };
