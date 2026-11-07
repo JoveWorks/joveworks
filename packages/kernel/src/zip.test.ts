@@ -111,6 +111,20 @@ describe('zip', () => {
     expect(readout?.unit?.symbol).toBe('mm');
   });
 
+  it('can be a plot\'s x axis, read in its first channel', () => {
+    const evaluation = evaluateDocument(
+      hyperfocal({
+        extraNodes: [outputNode('drawn', { kind: 'plot', x: 'lens' })],
+        extraWires: [wire('H.result', 'drawn.value')],
+      }),
+      [],
+    );
+    const plot = evaluation.outputs.find((output) => output.nodeId === 'drawn');
+    if (plot?.kind !== 'plot') throw new Error('expected a plot');
+    expect(plot.x.axis.id).toBe('lens');
+    expect(numeric(plot.x.coordinates).data).toEqual(FOCAL);
+  });
+
   it('takes lens names as a channel too, and names the axis by them when they come first', () => {
     const document = documentOf(
       [

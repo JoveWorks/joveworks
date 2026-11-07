@@ -741,6 +741,25 @@ function runEvaluation(
 }
 
 /**
+ * The port holding an axis node's coordinates. Usually `value`; a table
+ * node's coordinate is its row key — the frame size that names the part — and
+ * it has no `value` port to hold it, so the port to read is the one the
+ * table's own axis is named after. A lookup table's is its first column, and
+ * a zip's is its first wired channel.
+ */
+function axisCoordinateKey(resolution: Resolution, nodeId: string): string {
+  const node = resolution.document.nodes.find((candidate) => candidate.id === nodeId);
+  return endpointKey(
+    nodeId,
+    node?.kind === 'lut'
+      ? (node.columns[0]?.name ?? VALUE_PORT)
+      : node?.kind === 'zip'
+        ? `out${packChannelIndices(resolution.document, nodeId)[0] ?? 0}`
+        : (resolution.tables.get(nodeId)?.axis.input ?? VALUE_PORT),
+  );
+}
+
+/**
  * Every axis's coordinates and unit, keyed by axis id.
  *
  * Keyed by *axis* id rather than node id because that is what a figure and a
@@ -760,19 +779,7 @@ function readAxisReadouts(
   const readouts = new Map<string, AxisReadout>();
   for (const [nodeId, axis] of resolution.axes) {
     if (readouts.has(axis.id)) continue;
-    // A table node's coordinate is its row key — the frame size that names
-    // the part — and it has no `value` port to hold it, so the port to read
-    // is the one the table's own axis is named after.
-    const node = resolution.document.nodes.find((candidate) => candidate.id === nodeId);
-    // A zip's coordinates are its first wired channel's values.
-    const key = endpointKey(
-      nodeId,
-      node?.kind === 'lut'
-        ? (node.columns[0]?.name ?? VALUE_PORT)
-        : node?.kind === 'zip'
-          ? `out${packChannelIndices(resolution.document, nodeId)[0] ?? 0}`
-          : (resolution.tables.get(nodeId)?.axis.input ?? VALUE_PORT),
-    );
+    const key = axisCoordinateKey(resolution, nodeId);
     const coordinates = values.get(key);
     if (coordinates === undefined || !isSeries(coordinates)) continue;
     readouts.set(axis.id, { axis, coordinates, unit: displayUnit(resolution.sources.get(key)) });
@@ -2570,7 +2577,7 @@ function outputResult(
       if (axis === undefined) {
         throw new KernelError(`'${id}' is not a range input node, so it introduces no axis`, node.id);
       }
-      const coordinates = values.get(endpointKey(id, VALUE_PORT));
+      const coordinates = values.get(axisCoordinateKey(resolution, id));
       if (coordinates === undefined || coordinates.kind === 'bundle') {
         throw new KernelError(`'${id}' produced no coordinates to plot against`, node.id);
       }
@@ -2581,7 +2588,7 @@ function outputResult(
           message: `the shaded region does not vary along '${axis.label}' — it will be flat`,
         });
       }
-      return { axis, coordinates, unit: displayUnit(resolution.sources.get(endpointKey(id, VALUE_PORT))) };
+      return { axis, coordinates, unit: displayUnit(resolution.sources.get(axisCoordinateKey(resolution, id))) };
     };
 
     // The mask is over the checks' own axes and nothing else — one cell when
@@ -3003,7 +3010,7 @@ function outputResult(
     if (axis === undefined) {
       throw new KernelError(`'${id}' is not a range input node, so it introduces no axis`, node.id);
     }
-    const coordinates = values.get(endpointKey(id, VALUE_PORT));
+    const coordinates = values.get(axisCoordinateKey(resolution, id));
     if (coordinates === undefined || coordinates.kind === 'bundle') {
       throw new KernelError(`'${id}' produced no coordinates to plot against`, node.id);
     }
@@ -3022,7 +3029,7 @@ function outputResult(
     return {
       axis,
       coordinates,
-      unit: displayUnit(resolution.sources.get(endpointKey(id, VALUE_PORT))),
+      unit: displayUnit(resolution.sources.get(axisCoordinateKey(resolution, id))),
     };
   };
 
