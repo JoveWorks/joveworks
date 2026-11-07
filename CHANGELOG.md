@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.33.0](https://github.com/JoveWorks/joveworks/compare/v0.32.0...v0.33.0) (2026-11-07)
+
+### Features
+
+* **editor:** add a zoom-lens depth-of-field example, and hide unavailable examples ([689a645](https://github.com/JoveWorks/joveworks/commit/689a645e351a8db94e8c6586de1d4d180c30a9ae))
+* **editor:** show the zip node on the canvas and offer it in the palette ([094d3e7](https://github.com/JoveWorks/joveworks/commit/094d3e70b3dba1e56a4731f6c9a22574c4226683))
+* **kernel:** add a zip node that pairs lists by position ([4c14cc9](https://github.com/JoveWorks/joveworks/commit/4c14cc90984fced57f34ecef1776c3c71c7a70b6))
+
+### Fixes
+
+* **editor:** name a column after the value's source, not the zip it passes through ([796a5c5](https://github.com/JoveWorks/joveworks/commit/796a5c547d71a0e2030b9da50361885d7d7518c1))
+* **kernel:** read plot coordinates from the port an axis node keeps them on ([d993ca8](https://github.com/JoveWorks/joveworks/commit/d993ca87ef73befdeb609b962b4066a150af45e7))
 ## [0.32.0](https://github.com/JoveWorks/joveworks/compare/v0.31.1...v0.32.0) (2026-10-22)
 
 ### Features
