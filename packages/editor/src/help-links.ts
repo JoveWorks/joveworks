@@ -44,6 +44,7 @@ export const NODE_HELP_URLS: Readonly<Record<NodeKind, string>> = {
   waypoint: `${DOCS_BASE_URL}/guide/node-reference#waypoint`,
   pack: `${DOCS_BASE_URL}/guide/node-reference#pack`,
   unpack: `${DOCS_BASE_URL}/guide/node-reference#unpack`,
+  zip: `${DOCS_BASE_URL}/guide/node-reference#zip`,
   monteCarloGenerator: `${DOCS_BASE_URL}/guide/node-reference#monte-carlo-generator`,
   monteCarloReceiver: `${DOCS_BASE_URL}/guide/node-reference#monte-carlo-receiver`,
 };

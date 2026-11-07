@@ -681,6 +681,28 @@ export interface UnpackNode extends NodeBase {
   readonly kind: 'unpack';
 }
 
+/**
+ * Pairs several lists by position instead of crossing them: a lens's focal
+ * length with *that* lens's minimum aperture, not with every lens's.
+ *
+ * Its `in0..inN` and `out0..outN` are derived from the wires, exactly like
+ * `PackNode`'s channels — a channel exists while `in{n}` is wired, and
+ * `out{n}` carries the same values back out. What changes is the axis: every
+ * output lies on one new axis this node introduces, so anything downstream
+ * combines them element by element, the same way two values read off one
+ * range already do. Nothing downstream needs to know a zip exists.
+ *
+ * Every wired input must be a list along exactly one axis, all of one length.
+ * If every input is a single value instead — a sensitivity study collapsing
+ * the lists, say — the values pass straight through and no axis appears. The
+ * first wired channel's values are the axis coordinates a plot reads.
+ */
+export interface ZipNode extends NodeBase {
+  readonly kind: 'zip';
+  /** What the axis is called. Defaults to `label`. */
+  readonly axisLabel?: string;
+}
+
 /** The value port every generator produces and every receiver consumes from — reuses `VALUE_PORT`. */
 export const MONTE_CARLO_DISTRIBUTIONS = [
   'uniform',
@@ -1004,6 +1026,7 @@ export type GraphNode =
   | WaypointNode
   | PackNode
   | UnpackNode
+  | ZipNode
   | MonteCarloGeneratorNode
   | MonteCarloReceiverNode;
 
@@ -1097,9 +1120,12 @@ export interface GraphDocument {
  * node, a Monte Carlo generator, a file node reading more than one file —
  * several frames are a sweep over the frames, the same way a list of sizes
  * is — or a table node with more than one row selected, which is that same
- * rule again over a catalogue's rows.
+ * rule again over a catalogue's rows. A zip node with a wired input counts
+ * too, though whether its axis exists depends on what is wired into it — a
+ * zip of single values has none, which only evaluation can tell
+ * (`resolveGraph` leaves such a zip out of `Resolution.axes`).
  */
-export type AxisNode = InputNode | RangeNode | FileNode | TableNode | LutNode | MonteCarloGeneratorNode;
+export type AxisNode = InputNode | RangeNode | FileNode | TableNode | LutNode | ZipNode | MonteCarloGeneratorNode;
 
 /** How many rows a lookup table has — every column is the same length. */
 export function lutRows(node: LutNode): number {
@@ -1114,8 +1140,16 @@ export function axes(document: GraphDocument): readonly AxisNode[] {
       (node.kind === 'file' && node.sources.length > 1) ||
       (node.kind === 'table' && node.rows.length > 1) ||
       (node.kind === 'lut' && lutRows(node) > 1) ||
+      (node.kind === 'zip' && hasZipInput(document, node.id)) ||
       node.kind === 'monteCarloGenerator',
   );
+}
+
+const ZIP_INPUT = /^in\d+$/u;
+
+/** Whether anything is wired into a zip's `in0..inN`. */
+export function hasZipInput(document: GraphDocument, nodeId: string): boolean {
+  return document.edges.some((edge) => edge.to.node === nodeId && ZIP_INPUT.test(edge.to.port));
 }
 
 /** The nodes of one notebook section, in document order. */
@@ -1490,6 +1524,7 @@ export const NODE_KINDS = [
   'waypoint',
   'pack',
   'unpack',
+  'zip',
   'monteCarloGenerator',
   'monteCarloReceiver',
 ] as const;
@@ -1726,6 +1761,8 @@ function parseNode(value: JsonValue, path: string): GraphNode {
       return { ...base, kind };
     case 'unpack':
       return { ...base, kind };
+    case 'zip':
+      return { ...base, kind, ...put('axisLabel', optional(object, 'axisLabel', path, readString)) };
     case 'monteCarloGenerator': {
       const distribution = readEnum(
         required(object, 'distribution', path),
@@ -1881,6 +1918,8 @@ function serializeNode(node: GraphNode): JsonObject {
     case 'pack':
     case 'unpack':
       return base;
+    case 'zip':
+      return { ...base, ...put('axisLabel', node.axisLabel) };
     case 'monteCarloGenerator':
       if (node.distribution === 'uniform') {
         return {

@@ -236,6 +236,14 @@ function collapseAxis(node: AxisNode, tableColumn: ResolvedTableColumn | undefin
       ...(node.displayUnits === undefined ? {} : { displayUnits: node.displayUnits }),
     };
   }
+  if (node.kind === 'zip') {
+    // Nothing to collapse on the zip itself: the lists wired into it collapse
+    // at their own nodes, and a zip of single values passes them through. Each
+    // list collapses to its own midpoint, so the baseline is not necessarily
+    // one of the zipped rows — the same approximation every other pair of
+    // collapsed inputs already makes.
+    return node;
+  }
   // `documentAxes` only ever includes an `input` node here when its value is
   // a range — the same invariant `axisOf` in graph.ts relies on.
   if (!isRange(node.value)) throw new KernelError('not a range node', node.id);

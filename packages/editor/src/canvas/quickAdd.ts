@@ -49,6 +49,7 @@ export type QuickAddChoice =
   | { readonly kind: 'waypoint' }
   | { readonly kind: 'pack' }
   | { readonly kind: 'unpack' }
+  | { readonly kind: 'zip' }
   | { readonly kind: 'monteCarloGenerator' }
   | { readonly kind: 'monteCarloReceiver' }
   | { readonly kind: 'existing'; readonly nodeId: string; readonly port: string };
@@ -234,6 +235,14 @@ export function quickAddNodeSpec(document: GraphDocument, choice: QuickAddCandid
         idPrefix: 'pack',
         ports: { source: ['in0'], target: ['bundle'] },
         make: (id, position, label) => ({ kind: 'pack', id, position, ...labelField(label) }),
+      };
+    case 'zip':
+      return {
+        idPrefix: 'zip',
+        // Forwards only: an `out` exists once its `in` is wired, so there is
+        // nothing to land a backwards drag on.
+        ports: { source: ['in0'], target: [] },
+        make: (id, position, label) => ({ kind: 'zip', id, position, ...labelField(label) }),
       };
     case 'unpack':
       return {

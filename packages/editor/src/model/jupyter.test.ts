@@ -279,3 +279,43 @@ describe('compiling a graph to a Jupyter notebook', () => {
     for (const cell of notebook.cells) expect(cell.cell_type === 'code' ? cell.outputs : undefined).toEqual(cell.cell_type === 'code' ? [] : undefined);
   });
 });
+
+describe('a zip', () => {
+  const zipped = (): { readonly result: JupyterExport; readonly analysis: ReturnType<typeof analyse> } => {
+    const document: GraphDocument = parseDocument({
+      schemaVersion: DOCUMENT_SCHEMA_VERSION,
+      id: 'graph',
+      title: 'Invented study',
+      nodes: [
+        { kind: 'input', id: 'a', position: at(0), label: 'a', value: { kind: 'list', values: [10, 20, 30], unit: 'mm' } },
+        { kind: 'input', id: 'b', position: at(200), label: 'b', value: { kind: 'list', values: [1, 2, 3], unit: '' } },
+        { kind: 'zip', id: 'pair', position: at(400), label: 'pair' },
+        { kind: 'formula', id: 'f', position: at(600), formula: ref('inv.1') },
+        { kind: 'output', id: 'shown', position: at(800), output: { kind: 'print' } },
+      ],
+      edges: [
+        wire('a.value', 'pair.in0'),
+        wire('b.value', 'pair.in1'),
+        wire('pair.out0', 'f.a'),
+        wire('pair.out1', 'f.b'),
+        wire('f.y', 'shown.value'),
+      ],
+      frames: [],
+    });
+    const analysis = analyse(document, CATALOGUES);
+    return { result: compileJupyter(document, analysis, { generatedOn: '2026-10-03' }), analysis };
+  };
+
+  it('is ready in the editor, and evaluates one answer per pair', () => {
+    const { analysis } = zipped();
+    expect(analysis.states.get('pair')).toBe('ok');
+    const y = analysis.evaluation?.values.get('f.y');
+    expect(y?.kind === 'numeric' ? y.data : undefined).toEqual([15, 45, 95]);
+  });
+
+  it('carries its paired values over on its own axis, not as missing values', () => {
+    const text = python(zipped().result);
+    expect(text).toContain('pair');
+    expect(text).not.toContain('JoveWorks had no value here');
+  });
+});

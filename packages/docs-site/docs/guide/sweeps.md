@@ -26,6 +26,11 @@ is a size that works.
 | **Table column** | A series pulled from catalogue data |
 | **Categorical list** — `{H7, H8, K7}` | Fit classes and other named values, on an ordinal axis |
 
+Two lists that describe the same things, such as each lens's focal length
+and its minimum aperture, should pair up rather than cross. Route them
+through a [Zip](/guide/node-reference#zip): the pairs then sweep as one
+axis, one point per lens.
+
 Logarithmic ranges matter when the calculation spans decades. Fatigue and
 Wöhler S–N curves are log–log by construction, for example, and many life
 relations are power laws. Sampling a decade-spanning quantity linearly puts

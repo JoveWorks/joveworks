@@ -518,6 +518,7 @@ const NODE_NAMES: Readonly<Record<GraphNode['kind'], string>> = {
   waypoint: 'waypoint',
   pack: 'pack',
   unpack: 'unpack',
+  zip: 'zip',
   monteCarloGenerator: 'Monte Carlo generator',
   monteCarloReceiver: 'Monte Carlo receiver',
 };
@@ -542,8 +543,11 @@ export function compileJupyter(
   const carried: string[] = [];
   const nodes = new Map(document.nodes.map((node) => [node.id, node] as const));
 
-  // One array axis per swept input, in the kernel's own axis order.
-  const sweeps = [...new Map([...resolution.axes.values()].map((axis) => [axis.id, axis] as const)).values()]
+  // One array axis per swept input, in the kernel's own axis order. A zip's
+  // axis is only known once its inputs have been measured, so it comes from
+  // the evaluation, not the types-only resolution.
+  const allAxes = [...resolution.axes.values(), ...(evaluation?.resolution.axes.values() ?? [])];
+  const sweeps = [...new Map(allAxes.map((axis) => [axis.id, axis] as const)).values()]
     .sort((a, b) => a.order - b.order || (a.id < b.id ? -1 : 1));
   const axisIds = sweeps.map((axis) => axis.id);
   const axisPosition = (id: string): number | undefined => {

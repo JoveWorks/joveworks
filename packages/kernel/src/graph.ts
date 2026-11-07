@@ -608,6 +608,13 @@ function axisOf(
   if (node.kind === 'lut') {
     return { id: node.id, label: node.axisLabel ?? node.label ?? node.id, length: lutRows(node), order };
   }
+  if (node.kind === 'zip') {
+    // Only ever reached with a known length: `resolveGraph` leaves a zip out
+    // until the pre-pass has measured what is wired into it.
+    const length = rangeLengths?.get(node.id);
+    if (length === undefined) throw new KernelError('this zip has not been measured yet', node.id);
+    return { id: node.id, label: node.axisLabel ?? node.label ?? node.id, length, order };
+  }
   if (node.kind === 'table') {
     // The rows that survived resolution, not the rows the document names —
     // a selection can outlive a row (`resolveTable`), and the axis has to be
@@ -639,6 +646,9 @@ export function resolveGraph(
    * caller that only needs types/dimensions, not a correct study grid — a
    * range node whose `count` is wired then falls back to its own literal
    * `count` field as a provisional length (`axisOf`'s own comment).
+   *
+   * A zip's measured length rides in the same map, keyed by its own id —
+   * `0` for a zip of single values. A zip absent from it has no axis.
    */
   rangeLengths?: ReadonlyMap<string, number>,
 ): Resolution {
@@ -675,13 +685,19 @@ export function resolveGraph(
 
   const axisNodes = documentAxes(document);
   const mcTrialId = axisNodes.find((node) => node.kind === 'monteCarloGenerator')?.id;
+  // A zip's axis exists only once its length is known, and only when its
+  // inputs are lists (a zero length is a zip of single values): until then
+  // it has no axis at all, rather than a guessed one.
   const axes = new Map(
-    axisNodes.map(
-      (node, i) =>
-        [
-          node.id,
-          axisOf(node, i, tableColumns.get(node.id), tables.get(node.id), mcTrialId, rangeLengths),
-        ] as const,
+    axisNodes.flatMap((node, i) =>
+      node.kind === 'zip' && !((rangeLengths?.get(node.id) ?? 0) > 0)
+        ? []
+        : [
+            [
+              node.id,
+              axisOf(node, i, tableColumns.get(node.id), tables.get(node.id), mcTrialId, rangeLengths),
+            ] as const,
+          ],
     ),
   );
   const formulas = new Map<string, Formula>();
@@ -1192,6 +1208,35 @@ export function resolveGraph(
           const type: PortType = { kind: 'categorical' };
           targets.set(inKey, type);
           sources.set(outKey, type);
+          continue;
+        }
+        checkKind(source, { kind: 'numeric' }, inKey);
+        if (source.dimension === undefined) {
+          throw new KernelError(
+            `'${endpointKey(edge.from.node, edge.from.port)}' has no dimension yet — wire its own inputs first`,
+            inKey,
+          );
+        }
+        const type = { kind: 'numeric' as const, dimension: source.dimension, unit: canonicalUnit(source.dimension) };
+        targets.set(inKey, type);
+        sources.set(outKey, type);
+      }
+      continue;
+    }
+
+    if (node.kind === 'zip') {
+      // Pack's channel rule (a channel exists while `in{n}` is wired), and
+      // a waypoint's typing: `out{n}` is exactly what arrives at `in{n}`.
+      // Only the axis changes, and that is evaluation's business.
+      for (const n of packChannelIndices(document, node.id)) {
+        const inKey = endpointKey(node.id, `in${n}`);
+        const outKey = endpointKey(node.id, `out${n}`);
+        const edge = oneEdge(inKey);
+        if (edge === undefined) continue;
+        const source = sourceType(edge);
+        if (source.kind === 'categorical') {
+          targets.set(inKey, { kind: 'categorical' });
+          sources.set(outKey, { kind: 'categorical' });
           continue;
         }
         checkKind(source, { kind: 'numeric' }, inKey);

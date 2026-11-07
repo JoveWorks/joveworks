@@ -344,6 +344,43 @@ carried a load case's force, position and angle across a crowded canvas,
 an Unpack at the destination exposes all three again, and you only need
 to wire the `outN` ports the formulas there actually use.
 
+### Zip
+
+Pairs lists by position instead of crossing them. Two lists wired straight
+into a formula combine every value with every other, giving a grid. That is
+right for independent choices, and wrong when the lists describe the same
+things. A lens's focal length belongs with *that* lens's minimum aperture,
+not with every lens's.
+
+Wire each list into the zip (`in0`, `in1`, … appear as you wire them), then
+wire the matching `outN` into the formula, exactly where the list would have
+gone:
+
+| Into the zip | Out of it, into the hyperfocal formula |
+|---|---|
+| focal length `{12, 25, 45, 75} mm` | `out0` → `f` |
+| minimum aperture `{2.8, 1.7, 1.8, 1.8}` | `out1` → `N` |
+| lens name `{12-35, 25, 45, 75}` | `out2` (wire it only if you need it) |
+
+`H = f²/(N·c)` then gives four distances, one per lens, instead of sixteen.
+The formula needs no changes. A single value wired straight in, such as the
+circle of confusion `c`, applies to every lens as usual. A range wired
+straight in still adds a dimension: sweeping `c` gives a lens × `c` grid.
+
+Rules worth knowing:
+
+- Every list wired in must be the same length. The zip says which one
+  disagrees.
+- The zip's **first** input gives the axis its coordinates, so a plot over
+  the zip runs along focal length in the table above. Wire the lens names
+  into `in0` instead and the plot gets one labelled tick per lens.
+- Once a list goes into a zip, take it from the zip everywhere downstream.
+  Mixing the raw focal lengths with a value computed from the zipped ones
+  would cross them back into a grid, so JoveWorks refuses it and names the
+  formula where they meet.
+- A [Select](#select) can search along a zip: wire one of its outputs into
+  `along`, and the answer is that output's value for the winning lens.
+
 ### Interpolate
 
 Reads a table column at a point. Wire a table's key column into `xs`, the

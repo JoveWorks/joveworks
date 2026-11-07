@@ -426,6 +426,23 @@ function readiness(
       continue;
     }
 
+    if (node.kind === 'zip') {
+      // Like a pack, any number of channels; unlike one, an empty zip has
+      // nothing to pass on, so it waits for a wire the way an unpack does.
+      const indices = packChannelIndices(document, node.id);
+      if (indices.length === 0) {
+        states.set(node.id, 'incomplete');
+        problems.set(node.id, 'wire the lists to pair into it');
+        continue;
+      }
+      if (indices.some((n) => !upstreamReady(node.id, `in${n}`))) {
+        states.set(node.id, 'blocked');
+        continue;
+      }
+      ready.add(node.id);
+      continue;
+    }
+
     if (node.kind === 'unpack') {
       if (!isWired(node.id, 'bundle')) {
         states.set(node.id, 'incomplete');

@@ -73,6 +73,8 @@ import {
   type ObjectiveDirection,
   type Port,
   type RangeNode,
+  type ZipNode,
+  hasZipInput,
   type TableNode,
   type LutNode,
   type InterpolateNode,
@@ -449,38 +451,46 @@ export function evaluateDocument(
   options: EvaluationOptions = {},
 ): Evaluation {
   const largeGrid = options.largeGrid ?? LARGE_GRID;
-  const rangeLengths = resolveWiredRangeLengths(document, catalogues, largeGrid);
+  const rangeLengths = resolveDeferredLengths(document, catalogues, largeGrid);
   const resolution = resolveGraph(document, catalogues, rangeLengths);
   return runEvaluation(document, catalogues, resolution, options);
 }
 
 /**
- * A wired `RangeNode`'s resolved point count, by node id — `undefined` (not
- * an empty map) when the document has none, so `resolveGraph`'s own
- * literal-fallback default (`axisOf`'s comment) is what every ordinary
- * document still gets, with zero extra work.
+ * The axis lengths only evaluation can tell, by node id: a wired
+ * `RangeNode`'s point count, and a zip's length — `0` for a zip of single
+ * values. `undefined` (not an empty map) when the document has neither, so
+ * `resolveGraph`'s own literal-fallback default (`axisOf`'s comment) is what
+ * every ordinary document still gets, with zero extra work.
  *
  * `count` is the one `RangeNode` port that cannot simply be read during the
  * real evaluation pass the way `start`/`stop` are (`rangeParam`, used from
  * `rangeValue` below): it *is* the axis length, and `resolution.axes` has to
- * be complete before that pass starts, not partway through it. So this runs
- * a self-contained evaluation first, restricted (via the existing `skip`
- * option) to exactly the nodes upstream of every wired `count` port — which,
- * being upstream, need no axis-length knowledge of their own to resolve
- * (or, if one of them is itself axis-introducing, resolves anyway, just
- * tagged as swept, which is exactly the signal the refusal below reads).
+ * be complete before that pass starts, not partway through it. A zip's length
+ * is the same problem — it is however long the lists wired into it are. So
+ * this runs self-contained evaluations first, restricted (via the existing
+ * `skip` option) to exactly the nodes upstream of the ports being measured —
+ * which, being upstream, need no axis-length knowledge of their own to
+ * resolve (or, if one of them is itself axis-introducing, resolves anyway,
+ * just tagged as swept, which is exactly the signal the refusal below reads).
+ *
+ * One measured node can sit upstream of another — a zip of a zip's outputs,
+ * a zip of a range whose count is wired — so they are measured in rounds:
+ * each round takes every node with nothing unmeasured upstream of it. A
+ * document with one zip, or ranges only, takes one round, as before.
  */
-function resolveWiredRangeLengths(
+function resolveDeferredLengths(
   document: GraphDocument,
   catalogues: readonly Catalogue[],
   largeGrid: number,
 ): ReadonlyMap<string, number> | undefined {
-  const wired = document.nodes.filter(
-    (node): node is RangeNode =>
-      node.kind === 'range' &&
-      document.edges.some((edge) => edge.to.node === node.id && edge.to.port === COUNT_PORT),
+  const deferred = document.nodes.filter(
+    (node): node is RangeNode | ZipNode =>
+      (node.kind === 'range' &&
+        document.edges.some((edge) => edge.to.node === node.id && edge.to.port === COUNT_PORT)) ||
+      (node.kind === 'zip' && hasZipInput(document, node.id)),
   );
-  if (wired.length === 0) return undefined;
+  if (deferred.length === 0) return undefined;
 
   const incomingByTarget = new Map<string, Edge[]>();
   for (const edge of document.edges) {
@@ -488,47 +498,68 @@ function resolveWiredRangeLengths(
     if (list === undefined) incomingByTarget.set(edge.to.node, [edge]);
     else list.push(edge);
   }
-  const ancestors = new Set<string>();
-  const queue = wired.map((node) => node.id);
-  while (queue.length > 0) {
-    const id = queue.pop() as string;
-    for (const edge of incomingByTarget.get(id) ?? []) {
-      if (ancestors.has(edge.from.node)) continue;
-      ancestors.add(edge.from.node);
-      queue.push(edge.from.node);
+  const ancestorsOf = (id: string): ReadonlySet<string> => {
+    const ancestors = new Set<string>();
+    const queue = [id];
+    while (queue.length > 0) {
+      const next = queue.pop() as string;
+      for (const edge of incomingByTarget.get(next) ?? []) {
+        if (ancestors.has(edge.from.node)) continue;
+        ancestors.add(edge.from.node);
+        queue.push(edge.from.node);
+      }
     }
-  }
-  const skip = new Set(document.nodes.map((node) => node.id).filter((id) => !ancestors.has(id)));
+    return ancestors;
+  };
 
-  const preResolution = resolveGraph(document, catalogues);
-  const pre = runEvaluation(document, catalogues, preResolution, { largeGrid, skip });
-
+  const pending = new Map(deferred.map((node) => [node.id, { node, ancestors: ancestorsOf(node.id) }] as const));
   const lengths = new Map<string, number>();
-  for (const node of wired) {
-    const key = endpointKey(node.id, COUNT_PORT);
-    const edge = preResolution.incoming.get(key)?.[0] as Edge;
-    const wire = pre.values.get(endpointKey(edge.from.node, edge.from.port));
-    if (wire === undefined) throw new KernelError("this range's point count could not be resolved", key);
-    if (wire.kind !== 'numeric') {
-      throw new KernelError("'count' needs a numeric value, not a categorical one", key);
-    }
-    if (wire.axes.length > 0) {
-      throw new KernelError(
-        "a range's point count cannot depend on something that itself varies across a sweep — " +
-          'the axis being sized cannot size itself',
-        key,
+  while (pending.size > 0) {
+    const ready = [...pending.values()].filter(({ ancestors }) => ![...ancestors].some((id) => pending.has(id)));
+    // Cannot happen in an acyclic graph, and `resolveGraph` refuses a cycle.
+    if (ready.length === 0) throw new KernelError('these axis lengths depend on each other');
+
+    const keep = new Set(ready.flatMap(({ ancestors }) => [...ancestors]));
+    const skip = new Set(document.nodes.map((node) => node.id).filter((id) => !keep.has(id)));
+    const preResolution = resolveGraph(document, catalogues, lengths);
+    const pre = runEvaluation(document, catalogues, preResolution, { largeGrid, skip });
+
+    for (const { node } of ready) {
+      lengths.set(
+        node.id,
+        node.kind === 'zip'
+          ? zipChannels(node, preResolution, pre.values).length
+          : wiredRangeCount(node, preResolution, pre.values),
       );
+      pending.delete(node.id);
     }
-    if (wire.data.length !== 1) {
-      throw new KernelError("'count' needs a single value", key);
-    }
-    const raw = wire.data[0] as number;
-    if (!Number.isInteger(raw) || raw < 2) {
-      throw new KernelError(`a range needs at least 2 points, not ${raw}`, key);
-    }
-    lengths.set(node.id, raw);
   }
   return lengths;
+}
+
+function wiredRangeCount(node: RangeNode, resolution: Resolution, values: ReadonlyMap<string, PortValue>): number {
+  const key = endpointKey(node.id, COUNT_PORT);
+  const edge = resolution.incoming.get(key)?.[0] as Edge;
+  const wire = values.get(endpointKey(edge.from.node, edge.from.port));
+  if (wire === undefined) throw new KernelError("this range's point count could not be resolved", key);
+  if (wire.kind !== 'numeric') {
+    throw new KernelError("'count' needs a numeric value, not a categorical one", key);
+  }
+  if (wire.axes.length > 0) {
+    throw new KernelError(
+      "a range's point count cannot depend on something that itself varies across a sweep — " +
+        'the axis being sized cannot size itself',
+      key,
+    );
+  }
+  if (wire.data.length !== 1) {
+    throw new KernelError("'count' needs a single value", key);
+  }
+  const raw = wire.data[0] as number;
+  if (!Number.isInteger(raw) || raw < 2) {
+    throw new KernelError(`a range needs at least 2 points, not ${raw}`, key);
+  }
+  return raw;
 }
 
 function runEvaluation(
@@ -556,6 +587,12 @@ function runEvaluation(
   // and a check is never itself deferred: there is no chain to iterate.
   const deferredOutputs: OutputNode[] = [];
   const selections = new Map<string, SelectResult>();
+
+  // Zip axis id → the zip's name and the axes its lists arrived on, for
+  // `checkZipMix`. Empty, and the check free, in a document without one.
+  const zips = new Map<string, { readonly label: string; readonly sources: ReadonlyMap<string, string> }>();
+  const sourceKeys = (nodeId: string): readonly string[] =>
+    [...resolution.sources.keys()].filter((key) => key.slice(0, key.lastIndexOf('.')) === nodeId);
 
   for (const node of resolution.order) {
     if (skip?.has(node.id)) continue;
@@ -643,6 +680,13 @@ function runEvaluation(
         evaluateUnpack(node.id, resolution, values, values);
         break;
 
+      case 'zip': {
+        const sources = evaluateZip(node, resolution, values, values);
+        const axis = resolution.axes.get(node.id);
+        if (axis !== undefined) zips.set(axis.id, { label: axis.label, sources });
+        break;
+      }
+
       case 'select': {
         const found = evaluateSelect(node, resolution, values);
         selections.set(node.id, found);
@@ -674,6 +718,14 @@ function runEvaluation(
         }
         outputs.push(outputResult(node, resolution, values, axisByNode, warnings, catalogues, outputs));
         break;
+    }
+    if (zips.size > 0) {
+      // Checked on what each node *produced*, since that is where the two
+      // axes first meet: the error lands on the formula that combined them.
+      for (const key of sourceKeys(node.id)) {
+        const value = values.get(key);
+        if (value !== undefined) checkZipMix(node.id, value, zips);
+      }
     }
   }
 
@@ -712,11 +764,14 @@ function readAxisReadouts(
     // the part — and it has no `value` port to hold it, so the port to read
     // is the one the table's own axis is named after.
     const node = resolution.document.nodes.find((candidate) => candidate.id === nodeId);
+    // A zip's coordinates are its first wired channel's values.
     const key = endpointKey(
       nodeId,
       node?.kind === 'lut'
         ? (node.columns[0]?.name ?? VALUE_PORT)
-        : (resolution.tables.get(nodeId)?.axis.input ?? VALUE_PORT),
+        : node?.kind === 'zip'
+          ? `out${packChannelIndices(resolution.document, nodeId)[0] ?? 0}`
+          : (resolution.tables.get(nodeId)?.axis.input ?? VALUE_PORT),
     );
     const coordinates = values.get(key);
     if (coordinates === undefined || !isSeries(coordinates)) continue;
@@ -996,7 +1051,7 @@ function rangeParam(
  * own `'linear'`/`'logarithmic'` cases, just reading `start`/`stop` off
  * wired ports (`rangeParam`) instead of a literal `ValueSpec`, and reading
  * `count` off `axis.length`, already resolved by the pre-pass in
- * `resolveWiredRangeLengths` (or, unwired, by `axisOf`'s own literal
+ * `resolveDeferredLengths` (or, unwired, by `axisOf`'s own literal
  * fallback — the same axis either way).
  */
 function rangeValue(
@@ -2032,6 +2087,111 @@ function evaluateUnpack(
     throw new KernelError("'bundle' is not a bundle value", key);
   }
   bundle.values.forEach((value, i) => out.set(endpointKey(nodeId, `out${i}`), value));
+}
+
+/**
+ * A zip's wired channels, checked: every one a list along exactly one axis
+ * and all of one length, or every one a single value. `length` is that
+ * common length, `0` for single values — the pre-pass's measurement and the
+ * real pass's check are this one function, so they cannot disagree.
+ */
+function zipChannels(
+  node: ZipNode,
+  resolution: Resolution,
+  values: ReadonlyMap<string, PortValue>,
+): { readonly length: number; readonly channels: readonly (readonly [number, Series])[] } {
+  const channels: (readonly [number, Series])[] = [];
+  let first: { readonly port: string; readonly length: number } | undefined;
+  for (const n of packChannelIndices(resolution.document, node.id)) {
+    const port = `in${n}`;
+    const key = endpointKey(node.id, port);
+    const edge = resolution.incoming.get(key)?.[0];
+    if (edge === undefined) continue;
+    const value = valueAtEdge(edge, key, values);
+    if (!isSeries(value)) throw new KernelError('a zip pairs lists, not a bundle — unpack it first', key);
+    if (value.axes.length > 1) {
+      throw new KernelError(
+        `'${port}' varies along ${value.axes.map((axis) => `'${axis.label}'`).join(' and ')} — ` +
+          'a zip pairs lists that each vary along one axis',
+        key,
+      );
+    }
+    const length = value.axes[0]?.length ?? 0;
+    if (first === undefined) {
+      first = { port, length };
+    } else if (length !== first.length) {
+      const describe = (count: number): string => (count === 0 ? 'is a single value' : `has ${count} values`);
+      throw new KernelError(
+        `'${port}' ${describe(length)} and '${first.port}' ${describe(first.length)} — ` +
+          (length === 0 || first.length === 0
+            ? 'wire a single value straight into the formula instead of zipping it'
+            : 'zipped lists must be the same length'),
+        key,
+      );
+    }
+    channels.push([n, value]);
+  }
+  return { length: first?.length ?? 0, channels };
+}
+
+/**
+ * Writes each channel back out onto the zip's own axis. The data is
+ * untouched — the values were already in order — only the axis they are
+ * labelled with changes, which is the whole operation. Returns the axes the
+ * lists arrived on, which the paired copies must not meet again downstream.
+ */
+function evaluateZip(
+  node: ZipNode,
+  resolution: Resolution,
+  values: ReadonlyMap<string, PortValue>,
+  out: Map<string, PortValue>,
+): ReadonlyMap<string, string> {
+  const { length, channels } = zipChannels(node, resolution, values);
+  const axis = resolution.axes.get(node.id);
+  if ((axis?.length ?? 0) !== length) {
+    // Only reachable by evaluating with a resolution the pre-pass did not build.
+    throw new KernelError('this zip has not been measured yet', node.id);
+  }
+  const sources = new Map<string, string>();
+  for (const [n, value] of channels) {
+    const from = value.axes[0];
+    if (axis === undefined || from === undefined) {
+      out.set(endpointKey(node.id, `out${n}`), value);
+      continue;
+    }
+    sources.set(from.id, from.label);
+    out.set(endpointKey(node.id, `out${n}`), { ...value, axes: [axis] } as Series);
+  }
+  return sources;
+}
+
+/**
+ * Refuses a value that varies along a zip's axis *and* along one of the axes
+ * the zip was built from: the raw focal lengths meeting their own zipped
+ * copy. Broadcasting would quietly cross them into a lens × focal-length
+ * grid, every lens paired with every focal length again — exactly what the
+ * zip was there to prevent, and never what was meant.
+ */
+function checkZipMix(
+  nodeId: string,
+  value: PortValue,
+  zips: ReadonlyMap<string, { readonly label: string; readonly sources: ReadonlyMap<string, string> }>,
+): void {
+  if (value.kind === 'bundle') {
+    for (const channel of value.values) checkZipMix(nodeId, channel, zips);
+    return;
+  }
+  for (const axis of value.axes) {
+    const zip = zips.get(axis.id);
+    if (zip === undefined) continue;
+    const met = value.axes.find((other) => zip.sources.has(other.id));
+    if (met === undefined) continue;
+    throw new KernelError(
+      `'${met.label}' meets its own zipped copy from '${zip.label}' here, which would cross them ` +
+        `into a grid — wire it from '${zip.label}' instead`,
+      nodeId,
+    );
+  }
 }
 
 // --- output nodes -----------------------------------------------------------
