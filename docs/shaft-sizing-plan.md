@@ -45,7 +45,12 @@ expressions. And entering the loads themselves is not intuitive:
   the private R&M catalogue.
 - **A Load node.** One node per physical load, typed or wired field by field,
   producing one typed `load` wire. Fields: position, two transverse forces,
-  torque, bending couple (see open decision 1 for their names).
+  torque, bending couple per plane.
+- **Axis and plane names: keep `z` along the shaft**, so the transverse
+  planes are x and y. Fields `Fx`, `Fy`, `Cx`, `Cy` (a couple named by the
+  plane whose moment diagram it enters), `qx`, `qy`; the diagrams' plane
+  picker is `x | y | resultant`. The course notebooks put x along the shaft;
+  the library's existing `z` wins.
 - **A Distributed load sibling node** producing the same `load` wire.
 - **No table of loads.** One node per load; a table may return with the table
   redesign (`docs/table-input-node-plan.md`).
@@ -172,11 +177,11 @@ file for file (see Verified).
 export interface LoadNode extends NodeBase {
   readonly kind: 'load';
   readonly at: Quantity;          // position along the shaft
-  readonly force1?: Quantity;     // transverse force, plane 1   (names: open decision 1)
-  readonly force2?: Quantity;     // transverse force, plane 2
+  readonly Fx?: Quantity;        // transverse force in x
+  readonly Fy?: Quantity;        // transverse force in y
   readonly torque?: Quantity;
-  readonly couple1?: Quantity;    // concentrated bending couple, plane 1
-  readonly couple2?: Quantity;    // concentrated bending couple, plane 2
+  readonly Cx?: Quantity;        // bending couple entering the x-plane moment diagram
+  readonly Cy?: Quantity;        // bending couple entering the y-plane moment diagram
 }
 
 /** A uniform load over a span. */
@@ -184,8 +189,8 @@ export interface DistributedLoadNode extends NodeBase {
   readonly kind: 'distributedLoad';
   readonly from: Quantity;
   readonly to: Quantity;
-  readonly rate1?: Quantity;      // force per length, plane 1
-  readonly rate2?: Quantity;
+  readonly qx?: Quantity;        // force per length in x
+  readonly qy?: Quantity;        // force per length in y
 }
 ```
 
@@ -207,8 +212,8 @@ bytes unchanged — `catalogue.test.ts` hashes every record and proves it.
 ### Kernel
 
 - `series.ts`: a `LoadValue` in `PortValue`:
-  `{ kind: 'load', shape: 'point', at, force1, force2, torque, couple1, couple2 }`
-  or `{ kind: 'load', shape: 'span', from, to, rate1, rate2 }`, each field a
+  `{ kind: 'load', shape: 'point', at, Fx, Fy, torque, Cx, Cy }`
+  or `{ kind: 'load', shape: 'span', from, to, qx, qy }`, each field a
   `NumericSeries` so a swept field (a moving load) broadcasts like any other.
 - `graph.ts`: resolve the two kinds and their ports; a `load` output connects
   only to a `load` input.
@@ -282,8 +287,8 @@ Inputs of each v2 diagram:
 - `loads`: variadic `load` port, point and distributed loads alike.
 - `supportA`, `supportB` (mm): torque has none. **The reactions are solved
   inside** from statics, so nothing loops back.
-- `plane`: categorical picker, `plane1 | plane2 | resultant` (names follow
-  open decision 1). Torque has none. Resultant is `sqrt(a² + b²)` of the two
+- `plane`: categorical picker, `x | y | resultant`.
+  Torque has none. Resultant is `sqrt(a² + b²)` of the two
   planes' values.
 - Deflection also takes `E` and `I`.
 
@@ -315,7 +320,7 @@ In `test/mechanics-nodes-end-to-end.test.ts`, invented numbers:
 2. Two loads with an overhang: `M = 0` at a `z` past the last load and
    support (the test that the internal reactions are right).
 3. A load with force in both planes: `plane: resultant` equals
-   `sqrt(M1² + M2²)` of the two single-plane diagrams.
+   `sqrt(M_x² + M_y²)` of the two single-plane diagrams.
 4. A couple alone between the supports: the moment closes to zero at the end
    and steps by the couple at its position.
 5. A Distributed load gives the same shear and moment as v1's
@@ -371,23 +376,18 @@ and what to check in the browser.
 Each has a default so implementation is not blocked. Build the default;
 Thomas may overrule.
 
-1. **Axis and plane names.** The library's shaft axis is `z`, so the two
-   transverse planes are x and y, and a force along "z" would point along the
-   shaft. The course notebooks use `x` along the shaft. Default: keep `z`,
-   name the fields `Fx`, `Fy`, `Cx`, `Cy` (a couple named by the plane whose
-   moment diagram it enters), `qx`, `qy`, and the picker `x | y | resultant`.
-2. **Cantilevers.** v2 diagrams assume two simple supports. Default: out of
+1. **Cantilevers.** v2 diagrams assume two simple supports. Default: out of
    scope; a fixed-end support is a later record.
-3. **Deflection with distributed loads.** Default: refused, as in v1.
-4. **Upgrading old nodebooks.** Default: none; the legacy catalogue keeps
+2. **Deflection with distributed loads.** Default: refused, as in v1.
+3. **Upgrading old nodebooks.** Default: none; the legacy catalogue keeps
    them evaluating exactly as saved. An explicit "upgrade this node" action
    could come later, but v1 pairs loads by wire order, so any automatic
    rewrite would be guessing.
-5. **`required-diameter` in the public library.** Default: add it. It is
+4. **`required-diameter` in the public library.** Default: add it. It is
    `σ = M / W` rearranged for a round section. The course notebooks use
    `rm.11.1` and `rm.11.16B` for the same step, so students with the R&M
    catalogue loaded will see both. Do not open, quote or imitate the R&M
    records to align them.
-6. **`α₀` in the equivalent moment.** Default: leave it out; it is fatigue
+5. **`α₀` in the equivalent moment.** Default: leave it out; it is fatigue
    reasoning and belongs to the R&M catalogue.
-7. **Tresca.** Default: not added.
+6. **Tresca.** Default: not added.
