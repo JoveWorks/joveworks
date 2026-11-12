@@ -1,7 +1,9 @@
 # Plot inference: a plot that needs no configuration
 
 Status: plan, not started. Written 2026-11-12. Every product decision in it is
-taken; what remains is implementation. Read `AGENTS.md` and `CLAUDE.md` first.
+taken; what remains is implementation, except the two questions under "Open
+questions for Thomas". Read `AGENTS.md` and `CLAUDE.md` first. Reviewed against
+the code on 2026-11-12; the review's corrections are folded in below.
 
 ## Goal
 
@@ -175,7 +177,9 @@ both (the value scale may change).
    (`autoType`, `rolesFor`) to get a type and roles.
 2. **Contour rule.** If that type is `heatmap`, and the axes in the `x` and
    `y` roles are both numeric and both have `axis.length >= 4`, the type is
-   `contour`. Roles are unchanged (heatmap and contour share them).
+   `contour`. Roles are unchanged (heatmap and contour share them). The rule
+   only upgrades: a grid of two continuous ranges is already a contour today
+   at any length, and stays one (see "Open questions for Thomas").
 3. `scales`: for each *numeric* axis, `'log'` if
    `axisNature(natures, id).logarithmic`, else `'linear'`. This is what the
    figure already resolves at draw time (`IntelligentPlotFigure.tsx:612`);
@@ -194,27 +198,50 @@ axis `panel.scales[id]` or the nature-based default from step 3.
 for each measure (key `nodeId:measureId`):
 
 1. **changed** → leave it. (If it still carries a stale `inferred`, drop it.)
-2. Not changed, but another measure **in the same group is changed** → copy
-   that measure's structural fields into this one's `view` (keeping this one's
-   cosmetic fields) and drop `inferred`. This is decision 3 for a new
-   connection onto a configured chart; without it the new curve would land in
-   a separate panel.
+2. Not changed, **new since the last settle** (its key is absent from `seen`),
+   and another measure **in the same group is changed** → copy that measure's
+   structural fields into this one's `view` (keeping this one's cosmetic
+   fields) and drop `inferred`. This is decision 3 for a new connection onto
+   a configured chart; without it the new curve would land in a separate
+   panel. It must apply to new measures only: one group can span several
+   panels (surfaces always get one panel per measure, and line measures whose
+   views differ, even by a label, split too), and applying it to existing
+   measures would undo Reset to Auto on one panel at the next settle, and
+   would let a type change on one surface panel silently rewrite its sibling.
 3. **inferred** → re-infer when `inferred.signature` differs from the current
-   signature, **or** when the stored snapshot no longer draws: run
-   `inferPlotPanels` on the group as stored and re-infer if the panel has an
-   `error`. (Without this, an inferred log scale turns into the error "a
-   logarithmic value scale needs every plotted value above zero" the first
-   time a slider takes a value to zero.)
+   signature, **or** when the stored snapshot draws with a **log-scale
+   error**: run `inferPlotPanels` on the group as stored and re-infer if the
+   panel's error is one of the two `scaleReason` messages (`plot.ts:176`).
+   (Without this, an inferred log scale turns into the error "a logarithmic
+   value scale needs every plotted value above zero" the first time a slider
+   takes a value to zero.) Do **not** re-infer on any other error: too many
+   axes, too many value units, or a lone scalar cannot be fixed by inference,
+   and re-inferring would write an equal view as a new object, giving a new
+   document, a new analysis and the same error again — an endless loop.
 4. **legacy** → this is where decision 8 lives.
    - `seen === undefined` means this is the first settle since the document
-     was loaded. Record the signature in the new `seen` map and **write
-     nothing**.
-   - Otherwise compare with `seen.get(key)`. Missing (a plot wired during this
-     session) or different (rewired) → infer. Equal → leave it.
-5. Always record the current signature in the returned `seen`.
+     was loaded (or since an undo or redo, see Editor wiring). Record every
+     plot measure in the new `seen` map and **write nothing**.
+   - Otherwise look up `seen.get(key)`:
+     - absent → a measure added during this session → infer;
+     - `UNEVALUATED` (see below) → it was in the document at load but had no
+       result then; record its signature and **write nothing**;
+     - a different signature (rewired) → infer;
+     - equal → leave it.
+5. Write a measure only when its new `view` or `inferred` differs in value
+   from the stored one (compare serialized), so that equal results never
+   produce a new document. Return the same document reference when nothing
+   was written.
+6. Always record the current signature in the returned `seen`.
 
-A measure with no result (unwired, or its node is in error) is skipped and not
-recorded.
+A measure with no result (unwired, its node is in error, or its catalogue has
+not loaded yet) is skipped. On the first settle (`seen === undefined`) it is
+still recorded, under the sentinel `UNEVALUATED`; afterwards an existing entry
+for it is kept as is. Without the sentinel a late catalogue breaks decision 8:
+catalogues load asynchronously (`App.tsx:566`, `:653`, e.g. opening a cloud
+workspace), so the first settle sees catalogue-dependent plots without
+results, and when the catalogue arrives they would look newly wired, get
+inferred, redraw, and mark the document unsaved.
 
 ### Editor wiring (`packages/editor/src/App.tsx`, `model/history.ts`)
 
@@ -226,22 +253,38 @@ connect reducer.
   belongs to the edit that changed the wiring: one undo step, and redo returns
   to the settled state.
 - `App.tsx`: a `useRef<Map<string, string> | undefined>(undefined)` for
-  `seen`, reset to `undefined` inside `resetDocument` (line 403). Then an
-  effect on `[analysis]`, placed after `analysis` is computed (line 827):
+  `seen`, reset to `undefined` inside `resetDocument` (line 403) **and in
+  `undo` and `redo`** (lines 381–382). The undo reset matters: wire a new
+  value onto a legacy plot (it infers), then undo; the restored measure is
+  legacy again, but `seen` still holds the rewired signature, so the next
+  settle would infer it and undo would not bring back the old drawing.
+  Treating an undone or redone state like a freshly opened one avoids that.
+  Then an effect on `[analysis]`, placed after `analysis` is computed
+  (line 827):
 
   ```ts
   useEffect(() => {
     const evaluation = analysis.evaluation;
-    if (evaluation === undefined || evaluation.document !== document) return;
+    if (evaluation === undefined) return;
     const settled = settlePlots(document, evaluation.outputs, axisNaturesOf(document), plotsSeen.current);
     plotsSeen.current = settled.seen;
     if (settled.document !== document) setHistory((current) => replacePresent(current, settled.document));
   }, [analysis]);
   ```
 
+  Do **not** guard on `evaluation.document !== document`: `analyse` evaluates
+  `subgraph(document, ready)` (`model/analysis.tsx:717`), and `subgraph`
+  (`kernel/src/graph.ts:565`) always builds a new object, so that guard is
+  always true and the effect would never run. No guard is needed, because
+  `analysis` is a synchronous `useMemo` of `document` and is never stale.
+
   It must reach a fixed point in one pass: the second run sees matching
   signatures and returns the same reference. A loop here is the bug to test
   for.
+
+  The effect runs after render, so a newly wired plot draws once with the
+  shape-based rule and then once more with its inferred settings. That is
+  acceptable; check in the browser that it does not visibly jump.
 - Freshly opened documents stay clean: `isDirty` (line 393) compares
   serialized text, and the first settle after a load writes nothing for legacy
   plots.
@@ -262,7 +305,11 @@ This part is visible. See "Committing" below.
   apply the change, write that as `view` for every measure in the panel, and
   delete `inferred`.
 - **Cosmetic changes stay cosmetic.** `axisLabel`, `valueLabel` and `height`
-  keep editing `view` only and leave `inferred` alone.
+  keep editing `view` only and leave `inferred` alone. They must start from
+  the **stored** `measure.view` in the document (as `changePanel` does today,
+  line 54), never from the result's `lead.view` (line 97): that is the
+  effective view, and writing it back would put the inferred structural
+  fields into `view` and turn the plot into a changed one.
 - **Role selects swap.** With every role stored, picking for `x` the axis that
   currently holds `series` would trip "one swept axis is assigned to more than
   one role" (`invalidReason`, `plot.ts:138`). When the chosen axis already has
@@ -273,10 +320,16 @@ This part is visible. See "Committing" below.
   `series` and `facet` only. The one way back to Auto is the button.
 - **"Reset to Auto"** (line 231) already exists and already removes the marks
   the plot drew. Keep that, and instead of leaving the measure with nothing,
-  write a fresh `inferred` for the panel's group right there:
+  write a fresh `inferred` for the panel's **whole group** right there, not
+  just the panel's measures:
   `{ signature: plotWiringSignature(…), view: inferPlotView(natures, group) }`.
-  It has `result.measures` and the natures in scope, so no round trip through
-  the effect is needed. It clears labels and height too, as it does today.
+  A group can span several panels, and a changed measure left behind in it
+  would keep its siblings apart. It has `result.measures` and the natures in
+  scope, so no round trip through the effect is needed. It clears labels and
+  height too, as it does today.
+- **A structural change applies to the panel only.** Other panels of the same
+  group keep their state; settle step 2 copies a changed view only onto
+  measures that are new.
 
 ### Reason line (`plot.ts:204`)
 
@@ -289,6 +342,22 @@ with these additions:
 - log value scale: append ` · log scale, values span N decades`
 
 A changed measure keeps `Pinned · <type>`.
+
+## Open questions for Thomas
+
+These came up in the review. The plan goes ahead with the reading given here
+unless Thomas decides otherwise.
+
+1. **Decision 6 on short ranges.** Today two continuous ranges draw a contour
+   at any length (`autoType`, `plot.ts:81`), so a 3-point × 3-point range grid
+   is a contour. "At least four points, whether ranges or lists" could mean
+   such a grid should become a heatmap. The plan's contour rule only upgrades
+   heatmaps, so short range grids stay contours, as now.
+2. **A log value scale on a panel with several y axes.** Rule 4 chooses one
+   `valueScale` per group, but one panel holds up to three y axes of different
+   dimensions. A force spanning four decades puts a length beside it on a log
+   axis too. The plan accepts this for now: every value must be above zero
+   for the rule to fire, so the result always draws.
 
 ## Out of scope for this pass
 
@@ -338,13 +407,21 @@ Extend the existing Vitest files; invented formulas and fixtures only.
 - `settlePlots`: a changed measure is never modified, whatever the signature.
 - `settlePlots`: a cosmetic-only `view` survives re-inference unchanged.
 - `settlePlots`: an inferred log scale is replaced once a value reaches zero.
+- `settlePlots`: a measure whose panel errors for a reason inference cannot
+  fix (four swept axes) is not rewritten; a second call returns the same
+  reference.
+- `settlePlots`: a legacy measure with no result on the first call (its
+  catalogue missing) that gains one on a later call is **not** inferred.
 - `settlePlots`: an unconfigured measure joining a changed group adopts the
-  group's structural view.
+  group's structural view; an *existing* inferred measure in a group whose
+  other panel is changed does not.
 - Two measures in one group get identical snapshots and one panel.
 
 `packages/editor/src/model/samples.test.ts`:
 - For every bundled sample, `settlePlots` on a first call returns the same
-  document reference, and `inferPlotPanels` over its results gives the same
+  document reference; a **second** call, given the `seen` from the first,
+  also returns it (the first alone passes trivially, since it never writes);
+  and `inferPlotPanels` over its results gives the same
   types and roles as before this work (contour for the three milling plots and
   depth of field, heatmap for the cantilever, line for the rest).
 
@@ -364,7 +441,11 @@ For Thomas in the browser:
   chart re-infers.
 - Press Reset to Auto on an old plot: it re-infers.
 - Undo after wiring: one step takes the wire and the inferred settings away
-  together.
+  together, and an old plot looks as it did before the wire.
+- Open a document whose plots need a catalogue that loads after it: once the
+  catalogue arrives, nothing redraws and the title bar stays clean.
+- Press Reset to Auto on one of two heatmaps in a plot whose other heatmap was
+  changed: the reset holds.
 
 ## Committing
 
