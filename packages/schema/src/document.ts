@@ -198,6 +198,40 @@ export interface PlotMeasure {
   readonly unit?: Unit;
   readonly threshold?: Quantity;
   readonly view?: PlotViewOverride;
+  /**
+   * Settings inference chose for a measure the student has not configured
+   * (`editor/src/model/plot.ts`, `settlePlots`). Absent on documents that
+   * predate it, which keep drawing by the live shape-based rule. Derived
+   * data: a stale one is ignored, never an error.
+   */
+  readonly inferred?: PlotInference;
+}
+
+/** Settings inference chose for a measure the student has not configured. */
+export interface PlotInference {
+  /** The wiring this was inferred for; a different one means infer again. */
+  readonly signature: string;
+  readonly view: PlotViewOverride;
+}
+
+/** The fields of a view that say what is drawn, as opposed to how it is labelled. */
+export const PLOT_STRUCTURAL_FIELDS = ['type', 'x', 'y', 'series', 'facet', 'scales', 'valueScale'] as const;
+
+/** True once the student has chosen a type, role or scale: a label or a height alone does not count. */
+export function plotViewChanged(view: PlotViewOverride | undefined): boolean {
+  return view !== undefined && PLOT_STRUCTURAL_FIELDS.some((field) => view[field] !== undefined);
+}
+
+/**
+ * The view a measure is drawn with. A changed view wins outright; otherwise a
+ * stored inference supplies the structure and the view's labels and height
+ * lie over it. Undefined for a measure with neither, which draws by the live
+ * shape-based rule.
+ */
+export function effectivePlotView(measure: PlotMeasure): PlotViewOverride | undefined {
+  if (plotViewChanged(measure.view)) return measure.view;
+  if (measure.inferred !== undefined) return { ...measure.inferred.view, ...measure.view };
+  return measure.view;
 }
 
 /** The threshold port paired with a stable Plot measure port. */
@@ -1221,6 +1255,15 @@ function parsePlotMeasure(value: JsonValue, path: string): PlotMeasure {
     ...put('unit', optional(object, 'unit', path, parseUnitField)),
     ...put('threshold', optional(object, 'threshold', path, parseQuantity)),
     ...put('view', optional(object, 'view', path, parsePlotView)),
+    ...put('inferred', optional(object, 'inferred', path, parsePlotInference)),
+  };
+}
+
+function parsePlotInference(value: JsonValue, path: string): PlotInference {
+  const object = readObject(value, path);
+  return {
+    signature: readString(required(object, 'signature', path), join(path, 'signature')),
+    view: parsePlotView(required(object, 'view', path), join(path, 'view')),
   };
 }
 
@@ -1379,6 +1422,9 @@ function serializePlotMeasure(measure: PlotMeasure): JsonObject {
     ...put('unit', measure.unit?.symbol),
     ...put('threshold', measure.threshold === undefined ? undefined : serializeQuantity(measure.threshold)),
     ...put('view', serializePlotView(measure.view)),
+    ...put('inferred', measure.inferred === undefined
+      ? undefined
+      : { signature: measure.inferred.signature, view: serializePlotView(measure.inferred.view) as JsonObject }),
   };
 }
 
@@ -2132,7 +2178,10 @@ function checkReferences(document: GraphDocument, path: string): void {
   }
 
   // A plot names its axes by node id, and an axis exists only where a range
-  // does. Pointing at a scalar input is the mistake this catches.
+  // does. Pointing at a scalar input is the mistake this catches. A measure's
+  // `inferred` view is left out on purpose: it is derived, the kernel ignores
+  // one whose axes are gone, and refusing it would make a document unloadable
+  // just because a range was deleted before the plot was settled again.
   const axisIds = new Set(axes(document).map((node) => node.id));
   for (const [i, node] of document.nodes.entries()) {
     if (node.kind !== 'output' || (node.output.kind !== 'plot' && node.output.kind !== 'feasibility')) continue;

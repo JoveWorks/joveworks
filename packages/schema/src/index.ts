@@ -212,6 +212,7 @@ export type {
   CheckOutput,
   PlotOutput,
   PlotMeasure,
+  PlotInference,
   PlotViewOverride,
   PlotType,
   PlotScale,
@@ -228,7 +229,15 @@ export type {
   Comparison,
 } from './document.js';
 
-export { PLOT_TYPES, PLOT_SCALES, plotMeasures, plotThresholdPort } from './document.js';
+export {
+  PLOT_TYPES,
+  PLOT_SCALES,
+  PLOT_STRUCTURAL_FIELDS,
+  effectivePlotView,
+  plotMeasures,
+  plotThresholdPort,
+  plotViewChanged,
+} from './document.js';
 
 export { migrateDocument, runMigrationChain, DOCUMENT_MIGRATIONS } from './migration.js';
 export type { SchemaMigrationStep } from './migration.js';

@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest';
 
 import {
   axes,
+  effectivePlotView,
   emptyDocument,
   nodesInFrame,
   parseDocument,
+  plotViewChanged,
   serializeDocument,
 } from './document.js';
 import { loadDocument, saveDocument } from './io.js';
@@ -1040,8 +1042,63 @@ describe('intelligent Plot outputs', () => {
       .toThrow(/not a range input node/u);
   });
 
+  it('round-trips an inferred view beside a cosmetic one', () => {
+    const document = base({
+      kind: 'plot',
+      measures: [{
+        id: 'value',
+        view: { valueLabel: 'stress' },
+        inferred: { signature: 'd#value', view: { type: 'line', x: 'd', scales: { d: 'linear' }, valueScale: 'linear' } },
+      }],
+    });
+    expect(serializeDocument(parseDocument(document))).toEqual(document);
+  });
+
+  it('parses a measure without an inference to one with no inferred key', () => {
+    const parsed = parseDocument(base({ kind: 'plot', measures: [{ id: 'value' }] }));
+    const node = parsed.nodes[1];
+    const measure = node?.kind === 'output' && node.output.kind === 'plot' ? node.output.measures?.[0] : undefined;
+    expect(measure).toEqual({ id: 'value' });
+    expect(measure !== undefined && 'inferred' in measure).toBe(false);
+  });
+
+  it('accepts an inference whose axes are gone, since it is derived', () => {
+    expect(() => parseDocument(base({
+      kind: 'plot',
+      measures: [{ id: 'value', inferred: { signature: 'gone#value', view: { type: 'line', x: 'gone' } } }],
+    }))).not.toThrow();
+  });
+
   it('bounds authored panel heights', () => {
     expect(() => parseDocument(base({ kind: 'plot', measures: [{ id: 'value', view: { height: 721 } }] })))
       .toThrow(/at most 720/u);
+  });
+});
+
+describe('plot measure states', () => {
+  const inferred = { signature: 'd#value', view: { type: 'contour' as const, x: 'd', y: 'e', valueScale: 'linear' as const } };
+
+  it('counts only a type, role or scale as a change', () => {
+    expect(plotViewChanged(undefined)).toBe(false);
+    expect(plotViewChanged({})).toBe(false);
+    expect(plotViewChanged({ valueLabel: 'stress', height: 300, axisLabels: { d: 'diameter' } })).toBe(false);
+    expect(plotViewChanged({ x: 'd' })).toBe(true);
+    expect(plotViewChanged({ scales: { d: 'log' } })).toBe(true);
+    expect(plotViewChanged({ valueScale: 'linear' })).toBe(true);
+  });
+
+  it('draws a legacy measure from its own view', () => {
+    expect(effectivePlotView({ id: 'value' })).toBeUndefined();
+    expect(effectivePlotView({ id: 'value', view: { height: 300 } })).toEqual({ height: 300 });
+  });
+
+  it('lays cosmetic fields over an inference', () => {
+    expect(effectivePlotView({ id: 'value', inferred })).toEqual(inferred.view);
+    expect(effectivePlotView({ id: 'value', inferred, view: { valueLabel: 'stress' } }))
+      .toEqual({ ...inferred.view, valueLabel: 'stress' });
+  });
+
+  it('lets a changed view win over a stale inference', () => {
+    expect(effectivePlotView({ id: 'value', inferred, view: { type: 'heatmap' } })).toEqual({ type: 'heatmap' });
   });
 });
