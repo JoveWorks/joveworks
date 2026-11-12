@@ -140,6 +140,41 @@ describe('intelligent multi-measure plots', () => {
   });
 });
 
+describe('stored plot inference', () => {
+  const plotOf = (measure: Record<string, unknown>): PlotResult => {
+    const document = documentOf(
+      [input('w', list([10, 20, 30], 'mm')), outputNode('plot', { kind: 'plot', measures: [{ id: 'value', ...measure }] })],
+      [wire('w.value', 'plot.value')],
+    );
+    return evaluateDocument(document, catalogues).outputs[0] as PlotResult;
+  };
+  const inferred = { signature: 'w#value', view: { type: 'dot' as const, x: 'w', valueScale: 'linear' as const } };
+
+  it('draws an inferred measure from its snapshot, with the student labels over it', () => {
+    const measure = plotOf({ inferred, view: { valueLabel: 'width' } }).measures?.[0];
+    expect(measure?.view).toEqual({ ...inferred.view, valueLabel: 'width' });
+    expect(measure?.viewInferred).toBe(true);
+  });
+
+  it('draws a changed measure from its own view only', () => {
+    const measure = plotOf({ inferred, view: { type: 'line' } }).measures?.[0];
+    expect(measure?.view).toEqual({ type: 'line' });
+    expect(measure !== undefined && 'viewInferred' in measure).toBe(false);
+  });
+
+  it('ignores an inference that names an axis the measure no longer sweeps', () => {
+    const measure = plotOf({ inferred: { signature: 'gone#value', view: { type: 'line', x: 'gone' } }, view: { height: 300 } })
+      .measures?.[0];
+    expect(measure?.view).toEqual({ height: 300 });
+    expect(measure !== undefined && 'viewInferred' in measure).toBe(false);
+  });
+
+  it('leaves a legacy measure alone', () => {
+    const measure = plotOf({}).measures?.[0];
+    expect(measure !== undefined && 'view' in measure).toBe(false);
+  });
+});
+
 describe('a scalar graph', () => {
   const document = documentOf(
     [

@@ -50,7 +50,9 @@ import {
   expressionOf,
   isRange,
   renardValues,
+  effectivePlotView,
   plotMeasures,
+  plotViewChanged,
   plotThresholdPort,
   type Candidate,
   type Catalogue,
@@ -78,6 +80,7 @@ import {
   type TableNode,
   type LutNode,
   type InterpolateNode,
+  type PlotMeasure,
   type PlotViewOverride,
 } from '@joveworks/schema';
 import {
@@ -185,7 +188,10 @@ export interface PlotMeasureResult {
   readonly unit: Unit;
   readonly axes: readonly PlotAxis[];
   readonly threshold?: number;
+  /** The view this measure is drawn with: the student's, or a stored inference with their labels over it. */
   readonly view?: PlotViewOverride;
+  /** The view came from inference, not from the student — only the reason line cares. */
+  readonly viewInferred?: true;
 }
 
 export interface PlotResult extends OutputBase {
@@ -2245,6 +2251,26 @@ function displayUnit(type: PortType | undefined): Unit {
  * of every referenced check's axes for a Feasibility output. A pinned slot
  * is never touched, and never double-filled by autofill.
  */
+/**
+ * The view one plot measure is drawn with (`effectivePlotView`). A stored
+ * inference that names an axis the measure no longer sweeps — a range was
+ * deleted or rewired since the editor last settled the plot — is ignored, so
+ * the plot falls back to the shape-based rule instead of failing, and the
+ * editor's next settle sees the new wiring and infers again.
+ */
+function drawnView(
+  measure: PlotMeasure,
+  plotted: NumericSeries,
+): { readonly view?: PlotViewOverride; readonly viewInferred?: true } {
+  const own = measure.view === undefined ? {} : { view: measure.view };
+  if (plotViewChanged(measure.view) || measure.inferred === undefined) return own;
+  const swept = new Set(plotted.axes.map((axis) => axis.id));
+  const { x, y, series, facet } = measure.inferred.view;
+  if ([x, y, series, facet].some((id) => id !== undefined && !swept.has(id))) return own;
+  const view = effectivePlotView(measure);
+  return { ...(view === undefined ? {} : { view }), viewInferred: true };
+}
+
 function pickPlotAxes(
   pinned: {
     readonly x?: string | undefined;
@@ -3092,7 +3118,7 @@ function outputResult(
       unit: measure.unit ?? sourceUnit,
       axes: plotted.axes.map((axis) => axisReadout(axis, plotted)),
       ...(threshold === undefined ? {} : { threshold }),
-      ...(measure.view === undefined ? {} : { view: measure.view }),
+      ...drawnView(measure, plotted),
     };
   });
 
