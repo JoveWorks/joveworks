@@ -88,9 +88,11 @@ import {
   pushEdit,
   pushLiveEdit,
   redoHistory,
+  replacePresent,
   undoHistory,
   type History,
 } from './model/history';
+import { axisNaturesOf, settlePlots } from './model/plot';
 import {
   loadNumberFormatSettings,
   saveNumberFormatSettings,
@@ -378,8 +380,20 @@ function AppShell(): ReactElement {
   const editLive = (change: (current: GraphDocument) => GraphDocument): void =>
     setHistory((current) => pushLiveEdit(current, change));
   const commitEdit = (): void => setHistory((current) => commitPending(current));
-  const undo = (): void => setHistory(undoHistory);
-  const redo = (): void => setHistory(redoHistory);
+  // What each plot measure was wired to at the last settle (`settlePlots`).
+  // Undefined means "just opened": the next settle records the wiring and
+  // redraws nothing. An undone or redone state counts as just opened too —
+  // otherwise undoing a wire onto an old plot would leave `seen` holding the
+  // rewired signature, and the restored plot would be re-inferred.
+  const plotsSeen = useRef<Map<string, string> | undefined>(undefined);
+  const undo = (): void => {
+    plotsSeen.current = undefined;
+    setHistory(undoHistory);
+  };
+  const redo = (): void => {
+    plotsSeen.current = undefined;
+    setHistory(redoHistory);
+  };
   // The serialized text of the document the last time it was known to be
   // safe to walk away from — right after an explicit Save, or right after
   // loading something new (whatever just loaded is by definition not
@@ -402,6 +416,7 @@ function AppShell(): ReactElement {
   // visible.
   const resetDocument = (next: GraphDocument): void => {
     lastInstrumentedDocument.current = next;
+    plotsSeen.current = undefined;
     setHistory(initHistory(next));
     setSavedSnapshot(saveDocument(next));
     setCollapsedGroups(new Set());
@@ -825,6 +840,26 @@ function AppShell(): ReactElement {
   );
 
   const analysis = useMemo(() => analyse(document, catalogues), [document, catalogues]);
+
+  // Plot inference needs evaluated values, so it runs after evaluation rather
+  // than inside the connect reducer, and its result replaces the present
+  // state instead of adding an undo step: it belongs to the edit that changed
+  // the wiring. No `evaluation.document === document` guard — `analyse`
+  // evaluates a fresh subgraph object, so that would never hold, and
+  // `analysis` is a synchronous memo of `document` anyway. A second run sees
+  // its own signatures and returns the same document, so this cannot loop.
+  useEffect(() => {
+    const evaluation = analysis.evaluation;
+    if (evaluation === undefined) return;
+    const settled = settlePlots(document, evaluation.outputs, axisNaturesOf(document), plotsSeen.current);
+    plotsSeen.current = settled.seen;
+    // Only onto the state that was settled: an edit queued meanwhile wins, and
+    // is settled in turn once it has evaluated.
+    if (settled.document !== document) {
+      setHistory((current) => (current.present === document ? replacePresent(current, settled.document) : current));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `analysis` is derived from `document`
+  }, [analysis]);
 
   // Resolved once for the whole app: the canvas typesets titles by the same
   // rule the NodeBook does, and every figure below `present/` reads its

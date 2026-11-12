@@ -8,6 +8,7 @@ import {
   pushEdit,
   pushLiveEdit,
   redoHistory,
+  replacePresent,
   undoHistory,
   type History,
 } from './history';
@@ -119,5 +120,21 @@ describe('pushLiveEdit / commitPending', () => {
     const discrete = pushEdit(live, (n) => n + 100);
     expect(discrete.present).toBe(101);
     expect(discrete.past).toEqual([0, 1]);
+  });
+});
+
+describe('replacePresent', () => {
+  it('swaps the present and keeps past, future and pending', () => {
+    const history: History<number> = { past: [1], present: 2, future: [3], pending: 0 };
+    expect(replacePresent(history, 5)).toEqual({ past: [1], present: 5, future: [3], pending: 0 });
+    expect(replacePresent(history, 2)).toBe(history);
+  });
+
+  it('belongs to the edit before it: one undo takes both away, redo brings the replaced state back', () => {
+    const edited = pushEdit(initHistory(0), () => 1);
+    const settled = replacePresent(edited, 2);
+    const undone = undoHistory(settled);
+    expect(undone.present).toBe(0);
+    expect(redoHistory(undone).present).toBe(2);
   });
 });

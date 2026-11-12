@@ -1,11 +1,27 @@
 import { describe, expect, it } from 'vitest';
 
-import type { Axis, PlotAxis, PlotMeasureResult } from '@joveworks/kernel';
-import { DOCUMENT_SCHEMA_VERSION, type GraphDocument, type GraphNode } from '@joveworks/schema';
+import type { Axis, OutputResult, PlotAxis, PlotMeasureResult } from '@joveworks/kernel';
+import {
+  DOCUMENT_SCHEMA_VERSION,
+  effectivePlotView,
+  plotViewChanged,
+  type GraphDocument,
+  type GraphNode,
+  type PlotMeasure,
+} from '@joveworks/schema';
 import { parseUnit } from '@joveworks/units';
 
 import type { AxisNatures } from '../present/display';
-import { axisIdSetSignature, axisNaturesOf, inferPlotPanels } from './plot';
+import {
+  assignRole,
+  axisIdSetSignature,
+  axisNaturesOf,
+  inferPlotPanels,
+  inferPlotView,
+  retype,
+  settlePlots,
+  structuralViewOf,
+} from './plot';
 
 const mm = parseUnit('mm');
 const stress = parseUnit('MPa');
@@ -171,5 +187,211 @@ describe('axis signature (shared with the editor connect-time check)', () => {
   it('tells apart two different swept-axis sets', () => {
     expect(axisIdSetSignature(['x'])).not.toBe(axisIdSetSignature(['y']));
     expect(axisIdSetSignature([])).not.toBe(axisIdSetSignature(['x']));
+  });
+});
+
+function values(entry: PlotMeasureResult, data: readonly number[]): PlotMeasureResult {
+  return { ...entry, series: { ...entry.series, data } };
+}
+
+describe('inferring a complete view', () => {
+  const lists = documentWith([range('x', 'list'), range('y', 'list')]);
+
+  it('draws a numeric grid of four by four or more as a contour, and a smaller one as a heatmap', () => {
+    expect(inferPlotView(lists, [measure('z', [axis('x', 0, [1, 2, 3, 4, 5]), axis('y', 1, [1, 2, 3, 4])])]).type).toBe('contour');
+    expect(inferPlotView(lists, [measure('z', [axis('x', 0, [1, 2, 3]), axis('y', 1, [1, 2, 3, 4, 5])])]).type).toBe('heatmap');
+  });
+
+  it('leaves a numeric × categorical grid as it was', () => {
+    const natures = documentWith([range('x', 'list'), range('grade', 'categoricalList')]);
+    const view = inferPlotView(natures, [measure('z', [axis('x', 0, [1, 2, 3, 4]), axis('grade', 1, ['A', 'B', 'C', 'D'])])]);
+    expect(view).toMatchObject({ type: 'line', x: 'x', series: 'grade' });
+  });
+
+  it('keeps short continuous ranges a contour, as today', () => {
+    const natures = documentWith([range('x', 'linear'), range('y', 'linear')]);
+    expect(inferPlotView(natures, [measure('z', [axis('x', 0, [1, 2, 3]), axis('y', 1, [4, 5])])]).type).toBe('contour');
+  });
+
+  it('chooses a log value scale at three decades of positive values', () => {
+    const x = axis('x', 0, [1, 2, 3, 4]);
+    const natures = documentWith([range('x', 'linear')]);
+    expect(inferPlotView(natures, [values(measure('z', [x]), [1, 10, 100, 10_000])]).valueScale).toBe('log');
+    expect(inferPlotView(natures, [values(measure('z', [x]), [1, 10, 100, 500])]).valueScale).toBe('linear');
+    expect(inferPlotView(natures, [values(measure('z', [x]), [0, 10, 100, 10_000])]).valueScale).toBe('linear');
+    expect(inferPlotView(natures, [values(measure('z', [x]), [-1, 10, 100, 10_000])]).valueScale).toBe('linear');
+  });
+
+  it('writes every numeric axis scale down, log for a log-spaced range', () => {
+    const view = inferPlotView(documentWith([range('x', 'logarithmic')]), [measure('z', [axis('x', 0, [1, 10, 100])])]);
+    expect(view).toEqual({ type: 'line', x: 'x', scales: { x: 'log' }, valueScale: 'linear' });
+  });
+
+  it('reads the same shape back off a drawn panel', () => {
+    const natures = documentWith([range('x', 'logarithmic')]);
+    const entry = measure('z', [axis('x', 0, [1, 10, 100])]);
+    const panel = inferPlotPanels(natures, [entry])[0];
+    expect(panel === undefined ? undefined : structuralViewOf(natures, panel)).toEqual(inferPlotView(natures, [entry]));
+  });
+});
+
+describe('settling plots', () => {
+  const x = axis('x', 0, [1, 2, 3, 4, 5]);
+  const y = axis('y', 1, [1, 2, 3, 4]);
+  const natures = documentWith([range('x', 'list'), range('y', 'list')]);
+
+  function plotDocument(measures: readonly PlotMeasure[]): GraphDocument {
+    return {
+      schemaVersion: DOCUMENT_SCHEMA_VERSION,
+      id: 'plot',
+      title: 'Plot',
+      nodes: [
+        { kind: 'output', id: 'plot', position: { x: 0, y: 0 }, output: { kind: 'plot', measures } } as GraphNode,
+      ],
+      edges: [],
+      frames: [],
+    };
+  }
+
+  function storedMeasures(document: GraphDocument): readonly PlotMeasure[] {
+    const node = document.nodes[0];
+    return node?.kind === 'output' && node.output.kind === 'plot' ? node.output.measures ?? [] : [];
+  }
+
+  /** What the kernel would hand back: each base result with the stored measure's effective view. */
+  function evaluate(document: GraphDocument, base: readonly PlotMeasureResult[]): readonly OutputResult[] {
+    const stored = new Map(storedMeasures(document).map((entry) => [entry.id, entry]));
+    const measures = base.flatMap((result) => {
+      const entry = stored.get(result.id);
+      if (entry === undefined) return [];
+      const view = effectivePlotView(entry);
+      const inferred = !plotViewChanged(entry.view) && entry.inferred !== undefined;
+      const { view: _view, ...rest } = result;
+      return [{ ...rest, ...(view === undefined ? {} : { view }), ...(inferred ? { viewInferred: true as const } : {}) }];
+    });
+    return [{ kind: 'plot', nodeId: 'plot', measures } as unknown as OutputResult];
+  }
+
+  /** Settle until nothing changes, failing on a loop. */
+  function settle(
+    document: GraphDocument,
+    base: readonly PlotMeasureResult[],
+    seen: Map<string, string> | undefined,
+  ): { readonly document: GraphDocument; readonly seen: Map<string, string> } {
+    const first = settlePlots(document, evaluate(document, base), natures, seen);
+    const second = settlePlots(first.document, evaluate(first.document, base), natures, first.seen);
+    expect(second.document).toBe(first.document);
+    return second;
+  }
+
+  const grid = [measure('value', [x, y])];
+
+  it('writes nothing for a legacy plot on the first settle after opening', () => {
+    const document = plotDocument([{ id: 'value' }]);
+    const settled = settlePlots(document, evaluate(document, grid), natures, undefined);
+    expect(settled.document).toBe(document);
+    expect(settled.seen.get('plot:value')).toBe('x|y#value');
+  });
+
+  it('infers a legacy plot once it is rewired, and then reaches a fixed point', () => {
+    const document = plotDocument([{ id: 'value' }]);
+    const settled = settle(document, grid, new Map([['plot:value', 'x#value']]));
+    expect(storedMeasures(settled.document)[0]?.inferred).toEqual({
+      signature: 'x|y#value',
+      view: { type: 'contour', x: 'x', y: 'y', scales: { x: 'linear', y: 'linear' }, valueScale: 'linear' },
+    });
+  });
+
+  it('infers a plot wired during this session', () => {
+    const settled = settle(plotDocument([{ id: 'value' }]), grid, new Map());
+    expect(storedMeasures(settled.document)[0]?.inferred?.view.type).toBe('contour');
+  });
+
+  it('never modifies a changed measure, whatever its signature', () => {
+    const document = plotDocument([{ id: 'value', view: { type: 'heatmap', valueLabel: 'stress' } }]);
+    expect(settle(document, grid, new Map([['plot:value', 'other']])).document).toBe(document);
+  });
+
+  it('keeps a cosmetic-only view through re-inference', () => {
+    const document = plotDocument([{ id: 'value', view: { valueLabel: 'stress', height: 300 }, inferred: { signature: 'x#value', view: { type: 'line', x: 'x' } } }]);
+    const settled = settle(document, grid, new Map([['plot:value', 'x#value']]));
+    const stored = storedMeasures(settled.document)[0];
+    expect(stored?.view).toEqual({ valueLabel: 'stress', height: 300 });
+    expect(stored?.inferred?.view.type).toBe('contour');
+  });
+
+  it('replaces an inferred log scale once a value reaches zero', () => {
+    const line = [values(measure('value', [x]), [1, 10, 100, 1000, 10_000])];
+    const start = settle(plotDocument([{ id: 'value' }]), line, new Map());
+    expect(storedMeasures(start.document)[0]?.inferred?.view.valueScale).toBe('log');
+    const zero = [values(measure('value', [x]), [0, 10, 100, 1000, 10_000])];
+    const settled = settle(start.document, zero, start.seen);
+    expect(storedMeasures(settled.document)[0]?.inferred?.view.valueScale).toBe('linear');
+  });
+
+  it('does not rewrite a plot whose error inference cannot fix', () => {
+    const four = [measure('value', [x, y, axis('p', 2, [1, 2]), axis('q', 3, [1, 2])])];
+    const start = settle(plotDocument([{ id: 'value' }]), four, new Map());
+    expect(settle(start.document, four, start.seen).document).toBe(start.document);
+  });
+
+  it('records but does not infer a plot whose result arrives after opening', () => {
+    const document = plotDocument([{ id: 'value' }]);
+    const opened = settlePlots(document, evaluate(document, []), natures, undefined);
+    expect(opened.document).toBe(document);
+    const loaded = settle(document, grid, opened.seen);
+    expect(loaded.document).toBe(document);
+    expect(loaded.seen.get('plot:value')).toBe('x|y#value');
+  });
+
+  it('joins a new measure to a group the student configured', () => {
+    const configured = { type: 'heatmap' as const, x: 'y', y: 'x' };
+    const document = plotDocument([{ id: 'value', view: configured }, { id: 'value2', view: { valueLabel: 'mass' } }]);
+    const both = [measure('value', [x, y]), measure('value2', [x, y], mass)];
+    const settled = settle(document, both, new Map([['plot:value', 'x|y#value']]));
+    expect(storedMeasures(settled.document)[1]).toEqual({ id: 'value2', view: { ...configured, valueLabel: 'mass' } });
+  });
+
+  it('leaves an existing inferred measure alone beside a configured sibling', () => {
+    const line = [measure('value', [x]), measure('value2', [x])];
+    const start = settle(plotDocument([{ id: 'value' }, { id: 'value2' }]), line, new Map());
+    const [first, second] = storedMeasures(start.document);
+    const changed = plotDocument([{ ...(first as PlotMeasure), view: { type: 'dot' } }, second as PlotMeasure]);
+    const settled = settle(changed, line, start.seen);
+    expect(storedMeasures(settled.document)[1]).toEqual(second);
+  });
+
+  it('gives every measure of a group the same snapshot, and so one panel', () => {
+    const line = [measure('value', [x]), measure('value2', [x])];
+    const settled = settle(plotDocument([{ id: 'value' }, { id: 'value2' }]), line, new Map());
+    const [first, second] = storedMeasures(settled.document);
+    expect(first?.inferred).toEqual(second?.inferred);
+    expect(first?.inferred?.signature).toBe('x#value|value2');
+    const outputs = evaluate(settled.document, line)[0] as unknown as { measures: readonly PlotMeasureResult[] };
+    expect(inferPlotPanels(natures, outputs.measures)).toHaveLength(1);
+  });
+
+  it('explains an inferred contour on a list grid and an inferred log scale', () => {
+    const settled = settle(plotDocument([{ id: 'value' }]), grid, new Map());
+    const outputs = evaluate(settled.document, grid)[0] as unknown as { measures: readonly PlotMeasureResult[] };
+    expect(inferPlotPanels(natures, outputs.measures)[0]?.reason).toBe('Auto · contour for a numeric grid');
+    const line = [values(measure('value', [x]), [1, 10, 100, 1000, 10_000])];
+    const logged = settle(plotDocument([{ id: 'value' }]), line, new Map());
+    const drawn = evaluate(logged.document, line)[0] as unknown as { measures: readonly PlotMeasureResult[] };
+    expect(inferPlotPanels(natures, drawn.measures)[0]?.reason).toBe('Auto · line for a numeric sweep · log scale, values span 4 decades');
+  });
+});
+
+describe('editing a frozen view', () => {
+  it('swaps roles rather than putting one axis in two', () => {
+    expect(assignRole({ type: 'line', x: 'd', series: 'grade' }, 'x', 'grade')).toEqual({ type: 'line', x: 'grade', series: 'd' });
+    expect(assignRole({ type: 'line', x: 'd', series: 'grade' }, 'series', 'load')).toEqual({ type: 'line', x: 'd', series: 'load' });
+  });
+
+  it('moves the second axis between series and y with the chart type', () => {
+    expect(retype({ type: 'line', x: 'd', series: 'e', valueScale: 'linear' }, 'contour'))
+      .toEqual({ type: 'contour', x: 'd', y: 'e', valueScale: 'linear' });
+    expect(retype({ type: 'heatmap', x: 'd', y: 'e' }, 'dot')).toEqual({ type: 'dot', x: 'd', series: 'e' });
+    expect(retype({ type: 'line', x: 'd' }, 'dot')).toEqual({ type: 'dot', x: 'd' });
   });
 });

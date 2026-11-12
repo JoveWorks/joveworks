@@ -15,7 +15,18 @@ import {
 
 import { useGraph } from '../graph-context';
 import { useSettings } from '../settings-context';
-import { axisNaturesOf, inferPlotPanels } from '../model/plot';
+import {
+  axisIdSetSignature,
+  axisNaturesOf,
+  cosmeticOf,
+  inferPlotPanels,
+  inferPlotView,
+  plotWiringSignature,
+  structuralViewOf,
+  assignRole,
+  retype,
+  type PlotRole,
+} from '../model/plot';
 import { removeCandidates, updateNode } from '../model/document';
 import { plotMarkGrid } from '../present/IntelligentPlotFigure';
 import { drawnMarks, marksOver } from '../present/marks';
@@ -41,36 +52,67 @@ export function IntelligentPlotControls({
   const evaluated = result.measures ?? [];
   if (node.output.kind !== 'plot' || evaluated.length === 0) return null;
   const output = node.output;
-  const panels = inferPlotPanels(axisNaturesOf(document), evaluated);
+  const natures = axisNaturesOf(document);
+  const panels = inferPlotPanels(natures, evaluated);
 
-  const withPanel = (
+  const withMeasures = (
     current: GraphDocument,
     ids: ReadonlySet<string>,
-    change: (view: PlotViewOverride) => PlotViewOverride | undefined,
+    change: (measure: PlotMeasure) => PlotMeasure,
   ): GraphDocument => updateNode<OutputNode>(current, node.id, (entry) => {
     if (entry.output.kind !== 'plot') return entry;
-    const measures = plotMeasures(entry.output).map((measure): PlotMeasure => {
-      if (!ids.has(measure.id)) return measure;
-      const view = change(measure.view ?? {});
-      const { view: _old, ...rest } = measure;
-      return view === undefined ? rest : { ...rest, view };
-    });
+    const measures = plotMeasures(entry.output).map((measure) => (ids.has(measure.id) ? change(measure) : measure));
     return { ...entry, output: { kind: 'plot', measures } };
   });
 
-  const changePanel = (
+  const withView = (measure: PlotMeasure, view: PlotViewOverride | undefined): PlotMeasure => {
+    const { view: _old, ...rest } = measure;
+    return view === undefined || Object.keys(view).length === 0 ? rest : { ...rest, view };
+  };
+
+  /** A label or a height: edits the stored view only, so an inference stays in place. */
+  const changeCosmetic = (
     ids: ReadonlySet<string>,
     change: (view: PlotViewOverride) => PlotViewOverride | undefined,
-  ): void => edit((current) => withPanel(current, ids, change));
+  ): void => edit((current) => withMeasures(current, ids, (measure) => withView(measure, change(measure.view ?? {}))));
+
+  /**
+   * A type, a role or a scale: the student has now configured this panel, so
+   * everything it is drawn with is frozen into each measure's view with the
+   * change applied, and any inference is dropped. Each measure keeps its own
+   * labels and height.
+   */
+  const changeStructure = (
+    panel: (typeof panels)[number],
+    change: (view: PlotViewOverride) => PlotViewOverride,
+  ): void => {
+    const ids = new Set(panel.measures.map((measure) => measure.id));
+    const frozen = change(structuralViewOf(natures, panel));
+    edit((current) => withMeasures(current, ids, (measure) => {
+      const { inferred: _inferred, ...rest } = measure;
+      return withView(rest, { ...frozen, ...cosmeticOf(measure.view) });
+    }));
+  };
 
   // "Reset to Auto" puts the plot back as it first drew, and that includes
   // the designs marked by clicking it: the marks this plot draws go in the
-  // same edit, so one undo restores both.
-  const resetPanel = (ids: ReadonlySet<string>): void => {
+  // same edit, so one undo restores both. It infers afresh for every measure
+  // sweeping the same axes, not only this panel's: a configured measure left
+  // behind in the group would keep its siblings in a panel of their own.
+  const resetPanel = (panel: (typeof panels)[number]): void => {
+    const lead = panel.measures[0];
+    if (lead === undefined) return;
+    const axesOf = (measure: typeof lead): string => axisIdSetSignature(measure.axes.map(({ axis }) => axis.id));
+    const group = evaluated.filter((measure) => axesOf(measure) === axesOf(lead));
+    const inferred = { signature: plotWiringSignature(lead, group), view: inferPlotView(natures, group) };
+    const ids = new Set(group.map((measure) => measure.id));
     const readouts = analysis.evaluation?.axisReadouts ?? new Map();
     const shown = drawnMarks(marksOver(document.marks ?? [], plotMarkGrid(result), readouts));
     edit((current) => removeCandidates(
-      withPanel(current, ids, () => undefined),
+      withMeasures(current, ids, (measure) => {
+        const { view: _view, inferred: _inferred, ...rest } = measure;
+        return { ...rest, inferred };
+      }),
       shown.map((mark) => mark.candidate),
     ));
   };
@@ -94,32 +136,32 @@ export function IntelligentPlotControls({
         const ids = new Set(panel.measures.map((measure) => measure.id));
         const lead = panel.measures[0];
         if (lead === undefined) return null;
+        // Labels and height as drawn (the result's view is the effective one);
+        // the selects below show what the panel is drawn with instead.
         const view = lead.view ?? {};
+        const drawn = structuralViewOf(natures, panel);
         const axisOptions = panel.axes.map(({ axis }) => ({ id: axis.id, label: axis.label }));
-        const setField = <K extends keyof PlotViewOverride,>(key: K, value: PlotViewOverride[K]): void =>
-          changePanel(ids, (current) => withoutUndefined({ ...current, [key]: value }));
-        const setRole = (key: 'x' | 'y' | 'series' | 'facet', value: string): void =>
-          setField(key, value === '' ? undefined : value);
-        const setScale = (key: string, scale: '' | PlotScale): void => changePanel(ids, (current) => {
-          const scales = { ...current.scales };
-          if (scale === '') delete scales[key];
-          else scales[key] = scale;
-          const { scales: _old, ...rest } = current;
-          return Object.keys(scales).length === 0 ? withoutUndefined(rest) : { ...rest, scales };
-        });
-        const axisLabel = (key: string, label: string): void => changePanel(ids, (current) => {
+        const setCosmetic = <K extends 'valueLabel' | 'height',>(key: K, value: PlotViewOverride[K]): void =>
+          changeCosmetic(ids, (current) => withoutUndefined({ ...current, [key]: value }));
+        const setRole = (key: PlotRole, value: string): void =>
+          changeStructure(panel, (current) => assignRole(current, key, value === '' ? undefined : value));
+        const setScale = (key: string, scale: PlotScale): void =>
+          changeStructure(panel, (current) => ({ ...current, scales: { ...current.scales, [key]: scale } }));
+        const axisLabel = (key: string, label: string): void => changeCosmetic(ids, (current) => {
           const labels = { ...current.axisLabels };
           if (label.trim() === '') delete labels[key];
           else labels[key] = label;
           const { axisLabels: _old, ...rest } = current;
           return Object.keys(labels).length === 0 ? withoutUndefined(rest) : { ...rest, axisLabels: labels };
         });
-        const role = (name: 'x' | 'y' | 'series' | 'facet', visible: boolean): ReactElement | null =>
+        // Every swept axis has a role, so there is no "none" to pick unless
+        // the panel already has an empty one.
+        const role = (name: PlotRole, visible: boolean): ReactElement | null =>
           !visible ? null : (
             <label>
               {name}
-              <select value={view[name] ?? ''} onChange={(event) => setRole(name, event.target.value)}>
-                <option value="">Auto ({panel.roles[name] ?? 'none'})</option>
+              <select value={panel.roles[name] ?? ''} onChange={(event) => setRole(name, event.target.value)}>
+                {panel.roles[name] === undefined ? <option value="" disabled>none</option> : null}
                 {axisOptions.map((axis) => <option key={axis.id} value={axis.id}>{axis.label}</option>)}
               </select>
             </label>
@@ -168,16 +210,15 @@ export function IntelligentPlotControls({
             <label>
               type
               <select
-                value={view.type ?? ''}
-                onChange={(event) => setField('type', event.target.value === '' ? undefined : event.target.value as PlotType)}
+                value={panel.type}
+                onChange={(event) => changeStructure(panel, (current) => retype(current, event.target.value as PlotType))}
               >
-                <option value="">Auto ({panel.type})</option>
                 {PLOT_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
               </select>
             </label>
             {role('x', panel.axes.length > 0)}
             {role('y', panel.type === 'heatmap' || panel.type === 'contour')}
-            {role('series', panel.type === 'line' || panel.type === 'dot')}
+            {role('series', (panel.type === 'line' || panel.type === 'dot') && panel.axes.length > 1)}
             {role('facet', panel.axes.length > 2)}
             {axisOptions.map((axis) => (
               <span className="plot-axis-controls" key={axis.id}>
@@ -188,10 +229,9 @@ export function IntelligentPlotControls({
                 />
                 <select
                   aria-label={`${axis.label} scale`}
-                  value={view.scales?.[axis.id] ?? ''}
-                  onChange={(event) => setScale(axis.id, event.target.value as '' | PlotScale)}
+                  value={drawn.scales?.[axis.id] ?? 'linear'}
+                  onChange={(event) => setScale(axis.id, event.target.value as PlotScale)}
                 >
-                  <option value="">Auto scale</option>
                   <option value="linear">linear</option>
                   <option value="log">log</option>
                 </select>
@@ -202,16 +242,15 @@ export function IntelligentPlotControls({
               <TextField
                 value={view.valueLabel ?? ''}
                 placeholder="Auto"
-                onCommit={(label) => setField('valueLabel', label.trim() === '' ? undefined : label)}
+                onCommit={(label) => setCosmetic('valueLabel', label.trim() === '' ? undefined : label)}
               />
             </label>
             <label>
               value scale
               <select
-                value={view.valueScale ?? ''}
-                onChange={(event) => setField('valueScale', event.target.value === '' ? undefined : event.target.value as PlotScale)}
+                value={panel.valueScale}
+                onChange={(event) => changeStructure(panel, (current) => ({ ...current, valueScale: event.target.value as PlotScale }))}
               >
-                <option value="">Auto (linear)</option>
                 <option value="linear">linear</option>
                 <option value="log">log</option>
               </select>
@@ -224,11 +263,11 @@ export function IntelligentPlotControls({
                 minimum={160}
                 onCommit={(height) => {
                   const bounded = Math.min(720, height);
-                  setField('height', bounded === 240 ? undefined : bounded);
+                  setCosmetic('height', bounded === 240 ? undefined : bounded);
                 }}
               />
             </label>
-            <button type="button" onClick={() => resetPanel(ids)}>Reset to Auto</button>
+            <button type="button" onClick={() => resetPanel(panel)}>Reset to Auto</button>
           </fieldset>
         );
       })}

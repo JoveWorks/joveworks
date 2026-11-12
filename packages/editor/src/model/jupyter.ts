@@ -47,6 +47,7 @@ import {
   STOP_PORT,
   COUNT_PORT,
   localize,
+  effectivePlotView,
   plotMeasures,
   plotThresholdPort,
   renardValues,
@@ -903,7 +904,7 @@ export function compileJupyter(
       const title = measure.label ?? source.name;
       const text = withUnit(title, unit);
       const ids = value.axes.map((axis) => axis.id);
-      const view = measure.view;
+      const view = effectivePlotView(measure);
       const x = view?.x !== undefined && ids.includes(view.x) ? view.x : ids[0];
       const second = [view?.y, view?.series, ...ids].find((id) => id !== undefined && id !== x && ids.includes(id));
       if (x === undefined || ids.length > 2) {

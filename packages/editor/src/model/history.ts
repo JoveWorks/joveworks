@@ -101,3 +101,13 @@ export function redoHistory<T>(history: History<T>): History<T> {
     pending: undefined,
   };
 }
+
+/**
+ * Swaps `present` without recording a step: what follows from an edit, worked
+ * out after it (the plot settings inferred once a new wire has evaluated),
+ * belongs to that edit. One undo takes both away, and redo brings back the
+ * settled state, because redo restores whatever `present` was when undone.
+ */
+export function replacePresent<T>(history: History<T>, next: T): History<T> {
+  return next === history.present ? history : { ...history, present: next };
+}

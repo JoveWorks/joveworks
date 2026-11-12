@@ -1,5 +1,14 @@
-import type { PlotAxis, PlotMeasureResult } from '@joveworks/kernel';
-import type { GraphDocument, PlotScale, PlotType } from '@joveworks/schema';
+import type { OutputResult, PlotAxis, PlotMeasureResult } from '@joveworks/kernel';
+import {
+  PLOT_STRUCTURAL_FIELDS,
+  plotViewChanged,
+  type GraphDocument,
+  type GraphNode,
+  type PlotMeasure,
+  type PlotScale,
+  type PlotType,
+  type PlotViewOverride,
+} from '@joveworks/schema';
 import { dimensionsEqual } from '@joveworks/units';
 
 import { axisNature, type AxisNatures } from '../present/display';
@@ -201,7 +210,9 @@ function panelFor(
   const error = invalidReason(axes, type, roles, explicit) ?? valueAxisReason(valueAxes) ??
     measures.map((measure) => scaleReason(measure, axes)).find((reason) => reason !== undefined) ??
     (axes.length === 0 && measures.length < 2 ? 'a single scalar belongs in a Value output' : undefined);
-  const reason = lead.view?.type !== undefined
+  const reason = lead.viewInferred === true
+    ? inferredReason(natures, measures, axes, type, roles, lead.view?.valueScale ?? 'linear')
+    : lead.view?.type !== undefined
     ? `Pinned · ${type}`
     : axes.length === 0
       ? 'Auto · dot comparison for scalar values'
@@ -225,6 +236,36 @@ function panelFor(
     reason,
     ...(error === undefined ? {} : { error }),
   };
+}
+
+function decades(measures: readonly PlotMeasureResult[]): number {
+  const values = measures.flatMap((measure) => measure.series.data);
+  return Math.log10(Math.max(...values) / Math.min(...values));
+}
+
+/** The `Auto · …` sentence for a measure drawn from a stored inference. */
+function inferredReason(
+  natures: AxisNatures,
+  measures: readonly PlotMeasureResult[],
+  axes: readonly PlotAxis[],
+  type: PlotType,
+  roles: PlotRoles,
+  valueScale: PlotScale,
+): string {
+  const byId = new Map(axes.map((axis) => [axis.axis.id, axis]));
+  const ranges = [roles.x, roles.y].every((id) => id !== undefined && continuous(natures, byId.get(id) as PlotAxis));
+  const base = axes.length === 0
+    ? 'Auto · dot comparison for scalar values'
+    : type === 'contour'
+      ? ranges ? 'Auto · contour for two continuous numeric ranges' : 'Auto · contour for a numeric grid'
+      : type === 'heatmap'
+        ? 'Auto · heatmap for a discrete or categorical grid'
+        : type === 'line'
+          ? 'Auto · line for a numeric sweep'
+          : 'Auto · dot comparison for categories';
+  return valueScale === 'log'
+    ? `${base} · log scale, values span ${Math.floor(decades(measures))} decades`
+    : base;
 }
 
 /**
@@ -290,4 +331,230 @@ export function axisNaturesOf(document: GraphDocument): AxisNatures {
     const continuous = node.value.kind === 'linear' || node.value.kind === 'logarithmic';
     return [[node.id, { continuous, logarithmic: node.value.kind === 'logarithmic' }] as const];
   }));
+}
+
+// --- stored inference --------------------------------------------------------
+
+/** Both axes of a grid need this many points before it defaults to a contour. */
+const CONTOUR_MIN_POINTS = 4;
+/** A value spanning this ratio (three decades) defaults to a log value scale. */
+const LOG_VALUE_RATIO = 1000;
+
+/**
+ * The `seen` entry for a measure that was in the document when it was loaded
+ * but had no result yet (its catalogue had not arrived, or its node was in
+ * error). Its first result is recorded, not inferred: decision 8, a document
+ * that was opened does not redraw.
+ */
+export const UNEVALUATED = '\u0000unevaluated';
+
+/** Order-independent identity of what is wired into one panel: its swept axes, then its measures. */
+export function plotWiringSignature(measure: PlotMeasureResult, group: readonly PlotMeasureResult[]): string {
+  return `${signature(measure)}#${group.map(({ id }) => id).sort().join('|')}`;
+}
+
+/** The labels and height of a view, without its type, roles or scales. */
+export function cosmeticOf(view: PlotViewOverride | undefined): PlotViewOverride {
+  if (view === undefined) return {};
+  const cosmetic: Record<string, unknown> = { ...view };
+  for (const field of PLOT_STRUCTURAL_FIELDS) delete cosmetic[field];
+  return cosmetic as PlotViewOverride;
+}
+
+/** The structural fields of a view, and nothing else. */
+export function structuralOf(view: PlotViewOverride | undefined): PlotViewOverride {
+  if (view === undefined) return {};
+  const structural: Record<string, unknown> = {};
+  for (const field of PLOT_STRUCTURAL_FIELDS) if (view[field] !== undefined) structural[field] = view[field];
+  return structural as PlotViewOverride;
+}
+
+function numericScales(natures: AxisNatures, axes: readonly PlotAxis[], chosen: Readonly<Record<string, PlotScale>>): Readonly<Record<string, PlotScale>> {
+  return Object.fromEntries(axes.filter(numeric).map(({ axis }) => [
+    axis.id,
+    chosen[axis.id] ?? (axisNature(natures, axis.id).logarithmic ? 'log' : 'linear'),
+  ]));
+}
+
+function structuralView(
+  type: PlotType,
+  roles: PlotRoles,
+  scales: Readonly<Record<string, PlotScale>>,
+  valueScale: PlotScale,
+): PlotViewOverride {
+  return {
+    type,
+    ...roles,
+    ...(Object.keys(scales).length === 0 ? {} : { scales }),
+    valueScale,
+  };
+}
+
+/**
+ * The complete structural view for a group of measures that share swept
+ * axes: the shape-based rule, upgraded to a contour on a numeric grid of at
+ * least four by four, with every axis scale and the value scale written down.
+ */
+export function inferPlotView(natures: AxisNatures, group: readonly PlotMeasureResult[]): PlotViewOverride {
+  const lead = group[0] as PlotMeasureResult;
+  const axes = [...lead.axes].sort((a, b) => a.axis.order - b.axis.order);
+  let type = autoType(natures, axes);
+  const roles = rolesFor(natures, axes, type, undefined);
+  if (type === 'heatmap') {
+    const byId = new Map(axes.map((axis) => [axis.axis.id, axis]));
+    const grid = [roles.x, roles.y].map((id) => (id === undefined ? undefined : byId.get(id)));
+    if (grid.every((axis) => axis !== undefined && numeric(axis) && axis.axis.length >= CONTOUR_MIN_POINTS)) type = 'contour';
+  }
+  const values = group.map((measure) => measure.series.data);
+  const positive = values.every((data) => data.length > 0 && data.every((value) => Number.isFinite(value) && value > 0));
+  const wide = values.some((data) => Math.max(...data) / Math.min(...data) >= LOG_VALUE_RATIO);
+  return structuralView(type, roles, numericScales(natures, axes, {}), positive && wide ? 'log' : 'linear');
+}
+
+/** The structural settings a panel is currently drawn with, for freezing. */
+export function structuralViewOf(natures: AxisNatures, panel: PlotPanel): PlotViewOverride {
+  return structuralView(panel.type, panel.roles, numericScales(natures, panel.axes, panel.scales), panel.valueScale);
+}
+
+/** A stable rendering of a measure, so that equal settings never count as a change. */
+function canonical(value: unknown): string {
+  return JSON.stringify(value, (_key, entry: unknown) =>
+    entry !== null && typeof entry === 'object' && !Array.isArray(entry)
+      ? Object.fromEntries(Object.entries(entry as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b)))
+      : entry,
+  );
+}
+
+function withState(
+  measure: PlotMeasure,
+  view: PlotViewOverride | undefined,
+  inferred: PlotMeasure['inferred'],
+): PlotMeasure {
+  const { view: _view, inferred: _inferred, ...rest } = measure;
+  const next: PlotMeasure = {
+    ...rest,
+    ...(view === undefined || Object.keys(view).length === 0 ? {} : { view }),
+    ...(inferred === undefined ? {} : { inferred }),
+  };
+  return canonical(next) === canonical(measure) ? measure : next;
+}
+
+function settleMeasures(
+  measures: readonly PlotMeasure[],
+  results: readonly PlotMeasureResult[],
+  natures: AxisNatures,
+  key: (measureId: string) => string,
+  previous: ReadonlyMap<string, string> | undefined,
+  seen: Map<string, string>,
+): readonly PlotMeasure[] {
+  const resultOf = new Map(results.map((result) => [result.id, result]));
+  const groups = new Map<string, PlotMeasureResult[]>();
+  for (const result of results) {
+    const group = signature(result);
+    groups.set(group, [...(groups.get(group) ?? []), result]);
+  }
+  const stored = new Map(measures.map((measure) => [measure.id, measure]));
+  const inferredFor = new Map<string, PlotViewOverride>();
+  const inferOnce = (group: readonly PlotMeasureResult[]): PlotViewOverride => {
+    const id = signature(group[0] as PlotMeasureResult);
+    const known = inferredFor.get(id);
+    if (known !== undefined) return known;
+    const view = inferPlotView(natures, group);
+    inferredFor.set(id, view);
+    return view;
+  };
+
+  return measures.map((measure) => {
+    const result = resultOf.get(measure.id);
+    if (result === undefined) {
+      const entry = previous === undefined ? UNEVALUATED : previous.get(key(measure.id));
+      if (entry !== undefined) seen.set(key(measure.id), entry);
+      return measure;
+    }
+    const group = groups.get(signature(result)) as PlotMeasureResult[];
+    const current = plotWiringSignature(result, group);
+    const before = previous?.get(key(measure.id));
+    seen.set(key(measure.id), current);
+    const infer = (): PlotMeasure =>
+      withState(measure, cosmeticOf(measure.view), { signature: current, view: inferOnce(group) });
+
+    // 1. The student chose this measure's settings: never touch them.
+    if (plotViewChanged(measure.view)) {
+      return measure.inferred === undefined ? measure : withState(measure, measure.view, undefined);
+    }
+    // 2. A new connection onto a chart the student configured joins it as configured.
+    if (previous !== undefined && before === undefined) {
+      const configured = group
+        .map((other) => stored.get(other.id))
+        .find((other) => other !== undefined && other.id !== measure.id && plotViewChanged(other.view));
+      if (configured !== undefined) {
+        return withState(measure, { ...structuralOf(configured.view), ...cosmeticOf(measure.view) }, undefined);
+      }
+    }
+    // 3. Inferred: again when the wiring changed, or when a value left its log scale undrawable.
+    if (measure.inferred !== undefined) {
+      const undrawable = group.some((other) => scaleReason(other, other.axes) !== undefined);
+      return measure.inferred.signature !== current || undrawable ? infer() : measure;
+    }
+    // 4. Legacy: inferred only once wired anew during this session.
+    if (previous === undefined || before === UNEVALUATED || before === current) return measure;
+    return infer();
+  });
+}
+
+/**
+ * Bring every plot in the document up to date with its wiring (the state
+ * table in `docs/plot-inference-plan.md`). `seen` is what the previous call
+ * returned, or undefined for the first call after a document was opened (or
+ * an undo or redo), which records the wiring and writes nothing for a plot
+ * that predates inference. Returns the same document reference when nothing
+ * changes, so a second call on its own output is always a no-op.
+ */
+export function settlePlots(
+  document: GraphDocument,
+  outputs: readonly OutputResult[],
+  natures: AxisNatures,
+  seen: ReadonlyMap<string, string> | undefined,
+): { readonly document: GraphDocument; readonly seen: Map<string, string> } {
+  const next = new Map<string, string>();
+  let changed = false;
+  const nodes = document.nodes.map((node): GraphNode => {
+    // A legacy one-value plot (no `measures`) is left as authored.
+    if (node.kind !== 'output' || node.output.kind !== 'plot' || node.output.measures === undefined) return node;
+    const stored = node.output.measures;
+    const result = outputs.find((output) => output.nodeId === node.id);
+    const results = result?.kind === 'plot' ? result.measures ?? [] : [];
+    const measures = settleMeasures(stored, results, natures, (id) => `${node.id}:${id}`, seen, next);
+    if (measures.every((measure, index) => measure === stored[index])) return node;
+    changed = true;
+    return { ...node, output: { ...node.output, measures } };
+  });
+  return { document: changed ? { ...document, nodes } : document, seen: next };
+}
+
+// --- editing a frozen view ---------------------------------------------------
+
+export type PlotRole = keyof PlotRoles;
+const ROLES: readonly PlotRole[] = ['x', 'y', 'series', 'facet'];
+
+/**
+ * Give `role` the axis `axis`. With every role written down, the axis may
+ * already hold another one; that role takes over the axis being displaced,
+ * so no axis ever ends up in two roles.
+ */
+export function assignRole(view: PlotViewOverride, role: PlotRole, axis: string | undefined): PlotViewOverride {
+  const next: Record<string, unknown> = { ...view };
+  const holder = axis === undefined ? undefined : ROLES.find((other) => other !== role && view[other] === axis);
+  if (holder !== undefined) next[holder] = view[role];
+  next[role] = axis;
+  for (const key of Object.keys(next)) if (next[key] === undefined) delete next[key];
+  return next as PlotViewOverride;
+}
+
+/** A line or dot chart has a series where a heatmap or contour has a y axis. */
+export function retype(view: PlotViewOverride, type: PlotType): PlotViewOverride {
+  const surface = type === 'heatmap' || type === 'contour';
+  const { y, series, ...rest } = view;
+  const second = surface ? (y ?? series) : (series ?? y);
+  return { ...rest, type, ...(second === undefined ? {} : surface ? { y: second } : { series: second }) };
 }

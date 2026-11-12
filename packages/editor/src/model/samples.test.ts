@@ -24,6 +24,7 @@ import {
 import { fromCanonical, parseUnit } from '@joveworks/units';
 
 import { analyse } from './analysis';
+import { axisNaturesOf, inferPlotPanels, settlePlots } from './plot';
 import { baseCatalogue, bundledCatalogues } from './catalogues';
 import { DEFAULT_ADVANCED_NODES } from './editorSettings';
 import { GAP } from './layout-constants';
@@ -439,5 +440,48 @@ describe('the cantilever study, as a trade-off', () => {
     // A mark shipped with a sample must not arrive stale — it would tell every
     // reader the range had moved under a design nobody had touched.
     expect(analysis.warnings.filter((entry) => entry.kind === 'candidateStale')).toEqual([]);
+  });
+});
+
+describe('the samples under plot inference', () => {
+  const builders = [
+    apertureDecision, beltLab, cantileverHollowSections, depthOfField, zoomDepthOfField, wildlifeCameraComparison,
+    millingPowerEnvelope, monteCarloClearance, padPressure, platformFootprint, pressfitLab,
+  ];
+  const opened = builders
+    .map((build) => build(CATALOGUES))
+    .filter((document): document is GraphDocument => document !== undefined);
+
+  it.each(opened.map((document) => [document.id, document] as const))('%s opens and stays exactly as authored', (_id, document) => {
+    const evaluation = analyse(document, CATALOGUES).evaluation;
+    expect(evaluation).toBeDefined();
+    const outputs = evaluation?.outputs ?? [];
+    const natures = axisNaturesOf(document);
+    const first = settlePlots(document, outputs, natures, undefined);
+    expect(first.document).toBe(document);
+    // The first settle never writes; the second, as after any edit, must not either.
+    expect(settlePlots(document, outputs, natures, first.seen).document).toBe(document);
+  });
+
+  it('draws every sample plot with the type its author chose', () => {
+    const drawn = Object.fromEntries(opened.flatMap((document) => {
+      const outputs = analyse(document, CATALOGUES).evaluation?.outputs ?? [];
+      const natures = axisNaturesOf(document);
+      return outputs.flatMap((output) => output.kind === 'plot' && output.measures !== undefined
+        ? [[`${document.id}/${output.nodeId}`, inferPlotPanels(natures, output.measures).map((panel) => panel.type).join(',')]]
+        : []);
+    }));
+    expect(drawn).toMatchObject({
+      'aperture-decision/diffractionPlot': 'line',
+      'aperture-decision/dofPlot': 'line',
+      'cantilever-hollow-sections/out_plot': 'heatmap',
+      'depth-of-field/out_dof_plot': 'contour',
+      'zoom-depth-of-field/out_plot': 'line',
+      'milling-power-envelope/out_Q_plot': 'contour',
+      'milling-power-envelope/out_P_plot': 'contour',
+      'milling-power-envelope/out_M_plot': 'contour',
+      'pad-pressure/p_plot': 'line',
+      'platform-footprint/decision_plot': 'line',
+    });
   });
 });

@@ -45,6 +45,16 @@ describe('documentEvents', () => {
     ]);
   });
 
+  it('does not report a plot settle as a user edit', () => {
+    const plot = (measures: readonly object[]): GraphDocument => ({
+      ...base(),
+      nodes: [{ kind: 'output' as const, id: 'plot', output: { kind: 'plot' as const, measures }, position: { x: 0, y: 0 } }],
+    } as GraphDocument);
+    const before = plot([{ id: 'value' }]);
+    const settled = plot([{ id: 'value', inferred: { signature: 'x#value', view: { type: 'contour', x: 'x', y: 'y' } } }]);
+    expect(documentEvents(before, settled)).toEqual([]);
+  });
+
   it('records an input becoming a sweep and a new connection', () => {
     const before = {
       ...base(),

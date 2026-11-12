@@ -1,6 +1,8 @@
 # Plot inference: a plot that needs no configuration
 
-Status: plan, not started. Written 2026-11-12. Every product decision in it is
+Status: implemented 2026-11-12 (84d7c27, 90f3637 and the editor commit after
+them); Thomas checked it in the browser.
+Written 2026-11-12. Every product decision in it is
 taken; what remains is implementation, except the two questions under "Open
 questions for Thomas". Read `AGENTS.md` and `CLAUDE.md` first. Reviewed against
 the code on 2026-11-12; the review's corrections are folded in below.
