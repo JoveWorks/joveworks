@@ -1,8 +1,22 @@
 # Shaft sizing: from loads to a diameter
 
-Status: plan, not started. Written 2026-11-12, revised the same day after a
-design review with Thomas. Written to be implemented cold: every claim under
-"Verified" was checked against the code on that date.
+Status: Phases 1–3 implemented 2026-11-13; the Load node views (Phase 2) and
+the sample (Phase 4) are built and awaiting Thomas's browser check. Written
+2026-11-12, revised the same day after a design review with Thomas.
+
+Where the implementation differs from the text below:
+
+- Phase 2's schema and kernel landed as one commit: the `Port` union change
+  does not compile in the kernel without its kernel half.
+- Phase 3 uses one optional `shaft` field on a formula (`FormulaShaft`,
+  chosen by Thomas over extending `piecewise`/`deflection`), which also
+  carries the two-output reactions record. Shaft records declare no
+  expression, like a lookup.
+- The legacy move and the v2 records landed as one commit, so the palette
+  never loses its diagrams in between.
+- The `plane` picker defaults to `y`. The editor now resolves a node's
+  formula by its full reference, as the kernel does, so a v1 node shows v1
+  ports.
 
 Read `AGENTS.md` first. The rules that bite here: invented numbers only in
 tests, no R&M formula content in this repository, existing formula records
