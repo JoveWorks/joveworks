@@ -26,6 +26,8 @@ function sourceLabel(document: GraphDocument, source: Endpoint): string {
   // An input's only port is mechanically called `value`; its title carries the
   // useful name a student assigned to the source instead.
   if (node.kind === 'input') return nodeLabel(node);
+  // Likewise a load's or a support's only port is `load`/`support`; the node names it.
+  if (node.kind === 'load' || node.kind === 'distributedLoad' || node.kind === 'support') return nodeLabel(node);
 
   // A waypoint does not rename a value, so keep tracing to the real source.
   const match = /^out(\d+)$/u.exec(source.port);

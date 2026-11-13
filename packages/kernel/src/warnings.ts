@@ -15,6 +15,7 @@ export const WARNING_KINDS = [
   /** The product of the axis lengths has grown large enough to warn about. */
   'largeGrid',
   'shaftSupports',
+  'shaftView',
   /** A formula was used outside its `appliesWhen` condition. */
   'appliesWhen',
   /** A plot names an axis its data does not vary along. */

@@ -182,6 +182,8 @@ export function QuickAddMenu({
       { label: t('zip'), choice: { kind: 'zip' } },
       { label: t('load'), choice: { kind: 'load' } },
       { label: t('distributed load'), choice: { kind: 'distributedLoad' } },
+      { label: t('support'), choice: { kind: 'support' } },
+      { label: t('shaft'), choice: { kind: 'shaft' } },
       { label: t('compare'), choice: { kind: 'compare' } },
       // Four entries, one node kind — the same one-node-several-entries
       // shape `input` uses for scalar/range/list. Mode is switchable on the
@@ -200,6 +202,7 @@ export function QuickAddMenu({
         disabled: !canPlot,
       },
       { label: t('table output'), choice: { kind: 'output', outputKind: 'table' } },
+      { label: t('shaft view'), choice: { kind: 'output', outputKind: 'shaftView' } },
       { label: t('distribution output'), choice: { kind: 'output', outputKind: 'distribution' } },
       { label: t('Monte Carlo receiver'), choice: { kind: 'monteCarloReceiver' } },
       // `feasibility` is deliberately excluded — it has no port for a

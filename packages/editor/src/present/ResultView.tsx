@@ -49,6 +49,7 @@ import { ParetoFigure } from './ParetoFigure';
 import { PlotFigure, plotGrid } from './PlotFigure';
 import { ReliabilityCard } from './ReliabilityCard';
 import { SensitivityFigure } from './SensitivityFigure';
+import { ShaftFigure } from './ShaftFigure';
 import { StressFigure } from './StressFigure';
 import { useDisplay } from './display';
 
@@ -376,6 +377,10 @@ export function ResultView({
 
   if (result.kind === 'reliability') {
     return <div className="result plot">{label}<ReliabilityCard result={result} /></div>;
+  }
+
+  if (result.kind === 'shaftView') {
+    return <div className="result plot shaft-view">{label}<ShaftFigure result={result} /></div>;
   }
 
   // A click on the curve marks a design, and nothing on the figure itself

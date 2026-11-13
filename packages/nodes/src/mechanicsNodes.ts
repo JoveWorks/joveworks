@@ -20,7 +20,7 @@ import { text } from './draft.js';
 
 const shaftZ: Port = {
   kind: 'numeric', name: 'z', unit: parseUnit('mm'),
-  description: text('Where to evaluate — leave unwired to draw the diagram along the whole shaft'),
+  description: text('Where to read the diagrams — leave unwired for the whole shaft, or wire the positions of the sections to check'),
 };
 
 const shaftActing: Port = {
@@ -38,89 +38,61 @@ const shaftPlane: Port = {
   name: 'plane',
   domain: ['x', 'y', 'resultant'],
   default: 'y',
-  description: text('The transverse plane to draw, or the resultant √(x² + y²) of both'),
+  description: text('Which forces to follow: y, the vertical ones; x, the horizontal ones; or the resultant √(x² + y²) of both. z runs along the shaft'),
 };
 
-const SIGNS =
-  'Forces are positive up in their plane, couples positive clockwise with z to the right. The ' +
-  'support reactions are solved from everything wired in — any arrangement of supports, with the ' +
-  'shaft’s own stiffness section by section — so nothing needs wiring back.';
-
-const shaftTorque: Formula = {
-  id: 'mechanics.shaft.torque',
-  version: 2,
-  label: text('Torque diagram'),
-  description: text(
-    'Torque along a shaft, T(z) — the running total of every load’s torque at or before z. ' +
-      'Torques are taken as already balanced (input in, output out); this does not solve for a ' +
-      'reaction torque.',
-  ),
-  outputs: [{ kind: 'numeric', name: 'T', unit: parseUnit('Nmm'), description: text('Torque at z — T(z)') }],
-  inputs: [shaftZ, shaftActing, shaftShaft],
-  shaft: { diagram: 'torque', acting: 'acting', shaft: 'shaft', axis: 'z' },
+/**
+ * Everything a shaft carries along its length, from one node: the support
+ * reactions are solved from what is wired into `acting` — any arrangement of
+ * supports, with the shaft's own stiffness section by section — and shear,
+ * moment, deflection, slope and torque drawn along the shaft. Forces are
+ * positive up in their plane, couples positive clockwise with z to the
+ * right; the moment is positive when the shaft sags. Torques are taken as
+ * already balanced (input in, output out).
+ */
+const shaftCalculation: Formula = {
+  id: 'mechanics.shaft.calculation',
+  version: 1,
+  label: text('Shaft calculation'),
+  description: text('Shear, moment and deflection'),
+  outputs: [
+    { kind: 'numeric', name: 'V', unit: parseUnit('N'), description: text('Shear force V(z)') },
+    { kind: 'numeric', name: 'M', unit: parseUnit('Nmm'), description: text('Bending moment M(z), positive when the shaft sags') },
+    { kind: 'numeric', name: 'y', unit: parseUnit('mm'), description: text('Deflection y(z), zero at every support') },
+    { kind: 'numeric', name: 'theta', unit: parseUnit('rad'), description: text('Slope θ(z) = dy/dz, zero at a fixed support') },
+    { kind: 'numeric', name: 'T', unit: parseUnit('Nmm'), description: text('Torque T(z), the running total of applied torque') },
+  ],
+  inputs: [shaftShaft, shaftActing, shaftPlane, shaftZ],
+  shaft: {
+    answers: 'diagrams',
+    quantities: ['shear', 'moment', 'deflection', 'slope', 'torque'],
+    acting: 'acting', shaft: 'shaft', axis: 'z', plane: 'plane',
+  },
   status: 'unverified',
 };
 
-const shaftShear: Formula = {
-  id: 'mechanics.shaft.shear',
-  version: 2,
-  label: text('Shear diagram'),
-  description: text(`Shear force along a shaft, V(z) — every force, distributed load and support reaction at or before z. ${SIGNS}`),
-  outputs: [{ kind: 'numeric', name: 'V', unit: parseUnit('N'), description: text('Shear at z — V(z)') }],
-  inputs: [shaftZ, shaftActing, shaftShaft, shaftPlane],
-  shaft: { diagram: 'shear', acting: 'acting', shaft: 'shaft', axis: 'z', plane: 'plane' },
-  status: 'unverified',
-};
-
-const shaftMoment: Formula = {
-  id: 'mechanics.shaft.moment',
-  version: 2,
-  label: text('Bending moment diagram'),
-  description: text(
-    'Bending moment along a shaft, M(z) — the moment about z of every force, distributed load ' +
-      `and support reaction at or before z, plus each couple there. Positive when the shaft sags. ${SIGNS}`,
-  ),
-  outputs: [{ kind: 'numeric', name: 'M', unit: parseUnit('Nmm'), description: text('Moment at z — M(z)') }],
-  inputs: [shaftZ, shaftActing, shaftShaft, shaftPlane],
-  shaft: { diagram: 'moment', acting: 'acting', shaft: 'shaft', axis: 'z', plane: 'plane' },
-  status: 'unverified',
-};
-
-const shaftDeflection: Formula = {
-  id: 'mechanics.shaft.deflection',
-  version: 2,
-  label: text('Deflection diagram'),
-  description: text(
-    'A shaft’s deflection, y(z) — zero at every support and level at a fixed one, with the ' +
-      `shaft’s own Young’s modulus and second moment of area, section by section. ${SIGNS}`,
-  ),
-  outputs: [{ kind: 'numeric', name: 'y', unit: parseUnit('mm'), description: text('Deflection at z — y(z)') }],
-  inputs: [shaftZ, shaftActing, shaftShaft, shaftPlane],
-  shaft: { diagram: 'deflection', acting: 'acting', shaft: 'shaft', axis: 'z', plane: 'plane' },
-  status: 'unverified',
-};
-
+/**
+ * The force and the moment one support applies to the shaft, for reporting
+ * and checks — wire that Support node here as well as into `acting`. Signed
+ * like the loads, so every force and reaction together sums to zero. Only a
+ * fixed support takes a moment.
+ */
 const shaftReactions: Formula = {
   id: 'mechanics.shaft.reactions',
   version: 1,
   label: text('Support reaction'),
-  description: text(
-    'The force and the moment one support applies to the shaft, for reporting and checks — wire ' +
-      'that Support node here as well as into acting; the diagrams solve the reactions themselves. ' +
-      'Signed like the loads, so all forces and reactions together sum to zero. Only a fixed support ' +
-      `takes a moment. ${SIGNS}`,
-  ),
+  description: text('Force and moment at a support'),
   outputs: [
     { kind: 'numeric', name: 'R', unit: parseUnit('N'), description: text('Reaction force, positive up') },
     { kind: 'numeric', name: 'M_R', unit: parseUnit('Nmm'), description: text('Reaction moment, positive clockwise — zero unless the support is fixed') },
   ],
   inputs: [
-    shaftActing,
     shaftShaft,
+    shaftActing,
     { kind: 'load', name: 'support', description: text('The support to report — one of those wired into acting') },
     shaftPlane,
   ],
-  shaft: { diagram: 'reactions', acting: 'acting', shaft: 'shaft', support: 'support', plane: 'plane' },
+  shaft: { answers: 'reactions', acting: 'acting', shaft: 'shaft', support: 'support', plane: 'plane' },
   status: 'unverified',
 };
 
@@ -130,15 +102,12 @@ const shaftReactions: Formula = {
  * diameter. No fatigue — notch, size and surface factors belong to the
  * private catalogue.
  */
+/** Section moduli of a solid or hollow round shaft: W_b = π·(d⁴ − d_i⁴)/(32·d), W_p = 2·W_b; a bore needs d_i < d. */
 const shaftSectionModulus: Formula = {
   id: 'mechanics.shaft.section-modulus',
   version: 1,
   label: text('Section moduli of a round shaft'),
-  description: text(
-    'Axial (bending) and polar (torsion) section moduli of a solid or hollow round shaft, ' +
-      'W_b = π·(d⁴ − d_i⁴)/(32·d) and W_p = 2·W_b. Leave d_i at 0 for a solid shaft; a ' +
-      'hollow shaft needs d_i < d.',
-  ),
+  description: text('Bending and torsion moduli'),
   outputs: [
     { kind: 'numeric', name: 'W_b', unit: parseUnit('mm³'), description: text('Axial section modulus, for bending') },
     { kind: 'numeric', name: 'W_p', unit: parseUnit('mm³'), description: text('Polar section modulus, for torsion') },
@@ -151,14 +120,12 @@ const shaftSectionModulus: Formula = {
   status: 'unverified',
 };
 
+/** Bending and torsion combined by von Mises into one equivalent bending moment. */
 const shaftEquivalentMoment: Formula = {
   id: 'mechanics.shaft.equivalent-moment',
   version: 1,
   label: text('Equivalent moment (von Mises)'),
-  description: text(
-    'Bending and torsion combined into one equivalent bending moment by the von Mises ' +
-      'criterion, M_v = √(M² + 0.75·T²). Leave T at 0 for bending alone.',
-  ),
+  description: text('M_v = √(M² + 0.75·T²)'),
   outputs: [{ kind: 'numeric', name: 'M_v', unit: parseUnit('Nmm'), description: text('Equivalent bending moment') }],
   inputs: [
     { kind: 'numeric', name: 'M', unit: parseUnit('Nmm'), description: text('Bending moment') },
@@ -168,15 +135,12 @@ const shaftEquivalentMoment: Formula = {
   status: 'unverified',
 };
 
+/** σ = M/W_b rearranged for a solid round shaft. Wants a moment magnitude: a signed moment gives a negative diameter. */
 const shaftRequiredDiameter: Formula = {
   id: 'mechanics.shaft.required-diameter',
   version: 1,
   label: text('Required diameter of a solid shaft'),
-  description: text(
-    'The smallest solid round shaft whose bending stress stays at the allowable stress, ' +
-      'd = ∛(32·M_v/(π·σ_allow)) — σ = M/W_b rearranged for d. Expects a moment magnitude ' +
-      '(a resultant or equivalent moment): a signed moment gives a negative diameter.',
-  ),
+  description: text('Smallest solid diameter'),
   outputs: [{ kind: 'numeric', name: 'd', unit: parseUnit('mm'), description: text('Required diameter') }],
   inputs: [
     { kind: 'numeric', name: 'M_v', unit: parseUnit('Nmm'), description: text('Equivalent (or resultant) bending moment, a magnitude') },
@@ -186,14 +150,12 @@ const shaftRequiredDiameter: Formula = {
   status: 'unverified',
 };
 
+/** Bending and torsional stress combined by von Mises. */
 const shaftEquivalentStress: Formula = {
   id: 'mechanics.shaft.equivalent-stress',
   version: 1,
   label: text('Equivalent stress (von Mises)'),
-  description: text(
-    'Bending and torsional stress combined into one equivalent stress by the von Mises ' +
-      'criterion, σ_v = √(σ_b² + 3·τ_t²). Leave τ_t at 0 for bending alone.',
-  ),
+  description: text('σ_v = √(σ_b² + 3·τ_t²)'),
   outputs: [{ kind: 'numeric', name: 'sigma_v', unit: parseUnit('N/mm²'), description: text('Equivalent stress') }],
   inputs: [
     { kind: 'numeric', name: 'sigma_b', unit: parseUnit('N/mm²'), description: text('Bending stress') },
@@ -204,6 +166,6 @@ const shaftEquivalentStress: Formula = {
 };
 
 export const MECHANICS_OPERATIONS: readonly Formula[] = [
-  shaftTorque, shaftShear, shaftMoment, shaftDeflection, shaftReactions,
+  shaftCalculation, shaftReactions,
   shaftSectionModulus, shaftEquivalentMoment, shaftRequiredDiameter, shaftEquivalentStress,
 ];

@@ -24,9 +24,11 @@ import {
   X_PORT,
   Y_PORT,
   PERCENTILE_PORT,
+  localize,
   plotMeasures,
   plotThresholdPort,
   type ClosureNode,
+  type Formula,
   type SelectMode,
   type SelectNode,
   type Statistic,
@@ -89,10 +91,25 @@ export function valueSource(document: GraphDocument, endpoint: Endpoint, seen = 
  * title of the node the value really comes from, so a focal length routed
  * through a zip still reads "Focal lengths", not "zip".
  */
-export function endpointLabel(document: GraphDocument, endpoint: Endpoint): string {
+export function endpointLabel(
+  document: GraphDocument,
+  endpoint: Endpoint,
+  /**
+   * The formula a formula node resolves to, when the caller has the
+   * catalogues: a node with several outputs is named with the port as well
+   * (`Shaft calculation · V`), since its name alone would give every one of
+   * its wires the same label, and an unlabelled node by its formula's own
+   * label rather than its id.
+   */
+  formulaOf?: (node: FormulaNode) => Formula | undefined,
+): string {
   const source = valueSource(document, endpoint);
   const node = document.nodes.find((candidate) => candidate.id === source.node);
-  return node === undefined ? source.port : nodeLabel(node);
+  if (node === undefined) return source.port;
+  if (node.kind !== 'formula' || formulaOf === undefined) return nodeLabel(node);
+  const formula = formulaOf(node);
+  const name = node.label ?? (formula?.label === undefined ? undefined : localize(formula.label, 'en')) ?? nodeLabel(node);
+  return formula !== undefined && formula.outputs.length > 1 ? `${name} · ${source.port}` : name;
 }
 
 /** A readable id that is not taken: `input`, `input2`, `input3`… */
@@ -853,6 +870,8 @@ export function defaultOutput(kind: OutputKind, contextUnit?: Unit): Output {
       return { kind, view: 'histogram', percentiles: [5, 50, 95] };
     case 'reliability':
       return { kind, checks: [], confidence: 0.95 };
+    case 'shaftView':
+      return { kind };
   }
 }
 

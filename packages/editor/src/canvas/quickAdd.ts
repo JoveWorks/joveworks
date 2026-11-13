@@ -12,6 +12,7 @@ import {
   STOP_PORT,
   COUNT_PORT,
   LOAD_PORT,
+  SUPPORT_PORT,
   SHAFT_PORT,
   SHAFT_Z_PORT,
   POINT_LOAD_FIELDS,
@@ -44,7 +45,8 @@ export type QuickAddChoice =
         | 'stress'
         | 'bestDesign'
         | 'pareto'
-        | 'distribution';
+        | 'distribution'
+        | 'shaftView';
     }
   | { readonly kind: 'compare' }
   | { readonly kind: 'select'; readonly mode: SelectMode }
@@ -190,7 +192,9 @@ export function quickAddNodeSpec(document: GraphDocument, choice: QuickAddCandid
               // after, once there is something to trade against.
               choice.outputKind === 'pareto'
               ? X_PORT
-              : VALUE_PORT;
+              : choice.outputKind === 'shaftView'
+                ? SHAFT_PORT
+                : VALUE_PORT;
       return {
         idPrefix:
           choice.outputKind === 'print'
@@ -225,7 +229,7 @@ export function quickAddNodeSpec(document: GraphDocument, choice: QuickAddCandid
     case 'support':
       return {
         idPrefix: 'support',
-        ports: { source: ['at'], target: [LOAD_PORT] },
+        ports: { source: ['at'], target: [SUPPORT_PORT] },
         make: (id, position, label) => newSupportNode(id, position, label),
       };
     case 'shaft':

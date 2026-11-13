@@ -62,9 +62,10 @@ describe('the legacy mechanics catalogue', () => {
     expect(removeCatalogue(catalogues, 'mechanics-legacy')).toHaveLength(catalogues.length);
   });
 
-  it('is never offered in the palette, so each diagram appears once', () => {
+  it('is never offered in the palette — the Shaft calculation replaces its diagrams', () => {
     expect(entries(catalogues).some((entry) => entry.catalogue.id === 'mechanics-legacy')).toBe(false);
-    expect(entries(catalogues).filter((entry) => entry.formula.id === 'mechanics.shaft.moment')).toHaveLength(1);
+    expect(entries(catalogues).filter((entry) => entry.formula.id === 'mechanics.shaft.moment')).toHaveLength(0);
+    expect(entries(catalogues).filter((entry) => entry.formula.id === 'mechanics.shaft.calculation')).toHaveLength(1);
   });
 
   it('still answers a v1 reference with the v1 record, and a node shows where it came from', () => {
@@ -73,6 +74,7 @@ describe('the legacy mechanics catalogue', () => {
     const found = lookupRef(catalogues, formulaRef(v1));
     expect(found?.formula.version).toBe(1);
     expect(found?.catalogue.id).toBe('mechanics-legacy');
-    expect(lookupRef(catalogues, { id: 'mechanics.shaft.moment', version: 9, hash: 'gone' })?.formula.version).toBe(2);
+    // Nothing newer shares the id, so a stale reference still lands on the shipped record.
+    expect(lookupRef(catalogues, { id: 'mechanics.shaft.moment', version: 9, hash: 'gone' })?.formula.version).toBe(1);
   });
 });

@@ -7,9 +7,6 @@ describe('advanced-nodes gating', () => {
     expect([...ADVANCED_ACTION_IDS].sort()).toEqual(
       [
         'builtin:input:file',
-        'builtin:general:pack',
-        'builtin:general:unpack',
-        'builtin:general:waypoint',
         'builtin:output:pareto',
         'builtin:output:stress',
         'builtin:output:bestDesign',
@@ -21,8 +18,11 @@ describe('advanced-nodes gating', () => {
     );
   });
 
-  it('leaves feasibility and threshold-crossing alone — the class keeps needing both', () => {
+  it('leaves feasibility, threshold-crossing and the wiring nodes alone — the class keeps needing them', () => {
     expect(isAdvancedAction('builtin:output:feasibility')).toBe(false);
+    expect(isAdvancedAction('builtin:general:waypoint')).toBe(false);
+    expect(isAdvancedAction('builtin:general:pack')).toBe(false);
+    expect(isAdvancedAction('builtin:general:unpack')).toBe(false);
     expect(isAdvancedAction('builtin:select:crossing')).toBe(false);
   });
 

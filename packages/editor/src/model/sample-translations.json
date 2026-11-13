@@ -151,10 +151,6 @@
   "taken out at the coupling": "afgenomen aan de koppeling",
   "Gear": "Tandwiel",
   "Coupling": "Koppeling",
-  "Moment, x plane": "Moment, x-vlak",
-  "Moment, y plane": "Moment, y-vlak",
-  "Resultant moment": "Resulterend moment",
-  "Torque": "Torsiemoment",
   "Bending moment along the shaft": "Buigmoment langs de as",
   "Torque along the shaft": "Torsiemoment langs de as",
   "Allowable stress σ_allow": "Toelaatbare spanning σ_allow",
@@ -178,6 +174,10 @@
   "Shaft": "As",
   "1. The shaft and what acts on it": "1. De as en wat erop werkt",
   "A stepped shaft, 220 mm long, on a locating bearing at 0 and a floating one at 160 mm. A gear at 60 mm passes 60 N·m on to a coupling on the overhang at 220 mm. Its tangential force follows from that torque, F_t = T/r, and is wired into the gear’s y-plane force, pointing down; its radial force of 450 N is typed into the x plane. Forces are positive up in their plane.": "Een getrapte as van 220 mm lang, op een vast lager bij 0 en een los lager bij 160 mm. Een tandwiel op 60 mm geeft 60 N·m door aan een koppeling op het overstekende deel op 220 mm. De tangentiële kracht volgt uit dat moment, F_t = T/r, en is gekoppeld aan de kracht van het tandwiel in het y-vlak, naar beneden gericht; de radiale kracht van 450 N is ingevuld in het x-vlak. Krachten zijn positief naar boven in hun vlak.",
-  "Each diagram takes the loads and the bearings on one port and solves the reactions itself, along the shaft’s own z. The moment is drawn in each plane and as their resultant √(M_x² + M_y²), the magnitude the shaft has to carry. The torque runs from the gear to the coupling.": "Elk diagram neemt de belastingen en de lagers op één poort en berekent zelf de reacties, langs de eigen z van de as. Het moment wordt per vlak getekend en als hun resultante √(M_x² + M_y²), de grootte die de as moet dragen. Het torsiemoment loopt van het tandwiel naar de koppeling.",
-  "Moment and torque combine into an equivalent moment (von Mises), and from it the smallest solid diameter that keeps the bending stress at the allowable 60 N/mm². The shaft’s own stepped profile has to stay above that curve everywhere.": "Buig- en torsiemoment worden gecombineerd tot een equivalent moment (von Mises), en daaruit de kleinste massieve diameter die de buigspanning op de toelaatbare 60 N/mm² houdt. Het eigen getrapte profiel van de as moet overal boven die curve blijven."
+  "Moment and torque combine into an equivalent moment (von Mises), and from it the smallest solid diameter that keeps the bending stress at the allowable 60 N/mm². The shaft’s own stepped profile has to stay above that curve everywhere.": "Buig- en torsiemoment worden gecombineerd tot een equivalent moment (von Mises), en daaruit de kleinste massieve diameter die de buigspanning op de toelaatbare 60 N/mm² houdt. Het eigen getrapte profiel van de as moet overal boven die curve blijven.",
+  "Shaft, x plane": "As, x-vlak",
+  "Shaft, y plane": "As, y-vlak",
+  "Shaft, resultant": "As, resultante",
+  "Each Shaft calculation takes the loads and the bearings on one port and solves the reactions itself, along the shaft’s own z. The moment is drawn in each plane and as their resultant √(M_x² + M_y²), the magnitude the shaft has to carry. The torque runs from the gear to the coupling.": "Elke asberekening neemt de belastingen en de lagers op één poort en berekent zelf de reacties, langs de eigen z van de as. Het moment wordt per vlak getekend en als hun resultante √(M_x² + M_y²), de grootte die de as moet dragen. Het torsiemoment loopt van het tandwiel naar de koppeling.",
+  "The shaft and its loads": "De as en haar belastingen"
 }

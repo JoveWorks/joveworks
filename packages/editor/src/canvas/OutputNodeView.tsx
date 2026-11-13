@@ -35,6 +35,8 @@ import {
   THRESHOLD_PORT,
   VALUE_PORT,
   ALONG_PORT,
+  ACTING_PORT,
+  SHAFT_PORT,
   plotMeasures,
   plotThresholdPort,
   axes as documentAxes,
@@ -69,6 +71,7 @@ import { display, formatAuthored, parseAuthored, unitLabel } from '../model/quan
 import { checkVerdict, reading, summarise, summariseCheck, type Reading } from '../model/values';
 import { CheckReading } from '../CheckReading';
 import { NodeShell } from './NodeShell';
+import { ShaftFigure } from '../present/ShaftFigure';
 import { Sparkline } from './Sparkline';
 import type { CanvasFlowNode } from './node-data';
 import { slotHandleId } from './portSlots';
@@ -269,6 +272,49 @@ function Verdict({ nodeId }: { readonly nodeId: string }): ReactElement | null {
   return null;
 }
 
+/**
+ * A shaft view's ports: the shaft, then a slot per load or support — each
+ * named after what is wired into it — and a labelled open slot for the next one, the way a shaft calculation's own `acting` port is
+ * drawn.
+ */
+function ShaftViewPorts({ nodeId, data }: { readonly nodeId: string; readonly data: CanvasFlowNode['data'] | undefined }): ReactElement {
+  const { document } = useGraph();
+  const highlighted = new Set(data?.highlightedPorts ?? []);
+  const row = (port: string, slot: number | 'open', name: string | undefined, label: string | undefined, open = false): ReactElement => (
+    <li
+      key={`${port}-${slot}`}
+      className={`port${open ? ' port-open' : ''}${highlighted.has(port) ? ' port-highlighted' : ''}`}
+      onMouseEnter={() => data?.onPortHover?.({ nodeId, port })}
+      onMouseLeave={() => data?.onPortHover?.()}
+    >
+      <Handle type="target" position={Position.Left} id={slotHandleId(port, slot)} className={highlighted.has(port) ? 'port-highlighted' : ''} />
+      {name === undefined ? null : <span className="port-name"><Symbol name={name} /></span>}
+      {label === undefined ? null : <span className="port-unit port-arriving">{label}</span>}
+    </li>
+  );
+  const sources = (port: string): readonly string[] =>
+    document.edges
+      .filter((edge) => edge.to.node === nodeId && edge.to.port === port)
+      .map((edge) => {
+        const source = document.nodes.find((entry) => entry.id === edge.from.node);
+        return source?.label ?? edge.from.node;
+      });
+  const shaftSource = sources(SHAFT_PORT)[0];
+  const variadic = (port: string): readonly ReactElement[] => {
+    const wired = sources(port);
+    return [
+      ...wired.map((label, i) => row(port, i, i === 0 ? port : undefined, label)),
+      row(port, 'open', port, undefined, wired.length > 0),
+    ];
+  };
+  return (
+    <>
+      {row(SHAFT_PORT, 0, SHAFT_PORT, shaftSource)}
+      {variadic(ACTING_PORT)}
+    </>
+  );
+}
+
 export function OutputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>): ReactElement | null {
   const { document, analysis, edit, expanded, toggleExpanded, hovered, setHovered } = useGraph();
   const { numberFormat, locale } = useSettings();
@@ -340,7 +386,9 @@ export function OutputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>
           ? [OBJECTIVE_PORT]
           : output.kind === 'pareto'
             ? [X_PORT, Y_PORT]
-            : [VALUE_PORT];
+            : output.kind === 'shaftView'
+              ? []
+              : [VALUE_PORT];
   const wired = new Set(
     document.edges.filter((edge) => edge.to.node === id).map((edge) => edge.to.port),
   );
@@ -394,6 +442,7 @@ export function OutputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>
               <option value="pareto">pareto</option>
               <option value="distribution">distribution</option>
               <option value="reliability">reliability</option>
+              <option value="shaftView">shaft view</option>
             </select>
           </label>
 
@@ -728,6 +777,7 @@ export function OutputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>
             </li>
           );
         })}
+        {output.kind === 'shaftView' ? <ShaftViewPorts nodeId={id} data={data} /> : null}
         {output.kind === 'table' ? (
           <li
             className={`port port-open${highlightedPorts.has(NEW_COLUMN) ? ' port-highlighted' : ''}`}
@@ -864,7 +914,9 @@ export function OutputNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>
       </ul>
 
       <div className="node-value">
-        {output.kind === 'equation' ? (
+        {output.kind === 'shaftView' ? (
+          result?.kind === 'shaftView' ? <ShaftFigure result={result} compact /> : <span className="reading">—</span>
+        ) : output.kind === 'equation' ? (
           equationResult === undefined ? (
             <span className="reading">—</span>
           ) : (

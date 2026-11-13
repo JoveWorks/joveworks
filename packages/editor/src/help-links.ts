@@ -75,7 +75,8 @@ export const OUTPUT_HELP_URLS: Readonly<
     | 'bestDesign'
     | 'pareto'
     | 'distribution'
-    | 'reliability',
+    | 'reliability'
+    | 'shaftView',
     string
   >
 > = {
@@ -91,4 +92,5 @@ export const OUTPUT_HELP_URLS: Readonly<
   pareto: `${DOCS_BASE_URL}/guide/node-reference#pareto`,
   distribution: `${DOCS_BASE_URL}/guide/node-reference#distribution`,
   reliability: `${DOCS_BASE_URL}/guide/node-reference#reliability`,
+  shaftView: `${DOCS_BASE_URL}/guide/node-reference#shaft-view`,
 };

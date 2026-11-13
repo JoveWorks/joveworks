@@ -60,6 +60,7 @@ import {
   type SelectNode,
   type StatisticNode,
   type Edge,
+  type Endpoint,
   type FileNode,
   type GraphDocument,
   type InputNode,
@@ -80,8 +81,13 @@ import {
   type ShaftNode,
   type SupportNode,
   SHAFT_PORT,
+  LOAD_FIELD_UNITS,
+  ACTING_PORT,
+  type ShaftStep,
+  SUPPORT_PORT,
   SHAFT_Z_PORT,
   SHAFT_PROFILE_PORT,
+  SHAFT_I_PORT,
   shaftFieldValue,
   type LoadNode,
   type DistributedLoadNode,
@@ -119,6 +125,7 @@ import {
   moment as shaftMoment,
   pointTerms,
   shear as shaftShear,
+  slope as shaftSlope,
   solve as solveShaft,
   spanTerms,
   torque as shaftTorque,
@@ -429,6 +436,42 @@ export interface ReliabilityResult extends OutputBase {
   readonly combined?: ReliabilityEstimate;
 }
 
+/** One thing drawn on a shaft view, named by the node it comes from. Canonical values; `unit` is what to print them in. */
+export interface ShaftViewMark {
+  readonly label: string;
+  readonly at: number;
+  readonly value: number;
+  readonly unit: Unit;
+}
+
+export interface ShaftViewSpan {
+  readonly label: string;
+  readonly from: number;
+  readonly to: number;
+  readonly rate: number;
+  readonly unit: Unit;
+}
+
+/** One transverse plane's loads, as a shaft view draws them. Zero entries are left out. */
+export interface ShaftViewPlane {
+  readonly forces: readonly ShaftViewMark[];
+  readonly couples: readonly ShaftViewMark[];
+  readonly spans: readonly ShaftViewSpan[];
+}
+
+export interface ShaftViewResult extends OutputBase {
+  readonly kind: 'shaftView';
+  /** The unit the shaft's positions and diameters were typed in. */
+  readonly lengthUnit: Unit;
+  readonly from: number;
+  readonly to: number;
+  /** The outline, step by step. `d` absent: a section given only by its I, drawn as a plain bar. */
+  readonly sections: readonly { readonly start: number; readonly end: number; readonly d?: number; readonly d_i?: number }[];
+  readonly supports: readonly { readonly label: string; readonly at: number; readonly support: SupportNode['support'] }[];
+  readonly planes: { readonly x: ShaftViewPlane; readonly y: ShaftViewPlane };
+  readonly torques: readonly ShaftViewMark[];
+}
+
 export type OutputResult =
   | PrintResult
   | CheckResult
@@ -441,7 +484,8 @@ export type OutputResult =
   | BestDesignResult
   | ParetoResult
   | DistributionResult
-  | ReliabilityResult;
+  | ReliabilityResult
+  | ShaftViewResult;
 
 export interface Evaluation {
   readonly document: GraphDocument;
@@ -717,13 +761,14 @@ function runEvaluation(
       case 'load':
       case 'distributedLoad':
       case 'support':
-        values.set(endpointKey(node.id, LOAD_PORT), evaluateLoad(node, resolution, values));
+        values.set(endpointKey(node.id, node.kind === 'support' ? SUPPORT_PORT : LOAD_PORT), evaluateLoad(node, resolution, values));
         break;
 
       case 'shaft': {
         const shaft = evaluateShaftNode(node, resolution, values);
         values.set(endpointKey(node.id, SHAFT_PORT), shaft);
         values.set(endpointKey(node.id, SHAFT_Z_PORT), shaft.z);
+        values.set(endpointKey(node.id, SHAFT_I_PORT), shaftSecondMoment(shaft));
         if (node.section.kind !== 'secondMoment') {
           values.set(endpointKey(node.id, SHAFT_PROFILE_PORT), shaftProfile(node, shaft, resolution, values));
         }
@@ -2274,6 +2319,42 @@ function checkZipMix(
 
 // --- shaft diagrams ---------------------------------------------------------
 
+/** One load or support on an `acting` port, and the Load, Distributed load or Support node it came from. */
+interface ActingEntry {
+  readonly value: LoadValue;
+  readonly from: Endpoint;
+}
+
+/** Where a value really comes from, through any waypoints it passed. */
+function traceSource(document: GraphDocument, from: Endpoint): Endpoint {
+  const node = document.nodes.find((candidate) => candidate.id === from.node);
+  const match = /^out(\d+)$/u.exec(from.port);
+  if (node?.kind !== 'waypoint' || match === null) return from;
+  const edge = document.edges.find((candidate) => candidate.to.node === node.id && candidate.to.port === `in${match[1]}`);
+  return edge === undefined ? from : traceSource(document, edge.from);
+}
+
+/**
+ * Everything wired into an `acting` port, one entry per load or support: a
+ * wire from a pack is opened up into the loads it holds, in channel order.
+ */
+function actingEntries(document: GraphDocument, key: string, edges: readonly Edge[], values: ReadonlyMap<string, PortValue>): readonly ActingEntry[] {
+  return edges.flatMap((edge): ActingEntry[] => {
+    const value = valueAtEdge(edge, key, values);
+    const from = traceSource(document, edge.from);
+    if (value.kind === 'load') return [{ value, from }];
+    if (value.kind === 'bundle') {
+      const channels = packChannelIndices(document, from.node);
+      return value.values.map((channel, i) => {
+        if (channel.kind !== 'load') throw new KernelError(`'${from.node}' bundles something that is not a load or a support`, key);
+        const into = document.edges.find((candidate) => candidate.to.node === from.node && candidate.to.port === `in${channels[i]}`);
+        return { value: channel, from: into === undefined ? from : traceSource(document, into.from) };
+      });
+    }
+    throw new KernelError(`'${edge.from.node}.${edge.from.port}' is not a load or a support`, key);
+  });
+}
+
 /**
  * A `shaft` record (`FormulaShaft`): everything wired into its acting port —
  * loads and supports — on the shaft wired into its shaft port, broadcast over
@@ -2299,11 +2380,8 @@ function evaluateShaft(
   const actingKey = endpointKey(nodeId, spec.acting);
   const actingEdges = resolution.incoming.get(actingKey) ?? [];
   if (actingEdges.length === 0) throw new KernelError(`'${spec.acting}' has nothing wired to it`, actingKey);
-  const acting = actingEdges.map((edge) => {
-    const value = valueAtEdge(edge, actingKey, values);
-    if (value.kind !== 'load') throw new KernelError(`'${edge.from.node}.${edge.from.port}' is not a load or a support`, actingKey);
-    return value;
-  });
+  const entries = actingEntries(resolution.document, actingKey, actingEdges, values);
+  const acting = entries.map((entry) => entry.value);
 
   const shaftKey = endpointKey(nodeId, spec.shaft);
   const shaftEdge = resolution.incoming.get(shaftKey)?.[0];
@@ -2318,7 +2396,8 @@ function evaluateShaft(
     const supportKey = endpointKey(nodeId, spec.support);
     const edge = resolution.incoming.get(supportKey)?.[0];
     if (edge === undefined) throw new KernelError(`wire the support to report into '${spec.support}'`, supportKey);
-    const index = actingEdges.findIndex((candidate) => candidate.from.node === edge.from.node && candidate.from.port === edge.from.port);
+    const wanted = traceSource(resolution.document, edge.from);
+    const index = entries.findIndex((entry) => entry.from.node === wanted.node && entry.from.port === wanted.port);
     if (index < 0 || acting[index]?.shape !== 'support') {
       throw new KernelError(`'${spec.support}' must be one of the supports wired into '${spec.acting}'`, supportKey);
     }
@@ -2326,7 +2405,7 @@ function evaluateShaft(
   }
 
   let z: NumericSeries | undefined;
-  if (spec.diagram !== 'reactions') {
+  if (spec.answers === 'diagrams') {
     const axisPort = spec.axis === undefined ? undefined : declared(spec.axis);
     const typed = axisPort !== undefined && 'inputValues' in node && node.inputValues?.[axisPort.name] !== undefined;
     const wired = axisPort !== undefined && resolution.incoming.has(endpointKey(nodeId, axisPort.name));
@@ -2431,7 +2510,7 @@ function evaluateShaft(
   };
 
   const outputs = formula.outputs.map((output) => output.name);
-  if (spec.diagram === 'reactions') {
+  if (spec.answers === 'reactions') {
     const forces = new Array<number>(cells);
     const moments = new Array<number>(cells);
     for (let cell = 0; cell < cells; cell += 1) {
@@ -2444,24 +2523,138 @@ function evaluateShaft(
     ]);
   }
 
-  const data = new Array<number>(cells);
+  // One solve per plane per cell, shared by every quantity this record draws.
+  const quantities = spec.quantities ?? [];
+  const planar = quantities.some((quantity) => quantity !== 'torque');
+  const columns = quantities.map(() => new Array<number>(cells));
   for (let cell = 0; cell < cells; cell += 1) {
     const at = (zRead as (cell: number) => number)(cell);
-    if (spec.diagram === 'torque') {
-      data[cell] = shaftTorque(
-        readActing.flatMap((entry) => (entry.shape === 'point' ? [{ at: entry.at(cell), torque: entry.torque(cell) }] : [])),
-        at,
-      );
-      continue;
-    }
-    data[cell] =
-      spec.diagram === 'shear'
-        ? inPlane(cell, (solution) => shaftShear(solution.terms, at))
-        : spec.diagram === 'moment'
-          ? inPlane(cell, (solution) => shaftMoment(solution.terms, at))
-          : inPlane(cell, (solution) => shaftDeflection(solution, at));
+    const chosen = planar ? planeAt(cell) : 'x';
+    const solutions = !planar ? [] : chosen === 'resultant' ? [solveAt(cell, 'x'), solveAt(cell, 'y')] : [solveAt(cell, chosen)];
+    const measure = (of: (solution: Solution) => number): number =>
+      solutions.length === 1 ? of(solutions[0] as Solution) : Math.hypot(of(solutions[0] as Solution), of(solutions[1] as Solution));
+    quantities.forEach((quantity, i) => {
+      (columns[i] as number[])[cell] =
+        quantity === 'torque'
+          ? shaftTorque(readActing.flatMap((entry) => (entry.shape === 'point' ? [{ at: entry.at(cell), torque: entry.torque(cell) }] : [])), at)
+          : quantity === 'shear'
+            ? measure((solution) => shaftShear(solution.terms, at))
+            : quantity === 'moment'
+              ? measure((solution) => shaftMoment(solution.terms, at))
+              : quantity === 'slope'
+                ? measure((solution) => shaftSlope(solution, at))
+                : measure((solution) => shaftDeflection(solution, at));
+    });
   }
-  return new Map<string, PortValue>([[outputs[0] as string, { kind: 'numeric', axes, data }]]);
+  return new Map<string, PortValue>(outputs.map((name, i) => [name, { kind: 'numeric', axes, data: columns[i] as number[] }]));
+}
+
+// --- shaft views -------------------------------------------------------------
+
+/**
+ * What a shaft view draws: the shaft and what acts on it. A view is one
+ * picture, so a load that varies across a sweep is drawn at its first point, with a warning that says so.
+ */
+function shaftView(
+  node: OutputNode,
+  resolution: Resolution,
+  values: ReadonlyMap<string, PortValue>,
+  warnings: Warning[],
+): Omit<ShaftViewResult, keyof OutputBase> {
+  const document = resolution.document;
+  const shaftKey = endpointKey(node.id, SHAFT_PORT);
+  const shaftEdge = resolution.incoming.get(shaftKey)?.[0];
+  if (shaftEdge === undefined) throw new KernelError('wire a Shaft node into its shaft port', shaftKey);
+  const shaft = valueAtEdge(shaftEdge, shaftKey, values);
+  if (shaft.kind !== 'shaft') throw new KernelError('this port needs a shaft', shaftKey);
+  const shaftNode = document.nodes.find((candidate) => candidate.id === shaftEdge.from.node);
+
+  let swept = false;
+  const first = (series: NumericSeries): number => {
+    if (series.axes.length > 0) swept = true;
+    return series.data[0] as number;
+  };
+  const from = first(shaft.from);
+  const to = first(shaft.to);
+  const lengthUnit = shaftNode?.kind === 'shaft' ? shaftNode.from.unit : LOAD_FIELD_UNITS.at;
+
+  // The outline: diameters only where the Shaft node states them.
+  let sections: { start: number; end: number; d?: number; d_i?: number }[];
+  if (shaftNode?.kind === 'shaft' && shaftNode.section.kind === 'stepped') {
+    const unit = shaftNode.section.unit;
+    const steps = shaftNode.section.steps;
+    sections = steps
+      .map((step, i) => ({
+        start: Math.max(from, toCanonical(step.start, unit)),
+        end: Math.min(to, i + 1 < steps.length ? toCanonical((steps[i + 1] as ShaftStep).start, unit) : to),
+        d: toCanonical(step.d, unit),
+        ...(step.d_i === undefined ? {} : { d_i: toCanonical(step.d_i, unit) }),
+      }))
+      .filter((section) => section.end > section.start);
+    if (sections.length > 0) (sections[0] as { start: number }).start = from;
+  } else if (shaftNode?.kind === 'shaft' && shaftNode.section.kind === 'round') {
+    const field = (name: 'd' | 'd_i'): number | undefined => {
+      const key = endpointKey(shaftNode.id, name);
+      const edge = resolution.incoming.get(key)?.[0];
+      if (edge !== undefined) {
+        const wired = values.get(endpointKey(edge.from.node, edge.from.port));
+        return wired?.kind === 'numeric' ? first(wired) : undefined;
+      }
+      const typed = shaftFieldValue(shaftNode, name);
+      return typed === undefined ? undefined : toCanonical(typed.value, typed.unit);
+    };
+    const d = field('d');
+    const bore = field('d_i');
+    sections = [{ start: from, end: to, ...(d === undefined ? {} : { d }), ...(bore === undefined ? {} : { d_i: bore }) }];
+  } else {
+    sections = [{ start: from, end: to }];
+  }
+
+  const actingKey = endpointKey(node.id, ACTING_PORT);
+  const supports: { label: string; at: number; support: SupportNode['support'] }[] = [];
+  const planes = {
+    x: { forces: [] as ShaftViewMark[], couples: [] as ShaftViewMark[], spans: [] as ShaftViewSpan[] },
+    y: { forces: [] as ShaftViewMark[], couples: [] as ShaftViewMark[], spans: [] as ShaftViewSpan[] },
+  };
+  const torques: ShaftViewMark[] = [];
+  for (const { value, from: origin } of actingEntries(document, actingKey, resolution.incoming.get(actingKey) ?? [], values)) {
+    const source = document.nodes.find((candidate) => candidate.id === origin.node);
+    const label = source?.label ?? origin.node;
+    // The unit a field was typed in, else its reference unit.
+    const unitOf = (field: LoadField): Unit => {
+      if (source?.kind === 'load' || source?.kind === 'distributedLoad') return loadFieldValue(source, field)?.unit ?? LOAD_FIELD_UNITS[field];
+      return LOAD_FIELD_UNITS[field];
+    };
+    if (value.shape === 'support') {
+      supports.push({ label, at: first(value.at), support: value.support });
+    } else if (value.shape === 'point') {
+      const at = first(value.at);
+      for (const [plane, force, couple] of [['x', 'Fx', 'Cx'], ['y', 'Fy', 'Cy']] as const) {
+        const F = first(value[force]);
+        const C = first(value[couple]);
+        if (F !== 0) planes[plane].forces.push({ label, at, value: F, unit: unitOf(force) });
+        if (C !== 0) planes[plane].couples.push({ label, at, value: C, unit: unitOf(couple) });
+      }
+      const T = first(value.torque);
+      if (T !== 0) torques.push({ label, at, value: T, unit: unitOf('torque') });
+    } else {
+      const spanFrom = first(value.from);
+      const spanTo = first(value.to);
+      for (const [plane, rate] of [['x', 'qx'], ['y', 'qy']] as const) {
+        const q = first(value[rate]);
+        if (q !== 0) planes[plane].spans.push({ label, from: spanFrom, to: spanTo, rate: q, unit: unitOf(rate) });
+      }
+    }
+  }
+
+  if (swept) {
+    warnings.push({
+      kind: 'shaftView',
+      nodeId: node.id,
+      message: 'something drawn here varies across a sweep — the view shows its first point',
+    });
+  }
+  return { kind: 'shaftView', lengthUnit, from, to, sections, supports, planes, torques };
 }
 
 // --- shaft nodes -------------------------------------------------------------
@@ -2486,6 +2679,22 @@ function shaftProfile(node: ShaftNode, shaft: ShaftValue, resolution: Resolution
     ? scalarSeries(section.kind === 'round' ? toCanonical(section.d.value, section.d.unit) : 0)
     : (valueAtEdge(edge, key, values) as NumericSeries);
   return broadcastSeries(d, unionAxes(shaft.z.axes, d.axes));
+}
+
+/** The second moment of area at each of a shaft's own positions: the section that starts at or before it. */
+function shaftSecondMoment(shaft: ShaftValue): NumericSeries {
+  const axes = unionAxes(shaft.z.axes, ...shaft.sections.map((section) => section.I.axes));
+  const readZ = reader(shaft.z, axes);
+  const readI = shaft.sections.map((section) => reader(section.I, axes));
+  const data = Array.from({ length: gridSize(axes) }, (_, cell) => {
+    const z = readZ(cell);
+    let index = 0;
+    shaft.sections.forEach((section, i) => {
+      if (section.start <= z) index = i;
+    });
+    return (readI[index] as (cell: number) => number)(cell);
+  });
+  return { kind: 'numeric', axes, data };
 }
 
 /**
@@ -3347,6 +3556,8 @@ function outputResult(
       panels: built.panels,
     };
   }
+
+  if (output.kind === 'shaftView') return { ...base, ...shaftView(node, resolution, values, warnings) };
 
   if (output.kind === 'sensitivity') {
     const key = endpointKey(node.id, VALUE_PORT);

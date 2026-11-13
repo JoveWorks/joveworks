@@ -925,12 +925,12 @@ describe('shaft formulas', () => {
     version: 1,
     output: { kind: 'numeric', name: 'M', unit: 'Nmm' },
     inputs: [
-      { kind: 'numeric', name: 'z', unit: 'mm' },
-      { kind: 'load', name: 'acting', variadic: true },
       { kind: 'shaft', name: 'shaft' },
+      { kind: 'load', name: 'acting', variadic: true },
+      { kind: 'numeric', name: 'z', unit: 'mm' },
       { kind: 'categorical', name: 'plane', domain: ['x', 'y', 'resultant'], default: 'y' },
     ],
-    shaft: { diagram: 'moment', acting: 'acting', shaft: 'shaft', axis: 'z', plane: 'plane' },
+    shaft: { answers: 'diagrams', quantities: ['moment'], acting: 'acting', shaft: 'shaft', axis: 'z', plane: 'plane' },
     description: { en: 'An invented shaft-moment record.' },
     status: 'unverified',
   };
@@ -943,8 +943,8 @@ describe('shaft formulas', () => {
 
   it('needs each field its diagram uses, and refuses the ones it does not', () => {
     const { plane: _plane, ...noPlane } = shaft;
-    expect(() => parseFormula({ ...moment, shaft: noPlane }, '')).toThrow(/shaft\.plane: is required for a moment diagram/u);
-    expect(() => parseFormula(withShaft({ support: 'acting' }), '')).toThrow(/shaft\.support: has no meaning for a moment diagram/u);
+    expect(() => parseFormula({ ...moment, shaft: noPlane }, '')).toThrow(/shaft\.plane: is required when a quantity lies in a plane/u);
+    expect(() => parseFormula(withShaft({ support: 'acting' }), '')).toThrow(/shaft\.support: has no meaning for diagrams/u);
   });
 
   it('refuses an expression beside it', () => {
@@ -961,9 +961,10 @@ describe('shaft formulas', () => {
     expect(() => parseFormula({ ...moment, inputs }, '')).toThrow(/takes no default/u);
   });
 
-  it('checks the outputs against what the diagram produces', () => {
+  it('checks each output against the quantity it answers', () => {
     expect(() => parseFormula({ ...moment, output: { kind: 'numeric', name: 'M', unit: 'N' } }, '')).toThrow(
-      /dimension a moment record produces/u,
+      /dimension its quantity is answered in/u,
     );
+    expect(() => parseFormula(withShaft({ quantities: ['moment', 'shear'] }), '')).toThrow(/one output per quantity/u);
   });
 });

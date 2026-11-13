@@ -2245,6 +2245,16 @@ aside.bottom .palette-list section {
   margin-left: 2px;
 }
 
+.node .support-type select,
+.node .shaft-setting select {
+  margin-left: auto;
+  font: inherit;
+}
+
+.node .shaft-setting .quantity {
+  margin-left: auto;
+}
+
 .node .load-convention {
   margin: 0;
   color: var(--muted);
@@ -2259,7 +2269,6 @@ aside.bottom .palette-list section {
  * (nothing wired yet, same as any other required port).
  */
 .node .port-open {
-  height: 12px;
   opacity: 0.6;
 }
 
@@ -4743,4 +4752,98 @@ aside.bottom .palette-list section {
     display: none !important;
   }
 
+}
+
+/*
+ * A shaft view (present/ShaftFigure.tsx): the outline, supports and loads per
+ * plane. Drawn in the ink and line tokens so it follows
+ * the theme, with the accent kept for the loads — what acts on the shaft.
+ */
+.shaft-figure {
+  display: block;
+  width: 100%;
+  height: auto;
+  font-size: 11px;
+  color: var(--ink);
+}
+
+.shaft-figure text {
+  fill: var(--muted);
+}
+
+.shaft-figure .axis-triad line,
+.shaft-figure .axis-triad circle {
+  stroke: var(--muted);
+  fill: none;
+}
+
+.shaft-figure .axis-triad .dot {
+  fill: var(--muted);
+}
+
+.shaft-figure .plane-title {
+  fill: var(--ink);
+  font-weight: 600;
+}
+
+.shaft-figure .centreline {
+  stroke: var(--muted);
+  stroke-width: 0.75;
+  stroke-dasharray: 8 3 2 3;
+}
+
+.shaft-figure .shaft-outline .body {
+  fill: var(--panel);
+  stroke: var(--ink);
+  stroke-width: 1;
+}
+
+.shaft-figure .shaft-outline .bore {
+  fill: var(--paper);
+  stroke: var(--muted);
+  stroke-width: 0.75;
+  stroke-dasharray: 3 2;
+}
+
+.shaft-figure .support path,
+.shaft-figure .support line,
+.shaft-figure .support circle {
+  fill: var(--paper);
+  stroke: var(--ink);
+  stroke-width: 1.25;
+}
+
+.shaft-figure .support path.filled {
+  fill: var(--ink);
+}
+
+.shaft-figure .support.fixed > line:first-child {
+  stroke-width: 2.5;
+}
+
+.shaft-figure .support .hatch {
+  stroke-width: 0.75;
+}
+
+.shaft-figure .load line,
+.shaft-figure .load path {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.5;
+}
+
+.shaft-figure .load text {
+  fill: var(--accent);
+}
+
+.shaft-figure .arrowhead {
+  fill: var(--accent);
+}
+
+.shaft-figure .z-axis line {
+  stroke: var(--line);
+}
+
+.node .shaft-figure.compact {
+  margin-top: 4px;
 }

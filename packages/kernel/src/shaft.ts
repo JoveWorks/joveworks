@@ -221,6 +221,13 @@ export function deflection(solution: Solution, z: number): number {
   return total;
 }
 
+/** θ(z) = dy/dz for a solved plane. */
+export function slope(solution: Solution, z: number): number {
+  let total = solution.slope;
+  for (const term of solution.terms) total += integral(term, solution.segments, solution.origin, z, false);
+  return total;
+}
+
 /** The running total of applied torque at or before z. */
 export function torque(points: readonly { readonly at: number; readonly torque: number }[], z: number): number {
   let total = 0;

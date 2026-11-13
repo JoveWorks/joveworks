@@ -62,12 +62,15 @@ import {
   PERCENTILE_PORT,
   STATISTIC_RESULT_PORT,
   LOAD_PORT,
+  SUPPORT_PORT,
   LOAD_FIELD_UNITS,
   loadFieldValue,
   loadNodeFields,
   SHAFT_PORT,
   SHAFT_Z_PORT,
   SHAFT_PROFILE_PORT,
+  SHAFT_I_PORT,
+  ACTING_PORT,
   SHAFT_FIELD_UNITS,
   shaftFieldValue,
   shaftNodeFields,
@@ -116,11 +119,18 @@ import type { Warning } from './warnings.js';
 
 /**
  * One channel of a `bundle`-kind port's per-channel type list. A pack channel
- * is whatever was wired to it — numeric with its own dimension, or
- * categorical, the same two kinds `waypoint` and `pack` pass through
- * unchanged (see their branches in `resolveGraph`).
+ * is whatever was wired to it — numeric with its own dimension, categorical,
+ * or a load or support (see their branches in `resolveGraph`).
  */
-export type ChannelType = { readonly kind: 'numeric'; readonly dimension: Dimension } | { readonly kind: 'categorical' };
+export type ChannelType =
+  | { readonly kind: 'numeric'; readonly dimension: Dimension }
+  | { readonly kind: 'categorical' }
+  | { readonly kind: 'load' };
+
+/** A bundle of loads and supports only — what a shaft's `acting` port takes as well as single loads. */
+export function isLoadBundle(type: PortType): boolean {
+  return type.kind === 'bundle' && (type.channels ?? []).length > 0 && (type.channels ?? []).every((channel) => channel.kind === 'load');
+}
 
 /** The type of one port of one node: enough to decide whether an edge may attach. */
 export interface PortType {
@@ -409,6 +419,9 @@ export function outputPortNames(node: GraphNode): readonly string[] {
   // front *is* a scatter, and wiring mass into `x` is placing it on the
   // picture about to be read.
   if (node.output.kind === 'pareto') return [X_PORT, Y_PORT];
+  // A shaft view draws a shaft, what acts on it, and any diagrams of it —
+  // the last two take a wire per load or diagram.
+  if (node.output.kind === 'shaftView') return [SHAFT_PORT, ACTING_PORT];
   return [VALUE_PORT];
 }
 
@@ -842,6 +855,8 @@ export function resolveGraph(
 
       for (const edge of edges) {
         const source = sourceType(edge);
+        // A pack of loads and supports lands on an `acting` port as the loads it holds.
+        if (variadic && declared.kind === 'load' && isLoadBundle(source)) continue;
         checkKind(source, declared, key);
 
         if (generic !== undefined) {
@@ -1292,9 +1307,9 @@ export function resolveGraph(
         const edge = oneEdge(inKey);
         if (edge === undefined) continue;
         const source = sourceType(edge);
-        if (source.kind === 'categorical') {
-          targets.set(inKey, { kind: 'categorical' });
-          channels.push({ kind: 'categorical' });
+        if (source.kind === 'categorical' || source.kind === 'load') {
+          targets.set(inKey, { kind: source.kind });
+          channels.push({ kind: source.kind });
           continue;
         }
         checkKind(source, { kind: 'numeric' }, inKey);
@@ -1328,9 +1343,9 @@ export function resolveGraph(
       for (const [i, channel] of (source.channels ?? []).entries()) {
         sources.set(
           endpointKey(node.id, `out${i}`),
-          channel.kind === 'categorical'
-            ? { kind: 'categorical' }
-            : { kind: 'numeric', dimension: channel.dimension, unit: canonicalUnit(channel.dimension) },
+          channel.kind === 'numeric'
+            ? { kind: 'numeric', dimension: channel.dimension, unit: canonicalUnit(channel.dimension) }
+            : { kind: channel.kind },
         );
       }
       continue;
@@ -1353,6 +1368,8 @@ export function resolveGraph(
       sources.set(endpointKey(node.id, SHAFT_PORT), { kind: 'shaft' });
       const zUnit = node.from.unit;
       sources.set(endpointKey(node.id, SHAFT_Z_PORT), displayOverride(node, SHAFT_Z_PORT, { kind: 'numeric', dimension: zUnit.dimension, unit: zUnit }));
+      const iUnit = node.section.kind === 'secondMoment' ? node.section.I.unit : SHAFT_FIELD_UNITS.I;
+      sources.set(endpointKey(node.id, SHAFT_I_PORT), displayOverride(node, SHAFT_I_PORT, { kind: 'numeric', dimension: iUnit.dimension, unit: iUnit }));
       if (node.section.kind !== 'secondMoment') {
         const dUnit = node.section.kind === 'stepped' ? node.section.unit : node.section.d.unit;
         sources.set(
@@ -1381,7 +1398,7 @@ export function resolveGraph(
         checkKind(source, type, key);
         if (source.dimension !== undefined) assertConnectable(source.dimension, reference.dimension, key);
       }
-      sources.set(endpointKey(node.id, LOAD_PORT), { kind: 'load' });
+      sources.set(endpointKey(node.id, node.kind === 'support' ? SUPPORT_PORT : LOAD_PORT), { kind: 'load' });
       continue;
     }
 
@@ -1546,6 +1563,20 @@ export function resolveGraph(
       continue;
     }
 
+    if (node.kind === 'output' && node.output.kind === 'shaftView') {
+      const shaftKey = endpointKey(node.id, SHAFT_PORT);
+      targets.set(shaftKey, { kind: 'shaft' });
+      const shaftEdge = oneEdge(shaftKey);
+      if (shaftEdge !== undefined) checkKind(sourceType(shaftEdge), { kind: 'shaft' }, shaftKey);
+      const actingKey = endpointKey(node.id, ACTING_PORT);
+      targets.set(actingKey, { kind: 'load' });
+      for (const edge of incoming.get(actingKey) ?? []) {
+        const source = sourceType(edge);
+        if (!isLoadBundle(source)) checkKind(source, { kind: 'load' }, actingKey);
+      }
+      continue;
+    }
+
     // An output node accepts whatever is wired to it — it renders a value, it
     // does not declare one. The two things it can be wrong about are a
     // check's or a plot's threshold, both quantities a student typed with an
@@ -1639,13 +1670,16 @@ export function resolveGraph(
   // Most nodes take whatever is wired to them (an output, a compare, a
   // select), so the port's own type cannot refuse it; the node kind does. A
   // formula's ports already refused it by kind (`checkKind`); a waypoint
-  // only carries it on to somewhere that is checked in turn.
-  const carriesLoads = new Set(['formula', 'waypoint']);
-  const kindOf = new Map(document.nodes.map((node) => [node.id, node.kind] as const));
+  // or a pack only carries it on to somewhere that is checked in turn.
+  const carriesLoads = new Set(['formula', 'waypoint', 'pack']);
+  const byId = new Map(document.nodes.map((node) => [node.id, node] as const));
   for (const edge of document.edges) {
     const carried = sources.get(endpointKey(edge.from.node, edge.from.port))?.kind;
     if (carried !== 'load' && carried !== 'shaft') continue;
-    if (carriesLoads.has(kindOf.get(edge.to.node) ?? '')) continue;
+    const target = byId.get(edge.to.node);
+    if (carriesLoads.has(target?.kind ?? '')) continue;
+    // A shaft view draws them; its own ports have already checked the kind.
+    if (target?.kind === 'output' && target.output.kind === 'shaftView') continue;
     throw new KernelError(
       carried === 'load'
         ? "this wire carries a load or a support, which only a shaft diagram's 'acting' port takes"
@@ -1702,6 +1736,10 @@ export function isVariadicTarget(
   // `formula.inputs`, since a generator has no `Formula` record at all.
   if (node.kind === 'monteCarloGenerator') {
     return node.distribution === 'discrete' && (to.port === VALUES_PORT || to.port === WEIGHTS_PORT);
+  }
+
+  if (node.kind === 'output') {
+    return node.output.kind === 'shaftView' && to.port === ACTING_PORT;
   }
 
   if (node.kind !== 'formula') return false;

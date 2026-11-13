@@ -12,7 +12,6 @@
 import type { ReactElement } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 
-import { dimensionsEqual, isDimensionless } from '@joveworks/units';
 import {
   LOAD_FIELD_UNITS,
   LOAD_PORT,
@@ -25,16 +24,10 @@ import {
 } from '@joveworks/schema';
 
 import { useGraph } from '../graph-context';
-import { useSettings } from '../settings-context';
 import { reframe, removeNodes, renameNode, updateNode } from '../model/document';
-import { toUnitsFormat } from '../model/numberFormat';
-import { formatAuthored, parseAuthored } from '../model/quantity';
-import { reading, summarise } from '../model/values';
 import { Symbol } from '../Symbol';
-import { ParameterLabel } from '../ParameterLabel';
 import { NodeShell } from './NodeShell';
-import { slotHandleId } from './portSlots';
-import { TextField } from './fields';
+import { QuantityPortRow } from './QuantityPortRow';
 import type { CanvasFlowNode } from './node-data';
 import { TitleField } from './TitleField';
 
@@ -47,28 +40,28 @@ interface FieldInfo {
 }
 
 /**
- * The shaft runs along z, drawn left to right; each transverse plane's
- * diagram is drawn with that plane's positive direction up.
+ * The shaft runs along z, drawn left to right; y points up (vertical) and x
+ * across (horizontal). Each direction's diagram is drawn with it positive up.
  */
-const FIELDS: Readonly<Record<LoadField, FieldInfo>> = {
+export const FIELDS: Readonly<Record<LoadField, FieldInfo>> = {
   at: { symbol: 'at', hint: 'Position along the shaft (z).' },
-  Fx: { symbol: 'F_x', arrow: '↑', hint: 'Force in the x plane. Positive points up in the x-plane diagram.' },
-  Fy: { symbol: 'F_y', arrow: '↑', hint: 'Force in the y plane. Positive points up in the y-plane diagram.' },
+  Fx: { symbol: 'F_x', arrow: '↑', hint: 'Horizontal force, along x. Positive along +x: up in the horizontal view, seen from above.' },
+  Fy: { symbol: 'F_y', arrow: '↑', hint: 'Vertical force, along y. Positive points up.' },
   torque: { symbol: 'T', hint: 'Torque applied here, signed. Torques along the shaft are taken as balanced.' },
   Cx: {
     symbol: 'C_x',
     arrow: '↻',
-    hint: 'Bending couple entering the x-plane moment diagram. Positive is clockwise, with z to the right: the moment steps up by it.',
+    hint: 'Bending couple in the horizontal (x–z) plane. Positive is clockwise in the view from above, with z to the right: the moment steps up by it.',
   },
   Cy: {
     symbol: 'C_y',
     arrow: '↻',
-    hint: 'Bending couple entering the y-plane moment diagram. Positive is clockwise, with z to the right: the moment steps up by it.',
+    hint: 'Bending couple in the vertical (y–z) plane. Positive is clockwise, with z to the right: the moment steps up by it.',
   },
   from: { symbol: 'from', hint: 'Where the load starts along the shaft (z).' },
   to: { symbol: 'to', hint: 'Where the load ends along the shaft (z), at or after its start.' },
-  qx: { symbol: 'q_x', arrow: '↑', hint: 'Force per length in the x plane. Positive points up in the x-plane diagram.' },
-  qy: { symbol: 'q_y', arrow: '↑', hint: 'Force per length in the y plane. Positive points up in the y-plane diagram.' },
+  qx: { symbol: 'q_x', arrow: '↑', hint: 'Horizontal force per length, along x. Positive along +x.' },
+  qy: { symbol: 'q_y', arrow: '↑', hint: 'Vertical force per length, along y. Positive points up.' },
 };
 
 /** Fields a node cannot do without — the rest read zero when left empty. */
@@ -76,15 +69,12 @@ const MANDATORY: ReadonlySet<LoadField> = new Set(['at', 'from', 'to']);
 
 function LoadBody({ id, selected, data }: NodeProps<CanvasFlowNode>): ReactElement | null {
   const { document, analysis, edit, expanded, toggleExpanded, hovered } = useGraph();
-  const { numberFormat } = useSettings();
-  const format = toUnitsFormat(numberFormat);
   const node = document.nodes.find((candidate) => candidate.id === id);
   if (node === undefined || (node.kind !== 'load' && node.kind !== 'distributedLoad')) return null;
 
   const highlightedPorts = new Set(data?.highlightedPorts ?? []);
   const state = analysis.states.get(id) ?? 'ok';
   const problem = analysis.problems.get(id);
-  const incoming = document.edges.filter((edge) => edge.to.node === id);
 
   const setField = (field: LoadField, quantity: Quantity | undefined): void =>
     edit((current) =>
@@ -95,32 +85,6 @@ function LoadBody({ id, selected, data }: NodeProps<CanvasFlowNode>): ReactEleme
           | DistributedLoadNode;
       }),
     );
-
-  /**
-   * A bare number is read in the unit the field already shows; a typed unit
-   * must be the field's kind of quantity. Anything else is left as it was —
-   * the field reverts to the stored value.
-   */
-  const commit = (field: LoadField, text: string): void => {
-    if (text.trim().length === 0) {
-      if (!MANDATORY.has(field)) setField(field, undefined);
-      return;
-    }
-    let parsed: Quantity;
-    try {
-      parsed = parseAuthored(text, format);
-    } catch {
-      return;
-    }
-    const reference = LOAD_FIELD_UNITS[field];
-    const shown = loadFieldValue(node, field)?.unit ?? reference;
-    if (isDimensionless(parsed.unit.dimension)) {
-      setField(field, { value: parsed.value, unit: shown });
-      return;
-    }
-    if (!dimensionsEqual(parsed.unit.dimension, reference.dimension)) return;
-    setField(field, parsed);
-  };
 
   const shape = node.kind === 'load' ? 'point load' : 'distributed load';
 
@@ -143,7 +107,7 @@ function LoadBody({ id, selected, data }: NodeProps<CanvasFlowNode>): ReactEleme
       subtitle={shape}
       detail={
         <p className="load-convention">
-          The shaft runs along z, left to right. ↑ marks a positive force, up in its plane&apos;s diagram;
+          The shaft runs along z, left to right; y is vertical, x horizontal. ↑ marks a positive force;
           ↻ a positive couple, clockwise. An empty field is zero.
         </p>
       }
@@ -151,52 +115,20 @@ function LoadBody({ id, selected, data }: NodeProps<CanvasFlowNode>): ReactEleme
       <ul className="ports">
         {loadNodeFields(node).map((field) => {
           const info = FIELDS[field];
-          const edge = incoming.find((candidate) => candidate.to.port === field);
-          const typed = loadFieldValue(node, field);
-          const supplied = edge === undefined ? undefined : reading(analysis, edge.from.node, edge.from.port);
-          const unit = analysis.resolution?.targets.get(`${id}.${field}`)?.unit ?? typed?.unit ?? LOAD_FIELD_UNITS[field];
-          const missing = MANDATORY.has(field) && edge === undefined && typed === undefined;
-          const highlighted = highlightedPorts.has(field);
           return (
-            <li
+            <QuantityPortRow
               key={field}
-              className={`port${missing ? ' missing' : ''}${highlighted ? ' port-highlighted' : ''}`}
-              title={info.hint}
-              onMouseEnter={() => data?.onPortHover?.({ nodeId: id, port: field })}
-              onMouseLeave={() => data?.onPortHover?.()}
-            >
-              <Handle
-                type="target"
-                position={Position.Left}
-                id={slotHandleId(field, 0)}
-                className={`${missing ? 'missing' : ''}${highlighted ? ' port-highlighted' : ''}`}
-              />
-              <ParameterLabel name={info.symbol} unit={unit} nameClassName="port-name" unitClassName="port-unit" />
-              {info.arrow === undefined ? null : (
-                <span className="load-sign" aria-label={info.hint}>
-                  {info.arrow}
-                </span>
-              )}
-              <span className="quantity-split port-quantity">
-                <TextField
-                  className="quantity"
-                  value={
-                    edge !== undefined
-                      ? supplied === undefined ? '' : summarise(supplied, 4, format)
-                      : typed === undefined ? '' : formatAuthored(typed, format)
-                  }
-                  placeholder={MANDATORY.has(field) ? '' : '0'}
-                  autoSize={4}
-                  disabled={edge !== undefined}
-                  title={
-                    edge !== undefined
-                      ? 'Set by the wire — unplug it to type one by hand again.'
-                      : `${info.hint} Type a number, with its unit if it differs.`
-                  }
-                  onCommit={(text) => commit(field, text)}
-                />
-              </span>
-            </li>
+              nodeId={id}
+              port={field}
+              symbol={info.symbol}
+              typed={loadFieldValue(node, field)}
+              reference={LOAD_FIELD_UNITS[field]}
+              hint={info.hint}
+              {...(info.arrow === undefined ? {} : { arrow: info.arrow })}
+              mandatory={MANDATORY.has(field)}
+              data={data}
+              onCommit={(quantity) => setField(field, quantity)}
+            />
           );
         })}
       </ul>

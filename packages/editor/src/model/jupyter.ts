@@ -1011,7 +1011,7 @@ export function compileJupyter(
         return;
       }
       default:
-        code(comment(`${titleOf(node)} — a ${output.kind} figure is drawn by JoveWorks itself and is not translated; see the NodeBook.`));
+        code(comment(`${titleOf(node)} — a ${output.kind === 'shaftView' ? 'shaft view' : output.kind} figure is drawn by JoveWorks itself and is not translated; see the NodeBook.`));
         return;
     }
     code(comment(`${titleOf(node)} — nothing is wired to this ${output.kind} output yet.`));

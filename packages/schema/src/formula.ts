@@ -51,6 +51,7 @@ import {
   isGenericDimension,
   multiplyDimensions,
   powerDimension,
+  ANGLE,
   FORCE,
   LENGTH,
   type Dimension,
@@ -209,14 +210,19 @@ export interface FormulaDeflection {
   readonly secondMomentOfArea: string;
 }
 
-export const SHAFT_DIAGRAMS = ['torque', 'shear', 'moment', 'deflection', 'reactions'] as const;
-export type ShaftDiagram = (typeof SHAFT_DIAGRAMS)[number];
+/** What a shaft record answers: quantities along the shaft, or one support's reaction. */
+export const SHAFT_ANSWERS = ['diagrams', 'reactions'] as const;
+export type ShaftAnswer = (typeof SHAFT_ANSWERS)[number];
+
+/** A quantity a `diagrams` shaft record may draw along the shaft, one per output. */
+export const SHAFT_QUANTITIES = ['shear', 'moment', 'deflection', 'slope', 'torque'] as const;
+export type ShaftQuantity = (typeof SHAFT_QUANTITIES)[number];
 
 /** What a shaft record's `plane` input may name. */
 export const SHAFT_PLANES = ['x', 'y', 'resultant'] as const;
 
 /**
- * A shaft diagram drawn from everything acting on a shaft — every Load,
+ * A shaft calculation from everything acting on a shaft — every Load,
  * Distributed load and Support node wired into one `acting` port — on the
  * shaft a Shaft node describes.
  *
@@ -229,28 +235,30 @@ export const SHAFT_PLANES = ['x', 'y', 'resultant'] as const;
  * in its plane, a couple positive clockwise with z to the right, and the
  * moment is positive when the shaft sags.
  *
- * - `torque` — T(z), the running total of each load's torque, taken as
- *   balanced. No plane.
- * - `shear`, `moment`, `deflection` — V(z), M(z), y(z).
+ * - `diagrams` — one output per entry of `quantities`, in order: shear V,
+ *   moment M, deflection y, slope θ, torque T (the running total of each
+ *   load's torque, taken as balanced), all drawn along the shaft.
  * - `reactions` — the force and the moment at the one support wired into
  *   `support`, as two outputs in that order. No axis.
  *
- * `axis` names an optional length input: unwired, the diagram is drawn along
- * the shaft's own z; wired, it is evaluated where that says. `plane` names a
- * categorical input choosing `x`, `y` or `resultant` (√(x² + y²) of the two
- * planes; a reaction may take it too, as a magnitude). A shaft record
- * declares no expression: like a lookup, it answers every output in the unit
- * that output declares.
+ * `axis` names an optional length input: unwired, the quantities run along
+ * the shaft's own z; wired, they are evaluated where that says. `plane`
+ * names a categorical input choosing `x`, `y` or `resultant` (√(x² + y²) of
+ * the two planes' values); torque ignores it. A shaft record declares no
+ * expression: like a lookup, it answers every output in the unit that
+ * output declares.
  */
 export interface FormulaShaft {
-  readonly diagram: ShaftDiagram;
+  readonly answers: ShaftAnswer;
+  /** `diagrams` only: what each output is, in output order. */
+  readonly quantities?: readonly ShaftQuantity[];
   /** The declared variadic `load` input every load and support is wired into. */
   readonly acting: string;
   /** The declared `shaft` input. */
   readonly shaft: string;
-  /** The declared optional length input the diagram is evaluated at. Absent for `reactions`. */
+  /** The declared optional length input the quantities are evaluated at. `diagrams` only. */
   readonly axis?: string;
-  /** The declared categorical plane input. Absent only for `torque`. */
+  /** The declared categorical plane input. Required unless every quantity is torque. */
   readonly plane?: string;
   /** The declared single `load` input naming the support to report. `reactions` only. */
   readonly support?: string;
@@ -538,8 +546,12 @@ function serializeDeflection(deflection: FormulaDeflection): JsonObject {
 function parseShaft(value: JsonValue, path: string): FormulaShaft {
   const object = readObject(value, path);
   const name = (key: string): string | undefined => optional(object, key, path, readName);
+  const quantities = optional(object, 'quantities', path, (entry, at) =>
+    readArray(entry, at).map((item, i) => readEnum(item, `${at}[${i}]`, SHAFT_QUANTITIES)),
+  );
   return {
-    diagram: readEnum(required(object, 'diagram', path), join(path, 'diagram'), SHAFT_DIAGRAMS),
+    answers: readEnum(required(object, 'answers', path), join(path, 'answers'), SHAFT_ANSWERS),
+    ...put('quantities', quantities),
     acting: readName(required(object, 'acting', path), join(path, 'acting')),
     shaft: readName(required(object, 'shaft', path), join(path, 'shaft')),
     ...put('axis', name('axis')),
@@ -550,7 +562,8 @@ function parseShaft(value: JsonValue, path: string): FormulaShaft {
 
 function serializeShaft(shaft: FormulaShaft): JsonObject {
   return {
-    diagram: shaft.diagram,
+    answers: shaft.answers,
+    ...put('quantities', shaft.quantities === undefined ? undefined : [...shaft.quantities]),
     acting: shaft.acting,
     shaft: shaft.shaft,
     ...put('axis', shaft.axis),
@@ -559,21 +572,33 @@ function serializeShaft(shaft: FormulaShaft): JsonObject {
   };
 }
 
+/** The dimension each shaft quantity is answered in — canonical mm, N, rad. */
+const QUANTITY_DIMENSIONS: Readonly<Record<ShaftQuantity, Dimension>> = {
+  shear: FORCE,
+  moment: multiplyDimensions(FORCE, LENGTH),
+  deflection: LENGTH,
+  slope: ANGLE,
+  torque: multiplyDimensions(FORCE, LENGTH),
+};
+
 /**
  * Every name a `FormulaShaft` uses resolves to an input of the right shape,
- * each field is present exactly when its diagram needs it, and the outputs
- * are what that diagram produces — canonical mm and N throughout.
+ * each field is present exactly when it is needed, and the outputs are what
+ * the record says they are.
  */
 function checkShaft(shaft: FormulaShaft, inputs: readonly Port[], outputs: readonly OutputPort[], path: string): void {
   const at = (key: string): string => join(path, `shaft.${key}`);
-  const needs = (key: keyof FormulaShaft, wanted: boolean): void => {
+  const needs = (key: keyof FormulaShaft, wanted: boolean, why: string): void => {
     const present = shaft[key] !== undefined;
-    if (wanted && !present) fail(at(key), `is required for a ${shaft.diagram} diagram`);
-    if (!wanted && present) fail(at(key), `has no meaning for a ${shaft.diagram} diagram — leave it off`);
+    if (wanted && !present) fail(at(key), `is required ${why}`);
+    if (!wanted && present) fail(at(key), `has no meaning ${why} — leave it off`);
   };
-  needs('plane', shaft.diagram !== 'torque');
-  needs('support', shaft.diagram === 'reactions');
-  if (shaft.diagram === 'reactions') needs('axis', false);
+  const diagrams = shaft.answers === 'diagrams';
+  needs('quantities', diagrams, diagrams ? 'for diagrams' : 'for reactions');
+  needs('support', !diagrams, diagrams ? 'for diagrams' : 'for reactions');
+  if (!diagrams) needs('axis', false, 'for reactions');
+  const planar = !diagrams || (shaft.quantities ?? []).some((quantity) => quantity !== 'torque');
+  needs('plane', planar, planar ? 'when a quantity lies in a plane' : 'for torque alone');
 
   const find = (name: string): Port | undefined => inputs.find((port) => port.name === name);
   const acting = find(shaft.acting);
@@ -593,7 +618,7 @@ function checkShaft(shaft: FormulaShaft, inputs: readonly Port[], outputs: reado
     if (port === undefined || port.kind !== 'numeric' || port.variadic === true || dimension === undefined || !dimensionsEqual(dimension, LENGTH)) {
       fail(at('axis'), `'${shaft.axis}' must be a declared length input`);
     }
-    if (port.default !== undefined) fail(at('axis'), `'${shaft.axis}' takes no default — unwired, the diagram runs along the shaft`);
+    if (port.default !== undefined) fail(at('axis'), `'${shaft.axis}' takes no default — unwired, the quantities run along the shaft`);
   }
   if (shaft.plane !== undefined) {
     const port = find(shaft.plane);
@@ -602,21 +627,16 @@ function checkShaft(shaft: FormulaShaft, inputs: readonly Port[], outputs: reado
     if (outside !== undefined) fail(at('plane'), `'${outside}' is not a plane`);
   }
 
-  const produces: readonly Dimension[] =
-    shaft.diagram === 'torque' || shaft.diagram === 'moment'
-      ? [multiplyDimensions(FORCE, LENGTH)]
-      : shaft.diagram === 'deflection'
-        ? [LENGTH]
-        : shaft.diagram === 'shear'
-          ? [FORCE]
-          : [FORCE, multiplyDimensions(FORCE, LENGTH)];
+  const produces: readonly Dimension[] = diagrams
+    ? (shaft.quantities ?? []).map((quantity) => QUANTITY_DIMENSIONS[quantity])
+    : [FORCE, multiplyDimensions(FORCE, LENGTH)];
   if (outputs.length !== produces.length) {
-    fail(join(path, 'output'), `a ${shaft.diagram} record declares ${produces.length === 1 ? 'one output' : 'two outputs, the force then the moment'}`);
+    fail(join(path, 'output'), diagrams ? 'declares one output per quantity' : 'a reactions record declares two outputs, the force then the moment');
   }
   outputs.forEach((output, i) => {
     const dimension = portDimension(output);
     if (output.kind !== 'numeric' || dimension === undefined || !dimensionsEqual(dimension, produces[i] as Dimension)) {
-      fail(join(path, 'output'), `'${output.name}' is not of the dimension a ${shaft.diagram} record produces there`);
+      fail(join(path, 'output'), `'${output.name}' is not of the dimension its quantity is answered in`);
     }
   });
 }

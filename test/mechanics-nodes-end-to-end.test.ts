@@ -38,8 +38,9 @@ const NODE_IDS: Readonly<Record<string, string>> = {
   shaftDistributedShear: 'mechanics.shaft.distributed-shear', shaftDistributedMoment: 'mechanics.shaft.distributed-moment',
   sectionModulus: 'mechanics.shaft.section-modulus', equivalentMoment: 'mechanics.shaft.equivalent-moment',
   requiredDiameter: 'mechanics.shaft.required-diameter', equivalentStress: 'mechanics.shaft.equivalent-stress',
-  torque: 'mechanics.shaft.torque', shear: 'mechanics.shaft.shear', moment: 'mechanics.shaft.moment',
-  deflection: 'mechanics.shaft.deflection', reactions: 'mechanics.shaft.reactions',
+  // One Shaft calculation answers all four; each test reads the output it is about.
+  torque: 'mechanics.shaft.calculation', shear: 'mechanics.shaft.calculation', moment: 'mechanics.shaft.calculation',
+  deflection: 'mechanics.shaft.calculation', reactions: 'mechanics.shaft.reactions',
   add: 'base.math.add', subtract: 'base.math.subtract', negate: 'base.math.negate', multiply: 'base.math.multiply', divide: 'base.math.divide',
   sum: 'base.array.sum',
 };
@@ -536,7 +537,7 @@ describe('shaft diagrams on Load, Support and Shaft nodes', () => {
       [shaft(), ...acting, ...diagrams, ...(zs === undefined ? [] : [input('z', { kind: 'list', values: [...zs], unit: 'mm' })]), ...(extra.nodes ?? [])],
       [
         ...ids.flatMap((id) => [
-          ...acting.map((entry) => wire(`${entry['id'] as string}.load`, `${id}.acting`)),
+          ...acting.map((entry) => wire(`${entry['id'] as string}.${entry['kind'] === 'support' ? 'support' : 'load'}`, `${id}.acting`)),
           wire('S.shaft', `${id}.shaft`),
           ...(zs === undefined || id.startsWith('R') ? [] : [wire('z.value', `${id}.z`)]),
         ]),
@@ -574,7 +575,7 @@ describe('shaft diagrams on Load, Support and Shaft nodes', () => {
       [load('P', { at: q(80, 'mm'), Fy: q(-1000, 'N') }), A, B],
       [diagram('RA', 'reactions'), diagram('RB', 'reactions'), diagram('V', 'shear'), diagram('M', 'moment')],
       [0, 50, 80, 150, 200, 250],
-      { edges: [wire('A.load', 'RA.support'), wire('B.load', 'RB.support')] },
+      { edges: [wire('A.support', 'RA.support'), wire('B.support', 'RB.support')] },
     );
     const evaluation = evaluateDocument(document, catalogues);
     expect(data(evaluation, 'RA', 'R')[0]).toBeCloseTo(600, 6);

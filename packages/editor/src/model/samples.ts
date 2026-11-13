@@ -850,8 +850,7 @@ export function cantileverHollowSections(catalogues: readonly Catalogue[], local
 export const SHAFT_SIZING_FORMULAS = [
   'base.math.divide',
   'base.math.negate',
-  'mechanics.shaft.torque',
-  'mechanics.shaft.moment',
+  'mechanics.shaft.calculation',
   'mechanics.shaft.equivalent-moment',
   'mechanics.shaft.required-diameter',
   'mechanics.shaft.section-modulus',
@@ -916,12 +915,12 @@ export function shaftSizing(catalogues: readonly Catalogue[], locale: AppLocale 
   ];
 
   const diagramNodes: GraphNode[] = [
-    labelled('M_x', 'Moment, x plane', 'mechanics.shaft.moment', at(1200, 0), plane('x')),
-    labelled('M_y', 'Moment, y plane', 'mechanics.shaft.moment', at(1200, 200), plane('y')),
-    labelled('M_res', 'Resultant moment', 'mechanics.shaft.moment', at(1200, 400), plane('resultant')),
-    labelled('T', 'Torque', 'mechanics.shaft.torque', at(1200, 600)),
+    labelled('M_x', 'Shaft, x plane', 'mechanics.shaft.calculation', at(1200, 0), plane('x')),
+    labelled('M_y', 'Shaft, y plane', 'mechanics.shaft.calculation', at(1200, 280), plane('y')),
+    labelled('M_res', 'Shaft, resultant', 'mechanics.shaft.calculation', at(1200, 560), plane('resultant')),
     output('out_moments', 'Bending moment along the shaft', { kind: 'plot', measures: [{ id: 'Mx' }, { id: 'My' }, { id: 'M' }] }, at(1480, 120)),
     output('out_torque', 'Torque along the shaft', { kind: 'plot', measures: [{ id: 'T' }] }, at(1480, 480)),
+    output('out_view', 'The shaft and its loads', { kind: 'shaftView' }, at(1480, 760)),
   ];
 
   const sizeNodes: GraphNode[] = [
@@ -952,17 +951,19 @@ export function shaftSizing(catalogues: readonly Catalogue[], locale: AppLocale 
     wire('T_in.value', 'T_out.a'),
     wire('T_out.negated', 'coupling.torque'),
 
-    ...['M_x', 'M_y', 'M_res', 'T'].flatMap((id) => [
-      ...acting.map((from) => wire(`${from}.load`, `${id}.acting`)),
+    ...['M_x', 'M_y', 'M_res'].flatMap((id) => [
+      ...acting.map((from) => wire(`${from}.${from.startsWith('bearing') ? 'support' : 'load'}`, `${id}.acting`)),
       wire('shaft.shaft', `${id}.shaft`),
     ]),
     wire('M_x.M', 'out_moments.Mx'),
     wire('M_y.M', 'out_moments.My'),
     wire('M_res.M', 'out_moments.M'),
-    wire('T.T', 'out_torque.T'),
+    wire('M_res.T', 'out_torque.T'),
+    wire('shaft.shaft', 'out_view.shaft'),
+    ...acting.map((from) => wire(`${from}.${from.startsWith('bearing') ? 'support' : 'load'}`, 'out_view.acting')),
 
     wire('M_res.M', 'M_v.M'),
-    wire('T.T', 'M_v.T'),
+    wire('M_res.T', 'M_v.T'),
     wire('M_v.M_v', 'd_req.M_v'),
     wire('sigma_allow.value', 'd_req.sigma_allow'),
     wire('d_req.d', 'out_profile.required'),
@@ -994,8 +995,8 @@ export function shaftSizing(catalogues: readonly Catalogue[], locale: AppLocale 
     {
       ...frameAround('diagrams', '2. Moment and torque', diagramNodes),
       note:
-        'Each diagram takes the loads and the bearings on one port and solves the reactions itself, ' +
-        'along the shaft’s own z. The moment is drawn in each plane and as their resultant ' +
+        'Each Shaft calculation takes the loads and the bearings on one port and solves the reactions ' +
+        'itself, along the shaft’s own z. The moment is drawn in each plane and as their resultant ' +
         '√(M_x² + M_y²), the magnitude the shaft has to carry. The torque runs from the gear to the coupling.',
     },
     {

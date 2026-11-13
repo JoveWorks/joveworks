@@ -1,6 +1,7 @@
 import { canConnect } from '@joveworks/kernel';
-import type { Catalogue, Edge, GraphDocument } from '@joveworks/schema';
+import type { Catalogue, Edge, FormulaNode, GraphDocument } from '@joveworks/schema';
 
+import { lookupRef } from '../model/analysis';
 import {
   addNamedColumn,
   addPlotMeasure,
@@ -46,12 +47,13 @@ export function connectResolvingTableColumn(
     initialTarget?.kind === 'output' && initialTarget.output.kind === 'table';
   const resolvesPlotMeasure =
     initialTarget?.kind === 'output' && initialTarget.output.kind === 'plot';
+  const formulaOf = (node: FormulaNode) => lookupRef(catalogues, node.formula)?.formula;
   const prepare = (current: GraphDocument): { readonly document: GraphDocument; readonly edge: Edge } => {
     let attempted = current;
     let to = candidate.to;
 
     if (resolvesTableColumn) {
-      const base = endpointLabel(current, candidate.from);
+      const base = endpointLabel(current, candidate.from, formulaOf);
       const resolved =
         to.port === NEW_COLUMN
           ? addNamedColumn(current, to.node, base)
@@ -59,7 +61,7 @@ export function connectResolvingTableColumn(
       attempted = resolved.document;
       to = { node: to.node, port: resolved.column };
     } else if (resolvesPlotMeasure && to.port === NEW_PLOT_MEASURE) {
-      const label = endpointLabel(current, candidate.from);
+      const label = endpointLabel(current, candidate.from, formulaOf);
       const resolved = addPlotMeasure(current, to.node, label);
       attempted = resolved.document;
       to = { node: to.node, port: resolved.measure.id };

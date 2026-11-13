@@ -45,7 +45,7 @@ import { converted } from '../canvas/ValueEditor';
 import { selectableTables } from '../canvas/TableNodeView';
 import { starterColumns } from '../model/lut';
 import { ContextMenu } from '../canvas/ContextMenu';
-import { newDistributedLoadNode, newLoadNode } from '../canvas/quickAdd';
+import { newDistributedLoadNode, newLoadNode, newShaftNode, newSupportNode } from '../canvas/quickAdd';
 import { DOCS_BASE_URL } from '../help-links';
 import { Symbol } from '../Symbol';
 
@@ -328,6 +328,18 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
       return addNode(current, newDistributedLoadNode(id, position(), id));
     });
 
+  const addSupport = (): void =>
+    edit((current) => {
+      const id = uniqueId(current, 'support');
+      return addNode(current, newSupportNode(id, position(), id));
+    });
+
+  const addShaft = (): void =>
+    edit((current) => {
+      const id = uniqueId(current, 'shaft');
+      return addNode(current, newShaftNode(id, position(), id));
+    });
+
   const addUnpack = (): void =>
     edit((current) => {
       const id = uniqueId(current, 'unpack');
@@ -471,7 +483,7 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
 
   // Grouped by id prefix, not array position — a positional slice silently
   // reshuffles category membership whenever an entry is inserted or removed.
-  // Advanced-gated entries (e.g. the file reader, pack/unpack, waypoint) are
+  // Advanced-gated entries (e.g. the file reader) are
   // dropped before grouping, same rule applied below to the stochastic and
   // analysis sections.
   const visibleActions = filterAdvancedActions(actions, advancedNodesEnabled);
@@ -594,6 +606,9 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
   // Node kinds rather than formulas, shown at the head of the mechanics
   // catalogue's own section: a load is what its diagrams are wired from.
   const mechanicsActions: readonly PaletteAction[] = [
+    { id: 'builtin:mechanics:shaft', label: copy.shaft, summary: copy.shaftSummary, insert: addShaft },
+    { id: 'builtin:mechanics:support', label: copy.support, summary: copy.supportSummary, insert: addSupport },
+    { id: 'builtin:mechanics:shaftView', label: copy.shaftView, summary: copy.shaftViewSummary, insert: () => addOutput('shaftView') },
     { id: 'builtin:mechanics:load', label: copy.load, summary: copy.loadSummary, insert: addLoad },
     {
       id: 'builtin:mechanics:distributedLoad',

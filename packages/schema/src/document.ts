@@ -311,6 +311,20 @@ export interface TableOutput {
  * (expression, citation) comes from the formula or closure node wired to
  * `value`.
  */
+/**
+ * A drawing of a shaft: its outline from the Shaft node wired into `shaft`
+ * (steps and bore to scale), the supports and loads wired into `acting`, one
+ * elevation per transverse plane, and any diagrams wired into `diagrams`
+ * drawn underneath on the same z scale. Nothing to configure: everything it
+ * shows comes from its wires.
+ */
+export interface ShaftViewOutput {
+  readonly kind: 'shaftView';
+}
+
+/** A shaft view's (and a shaft diagram's) variadic port for loads and supports. */
+export const ACTING_PORT = 'acting';
+
 export interface EquationOutput {
   readonly kind: 'equation';
 }
@@ -450,7 +464,8 @@ export type Output =
   | BestDesignOutput
   | ParetoOutput
   | DistributionOutput
-  | ReliabilityOutput;
+  | ReliabilityOutput
+  | ShaftViewOutput;
 
 export const OUTPUT_KINDS = [
   'print',
@@ -465,6 +480,7 @@ export const OUTPUT_KINDS = [
   'pareto',
   'distribution',
   'reliability',
+  'shaftView',
 ] as const;
 export type OutputKind = (typeof OUTPUT_KINDS)[number];
 
@@ -839,11 +855,16 @@ export interface SupportNode extends NodeBase {
   readonly support: SupportType;
 }
 
+/** A Support node's one output port. It carries the same kind of wire as a load. */
+export const SUPPORT_PORT = 'support';
+
 /** A Shaft node's output ports: the shaft itself, and the positions along it. */
 export const SHAFT_PORT = 'shaft';
 export const SHAFT_Z_PORT = 'z';
 /** A round or stepped Shaft node's outer diameter along its own z — what a plot draws the profile from. */
 export const SHAFT_PROFILE_PORT = 'profile';
+/** A Shaft node's second moment of area along its own z, whatever its section — the I the solve uses. */
+export const SHAFT_I_PORT = 'I';
 
 /** One step of a stepped shaft, in the profile's own unit. `d_i` absent means solid. */
 export interface ShaftStep {
@@ -1515,6 +1536,7 @@ function parseOutput(value: JsonValue, path: string): Output {
     }
 
     case 'equation':
+    case 'shaftView':
       return { kind };
 
     case 'feasibility':
@@ -1658,6 +1680,7 @@ function serializeOutput(output: Output): JsonObject {
         ...put('figures', serializeTableFigures(output.figures)),
       };
     case 'equation':
+    case 'shaftView':
       return { kind: output.kind };
     case 'feasibility':
       return {

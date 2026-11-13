@@ -128,6 +128,8 @@ import {
 import { UnpackNodeView } from './UnpackNodeView';
 import { ZipNodeView } from './ZipNodeView';
 import { DistributedLoadNodeView, LoadNodeView } from './LoadNodeView';
+import { SupportNodeView } from './SupportNodeView';
+import { ShaftNodeView } from './ShaftNodeView';
 import { WaypointNodeView } from './WaypointNodeView';
 import { basePortName, slotHandleId } from './portSlots';
 
@@ -660,6 +662,8 @@ const NODE_TYPES = {
   zip: ZipNodeView,
   load: LoadNodeView,
   distributedLoad: DistributedLoadNodeView,
+  support: SupportNodeView,
+  shaft: ShaftNodeView,
   monteCarloGenerator: MonteCarloGeneratorNodeView,
   monteCarloReceiver: MonteCarloReceiverNodeView,
   frame: FrameView,

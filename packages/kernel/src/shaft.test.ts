@@ -20,19 +20,24 @@ const plane: JsonObject = { kind: 'categorical', name: 'plane', domain: ['x', 'y
 const record = (id: string, output: JsonObject | JsonObject[], inputs: readonly JsonObject[], shaft: JsonObject): JsonObject => ({
   id, version: 1, output, inputs: [...inputs], shaft, description: 'Invented shaft record.', status: 'unverified',
 });
-const diagramRecord = (diagram: string, output: JsonObject): JsonObject =>
-  record(diagram, output, [z, acting, shaftPort, plane], { diagram, acting: 'acting', shaft: 'shaft', axis: 'z', plane: 'plane' });
+const diagramRecord = (quantity: string, output: JsonObject): JsonObject =>
+  record(quantity, output, [shaftPort, acting, z, plane], {
+    answers: 'diagrams', quantities: [quantity], acting: 'acting', shaft: 'shaft', axis: 'z', plane: 'plane',
+  });
 
 const CATALOGUE = catalogueOf([
-  record('torque', { kind: 'numeric', name: 'T', unit: 'Nmm' }, [z, acting, shaftPort], { diagram: 'torque', acting: 'acting', shaft: 'shaft', axis: 'z' }),
+  record('torque', { kind: 'numeric', name: 'T', unit: 'Nmm' }, [shaftPort, acting, z], {
+    answers: 'diagrams', quantities: ['torque'], acting: 'acting', shaft: 'shaft', axis: 'z',
+  }),
   diagramRecord('shear', { kind: 'numeric', name: 'V', unit: 'N' }),
   diagramRecord('moment', { kind: 'numeric', name: 'M', unit: 'Nmm' }),
   diagramRecord('deflection', { kind: 'numeric', name: 'y', unit: 'mm' }),
+  diagramRecord('slope', { kind: 'numeric', name: 'theta', unit: 'rad' }),
   record(
     'reactions',
     [{ kind: 'numeric', name: 'R', unit: 'N' }, { kind: 'numeric', name: 'M_R', unit: 'Nmm' }],
-    [acting, shaftPort, { kind: 'load', name: 'support' }, plane],
-    { diagram: 'reactions', acting: 'acting', shaft: 'shaft', support: 'support', plane: 'plane' },
+    [shaftPort, acting, { kind: 'load', name: 'support' }, plane],
+    { answers: 'reactions', acting: 'acting', shaft: 'shaft', support: 'support', plane: 'plane' },
   ),
 ]);
 
@@ -63,11 +68,13 @@ function study(
   options: { readonly zs?: readonly number[]; readonly shaft?: JsonObject; readonly extra?: readonly JsonObject[]; readonly wires?: readonly JsonObject[] } = {},
 ) {
   const ids = diagrams.map((node) => node['id'] as string);
+  const supports = new Set((options.extra ?? []).filter((node) => node['kind'] === 'support').map((node) => node['id'] as string));
+  const out = (from: string): string => `${from}.${supports.has(from) ? 'support' : 'load'}`;
   return documentOf(
     [options.shaft ?? shaftNode(), ...(options.zs === undefined ? [] : [input('zs', list(options.zs, 'mm'))]), ...diagrams, ...(options.extra ?? [])],
     [
       ...ids.flatMap((id) => [
-        ...actingIds.map((from) => wire(`${from}.load`, `${id}.acting`)),
+        ...actingIds.map((from) => wire(out(from), `${id}.acting`)),
         wire('S.shaft', `${id}.shaft`),
         ...(options.zs === undefined || id.startsWith('R') ? [] : [wire('zs.value', `${id}.z`)]),
       ]),
@@ -84,7 +91,7 @@ describe('shaft diagrams on supports', () => {
     const document = study(['P', 'A', 'B'], [diagram('V', 'shear'), diagram('M', 'moment'), diagram('RA', 'reactions'), diagram('RB', 'reactions')], {
       zs: [0, 50, 80, 150, 200, 250],
       extra: [pointLoad('P', { at: q(80, 'mm'), Fy: q(-1000, 'N') }), support('A', 0), support('B', 200)],
-      wires: [wire('A.load', 'RA.support'), wire('B.load', 'RB.support')],
+      wires: [wire('A.support', 'RA.support'), wire('B.support', 'RB.support')],
     });
     const evaluation = evaluateDocument(document, [CATALOGUE]);
     expect(data(evaluation, 'RA', 'R')[0]).toBeCloseTo(600, 6);
@@ -107,7 +114,7 @@ describe('shaft diagrams on supports', () => {
     const document = study(['P', 'W'], [diagram('M', 'moment'), diagram('y', 'deflection'), diagram('R', 'reactions')], {
       zs: [0, 200],
       extra: [pointLoad('P', { at: q(200, 'mm'), Fy: q(-10, 'N') }), support('W', 0, 'fixed')],
-      wires: [wire('W.load', 'R.support')],
+      wires: [wire('W.support', 'R.support')],
     });
     const evaluation = evaluateDocument(document, [CATALOGUE]);
     expect(data(evaluation, 'R', 'R')[0]).toBeCloseTo(10, 6);
@@ -121,13 +128,23 @@ describe('shaft diagrams on supports', () => {
     const document = study(['w', 'A', 'B', 'C'], [diagram('RA', 'reactions'), diagram('RB', 'reactions'), diagram('M', 'moment')], {
       zs: [100],
       extra: [spanLoad('w', { from: q(0, 'mm'), to: q(200, 'mm'), qy: q(-2, 'N/mm') }), support('A', 0), support('B', 100), support('C', 200)],
-      wires: [wire('A.load', 'RA.support'), wire('B.load', 'RB.support')],
+      wires: [wire('A.support', 'RA.support'), wire('B.support', 'RB.support')],
     });
     const evaluation = evaluateDocument(document, [CATALOGUE]);
     expect(data(evaluation, 'RA', 'R')[0]).toBeCloseTo((3 * 2 * 100) / 8, 6);
     expect(data(evaluation, 'RB', 'R')[0]).toBeCloseTo((5 * 2 * 100) / 4, 6);
     // Over the middle support the shaft hogs: −qL²/8.
     expect(data(evaluation, 'M', 'M')[0]).toBeCloseTo((-2 * 100 ** 2) / 8, 4);
+  });
+
+  it('give the slope: −P·L²/(2EI) at a cantilever\'s tip, zero at the wall', () => {
+    const document = study(['P', 'W'], [diagram('t', 'slope')], {
+      zs: [0, 200],
+      extra: [pointLoad('P', { at: q(200, 'mm'), Fy: q(-10, 'N') }), support('W', 0, 'fixed')],
+    });
+    const [wall, tip] = data(evaluateDocument(document, [CATALOGUE]), 't', 'theta') as number[];
+    expect(wall).toBeCloseTo(0, 12);
+    expect(tip).toBeCloseTo((-10 * 200 ** 2) / (2 * 1e6), 9);
   });
 
   it("use a stepped shaft's real stiffness: a two-section cantilever's tip deflection by the unit-load method", () => {
@@ -200,7 +217,7 @@ describe('shaft diagrams on supports', () => {
   it('broadcast a support moved along the shaft', () => {
     const document = study(['P', 'A', 'B'], [diagram('R', 'reactions')], {
       extra: [input('span', list([100, 200], 'mm')), pointLoad('P', { at: q(50, 'mm'), Fy: q(-100, 'N') }), support('A', 0), support('B', 0)],
-      wires: [wire('span.value', 'B.at'), wire('A.load', 'R.support')],
+      wires: [wire('span.value', 'B.at'), wire('A.support', 'R.support')],
     });
     data(evaluateDocument(document, [CATALOGUE]), 'R', 'R').forEach((value, i) => expect(value).toBeCloseTo([50, 75][i] as number, 6));
   });
@@ -236,7 +253,7 @@ it('a Shaft node introduces its own z axis', () => {
 it('reports only a support that acts on the shaft', () => {
   const document = study(['P', 'A', 'B'], [diagram('R', 'reactions')], {
     extra: [pointLoad('P', { at: q(50, 'mm'), Fy: q(-1, 'N') }), support('A', 0), support('B', 200), support('C', 100)],
-    wires: [wire('C.load', 'R.support')],
+    wires: [wire('C.support', 'R.support')],
   });
   expect(() => evaluateDocument(document, [CATALOGUE])).toThrow(/must be one of the supports wired into 'acting'/u);
 });
@@ -247,8 +264,119 @@ it("a stepped Shaft node outputs its outer diameter along its own z", () => {
   expect(numeric(valueAt(evaluateDocument(document, []), 'S', 'profile')).data).toEqual([20, 20, 30, 25, 25]);
 });
 
+it('a Shaft node outputs its second moment of area along its own z, step by step', () => {
+  const stepped = { kind: 'stepped', unit: 'mm', steps: [{ start: 0, d: 20 }, { start: 60, d: 30, d_i: 10 }, { start: 150, d: 25 }] };
+  const I = (d: number, bore = 0): number => (Math.PI * (d ** 4 - bore ** 4)) / 64;
+  const document = documentOf([shaftNode(200, stepped, 5)], []);
+  numeric(valueAt(evaluateDocument(document, []), 'S', 'I')).data.forEach((value, i) =>
+    expect(value).toBeCloseTo([I(20), I(20), I(30, 10), I(25), I(25)][i] as number, 6),
+  );
+  const given = documentOf([shaftNode()], []);
+  expect(numeric(valueAt(evaluateDocument(given, []), 'S', 'I')).data).toEqual([1000, 1000, 1000, 1000, 1000]);
+});
+
 it("joins every wire into a diagram's acting port, where its shaft port takes one", () => {
   const document = documentOf([shaftNode(), diagram('M', 'moment')], []);
   expect(isVariadicTarget(document, [CATALOGUE], { node: 'M', port: 'acting' })).toBe(true);
   expect(isVariadicTarget(document, [CATALOGUE], { node: 'M', port: 'shaft' })).toBe(false);
+});
+
+describe('a shaft view', () => {
+  const stepped = { kind: 'stepped', unit: 'mm', steps: [{ start: 0, d: 20 }, { start: 80, d: 30, d_i: 10 }] };
+  const view = { kind: 'output', id: 'view', position: at, output: { kind: 'shaftView' } };
+  const document = documentOf(
+    [
+      shaftNode(200, stepped, 5),
+      pointLoad('gear', { at: q(80, 'mm'), Fx: q(300, 'N'), Fy: q(-1, 'kN'), torque: q(40, 'Nm'), Cy: q(2, 'Nm') }),
+      spanLoad('w', { from: q(20, 'mm'), to: q(60, 'mm'), qy: q(-2, 'N/mm') }),
+      support('A', 0, 'locating'),
+      support('B', 200, 'floating'),
+      diagram('M', 'moment'),
+      view,
+    ],
+    [
+      ...['gear', 'w', 'A', 'B'].flatMap((id) => {
+        const out = id === 'A' || id === 'B' ? `${id}.support` : `${id}.load`;
+        return [wire(out, 'M.acting'), wire(out, 'view.acting')];
+      }),
+      wire('S.shaft', 'M.shaft'),
+      wire('S.shaft', 'view.shaft'),
+    ],
+  );
+  const evaluation = evaluateDocument(document, [CATALOGUE]);
+  const result = evaluation.outputs.find((entry) => entry.nodeId === 'view');
+  if (result?.kind !== 'shaftView') throw new Error('no shaft view');
+
+  it('draws the stepped outline, bore included, clipped to the shaft', () => {
+    expect(result.sections).toEqual([
+      { start: 0, end: 80, d: 20 },
+      { start: 80, end: 200, d: 30, d_i: 10 },
+    ]);
+  });
+
+  it('sorts the loads into their planes, in the units they were typed in, and keeps the supports and torque apart', () => {
+    expect(result.supports.map((entry) => [entry.at, entry.support])).toEqual([[0, 'locating'], [200, 'floating']]);
+    expect(result.planes.x.forces.map((entry) => entry.value)).toEqual([300]);
+    expect(result.planes.y.forces.map((entry) => [entry.value, entry.unit.symbol])).toEqual([[-1000, 'kN']]);
+    expect(result.planes.y.couples.map((entry) => entry.value)).toEqual([2000]);
+    expect(result.planes.x.couples).toEqual([]);
+    expect(result.planes.y.spans.map((entry) => [entry.from, entry.to, entry.rate])).toEqual([[20, 60, -2]]);
+    expect(result.torques.map((entry) => entry.value)).toEqual([40_000]);
+  });
+
+  it('has no port for a diagram — those go to a Plot', () => {
+    const withDiagram = documentOf(
+      [shaftNode(), view, input('n', list([1, 2], ''))],
+      [wire('S.shaft', 'view.shaft'), wire('n.value', 'view.diagrams')],
+    );
+    expect(() => evaluateDocument(withDiagram, [])).toThrow();
+  });
+});
+
+describe('a pack of loads and supports', () => {
+  const view = { kind: 'output', id: 'view', position: at, output: { kind: 'shaftView' } };
+  const pack = { kind: 'pack', id: 'bundle', position: at };
+  const nodes = [
+    shaftNode(),
+    pointLoad('P', { at: q(80, 'mm'), Fy: q(-1000, 'N') }),
+    support('A', 0),
+    support('B', 200),
+    diagram('M', 'moment', { z: { kind: 'scalar', value: 80, unit: 'mm' } }),
+    diagram('RA', 'reactions'),
+    pack,
+    view,
+  ];
+  const document = documentOf(nodes, [
+    wire('P.load', 'bundle.in0'),
+    wire('A.support', 'bundle.in1'),
+    wire('B.support', 'bundle.in2'),
+    wire('bundle.bundle', 'M.acting'),
+    wire('bundle.bundle', 'RA.acting'),
+    wire('bundle.bundle', 'view.acting'),
+    wire('A.support', 'RA.support'),
+    ...['M', 'RA', 'view'].map((id) => wire('S.shaft', `${id}.shaft`)),
+  ]);
+  const evaluation = evaluateDocument(document, [CATALOGUE]);
+
+  it('acts on a shaft as the loads it holds, one wire for all of them', () => {
+    expect(data(evaluation, 'M', 'M')[0]).toBeCloseTo(48000, 4);
+    expect(data(evaluation, 'RA', 'R')[0]).toBeCloseTo(600, 6);
+  });
+
+  it('keeps each load and support under its own name in a shaft view', () => {
+    const result = evaluation.outputs.find((entry) => entry.nodeId === 'view');
+    if (result?.kind !== 'shaftView') throw new Error('no shaft view');
+    expect(result.supports.map((entry) => entry.label)).toEqual(['A', 'B']);
+    expect(result.planes.y.forces.map((entry) => entry.label)).toEqual(['P']);
+  });
+
+  it('is refused when it holds anything but loads and supports', () => {
+    const mixed = documentOf([...nodes, input('n', list([1], 'mm'))], [
+      wire('P.load', 'bundle.in0'),
+      wire('n.value', 'bundle.in1'),
+      wire('bundle.bundle', 'M.acting'),
+      wire('S.shaft', 'M.shaft'),
+    ]);
+    expect(() => evaluateDocument(mixed, [CATALOGUE])).toThrow(/bundle/u);
+  });
 });

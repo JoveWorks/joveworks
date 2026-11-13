@@ -36,6 +36,7 @@ import { Equation } from '../Equation';
 import { Symbol } from '../Symbol';
 import { ParameterLabel, UnitInLabel } from '../ParameterLabel';
 import { axisLabel, reading, summarise } from '../model/values';
+import { display } from '../model/quantity';
 import { NodeShell, formulaHelp } from './NodeShell';
 import { Sparkline } from './Sparkline';
 import type { CanvasFlowNode } from './node-data';
@@ -43,6 +44,13 @@ import { slotHandleId } from './portSlots';
 import { TitleField, TitleText } from './TitleField';
 import { DisplayUnitPicker } from './DisplayUnitPicker';
 import { PORT_VALUE_HINT, PortValueField, UNCHOSEN } from './PortValueField';
+
+/** The stored plane values stay `x`, `y`, `resultant`; this is how the picker reads them. */
+const PLANE_CHOICES: Readonly<Record<string, string>> = {
+  y: 'y · vertical',
+  x: 'x · horizontal',
+  resultant: 'resultant √(x²+y²)',
+};
 
 export function FormulaNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>): ReactElement | null {
   const { document, analysis, catalogues, edit, expanded, toggleExpanded, hovered } = useGraph();
@@ -120,6 +128,14 @@ export function FormulaNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
   const edgesAt = (portName: string): number =>
     document.edges.filter((edge) => edge.to.node === id && edge.to.port === portName).length;
 
+  /** What the k-th wire into a port comes from, by name — a load or a support on a shaft diagram. */
+  const sourceLabel = (portName: string, k: number): string | undefined => {
+    const edge = document.edges.filter((entry) => entry.to.node === id && entry.to.port === portName)[k];
+    if (edge === undefined) return undefined;
+    const source = document.nodes.find((entry) => entry.id === edge.from.node);
+    return source?.label ?? edge.from.node;
+  };
+
   const portUnit = (port: Port): Unit | undefined => {
     if (port.kind === 'categorical' || port.kind === 'bundle') return undefined;
     // A catalogue formula never declares a bundle port (schema/src/port.ts) —
@@ -136,7 +152,32 @@ export function FormulaNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
    * no declared default. The same rule `analysis.tsx` decides `incomplete` by,
    * so the red handle and the node's own state always agree.
    */
+  /**
+   * A shaft diagram's unwired position, as the shaft it is drawn on gives it:
+   * the shaft's own z, read off the value arriving at the shaft port (a
+   * waypoint in between carries it unchanged).
+   */
+  const inferredPosition = (port: Port): ReactElement | undefined => {
+    const spec = analysis.formulas.get(id)?.shaft;
+    if (spec?.axis !== port.name || wired.has(port.name) || node.inputValues?.[port.name] !== undefined) return undefined;
+    const edge = document.edges.find((entry) => entry.to.node === id && entry.to.port === spec.shaft);
+    const shaft = edge === undefined ? undefined : analysis.evaluation?.values.get(`${edge.from.node}.${edge.from.port}`);
+    const unit = portUnit(port);
+    const end = (series: { readonly data: readonly number[] }): string => display(series.data[0] as number, unit as Unit, 4, format);
+    const text = shaft?.kind === 'shaft' && unit !== undefined ? `along the shaft (${end(shaft.from)}–${end(shaft.to)})` : 'along the shaft';
+    return (
+      <span className="port-unit port-arriving" title="Taken from the shaft — wire a position here to read the diagram at one place instead.">
+        {text}
+      </span>
+    );
+  };
+
+  /** A picker's option as shown: a shaft's plane says which way its forces point. */
+  const choiceLabel = (portName: string, choice: string): string =>
+    analysis.formulas.get(id)?.shaft?.plane === portName ? (PLANE_CHOICES[choice] ?? choice) : choice;
+
   const missing = (port: Port): boolean => {
+    if (analysis.formulas.get(id)?.shaft?.axis === port.name) return false;
     if (wired.has(port.name)) return false;
     if (node.inputValues?.[port.name] !== undefined) return false;
     if (port.kind === 'numeric') return port.default === undefined || isGenericPort(port);
@@ -287,13 +328,13 @@ export function FormulaNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
                   value={authored?.kind === 'categorical' ? authored.value : port.default ?? port.domain[0]}
                   onChange={(event) => setInputValue(port.name, { kind: 'categorical', value: event.target.value })}
                 >
-                  {port.domain.map((choice) => <option key={choice} value={choice}>{choice}</option>)}
+                  {port.domain.map((choice) => <option key={choice} value={choice}>{choiceLabel(port.name, choice)}</option>)}
                 </select>
               </li>
             );
           }
 
-          if (!(port.kind === 'numeric' && port.variadic === true)) {
+          if (!((port.kind === 'numeric' || port.kind === 'load') && port.variadic === true)) {
             return (
               <li
                 key={port.name}
@@ -340,11 +381,12 @@ export function FormulaNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
                           of its domain would otherwise read as a decision the
                           graph has not actually made. */}
                       {port.default === undefined ? <option value={UNCHOSEN}>—</option> : null}
-                      {port.domain.map((choice) => <option key={choice} value={choice}>{choice}</option>)}
+                      {port.domain.map((choice) => <option key={choice} value={choice}>{choiceLabel(port.name, choice)}</option>)}
                     </select>
                   )
                 ) : null}
-                {port.kind === 'numeric' ? (
+                {port.kind === 'numeric' && inferredPosition(port) !== undefined ? inferredPosition(port) : null}
+                {port.kind === 'numeric' && inferredPosition(port) === undefined ? (
                   <PortValueField
                     port={port}
                     authored={authored}
@@ -387,6 +429,9 @@ export function FormulaNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
               ) : (
                 <UnitInLabel unit={portUnit(port)} className="port-unit" />
               )}
+              {/* A load port's wires carry no number to show, so each slot
+                  says which load or support it is instead. */}
+              {port.kind === 'load' ? <span className="port-unit port-arriving">{sourceLabel(port.name, i) ?? ''}</span> : null}
             </li>
           ));
           return [
@@ -404,11 +449,11 @@ export function FormulaNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
                 id={slotHandleId(port.name, 'open')}
                 className={`${count === 0 ? 'missing' : ''}${highlightedPorts.has(port.name) ? ' port-highlighted' : ''}`}
               />
-              {count === 0 ? (
-                <span className="port-name">
-                  <Symbol name={port.name} />
-                </span>
-              ) : null}
+              {/* Labelled even once wires have joined, so the open slot still
+                  says what another wire here would add to. */}
+              <span className="port-name">
+                <Symbol name={port.name} />
+              </span>
             </li>,
           ];
         })}

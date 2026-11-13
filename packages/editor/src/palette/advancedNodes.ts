@@ -24,10 +24,9 @@
  * `stochasticActions`. */
 export const ADVANCED_ACTION_IDS: ReadonlySet<string> = new Set([
   // Built-in actions.
+  // Waypoint, pack and unpack stay visible: bundling a shaft's loads into
+  // one wire is everyday wiring, not an advanced technique.
   'builtin:input:file',
-  'builtin:general:pack',
-  'builtin:general:unpack',
-  'builtin:general:waypoint',
   // Analysis outputs. `feasibility` stays visible — it is the multi-check
   // counterpart of Check and is what "dimensioning" means in this class.
   'builtin:output:pareto',

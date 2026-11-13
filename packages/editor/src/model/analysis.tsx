@@ -55,6 +55,8 @@ import {
   lutRows,
   MONTE_CARLO_SAMPLE_PORT,
   START_PORT,
+  SHAFT_PORT,
+  ACTING_PORT,
   loadNodeFields,
   shaftNodeFields,
   STOP_PORT,
@@ -521,6 +523,20 @@ function readiness(
     const optionalThresholds = node.output.kind === 'plot'
       ? new Set(plotMeasures(node.output).map((measure) => plotThresholdPort(measure.id)))
       : new Set([THRESHOLD_PORT]);
+    if (node.output.kind === 'shaftView') {
+      // Only the shaft is needed; the loads and supports are drawn as wired.
+      if (!isWired(node.id, SHAFT_PORT)) {
+        states.set(node.id, 'incomplete');
+        problems.set(node.id, notConnected([SHAFT_PORT]));
+        continue;
+      }
+      if ([SHAFT_PORT, ACTING_PORT].some((port) => isWired(node.id, port) && !upstreamReady(node.id, port))) {
+        states.set(node.id, 'blocked');
+        continue;
+      }
+      ready.add(node.id);
+      continue;
+    }
     const names = outputPortNames(node).filter((name) => !optionalThresholds.has(name));
     if (node.output.kind === 'plot' && names.length === 0) {
       states.set(node.id, 'incomplete');
