@@ -33,6 +33,8 @@ const NODE_IDS: Readonly<Record<string, string>> = {
   shaftTorque: 'mechanics.shaft.torque', shaftShear: 'mechanics.shaft.shear', shaftMoment: 'mechanics.shaft.moment',
   shaftDeflectionTerm: 'mechanics.shaft.deflection-term', shaftDeflection: 'mechanics.shaft.deflection',
   shaftDistributedShear: 'mechanics.shaft.distributed-shear', shaftDistributedMoment: 'mechanics.shaft.distributed-moment',
+  sectionModulus: 'mechanics.shaft.section-modulus', equivalentMoment: 'mechanics.shaft.equivalent-moment',
+  requiredDiameter: 'mechanics.shaft.required-diameter', equivalentStress: 'mechanics.shaft.equivalent-stress',
   add: 'base.math.add', subtract: 'base.math.subtract', negate: 'base.math.negate', multiply: 'base.math.multiply', divide: 'base.math.divide',
   sum: 'base.array.sum',
 };
@@ -395,5 +397,97 @@ describe('the mechanics node library through the kernel', () => {
     const evaluation = evaluateDocument(graph(nodes, edges), withBaseNodes);
 
     expect(numeric(valueAt(evaluation, 'y', 'y')).data).toEqual([0, -153.6, 0]);
+  });
+});
+
+describe('static shaft sizing formulas', () => {
+  const scalar = (value: number, unit: string): JsonObject => ({ kind: 'scalar', value, unit });
+  const first = (evaluation: ReturnType<typeof evaluateDocument>, nodeId: string, port: string): number => {
+    const value = numeric(valueAt(evaluation, nodeId, port)).data[0];
+    if (value === undefined) throw new Error(`no value at ${nodeId}.${port}`);
+    return value;
+  };
+
+  it('gives the section moduli of a solid and a hollow shaft, with W_p = 2·W_b', () => {
+    const evaluation = evaluateDocument(
+      graph(
+        [
+          node('solid', 'sectionModulus', catalogues, { inputValues: { d: scalar(40, 'mm') } }),
+          node('hollow', 'sectionModulus', catalogues, { inputValues: { d: scalar(40, 'mm'), d_i: scalar(20, 'mm') } }),
+        ],
+        [],
+      ),
+      catalogues,
+    );
+    const solid = (Math.PI * 40 ** 4) / (32 * 40);
+    const hollow = (Math.PI * (40 ** 4 - 20 ** 4)) / (32 * 40);
+    expect(first(evaluation, 'solid', 'W_b')).toBeCloseTo(solid, 6);
+    expect(first(evaluation, 'solid', 'W_p')).toBeCloseTo(2 * solid, 6);
+    expect(first(evaluation, 'hollow', 'W_b')).toBeCloseTo(hollow, 6);
+    expect(first(evaluation, 'hollow', 'W_p')).toBeCloseTo(2 * hollow, 6);
+  });
+
+  it('combines a moment with and without torque into an equivalent moment', () => {
+    const evaluation = evaluateDocument(
+      graph(
+        [
+          node('bendingOnly', 'equivalentMoment', catalogues, { inputValues: { M: scalar(3000, 'Nmm') } }),
+          node('combined', 'equivalentMoment', catalogues, {
+            inputValues: { M: scalar(3000, 'Nmm'), T: scalar(4000, 'Nmm') },
+          }),
+        ],
+        [],
+      ),
+      catalogues,
+    );
+    expect(first(evaluation, 'bendingOnly', 'M_v')).toBeCloseTo(3000, 9);
+    expect(first(evaluation, 'combined', 'M_v')).toBeCloseTo(Math.sqrt(3000 ** 2 + 0.75 * 4000 ** 2), 9);
+  });
+
+  it("returns the allowable stress when the required diameter's section carries the moment", () => {
+    const evaluation = evaluateDocument(
+      graph(
+        [
+          input('M_v', scalar(250_000, 'Nmm')),
+          input('sigma', scalar(70, 'N/mm²')),
+          node('d', 'requiredDiameter'),
+          node('W', 'sectionModulus'),
+          node('stress', 'divide', withBaseNodes),
+        ],
+        [
+          wire('M_v.value', 'd.M_v'), wire('sigma.value', 'd.sigma_allow'),
+          wire('d.d', 'W.d'),
+          wire('M_v.value', 'stress.a'), wire('W.W_b', 'stress.b'),
+        ],
+      ),
+      withBaseNodes,
+    );
+    expect(first(evaluation, 'stress', 'quotient')).toBeCloseTo(70, 9);
+  });
+
+  it('agrees with the equivalent moment over W_b when τ_t = T / W_p', () => {
+    const evaluation = evaluateDocument(
+      graph(
+        [
+          input('M', scalar(120_000, 'Nmm')),
+          input('T', scalar(90_000, 'Nmm')),
+          node('W', 'sectionModulus', catalogues, { inputValues: { d: scalar(25, 'mm') } }),
+          node('Mv', 'equivalentMoment'),
+          node('viaMoment', 'divide', withBaseNodes),
+          node('sigmaB', 'divide', withBaseNodes),
+          node('tauT', 'divide', withBaseNodes),
+          node('sv', 'equivalentStress'),
+        ],
+        [
+          wire('M.value', 'Mv.M'), wire('T.value', 'Mv.T'),
+          wire('Mv.M_v', 'viaMoment.a'), wire('W.W_b', 'viaMoment.b'),
+          wire('M.value', 'sigmaB.a'), wire('W.W_b', 'sigmaB.b'),
+          wire('T.value', 'tauT.a'), wire('W.W_p', 'tauT.b'),
+          wire('sigmaB.quotient', 'sv.sigma_b'), wire('tauT.quotient', 'sv.tau_t'),
+        ],
+      ),
+      withBaseNodes,
+    );
+    expect(first(evaluation, 'sv', 'sigma_v')).toBeCloseTo(first(evaluation, 'viaMoment', 'quotient'), 9);
   });
 });
