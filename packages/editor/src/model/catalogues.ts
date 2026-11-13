@@ -163,7 +163,7 @@ export function withCatalogue(
   return replaced.some((existing) => existing.id === loaded.id) ? replaced : [...replaced, loaded];
 }
 
-/** Base, Array and Mechanics nodes (and the earlier Mechanics records) are always present — none can be removed. */
+/** Base, Array and Shafts (and the earlier shaft records) are always present — none can be removed. */
 const PERMANENT_CATALOGUE_IDS = new Set([
   BASE_CATALOGUE_ID,
   ARRAY_CATALOGUE_ID,

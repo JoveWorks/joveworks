@@ -54,7 +54,7 @@ export const ARRAY_CATALOGUE: Catalogue = {
 export const MECHANICS_CATALOGUE: Catalogue = {
   schemaVersion: CATALOGUE_SCHEMA_VERSION,
   id: MECHANICS_CATALOGUE_ID,
-  name: { en: 'Mechanics nodes', nl: 'Mechanicaknooppunten' },
+  name: { en: 'Shafts', nl: 'Assen' },
   restricted: false,
   formulas: MECHANICS_OPERATIONS,
 };
@@ -67,7 +67,7 @@ export const MECHANICS_CATALOGUE: Catalogue = {
 export const MECHANICS_LEGACY_CATALOGUE: Catalogue = {
   schemaVersion: CATALOGUE_SCHEMA_VERSION,
   id: MECHANICS_LEGACY_CATALOGUE_ID,
-  name: { en: 'Mechanics nodes (earlier version)', nl: 'Mechanicaknooppunten (eerdere versie)' },
+  name: { en: 'Shafts (earlier version)', nl: 'Assen (eerdere versie)' },
   restricted: false,
   formulas: MECHANICS_LEGACY_OPERATIONS,
 };

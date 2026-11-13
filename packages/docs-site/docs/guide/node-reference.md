@@ -3,8 +3,8 @@
 Every node on the canvas is one of several kinds. This page is what the "?"
 button on a node's header links to, and it's organized the same way the
 palette on the left of the editor is: **Input**, **Output**, **General**,
-the formula catalogues (**Base nodes**, **Array nodes**, **Mechanics
-nodes**, and whatever restricted course catalogue you've loaded), and
+the formula catalogues (**Base nodes**, **Array nodes**, **Shafts**, and
+whatever restricted course catalogue you've loaded), and
 **Analysis**.
 
 ## Input
@@ -84,7 +84,7 @@ Concretely:
   is read as one whole series and reduced to one number — it does **not**
   turn the rest of the graph into a ten-point study the way a list of ten
   values would. The point loads and their positions on a
-  [shaft shear/moment diagram](#mechanics-nodes) are the same shape: the
+  [shaft shear/moment diagram](#shafts) are the same shape: the
   diagram node consumes the whole spectrum at once to build V(z) or M(z)
   as a function of position, not once per load.
 
@@ -506,7 +506,7 @@ can keep the other axes in the result.
 (comparing an open set of same-dimension values) rather than as a
 property of the series itself.
 
-### Mechanics nodes
+### Shafts
 
 Generic shaft diagrams — not tied to any particular textbook, so they ship
 publicly like Base and Array nodes, but marked `unverified` throughout.
@@ -579,7 +579,7 @@ force computed from a torque goes straight into `Fy`. A field left empty is
 zero. Wire a range into `at` and the load moves along the shaft, one load
 per point of the sweep.
 
-The `load` output goes into a [shaft diagram](#mechanics-nodes)'s `acting` port and nowhere else
+The `load` output goes into a [shaft diagram](#shafts)'s `acting` port and nowhere else
 — not into a formula's number port, an output or a compare. A
 [waypoint](#waypoint) can route it.
 
