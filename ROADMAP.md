@@ -176,3 +176,17 @@ inside. A `peek` would show the group's contents temporarily (an overlay or
 popover, dismissed on leave or Escape) without expanding it and without
 touching the document. Decide whether a peek is read-only or allows editing a
 value in place.
+
+**19. Domain node kinds as extensions, not core** — Shaft, Support, Load,
+Distributed load and Shaft view are built into the document schema and the
+kernel (`ShaftNode` and friends in `schema/src/document.ts`, the shaft
+branches of `kernel/src/graph.ts` and `evaluate.ts`), because each carries a
+value kind the kernel must reason about: a load or shaft wire, an axis, a solve
+per grid cell. A catalogue can only declare formulas, so they could not live in
+one. The formulas themselves are already in the separate Mechanics catalogue,
+and the solver is self-contained in `kernel/src/shaft.ts`. A proper split needs
+an extension interface: a domain package that registers its node kinds, value
+kinds, port typing, evaluation, editor views and palette entries, so the core
+stays domain-free. Resolution and evaluation are a switch over node kinds
+today, so this is a real refactor. Saved documents must keep opening unchanged
+(the node kinds stay in the document format whatever package owns them).
