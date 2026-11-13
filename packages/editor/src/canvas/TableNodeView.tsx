@@ -57,7 +57,7 @@ import { Sparkline } from './Sparkline';
 import type { CanvasFlowNode } from './node-data';
 import { TitleField, TitleText } from './TitleField';
 import { DisplayUnitPicker } from './DisplayUnitPicker';
-import { browsable } from '../model/catalogues';
+import { browsable } from '../model/browsable';
 
 /**
  * Every table a node like this can be bound to: a lookup over exactly one

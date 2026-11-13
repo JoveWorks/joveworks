@@ -2,10 +2,11 @@ import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 import { formulaRef, sourceHref } from '@joveworks/schema';
-import { MECHANICS_LEGACY_OPERATIONS } from '@joveworks/nodes';
+import { MECHANICS_LEGACY_CATALOGUE_ID, MECHANICS_LEGACY_OPERATIONS } from '@joveworks/nodes';
 
 import { baseCatalogue, builtInCatalogues, bundledCatalogues, entries, removeCatalogue, search } from './catalogues';
 import { lookupRef } from './analysis';
+import { browsable } from './browsable';
 
 describe('bundled public catalogues', () => {
   it('ships the mechanics, machining, photography, and running sets', () => {
@@ -60,6 +61,11 @@ describe('the legacy mechanics catalogue', () => {
   it('loads after the current mechanics catalogue, and cannot be removed', () => {
     expect(ids.indexOf('mechanics-legacy')).toBe(ids.indexOf('mechanics') + 1);
     expect(removeCatalogue(catalogues, 'mechanics-legacy')).toHaveLength(catalogues.length);
+  });
+
+  it('is the catalogue browsable() hides, by its real id', () => {
+    expect(browsable(catalogues).map((catalogue) => catalogue.id)).toEqual(ids.filter((id) => id !== MECHANICS_LEGACY_CATALOGUE_ID));
+    expect(ids).toContain(MECHANICS_LEGACY_CATALOGUE_ID);
   });
 
   it('is never offered in the palette — the Shaft calculation replaces its diagrams', () => {

@@ -27,7 +27,7 @@ import { useGraph } from '../graph-context';
 import { ui } from '../i18n';
 import { toUnitsFormat } from '../model/numberFormat';
 import { NumberField, TextField } from './fields';
-import { browsable } from '../model/catalogues';
+import { browsable } from '../model/browsable';
 
 type Kind = 'scalar' | 'slider' | 'linear' | 'logarithmic' | 'list' | 'renard' | 'categorical' | 'categoricalList' | 'tableColumn';
 

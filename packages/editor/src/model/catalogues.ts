@@ -60,18 +60,9 @@ export function mechanicsLegacyCatalogue(): Catalogue {
   return loadCatalogue(mechanicsLegacyCatalogueJson());
 }
 
-/**
- * Catalogues that resolve old documents but are never offered: their records
- * have successors under the same ids, so a student browsing them would only
- * meet each formula twice. A hidden catalogue still resolves every reference
- * to it, exactly as before.
- */
-const HIDDEN_CATALOGUE_IDS: ReadonlySet<string> = new Set([MECHANICS_LEGACY_CATALOGUE_ID]);
+import { browsable } from './browsable';
 
-/** The catalogues a student browses — the palette, its search, the table pickers. */
-export function browsable(catalogues: readonly Catalogue[]): readonly Catalogue[] {
-  return catalogues.filter((catalogue) => !HIDDEN_CATALOGUE_IDS.has(catalogue.id));
-}
+export { browsable };
 
 const bundledCatalogueModules = import.meta.glob<JsonValue>('../catalogues/*.json', {
   eager: true,
