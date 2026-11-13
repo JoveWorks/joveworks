@@ -26,6 +26,10 @@ Where the implementation differs from the text below:
   (`mechanics.shaft.calculation`: V, M, y, θ, T from one solve), and a
   Shaft view output kind draws the shaft, its supports and loads per plane.
   Diagrams stay in Plot nodes; the view does not draw them.
+- The four sizing formulas (section moduli, equivalent moment, required
+  diameter, equivalent stress) moved to the public Mechanics catalogue
+  (`basic-mechanics.json`), with Dutch text; the built-in Mechanics nodes
+  catalogue keeps only what needs the shaft solve.
 - The `plane` picker defaults to `y`. The editor now resolves a node's
   formula by its full reference, as the kernel does, so a v1 node shows v1
   ports.

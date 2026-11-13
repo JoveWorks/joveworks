@@ -552,7 +552,8 @@ wired into separate stacks, keeps opening and evaluating as it was saved;
 those earlier diagrams are no longer offered in the palette.
 
 Four more take a shaft from its moments to a size, statically (no fatigue
-factors):
+factors). They are ordinary formulas, so they live in the public
+**Mechanics** catalogue rather than here:
 
 - **Section moduli of a round shaft** — `W_b` for bending and `W_p = 2·W_b`
   for torsion, from the outer diameter `d` and an optional bore `d_i`.

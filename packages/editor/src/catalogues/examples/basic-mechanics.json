@@ -710,6 +710,195 @@
       "status": "unverified"
     },
     {
+      "id": "mechanics.shaft.section-modulus",
+      "version": 1,
+      "output": [
+        {
+          "kind": "numeric",
+          "name": "W_b",
+          "description": {
+            "en": "Axial section modulus, for bending",
+            "nl": "Axiaal weerstandsmoment, voor buiging"
+          },
+          "unit": "mm³"
+        },
+        {
+          "kind": "numeric",
+          "name": "W_p",
+          "description": {
+            "en": "Polar section modulus, for torsion",
+            "nl": "Polair weerstandsmoment, voor torsie"
+          },
+          "unit": "mm³"
+        }
+      ],
+      "inputs": [
+        {
+          "kind": "numeric",
+          "name": "d",
+          "description": {
+            "en": "Outer diameter",
+            "nl": "Buitendiameter"
+          },
+          "unit": "mm"
+        },
+        {
+          "kind": "numeric",
+          "name": "d_i",
+          "description": {
+            "en": "Bore diameter — 0 for a solid shaft, otherwise less than d",
+            "nl": "Boringdiameter — 0 voor een massieve as, anders kleiner dan d"
+          },
+          "unit": "mm",
+          "default": 0
+        }
+      ],
+      "expression": {
+        "W_b": "pi * (d**4 - d_i**4) / (32 * d)",
+        "W_p": "2 * W_b"
+      },
+      "label": {
+        "en": "Section moduli of a round shaft",
+        "nl": "Weerstandsmomenten van een ronde as"
+      },
+      "description": {
+        "en": "Bending and torsion moduli",
+        "nl": "Buig- en torsieweerstandsmoment"
+      },
+      "status": "unverified"
+    },
+    {
+      "id": "mechanics.shaft.equivalent-moment",
+      "version": 1,
+      "output": {
+        "kind": "numeric",
+        "name": "M_v",
+        "description": {
+          "en": "Equivalent bending moment",
+          "nl": "Vergelijkend buigmoment"
+        },
+        "unit": "Nmm"
+      },
+      "inputs": [
+        {
+          "kind": "numeric",
+          "name": "M",
+          "description": {
+            "en": "Bending moment",
+            "nl": "Buigmoment"
+          },
+          "unit": "Nmm"
+        },
+        {
+          "kind": "numeric",
+          "name": "T",
+          "description": {
+            "en": "Torque",
+            "nl": "Torsiemoment"
+          },
+          "unit": "Nmm",
+          "default": 0
+        }
+      ],
+      "expression": "sqrt(M**2 + 0.75 * T**2)",
+      "label": {
+        "en": "Equivalent moment (von Mises)",
+        "nl": "Vergelijkingsmoment (von Mises)"
+      },
+      "description": {
+        "en": "M_v = √(M² + 0.75·T²)",
+        "nl": "M_v = √(M² + 0.75·T²)"
+      },
+      "status": "unverified"
+    },
+    {
+      "id": "mechanics.shaft.required-diameter",
+      "version": 1,
+      "output": {
+        "kind": "numeric",
+        "name": "d",
+        "description": {
+          "en": "Required diameter",
+          "nl": "Benodigde diameter"
+        },
+        "unit": "mm"
+      },
+      "inputs": [
+        {
+          "kind": "numeric",
+          "name": "M_v",
+          "description": {
+            "en": "Equivalent (or resultant) bending moment, a magnitude",
+            "nl": "Vergelijkend (of resulterend) buigmoment, een grootte"
+          },
+          "unit": "Nmm"
+        },
+        {
+          "kind": "numeric",
+          "name": "sigma_allow",
+          "description": {
+            "en": "Allowable bending stress",
+            "nl": "Toelaatbare buigspanning"
+          },
+          "unit": "N/mm²"
+        }
+      ],
+      "expression": "cbrt(32 * M_v / (pi * sigma_allow))",
+      "label": {
+        "en": "Required diameter of a solid shaft",
+        "nl": "Benodigde diameter van een massieve as"
+      },
+      "description": {
+        "en": "Smallest solid diameter",
+        "nl": "Kleinste massieve diameter"
+      },
+      "status": "unverified"
+    },
+    {
+      "id": "mechanics.shaft.equivalent-stress",
+      "version": 1,
+      "output": {
+        "kind": "numeric",
+        "name": "sigma_v",
+        "description": {
+          "en": "Equivalent stress",
+          "nl": "Vergelijkspanning"
+        },
+        "unit": "N/mm²"
+      },
+      "inputs": [
+        {
+          "kind": "numeric",
+          "name": "sigma_b",
+          "description": {
+            "en": "Bending stress",
+            "nl": "Buigspanning"
+          },
+          "unit": "N/mm²"
+        },
+        {
+          "kind": "numeric",
+          "name": "tau_t",
+          "description": {
+            "en": "Torsional shear stress",
+            "nl": "Torsieschuifspanning"
+          },
+          "unit": "N/mm²",
+          "default": 0
+        }
+      ],
+      "expression": "sqrt(sigma_b**2 + 3 * tau_t**2)",
+      "label": {
+        "en": "Equivalent stress (von Mises)",
+        "nl": "Vergelijkspanning (von Mises)"
+      },
+      "description": {
+        "en": "σ_v = √(σ_b² + 3·τ_t²)",
+        "nl": "σ_v = √(σ_b² + 3·τ_t²)"
+      },
+      "status": "unverified"
+    },
+    {
       "id": "mechanics.rotation.power-from-torque",
       "version": 1,
       "output": {

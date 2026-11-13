@@ -9,6 +9,8 @@
  * neighbours.
  */
 
+import { readFileSync } from 'node:fs';
+
 import { describe, expect, it } from 'vitest';
 import {
   DOCUMENT_SCHEMA_VERSION,
@@ -29,8 +31,12 @@ const BASE: Catalogue = loadCatalogue(baseCatalogueJson());
 const ARRAY: Catalogue = loadCatalogue(arrayCatalogueJson());
 // The order the app loads them in (`builtInCatalogues`): current first, the
 // shipped v1 records after, so a v1 reference still resolves exactly.
-const catalogues = [MECHANICS, LEGACY];
-const withBaseNodes = [MECHANICS, LEGACY, BASE, ARRAY];
+// The sizing formulas live in the public Mechanics example catalogue.
+const PUBLIC_MECHANICS: Catalogue = loadCatalogue(
+  readFileSync(new URL('../packages/editor/src/catalogues/examples/basic-mechanics.json', import.meta.url), 'utf8'),
+);
+const catalogues = [MECHANICS, LEGACY, PUBLIC_MECHANICS];
+const withBaseNodes = [MECHANICS, LEGACY, PUBLIC_MECHANICS, BASE, ARRAY];
 
 const NODE_IDS: Readonly<Record<string, string>> = {
   shaftTorque: 'mechanics.shaft.torque', shaftShear: 'mechanics.shaft.shear', shaftMoment: 'mechanics.shaft.moment',
