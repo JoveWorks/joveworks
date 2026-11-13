@@ -2,6 +2,35 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.34.0](https://github.com/JoveWorks/joveworks/compare/v0.33.0...v0.34.0) (2026-11-13)
+
+### Features
+
+* **editor:** add a shaft sizing example ([f8c4684](https://github.com/JoveWorks/joveworks/commit/f8c46843e90789f3f8f44afc9eef00a5135f00fc))
+* **editor:** add a simple stepped-shaft stress example ([d061d0b](https://github.com/JoveWorks/joveworks/commit/d061d0b7cf319d3c0155d28abc9b0f34135bb864))
+* **editor:** infer plot settings when a plot is wired ([369c132](https://github.com/JoveWorks/joveworks/commit/369c1327cfaa0b87cbfe22fdbcf20036b6fac975))
+* **editor:** show load nodes on the canvas and offer them in the palette ([1bc6d86](https://github.com/JoveWorks/joveworks/commit/1bc6d86651400e694245ddf8da471c1b79bee994))
+* **kernel:** add load and distributed-load nodes ([dd931d9](https://github.com/JoveWorks/joveworks/commit/dd931d923bcd6eb415d8a14eacee7328450f132b))
+* **kernel:** draw plot measures from their effective view ([90f3637](https://github.com/JoveWorks/joveworks/commit/90f3637d331299dab020c5153b245c7a7cdc1fb0))
+* **kernel:** evaluate shaft diagrams from load values ([fccfb65](https://github.com/JoveWorks/joveworks/commit/fccfb65148ba1741995e49033cc2680a9e8e7465))
+* **kernel:** solve shafts on any supports, with their real stiffness ([5b6b1a6](https://github.com/JoveWorks/joveworks/commit/5b6b1a613ca5fcca58f1b56d61fa51206e257099))
+* **nodes:** add shaft diagrams and reactions on loads ([85d0be7](https://github.com/JoveWorks/joveworks/commit/85d0be7960145367541969ed7d05674a54dc5c8d))
+* **nodes:** add static shaft sizing formulas ([30e21f6](https://github.com/JoveWorks/joveworks/commit/30e21f6c5cab9a81e380b40b15119a64ae505785))
+* one Shaft calculation, Shaft and Support nodes, and a shaft view ([7aba8af](https://github.com/JoveWorks/joveworks/commit/7aba8af1e509f91e67b408243aae96fa2f11857c))
+* **schema:** store an inferred view on plot measures ([84d7c27](https://github.com/JoveWorks/joveworks/commit/84d7c27dc3d5468df11caa7f4b92532ad1ab21c8))
+
+### Fixes
+
+* **kernel:** join wires into a shaft diagram's acting port ([72c3971](https://github.com/JoveWorks/joveworks/commit/72c3971bffffba6fcb96f52959b5a64b6bfb25c3))
+
+### Documentation
+
+* backlog full affected-node highlighting and group peek ([c2b092e](https://github.com/JoveWorks/joveworks/commit/c2b092efc7c98e2542a2b5ef71770423bf828128))
+* describe the shaft calculation, shaft view, supports and load packs ([92bbf81](https://github.com/JoveWorks/joveworks/commit/92bbf81650ef6a682c8b7e1f875db812d162a9ef))
+* fold review corrections into the plot inference plan ([91116a0](https://github.com/JoveWorks/joveworks/commit/91116a0211c5e5ef5f86f54487cd49300823250e))
+* record what the shaft plan became ([99daf70](https://github.com/JoveWorks/joveworks/commit/99daf70127fdfb321afb6d826d945ad2e60cf2b2))
+* replan shaft sizing around load nodes ([54c66ff](https://github.com/JoveWorks/joveworks/commit/54c66ff0ec24217566fcf80bafe4551e71185857))
+* settle shaft plane names on z, Fx and Fy ([55d9b86](https://github.com/JoveWorks/joveworks/commit/55d9b86b22cff5fa3a16f2e7510129efdc86f4bd))
 ## [0.33.0](https://github.com/JoveWorks/joveworks/compare/v0.32.0...v0.33.0) (2026-11-07)
 
 ### Features
