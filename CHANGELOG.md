@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.34.1](https://github.com/JoveWorks/joveworks/compare/v0.34.0...v0.34.1) (2026-11-13)
+
+### Fixes
+
+* **editor:** keep catalogues out of the published-NodeBook viewer ([8cfd081](https://github.com/JoveWorks/joveworks/commit/8cfd081d4bcd0777fb93a3300e0b7e84b2f5d96f))
+
+### Documentation
+
+* backlog domain node kinds as kernel extensions ([6c03794](https://github.com/JoveWorks/joveworks/commit/6c037946bff8ee4f3cc021169737d0fffd195b1a))
 ## [0.34.0](https://github.com/JoveWorks/joveworks/compare/v0.33.0...v0.34.0) (2026-11-13)
 
 ### Features
