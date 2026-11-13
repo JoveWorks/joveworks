@@ -18,7 +18,7 @@ import { useMemo, useState, type ReactElement } from 'react';
 import { useReactFlow } from '@xyflow/react';
 
 import { parseUnit, type Unit } from '@joveworks/units';
-import { ARRAY_CATALOGUE_ID, BASE_CATALOGUE_ID } from '@joveworks/nodes';
+import { ARRAY_CATALOGUE_ID, BASE_CATALOGUE_ID, MECHANICS_CATALOGUE_ID } from '@joveworks/nodes';
 import {
   localize,
   axes as documentAxes,
@@ -45,6 +45,7 @@ import { converted } from '../canvas/ValueEditor';
 import { selectableTables } from '../canvas/TableNodeView';
 import { starterColumns } from '../model/lut';
 import { ContextMenu } from '../canvas/ContextMenu';
+import { newDistributedLoadNode, newLoadNode } from '../canvas/quickAdd';
 import { DOCS_BASE_URL } from '../help-links';
 import { Symbol } from '../Symbol';
 
@@ -315,6 +316,18 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
       return addNode(current, { kind: 'zip', id, label: id, position: position() });
     });
 
+  const addLoad = (): void =>
+    edit((current) => {
+      const id = uniqueId(current, 'load');
+      return addNode(current, newLoadNode(id, position(), id));
+    });
+
+  const addDistributedLoad = (): void =>
+    edit((current) => {
+      const id = uniqueId(current, 'span');
+      return addNode(current, newDistributedLoadNode(id, position(), id));
+    });
+
   const addUnpack = (): void =>
     edit((current) => {
       const id = uniqueId(current, 'unpack');
@@ -578,7 +591,26 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
   // Built from the already-gated lists: a favourited-but-now-hidden node
   // drops out of Favourites too, without touching the stored favourite (it
   // reappears here the moment the setting is switched back on).
-  const favouriteActions = [...visibleActions, ...stochasticActions, ...visibleAnalysisActions].filter((action) =>
+  // Node kinds rather than formulas, shown at the head of the mechanics
+  // catalogue's own section: a load is what its diagrams are wired from.
+  const mechanicsActions: readonly PaletteAction[] = [
+    { id: 'builtin:mechanics:load', label: copy.load, summary: copy.loadSummary, insert: addLoad },
+    {
+      id: 'builtin:mechanics:distributedLoad',
+      label: copy.distributedLoad,
+      summary: copy.distributedLoadSummary,
+      insert: addDistributedLoad,
+    },
+  ];
+  const needle = query.trim().toLowerCase();
+  const visibleMechanicsActions = mechanicsActions.filter(
+    (action) =>
+      needle.length === 0 ||
+      action.label.toLowerCase().includes(needle) ||
+      action.summary.toLowerCase().includes(needle),
+  );
+
+  const favouriteActions = [...visibleActions, ...stochasticActions, ...visibleAnalysisActions, ...mechanicsActions].filter((action) =>
     favourites.has(action.id),
   );
 
@@ -596,7 +628,8 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
 
   const catalogueSection = ([catalogueId, list]: (typeof grouped)[number]): ReactElement => {
     const isCollapsed = query.trim().length === 0 && collapsed.has(catalogueId);
-    const count = list.length;
+    const leading = catalogueId === MECHANICS_CATALOGUE_ID ? visibleMechanicsActions : [];
+    const count = list.length + leading.length;
     return (
       <section key={catalogueId}>
         <h3>
@@ -621,6 +654,7 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
         </h3>
         {isCollapsed ? null : (
           <ul>
+            {leading.map((action) => actionEntry(action))}
             {list.map((entry) => formulaEntry(entry))}
           </ul>
         )}

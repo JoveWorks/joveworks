@@ -127,6 +127,7 @@ import {
 } from './quickAdd';
 import { UnpackNodeView } from './UnpackNodeView';
 import { ZipNodeView } from './ZipNodeView';
+import { DistributedLoadNodeView, LoadNodeView } from './LoadNodeView';
 import { WaypointNodeView } from './WaypointNodeView';
 import { basePortName, slotHandleId } from './portSlots';
 
@@ -657,6 +658,8 @@ const NODE_TYPES = {
   pack: PackNodeView,
   unpack: UnpackNodeView,
   zip: ZipNodeView,
+  load: LoadNodeView,
+  distributedLoad: DistributedLoadNodeView,
   monteCarloGenerator: MonteCarloGeneratorNodeView,
   monteCarloReceiver: MonteCarloReceiverNodeView,
   frame: FrameView,

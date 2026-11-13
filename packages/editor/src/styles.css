@@ -2238,6 +2238,20 @@ aside.bottom .palette-list section {
   padding-right: 14px;
 }
 
+/* A load field's sign convention: ↑ a positive force, ↻ a positive couple. */
+.node .load-sign {
+  color: var(--muted);
+  font-size: 11px;
+  margin-left: 2px;
+}
+
+.node .load-convention {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
 /*
  * A variadic port's trailing open slot — an invitation to wire another
  * value, not a state. Dashed and faint rather than the amber "missing"

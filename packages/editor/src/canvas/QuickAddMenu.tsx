@@ -180,6 +180,8 @@ export function QuickAddMenu({
       { label: t('pack'), choice: { kind: 'pack' } },
       { label: t('unpack'), choice: { kind: 'unpack' } },
       { label: t('zip'), choice: { kind: 'zip' } },
+      { label: t('load'), choice: { kind: 'load' } },
+      { label: t('distributed load'), choice: { kind: 'distributedLoad' } },
       { label: t('compare'), choice: { kind: 'compare' } },
       // Four entries, one node kind — the same one-node-several-entries
       // shape `input` uses for scalar/range/list. Mode is switchable on the
