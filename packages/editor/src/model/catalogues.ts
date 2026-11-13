@@ -26,9 +26,11 @@ import {
   ARRAY_CATALOGUE_ID,
   BASE_CATALOGUE_ID,
   MECHANICS_CATALOGUE_ID,
+  MECHANICS_LEGACY_CATALOGUE_ID,
   arrayCatalogueJson,
   baseCatalogueJson,
   mechanicsCatalogueJson,
+  mechanicsLegacyCatalogueJson,
 } from '@joveworks/nodes';
 import { DOCS_BASE_URL } from '../help-links';
 import { fuzzySearch } from './fuzzy';
@@ -51,6 +53,24 @@ export function arrayCatalogue(): Catalogue {
 /** The mechanics-node library (beam/shaft diagrams, ROADMAP item 8), parsed the same way a loaded file is. */
 export function mechanicsCatalogue(): Catalogue {
   return loadCatalogue(mechanicsCatalogueJson());
+}
+
+/** The mechanics records an earlier release shipped, kept for the NodeBooks saved against them. */
+export function mechanicsLegacyCatalogue(): Catalogue {
+  return loadCatalogue(mechanicsLegacyCatalogueJson());
+}
+
+/**
+ * Catalogues that resolve old documents but are never offered: their records
+ * have successors under the same ids, so a student browsing them would only
+ * meet each formula twice. A hidden catalogue still resolves every reference
+ * to it, exactly as before.
+ */
+const HIDDEN_CATALOGUE_IDS: ReadonlySet<string> = new Set([MECHANICS_LEGACY_CATALOGUE_ID]);
+
+/** The catalogues a student browses — the palette, its search, the table pickers. */
+export function browsable(catalogues: readonly Catalogue[]): readonly Catalogue[] {
+  return catalogues.filter((catalogue) => !HIDDEN_CATALOGUE_IDS.has(catalogue.id));
 }
 
 const bundledCatalogueModules = import.meta.glob<JsonValue>('../catalogues/*.json', {
@@ -133,7 +153,10 @@ export function bundledCatalogues(): readonly Catalogue[] {
  * of one.
  */
 export function builtInCatalogues(): readonly Catalogue[] {
-  return [baseCatalogue(), arrayCatalogue(), mechanicsCatalogue(), ...bundledCatalogues()];
+  // The legacy catalogue comes after the current one: a reference matching
+  // neither version exactly falls back to the first candidate the kernel
+  // finds (`lookupFormula` in graph.ts), which should be the current record.
+  return [baseCatalogue(), arrayCatalogue(), mechanicsCatalogue(), mechanicsLegacyCatalogue(), ...bundledCatalogues()];
 }
 
 /**
@@ -149,8 +172,13 @@ export function withCatalogue(
   return replaced.some((existing) => existing.id === loaded.id) ? replaced : [...replaced, loaded];
 }
 
-/** Base, Array and Mechanics nodes are all always present — none can be removed. */
-const PERMANENT_CATALOGUE_IDS = new Set([BASE_CATALOGUE_ID, ARRAY_CATALOGUE_ID, MECHANICS_CATALOGUE_ID]);
+/** Base, Array and Mechanics nodes (and the earlier Mechanics records) are always present — none can be removed. */
+const PERMANENT_CATALOGUE_IDS = new Set([
+  BASE_CATALOGUE_ID,
+  ARRAY_CATALOGUE_ID,
+  MECHANICS_CATALOGUE_ID,
+  MECHANICS_LEGACY_CATALOGUE_ID,
+]);
 
 export function removeCatalogue(
   catalogues: readonly Catalogue[],
@@ -180,7 +208,7 @@ export function formulaSource(
 }
 
 export function entries(catalogues: readonly Catalogue[]): readonly PaletteEntry[] {
-  return catalogues.flatMap((catalogue) =>
+  return browsable(catalogues).flatMap((catalogue) =>
     catalogue.formulas.map((formula) => ({ formula, catalogue })),
   );
 }

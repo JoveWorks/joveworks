@@ -57,6 +57,7 @@ import { Sparkline } from './Sparkline';
 import type { CanvasFlowNode } from './node-data';
 import { TitleField, TitleText } from './TitleField';
 import { DisplayUnitPicker } from './DisplayUnitPicker';
+import { browsable } from '../model/catalogues';
 
 /**
  * Every table a node like this can be bound to: a lookup over exactly one
@@ -65,7 +66,7 @@ import { DisplayUnitPicker } from './DisplayUnitPicker';
  * nothing to answer a second axis with, so those stay ordinary formula nodes.
  */
 export function selectableTables(catalogues: readonly Catalogue[]): readonly Formula[] {
-  return catalogues.flatMap((catalogue) =>
+  return browsable(catalogues).flatMap((catalogue) =>
     catalogue.formulas.filter((formula) => formula.lookup?.axes.length === 1),
   );
 }

@@ -32,6 +32,7 @@
 export { OPERATIONS } from './operations.js';
 export { ARRAY_OPERATIONS } from './arrayNodes.js';
 export { MECHANICS_OPERATIONS } from './mechanicsNodes.js';
+export { MECHANICS_LEGACY_OPERATIONS } from './mechanicsLegacyNodes.js';
 export {
   ARRAY_CATALOGUE,
   ARRAY_CATALOGUE_ID,
@@ -42,6 +43,9 @@ export {
   MECHANICS_CATALOGUE,
   MECHANICS_CATALOGUE_ID,
   mechanicsCatalogueJson,
+  MECHANICS_LEGACY_CATALOGUE,
+  MECHANICS_LEGACY_CATALOGUE_ID,
+  mechanicsLegacyCatalogueJson,
 } from './catalogue.js';
 export {
   ISO286_FORMULAS,

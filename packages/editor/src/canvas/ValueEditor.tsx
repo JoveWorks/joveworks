@@ -27,6 +27,7 @@ import { useGraph } from '../graph-context';
 import { ui } from '../i18n';
 import { toUnitsFormat } from '../model/numberFormat';
 import { NumberField, TextField } from './fields';
+import { browsable } from '../model/catalogues';
 
 type Kind = 'scalar' | 'slider' | 'linear' | 'logarithmic' | 'list' | 'renard' | 'categorical' | 'categoricalList' | 'tableColumn';
 
@@ -350,7 +351,7 @@ export function ValueFields({ value, onChange, onSliderChange, onSliderCommit }:
   const format = useValueFormat();
   const { catalogues } = useGraph();
   const { locale } = useSettings();
-  const lookupFormulas = catalogues.flatMap((catalogue) =>
+  const lookupFormulas = browsable(catalogues).flatMap((catalogue) =>
     catalogue.formulas.filter((formula) => formula.lookup !== undefined),
   );
 

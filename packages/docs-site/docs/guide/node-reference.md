@@ -503,39 +503,33 @@ property of the series itself.
 
 ### Mechanics nodes
 
-Generic beam/shaft load-diagram formulas — not tied to any particular
-textbook, so they ship publicly like Base and Array nodes, but modelling
-enough to be marked `unverified` throughout. Each takes a position `z`
-along the shaft plus spectra of applied loads (and, where relevant, a
-support's position and signed reaction) and returns the running total at
-that position:
+Generic shaft diagrams — not tied to any particular textbook, so they ship
+publicly like Base and Array nodes, but marked `unverified` throughout.
+Each takes the shaft's loads on one `loads` port: wire every
+[Load](#load) and [Distributed load](#distributed-load) node into it. The
+shaft sits on two simple supports, `supportA` and `supportB`, and the
+diagrams solve the support reactions themselves, so nothing is wired back.
 
-- **Torque diagram** (`shaftTorque`) — T(z), the running total of applied
-  torques, taken as already balanced.
-- **Shear diagram** (`shaftShear`) — V(z), the running total of transverse
-  point loads plus either support's reaction, once wired. Apply once per
-  transverse plane.
-- **Bending moment diagram** (`shaftMoment`) — M(z), the moment about z of
-  every point load and reaction at or before that position — shaftShear's
-  result integrated. Evaluate it at a support's own position (unswept,
-  both supports left unwired) to solve for that support's reaction with
-  ordinary Base nodes, rather than a solver.
-- **Deflection term** (`shaftDeflectionTerm`) and **Deflection diagram**
-  (`shaftDeflection`) — the moment integrated twice more. The term is an
-  intermediate EI·y quantity you still solve two constants of integration
-  from; the diagram does that solving internally (given Young's modulus
-  `E` and second moment of area `I`) and returns a directly plottable
-  displacement y(z), zero at both supports by construction.
-- **Distributed-load shear/moment contributions**
-  (`shaftDistributedShear`, `shaftDistributedMoment`) — a uniform
-  distributed load's own contribution, added to the point-load diagrams
-  above with an ordinary `add` node. Wire as many start/end/rate spectra
-  as the shaft has distributed loads.
+- **Torque diagram** — T(z), the running total of each load's torque, taken
+  as already balanced. No supports.
+- **Shear diagram** — V(z), every force, distributed load and reaction at
+  or before z.
+- **Bending moment diagram** — M(z), their moments about z plus each
+  bending couple at or before z. Positive when the shaft sags.
+- **Deflection diagram** — y(z), zero at both supports, from Young's modulus
+  `E` and the section's second moment of area `I`. Point loads and couples
+  only: a distributed load is refused.
+- **Support reactions** — `R_A` and `R_B` in one plane, for reporting and
+  checks. Signed like the loads: Σ forces + R_A + R_B = 0.
 
-None of these solve a statically indeterminate shaft or support a
-distributed load in the deflection diagram directly — each node's own
-description spells out the manual steps (evaluating at a support,
-solving with Base nodes) where the graph doesn't do it for you.
+Sweep `z` to draw a diagram. The `plane` picker chooses `x`, `y`, or
+`resultant` — √(x² + y²) of the two planes, which is what a sizing step
+wants. Forces are positive up in their plane; couples are positive
+clockwise with z to the right.
+
+A NodeBook made with an earlier version, where positions and forces were
+wired into separate stacks, keeps opening and evaluating as it was saved;
+those earlier diagrams are no longer offered in the palette.
 
 Four more take a shaft from its moments to a size, statically (no fatigue
 factors):
@@ -564,7 +558,7 @@ force computed from a torque goes straight into `Fy`. A field left empty is
 zero. Wire a range into `at` and the load moves along the shaft, one load
 per point of the sweep.
 
-The `load` output goes into a shaft diagram's `loads` port and nowhere else
+The `load` output goes into a [shaft diagram](#mechanics-nodes)'s `loads` port and nowhere else
 — not into a formula's number port, an output or a compare. A
 [waypoint](#waypoint) can route it.
 

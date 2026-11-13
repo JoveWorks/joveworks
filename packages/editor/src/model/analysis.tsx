@@ -44,6 +44,8 @@ import {
 } from '@joveworks/kernel';
 import {
   findFormula,
+  matchRef,
+  type FormulaRef,
   isEvaluable,
   isGenericPort,
   localize,
@@ -126,14 +128,26 @@ export function lookup(catalogues: readonly Catalogue[], id: string): Formula | 
 }
 
 /**
- * The catalogue that carries a formula id — the same search as `lookup`, but
- * returning the owning catalogue rather than the formula. A canvas node needs
- * this to show where it came from; the palette gets it for free by pairing
- * `{ formula, catalogue }` directly off catalogue data (`PaletteEntry`), but a
- * node only has the flat `analysis.formulas` map, which carries no back-reference.
+ * The formula a node's reference names, and the catalogue holding it — the
+ * kernel's own rule (`lookupFormula` in graph.ts): the exact id, version and
+ * hash wherever it is, else the first formula with that id. One id can sit in
+ * two catalogues — a shipped record kept in a hidden legacy catalogue beside
+ * its successor — so the catalogue is found by the formula's identity, never
+ * by its id, and a node drawn here shows the ports the kernel evaluates.
  */
-export function lookupCatalogue(catalogues: readonly Catalogue[], id: string): Catalogue | undefined {
-  return catalogues.find((catalogue) => findFormula(catalogue, id) !== undefined);
+export function lookupRef(
+  catalogues: readonly Catalogue[],
+  ref: FormulaRef,
+): { readonly formula: Formula; readonly catalogue: Catalogue } | undefined {
+  let fallback: { readonly formula: Formula; readonly catalogue: Catalogue } | undefined;
+  for (const catalogue of catalogues) {
+    for (const formula of catalogue.formulas) {
+      if (formula.id !== ref.id) continue;
+      if (matchRef(ref, formula) === 'match') return { formula, catalogue };
+      fallback ??= { formula, catalogue };
+    }
+  }
+  return fallback;
 }
 
 /**
@@ -633,7 +647,8 @@ export function analyse(document: GraphDocument, catalogues: readonly Catalogue[
 
   for (const node of document.nodes) {
     if (node.kind === 'formula') {
-      const formula = lookup(catalogues, node.formula.id);
+      const found = lookupRef(catalogues, node.formula);
+      const formula = found?.formula;
       if (formula === undefined) {
         states.set(node.id, 'error');
         problems.set(
@@ -644,8 +659,7 @@ export function analyse(document: GraphDocument, catalogues: readonly Catalogue[
         continue;
       }
       formulas.set(node.id, formula);
-      const catalogue = lookupCatalogue(catalogues, node.formula.id);
-      if (catalogue !== undefined) sources.set(node.id, catalogue);
+      if (found !== undefined) sources.set(node.id, found.catalogue);
       continue;
     }
     if (node.kind === 'table') {
@@ -654,7 +668,8 @@ export function analyse(document: GraphDocument, catalogues: readonly Catalogue[
       // the catalogue is missing. `analysis.formulas` is what the node's
       // view draws the table from and what `searchPorts` reads its row-key
       // port off, neither of which should be a second catalogue lookup.
-      const formula = lookup(catalogues, node.table.id);
+      const found = lookupRef(catalogues, node.table);
+      const formula = found?.formula;
       if (formula === undefined) {
         states.set(node.id, 'error');
         problems.set(
@@ -665,8 +680,7 @@ export function analyse(document: GraphDocument, catalogues: readonly Catalogue[
         continue;
       }
       formulas.set(node.id, formula);
-      const catalogue = lookupCatalogue(catalogues, node.table.id);
-      if (catalogue !== undefined) sources.set(node.id, catalogue);
+      if (found !== undefined) sources.set(node.id, found.catalogue);
       continue;
     }
     if (node.kind === 'closure') {

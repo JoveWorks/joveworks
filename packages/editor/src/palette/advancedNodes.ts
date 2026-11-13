@@ -10,10 +10,12 @@
  *  - Catalogue formula ids (`ADVANCED_FORMULA_IDS`), matched by `Formula.id`.
  *    Empty today — the mechanics nodes (mechanics.shaft.torque,
  *    mechanics.shaft.shear, mechanics.shaft.moment,
- *    mechanics.shaft.deflection, the distributed-load formulas in
- *    packages/nodes/src/mechanicsNodes.ts) are an open product decision for
- *    beta (see task notes). Gating them later is exactly one line: add their
- *    formula ids to this set.
+ *    mechanics.shaft.deflection, mechanics.shaft.reactions and the sizing
+ *    formulas in packages/nodes/src/mechanicsNodes.ts) are an open product
+ *    decision for beta (see task notes). Gating them later is exactly one
+ *    line: add their formula ids to this set. (The earlier v1 records in
+ *    mechanicsLegacyNodes.ts are never offered at all — their catalogue is
+ *    hidden, `browsable` in model/catalogues.ts.)
  */
 
 /** The whole stochastic-analysis section (Monte Carlo generator/receiver,
@@ -40,7 +42,7 @@ export const ADVANCED_ACTION_IDS: ReadonlySet<string> = new Set([
 ]);
 
 // See the module docstring: add mechanics formula ids here (e.g.
-// 'mechanics.shaft.torque', 'mechanics.shaft.shear', 'mechanics.shaft.moment', 'mechanics.shaft.deflection', ...) to gate
+// 'mechanics.shaft.torque', 'mechanics.shaft.shear', 'mechanics.shaft.moment', 'mechanics.shaft.reactions', ...) to gate
 // them behind the same preference. Left empty — shipping them in beta is an
 // open product decision, not part of this change.
 export const ADVANCED_FORMULA_IDS: ReadonlySet<string> = new Set([]);

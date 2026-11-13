@@ -19,10 +19,12 @@ import {
 import { OPERATIONS } from './operations.js';
 import { ARRAY_OPERATIONS } from './arrayNodes.js';
 import { MECHANICS_OPERATIONS } from './mechanicsNodes.js';
+import { MECHANICS_LEGACY_OPERATIONS } from './mechanicsLegacyNodes.js';
 
 export const BASE_CATALOGUE_ID = 'base';
 export const ARRAY_CATALOGUE_ID = 'array';
 export const MECHANICS_CATALOGUE_ID = 'mechanics';
+export const MECHANICS_LEGACY_CATALOGUE_ID = 'mechanics-legacy';
 
 /**
  * The library as authored.
@@ -58,6 +60,19 @@ export const MECHANICS_CATALOGUE: Catalogue = {
 };
 
 /**
+ * The mechanics records release 0.33.0 shipped, kept so the NodeBooks saved
+ * against them still resolve exactly (`mechanicsLegacyNodes.ts`). Loaded
+ * after `MECHANICS_CATALOGUE` and never shown in the palette.
+ */
+export const MECHANICS_LEGACY_CATALOGUE: Catalogue = {
+  schemaVersion: CATALOGUE_SCHEMA_VERSION,
+  id: MECHANICS_LEGACY_CATALOGUE_ID,
+  name: { en: 'Mechanics nodes (earlier version)', nl: 'Mechanicaknooppunten (eerdere versie)' },
+  restricted: false,
+  formulas: MECHANICS_LEGACY_OPERATIONS,
+};
+
+/**
  * A catalogue as a file, having been through the parser.
  *
  * The round trip is not ceremony: it is what makes an authored record and a
@@ -74,4 +89,8 @@ export function arrayCatalogueJson(): string {
 
 export function mechanicsCatalogueJson(): string {
   return saveCatalogue(parseCatalogue(serializeCatalogue(MECHANICS_CATALOGUE)));
+}
+
+export function mechanicsLegacyCatalogueJson(): string {
+  return saveCatalogue(parseCatalogue(serializeCatalogue(MECHANICS_LEGACY_CATALOGUE)));
 }

@@ -20,14 +20,17 @@ import {
   type GraphDocument,
   type JsonObject,
 } from '@joveworks/schema';
-import { baseCatalogueJson, arrayCatalogueJson, MECHANICS_CATALOGUE, mechanicsCatalogueJson } from '@joveworks/nodes';
+import { baseCatalogueJson, arrayCatalogueJson, mechanicsCatalogueJson, mechanicsLegacyCatalogueJson } from '@joveworks/nodes';
 import { evaluateDocument, valueAt, type NumericSeries } from '@joveworks/kernel';
 
 const MECHANICS: Catalogue = loadCatalogue(mechanicsCatalogueJson());
+const LEGACY: Catalogue = loadCatalogue(mechanicsLegacyCatalogueJson());
 const BASE: Catalogue = loadCatalogue(baseCatalogueJson());
 const ARRAY: Catalogue = loadCatalogue(arrayCatalogueJson());
-const catalogues = [MECHANICS];
-const withBaseNodes = [MECHANICS, BASE, ARRAY];
+// The order the app loads them in (`builtInCatalogues`): current first, the
+// shipped v1 records after, so a v1 reference still resolves exactly.
+const catalogues = [MECHANICS, LEGACY];
+const withBaseNodes = [MECHANICS, LEGACY, BASE, ARRAY];
 
 const NODE_IDS: Readonly<Record<string, string>> = {
   shaftTorque: 'mechanics.shaft.torque', shaftShear: 'mechanics.shaft.shear', shaftMoment: 'mechanics.shaft.moment',
@@ -35,17 +38,31 @@ const NODE_IDS: Readonly<Record<string, string>> = {
   shaftDistributedShear: 'mechanics.shaft.distributed-shear', shaftDistributedMoment: 'mechanics.shaft.distributed-moment',
   sectionModulus: 'mechanics.shaft.section-modulus', equivalentMoment: 'mechanics.shaft.equivalent-moment',
   requiredDiameter: 'mechanics.shaft.required-diameter', equivalentStress: 'mechanics.shaft.equivalent-stress',
+  torque: 'mechanics.shaft.torque', shear: 'mechanics.shaft.shear', moment: 'mechanics.shaft.moment',
+  deflection: 'mechanics.shaft.deflection', reactions: 'mechanics.shaft.reactions',
   add: 'base.math.add', subtract: 'base.math.subtract', negate: 'base.math.negate', multiply: 'base.math.multiply', divide: 'base.math.divide',
   sum: 'base.array.sum',
 };
 
+/**
+ * The v1 names (`shaftTorque`, …) build the shipped records a saved NodeBook
+ * holds; the bare names (`torque`, …) build their v2 successors.
+ */
+const V1 = new Set([
+  'shaftTorque', 'shaftShear', 'shaftMoment', 'shaftDeflectionTerm', 'shaftDeflection',
+  'shaftDistributedShear', 'shaftDistributedMoment',
+]);
+
 const node = (
   id: string,
   operation: string,
-  from: readonly Catalogue[] = [MECHANICS],
+  from: readonly Catalogue[] = catalogues,
   extra: JsonObject = {},
 ): JsonObject => {
-  const formula = from.flatMap((catalogue) => catalogue.formulas).find((entry) => entry.id === (NODE_IDS[operation] ?? operation));
+  const wanted = NODE_IDS[operation] ?? operation;
+  const formula = from
+    .flatMap((catalogue) => catalogue.formulas)
+    .find((entry) => entry.id === wanted && (!V1.has(operation) || entry.version === 1));
   if (formula === undefined) throw new Error(`no node '${operation}'`);
   return {
     kind: 'formula',
@@ -489,5 +506,203 @@ describe('static shaft sizing formulas', () => {
       withBaseNodes,
     );
     expect(first(evaluation, 'sv', 'sigma_v')).toBeCloseTo(first(evaluation, 'viaMoment', 'quotient'), 9);
+  });
+});
+
+describe('shaft diagrams on Load nodes', () => {
+  const q = (value: number, unit: string): JsonObject => ({ value, unit });
+  const load = (id: string, fields: JsonObject): JsonObject => ({ kind: 'load', id, position: { x: 0, y: 0 }, ...fields });
+  const span = (id: string, fields: JsonObject): JsonObject => ({ kind: 'distributedLoad', id, position: { x: 0, y: 0 }, ...fields });
+  const scalar = (value: number, unit: string): JsonObject => ({ kind: 'scalar', value, unit });
+  const plane = (value: string): JsonObject => ({ kind: 'categorical', value });
+  /** A diagram on supports at 0 and 200 mm. */
+  const onSpan = (id: string, operation: string, values: JsonObject = {}, from: readonly Catalogue[] = catalogues): JsonObject =>
+    node(id, operation, from, {
+      inputValues: { supportA: scalar(0, 'mm'), supportB: scalar(200, 'mm'), ...values },
+    });
+  const data = (evaluation: ReturnType<typeof evaluateDocument>, nodeId: string, port: string): readonly number[] =>
+    numeric(valueAt(evaluation, nodeId, port)).data;
+
+  it('keeps a NodeBook saved against the v1 records evaluating, without a formulaChanged warning', () => {
+    const document = graph(
+      [
+        input('position', { kind: 'scalar', value: 80, unit: 'mm' }),
+        input('force', { kind: 'scalar', value: -1000, unit: 'N' }),
+        input('z', { kind: 'list', values: [0, 80, 200], unit: 'mm' }),
+        node('V', 'shaftShear', catalogues, {
+          inputValues: {
+            supportA: scalar(0, 'mm'), reactionA: scalar(600, 'N'), supportB: scalar(200, 'mm'), reactionB: scalar(400, 'N'),
+          },
+        }),
+      ],
+      [wire('position.value', 'V.position'), wire('force.value', 'V.force'), wire('z.value', 'V.z')],
+    );
+    const evaluation = evaluateDocument(document, withBaseNodes);
+    expect(evaluation.resolution.formulas.get('V')?.version).toBe(1);
+    expect(evaluation.warnings.filter((warning) => warning.kind === 'formulaChanged')).toEqual([]);
+    expect(data(evaluation, 'V', 'V')).toEqual([600, -400, 0]);
+  });
+
+  it('rebuilds the 600 N / 400 N case with one Load node and no reaction wiring', () => {
+    const document = graph(
+      [
+        load('P', { at: q(80, 'mm'), Fy: q(-1000, 'N') }),
+        input('z', { kind: 'list', values: [0, 50, 80, 150, 200, 250], unit: 'mm' }),
+        onSpan('R', 'reactions'),
+        onSpan('V', 'shear'),
+        onSpan('M', 'moment'),
+      ],
+      [wire('P.load', 'R.loads'), wire('P.load', 'V.loads'), wire('P.load', 'M.loads'), wire('z.value', 'V.z'), wire('z.value', 'M.z')],
+    );
+    const evaluation = evaluateDocument(document, catalogues);
+    expect(data(evaluation, 'R', 'R_A')[0]).toBeCloseTo(600, 9);
+    expect(data(evaluation, 'R', 'R_B')[0]).toBeCloseTo(400, 9);
+    // The v1 test's own series, the reactions now solved inside.
+    expect(data(evaluation, 'V', 'V')).toEqual([600, 600, -400, -400, 0, 0]);
+    data(evaluation, 'M', 'M').forEach((value, i) => expect(value).toBeCloseTo([0, 30000, 48000, 20000, 0, 0][i] as number, 6));
+  });
+
+  it('closes the moment past an overhanging load and the far support', () => {
+    // 300 N down at 120 mm and 200 N down at 260 mm, overhanging support B at 200 mm.
+    const document = graph(
+      [
+        load('mid', { at: q(120, 'mm'), Fy: q(-300, 'N') }),
+        load('tip', { at: q(260, 'mm'), Fy: q(-200, 'N') }),
+        onSpan('M', 'moment', { z: scalar(300, 'mm') }),
+        onSpan('Mb', 'moment', { z: scalar(200, 'mm') }),
+      ],
+      [wire('mid.load', 'M.loads'), wire('tip.load', 'M.loads'), wire('mid.load', 'Mb.loads'), wire('tip.load', 'Mb.loads')],
+    );
+    const evaluation = evaluateDocument(document, catalogues);
+    expect(data(evaluation, 'M', 'M')[0]).toBeCloseTo(0, 6);
+    // Over support B the overhang hogs the shaft: −200 N × 60 mm.
+    expect(data(evaluation, 'Mb', 'M')[0]).toBeCloseTo(-12_000, 6);
+  });
+
+  it('draws the resultant as √(M_x² + M_y²) of the two single-plane diagrams', () => {
+    const z = input('z', { kind: 'list', values: [40, 80, 160], unit: 'mm' });
+    const document = graph(
+      [
+        load('gear', { at: q(80, 'mm'), Fx: q(350, 'N'), Fy: q(-900, 'N') }),
+        z,
+        onSpan('Mx', 'moment', { plane: plane('x') }),
+        onSpan('My', 'moment', { plane: plane('y') }),
+        onSpan('M', 'moment', { plane: plane('resultant') }),
+      ],
+      ['Mx', 'My', 'M'].flatMap((id) => [wire('gear.load', `${id}.loads`), wire('z.value', `${id}.z`)]),
+    );
+    const evaluation = evaluateDocument(document, catalogues);
+    const mx = data(evaluation, 'Mx', 'M');
+    const my = data(evaluation, 'My', 'M');
+    data(evaluation, 'M', 'M').forEach((value, i) => expect(value).toBeCloseTo(Math.hypot(mx[i] as number, my[i] as number), 6));
+  });
+
+  it('steps the moment by a couple alone, and closes it at the end of the shaft', () => {
+    const document = graph(
+      [
+        load('C', { at: q(120, 'mm'), Cx: q(3, 'Nm') }),
+        input('z', { kind: 'list', values: [0, 119.99, 120, 200], unit: 'mm' }),
+        onSpan('M', 'moment', { plane: plane('x') }),
+      ],
+      [wire('C.load', 'M.loads'), wire('z.value', 'M.z')],
+    );
+    const [start, before, after, end] = data(evaluateDocument(document, catalogues), 'M', 'M') as number[];
+    expect(start).toBeCloseTo(0, 9);
+    expect((after as number) - (before as number)).toBeCloseTo(3000, 0);
+    expect(end).toBeCloseTo(0, 6);
+  });
+
+  it("gives a Distributed load the same shear and moment as v1's distributed-shear/moment composition", () => {
+    // −3 N/mm from 40 to 160 mm: R_A = R_B = 180 N. v1 adds the reactions by hand.
+    const zs = [20, 60, 100, 150, 200];
+    const document = graph(
+      [
+        span('w', { from: q(40, 'mm'), to: q(160, 'mm'), qy: q(-3, 'N/mm') }),
+        input('z', { kind: 'list', values: zs, unit: 'mm' }),
+        onSpan('V', 'shear'),
+        onSpan('M', 'moment'),
+        input('start', { kind: 'scalar', value: 40, unit: 'mm' }),
+        input('end', { kind: 'scalar', value: 160, unit: 'mm' }),
+        input('rate', { kind: 'scalar', value: -3, unit: 'N/mm' }),
+        // v1 needs at least one point load wired; a zero one changes nothing.
+        input('noPosition', { kind: 'scalar', value: 0, unit: 'mm' }),
+        input('noForce', { kind: 'scalar', value: 0, unit: 'N' }),
+        node('dV', 'shaftDistributedShear'),
+        node('dM', 'shaftDistributedMoment'),
+        node('rV', 'shaftShear', catalogues, {
+          inputValues: { supportA: scalar(0, 'mm'), reactionA: scalar(180, 'N'), supportB: scalar(200, 'mm'), reactionB: scalar(180, 'N') },
+        }),
+        node('rM', 'shaftMoment', catalogues, {
+          inputValues: { supportA: scalar(0, 'mm'), reactionA: scalar(180, 'N'), supportB: scalar(200, 'mm'), reactionB: scalar(180, 'N') },
+        }),
+        node('v1V', 'add', withBaseNodes),
+        node('v1M', 'add', withBaseNodes),
+      ],
+      [
+        wire('w.load', 'V.loads'), wire('w.load', 'M.loads'), wire('z.value', 'V.z'), wire('z.value', 'M.z'),
+        ...['dV', 'dM'].flatMap((id) => [wire('z.value', `${id}.z`), wire('start.value', `${id}.start`), wire('end.value', `${id}.end`), wire('rate.value', `${id}.rate`)]),
+        wire('z.value', 'rV.z'), wire('z.value', 'rM.z'),
+        ...['rV', 'rM'].flatMap((id) => [wire('noPosition.value', `${id}.position`), wire('noForce.value', `${id}.force`)]),
+        wire('rV.V', 'v1V.a'), wire('dV.V', 'v1V.b'), wire('rM.M', 'v1M.a'), wire('dM.M', 'v1M.b'),
+      ],
+    );
+    const evaluation = evaluateDocument(document, withBaseNodes);
+    const v1V = data(evaluation, 'v1V', 'sum');
+    const v1M = data(evaluation, 'v1M', 'sum');
+    data(evaluation, 'V', 'V').forEach((value, i) => expect(value).toBeCloseTo(v1V[i] as number, 6));
+    data(evaluation, 'M', 'M').forEach((value, i) => expect(value).toBeCloseTo(v1M[i] as number, 6));
+  });
+
+  it("matches v1's deflection on the 600 N / 400 N case", () => {
+    const document = graph(
+      [
+        load('P', { at: q(80, 'mm'), Fy: q(-1000, 'N') }),
+        input('z', { kind: 'list', values: [0, 40, 80, 200], unit: 'mm' }),
+        onSpan('y', 'deflection', { E: scalar(1000, 'N/mm²'), I: scalar(1000, 'mm⁴') }),
+        input('position', { kind: 'scalar', value: 80, unit: 'mm' }),
+        input('force', { kind: 'scalar', value: -1000, unit: 'N' }),
+        node('y1', 'shaftDeflection', catalogues, {
+          inputValues: {
+            supportA: scalar(0, 'mm'), reactionA: scalar(600, 'N'), supportB: scalar(200, 'mm'), reactionB: scalar(400, 'N'),
+            E: scalar(1000, 'N/mm²'), I: scalar(1000, 'mm⁴'),
+          },
+        }),
+      ],
+      [
+        wire('P.load', 'y.loads'), wire('z.value', 'y.z'),
+        wire('z.value', 'y1.z'), wire('position.value', 'y1.position'), wire('force.value', 'y1.force'),
+      ],
+    );
+    const evaluation = evaluateDocument(document, catalogues);
+    const v1 = data(evaluation, 'y1', 'y');
+    data(evaluation, 'y', 'y').forEach((value, i) => expect(value).toBeCloseTo(v1[i] as number, 9));
+  });
+
+  it('chains the resultant moment into a required diameter over a swept z, and Select finds the governing size', () => {
+    const zs = [0, 25, 50, 75, 100, 125, 150, 175, 200];
+    const document = graph(
+      [
+        load('gear', { at: q(70, 'mm'), Fx: q(400, 'N'), Fy: q(-1100, 'N'), torque: q(45, 'Nm') }),
+        load('coupling', { at: q(200, 'mm'), torque: q(-45, 'Nm') }),
+        input('z', { kind: 'list', values: zs, unit: 'mm' }),
+        onSpan('M', 'moment', { plane: plane('resultant') }),
+        node('T', 'torque'),
+        node('Mv', 'equivalentMoment'),
+        node('d', 'requiredDiameter', catalogues, { inputValues: { sigma_allow: scalar(60, 'N/mm²') } }),
+        { kind: 'select', id: 'governing', position: { x: 0, y: 0 }, mode: 'argMax' },
+      ],
+      [
+        wire('gear.load', 'M.loads'), wire('coupling.load', 'M.loads'), wire('z.value', 'M.z'),
+        wire('gear.load', 'T.loads'), wire('coupling.load', 'T.loads'), wire('z.value', 'T.z'),
+        wire('M.M', 'Mv.M'), wire('T.T', 'Mv.T'),
+        wire('Mv.M_v', 'd.M_v'),
+        wire('d.d', 'governing.value'), wire('z.value', 'governing.along'),
+      ],
+    );
+    const evaluation = evaluateDocument(document, withBaseNodes);
+    const d = data(evaluation, 'd', 'd');
+    expect(d).toHaveLength(zs.length);
+    expect(numeric(valueAt(evaluation, 'governing', 'at')).data[0]).toBe(zs[d.indexOf(Math.max(...d))]);
+    expect(numeric(valueAt(evaluation, 'governing', 'best')).data[0]).toBeCloseTo(Math.max(...d), 9);
   });
 });
