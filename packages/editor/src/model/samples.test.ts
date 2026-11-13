@@ -33,6 +33,7 @@ import {
   beltLab,
   cantileverHollowSections,
   shaftSizing,
+  steppedShaftStress,
   depthOfField,
   zoomDepthOfField,
   wildlifeCameraComparison,
@@ -223,6 +224,46 @@ describe('the shaft-sizing study', () => {
     const english = new Set([document?.title, ...(document?.nodes ?? []).map((node) => node.label), ...(document?.frames ?? []).flatMap((frame) => [frame.title, frame.note])]);
     const untranslated = [dutch?.title, ...(dutch?.nodes ?? []).map((node) => node.label), ...(dutch?.frames ?? []).flatMap((frame) => [frame.title, frame.note])]
       .filter((text) => text !== undefined && english.has(text) && !['z', 'S ≥ 1', 'Equivalent moment'].includes(text));
+    expect(untranslated).toEqual([]);
+  });
+});
+
+describe('the stepped-shaft stress study', () => {
+  const catalogues = builtInCatalogues();
+  const document = steppedShaftStress(catalogues);
+
+  it('opens with the built-in libraries alone, and every node evaluates', () => {
+    expect(document).toBeDefined();
+    const analysis = analyse(document as GraphDocument, catalogues);
+    expect(analysis.message).toBeUndefined();
+    expect([...analysis.states.entries()].filter(([, state]) => state !== 'ok')).toEqual([]);
+  });
+
+  it('puts equal moments under the gear and over bearing B, and eight times the stress over the thin bearing seat', () => {
+    const values = analyse(document as GraphDocument, catalogues).evaluation?.values;
+    const series = (key: string): readonly number[] => {
+      const value = values?.get(key);
+      if (value?.kind !== 'numeric') throw new Error(`no numbers at ${key}`);
+      return value.data;
+    };
+    const z = series('shaft.z');
+    const M = series('calc.M');
+    const sigma = series('sigma.sigma');
+    const atZ = (target: number): number => z.findIndex((value) => Math.abs(value - target) < 1e-9);
+    expect(M[atZ(75)]).toBeCloseTo(50_000, 3);
+    expect(M[atZ(150)]).toBeCloseTo(-50_000, 3);
+    expect(Math.abs(sigma[atZ(150)] as number) / Math.abs(sigma[atZ(75)] as number)).toBeCloseTo(8, 6);
+  });
+
+  it('sits on the canvas grid, and speaks Dutch', () => {
+    for (const item of [...(document?.nodes ?? []), ...(document?.frames ?? [])]) {
+      expect(Number.isInteger(item.position.x / GAP)).toBe(true);
+      expect(Number.isInteger(item.position.y / GAP)).toBe(true);
+    }
+    const dutch = steppedShaftStress(catalogues, 'nl');
+    const english = new Set([document?.title, ...(document?.nodes ?? []).map((node) => node.label), ...(document?.frames ?? []).flatMap((frame) => [frame.title, frame.note])]);
+    const untranslated = [dutch?.title, ...(dutch?.nodes ?? []).map((node) => node.label), ...(dutch?.frames ?? []).flatMap((frame) => [frame.title, frame.note])]
+      .filter((text) => text !== undefined && english.has(text));
     expect(untranslated).toEqual([]);
   });
 });
@@ -484,7 +525,7 @@ describe('the cantilever study, as a trade-off', () => {
 
 describe('the samples under plot inference', () => {
   const builders = [
-    apertureDecision, beltLab, cantileverHollowSections, shaftSizing, depthOfField, zoomDepthOfField, wildlifeCameraComparison,
+    apertureDecision, beltLab, cantileverHollowSections, shaftSizing, steppedShaftStress, depthOfField, zoomDepthOfField, wildlifeCameraComparison,
     millingPowerEnvelope, monteCarloClearance, padPressure, platformFootprint, pressfitLab,
   ];
   const opened = builders

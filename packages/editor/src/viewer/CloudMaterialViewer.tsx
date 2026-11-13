@@ -19,6 +19,7 @@ import { DEFAULT_NUMBER_FORMAT_SETTINGS, toUnitsFormat } from '../model/numberFo
 import {
   cantileverHollowSections,
   shaftSizing,
+  steppedShaftStress,
   millingPowerEnvelope,
   padPressure,
   platformFootprint,
@@ -212,7 +213,8 @@ export function CloudMaterialViewer(): ReactElement {
       ['platform', 'Choose a safe platform size', 'A decision-focused sweep and threshold.', platformFootprint],
       ['pad', 'Pad pressure sweep', 'See a range propagate to a design limit.', padPressure],
       ['cantilever', 'Cantilever — hollow sections', 'Compare a public mechanics catalogue study.', cantileverHollowSections],
-      ['shaft', 'Shaft sizing — from loads to a diameter', 'Loads, moment diagrams and a standard size.', shaftSizing],
+      ['stepped-shaft', 'Shaft stress (simple)', 'Moment, stress and deflection on a stepped shaft.', steppedShaftStress],
+      ['shaft', 'Shaft sizing (complex)', 'Loads, moment diagrams and a standard size.', shaftSizing],
       ['milling', 'Pocket milling — power envelope', 'A multi-output machining study.', millingPowerEnvelope],
       ['reliability', 'Load against strength', 'Pf, interval, beta, distribution, and convergence.', reliabilityLoadStrength],
     ] as const;

@@ -149,6 +149,16 @@ const EXAMPLE_COPY = {
     studyBody: 'Every diagram takes both loads on one port and solves the bearing reactions itself. The resultant moment and the torque combine into an equivalent moment, and from it a required diameter at every z.',
     resultBody: 'The stepped profile has to stay above the required diameter everywhere, and the governing section sets the smallest standard size that passes.',
   },
+  'stepped-shaft-stress': {
+    title: 'Stepped shaft — where the stress peaks',
+    opening: 'This example follows a stepped shaft on two bearings from its loads to the bending stress along it, and shows why a thin section can matter more than a large moment.',
+    inputTarget: '[data-tour="shaft-shaft"]',
+    inputTitle: 'The shaft holds its own geometry',
+    inputBody: 'The Shaft node sets the length, the material and the steps. It also gives out the positions z, the outer diameter and the second moment of area I along them, ready to wire into a stress formula.',
+    studyTitle: 'One pack, one calculation',
+    studyBody: 'The bearings and the loads are packed into one wire. The Shaft calculation solves the reactions from it and gives the moment and deflection; σ = M·c/I turns the moment into stress, step by step.',
+    resultBody: 'The moment is equally large under the gear and over bearing B, but the stress is eight times higher where the shaft is thin. The notebook carries the plots and the shaft view.',
+  },
   'milling-power-envelope': {
     title: 'Pocket milling — power envelope',
     opening: 'This example studies productivity against a milling machine’s power and torque limits over a two-dimensional parameter grid.',

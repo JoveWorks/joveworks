@@ -112,6 +112,7 @@ import {
   PRESSFIT_LAB_FORMULAS,
   CANTILEVER_FORMULAS,
   SHAFT_SIZING_FORMULAS,
+  STEPPED_SHAFT_FORMULAS,
   MILLING_STUDY_FORMULAS,
   DEPTH_OF_FIELD_FORMULAS,
   APERTURE_DECISION_FORMULAS,
@@ -119,6 +120,7 @@ import {
   pressfitLab,
   cantileverHollowSections,
   shaftSizing,
+  steppedShaftStress,
   millingPowerEnvelope,
   depthOfField,
   zoomDepthOfField,
@@ -211,6 +213,7 @@ function exampleDocument(
   if (id === 'pressfit-lab') return pressfitLab(catalogues, locale);
   if (id === 'cantilever-hollow-sections') return cantileverHollowSections(catalogues, locale);
   if (id === 'shaft-sizing') return shaftSizing(catalogues, locale);
+  if (id === 'stepped-shaft-stress') return steppedShaftStress(catalogues, locale);
   if (id === 'depth-of-field') return depthOfField(catalogues, locale);
   if (id === 'zoom-depth-of-field') return zoomDepthOfField(catalogues, locale);
   if (id === 'aperture-decision') return apertureDecision(catalogues, locale);
@@ -994,6 +997,7 @@ function AppShell(): ReactElement {
   const pressfitAvailable = provides(catalogues, PRESSFIT_LAB_FORMULAS);
   const cantileverAvailable = provides(catalogues, CANTILEVER_FORMULAS);
   const shaftSizingAvailable = provides(catalogues, SHAFT_SIZING_FORMULAS);
+  const steppedShaftAvailable = provides(catalogues, STEPPED_SHAFT_FORMULAS);
   const millingAvailable = provides(catalogues, MILLING_STUDY_FORMULAS);
   const depthOfFieldAvailable = provides(catalogues, DEPTH_OF_FIELD_FORMULAS);
   const apertureDecisionAvailable = provides(catalogues, APERTURE_DECISION_FORMULAS);
@@ -1264,7 +1268,8 @@ function AppShell(): ReactElement {
     ...exampleItem('belt-lab', 'Belt lab', beltAvailable),
     ...exampleItem('pressfit-lab', 'Cylindrical press-fit lab', pressfitAvailable),
     ...exampleItem('cantilever-hollow-sections', 'Cantilever — hollow sections', cantileverAvailable),
-    ...exampleItem('shaft-sizing', 'Shaft sizing — from loads to a diameter', shaftSizingAvailable),
+    ...exampleItem('stepped-shaft-stress', 'Shaft stress (simple)', steppedShaftAvailable),
+    ...exampleItem('shaft-sizing', 'Shaft sizing (complex)', shaftSizingAvailable),
     ...exampleItem('milling-power-envelope', 'Pocket milling — power envelope', millingAvailable),
     ...(photographyExamples.length === 0 ? [] : [{ heading: t('Photography') }, ...photographyExamples]),
   ];

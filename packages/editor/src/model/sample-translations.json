@@ -179,5 +179,19 @@
   "Shaft, y plane": "As, y-vlak",
   "Shaft, resultant": "As, resultante",
   "Each Shaft calculation takes the loads and the bearings on one port and solves the reactions itself, along the shaft’s own z. The moment is drawn in each plane and as their resultant √(M_x² + M_y²), the magnitude the shaft has to carry. The torque runs from the gear to the coupling.": "Elke asberekening neemt de belastingen en de lagers op één poort en berekent zelf de reacties, langs de eigen z van de as. Het moment wordt per vlak getekend en als hun resultante √(M_x² + M_y²), de grootte die de as moet dragen. Het torsiemoment loopt van het tandwiel naar de koppeling.",
-  "The shaft and its loads": "De as en haar belastingen"
+  "The shaft and its loads": "De as en haar belastingen",
+  "Stepped shaft — where the stress peaks": "Getrapte as — waar de spanning piekt",
+  "Pulley": "Poelie",
+  "Loads and bearings": "Belastingen en lagers",
+  "Shaft calculation": "Asberekening",
+  "Outer fibre c = d/2": "Buitenste vezel c = d/2",
+  "Bending stress σ = M·c/I": "Buigspanning σ = M·c/I",
+  "Bending moment M": "Buigmoment M",
+  "Bending stress σ": "Buigspanning σ",
+  "Deflection y": "Doorbuiging y",
+  "2. Moment and bending stress": "2. Moment en buigspanning",
+  "3. Where the shaft is loaded hardest": "3. Waar de as het zwaarst belast is",
+  "A shaft 200 mm long: 20 mm thick, with a 40 mm collar from 50 to 100 mm. It runs in a locating bearing at 0 and a floating one at 150 mm. A gear on the collar at 75 mm pushes down with 2 kN, a pulley on the overhang at 200 mm with 1 kN. The pack carries the bearings and the loads as one wire.": "Een as van 200 mm lang: 20 mm dik, met een kraag van 40 mm van 50 tot 100 mm. Ze loopt in een vast lager bij 0 en een los lager bij 150 mm. Een tandwiel op de kraag bij 75 mm drukt met 2 kN omlaag, een poelie op het overhangende eind bij 200 mm met 1 kN. De bundel voert de lagers en de belastingen als één draad.",
+  "The Shaft calculation solves the bearing reactions and gives the moment and deflection along the shaft. The stress at the outer fibre is σ = M·c/I, with c half the local diameter and I the second moment of area of the step at that point, both from the Shaft node.": "De asberekening berekent de lagerreacties en geeft het moment en de doorbuiging langs de as. De spanning in de buitenste vezel is σ = M·c/I, met c de halve plaatselijke diameter en I het traagheidsmoment van de trap op die plek, beide uit het As-knooppunt.",
+  "The moment is as large under the gear as over bearing B: 50 N·m, sagging under one and hogging over the other. Yet the stress over bearing B is eight times higher, because there the shaft is 20 mm instead of 40 mm and σ grows with 1/d³. The stress also jumps at each step. A stepped shaft is checked where it is thin, not only where the moment peaks.": "Het moment is onder het tandwiel even groot als boven lager B: 50 N·m, doorbuigend onder het ene en opbuigend boven het andere. Toch is de spanning boven lager B acht keer zo hoog, omdat de as daar 20 mm is in plaats van 40 mm en σ groeit met 1/d³. De spanning springt ook bij elke trap. Een getrapte as controleer je waar ze dun is, niet alleen waar het moment piekt."
 }

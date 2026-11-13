@@ -40,6 +40,7 @@ const DUTCH_PHRASES: Readonly<Record<string, string>> = {
   'Load against strength': 'Belasting tegenover sterkte',
   'Clearance-fit stack-up': 'Speling-stapeling', 'Belt lab': 'Riemlaboratorium', 'Cantilever — hollow sections': 'Uitkraging — holle profielen',
   'Pocket milling — power envelope': 'Pockets frezen — vermogensbereik',
+  'Shaft stress (simple)': 'Asspanning (eenvoudig)', 'Shaft sizing (complex)': 'Asdimensionering (uitgebreid)',
   'Hide canvas controls': 'Canvasknoppen verbergen', 'Show canvas controls': 'Canvasknoppen tonen',
   'Move up': 'Omhoog verplaatsen', 'Move down': 'Omlaag verplaatsen', 'Delete section': 'Sectie verwijderen', 'Delete group': 'Groep verwijderen', 'Collapse group': 'Groep samenvouwen', 'Expand group': 'Groep uitvouwen',
   'Not in a section': 'Niet in een sectie', 'Worth a look': 'Even nakijken',

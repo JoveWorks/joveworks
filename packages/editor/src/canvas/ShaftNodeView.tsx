@@ -173,6 +173,7 @@ export function ShaftNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>)
   return (
     <NodeShell
       kind="shaft"
+      dataTour={`shaft-${id}`}
       state={analysis.states.get(id) ?? 'ok'}
       {...(problem === undefined ? {} : { problem })}
       selected={selected ?? false}

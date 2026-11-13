@@ -1028,6 +1028,124 @@ export function shaftSizing(catalogues: readonly Catalogue[], locale: AppLocale 
   return localizeExample(document('shaft-sizing', 'Shaft sizing — from loads to a diameter', nodes, edges, frames), locale);
 }
 
+// --- bending stress along a stepped shaft --------------------------------------
+
+/** The catalogue records this sample needs, by id. */
+export const STEPPED_SHAFT_FORMULAS = [
+  'base.math.divide',
+  'mechanics.shaft.calculation',
+  'mechanics.beam.bending-stress',
+] as const;
+
+/**
+ * A stepped shaft on two bearings: a thick collar between two thin ends, a
+ * gear on the collar and a pulley on the overhang. The moment under the gear
+ * and over bearing B is equally large, but the stress σ = M·c/I there differs
+ * eightfold, because the diameter is halved — the lesson being that a stepped
+ * shaft is checked where it is thin, not only where the moment peaks. The
+ * loads and bearings travel to the calculation and the view as one pack.
+ *
+ * Invented numbers throughout.
+ */
+export function steppedShaftStress(catalogues: readonly Catalogue[], locale: AppLocale = 'en'): GraphDocument | undefined {
+  if (!provides(catalogues, STEPPED_SHAFT_FORMULAS)) return undefined;
+  const formula = (id: string): Formula => lookup(catalogues, id) as Formula;
+  const labelled = (id: string, label: string, formulaId: string, position: Position, extra: Partial<FormulaNode> = {}): FormulaNode => ({
+    ...formulaNode(id, formula(formulaId), position),
+    label,
+    ...extra,
+  });
+  const mm = parseUnit('mm');
+  const kN = parseUnit('kN');
+
+  const shaftNodes: GraphNode[] = [
+    {
+      kind: 'shaft',
+      id: 'shaft',
+      label: 'Shaft',
+      position: at(-880, -715),
+      from: { value: 0, unit: mm },
+      to: { value: 200, unit: mm },
+      count: 41,
+      E: { value: 210000, unit: parseUnit('N/mm²') },
+      section: { kind: 'stepped', unit: mm, steps: [{ start: 0, d: 20 }, { start: 50, d: 40 }, { start: 100, d: 20 }] },
+    },
+    { kind: 'support', id: 'bearing_A', label: 'Bearing A', position: at(-880, -165), at: { value: 0, unit: mm }, support: 'locating' },
+    { kind: 'support', id: 'bearing_B', label: 'Bearing B', position: at(-880, 0), at: { value: 150, unit: mm }, support: 'floating' },
+    { kind: 'load', id: 'gear', label: 'Gear', position: at(-880, 165), at: { value: 75, unit: mm }, Fy: { value: -2, unit: kN } },
+    { kind: 'load', id: 'pulley', label: 'Pulley', position: at(-880, 385), at: { value: 200, unit: mm }, Fy: { value: -1, unit: kN } },
+    { kind: 'pack', id: 'acting', label: 'Loads and bearings', position: at(-495, 110) },
+  ];
+
+  const stressNodes: GraphNode[] = [
+    labelled('calc', 'Shaft calculation', 'mechanics.shaft.calculation', at(-55, -440)),
+    labelled('c', 'Outer fibre c = d/2', 'base.math.divide', at(0, 220), {
+      inputValues: { b: { kind: 'scalar', value: 2, unit: parseUnit('') } },
+    }),
+    labelled('sigma', 'Bending stress σ = M·c/I', 'mechanics.beam.bending-stress', at(385, 275)),
+  ];
+
+  const resultNodes: GraphNode[] = [
+    output('out_view', 'The shaft and its loads', { kind: 'shaftView' }, at(825, -220)),
+    output('out_M', 'Bending moment M', { kind: 'plot', measures: [{ id: 'M' }] }, at(825, 55)),
+    output('out_sigma', 'Bending stress σ', { kind: 'plot', measures: [{ id: 'sigma' }] }, at(825, 275)),
+    output('out_y', 'Deflection y', { kind: 'plot', measures: [{ id: 'y' }] }, at(825, 495)),
+  ];
+
+  const edges = [
+    wire('bearing_A.support', 'acting.in0'),
+    wire('bearing_B.support', 'acting.in1'),
+    wire('gear.load', 'acting.in2'),
+    wire('pulley.load', 'acting.in3'),
+    wire('shaft.shaft', 'calc.shaft'),
+    wire('acting.bundle', 'calc.acting'),
+    wire('shaft.shaft', 'out_view.shaft'),
+    wire('acting.bundle', 'out_view.acting'),
+
+    wire('shaft.profile', 'c.a'),
+    wire('calc.M', 'sigma.M'),
+    wire('c.quotient', 'sigma.c'),
+    wire('shaft.I', 'sigma.I'),
+
+    wire('calc.M', 'out_M.M'),
+    wire('sigma.sigma', 'out_sigma.sigma'),
+    wire('calc.y', 'out_y.y'),
+  ];
+
+  const frames = [
+    {
+      ...frameAround('shaft', '1. The shaft and what acts on it', shaftNodes),
+      note:
+        'A shaft 200 mm long: 20 mm thick, with a 40 mm collar from 50 to 100 mm. It runs in a ' +
+        'locating bearing at 0 and a floating one at 150 mm. A gear on the collar at 75 mm pushes ' +
+        'down with 2 kN, a pulley on the overhang at 200 mm with 1 kN. The pack carries the bearings ' +
+        'and the loads as one wire.',
+    },
+    {
+      ...frameAround('stress', '2. Moment and bending stress', stressNodes),
+      note:
+        'The Shaft calculation solves the bearing reactions and gives the moment and deflection along ' +
+        'the shaft. The stress at the outer fibre is σ = M·c/I, with c half the local diameter and I ' +
+        'the second moment of area of the step at that point, both from the Shaft node.',
+    },
+    {
+      ...frameAround('results', '3. Where the shaft is loaded hardest', resultNodes),
+      note:
+        'The moment is as large under the gear as over bearing B: 50 N·m, sagging under one and ' +
+        'hogging over the other. Yet the stress ' +
+        'over bearing B is eight times higher, because there the shaft is 20 mm instead of 40 mm and ' +
+        'σ grows with 1/d³. The stress also jumps at each step. A stepped shaft is checked where it ' +
+        'is thin, not only where the moment peaks.',
+    },
+  ];
+
+  const frameOf = (id: string): string =>
+    shaftNodes.some((node) => node.id === id) ? 'shaft' : stressNodes.some((node) => node.id === id) ? 'stress' : 'results';
+  const nodes = [...shaftNodes, ...stressNodes, ...resultNodes].map((node) => ({ ...node, frameId: frameOf(node.id) }));
+
+  return localizeExample(document('stepped-shaft-stress', 'Stepped shaft — where the stress peaks', nodes, edges, frames), locale);
+}
+
 // --- milling parameter study, from the public machining catalogue ----------
 
 /** The catalogue records this sample needs, by id. */
