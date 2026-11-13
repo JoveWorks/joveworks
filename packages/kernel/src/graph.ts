@@ -1708,7 +1708,8 @@ export function isVariadicTarget(
   for (const catalogue of catalogues) {
     const formula = catalogue.formulas.find((entry) => matchRef(node.formula, entry) === 'match');
     const port = formula?.inputs.find((candidate) => candidate.name === to.port);
-    if (port !== undefined) return port.kind === 'numeric' && port.variadic === true;
+    // A shaft diagram's `acting` port joins wires the same way a numeric one does.
+    if (port !== undefined) return (port.kind === 'numeric' || port.kind === 'load') && port.variadic === true;
   }
   return false;
 }

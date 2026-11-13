@@ -8,6 +8,7 @@ import { describe, expect, it } from 'vitest';
 import type { JsonObject } from '@joveworks/schema';
 
 import { evaluateDocument, valueAt } from './evaluate.js';
+import { isVariadicTarget } from './graph.js';
 import { catalogueOf, documentOf, formulaNode, input, list, refTo, wire } from './invented.fixtures.js';
 import type { NumericSeries, PortValue } from './series.js';
 
@@ -244,4 +245,10 @@ it("a stepped Shaft node outputs its outer diameter along its own z", () => {
   const stepped = { kind: 'stepped', unit: 'mm', steps: [{ start: 0, d: 20 }, { start: 60, d: 30, d_i: 10 }, { start: 150, d: 25 }] };
   const document = documentOf([shaftNode(200, stepped, 5)], []);
   expect(numeric(valueAt(evaluateDocument(document, []), 'S', 'profile')).data).toEqual([20, 20, 30, 25, 25]);
+});
+
+it("joins every wire into a diagram's acting port, where its shaft port takes one", () => {
+  const document = documentOf([shaftNode(), diagram('M', 'moment')], []);
+  expect(isVariadicTarget(document, [CATALOGUE], { node: 'M', port: 'acting' })).toBe(true);
+  expect(isVariadicTarget(document, [CATALOGUE], { node: 'M', port: 'shaft' })).toBe(false);
 });
