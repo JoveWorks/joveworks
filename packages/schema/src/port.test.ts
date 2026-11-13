@@ -183,6 +183,25 @@ describe('bundle ports', () => {
   });
 });
 
+describe('load ports', () => {
+  const loads: JsonValue = { kind: 'load', name: 'loads', variadic: true, description: { en: 'Every load on the shaft' } };
+
+  it('round-trips, variadic flag and description intact', () => {
+    expect(serializePort(parsePort(loads, 'port'))).toEqual(loads);
+  });
+
+  it('has no dimension and is not generic', () => {
+    const port = parsePort(loads, 'port');
+    expect(portDimension(port)).toBeUndefined();
+    expect(isGenericPort(port)).toBe(false);
+    expect(asInputPort(port, 'input')).toBe(port);
+  });
+
+  it('is never a formula output', () => {
+    expect(() => asOutputPort(parsePort(loads, 'output'), 'output')).toThrow(/a load is produced by a Load node only/u);
+  });
+});
+
 it('reports the path of the field at fault', () => {
   try {
     parsePort({ kind: 'numeric', name: '  ' }, 'formulas[2].inputs[1]');

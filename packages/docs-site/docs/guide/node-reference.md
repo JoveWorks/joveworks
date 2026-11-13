@@ -537,6 +537,44 @@ distributed load in the deflection diagram directly — each node's own
 description spells out the manual steps (evaluating at a support,
 solving with Base nodes) where the graph doesn't do it for you.
 
+Four more take a shaft from its moments to a size, statically (no fatigue
+factors):
+
+- **Section moduli of a round shaft** — `W_b` for bending and `W_p = 2·W_b`
+  for torsion, from the outer diameter `d` and an optional bore `d_i`.
+- **Equivalent moment (von Mises)** — `M_v = √(M² + 0.75·T²)`.
+- **Required diameter of a solid shaft** — `d = ∛(32·M_v/(π·σ_allow))`.
+  Wire it a moment *magnitude*: a signed moment gives a negative diameter.
+- **Equivalent stress (von Mises)** — `σ_v = √(σ_b² + 3·τ_t²)`.
+
+### Load
+
+One physical load on a shaft, on one wire. The shaft runs along `z`, so the
+loads act in the two transverse planes, x and y:
+
+| Field | What it is |
+|---|---|
+| `at` | position along the shaft |
+| `Fx`, `Fy` | transverse force in the x and y plane, signed |
+| `torque` | torque applied at that position |
+| `Cx`, `Cy` | a concentrated bending couple, named by the plane whose moment diagram it enters — a helical gear's axial force times its radius |
+
+Every field can be typed on the node or wired from another node: a gear
+force computed from a torque goes straight into `Fy`. A field left empty is
+zero. Wire a range into `at` and the load moves along the shaft, one load
+per point of the sweep.
+
+The `load` output goes into a shaft diagram's `loads` port and nowhere else
+— not into a formula's number port, an output or a compare. A
+[waypoint](#waypoint) can route it.
+
+### Distributed load
+
+A uniform load over part of the shaft, from `from` to `to`, as a force per
+length `qx` and `qy` in each plane. It produces the same `load` wire as a
+[Load](#load), so a diagram takes both on one port. `to` must not lie before
+`from`, also when one of them is wired.
+
 ### Restricted catalogues
 
 A restricted catalogue is distributed separately through its course or

@@ -45,6 +45,8 @@ export const NODE_HELP_URLS: Readonly<Record<NodeKind, string>> = {
   pack: `${DOCS_BASE_URL}/guide/node-reference#pack`,
   unpack: `${DOCS_BASE_URL}/guide/node-reference#unpack`,
   zip: `${DOCS_BASE_URL}/guide/node-reference#zip`,
+  load: `${DOCS_BASE_URL}/guide/node-reference#load`,
+  distributedLoad: `${DOCS_BASE_URL}/guide/node-reference#distributed-load`,
   monteCarloGenerator: `${DOCS_BASE_URL}/guide/node-reference#monte-carlo-generator`,
   monteCarloReceiver: `${DOCS_BASE_URL}/guide/node-reference#monte-carlo-receiver`,
 };

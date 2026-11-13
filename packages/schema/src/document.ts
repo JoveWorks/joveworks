@@ -46,7 +46,7 @@ import {
 } from './quantity.js';
 import { isRange, parseValueSpec, serializeValueSpec, type ValueSpec } from './value.js';
 import { DOCUMENT_SCHEMA_VERSION, readSchemaVersion } from './version.js';
-import type { Unit } from '@joveworks/units';
+import { dimensionsEqual, parseUnit, type Unit } from '@joveworks/units';
 
 /** The single port every input node produces on and every output node consumes on. */
 export const VALUE_PORT = 'value';
@@ -737,6 +737,94 @@ export interface ZipNode extends NodeBase {
   readonly axisLabel?: string;
 }
 
+/** The one output port of a Load and a Distributed load node. */
+export const LOAD_PORT = 'load';
+
+/** A Load node's fields, which are also its input ports, in display order. */
+export const POINT_LOAD_FIELDS = ['at', 'Fx', 'Fy', 'torque', 'Cx', 'Cy'] as const;
+export type PointLoadField = (typeof POINT_LOAD_FIELDS)[number];
+
+/** A Distributed load node's fields, which are also its input ports, in display order. */
+export const SPAN_LOAD_FIELDS = ['from', 'to', 'qx', 'qy'] as const;
+export type SpanLoadField = (typeof SPAN_LOAD_FIELDS)[number];
+
+export type LoadField = PointLoadField | SpanLoadField;
+
+/**
+ * Each load field's reference unit. Its dimension is the field's type — a
+ * typed value or a wire must match it — and it is the unit a fresh node is
+ * typed in.
+ */
+export const LOAD_FIELD_UNITS: Readonly<Record<LoadField, Unit>> = {
+  at: parseUnit('mm'),
+  Fx: parseUnit('N'),
+  Fy: parseUnit('N'),
+  torque: parseUnit('Nmm'),
+  Cx: parseUnit('Nmm'),
+  Cy: parseUnit('Nmm'),
+  from: parseUnit('mm'),
+  to: parseUnit('mm'),
+  qx: parseUnit('N/mm'),
+  qy: parseUnit('N/mm'),
+};
+
+/**
+ * One physical load on a shaft: where it acts and everything it applies
+ * there, on one wire. A gear's two force components, its torque and the
+ * couple its axial force makes about the shaft all sit at one position, so
+ * they are one node rather than several entries kept in step by hand.
+ *
+ * The shaft runs along z, so the transverse planes are x and y. `Fx` and `Fy`
+ * are signed forces in those planes; `Cx` and `Cy` are concentrated bending
+ * couples, each named by the plane whose moment diagram it enters.
+ *
+ * Every field is also an input port of the same name, the field the value
+ * that applies until something is wired there — `RangeNode`'s shape. An
+ * absent optional field is zero. The output port `LOAD_PORT` carries the
+ * whole load.
+ */
+export interface LoadNode extends NodeBase {
+  readonly kind: 'load';
+  /** Position along the shaft. */
+  readonly at: Quantity;
+  /** Transverse force in the x plane. */
+  readonly Fx?: Quantity;
+  /** Transverse force in the y plane. */
+  readonly Fy?: Quantity;
+  readonly torque?: Quantity;
+  /** Bending couple entering the x-plane moment diagram. */
+  readonly Cx?: Quantity;
+  /** Bending couple entering the y-plane moment diagram. */
+  readonly Cy?: Quantity;
+}
+
+/**
+ * A uniform load over a span of the shaft, `from` to `to`, as a force per
+ * length in each transverse plane. Produces the same kind of wire as a
+ * `LoadNode`, so a diagram takes both on one port. Fields are ports exactly
+ * as there; `to ≥ from` is checked by the kernel, since a wired value can
+ * break it.
+ */
+export interface DistributedLoadNode extends NodeBase {
+  readonly kind: 'distributedLoad';
+  readonly from: Quantity;
+  readonly to: Quantity;
+  /** Force per length in the x plane. */
+  readonly qx?: Quantity;
+  /** Force per length in the y plane. */
+  readonly qy?: Quantity;
+}
+
+/** A load node's fields, in display order — the ports it takes. */
+export function loadNodeFields(node: LoadNode | DistributedLoadNode): readonly LoadField[] {
+  return node.kind === 'load' ? POINT_LOAD_FIELDS : SPAN_LOAD_FIELDS;
+}
+
+/** A load node's typed value for one of its fields, if it has one. */
+export function loadFieldValue(node: LoadNode | DistributedLoadNode, field: LoadField): Quantity | undefined {
+  return (node as unknown as Partial<Record<LoadField, Quantity>>)[field];
+}
+
 /** The value port every generator produces and every receiver consumes from — reuses `VALUE_PORT`. */
 export const MONTE_CARLO_DISTRIBUTIONS = [
   'uniform',
@@ -1061,6 +1149,8 @@ export type GraphNode =
   | PackNode
   | UnpackNode
   | ZipNode
+  | LoadNode
+  | DistributedLoadNode
   | MonteCarloGeneratorNode
   | MonteCarloReceiverNode;
 
@@ -1571,6 +1661,8 @@ export const NODE_KINDS = [
   'pack',
   'unpack',
   'zip',
+  'load',
+  'distributedLoad',
   'monteCarloGenerator',
   'monteCarloReceiver',
 ] as const;
@@ -1603,6 +1695,24 @@ function serializeInputValues(
   return Object.fromEntries(
     Object.entries(values).map(([name, spec]) => [name, serializeValueSpec(spec)]),
   );
+}
+
+function parseLoadField(
+  value: JsonValue | undefined,
+  path: string,
+  field: LoadField,
+  mandatory: boolean,
+): Quantity | undefined {
+  if (value === undefined) {
+    if (mandatory) fail(path, 'is required');
+    return undefined;
+  }
+  const quantity = parseQuantity(value, path);
+  const expected = LOAD_FIELD_UNITS[field];
+  if (!dimensionsEqual(quantity.unit.dimension, expected.dimension)) {
+    fail(join(path, 'unit'), `'${quantity.unit.symbol}' is not the same kind of quantity as '${expected.symbol}'`);
+  }
+  return quantity;
 }
 
 function parseNode(value: JsonValue, path: string): GraphNode {
@@ -1809,6 +1919,17 @@ function parseNode(value: JsonValue, path: string): GraphNode {
       return { ...base, kind };
     case 'zip':
       return { ...base, kind, ...put('axisLabel', optional(object, 'axisLabel', path, readString)) };
+    case 'load':
+    case 'distributedLoad': {
+      const fields = kind === 'load' ? POINT_LOAD_FIELDS : SPAN_LOAD_FIELDS;
+      const mandatory: readonly LoadField[] = kind === 'load' ? ['at'] : ['from', 'to'];
+      const read: Partial<Record<LoadField, Quantity>> = {};
+      for (const field of fields) {
+        const quantity = parseLoadField(object[field], join(path, field), field, mandatory.includes(field));
+        if (quantity !== undefined) read[field] = quantity;
+      }
+      return { ...base, kind, ...read } as LoadNode | DistributedLoadNode;
+    }
     case 'monteCarloGenerator': {
       const distribution = readEnum(
         required(object, 'distribution', path),
@@ -1966,6 +2087,14 @@ function serializeNode(node: GraphNode): JsonObject {
       return base;
     case 'zip':
       return { ...base, ...put('axisLabel', node.axisLabel) };
+    case 'load':
+    case 'distributedLoad': {
+      const fields = loadNodeFields(node).flatMap((field) => {
+        const quantity = loadFieldValue(node, field);
+        return quantity === undefined ? [] : [[field, serializeQuantity(quantity)] as const];
+      });
+      return { ...base, ...Object.fromEntries(fields) };
+    }
     case 'monteCarloGenerator':
       if (node.distribution === 'uniform') {
         return {

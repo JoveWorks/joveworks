@@ -913,6 +913,57 @@ describe('lookup table and interpolate nodes', () => {
   });
 });
 
+describe('load nodes', () => {
+  const only = (...nodes: JsonObject[]): JsonObject => ({ ...study, nodes, edges: [] });
+  const gear = {
+    kind: 'load',
+    id: 'gear',
+    position: { x: 0, y: 0 },
+    label: 'gear',
+    at: { value: 60, unit: 'mm' },
+    Fx: { value: -1.5, unit: 'kN' },
+    Fy: { value: 400, unit: 'N' },
+    torque: { value: 30, unit: 'Nm' },
+    Cx: { value: 2000, unit: 'Nmm' },
+    Cy: { value: -1, unit: 'Nm' },
+  };
+  const span = {
+    kind: 'distributedLoad',
+    id: 'weight',
+    position: { x: 0, y: 120 },
+    from: { value: 10, unit: 'mm' },
+    to: { value: 90, unit: 'mm' },
+    qy: { value: -2, unit: 'N/mm' },
+  };
+
+  it('round-trips a load and a distributed load, every field in the unit it was typed in', () => {
+    expect(serializeDocument(parseDocument(only(gear, span)))).toEqual(only(gear, span));
+  });
+
+  it('reads a field left out as absent, which the kernel takes as zero', () => {
+    const parsed = parseDocument(only({ kind: 'load', id: 'bare', position: { x: 0, y: 0 }, at: { value: 5, unit: 'mm' } }))
+      .nodes[0];
+    expect(parsed?.kind === 'load' ? [parsed.Fx, parsed.Fy, parsed.torque, parsed.Cx, parsed.Cy] : 'not a load').toEqual([
+      undefined, undefined, undefined, undefined, undefined,
+    ]);
+  });
+
+  it('needs a position, and both ends of a span', () => {
+    expect(() => parseDocument(only({ kind: 'load', id: 'g', position: { x: 0, y: 0 } }))).toThrow(/at.*required/u);
+    const { to: _to, ...open } = span;
+    expect(() => parseDocument(only(open))).toThrow(/to.*required/u);
+  });
+
+  it('refuses a field typed in a unit of the wrong kind of quantity', () => {
+    expect(() => parseDocument(only({ ...gear, Fx: { value: 3, unit: 'mm' } }))).toThrow(/Fx\.unit/u);
+    expect(() => parseDocument(only({ ...span, qy: { value: 3, unit: 'N' } }))).toThrow(/qy\.unit/u);
+  });
+
+  it('introduces no axis', () => {
+    expect(axes(parseDocument(only(gear, span)))).toEqual([]);
+  });
+});
+
 describe('structural integrity', () => {
   it('rejects a dangling edge', () => {
     const broken = {

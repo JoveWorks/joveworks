@@ -319,3 +319,24 @@ describe('a zip', () => {
     expect(text).not.toContain('JoveWorks had no value here');
   });
 });
+
+describe('a load node', () => {
+  it('is written down as a comment, since only a beam diagram takes it and that is carried over', () => {
+    const document: GraphDocument = parseDocument({
+      schemaVersion: DOCUMENT_SCHEMA_VERSION,
+      id: 'graph',
+      title: 'Invented shaft',
+      nodes: [
+        { kind: 'input', id: 'F', position: at(0), label: 'F', value: { kind: 'scalar', value: -300, unit: 'N' } },
+        { kind: 'load', id: 'gear', position: at(200), label: 'gear', at: { value: 40, unit: 'mm' }, Cx: { value: 2, unit: 'Nm' } },
+      ],
+      edges: [wire('F.value', 'gear.Fy')],
+      frames: [],
+    });
+    const analysis = analyse(document, CATALOGUES);
+    expect(analysis.states.get('gear')).toBe('ok');
+    const text = python(compileJupyter(document, analysis, { generatedOn: '2026-11-13' }));
+    expect(text).toContain('# gear — a load: at = 40 mm, Fy wired, Cx = 2 Nm.');
+    expect(text).not.toContain('JoveWorks had no value here');
+  });
+});

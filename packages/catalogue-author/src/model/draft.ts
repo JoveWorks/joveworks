@@ -164,9 +164,11 @@ function draftPortFromReal(port: Port): DraftPort {
         variadic: false,
       };
     case 'bundle':
-      // No catalogue formula declares one (see packages/schema/src/port.ts's
-      // own doc comment) — represented as an empty numeric stub rather than
-      // modelled properly, since this app never produces or expects one.
+    case 'load':
+      // No authored catalogue declares either (see packages/schema/src/port.ts):
+      // a bundle is `pack`'s alone, a load port is the built-in shaft
+      // diagrams'. Represented as an empty numeric stub rather than modelled
+      // properly, since this app never produces or expects one.
       return {
         ...base,
         kind: 'numeric',

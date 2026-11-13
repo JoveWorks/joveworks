@@ -43,6 +43,8 @@ import {
   THRESHOLD_PORT,
   VALUE_PORT,
   VERDICT_PORT,
+  loadFieldValue,
+  loadNodeFields,
   START_PORT,
   STOP_PORT,
   COUNT_PORT,
@@ -520,6 +522,8 @@ const NODE_NAMES: Readonly<Record<GraphNode['kind'], string>> = {
   pack: 'pack',
   unpack: 'unpack',
   zip: 'zip',
+  load: 'load',
+  distributedLoad: 'distributed load',
   monteCarloGenerator: 'Monte Carlo generator',
   monteCarloReceiver: 'Monte Carlo receiver',
 };
@@ -581,7 +585,7 @@ export function compileJupyter(
   /** A computed value as a Python literal in `unit`, shaped over its own sweep axes. */
   const literal = (key: string): string | undefined => {
     const value = evaluation?.values.get(key);
-    if (value === undefined || value.kind === 'bundle') return undefined;
+    if (value === undefined || value.kind === 'bundle' || value.kind === 'load') return undefined;
     const shape = axisIds.map(() => 1);
     for (const axis of value.axes) {
       const at = axisPosition(axis.id);
@@ -1048,6 +1052,22 @@ export function compileJupyter(
       case 'output':
         emitOutput(node);
         return;
+      case 'load':
+      case 'distributedLoad': {
+        // A load feeds only a shaft diagram, which is carried over as values
+        // (a beam diagram), so there is nothing in Python to hand it to —
+        // what it holds is written down instead.
+        const fields = loadNodeFields(node).flatMap((field) => {
+          if (document.edges.some((edge) => edge.to.node === node.id && edge.to.port === field)) {
+            return [`${field} wired`];
+          }
+          const typed = loadFieldValue(node, field);
+          return typed === undefined ? [] : [`${field} = ${pyNumber(typed.value)} ${typed.unit.symbol}`];
+        });
+        code(comment(`${titleOf(node)} — a ${NODE_NAMES[node.kind]}: ${fields.join(', ')}. ` +
+          'Not translated: the diagrams it feeds are carried over as values.'));
+        return;
+      }
       case 'pack':
       case 'monteCarloReceiver':
         return;

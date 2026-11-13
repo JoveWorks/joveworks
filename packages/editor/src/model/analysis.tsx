@@ -53,6 +53,7 @@ import {
   lutRows,
   MONTE_CARLO_SAMPLE_PORT,
   START_PORT,
+  loadNodeFields,
   STOP_PORT,
   COUNT_PORT,
   OBJECTIVE_PORT,
@@ -151,7 +152,7 @@ export function lookupCatalogue(catalogues: readonly Catalogue[], id: string): C
  */
 function hasValue(node: GraphNode, port: Port): boolean {
   const authored = 'inputValues' in node ? node.inputValues?.[port.name] : undefined;
-  if (port.kind === 'bundle' || (port.kind === 'numeric' && port.variadic === true)) return false;
+  if (port.kind === 'bundle' || port.kind === 'load' || (port.kind === 'numeric' && port.variadic === true)) return false;
   if (port.kind === 'categorical') return authored !== undefined || port.default !== undefined;
   if (authored !== undefined) return true;
   if (isGenericPort(port)) return true;
@@ -244,6 +245,17 @@ function readiness(
         continue;
       }
       if (!upstreamReady(node.id, 'values') || (isWired(node.id, 'weights') && !upstreamReady(node.id, 'weights'))) {
+        states.set(node.id, 'blocked');
+        continue;
+      }
+      ready.add(node.id);
+      continue;
+    }
+
+    if (node.kind === 'load' || node.kind === 'distributedLoad') {
+      // A range's shape: every field has a typed value or reads zero, so
+      // nothing is ever "not connected", only blocked on an unready wire.
+      if (loadNodeFields(node).some((port) => isWired(node.id, port) && !upstreamReady(node.id, port))) {
         states.set(node.id, 'blocked');
         continue;
       }

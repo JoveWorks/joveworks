@@ -72,11 +72,11 @@ import type { Unit } from '@joveworks/units';
 export type PortUnit = Unit | GenericDimension;
 
 export function isGenericPort(port: Port): boolean {
-  if (port.kind === 'categorical' || port.kind === 'bundle') return false;
+  if (port.kind === 'categorical' || port.kind === 'bundle' || port.kind === 'load') return false;
   return isGenericDimension(port.unit);
 }
 
-export const PORT_KINDS = ['numeric', 'categorical', 'bundle'] as const;
+export const PORT_KINDS = ['numeric', 'categorical', 'bundle', 'load'] as const;
 export type PortKind = (typeof PORT_KINDS)[number];
 
 /**
@@ -191,7 +191,20 @@ export interface BundlePort extends PortBase {
   readonly channels: readonly GenericDimension[];
 }
 
-export type Port = NumericPort | CategoricalPort | BundlePort;
+/**
+ * One or more loads on a shaft — what a Load or Distributed load node
+ * produces (`LoadNode`, `DistributedLoadNode` in `document.ts`). A load is a
+ * structured value, not a number: a position and what acts there, kept
+ * together on one wire so nothing downstream has to pair a position with a
+ * force by wire order. `variadic` takes one wire per load, point and
+ * distributed alike. Input-only — only those two node kinds produce one.
+ */
+export interface LoadPort extends PortBase {
+  readonly kind: 'load';
+  readonly variadic?: boolean;
+}
+
+export type Port = NumericPort | CategoricalPort | BundlePort | LoadPort;
 
 /** What a formula may produce. A `NumericPort` here is never `variadic` — a formula produces one value, not several. */
 export type OutputPort = NumericPort | CategoricalPort;
@@ -201,7 +214,7 @@ export type OutputPort = NumericPort | CategoricalPort;
  * generic port — which has no dimension until the wiring binds one.
  */
 export function portDimension(port: Port): Dimension | undefined {
-  if (port.kind === 'bundle') return undefined;
+  if (port.kind === 'bundle' || port.kind === 'load') return undefined;
   if (port.kind === 'categorical') return DIMENSIONLESS;
   return isGenericDimension(port.unit) ? undefined : port.unit.dimension;
 }
@@ -281,6 +294,11 @@ export function parsePort(value: JsonValue, path: string): Port {
     return { kind, name, channels, ...put('description', description) };
   }
 
+  if (kind === 'load') {
+    const variadic = optional(object, 'variadic', path, readBoolean);
+    return { kind, name, ...put('description', description), ...put('variadic', variadic) };
+  }
+
   const unit = parsePortUnitField(required(object, 'unit', path), join(path, 'unit'));
   const preferredUnit = optional(object, 'preferredUnit', path, parsePreferredUnit);
   if (preferredUnit !== undefined) {
@@ -335,6 +353,9 @@ export function serializePort(port: Port): JsonObject {
   if (port.kind === 'bundle') {
     return { ...base, channels: port.channels.map((channel) => channel.symbol) };
   }
+  if (port.kind === 'load') {
+    return { ...base, ...put('variadic', port.variadic) };
+  }
   return {
     ...base,
     unit: port.unit.symbol,
@@ -360,7 +381,7 @@ export function serializePort(port: Port): JsonObject {
  * used to make them: `$A*$B` is exactly what `multiply` produces.
  */
 export function asInputPort(port: Port, path: string): Port {
-  if (port.kind !== 'categorical' && port.kind !== 'bundle' && isGenericDimension(port.unit)) {
+  if (port.kind !== 'categorical' && port.kind !== 'bundle' && port.kind !== 'load' && isGenericDimension(port.unit)) {
     if (bareVariable(port.unit) === undefined) {
       fail(
         join(path, 'unit'),
@@ -380,6 +401,9 @@ export function asInputPort(port: Port, path: string): Port {
 export function asOutputPort(port: Port, path: string): OutputPort {
   if (port.kind === 'bundle') {
     fail(path, "a bundle is 'pack's own output only — a catalogue formula cannot produce one");
+  }
+  if (port.kind === 'load') {
+    fail(path, 'a load is produced by a Load node only — a catalogue formula cannot produce one');
   }
   if (port.kind === 'numeric' && port.variadic === true) {
     fail(path, "'variadic' is an input-only flag — a formula cannot produce several values");

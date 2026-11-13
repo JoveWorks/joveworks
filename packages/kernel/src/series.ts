@@ -53,7 +53,45 @@ export interface BundleValue {
   readonly values: readonly PortValue[];
 }
 
-export type PortValue = NumericSeries | CategoricalSeries | BundleValue;
+/**
+ * What a Load or Distributed load node produces: one load on a shaft, every
+ * field its own series so a swept field (a load moving along the shaft, a
+ * force over a range of magnitudes) broadcasts like any other value. Fields
+ * left off the node are a zero series. Canonical units: mm, N, N·mm, N/mm.
+ *
+ * Like a bundle, it never reaches an expression — only a shaft diagram's
+ * load port takes one (`resolveGraph` refuses it anywhere else).
+ */
+export interface PointLoadValue {
+  readonly kind: 'load';
+  readonly shape: 'point';
+  readonly at: NumericSeries;
+  readonly Fx: NumericSeries;
+  readonly Fy: NumericSeries;
+  readonly torque: NumericSeries;
+  readonly Cx: NumericSeries;
+  readonly Cy: NumericSeries;
+}
+
+export interface SpanLoadValue {
+  readonly kind: 'load';
+  readonly shape: 'span';
+  readonly from: NumericSeries;
+  readonly to: NumericSeries;
+  readonly qx: NumericSeries;
+  readonly qy: NumericSeries;
+}
+
+export type LoadValue = PointLoadValue | SpanLoadValue;
+
+/** A load's fields as series, in its node's field order. */
+export function loadSeries(value: LoadValue): readonly NumericSeries[] {
+  return value.shape === 'point'
+    ? [value.at, value.Fx, value.Fy, value.torque, value.Cx, value.Cy]
+    : [value.from, value.to, value.qx, value.qy];
+}
+
+export type PortValue = NumericSeries | CategoricalSeries | BundleValue | LoadValue;
 export type Series = NumericSeries | CategoricalSeries;
 
 export function isSeries(value: PortValue): value is Series {

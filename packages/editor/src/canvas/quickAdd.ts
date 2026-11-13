@@ -11,6 +11,9 @@ import {
   START_PORT,
   STOP_PORT,
   COUNT_PORT,
+  LOAD_PORT,
+  POINT_LOAD_FIELDS,
+  SPAN_LOAD_FIELDS,
   STATISTIC_RESULT_PORT,
   VALUE_PORT,
   VERDICT_PORT,
@@ -50,6 +53,8 @@ export type QuickAddChoice =
   | { readonly kind: 'pack' }
   | { readonly kind: 'unpack' }
   | { readonly kind: 'zip' }
+  | { readonly kind: 'load' }
+  | { readonly kind: 'distributedLoad' }
   | { readonly kind: 'monteCarloGenerator' }
   | { readonly kind: 'monteCarloReceiver' }
   | { readonly kind: 'existing'; readonly nodeId: string; readonly port: string };
@@ -64,6 +69,23 @@ interface QuickAddNodeSpec {
   readonly idPrefix: string;
   readonly ports: Readonly<Record<QuickAddDragType, readonly string[]>>;
   make(id: string, position: Position, label?: string): GraphNode;
+}
+
+/** A fresh Load node: at the shaft's start, applying nothing yet. */
+export function newLoadNode(id: string, position: Position, label?: string): GraphNode {
+  return { kind: 'load', id, position, at: { value: 0, unit: parseUnit('mm') }, ...labelField(label) };
+}
+
+/** A fresh Distributed load node over the first 100 mm, applying nothing yet. */
+export function newDistributedLoadNode(id: string, position: Position, label?: string): GraphNode {
+  return {
+    kind: 'distributedLoad',
+    id,
+    position,
+    from: { value: 0, unit: parseUnit('mm') },
+    to: { value: 100, unit: parseUnit('mm') },
+    ...labelField(label),
+  };
 }
 
 /** `exactOptionalPropertyTypes` wants `label` absent rather than explicitly undefined. */
@@ -162,6 +184,20 @@ export function quickAddNodeSpec(document: GraphDocument, choice: QuickAddCandid
         }),
       };
     }
+    case 'load':
+      return {
+        idPrefix: 'load',
+        // A dragged number lands on whichever field takes its dimension —
+        // a length on `at`, a force on `Fx` — the kernel's own check picks.
+        ports: { source: [...POINT_LOAD_FIELDS], target: [LOAD_PORT] },
+        make: (id, position, label) => newLoadNode(id, position, label),
+      };
+    case 'distributedLoad':
+      return {
+        idPrefix: 'span',
+        ports: { source: [...SPAN_LOAD_FIELDS], target: [LOAD_PORT] },
+        make: (id, position, label) => newDistributedLoadNode(id, position, label),
+      };
     case 'compare':
       return {
         idPrefix: 'compare',

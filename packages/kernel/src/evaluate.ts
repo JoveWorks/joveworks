@@ -76,6 +76,11 @@ import {
   type Port,
   type RangeNode,
   type ZipNode,
+  type LoadNode,
+  type DistributedLoadNode,
+  type LoadField,
+  LOAD_PORT,
+  loadFieldValue,
   hasZipInput,
   type TableNode,
   type LutNode,
@@ -111,12 +116,14 @@ import {
   gridSize,
   indexer,
   isSeries,
+  loadSeries,
   reader,
   scalarSeries,
   categoricalScalar,
   unionAxes,
   type Axis,
   type CategoricalSeries,
+  type LoadValue,
   type NumericSeries,
   type PortValue,
   type Series,
@@ -684,6 +691,11 @@ function runEvaluation(
 
       case 'unpack':
         evaluateUnpack(node.id, resolution, values, values);
+        break;
+
+      case 'load':
+      case 'distributedLoad':
+        values.set(endpointKey(node.id, LOAD_PORT), evaluateLoad(node, resolution, values));
         break;
 
       case 'zip': {
@@ -1445,7 +1457,7 @@ function variadicEdgeValues(
   if (edges.length === 0) throw new KernelError(`'${port.name}' is not connected and has no default`, key);
   return edges.map((edge) => {
     const value = valueAtEdge(edge, key, values);
-    if (value.kind === 'categorical' || value.kind === 'bundle') {
+    if (value.kind === 'categorical' || value.kind === 'bundle' || value.kind === 'load') {
       throw new KernelError(
         `'${edge.from.node}.${edge.from.port}' is a ${value.kind} value, and this port needs a number`,
         key,
@@ -1491,7 +1503,11 @@ function evaluateFormula(
     ? compileClosureFormula(formula, nodeId)
     : compileFormula(formula, resolution.bindings.get(nodeId) ?? new Map(), nodeId);
 
-  const regularPorts = formula.inputs.filter((port) => !(port.kind === 'numeric' && port.variadic === true));
+  // A load port is read by the shaft evaluators themselves, never by an
+  // expression, so it is neither a regular nor a variadic numeric input.
+  const regularPorts = formula.inputs.filter(
+    (port) => port.kind !== 'load' && !(port.kind === 'numeric' && port.variadic === true),
+  );
   const regularInputs = regularPorts.map((port) => {
     const value = inputPortValue(node, port, resolution, values);
     // An ordinary port's own source is never bundle-kind — that only ever
@@ -1501,6 +1517,9 @@ function evaluateFormula(
     // PortValue union.
     if (value.kind === 'bundle') {
       throw new KernelError(`'${port.name}' cannot hold a bundle — only 'unpack' can`, nodeId);
+    }
+    if (value.kind === 'load') {
+      throw new KernelError(`'${port.name}' cannot hold a load — only a shaft diagram's load port can`, nodeId);
     }
     return { port, value };
   });
@@ -2194,6 +2213,10 @@ function checkZipMix(
     for (const channel of value.values) checkZipMix(nodeId, channel, zips);
     return;
   }
+  if (value.kind === 'load') {
+    for (const field of loadSeries(value)) checkZipMix(nodeId, field, zips);
+    return;
+  }
   for (const axis of value.axes) {
     const zip = zips.get(axis.id);
     if (zip === undefined) continue;
@@ -2205,6 +2228,59 @@ function checkZipMix(
       nodeId,
     );
   }
+}
+
+// --- load nodes -------------------------------------------------------------
+
+/**
+ * A Load or Distributed load node's value: each field read off its wire, or
+ * its typed value, or zero when the node leaves it out. A wired field keeps
+ * whatever axes it varies along — a load swept along the shaft is one load
+ * at many positions, and the diagrams it feeds broadcast over them.
+ */
+function evaluateLoad(
+  node: LoadNode | DistributedLoadNode,
+  resolution: Resolution,
+  values: ReadonlyMap<string, PortValue>,
+): LoadValue {
+  const field = (name: LoadField): NumericSeries => {
+    const key = endpointKey(node.id, name);
+    const edge = resolution.incoming.get(key)?.[0];
+    if (edge === undefined) {
+      const typed = loadFieldValue(node, name);
+      return scalarSeries(typed === undefined ? 0 : toCanonical(typed.value, typed.unit));
+    }
+    const wired = valueAtEdge(edge, key, values);
+    if (wired.kind !== 'numeric') {
+      throw new KernelError(`'${name}' needs a number, not a ${wired.kind} value`, key);
+    }
+    return wired;
+  };
+
+  if (node.kind === 'load') {
+    return {
+      kind: 'load',
+      shape: 'point',
+      at: field('at'),
+      Fx: field('Fx'),
+      Fy: field('Fy'),
+      torque: field('torque'),
+      Cx: field('Cx'),
+      Cy: field('Cy'),
+    };
+  }
+
+  const from = field('from');
+  const to = field('to');
+  const axes = unionAxes(from.axes, to.axes);
+  const readFrom = reader(from, axes);
+  const readTo = reader(to, axes);
+  for (let cell = 0; cell < gridSize(axes); cell += 1) {
+    if (readTo(cell) < readFrom(cell)) {
+      throw new KernelError("'to' lies before 'from' — a distributed load runs from its start to its end", endpointKey(node.id, 'to'));
+    }
+  }
+  return { kind: 'load', shape: 'span', from, to, qx: field('qx'), qy: field('qy') };
 }
 
 // --- output nodes -----------------------------------------------------------
@@ -2230,6 +2306,9 @@ function sourceOf(
 
   if (value.kind === 'bundle') {
     throw new KernelError(`'${port}' is a bundle, which an output node cannot render`, key);
+  }
+  if (value.kind === 'load') {
+    throw new KernelError(`'${port}' is a load, which an output node cannot render`, key);
   }
   return { value, unit: displayUnit(resolution.targets.get(key)) };
 }
@@ -2604,7 +2683,7 @@ function outputResult(
         throw new KernelError(`'${id}' is not a range input node, so it introduces no axis`, node.id);
       }
       const coordinates = values.get(axisCoordinateKey(resolution, id));
-      if (coordinates === undefined || coordinates.kind === 'bundle') {
+      if (coordinates === undefined || !isSeries(coordinates)) {
         throw new KernelError(`'${id}' produced no coordinates to plot against`, node.id);
       }
       if (!maskAxes.some((own) => own.id === axis.id)) {
@@ -3037,7 +3116,7 @@ function outputResult(
       throw new KernelError(`'${id}' is not a range input node, so it introduces no axis`, node.id);
     }
     const coordinates = values.get(axisCoordinateKey(resolution, id));
-    if (coordinates === undefined || coordinates.kind === 'bundle') {
+    if (coordinates === undefined || !isSeries(coordinates)) {
       throw new KernelError(`'${id}' produced no coordinates to plot against`, node.id);
     }
     // Compared against the resolved axis's own `id`, not the node id passed
