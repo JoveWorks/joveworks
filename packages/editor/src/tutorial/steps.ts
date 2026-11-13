@@ -139,6 +139,16 @@ const EXAMPLE_COPY = {
     studyBody: 'The varying diameter propagates through section inertia and beam deflection. Table, plot and check nodes all read that same evaluated sweep.',
     resultBody: 'The plot shows sensitivity and the limit crossing; the table preserves the exact candidates. Together they show why only the largest listed section passes.',
   },
+  'shaft-sizing': {
+    title: 'Shaft sizing — from loads to a diameter',
+    opening: 'This example sizes a gear shaft on two bearings from its loads: moment and torque diagrams, a required diameter along the shaft, and a standard size.',
+    inputTarget: '[data-tour="input-T_in"]',
+    inputTitle: 'One load per node',
+    inputBody: 'Each Load node holds one physical load: where it acts and the forces, torque and couples it applies there. The gear’s tangential force is computed from the torque and wired into its y-plane field.',
+    studyTitle: 'Diagrams that solve their own reactions',
+    studyBody: 'Every diagram takes both loads on one port and solves the bearing reactions itself. The resultant moment and the torque combine into an equivalent moment, and from it a required diameter at every z.',
+    resultBody: 'The stepped profile has to stay above the required diameter everywhere, and the governing section sets the smallest standard size that passes.',
+  },
   'milling-power-envelope': {
     title: 'Pocket milling — power envelope',
     opening: 'This example studies productivity against a milling machine’s power and torque limits over a two-dimensional parameter grid.',

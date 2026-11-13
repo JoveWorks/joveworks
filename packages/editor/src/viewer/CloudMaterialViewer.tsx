@@ -14,10 +14,11 @@ import type { Axis, AxisReadout } from '@joveworks/kernel';
 import type { GraphDocument, OutputNode } from '@joveworks/schema';
 
 import { analyse } from '../model/analysis';
-import { baseCatalogue, bundledCatalogues } from '../model/catalogues';
+import { builtInCatalogues } from '../model/catalogues';
 import { DEFAULT_NUMBER_FORMAT_SETTINGS, toUnitsFormat } from '../model/numberFormat';
 import {
   cantileverHollowSections,
+  shaftSizing,
   millingPowerEnvelope,
   padPressure,
   platformFootprint,
@@ -125,7 +126,7 @@ function ExampleReport({
   readonly onSliderChange: (sliderId: string, value: number) => void;
   readonly onReset: () => void;
 }): ReactElement {
-  const analysis = useMemo(() => analyse(document, [baseCatalogue(), ...bundledCatalogues()]), [document]);
+  const analysis = useMemo(() => analyse(document, builtInCatalogues()), [document]);
   const display = useMemo(() => notebookDisplayOf(document, {
     numberFormat: DEFAULT_NUMBER_FORMAT_SETTINGS,
     contourPalette: 'viridis',
@@ -206,11 +207,12 @@ export function CloudMaterialViewer(): ReactElement {
     setAdvancedNodesEnabled: () => {},
   };
   const examples = useMemo<readonly CloudExample[]>(() => {
-    const catalogues = [baseCatalogue(), ...bundledCatalogues()];
+    const catalogues = builtInCatalogues();
     const candidates = [
       ['platform', 'Choose a safe platform size', 'A decision-focused sweep and threshold.', platformFootprint],
       ['pad', 'Pad pressure sweep', 'See a range propagate to a design limit.', padPressure],
       ['cantilever', 'Cantilever — hollow sections', 'Compare a public mechanics catalogue study.', cantileverHollowSections],
+      ['shaft', 'Shaft sizing — from loads to a diameter', 'Loads, moment diagrams and a standard size.', shaftSizing],
       ['milling', 'Pocket milling — power envelope', 'A multi-output machining study.', millingPowerEnvelope],
       ['reliability', 'Load against strength', 'Pf, interval, beta, distribution, and convergence.', reliabilityLoadStrength],
     ] as const;

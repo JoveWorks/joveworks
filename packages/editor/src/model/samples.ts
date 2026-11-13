@@ -844,6 +844,191 @@ export function cantileverHollowSections(catalogues: readonly Catalogue[], local
   );
 }
 
+// --- shaft sizing from its loads, from the mechanics catalogue -------------
+
+/** The catalogue records this sample needs, by id. */
+export const SHAFT_SIZING_FORMULAS = [
+  'base.math.divide',
+  'base.math.negate',
+  'mechanics.shaft.torque',
+  'mechanics.shaft.moment',
+  'mechanics.shaft.equivalent-moment',
+  'mechanics.shaft.required-diameter',
+  'mechanics.shaft.section-modulus',
+] as const;
+
+/**
+ * A gear shaft on two bearings, sized statically from its loads. The gear's
+ * tangential force is computed from the torque it carries — one Load field
+ * wired, the rest typed — and the coupling on the overhang takes the torque
+ * back out. The moment is drawn per plane and as a resultant, combined with
+ * the torque into a required diameter along the shaft, and laid under a
+ * stepped profile read from a lookup table. A Select then picks the first
+ * standard diameter whose stress stays within the allowable.
+ *
+ * Invented numbers throughout; static sizing only, no fatigue.
+ */
+export function shaftSizing(catalogues: readonly Catalogue[], locale: AppLocale = 'en'): GraphDocument | undefined {
+  if (!provides(catalogues, SHAFT_SIZING_FORMULAS)) return undefined;
+  const formula = (id: string): Formula => lookup(catalogues, id) as Formula;
+  const labelled = (id: string, label: string, formulaId: string, position: Position, extra: Partial<FormulaNode> = {}): FormulaNode => ({
+    ...formulaNode(id, formula(formulaId), position),
+    label,
+    ...extra,
+  });
+
+  const mm = parseUnit('mm');
+  const newton = parseUnit('N');
+  const plane = (value: string): ValueSpec => ({ kind: 'categorical', value });
+  const onSupports = (extra: Readonly<Record<string, ValueSpec>> = {}): Partial<FormulaNode> => ({ inputValues: extra });
+
+  const loadNodes: GraphNode[] = [
+    input('T_in', 'Input torque T', { kind: 'scalar', value: 60, unit: parseUnit('Nm') }, at(0, 0)),
+    input('r', 'Gear pitch radius r', { kind: 'scalar', value: 50, unit: mm }, at(0, 160)),
+    labelled('F_t', 'Tangential force F_t', 'base.math.divide', at(280, 80)),
+    labelled('F_t_down', 'acting downward', 'base.math.negate', at(560, 80)),
+    labelled('T_out', 'taken out at the coupling', 'base.math.negate', at(560, 240)),
+    {
+      kind: 'load', id: 'gear', label: 'Gear', position: at(840, 0),
+      at: { value: 60, unit: mm }, Fx: { value: 450, unit: newton },
+    },
+    { kind: 'load', id: 'coupling', label: 'Coupling', position: at(840, 320), at: { value: 220, unit: mm } },
+    input('supportA', 'Bearing A', { kind: 'scalar', value: 0, unit: mm }, at(0, 400)),
+    input('supportB', 'Bearing B', { kind: 'scalar', value: 160, unit: mm }, at(0, 520)),
+    { ...input('z', 'Position along the shaft z', { kind: 'linear', start: 0, stop: 220, points: 45, unit: mm }, at(0, 640)), axisLabel: 'z' },
+  ];
+
+  const diagramNodes: GraphNode[] = [
+    labelled('M_x', 'Moment, x plane', 'mechanics.shaft.moment', at(1200, 0), onSupports({ plane: plane('x') })),
+    labelled('M_y', 'Moment, y plane', 'mechanics.shaft.moment', at(1200, 200), onSupports({ plane: plane('y') })),
+    labelled('M_res', 'Resultant moment', 'mechanics.shaft.moment', at(1200, 400), onSupports({ plane: plane('resultant') })),
+    labelled('T', 'Torque', 'mechanics.shaft.torque', at(1200, 600)),
+    output('out_moments', 'Bending moment along the shaft', { kind: 'plot', measures: [{ id: 'Mx' }, { id: 'My' }, { id: 'M' }] }, at(1480, 120)),
+    output('out_torque', 'Torque along the shaft', { kind: 'plot', measures: [{ id: 'T' }] }, at(1480, 480)),
+  ];
+
+  const sizeNodes: GraphNode[] = [
+    input('sigma_allow', 'Allowable stress σ_allow', { kind: 'scalar', value: 60, unit: parseUnit('N/mm²') }, at(1840, 0)),
+    labelled('M_v', 'Equivalent moment', 'mechanics.shaft.equivalent-moment', at(1840, 160)),
+    labelled('d_req', 'Required diameter', 'mechanics.shaft.required-diameter', at(2120, 80)),
+    {
+      kind: 'lut',
+      id: 'steps',
+      label: 'Stepped profile',
+      columns: [
+        { name: 'start', unit: mm, values: [0, 15, 45, 80, 145, 175] },
+        { name: 'd', unit: mm, values: [20, 25, 32, 28, 25, 24] },
+      ],
+      position: at(1840, 360),
+    },
+    { kind: 'interpolate', id: 'd_step', label: 'Diameter at z', mode: 'nextDown', position: at(2120, 360) },
+    output('out_profile', 'Required diameter under the stepped profile', { kind: 'plot', measures: [{ id: 'required' }, { id: 'profile' }] }, at(2400, 200)),
+  ];
+
+  const pickNodes: GraphNode[] = [
+    { kind: 'select', id: 'governing', label: 'Governing section', mode: 'argMax', position: at(2760, 0) },
+    { ...input('d_std', 'Standard diameters', { kind: 'list', values: [16, 18, 20, 22, 25, 28, 30], unit: mm }, at(2760, 200)), axisLabel: 'standard d' },
+    labelled('W', 'Section moduli', 'mechanics.shaft.section-modulus', at(3040, 200)),
+    labelled('sigma_v', 'Equivalent stress there', 'base.math.divide', at(3320, 80)),
+    labelled('S', 'Safety factor S', 'base.math.divide', at(3600, 0)),
+    { kind: 'compare', id: 'S_ok', label: 'S ≥ 1', comparison: '>=', threshold: { value: 1, unit: parseUnit('') }, position: at(3600, 200) },
+    { kind: 'select', id: 'size', label: 'Smallest standard size', mode: 'firstPassing', position: at(3880, 120) },
+    output('out_size', 'Shaft diameter to use', { kind: 'print' }, at(4160, 120)),
+  ];
+
+  const edges = [
+    wire('T_in.value', 'F_t.a'),
+    wire('r.value', 'F_t.b'),
+    wire('F_t.quotient', 'F_t_down.a'),
+    wire('F_t_down.negated', 'gear.Fy'),
+    wire('T_in.value', 'gear.torque'),
+    wire('T_in.value', 'T_out.a'),
+    wire('T_out.negated', 'coupling.torque'),
+
+    ...['M_x', 'M_y', 'M_res'].flatMap((id) => [
+      wire('gear.load', `${id}.loads`),
+      wire('coupling.load', `${id}.loads`),
+      wire('supportA.value', `${id}.supportA`),
+      wire('supportB.value', `${id}.supportB`),
+      wire('z.value', `${id}.z`),
+    ]),
+    wire('gear.load', 'T.loads'),
+    wire('coupling.load', 'T.loads'),
+    wire('z.value', 'T.z'),
+    wire('M_x.M', 'out_moments.Mx'),
+    wire('M_y.M', 'out_moments.My'),
+    wire('M_res.M', 'out_moments.M'),
+    wire('T.T', 'out_torque.T'),
+
+    wire('M_res.M', 'M_v.M'),
+    wire('T.T', 'M_v.T'),
+    wire('M_v.M_v', 'd_req.M_v'),
+    wire('sigma_allow.value', 'd_req.sigma_allow'),
+    wire('steps.start', 'd_step.xs'),
+    wire('steps.d', 'd_step.ys'),
+    wire('z.value', 'd_step.x'),
+    wire('d_req.d', 'out_profile.required'),
+    wire('d_step.y', 'out_profile.profile'),
+
+    wire('M_v.M_v', 'governing.value'),
+    wire('z.value', 'governing.along'),
+    wire('d_std.value', 'W.d'),
+    wire('governing.best', 'sigma_v.a'),
+    wire('W.W_b', 'sigma_v.b'),
+    wire('sigma_allow.value', 'S.a'),
+    wire('sigma_v.quotient', 'S.b'),
+    wire('S.quotient', 'S_ok.value'),
+    wire('S_ok.verdict', 'size.value'),
+    wire('d_std.value', 'size.along'),
+    wire('size.at', 'out_size.value'),
+  ];
+
+  const frames = [
+    {
+      ...frameAround('loads', '1. The loads on the shaft', loadNodes),
+      note:
+        'A gear at 60 mm between two bearings, 160 mm apart, and a coupling on the overhang at ' +
+        '220 mm. The gear passes 60 N·m on to the coupling. Its tangential force follows from that ' +
+        'torque, F_t = T/r, and is wired into the gear’s y-plane force, pointing down; its radial ' +
+        'force of 450 N is typed into the x plane. Forces are positive up in their plane.',
+    },
+    {
+      ...frameAround('diagrams', '2. Moment and torque', diagramNodes),
+      note:
+        'Each diagram takes both loads on one port and solves the bearing reactions itself. The ' +
+        'moment is drawn in each plane and as their resultant √(M_x² + M_y²), the magnitude the ' +
+        'shaft has to carry. The torque runs from the gear to the coupling.',
+    },
+    {
+      ...frameAround('profile', '3. Required diameter and the stepped profile', sizeNodes),
+      note:
+        'Moment and torque combine into an equivalent moment (von Mises), and from it the smallest ' +
+        'solid diameter that keeps the bending stress at the allowable 60 N/mm². The stepped ' +
+        'profile is a lookup table of where each step starts, read at every z by Interpolate in ' +
+        'next-down mode — it has to stay above the curve everywhere.',
+    },
+    {
+      ...frameAround('pick', '4. Picking a standard size', pickNodes),
+      note:
+        'The largest equivalent moment along the shaft sets the size. Over a list of standard ' +
+        'diameters the stress there gives a safety factor against the allowable, and Select ' +
+        'returns the first diameter that passes.',
+    },
+  ];
+
+  const frameOf = (id: string): string =>
+    loadNodes.some((node) => node.id === id)
+      ? 'loads'
+      : diagramNodes.some((node) => node.id === id)
+        ? 'diagrams'
+        : sizeNodes.some((node) => node.id === id)
+          ? 'profile'
+          : 'pick';
+  const nodes = [...loadNodes, ...diagramNodes, ...sizeNodes, ...pickNodes].map((node) => ({ ...node, frameId: frameOf(node.id) }));
+
+  return localizeExample(document('shaft-sizing', 'Shaft sizing — from loads to a diameter', nodes, edges, frames), locale);
+}
+
 // --- milling parameter study, from the public machining catalogue ----------
 
 /** The catalogue records this sample needs, by id. */

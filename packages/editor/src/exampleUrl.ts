@@ -6,6 +6,7 @@ export const EXAMPLE_IDS = [
   'belt-lab',
   'pressfit-lab',
   'cantilever-hollow-sections',
+  'shaft-sizing',
   'milling-power-envelope',
   'depth-of-field',
   'zoom-depth-of-field',
