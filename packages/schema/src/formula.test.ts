@@ -134,7 +134,7 @@ describe('several outputs', () => {
   it('still demands an expression when no table answers', () => {
     const { lookup: _lookup, ...withoutTable } = table;
     expect(() => parse(withoutTable)).toThrow(
-      /expression: is required unless a lookup answers for every output/,
+      /expression: is required unless a lookup or a shaft diagram answers for every output/,
     );
   });
 
@@ -916,5 +916,62 @@ describe('deflection formulas', () => {
         '',
       ),
     ).toThrow(/'position' must be a declared numeric input/);
+  });
+});
+
+describe('shaft formulas', () => {
+  const moment: JsonObject = {
+    id: 'demo.shaft-moment',
+    version: 1,
+    output: { kind: 'numeric', name: 'M', unit: 'Nmm' },
+    inputs: [
+      { kind: 'numeric', name: 'z', unit: 'mm', default: 0 },
+      { kind: 'load', name: 'loads', variadic: true },
+      { kind: 'numeric', name: 'a', unit: 'mm' },
+      { kind: 'numeric', name: 'b', unit: 'mm' },
+      { kind: 'categorical', name: 'plane', domain: ['x', 'y', 'resultant'], default: 'y' },
+    ],
+    shaft: { diagram: 'moment', loads: 'loads', axis: 'z', supports: ['a', 'b'], plane: 'plane' },
+    description: { en: 'An invented shaft-moment record.' },
+    status: 'unverified',
+  };
+  const shaft = moment['shaft'] as JsonObject;
+  const withShaft = (change: JsonObject): JsonObject => ({ ...moment, shaft: { ...shaft, ...change } });
+
+  it('round-trips, with no expression to state', () => {
+    expect(serializeFormula(parseFormula(moment, ''))).toEqual(moment);
+  });
+
+  it('needs each field its diagram uses, and refuses the ones it does not', () => {
+    const { supports: _supports, ...noSupports } = shaft;
+    expect(() => parseFormula({ ...moment, shaft: noSupports }, '')).toThrow(/shaft\.supports: is required for a moment diagram/u);
+    expect(() => parseFormula(withShaft({ modulus: 'a' }), '')).toThrow(/shaft\.modulus: has no meaning for a moment diagram/u);
+  });
+
+  it('refuses an expression beside it', () => {
+    expect(() => parseFormula({ ...moment, expression: 'z' }, '')).toThrow(/no meaning beside a shaft diagram/u);
+  });
+
+  it('takes its loads from a variadic load port only', () => {
+    expect(() => parseFormula(withShaft({ loads: 'z' }), '')).toThrow(/must be a declared variadic load input/u);
+  });
+
+  it('checks the output against what the diagram produces', () => {
+    expect(() => parseFormula({ ...moment, output: { kind: 'numeric', name: 'M', unit: 'N' } }, '')).toThrow(
+      /dimension a moment diagram produces/u,
+    );
+  });
+
+  it('refuses a resultant plane on a reactions record, a signed answer', () => {
+    const { axis: _axis, ...rest } = shaft;
+    const reactions: JsonObject = {
+      ...moment,
+      output: [
+        { kind: 'numeric', name: 'R_A', unit: 'N' },
+        { kind: 'numeric', name: 'R_B', unit: 'N' },
+      ],
+      shaft: { ...rest, diagram: 'reactions' },
+    };
+    expect(() => parseFormula(reactions, '')).toThrow(/'resultant' is not a plane this diagram can draw/u);
   });
 });

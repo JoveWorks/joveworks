@@ -76,6 +76,7 @@ import {
   type Port,
   type RangeNode,
   type ZipNode,
+  type FormulaShaft,
   type LoadNode,
   type DistributedLoadNode,
   type LoadField,
@@ -107,6 +108,16 @@ import { evaluateSensitivity, type SensitivityRankingResult } from './sensitivit
 import { crossingsAlong, select, type SelectResult } from './select.js';
 import { interpolate } from './interpolate.js';
 import { reduceAlong } from './statistics.js';
+import {
+  moment as shaftMoment,
+  reactions as shaftReactions,
+  shear as shaftShear,
+  stiffnessDeflection,
+  torque as shaftTorque,
+  type PlaneLoads,
+  type PlanePoint,
+  type PlaneSpan,
+} from './shaft.js';
 import { buildDistribution, type DistributionPanel } from './distribution.js';
 import { inverseNormal, wilsonInterval } from './normal.js';
 import {
@@ -1489,6 +1500,10 @@ function evaluateFormula(
       );
     }
   }
+  if (formula.shaft !== undefined) {
+    return evaluateShaft(node, formula, formula.shaft, resolution, values, warnings, largeGrid);
+  }
+
   // Every branch but the lookup answers with one series, for the one output
   // such a formula declares.
   const only = formula.outputs[0] as NumericPort;
@@ -2228,6 +2243,186 @@ function checkZipMix(
       nodeId,
     );
   }
+}
+
+// --- shaft diagrams ---------------------------------------------------------
+
+/**
+ * A `shaft` record (`FormulaShaft`): every load wired into its load port,
+ * broadcast with `z`, the supports, the plane and the section over one grid,
+ * and the closed forms in `shaft.ts` evaluated per cell.
+ */
+function evaluateShaft(
+  node: FormulaNode | ClosureNode | { readonly id: string },
+  formula: Formula,
+  shaft: FormulaShaft,
+  resolution: Resolution,
+  values: ReadonlyMap<string, PortValue>,
+  warnings: Warning[],
+  largeGrid: number,
+): ReadonlyMap<string, PortValue> {
+  const nodeId = node.id;
+  const declared = (name: string): Port => {
+    const port = formula.inputs.find((candidate) => candidate.name === name);
+    if (port === undefined) throw new KernelError(`'${name}' is not an input of '${formula.id}'`, nodeId);
+    return port;
+  };
+  const numeric = (name: string): NumericSeries => {
+    const value = inputPortValue(node, declared(name), resolution, values);
+    if (value.kind !== 'numeric') throw new KernelError(`'${name}' needs a number`, endpointKey(nodeId, name));
+    return value;
+  };
+
+  const loadKey = endpointKey(nodeId, shaft.loads);
+  const edges = resolution.incoming.get(loadKey) ?? [];
+  if (edges.length === 0) throw new KernelError(`'${shaft.loads}' has no load wired to it`, loadKey);
+  const loads = edges.map((edge) => {
+    const value = valueAtEdge(edge, loadKey, values);
+    if (value.kind !== 'load') {
+      throw new KernelError(`'${edge.from.node}.${edge.from.port}' is not a load`, loadKey);
+    }
+    return value;
+  });
+  if (shaft.diagram === 'deflection' && loads.some((load) => load.shape === 'span')) {
+    throw new KernelError(
+      "a distributed load's deflection is not implemented — this diagram takes point loads only",
+      nodeId,
+    );
+  }
+
+  const z = shaft.axis === undefined ? undefined : numeric(shaft.axis);
+  const supportA = shaft.supports === undefined ? undefined : numeric(shaft.supports[0]);
+  const supportB = shaft.supports === undefined ? undefined : numeric(shaft.supports[1]);
+  const modulus = shaft.modulus === undefined ? undefined : numeric(shaft.modulus);
+  const secondMoment = shaft.secondMomentOfArea === undefined ? undefined : numeric(shaft.secondMomentOfArea);
+  let plane: CategoricalSeries | undefined;
+  if (shaft.plane !== undefined) {
+    const value = inputPortValue(node, declared(shaft.plane), resolution, values);
+    if (value.kind !== 'categorical') {
+      throw new KernelError(`'${shaft.plane}' needs a plane: x, y or resultant`, endpointKey(nodeId, shaft.plane));
+    }
+    plane = value;
+  }
+
+  const scalars = [z, supportA, supportB, modulus, secondMoment].filter(
+    (series): series is NumericSeries => series !== undefined,
+  );
+  const fields = loads.flatMap((load) => loadSeries(load));
+  const axes = unionAxes(
+    ...scalars.map((series) => series.axes),
+    ...fields.map((series) => series.axes),
+    ...(plane === undefined ? [] : [plane.axes]),
+  );
+  const cells = gridSize(axes);
+  if (cells >= largeGrid) {
+    warnings.push({
+      kind: 'largeGrid',
+      nodeId,
+      message: `this node evaluates ${cells} points (${axes.map((axis) => `${axis.label}: ${axis.length}`).join(' × ')}) — a sweep that large takes a moment`,
+    });
+  }
+
+  const read = (series: NumericSeries | undefined): ((cell: number) => number) => {
+    if (series === undefined) return () => 0;
+    return reader(series, axes);
+  };
+  const readLoads = loads.map((load) =>
+    load.shape === 'point'
+      ? {
+          shape: 'point' as const,
+          at: read(load.at),
+          Fx: read(load.Fx),
+          Fy: read(load.Fy),
+          torque: read(load.torque),
+          Cx: read(load.Cx),
+          Cy: read(load.Cy),
+        }
+      : { shape: 'span' as const, from: read(load.from), to: read(load.to), qx: read(load.qx), qy: read(load.qy) },
+  );
+  const planeLoads = (cell: number, which: 'x' | 'y'): PlaneLoads => {
+    const points: PlanePoint[] = [];
+    const spans: PlaneSpan[] = [];
+    for (const load of readLoads) {
+      if (load.shape === 'point') {
+        points.push({
+          at: load.at(cell),
+          force: which === 'x' ? load.Fx(cell) : load.Fy(cell),
+          couple: which === 'x' ? load.Cx(cell) : load.Cy(cell),
+        });
+      } else {
+        spans.push({ from: load.from(cell), to: load.to(cell), rate: which === 'x' ? load.qx(cell) : load.qy(cell) });
+      }
+    }
+    return { points, spans };
+  };
+
+  const zRead = read(z);
+  const aRead = read(supportA);
+  const bRead = read(supportB);
+  const eRead = read(modulus);
+  const iRead = read(secondMoment);
+  const planeIndex = plane === undefined ? undefined : indexer(plane, axes);
+  const planePort = shaft.plane === undefined ? undefined : declared(shaft.plane);
+  const planeAt = (cell: number): 'x' | 'y' | 'resultant' => {
+    if (plane === undefined || planeIndex === undefined || planePort?.kind !== 'categorical') return 'resultant';
+    const written = plane.data[planeIndex(cell)] as string;
+    const member = domainMember(planePort, written);
+    if (member === 'x' || member === 'y' || member === 'resultant') return member;
+    throw new KernelError(`'${written}' is not a plane — pick x, y or resultant`, endpointKey(nodeId, shaft.plane ?? ''));
+  };
+  const supportsAt = (cell: number): readonly [number, number] => {
+    const a = aRead(cell);
+    const b = bRead(cell);
+    if (a === b) {
+      throw new KernelError(`both supports are at ${a} mm — a shaft needs two different support positions`, nodeId);
+    }
+    return [a, b];
+  };
+  const inPlane = (cell: number, compute: (loads: PlaneLoads) => number): number => {
+    const chosen = planeAt(cell);
+    if (chosen !== 'resultant') return compute(planeLoads(cell, chosen));
+    return Math.hypot(compute(planeLoads(cell, 'x')), compute(planeLoads(cell, 'y')));
+  };
+
+  const outputs = formula.outputs.map((output) => output.name);
+  if (shaft.diagram === 'reactions') {
+    const rA = new Array<number>(cells);
+    const rB = new Array<number>(cells);
+    for (let cell = 0; cell < cells; cell += 1) {
+      const chosen = planeAt(cell);
+      if (chosen === 'resultant') {
+        throw new KernelError('a reaction is signed, so it is solved in the x or the y plane, not as a resultant', nodeId);
+      }
+      const [a, b] = supportsAt(cell);
+      const [left, right] = shaftReactions(planeLoads(cell, chosen), a, b);
+      rA[cell] = left;
+      rB[cell] = right;
+    }
+    return new Map<string, PortValue>([
+      [outputs[0] as string, { kind: 'numeric', axes, data: rA }],
+      [outputs[1] as string, { kind: 'numeric', axes, data: rB }],
+    ]);
+  }
+
+  const data = new Array<number>(cells);
+  for (let cell = 0; cell < cells; cell += 1) {
+    const at = zRead(cell);
+    if (shaft.diagram === 'torque') {
+      data[cell] = shaftTorque(
+        readLoads.flatMap((load) => (load.shape === 'point' ? [{ at: load.at(cell), torque: load.torque(cell) }] : [])),
+        at,
+      );
+      continue;
+    }
+    const [a, b] = supportsAt(cell);
+    data[cell] =
+      shaft.diagram === 'shear'
+        ? inPlane(cell, (plane) => shaftShear(plane, a, b, at))
+        : shaft.diagram === 'moment'
+          ? inPlane(cell, (plane) => shaftMoment(plane, a, b, at))
+          : inPlane(cell, (plane) => stiffnessDeflection(plane, a, b, at)) / (eRead(cell) * iRead(cell));
+  }
+  return new Map<string, PortValue>([[outputs[0] as string, { kind: 'numeric', axes, data }]]);
 }
 
 // --- load nodes -------------------------------------------------------------

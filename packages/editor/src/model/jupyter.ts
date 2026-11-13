@@ -734,7 +734,7 @@ export function compileJupyter(
       formula === undefined ? 'its formula is not loaded'
       : formula.status === 'quarantined' ? 'a quarantined formula'
       : formula.lookup !== undefined ? 'a catalogue table lookup'
-      : formula.piecewise !== undefined || formula.deflection !== undefined ? 'a beam diagram'
+      : formula.piecewise !== undefined || formula.deflection !== undefined || formula.shaft !== undefined ? 'a beam diagram'
       : formula.expressions === undefined ? 'a formula without an expression'
       : [...formula.inputs, ...formula.outputs].some((port) => port.kind !== 'numeric') ? 'a formula over named values'
       : undefined;

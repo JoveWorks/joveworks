@@ -51,6 +51,9 @@ import {
   isGenericDimension,
   multiplyDimensions,
   powerDimension,
+  FORCE,
+  LENGTH,
+  STRESS,
   type Dimension,
 } from '@joveworks/units';
 
@@ -207,6 +210,54 @@ export interface FormulaDeflection {
   readonly secondMomentOfArea: string;
 }
 
+export const SHAFT_DIAGRAMS = ['torque', 'shear', 'moment', 'deflection', 'reactions'] as const;
+export type ShaftDiagram = (typeof SHAFT_DIAGRAMS)[number];
+
+/** What a shaft record's `plane` input may name — `resultant` never for `reactions`, a signed answer. */
+export const SHAFT_PLANES = ['x', 'y', 'resultant'] as const;
+
+/**
+ * A shaft diagram drawn from the loads on it — every Load and Distributed
+ * load node wired into one `load` port — rather than from positions and
+ * forces wired into separate stacks and paired by wire order.
+ *
+ * The support reactions are solved inside, from statics on two simple
+ * supports, so nothing loops back from a reaction calculation into the
+ * diagram. Signs follow the loads: a force is positive up in its plane's
+ * diagram, a couple positive clockwise with z to the right (the moment steps
+ * up by it), and `Σ forces + R_A + R_B = 0`.
+ *
+ * - `torque` — T(z), the running total of each load's torque. No supports,
+ *   no plane: torques are taken as already balanced.
+ * - `shear` — V(z), forces, spans and both reactions at or before z.
+ * - `moment` — M(z), their moments about z, plus each couple at or before z.
+ * - `deflection` — y(z), zero at both supports, divided by `modulus` ×
+ *   `secondMomentOfArea`. A distributed load is refused: its contribution is
+ *   not implemented, and a wrong curve is worse than none.
+ * - `reactions` — the two support reactions themselves, as two outputs in
+ *   declared order (A then B), with no `axis`.
+ *
+ * `plane` names a categorical input choosing `x`, `y`, or (except for
+ * `reactions`) `resultant`, √(x² + y²) of the two planes' values. A shaft
+ * record declares no expression: like a lookup, it answers every output in
+ * the unit that output declares.
+ */
+export interface FormulaShaft {
+  readonly diagram: ShaftDiagram;
+  /** The declared variadic `load` input. */
+  readonly loads: string;
+  /** The declared length input the diagram is evaluated at. Absent only for `reactions`. */
+  readonly axis?: string;
+  /** The two declared length inputs at the supports, A then B. Absent only for `torque`. */
+  readonly supports?: readonly [string, string];
+  /** The declared categorical plane input. Absent only for `torque`. */
+  readonly plane?: string;
+  /** Declared stress input: Young's modulus. `deflection` only. */
+  readonly modulus?: string;
+  /** Declared length⁴ input: the section's second moment of area. `deflection` only. */
+  readonly secondMomentOfArea?: string;
+}
+
 export interface Formula {
   /** Stable within its catalogue — the migration writes it from the method name. */
   readonly id: string;
@@ -245,6 +296,8 @@ export interface Formula {
   readonly piecewise?: FormulaPiecewise;
   /** Optional deflection-curve evaluator, mutually exclusive with `lookup`/`piecewise`. Same role: the expression still declares/checks dimensions. */
   readonly deflection?: FormulaDeflection;
+  /** Optional shaft-diagram evaluator, mutually exclusive with `lookup`/`piecewise`/`deflection`. */
+  readonly shaft?: FormulaShaft;
   /** Short display name. Omit when a citation or id is the natural title. */
   readonly label?: LocalizedText;
   readonly description: LocalizedText;
@@ -484,6 +537,104 @@ function serializeDeflection(deflection: FormulaDeflection): JsonObject {
   };
 }
 
+function parseShaft(value: JsonValue, path: string): FormulaShaft {
+  const object = readObject(value, path);
+  const supports = optional(object, 'supports', path, (v, p) => parsePortNameList(v, p));
+  if (supports !== undefined && supports.length !== 2) {
+    fail(join(path, 'supports'), `needs exactly two entries, one per support — has ${supports.length}`);
+  }
+  const name = (key: string): string | undefined => optional(object, key, path, readName);
+  return {
+    diagram: readEnum(required(object, 'diagram', path), join(path, 'diagram'), SHAFT_DIAGRAMS),
+    loads: readName(required(object, 'loads', path), join(path, 'loads')),
+    ...put('axis', name('axis')),
+    ...put('supports', supports === undefined ? undefined : ([supports[0], supports[1]] as [string, string])),
+    ...put('plane', name('plane')),
+    ...put('modulus', name('modulus')),
+    ...put('secondMomentOfArea', name('secondMomentOfArea')),
+  };
+}
+
+function serializeShaft(shaft: FormulaShaft): JsonObject {
+  return {
+    diagram: shaft.diagram,
+    loads: shaft.loads,
+    ...put('axis', shaft.axis),
+    ...put('supports', shaft.supports === undefined ? undefined : [...shaft.supports]),
+    ...put('plane', shaft.plane),
+    ...put('modulus', shaft.modulus),
+    ...put('secondMomentOfArea', shaft.secondMomentOfArea),
+  };
+}
+
+/**
+ * Every name a `FormulaShaft` uses resolves to an input of the right shape,
+ * each field is present exactly when its diagram needs it, and the outputs
+ * are what that diagram produces — canonical mm and N throughout, since a
+ * load carries canonical values.
+ */
+function checkShaft(shaft: FormulaShaft, inputs: readonly Port[], outputs: readonly OutputPort[], path: string): void {
+  const at = (key: string): string => join(path, `shaft.${key}`);
+  const needs = (key: keyof FormulaShaft, wanted: boolean): void => {
+    const present = shaft[key] !== undefined;
+    if (wanted && !present) fail(at(key), `is required for a ${shaft.diagram} diagram`);
+    if (!wanted && present) fail(at(key), `has no meaning for a ${shaft.diagram} diagram — leave it off`);
+  };
+  needs('axis', shaft.diagram !== 'reactions');
+  needs('supports', shaft.diagram !== 'torque');
+  needs('plane', shaft.diagram !== 'torque');
+  needs('modulus', shaft.diagram === 'deflection');
+  needs('secondMomentOfArea', shaft.diagram === 'deflection');
+
+  const loads = inputs.find((port) => port.name === shaft.loads);
+  if (loads === undefined || loads.kind !== 'load' || loads.variadic !== true) {
+    fail(at('loads'), `'${shaft.loads}' must be a declared variadic load input`);
+  }
+  const scalar = (name: string, namePath: string, dimension: Dimension, what: string): void => {
+    const port = inputs.find((candidate) => candidate.name === name);
+    const declared = port === undefined ? undefined : portDimension(port);
+    if (port === undefined || port.kind !== 'numeric' || port.variadic === true || declared === undefined) {
+      fail(namePath, `'${name}' must be a declared numeric input with a concrete unit`);
+    }
+    if (!dimensionsEqual(declared, dimension)) fail(namePath, `'${name}' must be ${what}`);
+  };
+  if (shaft.axis !== undefined) scalar(shaft.axis, at('axis'), LENGTH, 'a length');
+  if (shaft.supports !== undefined) {
+    if (shaft.supports[0] === shaft.supports[1]) fail(at('supports'), 'names the same input twice — two supports are needed');
+    shaft.supports.forEach((name, i) => scalar(name, `${at('supports')}[${i}]`, LENGTH, 'a length'));
+  }
+  if (shaft.modulus !== undefined) scalar(shaft.modulus, at('modulus'), STRESS, 'a stress');
+  if (shaft.secondMomentOfArea !== undefined) {
+    scalar(shaft.secondMomentOfArea, at('secondMomentOfArea'), powerDimension(LENGTH, 4), 'a length to the fourth');
+  }
+  if (shaft.plane !== undefined) {
+    const port = inputs.find((candidate) => candidate.name === shaft.plane);
+    if (port === undefined || port.kind !== 'categorical') {
+      fail(at('plane'), `'${shaft.plane}' must be a declared categorical input`);
+    }
+    const allowed: readonly string[] = shaft.diagram === 'reactions' ? ['x', 'y'] : SHAFT_PLANES;
+    const outside = port.domain.find((entry) => !allowed.includes(entry));
+    if (outside !== undefined) fail(at('plane'), `'${outside}' is not a plane this diagram can draw`);
+  }
+
+  const produces =
+    shaft.diagram === 'torque' || shaft.diagram === 'moment'
+      ? multiplyDimensions(FORCE, LENGTH)
+      : shaft.diagram === 'deflection'
+        ? LENGTH
+        : FORCE;
+  const count = shaft.diagram === 'reactions' ? 2 : 1;
+  if (outputs.length !== count) {
+    fail(join(path, 'output'), `a ${shaft.diagram} record declares ${count === 1 ? 'one output' : 'two outputs, A then B'}`);
+  }
+  for (const output of outputs) {
+    const dimension = portDimension(output);
+    if (output.kind !== 'numeric' || dimension === undefined || !dimensionsEqual(dimension, produces)) {
+      fail(join(path, 'output'), `'${output.name}' must be a numeric output of the dimension a ${shaft.diagram} diagram produces`);
+    }
+  }
+}
+
 /** The quarantine gate: a quarantined formula cannot be evaluated, by anyone, ever. */
 export function isEvaluable(formula: Formula): boolean {
   return formula.status !== 'quarantined';
@@ -588,8 +739,14 @@ export function parseFormula(value: JsonValue, path: string): Formula {
   const expressions = optional(object, 'expression', path, (value_, path_) =>
     parsePerOutput(value_, path_, outputs, 'expression'),
   );
-  if (expressions === undefined && lookup === undefined) {
-    fail(join(path, 'expression'), 'is required unless a lookup answers for every output');
+  const shaft = optional(object, 'shaft', path, parseShaft);
+  if (expressions === undefined && lookup === undefined && shaft === undefined) {
+    fail(join(path, 'expression'), 'is required unless a lookup or a shaft diagram answers for every output');
+  }
+  if (shaft !== undefined) {
+    if (expressions !== undefined) fail(join(path, 'expression'), 'has no meaning beside a shaft diagram — leave it off');
+    if (lookup !== undefined) fail(join(path, 'shaft'), 'cannot accompany a lookup — a formula is one or the other');
+    checkShaft(shaft, inputs, outputs, path);
   }
   if (expressions !== undefined) {
     const unanswered = outputs.find((port) => expressions[port.name] === undefined);
@@ -637,6 +794,9 @@ export function parseFormula(value: JsonValue, path: string): Formula {
   }
 
   const piecewise = optional(object, 'piecewise', path, parsePiecewise);
+  if (piecewise !== undefined && shaft !== undefined) {
+    fail(join(path, 'shaft'), 'cannot accompany a piecewise evaluator — a formula is one or the other');
+  }
   if (piecewise !== undefined) {
     if (lookup !== undefined) fail(join(path, 'piecewise'), 'cannot accompany a lookup — a formula is one or the other');
     if (outputs.length !== 1) fail(join(path, 'piecewise'), 'answers with one curve, so its formula declares one output');
@@ -715,6 +875,7 @@ export function parseFormula(value: JsonValue, path: string): Formula {
 
   const deflection = optional(object, 'deflection', path, parseDeflection);
   if (deflection !== undefined) {
+    if (shaft !== undefined) fail(join(path, 'shaft'), 'cannot accompany a deflection evaluator — a formula is one or the other');
     if (lookup !== undefined) fail(join(path, 'deflection'), 'cannot accompany a lookup — a formula is one or the other');
     if (piecewise !== undefined) fail(join(path, 'deflection'), 'cannot accompany a piecewise evaluator — a formula is one or the other');
     if (outputs.length !== 1) fail(join(path, 'deflection'), 'answers with one curve, so its formula declares one output');
@@ -789,6 +950,7 @@ export function parseFormula(value: JsonValue, path: string): Formula {
     ...put('lookup', lookup),
     ...put('piecewise', piecewise),
     ...put('deflection', deflection),
+    ...put('shaft', shaft),
     description: parseLocalizedText(required(object, 'description', path), join(path, 'description')),
     ...put('label', optional(object, 'label', path, parseLocalizedText)),
     ...put('citation', optional(object, 'citation', path, readString)),
@@ -839,6 +1001,7 @@ export function serializeFormula(formula: Formula): JsonObject {
     ...put('lookup', formula.lookup === undefined ? undefined : serializeLookup(formula.lookup)),
     ...put('piecewise', formula.piecewise === undefined ? undefined : serializePiecewise(formula.piecewise)),
     ...put('deflection', formula.deflection === undefined ? undefined : serializeDeflection(formula.deflection)),
+    ...put('shaft', formula.shaft === undefined ? undefined : serializeShaft(formula.shaft)),
     ...(formula.label === undefined ? {} : { label: serializeLocalizedText(formula.label) }),
     description: serializeLocalizedText(formula.description),
     ...put('citation', formula.citation),
@@ -891,6 +1054,7 @@ export function formulaHash(formula: Formula): string {
     ...put('lookup', formula.lookup === undefined ? undefined : serializeLookup(formula.lookup)),
     ...put('piecewise', formula.piecewise === undefined ? undefined : serializePiecewise(formula.piecewise)),
     ...put('deflection', formula.deflection === undefined ? undefined : serializeDeflection(formula.deflection)),
+    ...put('shaft', formula.shaft === undefined ? undefined : serializeShaft(formula.shaft)),
     ...put('citation', formula.citation),
     ...put('variantOf', formula.variantOf),
     ...put('appliesWhen', serializePerOutput(formula.outputs, formula.appliesWhen)),

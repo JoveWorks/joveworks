@@ -78,6 +78,8 @@ export type {
 
 export {
   FORMULA_STATUSES,
+  SHAFT_DIAGRAMS,
+  SHAFT_PLANES,
   isEvaluable,
   expressionOf,
   appliesWhenOf,
@@ -106,6 +108,8 @@ export type {
   Catalogue,
   CatalogueSource,
   FormulaLookup,
+  FormulaShaft,
+  ShaftDiagram,
   LookupAxis,
   LookupCell,
 } from './formula.js';
