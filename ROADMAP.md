@@ -161,3 +161,18 @@ one — whether `N/mm²` should become `MPa` (R&M itself writes `N/mm²`), and
 which atom of a product takes the prefix (`kN·m` versus `N·km`). Needs a
 rule from the course side before anything in `formatQuantity` or
 `siAxisUnit` changes.
+
+**17. Show every affected node, not just the next one** — hovering a port or
+wire highlights only the nodes one wire away (`connectedNodeIds` in
+`canvas/Canvas.tsx`), so what a change actually reaches has to be traced hop by
+hop. The highlight should follow the whole downstream closure (and arguably
+the upstream one for an input port), through collapsed groups too. Worth
+deciding whether the far nodes get a quieter ring than the direct neighbours,
+so the immediate wire stays readable.
+
+**18. Peek into a collapsed group** — expanding a collapsed group today opens
+all of its nodes onto the canvas, which reflows the layout just to look
+inside. A `peek` would show the group's contents temporarily (an overlay or
+popover, dismissed on leave or Escape) without expanding it and without
+touching the document. Decide whether a peek is read-only or allows editing a
+value in place.
