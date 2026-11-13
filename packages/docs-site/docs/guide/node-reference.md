@@ -335,6 +335,11 @@ value is actually needed, instead of three parallel wires all making the
 same trip. Pairs with [Unpack](#unpack) at the other end; a pack's
 bundle may feed more than one unpack.
 
+A pack can also hold a shaft's loads and supports. Wire that bundle straight
+into a Shaft calculation's, Support reaction's or Shaft view's `acting` port,
+and it acts as every load in it — one wire from the pack instead of one per
+load, to every node that needs them.
+
 ### Unpack
 
 The inverse of [Pack](#pack): one bundle in, and as many outputs as the
@@ -519,21 +524,25 @@ indeterminate shaft on three bearings or a fixed end and a bearing. For
 the last kind the reactions depend on the shaft's stiffness, and the
 diagrams use its real one, section by section.
 
-- **Torque diagram** — T(z), the running total of each load's torque,
-  taken as already balanced.
-- **Shear diagram** — V(z).
-- **Bending moment diagram** — M(z), positive when the shaft sags.
-- **Deflection diagram** — y(z), zero at every support and level at a fixed
-  one. Distributed loads included.
+- **Shaft calculation** — everything along the shaft from one node:
+  shear V(z), bending moment M(z) (positive when the shaft sags),
+  deflection y(z) (zero at every support, level at a fixed one), slope
+  θ(z) = dy/dz, and torque T(z), the running total of each load's torque,
+  taken as already balanced. Distributed loads included throughout.
 - **Support reaction** — the force `R` and moment `M_R` at one support: wire
   that Support node into `support` as well as into `acting`. Only a fixed
   support takes a moment.
 
-Leave `z` unwired and a diagram is drawn along the shaft's own positions;
-wire a value into it to read the diagram at one place. The `plane` picker
-chooses `x`, `y`, or `resultant` — √(x² + y²) of the two planes, which is
-what a sizing step wants. Forces are positive up in their plane; couples
-are positive clockwise with z to the right.
+z runs along the shaft, y is vertical and x horizontal. The `plane` picker
+chooses which forces to follow: **y · vertical** (the default — gravity
+and most gear forces), **x · horizontal**, or **resultant** — √(x² + y²)
+of the two, which is what a sizing step wants. Forces are positive along
++x or +y; couples are positive clockwise with z to the right, seen from
+the side for y and from above for x.
+
+Leave `z` unwired and the quantities run along the whole shaft; wire a
+position into it to read them at one section — a shoulder, a keyway, a
+bearing seat — or a list of positions for one row per section.
 
 A shaft that nothing holds, or that one simple support leaves free to
 rotate, is refused on the node rather than drawn.
@@ -599,11 +608,25 @@ modulus `E`, and its section — one of:
   optional bore `d_i`. A step runs to the next one's start.
 
 Like a [range](#range), it introduces the z axis: its `z` output holds the
-positions the diagrams are drawn at, and a round or stepped shaft also
-outputs `profile`, its outer diameter at each of them, to plot against what
-the diagrams require. `from`, `to`, `E`, and a round or second-moment
+positions the diagrams are drawn at, and `I` the second moment of area at
+each of them. A round or stepped shaft also outputs `profile`, its outer
+diameter at each position, to plot against what the diagrams require. `from`, `to`, `E`, and a round or second-moment
 section's values can be typed or wired; a swept `d` gives one diagram per
 diameter.
+
+### Shaft view
+
+An output that draws the shaft: wire the [Shaft](#shaft) node into `shaft`,
+and the same loads and supports a Shaft calculation takes into `acting`.
+It shows the shaft twice: from the side,
+the vertical (y–z) plane, and from above, the horizontal (x–z) plane, each
+with a small axis marker. Each view has the outline (steps and bore to scale, diameters shrunk
+together when the shaft would otherwise be very tall), the supports by type,
+and that plane's forces, couples and distributed loads; torques sit in a
+strip above both. To see the shear, moment or deflection along the shaft,
+wire the Shaft calculation into a Plot.
+Only `shaft` has to be wired. If something it draws varies across another
+sweep, the view shows its first point and says so.
 
 ### Distributed load
 

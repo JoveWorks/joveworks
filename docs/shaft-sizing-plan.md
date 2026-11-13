@@ -22,6 +22,10 @@ Where the implementation differs from the text below:
   distributed loads now have a deflection. This replaces the
   `supportA`/`supportB`/`E`/`I` ports and the two-output reactions record
   described below, which never shipped.
+- Later the same day the four diagrams became one Shaft calculation record
+  (`mechanics.shaft.calculation`: V, M, y, θ, T from one solve), and a
+  Shaft view output kind draws the shaft, its supports and loads per plane.
+  Diagrams stay in Plot nodes; the view does not draw them.
 - The `plane` picker defaults to `y`. The editor now resolves a node's
   formula by its full reference, as the kernel does, so a v1 node shows v1
   ports.
