@@ -1,123 +1,224 @@
 /**
  * The closed forms behind a `shaft` record (`FormulaShaft` in the schema):
- * a shaft on two simple supports, loaded in one transverse plane at a time.
+ * a shaft on any arrangement of supports, loaded in one transverse plane at
+ * a time, with its stiffness EI constant within each section.
  *
- * Everything is canonical (mm, N, N·mm) and evaluated at one point `z` — the
- * evaluator calls this once per grid cell, so accuracy never depends on how
- * densely `z` is swept.
+ * Everything acting on the shaft is one list of **terms** of the bending
+ * moment, `M(z) = Σ a·(z − p)^k` over the terms with `p ≤ z`:
  *
- * Signs: a force or a rate is positive up, a couple positive clockwise with
- * z to the right, and the bending moment positive when it sags. A load at or
- * before `z` counts, the same "at or before" rule the v1 diagrams used.
+ * - a force F at p is `F·(z − p)`, k = 1;
+ * - a couple C at p is `C`, k = 0 (positive clockwise with z to the right,
+ *   so the moment steps up by it);
+ * - a uniform load q from f to t is `q/2·(z − f)² − q/2·(z − t)²`, two k = 2
+ *   terms — past t that is its total at its centroid, as it should be.
+ *
+ * The shear is the same terms differentiated, and the deflection the same
+ * terms integrated twice over 1/EI, exactly, section by section — so a
+ * stepped shaft is drawn with its real stiffness, not a sampled one.
+ *
+ * The reactions are more terms of the same kind, with unknown coefficients:
+ * a force at every support, and a moment at every fixed one. They and the
+ * two constants of integration are fixed by as many equations: the shear and
+ * the moment close to zero past everything (equilibrium), the deflection is
+ * zero at every support, and the slope is zero at every fixed one. That is a
+ * small square linear system, solved once per grid cell — determinate and
+ * statically indeterminate arrangements alike. An arrangement that cannot
+ * hold the shaft (one simple support, two supports at one place) leaves it
+ * singular, which is reported rather than answered.
+ *
+ * Canonical units throughout (mm, N, N·mm, N/mm²).
  */
 
-/** A point load's share of one plane: its force, and the couple entering this plane's moment. */
-export interface PlanePoint {
+import { KernelError } from './errors.js';
+
+export interface Term {
+  readonly coefficient: number;
   readonly at: number;
-  readonly force: number;
-  readonly couple: number;
+  readonly power: 0 | 1 | 2;
 }
 
-/** A distributed load's share of one plane. */
-export interface PlaneSpan {
-  readonly from: number;
-  readonly to: number;
-  readonly rate: number;
+/** A stretch of constant stiffness, from `start` to the next segment's start. The first reaches back to −∞, the last on to +∞. */
+export interface Segment {
+  readonly start: number;
+  readonly stiffness: number;
 }
 
-export interface PlaneLoads {
-  readonly points: readonly PlanePoint[];
-  readonly spans: readonly PlaneSpan[];
-}
-
-/** A support and the reaction solved at it. */
-interface Reaction {
+export interface Restraint {
   readonly at: number;
-  readonly force: number;
+  /** Takes a moment as well as a force. */
+  readonly fixed: boolean;
 }
 
-/**
- * The two reactions, from statics: the shear and the moment both close to
- * zero past every load and support. Writing M(z) for z beyond everything,
- * `Σ F·(z − p) + Σ C + R_A·(z − a) + R_B·(z − b) = 0` for every such z, so
- * `R_A + R_B = −Σ F` and `R_A·a + R_B·b = Σ C − Σ F·p`, with each span
- * standing in as its total at its centroid.
- */
-export function reactions(loads: PlaneLoads, a: number, b: number): readonly [number, number] {
+export interface Solution {
+  /** The applied terms with the solved reactions added. */
+  readonly terms: readonly Term[];
+  /** Per restraint, in order: the force and (fixed only, else 0) the moment it applies to the shaft. */
+  readonly reactions: readonly { readonly force: number; readonly moment: number }[];
+  readonly segments: readonly Segment[];
+  /** Where the constants of integration are taken. */
+  readonly origin: number;
+  readonly slope: number;
+  readonly offset: number;
+}
+
+/** A point load, a couple, or both, at one position. */
+export function pointTerms(at: number, force: number, couple: number): readonly Term[] {
+  return [
+    ...(force === 0 ? [] : [{ coefficient: force, at, power: 1 as const }]),
+    ...(couple === 0 ? [] : [{ coefficient: couple, at, power: 0 as const }]),
+  ];
+}
+
+/** A uniform load of `rate` per length from `from` to `to`. */
+export function spanTerms(from: number, to: number, rate: number): readonly Term[] {
+  if (rate === 0) return [];
+  return [
+    { coefficient: rate / 2, at: from, power: 2 },
+    { coefficient: -rate / 2, at: to, power: 2 },
+  ];
+}
+
+export function moment(terms: readonly Term[], z: number): number {
   let total = 0;
-  let moment = 0;
-  for (const point of loads.points) {
-    total += point.force;
-    moment += point.couple - point.force * point.at;
-  }
-  for (const span of loads.spans) {
-    const force = span.rate * (span.to - span.from);
-    total += force;
-    moment -= force * (span.from + span.to) / 2;
-  }
-  const rB = (moment + a * total) / (b - a);
-  return [-total - rB, rB];
-}
-
-function withReactions(loads: PlaneLoads, a: number, b: number): readonly Reaction[] {
-  const [rA, rB] = reactions(loads, a, b);
-  return [{ at: a, force: rA }, { at: b, force: rB }];
-}
-
-/** How far z has advanced into a span: 0 before it starts, its whole length once past it. */
-function into(span: PlaneSpan, z: number): number {
-  return Math.min(Math.max(z - span.from, 0), span.to - span.from);
-}
-
-export function shear(loads: PlaneLoads, a: number, b: number, z: number): number {
-  let total = 0;
-  for (const point of loads.points) if (point.at <= z) total += point.force;
-  for (const span of loads.spans) total += span.rate * into(span, z);
-  for (const reaction of withReactions(loads, a, b)) if (reaction.at <= z) total += reaction.force;
+  for (const term of terms) if (term.at <= z) total += term.coefficient * (z - term.at) ** term.power;
   return total;
 }
 
-export function moment(loads: PlaneLoads, a: number, b: number, z: number): number {
+export function shear(terms: readonly Term[], z: number): number {
   let total = 0;
-  for (const point of loads.points) {
-    if (point.at <= z) total += point.force * (z - point.at) + point.couple;
-  }
-  for (const span of loads.spans) {
-    // The rectangle swept so far, about z: its force times the arm to its
-    // own centroid.
-    const length = into(span, z);
-    total += span.rate * length * (z - span.from - length / 2);
-  }
-  for (const reaction of withReactions(loads, a, b)) {
-    if (reaction.at <= z) total += reaction.force * (z - reaction.at);
+  for (const term of terms) {
+    if (term.at > z || term.power === 0) continue;
+    total += term.coefficient * term.power * (z - term.at) ** (term.power - 1);
   }
   return total;
 }
 
 /**
- * E·I·y(z), zero at both supports. The moment integrated twice: each force
- * contributes `F·(w − p)³/6` and each couple `C·(w − p)²/2`, up to the two
- * constants of integration `y = 0` at each support pins down. A distributed
- * load is the caller's to refuse — its term is not implemented.
+ * `∫ from origin to z` of one term over 1/EI — `weighted` false — or of
+ * (z − t) times it, the Cauchy form of a double integral — `weighted` true.
+ * Exact: within a segment past the term's position the integrand is a
+ * polynomial in s = t − p.
  */
-export function stiffnessDeflection(loads: PlaneLoads, a: number, b: number, z: number): number {
-  const supports = withReactions(loads, a, b);
-  const integral = (w: number): number => {
-    let total = 0;
-    for (const point of loads.points) {
-      if (point.at > w) continue;
-      total += (point.force * (w - point.at) ** 3) / 6 + (point.couple * (w - point.at) ** 2) / 2;
+function integral(term: Term, segments: readonly Segment[], origin: number, z: number, weighted: boolean): number {
+  const lo = Math.min(origin, z);
+  const hi = Math.max(origin, z);
+  const sign = z >= origin ? 1 : -1;
+  const k = term.power;
+  const arm = z - term.at;
+  const antiderivative = (s: number): number =>
+    weighted ? (arm * s ** (k + 1)) / (k + 1) - s ** (k + 2) / (k + 2) : s ** (k + 1) / (k + 1);
+  let total = 0;
+  segments.forEach((segment, i) => {
+    const start = i === 0 ? -Infinity : segment.start;
+    const end = segments[i + 1]?.start ?? Infinity;
+    const from = Math.max(lo, start, term.at);
+    const to = Math.min(hi, end);
+    if (to <= from) return;
+    total += (antiderivative(to - term.at) - antiderivative(from - term.at)) / segment.stiffness;
+  });
+  return sign * term.coefficient * total;
+}
+
+/** Gaussian elimination with partial pivoting, each row scaled to its largest entry first. */
+function solveLinear(matrix: number[][], rhs: number[]): number[] | undefined {
+  const n = rhs.length;
+  for (let row = 0; row < n; row += 1) {
+    const scale = Math.max(...(matrix[row] as number[]).map(Math.abs));
+    if (scale === 0) return undefined;
+    matrix[row] = (matrix[row] as number[]).map((value) => value / scale);
+    rhs[row] = (rhs[row] as number) / scale;
+  }
+  for (let col = 0; col < n; col += 1) {
+    let pivot = col;
+    for (let row = col + 1; row < n; row += 1) {
+      if (Math.abs((matrix[row] as number[])[col] as number) > Math.abs((matrix[pivot] as number[])[col] as number)) pivot = row;
     }
-    for (const reaction of supports) {
-      if (reaction.at <= w) total += (reaction.force * (w - reaction.at) ** 3) / 6;
+    if (Math.abs((matrix[pivot] as number[])[col] as number) < 1e-10) return undefined;
+    [matrix[col], matrix[pivot]] = [matrix[pivot] as number[], matrix[col] as number[]];
+    [rhs[col], rhs[pivot]] = [rhs[pivot] as number, rhs[col] as number];
+    const top = matrix[col] as number[];
+    for (let row = col + 1; row < n; row += 1) {
+      const current = matrix[row] as number[];
+      const factor = (current[col] as number) / (top[col] as number);
+      if (factor === 0) continue;
+      for (let j = col; j < n; j += 1) current[j] = (current[j] as number) - factor * (top[j] as number);
+      rhs[row] = (rhs[row] as number) - factor * (rhs[col] as number);
     }
-    return total;
+  }
+  const x = new Array<number>(n).fill(0);
+  for (let row = n - 1; row >= 0; row -= 1) {
+    const current = matrix[row] as number[];
+    let sum = rhs[row] as number;
+    for (let j = row + 1; j < n; j += 1) sum -= (current[j] as number) * (x[j] as number);
+    x[row] = sum / (current[row] as number);
+  }
+  return x;
+}
+
+/**
+ * The reactions and the constants of integration for one plane. Throws a
+ * plain `KernelError` (no location — the caller names the node) when the
+ * restraints cannot hold the shaft.
+ */
+export function solve(applied: readonly Term[], restraints: readonly Restraint[], segments: readonly Segment[], origin: number): Solution {
+  // The unknowns, in order: each restraint's force, each fixed restraint's
+  // moment, then the slope and the offset at the origin.
+  const unknownTerms: Term[] = [
+    ...restraints.map((restraint) => ({ coefficient: 1, at: restraint.at, power: 1 as const })),
+    ...restraints.filter((restraint) => restraint.fixed).map((restraint) => ({ coefficient: 1, at: restraint.at, power: 0 as const })),
+  ];
+  const n = unknownTerms.length + 2;
+  const beyond = Math.max(origin, ...applied.map((term) => term.at), ...restraints.map((restraint) => restraint.at)) + 1;
+
+  const matrix: number[][] = [];
+  const rhs: number[] = [];
+  const row = (unknown: (term: Term) => number, slope: number, offset: number, known: number): void => {
+    matrix.push([...unknownTerms.map(unknown), slope, offset]);
+    rhs.push(-known);
   };
-  const atA = integral(a);
-  const atB = integral(b);
-  const c1 = (atA - atB) / (b - a);
-  const c2 = -(atA + c1 * a);
-  return integral(z) + c1 * z + c2;
+  // Equilibrium: past everything, nothing is left over.
+  row((term) => shear([term], beyond), 0, 0, shear(applied, beyond));
+  row((term) => moment([term], beyond), 0, 0, moment(applied, beyond));
+  const deflectionOf = (terms: readonly Term[], z: number): number =>
+    terms.reduce((total, term) => total + integral(term, segments, origin, z, true), 0);
+  const slopeOf = (terms: readonly Term[], z: number): number =>
+    terms.reduce((total, term) => total + integral(term, segments, origin, z, false), 0);
+  for (const restraint of restraints) {
+    row((term) => deflectionOf([term], restraint.at), restraint.at - origin, 1, deflectionOf(applied, restraint.at));
+  }
+  for (const restraint of restraints.filter((candidate) => candidate.fixed)) {
+    row((term) => slopeOf([term], restraint.at), 1, 0, slopeOf(applied, restraint.at));
+  }
+
+  const x = matrix.length === n ? solveLinear(matrix, rhs) : undefined;
+  if (x === undefined) {
+    throw new KernelError(
+      restraints.length === 0
+        ? 'nothing holds this shaft — wire a Support node into its acting port'
+        : 'these supports cannot hold the shaft — a single simple support lets it rotate, and two at one position act as one',
+    );
+  }
+  const solvedTerms = unknownTerms.map((term, i) => ({ ...term, coefficient: x[i] as number }));
+  let fixedIndex = restraints.length;
+  const reactions = restraints.map((restraint, i) => ({
+    force: x[i] as number,
+    moment: restraint.fixed ? (x[fixedIndex++] as number) : 0,
+  }));
+  return {
+    terms: [...applied, ...solvedTerms],
+    reactions,
+    segments,
+    origin,
+    slope: x[n - 2] as number,
+    offset: x[n - 1] as number,
+  };
+}
+
+/** y(z) for a solved plane. */
+export function deflection(solution: Solution, z: number): number {
+  let total = solution.offset + solution.slope * (z - solution.origin);
+  for (const term of solution.terms) total += integral(term, solution.segments, solution.origin, z, true);
+  return total;
 }
 
 /** The running total of applied torque at or before z. */

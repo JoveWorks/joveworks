@@ -244,6 +244,12 @@ function collapseAxis(node: AxisNode, tableColumn: ResolvedTableColumn | undefin
     // collapsed inputs already makes.
     return node;
   }
+  if (node.kind === 'shaft') {
+    // The positions along a shaft are geometry, not an uncertain input: they
+    // collapse to the shaft's midpoint, the same way a range collapses to its
+    // own, and the diagrams are read there.
+    return { ...node, count: 1 };
+  }
   // `documentAxes` only ever includes an `input` node here when its value is
   // a range — the same invariant `axisOf` in graph.ts relies on.
   if (!isRange(node.value)) throw new KernelError('not a range node', node.id);

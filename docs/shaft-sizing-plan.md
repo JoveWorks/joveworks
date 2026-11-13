@@ -14,6 +14,14 @@ Where the implementation differs from the text below:
   expression, like a lookup.
 - The legacy move and the v2 records landed as one commit, so the palette
   never loses its diagrams in between.
+- After review (2026-11-13) the diagrams take a Shaft node (extent, E,
+  round / second-moment / stepped section, its own z axis) and Support
+  nodes (simple, fixed, locating, floating) on one `acting` port with the
+  loads. Any support arrangement is solved, statically indeterminate ones
+  included, with the stiffness integrated exactly section by section;
+  distributed loads now have a deflection. This replaces the
+  `supportA`/`supportB`/`E`/`I` ports and the two-output reactions record
+  described below, which never shipped.
 - The `plane` picker defaults to `y`. The editor now resolves a node's
   formula by its full reference, as the kernel does, so a v1 node shows v1
   ports.

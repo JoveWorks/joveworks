@@ -72,11 +72,11 @@ import type { Unit } from '@joveworks/units';
 export type PortUnit = Unit | GenericDimension;
 
 export function isGenericPort(port: Port): boolean {
-  if (port.kind === 'categorical' || port.kind === 'bundle' || port.kind === 'load') return false;
+  if (port.kind === 'categorical' || port.kind === 'bundle' || port.kind === 'load' || port.kind === 'shaft') return false;
   return isGenericDimension(port.unit);
 }
 
-export const PORT_KINDS = ['numeric', 'categorical', 'bundle', 'load'] as const;
+export const PORT_KINDS = ['numeric', 'categorical', 'bundle', 'load', 'shaft'] as const;
 export type PortKind = (typeof PORT_KINDS)[number];
 
 /**
@@ -204,7 +204,17 @@ export interface LoadPort extends PortBase {
   readonly variadic?: boolean;
 }
 
-export type Port = NumericPort | CategoricalPort | BundlePort | LoadPort;
+/**
+ * A whole shaft — its extent along z, Young's modulus and the second moment
+ * of area of each section — as a Shaft node produces it (`ShaftNode` in
+ * `document.ts`). Input-only, and never variadic: a diagram is drawn on one
+ * shaft.
+ */
+export interface ShaftPort extends PortBase {
+  readonly kind: 'shaft';
+}
+
+export type Port = NumericPort | CategoricalPort | BundlePort | LoadPort | ShaftPort;
 
 /** What a formula may produce. A `NumericPort` here is never `variadic` — a formula produces one value, not several. */
 export type OutputPort = NumericPort | CategoricalPort;
@@ -214,7 +224,7 @@ export type OutputPort = NumericPort | CategoricalPort;
  * generic port — which has no dimension until the wiring binds one.
  */
 export function portDimension(port: Port): Dimension | undefined {
-  if (port.kind === 'bundle' || port.kind === 'load') return undefined;
+  if (port.kind === 'bundle' || port.kind === 'load' || port.kind === 'shaft') return undefined;
   if (port.kind === 'categorical') return DIMENSIONLESS;
   return isGenericDimension(port.unit) ? undefined : port.unit.dimension;
 }
@@ -299,6 +309,8 @@ export function parsePort(value: JsonValue, path: string): Port {
     return { kind, name, ...put('description', description), ...put('variadic', variadic) };
   }
 
+  if (kind === 'shaft') return { kind, name, ...put('description', description) };
+
   const unit = parsePortUnitField(required(object, 'unit', path), join(path, 'unit'));
   const preferredUnit = optional(object, 'preferredUnit', path, parsePreferredUnit);
   if (preferredUnit !== undefined) {
@@ -356,6 +368,7 @@ export function serializePort(port: Port): JsonObject {
   if (port.kind === 'load') {
     return { ...base, ...put('variadic', port.variadic) };
   }
+  if (port.kind === 'shaft') return base;
   return {
     ...base,
     unit: port.unit.symbol,
@@ -381,7 +394,7 @@ export function serializePort(port: Port): JsonObject {
  * used to make them: `$A*$B` is exactly what `multiply` produces.
  */
 export function asInputPort(port: Port, path: string): Port {
-  if (port.kind !== 'categorical' && port.kind !== 'bundle' && port.kind !== 'load' && isGenericDimension(port.unit)) {
+  if (port.kind !== 'categorical' && port.kind !== 'bundle' && port.kind !== 'load' && port.kind !== 'shaft' && isGenericDimension(port.unit)) {
     if (bareVariable(port.unit) === undefined) {
       fail(
         join(path, 'unit'),
@@ -404,6 +417,9 @@ export function asOutputPort(port: Port, path: string): OutputPort {
   }
   if (port.kind === 'load') {
     fail(path, 'a load is produced by a Load node only — a catalogue formula cannot produce one');
+  }
+  if (port.kind === 'shaft') {
+    fail(path, 'a shaft is produced by a Shaft node only — a catalogue formula cannot produce one');
   }
   if (port.kind === 'numeric' && port.variadic === true) {
     fail(path, "'variadic' is an input-only flag — a formula cannot produce several values");

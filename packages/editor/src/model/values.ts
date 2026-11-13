@@ -42,7 +42,7 @@ export function reading(
 ): Reading | undefined {
   const key = `${nodeId}.${port}`;
   const series = analysis.evaluation?.values.get(key);
-  if (series === undefined || series.kind === 'bundle' || series.kind === 'load') return undefined;
+  if (series === undefined || series.kind === 'bundle' || series.kind === 'load' || series.kind === 'shaft') return undefined;
   const type = analysis.resolution?.sources.get(key);
   return { series, unit: type?.unit ?? canonicalUnit(type?.dimension ?? DIMENSIONLESS) };
 }

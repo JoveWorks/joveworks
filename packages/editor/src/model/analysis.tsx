@@ -56,6 +56,7 @@ import {
   MONTE_CARLO_SAMPLE_PORT,
   START_PORT,
   loadNodeFields,
+  shaftNodeFields,
   STOP_PORT,
   COUNT_PORT,
   OBJECTIVE_PORT,
@@ -166,7 +167,7 @@ export function lookupRef(
  */
 function hasValue(node: GraphNode, port: Port): boolean {
   const authored = 'inputValues' in node ? node.inputValues?.[port.name] : undefined;
-  if (port.kind === 'bundle' || port.kind === 'load' || (port.kind === 'numeric' && port.variadic === true)) return false;
+  if (port.kind === 'bundle' || port.kind === 'load' || port.kind === 'shaft' || (port.kind === 'numeric' && port.variadic === true)) return false;
   if (port.kind === 'categorical') return authored !== undefined || port.default !== undefined;
   if (authored !== undefined) return true;
   if (isGenericPort(port)) return true;
@@ -266,10 +267,12 @@ function readiness(
       continue;
     }
 
-    if (node.kind === 'load' || node.kind === 'distributedLoad') {
+    if (node.kind === 'load' || node.kind === 'distributedLoad' || node.kind === 'support' || node.kind === 'shaft') {
       // A range's shape: every field has a typed value or reads zero, so
       // nothing is ever "not connected", only blocked on an unready wire.
-      if (loadNodeFields(node).some((port) => isWired(node.id, port) && !upstreamReady(node.id, port))) {
+      const fields: readonly string[] =
+        node.kind === 'support' ? ['at'] : node.kind === 'shaft' ? shaftNodeFields(node) : loadNodeFields(node);
+      if (fields.some((port) => isWired(node.id, port) && !upstreamReady(node.id, port))) {
         states.set(node.id, 'blocked');
         continue;
       }
@@ -317,8 +320,9 @@ function readiness(
         );
         continue;
       }
+      // A shaft diagram's position is optional: unwired, it runs along the shaft.
       const missing = formula.inputs.filter(
-        (port) => !hasValue(node, port) && !isWired(node.id, port.name),
+        (port) => port.name !== formula.shaft?.axis && !hasValue(node, port) && !isWired(node.id, port.name),
       );
       if (missing.length > 0) {
         states.set(node.id, 'incomplete');

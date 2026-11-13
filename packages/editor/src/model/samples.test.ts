@@ -208,7 +208,7 @@ describe('the shaft-sizing study', () => {
       return value.data;
     };
     const required = series('d_req.d');
-    series('d_step.y').forEach((step, i) => expect(step).toBeGreaterThanOrEqual(required[i] as number));
+    series('shaft.profile').forEach((step, i) => expect(step).toBeGreaterThanOrEqual(required[i] as number));
     // The gear's section governs, at z = 60 mm, and needs about 22.9 mm.
     expect(series('governing.at')).toEqual([60]);
     expect(series('size.at')).toEqual([25]);

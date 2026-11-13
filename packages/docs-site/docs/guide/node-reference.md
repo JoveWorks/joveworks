@@ -505,27 +505,38 @@ property of the series itself.
 
 Generic shaft diagrams — not tied to any particular textbook, so they ship
 publicly like Base and Array nodes, but marked `unverified` throughout.
-Each takes the shaft's loads on one `loads` port: wire every
-[Load](#load) and [Distributed load](#distributed-load) node into it. The
-shaft sits on two simple supports, `supportA` and `supportB`, and the
-diagrams solve the support reactions themselves, so nothing is wired back.
+Each takes two things:
 
-- **Torque diagram** — T(z), the running total of each load's torque, taken
-  as already balanced. No supports.
-- **Shear diagram** — V(z), every force, distributed load and reaction at
-  or before z.
-- **Bending moment diagram** — M(z), their moments about z plus each
-  bending couple at or before z. Positive when the shaft sags.
-- **Deflection diagram** — y(z), zero at both supports, from Young's modulus
-  `E` and the section's second moment of area `I`. Point loads and couples
-  only: a distributed load is refused.
-- **Support reactions** — `R_A` and `R_B` in one plane, for reporting and
-  checks. Signed like the loads: Σ forces + R_A + R_B = 0.
+- **`acting`** — everything acting on the shaft: wire every
+  [Load](#load), [Distributed load](#distributed-load) and
+  [Support](#support) node into it.
+- **`shaft`** — the [Shaft](#shaft) node: its length, Young's modulus and
+  section.
 
-Sweep `z` to draw a diagram. The `plane` picker chooses `x`, `y`, or
-`resultant` — √(x² + y²) of the two planes, which is what a sizing step
-wants. Forces are positive up in their plane; couples are positive
-clockwise with z to the right.
+The diagrams solve the support reactions themselves, for any arrangement:
+two bearings, a cantilever on one fixed support, or a statically
+indeterminate shaft on three bearings or a fixed end and a bearing. For
+the last kind the reactions depend on the shaft's stiffness, and the
+diagrams use its real one, section by section.
+
+- **Torque diagram** — T(z), the running total of each load's torque,
+  taken as already balanced.
+- **Shear diagram** — V(z).
+- **Bending moment diagram** — M(z), positive when the shaft sags.
+- **Deflection diagram** — y(z), zero at every support and level at a fixed
+  one. Distributed loads included.
+- **Support reaction** — the force `R` and moment `M_R` at one support: wire
+  that Support node into `support` as well as into `acting`. Only a fixed
+  support takes a moment.
+
+Leave `z` unwired and a diagram is drawn along the shaft's own positions;
+wire a value into it to read the diagram at one place. The `plane` picker
+chooses `x`, `y`, or `resultant` — √(x² + y²) of the two planes, which is
+what a sizing step wants. Forces are positive up in their plane; couples
+are positive clockwise with z to the right.
+
+A shaft that nothing holds, or that one simple support leaves free to
+rotate, is refused on the node rather than drawn.
 
 A NodeBook made with an earlier version, where positions and forces were
 wired into separate stacks, keeps opening and evaluating as it was saved;
@@ -558,9 +569,41 @@ force computed from a torque goes straight into `Fy`. A field left empty is
 zero. Wire a range into `at` and the load moves along the shaft, one load
 per point of the sweep.
 
-The `load` output goes into a [shaft diagram](#mechanics-nodes)'s `loads` port and nowhere else
+The `load` output goes into a [shaft diagram](#mechanics-nodes)'s `acting` port and nowhere else
 — not into a formula's number port, an output or a compare. A
 [waypoint](#waypoint) can route it.
+
+### Support
+
+Where the shaft is held, and how. `at` is its position, typed or wired; the
+type is one of:
+
+- **simple** — a pin or roller: takes a force, free to rotate.
+- **fixed** — clamped: takes a force and a moment. One alone holds a
+  cantilever.
+- **locating bearing**, **floating bearing** — rolling bearings, simple
+  supports in bending. Their roles differ only along the shaft's axis,
+  which the diagrams do not model; more than one locating bearing gets a
+  warning, since axially that over-constrains the shaft.
+
+Its output goes into a diagram's `acting` port, alongside the loads.
+
+### Shaft
+
+The shaft the diagrams are drawn on: from `from` to `to` along z, Young's
+modulus `E`, and its section — one of:
+
+- **round** — a solid shaft of diameter `d`, or a hollow one with bore `d_i`;
+- **second moment** — any section, given by its `I`;
+- **stepped** — a table of steps, each with where it starts, its `d` and an
+  optional bore `d_i`. A step runs to the next one's start.
+
+Like a [range](#range), it introduces the z axis: its `z` output holds the
+positions the diagrams are drawn at, and a round or stepped shaft also
+outputs `profile`, its outer diameter at each of them, to plot against what
+the diagrams require. `from`, `to`, `E`, and a round or second-moment
+section's values can be typed or wired; a swept `d` gives one diagram per
+diameter.
 
 ### Distributed load
 

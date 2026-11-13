@@ -127,7 +127,7 @@ export function FormulaNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
     // A generic port has no unit of its own until something is wired to it
     //, so what it shows is the unit the binding gave it.
     const resolved = analysis.resolution?.targets.get(`${id}.${port.name}`)?.unit;
-    if (port.kind === 'load') return undefined;
+    if (port.kind === 'load' || port.kind === 'shaft') return undefined;
     return resolved ?? (isGenericPort(port) ? undefined : (port.preferredUnit ?? port.unit) as Unit);
   };
 

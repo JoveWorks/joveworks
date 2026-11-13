@@ -925,13 +925,12 @@ describe('shaft formulas', () => {
     version: 1,
     output: { kind: 'numeric', name: 'M', unit: 'Nmm' },
     inputs: [
-      { kind: 'numeric', name: 'z', unit: 'mm', default: 0 },
-      { kind: 'load', name: 'loads', variadic: true },
-      { kind: 'numeric', name: 'a', unit: 'mm' },
-      { kind: 'numeric', name: 'b', unit: 'mm' },
+      { kind: 'numeric', name: 'z', unit: 'mm' },
+      { kind: 'load', name: 'acting', variadic: true },
+      { kind: 'shaft', name: 'shaft' },
       { kind: 'categorical', name: 'plane', domain: ['x', 'y', 'resultant'], default: 'y' },
     ],
-    shaft: { diagram: 'moment', loads: 'loads', axis: 'z', supports: ['a', 'b'], plane: 'plane' },
+    shaft: { diagram: 'moment', acting: 'acting', shaft: 'shaft', axis: 'z', plane: 'plane' },
     description: { en: 'An invented shaft-moment record.' },
     status: 'unverified',
   };
@@ -943,35 +942,28 @@ describe('shaft formulas', () => {
   });
 
   it('needs each field its diagram uses, and refuses the ones it does not', () => {
-    const { supports: _supports, ...noSupports } = shaft;
-    expect(() => parseFormula({ ...moment, shaft: noSupports }, '')).toThrow(/shaft\.supports: is required for a moment diagram/u);
-    expect(() => parseFormula(withShaft({ modulus: 'a' }), '')).toThrow(/shaft\.modulus: has no meaning for a moment diagram/u);
+    const { plane: _plane, ...noPlane } = shaft;
+    expect(() => parseFormula({ ...moment, shaft: noPlane }, '')).toThrow(/shaft\.plane: is required for a moment diagram/u);
+    expect(() => parseFormula(withShaft({ support: 'acting' }), '')).toThrow(/shaft\.support: has no meaning for a moment diagram/u);
   });
 
   it('refuses an expression beside it', () => {
     expect(() => parseFormula({ ...moment, expression: 'z' }, '')).toThrow(/no meaning beside a shaft diagram/u);
   });
 
-  it('takes its loads from a variadic load port only', () => {
-    expect(() => parseFormula(withShaft({ loads: 'z' }), '')).toThrow(/must be a declared variadic load input/u);
+  it('takes what acts on the shaft from a variadic load port, and the shaft from a shaft port', () => {
+    expect(() => parseFormula(withShaft({ acting: 'z' }), '')).toThrow(/must be a declared variadic load input/u);
+    expect(() => parseFormula(withShaft({ shaft: 'z' }), '')).toThrow(/must be a declared shaft input/u);
   });
 
-  it('checks the output against what the diagram produces', () => {
+  it('keeps its position input free of a default, so unwired it runs along the shaft', () => {
+    const inputs = (moment['inputs'] as JsonObject[]).map((port) => (port['name'] === 'z' ? { ...port, default: 0 } : port));
+    expect(() => parseFormula({ ...moment, inputs }, '')).toThrow(/takes no default/u);
+  });
+
+  it('checks the outputs against what the diagram produces', () => {
     expect(() => parseFormula({ ...moment, output: { kind: 'numeric', name: 'M', unit: 'N' } }, '')).toThrow(
-      /dimension a moment diagram produces/u,
+      /dimension a moment record produces/u,
     );
-  });
-
-  it('refuses a resultant plane on a reactions record, a signed answer', () => {
-    const { axis: _axis, ...rest } = shaft;
-    const reactions: JsonObject = {
-      ...moment,
-      output: [
-        { kind: 'numeric', name: 'R_A', unit: 'N' },
-        { kind: 'numeric', name: 'R_B', unit: 'N' },
-      ],
-      shaft: { ...rest, diagram: 'reactions' },
-    };
-    expect(() => parseFormula(reactions, '')).toThrow(/'resultant' is not a plane this diagram can draw/u);
   });
 });

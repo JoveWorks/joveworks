@@ -524,6 +524,8 @@ const NODE_NAMES: Readonly<Record<GraphNode['kind'], string>> = {
   zip: 'zip',
   load: 'load',
   distributedLoad: 'distributed load',
+  support: 'support',
+  shaft: 'shaft',
   monteCarloGenerator: 'Monte Carlo generator',
   monteCarloReceiver: 'Monte Carlo receiver',
 };
@@ -585,7 +587,7 @@ export function compileJupyter(
   /** A computed value as a Python literal in `unit`, shaped over its own sweep axes. */
   const literal = (key: string): string | undefined => {
     const value = evaluation?.values.get(key);
-    if (value === undefined || value.kind === 'bundle' || value.kind === 'load') return undefined;
+    if (value === undefined || value.kind === 'bundle' || value.kind === 'load' || value.kind === 'shaft') return undefined;
     const shape = axisIds.map(() => 1);
     for (const axis of value.axes) {
       const at = axisPosition(axis.id);
@@ -612,7 +614,7 @@ export function compileJupyter(
     for (const port of ports) {
       const key = endpointKey(node.id, port);
       const value = evaluation?.values.get(key);
-      if (value?.kind === 'bundle') continue;
+      if (value?.kind === 'bundle' || value?.kind === 'load' || value?.kind === 'shaft') continue;
       const name = names.claim(ports.length === 1 ? node.label ?? port : port, 'value');
       variables.set(key, name);
       if (value?.kind === 'categorical') categorical.add(name);
@@ -1051,6 +1053,10 @@ export function compileJupyter(
         return;
       case 'output':
         emitOutput(node);
+        return;
+      case 'support':
+        code(comment(`${titleOf(node)} — a ${node.support} support at ${pyNumber(node.at.value)} ${node.at.unit.symbol}. ` +
+          'Not translated: the diagrams it holds are carried over as values.'));
         return;
       case 'load':
       case 'distributedLoad': {

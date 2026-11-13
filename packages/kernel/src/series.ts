@@ -82,16 +82,49 @@ export interface SpanLoadValue {
   readonly qy: NumericSeries;
 }
 
-export type LoadValue = PointLoadValue | SpanLoadValue;
+/** A Support node's value: where the shaft is held, and how (`SupportNode` in the schema). */
+export interface SupportValue {
+  readonly kind: 'load';
+  readonly shape: 'support';
+  readonly at: NumericSeries;
+  readonly support: 'simple' | 'fixed' | 'locating' | 'floating';
+}
+
+/** Everything that acts on a shaft, on one wire kind: loads and supports alike. */
+export type LoadValue = PointLoadValue | SpanLoadValue | SupportValue;
 
 /** A load's fields as series, in its node's field order. */
 export function loadSeries(value: LoadValue): readonly NumericSeries[] {
   return value.shape === 'point'
     ? [value.at, value.Fx, value.Fy, value.torque, value.Cx, value.Cy]
-    : [value.from, value.to, value.qx, value.qy];
+    : value.shape === 'span'
+      ? [value.from, value.to, value.qx, value.qy]
+      : [value.at];
 }
 
-export type PortValue = NumericSeries | CategoricalSeries | BundleValue | LoadValue;
+/**
+ * What a Shaft node produces: its extent, Young's modulus, and the second
+ * moment of area of each section, every number a series so a swept diameter
+ * or modulus broadcasts like any other value. Sections are in order along
+ * the shaft; each runs from its `start` to the next one's, the first reaching
+ * back past the shaft's start and the last on past its end.
+ */
+export interface ShaftValue {
+  readonly kind: 'shaft';
+  readonly from: NumericSeries;
+  readonly to: NumericSeries;
+  readonly E: NumericSeries;
+  readonly sections: readonly { readonly start: number; readonly I: NumericSeries }[];
+  /** The positions along the shaft its node introduces — what a diagram is drawn at unless told otherwise. */
+  readonly z: NumericSeries;
+}
+
+/** A shaft's numbers as series, for broadcasting and zip checks. */
+export function shaftSeries(value: ShaftValue): readonly NumericSeries[] {
+  return [value.from, value.to, value.E, ...value.sections.map((section) => section.I)];
+}
+
+export type PortValue = NumericSeries | CategoricalSeries | BundleValue | LoadValue | ShaftValue;
 export type Series = NumericSeries | CategoricalSeries;
 
 export function isSeries(value: PortValue): value is Series {

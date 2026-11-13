@@ -6,9 +6,10 @@
  * than through `draft.ts`'s `buildFormulas`, since `Draft` has no `shaft`
  * field.
  *
- * The diagrams take their loads from Load and Distributed load nodes on one
- * `loads` port and solve the support reactions themselves (`FormulaShaft` in
- * the schema). They are version 2 of the ids release 0.33.0 shipped; version
+ * The diagrams take everything acting on a shaft — Load, Distributed load and
+ * Support nodes — on one `acting` port, and the shaft itself from a Shaft
+ * node, and solve the support reactions themselves (`FormulaShaft` in the
+ * schema). They are version 2 of the ids release 0.33.0 shipped; version
  * 1, which paired positions and forces by wire order, lives on unchanged in
  * `mechanicsLegacyNodes.ts` for the NodeBooks saved against it.
  */
@@ -18,50 +19,45 @@ import { parseUnit } from '@joveworks/units';
 import { text } from './draft.js';
 
 const shaftZ: Port = {
-  kind: 'numeric', name: 'z', unit: parseUnit('mm'), default: 0,
-  description: text('Position along the shaft — sweep it to draw the diagram'),
+  kind: 'numeric', name: 'z', unit: parseUnit('mm'),
+  description: text('Where to evaluate — leave unwired to draw the diagram along the whole shaft'),
 };
 
-const shaftLoads: Port = {
-  kind: 'load', name: 'loads', variadic: true,
-  description: text('Every load on the shaft — wire each Load and Distributed load node here'),
+const shaftActing: Port = {
+  kind: 'load', name: 'acting', variadic: true,
+  description: text('Everything acting on the shaft — wire each Load, Distributed load and Support node here'),
 };
 
-const shaftSupports: readonly Port[] = [
-  { kind: 'numeric', name: 'supportA', unit: parseUnit('mm'), description: text('Position of support A') },
-  { kind: 'numeric', name: 'supportB', unit: parseUnit('mm'), description: text('Position of support B') },
-];
+const shaftShaft: Port = {
+  kind: 'shaft', name: 'shaft',
+  description: text('The shaft — its length, Young’s modulus and section, from a Shaft node'),
+};
 
-function shaftPlane(resultant: boolean): Port {
-  return {
-    kind: 'categorical',
-    name: 'plane',
-    domain: resultant ? ['x', 'y', 'resultant'] : ['x', 'y'],
-    default: 'y',
-    description: text(
-      resultant
-        ? 'The transverse plane to draw, or the resultant √(x² + y²) of both'
-        : 'The transverse plane to solve — a reaction is signed, so one plane at a time',
-    ),
-  };
-}
+const shaftPlane: Port = {
+  kind: 'categorical',
+  name: 'plane',
+  domain: ['x', 'y', 'resultant'],
+  default: 'y',
+  description: text('The transverse plane to draw, or the resultant √(x² + y²) of both'),
+};
 
 const SIGNS =
-  'Forces are positive up in their plane, couples positive clockwise with z to the right; ' +
-  'the reactions at the two supports are solved from the loads, so nothing needs wiring back.';
+  'Forces are positive up in their plane, couples positive clockwise with z to the right. The ' +
+  'support reactions are solved from everything wired in — any arrangement of supports, with the ' +
+  'shaft’s own stiffness section by section — so nothing needs wiring back.';
 
 const shaftTorque: Formula = {
   id: 'mechanics.shaft.torque',
   version: 2,
   label: text('Torque diagram'),
   description: text(
-    'Torque along a shaft at a given position, T(z) — the running total of every load’s torque ' +
-      'at or before that position. Torques are taken as already balanced (input in, output out); ' +
-      'this does not solve for a reaction torque.',
+    'Torque along a shaft, T(z) — the running total of every load’s torque at or before z. ' +
+      'Torques are taken as already balanced (input in, output out); this does not solve for a ' +
+      'reaction torque.',
   ),
   outputs: [{ kind: 'numeric', name: 'T', unit: parseUnit('Nmm'), description: text('Torque at z — T(z)') }],
-  inputs: [shaftZ, shaftLoads],
-  shaft: { diagram: 'torque', loads: 'loads', axis: 'z' },
+  inputs: [shaftZ, shaftActing, shaftShaft],
+  shaft: { diagram: 'torque', acting: 'acting', shaft: 'shaft', axis: 'z' },
   status: 'unverified',
 };
 
@@ -69,13 +65,10 @@ const shaftShear: Formula = {
   id: 'mechanics.shaft.shear',
   version: 2,
   label: text('Shear diagram'),
-  description: text(
-    'Shear force along a shaft on two simple supports at a given position, V(z) — every force, ' +
-      `distributed load and support reaction at or before that position. ${SIGNS}`,
-  ),
+  description: text(`Shear force along a shaft, V(z) — every force, distributed load and support reaction at or before z. ${SIGNS}`),
   outputs: [{ kind: 'numeric', name: 'V', unit: parseUnit('N'), description: text('Shear at z — V(z)') }],
-  inputs: [shaftZ, shaftLoads, ...shaftSupports, shaftPlane(true)],
-  shaft: { diagram: 'shear', loads: 'loads', axis: 'z', supports: ['supportA', 'supportB'], plane: 'plane' },
+  inputs: [shaftZ, shaftActing, shaftShaft, shaftPlane],
+  shaft: { diagram: 'shear', acting: 'acting', shaft: 'shaft', axis: 'z', plane: 'plane' },
   status: 'unverified',
 };
 
@@ -84,13 +77,12 @@ const shaftMoment: Formula = {
   version: 2,
   label: text('Bending moment diagram'),
   description: text(
-    'Bending moment along a shaft on two simple supports at a given position, M(z) — the moment ' +
-      'about z of every force, distributed load and support reaction at or before that position, ' +
-      `plus each bending couple there. Positive when the shaft sags. ${SIGNS}`,
+    'Bending moment along a shaft, M(z) — the moment about z of every force, distributed load ' +
+      `and support reaction at or before z, plus each couple there. Positive when the shaft sags. ${SIGNS}`,
   ),
   outputs: [{ kind: 'numeric', name: 'M', unit: parseUnit('Nmm'), description: text('Moment at z — M(z)') }],
-  inputs: [shaftZ, shaftLoads, ...shaftSupports, shaftPlane(true)],
-  shaft: { diagram: 'moment', loads: 'loads', axis: 'z', supports: ['supportA', 'supportB'], plane: 'plane' },
+  inputs: [shaftZ, shaftActing, shaftShaft, shaftPlane],
+  shaft: { diagram: 'moment', acting: 'acting', shaft: 'shaft', axis: 'z', plane: 'plane' },
   status: 'unverified',
 };
 
@@ -99,38 +91,36 @@ const shaftDeflection: Formula = {
   version: 2,
   label: text('Deflection diagram'),
   description: text(
-    "A shaft's deflection on two simple supports at a given position, y(z) — zero at both " +
-      "supports, from Young's modulus E and the section's second moment of area I. Point loads " +
-      `and couples only: a distributed load is refused. ${SIGNS}`,
+    'A shaft’s deflection, y(z) — zero at every support and level at a fixed one, with the ' +
+      `shaft’s own Young’s modulus and second moment of area, section by section. ${SIGNS}`,
   ),
   outputs: [{ kind: 'numeric', name: 'y', unit: parseUnit('mm'), description: text('Deflection at z — y(z)') }],
-  inputs: [
-    shaftZ, shaftLoads, ...shaftSupports, shaftPlane(true),
-    { kind: 'numeric', name: 'E', unit: parseUnit('N/mm²'), description: text("Young's modulus") },
-    { kind: 'numeric', name: 'I', unit: parseUnit('mm⁴'), description: text("The section's second moment of area") },
-  ],
-  shaft: {
-    diagram: 'deflection', loads: 'loads', axis: 'z', supports: ['supportA', 'supportB'], plane: 'plane',
-    modulus: 'E', secondMomentOfArea: 'I',
-  },
+  inputs: [shaftZ, shaftActing, shaftShaft, shaftPlane],
+  shaft: { diagram: 'deflection', acting: 'acting', shaft: 'shaft', axis: 'z', plane: 'plane' },
   status: 'unverified',
 };
 
 const shaftReactions: Formula = {
   id: 'mechanics.shaft.reactions',
   version: 1,
-  label: text('Support reactions'),
+  label: text('Support reaction'),
   description: text(
-    'The reactions at the two simple supports of a shaft, in one plane — for reporting and ' +
-      'checks; the diagrams solve them themselves. Signed like the loads, so ' +
-      'Σ forces + R_A + R_B = 0.',
+    'The force and the moment one support applies to the shaft, for reporting and checks — wire ' +
+      'that Support node here as well as into acting; the diagrams solve the reactions themselves. ' +
+      'Signed like the loads, so all forces and reactions together sum to zero. Only a fixed support ' +
+      `takes a moment. ${SIGNS}`,
   ),
   outputs: [
-    { kind: 'numeric', name: 'R_A', unit: parseUnit('N'), description: text('Reaction at support A, positive up') },
-    { kind: 'numeric', name: 'R_B', unit: parseUnit('N'), description: text('Reaction at support B, positive up') },
+    { kind: 'numeric', name: 'R', unit: parseUnit('N'), description: text('Reaction force, positive up') },
+    { kind: 'numeric', name: 'M_R', unit: parseUnit('Nmm'), description: text('Reaction moment, positive clockwise — zero unless the support is fixed') },
   ],
-  inputs: [shaftLoads, ...shaftSupports, shaftPlane(false)],
-  shaft: { diagram: 'reactions', loads: 'loads', supports: ['supportA', 'supportB'], plane: 'plane' },
+  inputs: [
+    shaftActing,
+    shaftShaft,
+    { kind: 'load', name: 'support', description: text('The support to report — one of those wired into acting') },
+    shaftPlane,
+  ],
+  shaft: { diagram: 'reactions', acting: 'acting', shaft: 'shaft', support: 'support', plane: 'plane' },
   status: 'unverified',
 };
 

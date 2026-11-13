@@ -77,6 +77,12 @@ import {
   type RangeNode,
   type ZipNode,
   type FormulaShaft,
+  type ShaftNode,
+  type SupportNode,
+  SHAFT_PORT,
+  SHAFT_Z_PORT,
+  SHAFT_PROFILE_PORT,
+  shaftFieldValue,
   type LoadNode,
   type DistributedLoadNode,
   type LoadField,
@@ -109,14 +115,16 @@ import { crossingsAlong, select, type SelectResult } from './select.js';
 import { interpolate } from './interpolate.js';
 import { reduceAlong } from './statistics.js';
 import {
+  deflection as shaftDeflection,
   moment as shaftMoment,
-  reactions as shaftReactions,
+  pointTerms,
   shear as shaftShear,
-  stiffnessDeflection,
+  solve as solveShaft,
+  spanTerms,
   torque as shaftTorque,
-  type PlaneLoads,
-  type PlanePoint,
-  type PlaneSpan,
+  type Restraint,
+  type Solution,
+  type Term,
 } from './shaft.js';
 import { buildDistribution, type DistributionPanel } from './distribution.js';
 import { inverseNormal, wilsonInterval } from './normal.js';
@@ -128,6 +136,7 @@ import {
   indexer,
   isSeries,
   loadSeries,
+  shaftSeries,
   reader,
   scalarSeries,
   categoricalScalar,
@@ -135,6 +144,7 @@ import {
   type Axis,
   type CategoricalSeries,
   type LoadValue,
+  type ShaftValue,
   type NumericSeries,
   type PortValue,
   type Series,
@@ -706,8 +716,19 @@ function runEvaluation(
 
       case 'load':
       case 'distributedLoad':
+      case 'support':
         values.set(endpointKey(node.id, LOAD_PORT), evaluateLoad(node, resolution, values));
         break;
+
+      case 'shaft': {
+        const shaft = evaluateShaftNode(node, resolution, values);
+        values.set(endpointKey(node.id, SHAFT_PORT), shaft);
+        values.set(endpointKey(node.id, SHAFT_Z_PORT), shaft.z);
+        if (node.section.kind !== 'secondMoment') {
+          values.set(endpointKey(node.id, SHAFT_PROFILE_PORT), shaftProfile(node, shaft, resolution, values));
+        }
+        break;
+      }
 
       case 'zip': {
         const sources = evaluateZip(node, resolution, values, values);
@@ -784,7 +805,9 @@ function axisCoordinateKey(resolution: Resolution, nodeId: string): string {
       ? (node.columns[0]?.name ?? VALUE_PORT)
       : node?.kind === 'zip'
         ? `out${packChannelIndices(resolution.document, nodeId)[0] ?? 0}`
-        : (resolution.tables.get(nodeId)?.axis.input ?? VALUE_PORT),
+        : node?.kind === 'shaft'
+          ? SHAFT_Z_PORT
+          : (resolution.tables.get(nodeId)?.axis.input ?? VALUE_PORT),
   );
 }
 
@@ -1468,7 +1491,7 @@ function variadicEdgeValues(
   if (edges.length === 0) throw new KernelError(`'${port.name}' is not connected and has no default`, key);
   return edges.map((edge) => {
     const value = valueAtEdge(edge, key, values);
-    if (value.kind === 'categorical' || value.kind === 'bundle' || value.kind === 'load') {
+    if (value.kind === 'categorical' || value.kind === 'bundle' || value.kind === 'load' || value.kind === 'shaft') {
       throw new KernelError(
         `'${edge.from.node}.${edge.from.port}' is a ${value.kind} value, and this port needs a number`,
         key,
@@ -1521,7 +1544,7 @@ function evaluateFormula(
   // A load port is read by the shaft evaluators themselves, never by an
   // expression, so it is neither a regular nor a variadic numeric input.
   const regularPorts = formula.inputs.filter(
-    (port) => port.kind !== 'load' && !(port.kind === 'numeric' && port.variadic === true),
+    (port) => port.kind !== 'load' && port.kind !== 'shaft' && !(port.kind === 'numeric' && port.variadic === true),
   );
   const regularInputs = regularPorts.map((port) => {
     const value = inputPortValue(node, port, resolution, values);
@@ -1533,8 +1556,8 @@ function evaluateFormula(
     if (value.kind === 'bundle') {
       throw new KernelError(`'${port.name}' cannot hold a bundle — only 'unpack' can`, nodeId);
     }
-    if (value.kind === 'load') {
-      throw new KernelError(`'${port.name}' cannot hold a load — only a shaft diagram's load port can`, nodeId);
+    if (value.kind === 'load' || value.kind === 'shaft') {
+      throw new KernelError(`'${port.name}' cannot hold a ${value.kind} — only a shaft diagram's own ports can`, nodeId);
     }
     return { port, value };
   });
@@ -2232,6 +2255,10 @@ function checkZipMix(
     for (const field of loadSeries(value)) checkZipMix(nodeId, field, zips);
     return;
   }
+  if (value.kind === 'shaft') {
+    for (const field of shaftSeries(value)) checkZipMix(nodeId, field, zips);
+    return;
+  }
   for (const axis of value.axes) {
     const zip = zips.get(axis.id);
     if (zip === undefined) continue;
@@ -2248,14 +2275,15 @@ function checkZipMix(
 // --- shaft diagrams ---------------------------------------------------------
 
 /**
- * A `shaft` record (`FormulaShaft`): every load wired into its load port,
- * broadcast with `z`, the supports, the plane and the section over one grid,
- * and the closed forms in `shaft.ts` evaluated per cell.
+ * A `shaft` record (`FormulaShaft`): everything wired into its acting port —
+ * loads and supports — on the shaft wired into its shaft port, broadcast over
+ * one grid with the positions, the plane and the shaft's own numbers, and
+ * solved per cell by `shaft.ts`.
  */
 function evaluateShaft(
   node: FormulaNode | ClosureNode | { readonly id: string },
   formula: Formula,
-  shaft: FormulaShaft,
+  spec: FormulaShaft,
   resolution: Resolution,
   values: ReadonlyMap<string, PortValue>,
   warnings: Warning[],
@@ -2267,50 +2295,62 @@ function evaluateShaft(
     if (port === undefined) throw new KernelError(`'${name}' is not an input of '${formula.id}'`, nodeId);
     return port;
   };
-  const numeric = (name: string): NumericSeries => {
-    const value = inputPortValue(node, declared(name), resolution, values);
-    if (value.kind !== 'numeric') throw new KernelError(`'${name}' needs a number`, endpointKey(nodeId, name));
-    return value;
-  };
 
-  const loadKey = endpointKey(nodeId, shaft.loads);
-  const edges = resolution.incoming.get(loadKey) ?? [];
-  if (edges.length === 0) throw new KernelError(`'${shaft.loads}' has no load wired to it`, loadKey);
-  const loads = edges.map((edge) => {
-    const value = valueAtEdge(edge, loadKey, values);
-    if (value.kind !== 'load') {
-      throw new KernelError(`'${edge.from.node}.${edge.from.port}' is not a load`, loadKey);
-    }
+  const actingKey = endpointKey(nodeId, spec.acting);
+  const actingEdges = resolution.incoming.get(actingKey) ?? [];
+  if (actingEdges.length === 0) throw new KernelError(`'${spec.acting}' has nothing wired to it`, actingKey);
+  const acting = actingEdges.map((edge) => {
+    const value = valueAtEdge(edge, actingKey, values);
+    if (value.kind !== 'load') throw new KernelError(`'${edge.from.node}.${edge.from.port}' is not a load or a support`, actingKey);
     return value;
   });
-  if (shaft.diagram === 'deflection' && loads.some((load) => load.shape === 'span')) {
-    throw new KernelError(
-      "a distributed load's deflection is not implemented — this diagram takes point loads only",
-      nodeId,
-    );
+
+  const shaftKey = endpointKey(nodeId, spec.shaft);
+  const shaftEdge = resolution.incoming.get(shaftKey)?.[0];
+  if (shaftEdge === undefined) throw new KernelError(`wire a Shaft node into '${spec.shaft}'`, shaftKey);
+  const shaft = valueAtEdge(shaftEdge, shaftKey, values);
+  if (shaft.kind !== 'shaft') throw new KernelError(`'${spec.shaft}' needs a shaft`, shaftKey);
+
+  // Which of the acting supports a reactions record reports: the one whose
+  // wire also arrives at `support`.
+  let reported: number | undefined;
+  if (spec.support !== undefined) {
+    const supportKey = endpointKey(nodeId, spec.support);
+    const edge = resolution.incoming.get(supportKey)?.[0];
+    if (edge === undefined) throw new KernelError(`wire the support to report into '${spec.support}'`, supportKey);
+    const index = actingEdges.findIndex((candidate) => candidate.from.node === edge.from.node && candidate.from.port === edge.from.port);
+    if (index < 0 || acting[index]?.shape !== 'support') {
+      throw new KernelError(`'${spec.support}' must be one of the supports wired into '${spec.acting}'`, supportKey);
+    }
+    reported = acting.slice(0, index).filter((value) => value.shape === 'support').length;
   }
 
-  const z = shaft.axis === undefined ? undefined : numeric(shaft.axis);
-  const supportA = shaft.supports === undefined ? undefined : numeric(shaft.supports[0]);
-  const supportB = shaft.supports === undefined ? undefined : numeric(shaft.supports[1]);
-  const modulus = shaft.modulus === undefined ? undefined : numeric(shaft.modulus);
-  const secondMoment = shaft.secondMomentOfArea === undefined ? undefined : numeric(shaft.secondMomentOfArea);
+  let z: NumericSeries | undefined;
+  if (spec.diagram !== 'reactions') {
+    const axisPort = spec.axis === undefined ? undefined : declared(spec.axis);
+    const typed = axisPort !== undefined && 'inputValues' in node && node.inputValues?.[axisPort.name] !== undefined;
+    const wired = axisPort !== undefined && resolution.incoming.has(endpointKey(nodeId, axisPort.name));
+    if (axisPort !== undefined && (typed || wired)) {
+      const value = inputPortValue(node, axisPort, resolution, values);
+      if (value.kind !== 'numeric') throw new KernelError(`'${axisPort.name}' needs a position`, endpointKey(nodeId, axisPort.name));
+      z = value;
+    } else {
+      z = shaft.z;
+    }
+  }
   let plane: CategoricalSeries | undefined;
-  if (shaft.plane !== undefined) {
-    const value = inputPortValue(node, declared(shaft.plane), resolution, values);
+  if (spec.plane !== undefined) {
+    const value = inputPortValue(node, declared(spec.plane), resolution, values);
     if (value.kind !== 'categorical') {
-      throw new KernelError(`'${shaft.plane}' needs a plane: x, y or resultant`, endpointKey(nodeId, shaft.plane));
+      throw new KernelError(`'${spec.plane}' needs a plane: x, y or resultant`, endpointKey(nodeId, spec.plane));
     }
     plane = value;
   }
 
-  const scalars = [z, supportA, supportB, modulus, secondMoment].filter(
-    (series): series is NumericSeries => series !== undefined,
-  );
-  const fields = loads.flatMap((load) => loadSeries(load));
   const axes = unionAxes(
-    ...scalars.map((series) => series.axes),
-    ...fields.map((series) => series.axes),
+    ...(z === undefined ? [] : [z.axes]),
+    ...shaftSeries(shaft).map((series) => series.axes),
+    ...acting.flatMap((value) => loadSeries(value).map((series) => series.axes)),
     ...(plane === undefined ? [] : [plane.axes]),
   );
   const cells = gridSize(axes);
@@ -2321,108 +2361,196 @@ function evaluateShaft(
       message: `this node evaluates ${cells} points (${axes.map((axis) => `${axis.label}: ${axis.length}`).join(' × ')}) — a sweep that large takes a moment`,
     });
   }
+  if (acting.filter((value) => value.shape === 'support' && value.support === 'locating').length > 1) {
+    warnings.push({
+      kind: 'shaftSupports',
+      nodeId,
+      message: 'more than one bearing locates this shaft — axially that over-constrains it, though the diagrams here are unaffected',
+    });
+  }
 
-  const read = (series: NumericSeries | undefined): ((cell: number) => number) => {
-    if (series === undefined) return () => 0;
-    return reader(series, axes);
-  };
-  const readLoads = loads.map((load) =>
-    load.shape === 'point'
+  const read = (series: NumericSeries): ((cell: number) => number) => reader(series, axes);
+  const readActing = acting.map((value) =>
+    value.shape === 'point'
       ? {
           shape: 'point' as const,
-          at: read(load.at),
-          Fx: read(load.Fx),
-          Fy: read(load.Fy),
-          torque: read(load.torque),
-          Cx: read(load.Cx),
-          Cy: read(load.Cy),
+          at: read(value.at),
+          Fx: read(value.Fx),
+          Fy: read(value.Fy),
+          torque: read(value.torque),
+          Cx: read(value.Cx),
+          Cy: read(value.Cy),
         }
-      : { shape: 'span' as const, from: read(load.from), to: read(load.to), qx: read(load.qx), qy: read(load.qy) },
+      : value.shape === 'span'
+        ? { shape: 'span' as const, from: read(value.from), to: read(value.to), qx: read(value.qx), qy: read(value.qy) }
+        : { shape: 'support' as const, at: read(value.at), fixed: value.support === 'fixed' },
   );
-  const planeLoads = (cell: number, which: 'x' | 'y'): PlaneLoads => {
-    const points: PlanePoint[] = [];
-    const spans: PlaneSpan[] = [];
-    for (const load of readLoads) {
-      if (load.shape === 'point') {
-        points.push({
-          at: load.at(cell),
-          force: which === 'x' ? load.Fx(cell) : load.Fy(cell),
-          couple: which === 'x' ? load.Cx(cell) : load.Cy(cell),
-        });
-      } else {
-        spans.push({ from: load.from(cell), to: load.to(cell), rate: which === 'x' ? load.qx(cell) : load.qy(cell) });
-      }
-    }
-    return { points, spans };
-  };
-
-  const zRead = read(z);
-  const aRead = read(supportA);
-  const bRead = read(supportB);
-  const eRead = read(modulus);
-  const iRead = read(secondMoment);
+  const readFrom = read(shaft.from);
+  const readE = read(shaft.E);
+  const readSections = shaft.sections.map((section) => ({ start: section.start, I: read(section.I) }));
+  const zRead = z === undefined ? undefined : read(z);
   const planeIndex = plane === undefined ? undefined : indexer(plane, axes);
-  const planePort = shaft.plane === undefined ? undefined : declared(shaft.plane);
+  const planePort = spec.plane === undefined ? undefined : declared(spec.plane);
   const planeAt = (cell: number): 'x' | 'y' | 'resultant' => {
     if (plane === undefined || planeIndex === undefined || planePort?.kind !== 'categorical') return 'resultant';
     const written = plane.data[planeIndex(cell)] as string;
     const member = domainMember(planePort, written);
     if (member === 'x' || member === 'y' || member === 'resultant') return member;
-    throw new KernelError(`'${written}' is not a plane — pick x, y or resultant`, endpointKey(nodeId, shaft.plane ?? ''));
+    throw new KernelError(`'${written}' is not a plane — pick x, y or resultant`, endpointKey(nodeId, spec.plane ?? ''));
   };
-  const supportsAt = (cell: number): readonly [number, number] => {
-    const a = aRead(cell);
-    const b = bRead(cell);
-    if (a === b) {
-      throw new KernelError(`both supports are at ${a} mm — a shaft needs two different support positions`, nodeId);
+
+  const solveAt = (cell: number, which: 'x' | 'y'): Solution => {
+    const terms: Term[] = [];
+    const restraints: Restraint[] = [];
+    for (const entry of readActing) {
+      if (entry.shape === 'point') {
+        terms.push(...pointTerms(entry.at(cell), which === 'x' ? entry.Fx(cell) : entry.Fy(cell), which === 'x' ? entry.Cx(cell) : entry.Cy(cell)));
+      } else if (entry.shape === 'span') {
+        terms.push(...spanTerms(entry.from(cell), entry.to(cell), which === 'x' ? entry.qx(cell) : entry.qy(cell)));
+      } else {
+        restraints.push({ at: entry.at(cell), fixed: entry.fixed });
+      }
     }
-    return [a, b];
+    const E = readE(cell);
+    const segments = readSections.map((section) => {
+      const stiffness = E * section.I(cell);
+      if (!(stiffness > 0)) throw new KernelError("the shaft's E and I must both be above zero", nodeId);
+      return { start: section.start, stiffness };
+    });
+    try {
+      return solveShaft(terms, restraints, segments, readFrom(cell));
+    } catch (error) {
+      if (error instanceof KernelError) throw new KernelError(error.message, nodeId);
+      throw error;
+    }
   };
-  const inPlane = (cell: number, compute: (loads: PlaneLoads) => number): number => {
+  const inPlane = (cell: number, measure: (solution: Solution) => number): number => {
     const chosen = planeAt(cell);
-    if (chosen !== 'resultant') return compute(planeLoads(cell, chosen));
-    return Math.hypot(compute(planeLoads(cell, 'x')), compute(planeLoads(cell, 'y')));
+    if (chosen !== 'resultant') return measure(solveAt(cell, chosen));
+    return Math.hypot(measure(solveAt(cell, 'x')), measure(solveAt(cell, 'y')));
   };
 
   const outputs = formula.outputs.map((output) => output.name);
-  if (shaft.diagram === 'reactions') {
-    const rA = new Array<number>(cells);
-    const rB = new Array<number>(cells);
+  if (spec.diagram === 'reactions') {
+    const forces = new Array<number>(cells);
+    const moments = new Array<number>(cells);
     for (let cell = 0; cell < cells; cell += 1) {
-      const chosen = planeAt(cell);
-      if (chosen === 'resultant') {
-        throw new KernelError('a reaction is signed, so it is solved in the x or the y plane, not as a resultant', nodeId);
-      }
-      const [a, b] = supportsAt(cell);
-      const [left, right] = shaftReactions(planeLoads(cell, chosen), a, b);
-      rA[cell] = left;
-      rB[cell] = right;
+      forces[cell] = inPlane(cell, (solution) => solution.reactions[reported ?? 0]?.force ?? 0);
+      moments[cell] = inPlane(cell, (solution) => solution.reactions[reported ?? 0]?.moment ?? 0);
     }
     return new Map<string, PortValue>([
-      [outputs[0] as string, { kind: 'numeric', axes, data: rA }],
-      [outputs[1] as string, { kind: 'numeric', axes, data: rB }],
+      [outputs[0] as string, { kind: 'numeric', axes, data: forces }],
+      [outputs[1] as string, { kind: 'numeric', axes, data: moments }],
     ]);
   }
 
   const data = new Array<number>(cells);
   for (let cell = 0; cell < cells; cell += 1) {
-    const at = zRead(cell);
-    if (shaft.diagram === 'torque') {
+    const at = (zRead as (cell: number) => number)(cell);
+    if (spec.diagram === 'torque') {
       data[cell] = shaftTorque(
-        readLoads.flatMap((load) => (load.shape === 'point' ? [{ at: load.at(cell), torque: load.torque(cell) }] : [])),
+        readActing.flatMap((entry) => (entry.shape === 'point' ? [{ at: entry.at(cell), torque: entry.torque(cell) }] : [])),
         at,
       );
       continue;
     }
-    const [a, b] = supportsAt(cell);
     data[cell] =
-      shaft.diagram === 'shear'
-        ? inPlane(cell, (plane) => shaftShear(plane, a, b, at))
-        : shaft.diagram === 'moment'
-          ? inPlane(cell, (plane) => shaftMoment(plane, a, b, at))
-          : inPlane(cell, (plane) => stiffnessDeflection(plane, a, b, at)) / (eRead(cell) * iRead(cell));
+      spec.diagram === 'shear'
+        ? inPlane(cell, (solution) => shaftShear(solution.terms, at))
+        : spec.diagram === 'moment'
+          ? inPlane(cell, (solution) => shaftMoment(solution.terms, at))
+          : inPlane(cell, (solution) => shaftDeflection(solution, at));
   }
   return new Map<string, PortValue>([[outputs[0] as string, { kind: 'numeric', axes, data }]]);
+}
+
+// --- shaft nodes -------------------------------------------------------------
+
+/**
+ * A round or stepped shaft's outer diameter at each of its own positions: a
+ * step applies from its start, the first step also before it.
+ */
+function shaftProfile(node: ShaftNode, shaft: ShaftValue, resolution: Resolution, values: ReadonlyMap<string, PortValue>): NumericSeries {
+  const section = node.section;
+  if (section.kind === 'stepped') {
+    const steps = section.steps.map((step) => ({ start: toCanonical(step.start, section.unit), d: toCanonical(step.d, section.unit) }));
+    return {
+      kind: 'numeric',
+      axes: shaft.z.axes,
+      data: shaft.z.data.map((z) => [...steps].reverse().find((step) => step.start <= z)?.d ?? (steps[0] as { d: number }).d),
+    };
+  }
+  const key = endpointKey(node.id, 'd');
+  const edge = resolution.incoming.get(key)?.[0];
+  const d = edge === undefined
+    ? scalarSeries(section.kind === 'round' ? toCanonical(section.d.value, section.d.unit) : 0)
+    : (valueAtEdge(edge, key, values) as NumericSeries);
+  return broadcastSeries(d, unionAxes(shaft.z.axes, d.axes));
+}
+
+/**
+ * A Shaft node's value and its positions along z. `from` and `to` set the
+ * axis, so — like a range's bounds — they must be single values; `E` and the
+ * section may vary across a sweep (a study over diameters), broadcasting like
+ * any other value.
+ */
+function evaluateShaftNode(node: ShaftNode, resolution: Resolution, values: ReadonlyMap<string, PortValue>): ShaftValue {
+  const field = (name: 'from' | 'to' | 'E' | 'd' | 'd_i' | 'I'): NumericSeries | undefined => {
+    const key = endpointKey(node.id, name);
+    const edge = resolution.incoming.get(key)?.[0];
+    if (edge === undefined) {
+      const typed = shaftFieldValue(node, name);
+      return typed === undefined ? undefined : scalarSeries(toCanonical(typed.value, typed.unit));
+    }
+    const wired = valueAtEdge(edge, key, values);
+    if (wired.kind !== 'numeric') throw new KernelError(`'${name}' needs a number, not a ${wired.kind} value`, key);
+    return wired;
+  };
+  const single = (name: 'from' | 'to'): number => {
+    const series = field(name) as NumericSeries;
+    if (series.data.length !== 1) {
+      throw new KernelError(`'${name}' needs a single value — the shaft's extent sets its own z axis`, endpointKey(node.id, name));
+    }
+    return series.data[0] as number;
+  };
+  const from = single('from');
+  const to = single('to');
+  if (!(to > from)) throw new KernelError("'to' must lie after 'from'", endpointKey(node.id, 'to'));
+
+  const axis = resolution.axes.get(node.id);
+  const count = axis?.length ?? node.count;
+  const positions =
+    count <= 1 ? [(from + to) / 2] : Array.from({ length: count }, (_, i) => from + ((to - from) * i) / (count - 1));
+  const z: NumericSeries = { kind: 'numeric', axes: axis === undefined ? [] : [axis], data: positions };
+
+  const section = node.section;
+  let sections: { readonly start: number; readonly I: NumericSeries }[];
+  if (section.kind === 'stepped') {
+    sections = section.steps.map((step) => {
+      const d = toCanonical(step.d, section.unit);
+      const bore = step.d_i === undefined ? 0 : toCanonical(step.d_i, section.unit);
+      return { start: toCanonical(step.start, section.unit), I: scalarSeries((Math.PI * (d ** 4 - bore ** 4)) / 64) };
+    });
+  } else if (section.kind === 'secondMoment') {
+    sections = [{ start: from, I: field('I') as NumericSeries }];
+  } else {
+    const d = field('d') as NumericSeries;
+    const bore = field('d_i') ?? scalarSeries(0);
+    const axes = unionAxes(d.axes, bore.axes);
+    const readD = reader(d, axes);
+    const readBore = reader(bore, axes);
+    const data = Array.from({ length: gridSize(axes) }, (_, cell) => {
+      const outer = readD(cell);
+      const inner = readBore(cell);
+      if (!(outer > 0) || inner < 0 || inner >= outer) {
+        throw new KernelError(`a bore of ${inner} mm does not fit a ${outer} mm shaft`, endpointKey(node.id, 'd_i'));
+      }
+      return (Math.PI * (outer ** 4 - inner ** 4)) / 64;
+    });
+    sections = [{ start: from, I: { kind: 'numeric', axes, data } }];
+  }
+
+  return { kind: 'shaft', from: scalarSeries(from), to: scalarSeries(to), E: field('E') as NumericSeries, sections, z };
 }
 
 // --- load nodes -------------------------------------------------------------
@@ -2434,7 +2562,7 @@ function evaluateShaft(
  * at many positions, and the diagrams it feeds broadcast over them.
  */
 function evaluateLoad(
-  node: LoadNode | DistributedLoadNode,
+  node: LoadNode | DistributedLoadNode | SupportNode,
   resolution: Resolution,
   values: ReadonlyMap<string, PortValue>,
 ): LoadValue {
@@ -2442,7 +2570,7 @@ function evaluateLoad(
     const key = endpointKey(node.id, name);
     const edge = resolution.incoming.get(key)?.[0];
     if (edge === undefined) {
-      const typed = loadFieldValue(node, name);
+      const typed = node.kind === 'support' ? node.at : loadFieldValue(node, name);
       return scalarSeries(typed === undefined ? 0 : toCanonical(typed.value, typed.unit));
     }
     const wired = valueAtEdge(edge, key, values);
@@ -2451,6 +2579,8 @@ function evaluateLoad(
     }
     return wired;
   };
+
+  if (node.kind === 'support') return { kind: 'load', shape: 'support', at: field('at'), support: node.support };
 
   if (node.kind === 'load') {
     return {
@@ -2502,8 +2632,8 @@ function sourceOf(
   if (value.kind === 'bundle') {
     throw new KernelError(`'${port}' is a bundle, which an output node cannot render`, key);
   }
-  if (value.kind === 'load') {
-    throw new KernelError(`'${port}' is a load, which an output node cannot render`, key);
+  if (value.kind === 'load' || value.kind === 'shaft') {
+    throw new KernelError(`'${port}' is a ${value.kind}, which an output node cannot render`, key);
   }
   return { value, unit: displayUnit(resolution.targets.get(key)) };
 }

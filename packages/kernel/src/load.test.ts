@@ -121,7 +121,7 @@ describe('load nodes', () => {
       [loadNode('gear', {}), formulaNode('sum', refTo('addTwo'))],
       [wire('gear.load', 'sum.a')],
     );
-    expect(() => resolveGraph(document, [CATALOGUE])).toThrow(/carries a load, but the port it lands on takes a number/u);
+    expect(() => resolveGraph(document, [CATALOGUE])).toThrow(/carries a load or a support, but the port it lands on takes a number/u);
   });
 
   it('refuse a load wired into a node that takes anything, such as an output or a compare', () => {

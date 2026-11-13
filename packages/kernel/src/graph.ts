@@ -65,6 +65,12 @@ import {
   LOAD_FIELD_UNITS,
   loadFieldValue,
   loadNodeFields,
+  SHAFT_PORT,
+  SHAFT_Z_PORT,
+  SHAFT_PROFILE_PORT,
+  SHAFT_FIELD_UNITS,
+  shaftFieldValue,
+  shaftNodeFields,
   START_PORT,
   STOP_PORT,
   COUNT_PORT,
@@ -455,6 +461,7 @@ function portType(port: Port, bindings: ReadonlyMap<string, Dimension>): PortTyp
   // full union type-checks here.
   if (port.kind === 'bundle') return { kind: 'bundle' };
   if (port.kind === 'load') return { kind: 'load' };
+  if (port.kind === 'shaft') return { kind: 'shaft' };
   if (!isGenericDimension(port.unit)) {
     return { kind: port.kind, dimension: port.unit.dimension, unit: port.preferredUnit ?? port.unit };
   }
@@ -620,6 +627,9 @@ function axisOf(
     if (length === undefined) throw new KernelError('this zip has not been measured yet', node.id);
     return { id: node.id, label: node.axisLabel ?? node.label ?? node.id, length, order };
   }
+  if (node.kind === 'shaft') {
+    return { id: node.id, label: node.axisLabel ?? 'z', length: node.count, order };
+  }
   if (node.kind === 'table') {
     // The rows that survived resolution, not the rows the document names —
     // a selection can outlive a row (`resolveTable`), and the axis has to be
@@ -756,8 +766,10 @@ export function resolveGraph(
       : kind === 'categorical'
         ? 'a category'
         : kind === 'load'
-          ? 'a load'
-          : 'a bundle of channels';
+          ? 'a load or a support'
+          : kind === 'shaft'
+            ? 'a shaft'
+            : 'a bundle of channels';
 
   const checkKind = (source: PortType, target: PortType, where: string): void => {
     if (source.kind === target.kind) return;
@@ -809,7 +821,7 @@ export function resolveGraph(
     for (const port of formula.inputs) {
       const key = endpointKey(nodeId, port.name);
       const generic =
-        port.kind !== 'categorical' && port.kind !== 'bundle' && port.kind !== 'load' && isGenericDimension(port.unit)
+        port.kind !== 'categorical' && port.kind !== 'bundle' && port.kind !== 'load' && port.kind !== 'shaft' && isGenericDimension(port.unit)
           ? port.unit
           : undefined;
       // A variadic port takes one edge per wired value; every other port
@@ -1215,8 +1227,8 @@ export function resolveGraph(
           continue;
         }
         const source = sourceType(edge);
-        // A load is routed like a category: carried as it is, nothing to bind.
-        if (source.kind === 'categorical' || source.kind === 'load') {
+        // A load or a shaft is routed like a category: carried as it is, nothing to bind.
+        if (source.kind === 'categorical' || source.kind === 'load' || source.kind === 'shaft') {
           const type: PortType = { kind: source.kind };
           targets.set(inKey, type);
           sources.set(outKey, type);
@@ -1324,16 +1336,43 @@ export function resolveGraph(
       continue;
     }
 
-    if (node.kind === 'load' || node.kind === 'distributedLoad') {
+    if (node.kind === 'shaft') {
+      // A range's shape again: each wireable field is a port of a fixed
+      // dimension, its typed value the fallback.
+      for (const field of shaftNodeFields(node)) {
+        const key = endpointKey(node.id, field);
+        const reference = SHAFT_FIELD_UNITS[field];
+        const type: PortType = { kind: 'numeric', dimension: reference.dimension, unit: shaftFieldValue(node, field)?.unit ?? reference };
+        targets.set(key, type);
+        const edge = oneEdge(key);
+        if (edge === undefined) continue;
+        const source = sourceType(edge);
+        checkKind(source, type, key);
+        if (source.dimension !== undefined) assertConnectable(source.dimension, reference.dimension, key);
+      }
+      sources.set(endpointKey(node.id, SHAFT_PORT), { kind: 'shaft' });
+      const zUnit = node.from.unit;
+      sources.set(endpointKey(node.id, SHAFT_Z_PORT), displayOverride(node, SHAFT_Z_PORT, { kind: 'numeric', dimension: zUnit.dimension, unit: zUnit }));
+      if (node.section.kind !== 'secondMoment') {
+        const dUnit = node.section.kind === 'stepped' ? node.section.unit : node.section.d.unit;
+        sources.set(
+          endpointKey(node.id, SHAFT_PROFILE_PORT),
+          displayOverride(node, SHAFT_PROFILE_PORT, { kind: 'numeric', dimension: dUnit.dimension, unit: dUnit }),
+        );
+      }
+      continue;
+    }
+
+    if (node.kind === 'load' || node.kind === 'distributedLoad' || node.kind === 'support') {
       // `RangeNode`'s shape with a fixed dimension per field: each field is
       // a port, typed by `LOAD_FIELD_UNITS`, its typed value the fallback.
-      for (const field of loadNodeFields(node)) {
+      for (const field of node.kind === 'support' ? (['at'] as const) : loadNodeFields(node)) {
         const key = endpointKey(node.id, field);
         const reference = LOAD_FIELD_UNITS[field];
         const type: PortType = {
           kind: 'numeric',
           dimension: reference.dimension,
-          unit: loadFieldValue(node, field)?.unit ?? reference,
+          unit: (node.kind === 'support' ? node.at : loadFieldValue(node, field))?.unit ?? reference,
         };
         targets.set(key, type);
         const edge = oneEdge(key);
@@ -1604,10 +1643,13 @@ export function resolveGraph(
   const carriesLoads = new Set(['formula', 'waypoint']);
   const kindOf = new Map(document.nodes.map((node) => [node.id, node.kind] as const));
   for (const edge of document.edges) {
-    if (sources.get(endpointKey(edge.from.node, edge.from.port))?.kind !== 'load') continue;
+    const carried = sources.get(endpointKey(edge.from.node, edge.from.port))?.kind;
+    if (carried !== 'load' && carried !== 'shaft') continue;
     if (carriesLoads.has(kindOf.get(edge.to.node) ?? '')) continue;
     throw new KernelError(
-      "this wire carries a load, which only a shaft diagram's 'loads' port takes",
+      carried === 'load'
+        ? "this wire carries a load or a support, which only a shaft diagram's 'acting' port takes"
+        : "this wire carries a shaft, which only a shaft diagram's 'shaft' port takes",
       endpointKey(edge.to.node, edge.to.port),
     );
   }

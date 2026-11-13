@@ -47,6 +47,8 @@ export const NODE_HELP_URLS: Readonly<Record<NodeKind, string>> = {
   zip: `${DOCS_BASE_URL}/guide/node-reference#zip`,
   load: `${DOCS_BASE_URL}/guide/node-reference#load`,
   distributedLoad: `${DOCS_BASE_URL}/guide/node-reference#distributed-load`,
+  support: `${DOCS_BASE_URL}/guide/node-reference#support`,
+  shaft: `${DOCS_BASE_URL}/guide/node-reference#shaft`,
   monteCarloGenerator: `${DOCS_BASE_URL}/guide/node-reference#monte-carlo-generator`,
   monteCarloReceiver: `${DOCS_BASE_URL}/guide/node-reference#monte-carlo-receiver`,
 };

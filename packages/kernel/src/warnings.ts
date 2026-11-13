@@ -14,6 +14,7 @@ export const WARNING_KINDS = [
   'tableRowMissing',
   /** The product of the axis lengths has grown large enough to warn about. */
   'largeGrid',
+  'shaftSupports',
   /** A formula was used outside its `appliesWhen` condition. */
   'appliesWhen',
   /** A plot names an axis its data does not vary along. */

@@ -861,10 +861,11 @@ export const SHAFT_SIZING_FORMULAS = [
  * A gear shaft on two bearings, sized statically from its loads. The gear's
  * tangential force is computed from the torque it carries — one Load field
  * wired, the rest typed — and the coupling on the overhang takes the torque
- * back out. The moment is drawn per plane and as a resultant, combined with
- * the torque into a required diameter along the shaft, and laid under a
- * stepped profile read from a lookup table. A Select then picks the first
- * standard diameter whose stress stays within the allowable.
+ * back out. A Shaft node holds the stepped profile and sets z; two Support
+ * nodes hold it. The moment is drawn per plane and as a resultant, combined
+ * with the torque into a required diameter along the shaft, and laid under
+ * the shaft's own profile. A Select then picks the first standard diameter
+ * whose stress stays within the allowable.
  *
  * Invented numbers throughout; static sizing only, no fatigue.
  */
@@ -879,8 +880,7 @@ export function shaftSizing(catalogues: readonly Catalogue[], locale: AppLocale 
 
   const mm = parseUnit('mm');
   const newton = parseUnit('N');
-  const plane = (value: string): ValueSpec => ({ kind: 'categorical', value });
-  const onSupports = (extra: Readonly<Record<string, ValueSpec>> = {}): Partial<FormulaNode> => ({ inputValues: extra });
+  const plane = (value: string): Partial<FormulaNode> => ({ inputValues: { plane: { kind: 'categorical', value } } });
 
   const loadNodes: GraphNode[] = [
     input('T_in', 'Input torque T', { kind: 'scalar', value: 60, unit: parseUnit('Nm') }, at(0, 0)),
@@ -893,15 +893,32 @@ export function shaftSizing(catalogues: readonly Catalogue[], locale: AppLocale 
       at: { value: 60, unit: mm }, Fx: { value: 450, unit: newton },
     },
     { kind: 'load', id: 'coupling', label: 'Coupling', position: at(840, 320), at: { value: 220, unit: mm } },
-    input('supportA', 'Bearing A', { kind: 'scalar', value: 0, unit: mm }, at(0, 400)),
-    input('supportB', 'Bearing B', { kind: 'scalar', value: 160, unit: mm }, at(0, 520)),
-    { ...input('z', 'Position along the shaft z', { kind: 'linear', start: 0, stop: 220, points: 45, unit: mm }, at(0, 640)), axisLabel: 'z' },
+    { kind: 'support', id: 'bearing_A', label: 'Bearing A', position: at(840, 560), at: { value: 0, unit: mm }, support: 'locating' },
+    { kind: 'support', id: 'bearing_B', label: 'Bearing B', position: at(840, 720), at: { value: 160, unit: mm }, support: 'floating' },
+    {
+      kind: 'shaft',
+      id: 'shaft',
+      label: 'Shaft',
+      position: at(280, 480),
+      from: { value: 0, unit: mm },
+      to: { value: 220, unit: mm },
+      count: 45,
+      E: { value: 210000, unit: parseUnit('N/mm²') },
+      section: {
+        kind: 'stepped',
+        unit: mm,
+        steps: [
+          { start: 0, d: 20 }, { start: 15, d: 25 }, { start: 45, d: 32 },
+          { start: 80, d: 28 }, { start: 145, d: 25 }, { start: 175, d: 24 },
+        ],
+      },
+    },
   ];
 
   const diagramNodes: GraphNode[] = [
-    labelled('M_x', 'Moment, x plane', 'mechanics.shaft.moment', at(1200, 0), onSupports({ plane: plane('x') })),
-    labelled('M_y', 'Moment, y plane', 'mechanics.shaft.moment', at(1200, 200), onSupports({ plane: plane('y') })),
-    labelled('M_res', 'Resultant moment', 'mechanics.shaft.moment', at(1200, 400), onSupports({ plane: plane('resultant') })),
+    labelled('M_x', 'Moment, x plane', 'mechanics.shaft.moment', at(1200, 0), plane('x')),
+    labelled('M_y', 'Moment, y plane', 'mechanics.shaft.moment', at(1200, 200), plane('y')),
+    labelled('M_res', 'Resultant moment', 'mechanics.shaft.moment', at(1200, 400), plane('resultant')),
     labelled('T', 'Torque', 'mechanics.shaft.torque', at(1200, 600)),
     output('out_moments', 'Bending moment along the shaft', { kind: 'plot', measures: [{ id: 'Mx' }, { id: 'My' }, { id: 'M' }] }, at(1480, 120)),
     output('out_torque', 'Torque along the shaft', { kind: 'plot', measures: [{ id: 'T' }] }, at(1480, 480)),
@@ -911,17 +928,6 @@ export function shaftSizing(catalogues: readonly Catalogue[], locale: AppLocale 
     input('sigma_allow', 'Allowable stress σ_allow', { kind: 'scalar', value: 60, unit: parseUnit('N/mm²') }, at(1840, 0)),
     labelled('M_v', 'Equivalent moment', 'mechanics.shaft.equivalent-moment', at(1840, 160)),
     labelled('d_req', 'Required diameter', 'mechanics.shaft.required-diameter', at(2120, 80)),
-    {
-      kind: 'lut',
-      id: 'steps',
-      label: 'Stepped profile',
-      columns: [
-        { name: 'start', unit: mm, values: [0, 15, 45, 80, 145, 175] },
-        { name: 'd', unit: mm, values: [20, 25, 32, 28, 25, 24] },
-      ],
-      position: at(1840, 360),
-    },
-    { kind: 'interpolate', id: 'd_step', label: 'Diameter at z', mode: 'nextDown', position: at(2120, 360) },
     output('out_profile', 'Required diameter under the stepped profile', { kind: 'plot', measures: [{ id: 'required' }, { id: 'profile' }] }, at(2400, 200)),
   ];
 
@@ -936,6 +942,7 @@ export function shaftSizing(catalogues: readonly Catalogue[], locale: AppLocale 
     output('out_size', 'Shaft diameter to use', { kind: 'print' }, at(4160, 120)),
   ];
 
+  const acting = ['gear', 'coupling', 'bearing_A', 'bearing_B'];
   const edges = [
     wire('T_in.value', 'F_t.a'),
     wire('r.value', 'F_t.b'),
@@ -945,16 +952,10 @@ export function shaftSizing(catalogues: readonly Catalogue[], locale: AppLocale 
     wire('T_in.value', 'T_out.a'),
     wire('T_out.negated', 'coupling.torque'),
 
-    ...['M_x', 'M_y', 'M_res'].flatMap((id) => [
-      wire('gear.load', `${id}.loads`),
-      wire('coupling.load', `${id}.loads`),
-      wire('supportA.value', `${id}.supportA`),
-      wire('supportB.value', `${id}.supportB`),
-      wire('z.value', `${id}.z`),
+    ...['M_x', 'M_y', 'M_res', 'T'].flatMap((id) => [
+      ...acting.map((from) => wire(`${from}.load`, `${id}.acting`)),
+      wire('shaft.shaft', `${id}.shaft`),
     ]),
-    wire('gear.load', 'T.loads'),
-    wire('coupling.load', 'T.loads'),
-    wire('z.value', 'T.z'),
     wire('M_x.M', 'out_moments.Mx'),
     wire('M_y.M', 'out_moments.My'),
     wire('M_res.M', 'out_moments.M'),
@@ -964,14 +965,11 @@ export function shaftSizing(catalogues: readonly Catalogue[], locale: AppLocale 
     wire('T.T', 'M_v.T'),
     wire('M_v.M_v', 'd_req.M_v'),
     wire('sigma_allow.value', 'd_req.sigma_allow'),
-    wire('steps.start', 'd_step.xs'),
-    wire('steps.d', 'd_step.ys'),
-    wire('z.value', 'd_step.x'),
     wire('d_req.d', 'out_profile.required'),
-    wire('d_step.y', 'out_profile.profile'),
+    wire('shaft.profile', 'out_profile.profile'),
 
     wire('M_v.M_v', 'governing.value'),
-    wire('z.value', 'governing.along'),
+    wire('shaft.z', 'governing.along'),
     wire('d_std.value', 'W.d'),
     wire('governing.best', 'sigma_v.a'),
     wire('W.W_b', 'sigma_v.b'),
@@ -985,27 +983,27 @@ export function shaftSizing(catalogues: readonly Catalogue[], locale: AppLocale 
 
   const frames = [
     {
-      ...frameAround('loads', '1. The loads on the shaft', loadNodes),
+      ...frameAround('loads', '1. The shaft and what acts on it', loadNodes),
       note:
-        'A gear at 60 mm between two bearings, 160 mm apart, and a coupling on the overhang at ' +
-        '220 mm. The gear passes 60 N·m on to the coupling. Its tangential force follows from that ' +
-        'torque, F_t = T/r, and is wired into the gear’s y-plane force, pointing down; its radial ' +
-        'force of 450 N is typed into the x plane. Forces are positive up in their plane.',
+        'A stepped shaft, 220 mm long, on a locating bearing at 0 and a floating one at 160 mm. A ' +
+        'gear at 60 mm passes 60 N·m on to a coupling on the overhang at 220 mm. Its tangential ' +
+        'force follows from that torque, F_t = T/r, and is wired into the gear’s y-plane force, ' +
+        'pointing down; its radial force of 450 N is typed into the x plane. Forces are positive up ' +
+        'in their plane.',
     },
     {
       ...frameAround('diagrams', '2. Moment and torque', diagramNodes),
       note:
-        'Each diagram takes both loads on one port and solves the bearing reactions itself. The ' +
-        'moment is drawn in each plane and as their resultant √(M_x² + M_y²), the magnitude the ' +
-        'shaft has to carry. The torque runs from the gear to the coupling.',
+        'Each diagram takes the loads and the bearings on one port and solves the reactions itself, ' +
+        'along the shaft’s own z. The moment is drawn in each plane and as their resultant ' +
+        '√(M_x² + M_y²), the magnitude the shaft has to carry. The torque runs from the gear to the coupling.',
     },
     {
       ...frameAround('profile', '3. Required diameter and the stepped profile', sizeNodes),
       note:
         'Moment and torque combine into an equivalent moment (von Mises), and from it the smallest ' +
-        'solid diameter that keeps the bending stress at the allowable 60 N/mm². The stepped ' +
-        'profile is a lookup table of where each step starts, read at every z by Interpolate in ' +
-        'next-down mode — it has to stay above the curve everywhere.',
+        'solid diameter that keeps the bending stress at the allowable 60 N/mm². The shaft’s own ' +
+        'stepped profile has to stay above that curve everywhere.',
     },
     {
       ...frameAround('pick', '4. Picking a standard size', pickNodes),

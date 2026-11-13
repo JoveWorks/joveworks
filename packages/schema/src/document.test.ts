@@ -964,6 +964,47 @@ describe('load nodes', () => {
   });
 });
 
+describe('support and shaft nodes', () => {
+  const only = (...nodes: JsonObject[]): JsonObject => ({ ...study, nodes, edges: [] });
+  const bearing = { kind: 'support', id: 'A', position: { x: 0, y: 0 }, at: { value: 20, unit: 'mm' }, support: 'locating' };
+  const shaft = (section: JsonObject): JsonObject => ({
+    kind: 'shaft',
+    id: 'S',
+    position: { x: 0, y: 120 },
+    from: { value: 0, unit: 'mm' },
+    to: { value: 0.3, unit: 'm' },
+    count: 61,
+    E: { value: 210, unit: 'GPa' },
+    section,
+  });
+
+  it('round-trips a support and every kind of shaft section', () => {
+    for (const section of [
+      { kind: 'round', d: { value: 40, unit: 'mm' }, d_i: { value: 25, unit: 'mm' } },
+      { kind: 'secondMoment', I: { value: 1.2e5, unit: 'mm⁴' } },
+      { kind: 'stepped', unit: 'mm', steps: [{ start: 0, d: 30 }, { start: 60, d: 45, d_i: 20 }, { start: 180, d: 35 }] },
+    ]) {
+      expect(serializeDocument(parseDocument(only(bearing, shaft(section))))).toEqual(only(bearing, shaft(section)));
+    }
+  });
+
+  it('refuses a support type it does not know, and a field of the wrong kind of quantity', () => {
+    expect(() => parseDocument(only({ ...bearing, support: 'hinge' }))).toThrow(/support/u);
+    expect(() => parseDocument(only({ ...shaft({ kind: 'round', d: { value: 40, unit: 'mm' } }), E: { value: 3, unit: 'mm' } }))).toThrow(/E\.unit/u);
+  });
+
+  it('refuses steps out of order, and a bore that does not fit', () => {
+    const steps = (rows: JsonObject[]): JsonObject => shaft({ kind: 'stepped', unit: 'mm', steps: rows });
+    expect(() => parseDocument(only(steps([{ start: 50, d: 30 }, { start: 10, d: 30 }])))).toThrow(/must lie after the step before it/u);
+    expect(() => parseDocument(only(steps([{ start: 0, d: 30, d_i: 30 }])))).toThrow(/must lie between zero and d/u);
+  });
+
+  it('counts a shaft as an axis, and a support as none', () => {
+    const parsed = parseDocument(only(bearing, shaft({ kind: 'round', d: { value: 40, unit: 'mm' } })));
+    expect(axes(parsed).map((node) => node.id)).toEqual(['S']);
+  });
+});
+
 describe('structural integrity', () => {
   it('rejects a dangling edge', () => {
     const broken = {

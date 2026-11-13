@@ -12,6 +12,8 @@ import {
   STOP_PORT,
   COUNT_PORT,
   LOAD_PORT,
+  SHAFT_PORT,
+  SHAFT_Z_PORT,
   POINT_LOAD_FIELDS,
   SPAN_LOAD_FIELDS,
   STATISTIC_RESULT_PORT,
@@ -55,6 +57,8 @@ export type QuickAddChoice =
   | { readonly kind: 'zip' }
   | { readonly kind: 'load' }
   | { readonly kind: 'distributedLoad' }
+  | { readonly kind: 'support' }
+  | { readonly kind: 'shaft' }
   | { readonly kind: 'monteCarloGenerator' }
   | { readonly kind: 'monteCarloReceiver' }
   | { readonly kind: 'existing'; readonly nodeId: string; readonly port: string };
@@ -84,6 +88,26 @@ export function newDistributedLoadNode(id: string, position: Position, label?: s
     position,
     from: { value: 0, unit: parseUnit('mm') },
     to: { value: 100, unit: parseUnit('mm') },
+    ...labelField(label),
+  };
+}
+
+/** A fresh Support node: a simple support at the shaft's start. */
+export function newSupportNode(id: string, position: Position, label?: string): GraphNode {
+  return { kind: 'support', id, position, at: { value: 0, unit: parseUnit('mm') }, support: 'simple', ...labelField(label) };
+}
+
+/** A fresh Shaft node: 200 mm of solid 30 mm steel, drawn at 41 points. */
+export function newShaftNode(id: string, position: Position, label?: string): GraphNode {
+  return {
+    kind: 'shaft',
+    id,
+    position,
+    from: { value: 0, unit: parseUnit('mm') },
+    to: { value: 200, unit: parseUnit('mm') },
+    count: 41,
+    E: { value: 210000, unit: parseUnit('N/mm²') },
+    section: { kind: 'round', d: { value: 30, unit: parseUnit('mm') } },
     ...labelField(label),
   };
 }
@@ -197,6 +221,18 @@ export function quickAddNodeSpec(document: GraphDocument, choice: QuickAddCandid
         idPrefix: 'span',
         ports: { source: [...SPAN_LOAD_FIELDS], target: [LOAD_PORT] },
         make: (id, position, label) => newDistributedLoadNode(id, position, label),
+      };
+    case 'support':
+      return {
+        idPrefix: 'support',
+        ports: { source: ['at'], target: [LOAD_PORT] },
+        make: (id, position, label) => newSupportNode(id, position, label),
+      };
+    case 'shaft':
+      return {
+        idPrefix: 'shaft',
+        ports: { source: ['from', 'to', 'E', 'd', 'd_i'], target: [SHAFT_PORT, SHAFT_Z_PORT] },
+        make: (id, position, label) => newShaftNode(id, position, label),
       };
     case 'compare':
       return {

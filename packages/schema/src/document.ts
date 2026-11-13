@@ -815,6 +815,108 @@ export interface DistributedLoadNode extends NodeBase {
   readonly qy?: Quantity;
 }
 
+export const SUPPORT_TYPES = ['simple', 'fixed', 'locating', 'floating'] as const;
+export type SupportType = (typeof SUPPORT_TYPES)[number];
+
+/**
+ * Where the shaft is held, and how. It produces the same `load` wire as a
+ * Load node and goes into the same `acting` port of a shaft diagram, which
+ * solves its reaction.
+ *
+ * - `simple` — a pin or roller: takes a transverse force, free to rotate.
+ * - `fixed` — clamped: takes a force and a bending moment. One alone holds a
+ *   cantilever.
+ * - `locating`, `floating` — rolling bearings, simple supports in bending.
+ *   Their roles differ only axially, which the diagrams do not model; the
+ *   kernel warns when more than one bearing locates the shaft.
+ *
+ * `at` is a port of the same name, the typed value applying until something
+ * is wired there.
+ */
+export interface SupportNode extends NodeBase {
+  readonly kind: 'support';
+  readonly at: Quantity;
+  readonly support: SupportType;
+}
+
+/** A Shaft node's output ports: the shaft itself, and the positions along it. */
+export const SHAFT_PORT = 'shaft';
+export const SHAFT_Z_PORT = 'z';
+/** A round or stepped Shaft node's outer diameter along its own z — what a plot draws the profile from. */
+export const SHAFT_PROFILE_PORT = 'profile';
+
+/** One step of a stepped shaft, in the profile's own unit. `d_i` absent means solid. */
+export interface ShaftStep {
+  /** Where this step starts along the shaft; it runs to the next step's start. */
+  readonly start: number;
+  readonly d: number;
+  readonly d_i?: number;
+}
+
+/**
+ * A shaft's cross-section along its length.
+ *
+ * - `round` — one solid or hollow round section throughout.
+ * - `secondMoment` — one section of any shape, given by its I.
+ * - `stepped` — a round section per step, typed as rows. A step runs from its
+ *   own `start` to the next one's; the first also covers anything before it,
+ *   the last anything after.
+ */
+export type ShaftSection =
+  | { readonly kind: 'round'; readonly d: Quantity; readonly d_i?: Quantity }
+  | { readonly kind: 'secondMoment'; readonly I: Quantity }
+  | { readonly kind: 'stepped'; readonly unit: Unit; readonly steps: readonly ShaftStep[] };
+
+export const SHAFT_SECTION_KINDS = ['round', 'secondMoment', 'stepped'] as const;
+
+/**
+ * The shaft a diagram is drawn on: its extent `from`–`to` along z, Young's
+ * modulus `E`, and its section — enough for a diagram to solve any support
+ * arrangement, statically indeterminate ones included, and to draw the
+ * deflection of a stepped shaft with its real stiffness.
+ *
+ * An axis-introducing node like `RangeNode`: `count` points from `from` to
+ * `to` are its `z` output, which every diagram it feeds is drawn along. A
+ * round or stepped shaft also outputs its outer diameter at each of those
+ * points, `profile`, to plot against what the diagrams require.
+ * `from`, `to`, `E` and a `round` or `secondMoment` section's fields are also
+ * ports of the same name, typed until wired; a stepped profile's rows are
+ * typed only.
+ */
+export interface ShaftNode extends NodeBase {
+  readonly kind: 'shaft';
+  readonly from: Quantity;
+  readonly to: Quantity;
+  readonly count: number;
+  readonly E: Quantity;
+  readonly section: ShaftSection;
+  /** What the axis is called. Defaults to `z`. */
+  readonly axisLabel?: string;
+}
+
+/** A Shaft node's wireable fields, in display order, given its section. */
+export function shaftNodeFields(node: ShaftNode): readonly ('from' | 'to' | 'E' | 'd' | 'd_i' | 'I')[] {
+  const section = node.section.kind === 'round' ? (['d', 'd_i'] as const) : node.section.kind === 'secondMoment' ? (['I'] as const) : [];
+  return ['from', 'to', 'E', ...section];
+}
+
+/** A Shaft node's reference unit per wireable field: its dimension is the field's type. */
+export const SHAFT_FIELD_UNITS: Readonly<Record<'from' | 'to' | 'E' | 'd' | 'd_i' | 'I', Unit>> = {
+  from: parseUnit('mm'),
+  to: parseUnit('mm'),
+  E: parseUnit('N/mm²'),
+  d: parseUnit('mm'),
+  d_i: parseUnit('mm'),
+  I: parseUnit('mm⁴'),
+};
+
+/** A Shaft node's typed value for one wireable field, if it has one. */
+export function shaftFieldValue(node: ShaftNode, field: 'from' | 'to' | 'E' | 'd' | 'd_i' | 'I'): Quantity | undefined {
+  if (field === 'from' || field === 'to' || field === 'E') return node[field];
+  const section = node.section as Partial<Record<'d' | 'd_i' | 'I', Quantity>>;
+  return section[field];
+}
+
 /** A load node's fields, in display order — the ports it takes. */
 export function loadNodeFields(node: LoadNode | DistributedLoadNode): readonly LoadField[] {
   return node.kind === 'load' ? POINT_LOAD_FIELDS : SPAN_LOAD_FIELDS;
@@ -1151,6 +1253,8 @@ export type GraphNode =
   | ZipNode
   | LoadNode
   | DistributedLoadNode
+  | SupportNode
+  | ShaftNode
   | MonteCarloGeneratorNode
   | MonteCarloReceiverNode;
 
@@ -1249,7 +1353,7 @@ export interface GraphDocument {
  * zip of single values has none, which only evaluation can tell
  * (`resolveGraph` leaves such a zip out of `Resolution.axes`).
  */
-export type AxisNode = InputNode | RangeNode | FileNode | TableNode | LutNode | ZipNode | MonteCarloGeneratorNode;
+export type AxisNode = InputNode | RangeNode | FileNode | TableNode | LutNode | ZipNode | ShaftNode | MonteCarloGeneratorNode;
 
 /** How many rows a lookup table has — every column is the same length. */
 export function lutRows(node: LutNode): number {
@@ -1265,6 +1369,7 @@ export function axes(document: GraphDocument): readonly AxisNode[] {
       (node.kind === 'table' && node.rows.length > 1) ||
       (node.kind === 'lut' && lutRows(node) > 1) ||
       (node.kind === 'zip' && hasZipInput(document, node.id)) ||
+      node.kind === 'shaft' ||
       node.kind === 'monteCarloGenerator',
   );
 }
@@ -1663,6 +1768,8 @@ export const NODE_KINDS = [
   'zip',
   'load',
   'distributedLoad',
+  'support',
+  'shaft',
   'monteCarloGenerator',
   'monteCarloReceiver',
 ] as const;
@@ -1713,6 +1820,69 @@ function parseLoadField(
     fail(join(path, 'unit'), `'${quantity.unit.symbol}' is not the same kind of quantity as '${expected.symbol}'`);
   }
   return quantity;
+}
+
+function parseShaftField(
+  value: JsonValue | undefined,
+  path: string,
+  field: keyof typeof SHAFT_FIELD_UNITS,
+  mandatory: boolean,
+): Quantity | undefined {
+  if (value === undefined) {
+    if (mandatory) fail(path, 'is required');
+    return undefined;
+  }
+  const quantity = parseQuantity(value, path);
+  const expected = SHAFT_FIELD_UNITS[field];
+  if (!dimensionsEqual(quantity.unit.dimension, expected.dimension)) {
+    fail(join(path, 'unit'), `'${quantity.unit.symbol}' is not the same kind of quantity as '${expected.symbol}'`);
+  }
+  return quantity;
+}
+
+function parseShaftSection(value: JsonValue, path: string): ShaftSection {
+  const object = readObject(value, path);
+  const kind = readEnum(required(object, 'kind', path), join(path, 'kind'), SHAFT_SECTION_KINDS);
+  if (kind === 'round') {
+    return {
+      kind,
+      d: parseShaftField(object['d'], join(path, 'd'), 'd', true) as Quantity,
+      ...put('d_i', parseShaftField(object['d_i'], join(path, 'd_i'), 'd_i', false)),
+    };
+  }
+  if (kind === 'secondMoment') {
+    return { kind, I: parseShaftField(object['I'], join(path, 'I'), 'I', true) as Quantity };
+  }
+  const unit = parseUnitField(required(object, 'unit', path), join(path, 'unit'));
+  if (!dimensionsEqual(unit.dimension, SHAFT_FIELD_UNITS.d.dimension)) fail(join(path, 'unit'), 'must be a length');
+  const steps = readArray(required(object, 'steps', path), join(path, 'steps')).map((entry, i): ShaftStep => {
+    const stepPath = `${join(path, 'steps')}[${i}]`;
+    const step = readObject(entry, stepPath);
+    const d = readNumber(required(step, 'd', stepPath), join(stepPath, 'd'));
+    const d_i = optional(step, 'd_i', stepPath, readNumber);
+    if (d <= 0) fail(join(stepPath, 'd'), 'must be above zero');
+    if (d_i !== undefined && (d_i < 0 || d_i >= d)) fail(join(stepPath, 'd_i'), 'must lie between zero and d');
+    return { start: readNumber(required(step, 'start', stepPath), join(stepPath, 'start')), d, ...put('d_i', d_i) };
+  });
+  if (steps.length === 0) fail(join(path, 'steps'), 'is empty — a stepped shaft needs at least one step');
+  for (let i = 1; i < steps.length; i += 1) {
+    if ((steps[i] as ShaftStep).start <= (steps[i - 1] as ShaftStep).start) {
+      fail(`${join(path, 'steps')}[${i}].start`, 'must lie after the step before it');
+    }
+  }
+  return { kind, unit, steps };
+}
+
+function serializeShaftSection(section: ShaftSection): JsonObject {
+  if (section.kind === 'round') {
+    return { kind: section.kind, d: serializeQuantity(section.d), ...put('d_i', section.d_i === undefined ? undefined : serializeQuantity(section.d_i)) };
+  }
+  if (section.kind === 'secondMoment') return { kind: section.kind, I: serializeQuantity(section.I) };
+  return {
+    kind: section.kind,
+    unit: section.unit.symbol,
+    steps: section.steps.map((step) => ({ start: step.start, d: step.d, ...put('d_i', step.d_i) })),
+  };
 }
 
 function parseNode(value: JsonValue, path: string): GraphNode {
@@ -1930,6 +2100,29 @@ function parseNode(value: JsonValue, path: string): GraphNode {
       }
       return { ...base, kind, ...read } as LoadNode | DistributedLoadNode;
     }
+    case 'support':
+      return {
+        ...base,
+        kind,
+        at: parseLoadField(object['at'], join(path, 'at'), 'at', true) as Quantity,
+        support: readEnum(required(object, 'support', path), join(path, 'support'), SUPPORT_TYPES),
+      };
+    case 'shaft': {
+      const field = (key: 'from' | 'to' | 'E', value: JsonValue | undefined, at: string): Quantity =>
+        parseShaftField(value, at, key, true) as Quantity;
+      const from = field('from', object['from'], join(path, 'from'));
+      const to = field('to', object['to'], join(path, 'to'));
+      return {
+        ...base,
+        kind,
+        from,
+        to,
+        count: readInteger(required(object, 'count', path), join(path, 'count'), 2),
+        E: field('E', object['E'], join(path, 'E')),
+        section: parseShaftSection(required(object, 'section', path), join(path, 'section')),
+        ...put('axisLabel', optional(object, 'axisLabel', path, readString)),
+      };
+    }
     case 'monteCarloGenerator': {
       const distribution = readEnum(
         required(object, 'distribution', path),
@@ -2095,6 +2288,18 @@ function serializeNode(node: GraphNode): JsonObject {
       });
       return { ...base, ...Object.fromEntries(fields) };
     }
+    case 'support':
+      return { ...base, at: serializeQuantity(node.at), support: node.support };
+    case 'shaft':
+      return {
+        ...base,
+        from: serializeQuantity(node.from),
+        to: serializeQuantity(node.to),
+        count: node.count,
+        E: serializeQuantity(node.E),
+        section: serializeShaftSection(node.section),
+        ...put('axisLabel', node.axisLabel),
+      };
     case 'monteCarloGenerator':
       if (node.distribution === 'uniform') {
         return {

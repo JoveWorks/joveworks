@@ -165,9 +165,10 @@ function draftPortFromReal(port: Port): DraftPort {
       };
     case 'bundle':
     case 'load':
-      // No authored catalogue declares either (see packages/schema/src/port.ts):
-      // a bundle is `pack`'s alone, a load port is the built-in shaft
-      // diagrams'. Represented as an empty numeric stub rather than modelled
+    case 'shaft':
+      // No authored catalogue declares any of these (see packages/schema/src/port.ts):
+      // a bundle is `pack`'s alone, load and shaft ports are the built-in
+      // shaft diagrams'. Represented as an empty numeric stub rather than modelled
       // properly, since this app never produces or expects one.
       return {
         ...base,
