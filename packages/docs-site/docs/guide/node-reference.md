@@ -561,9 +561,17 @@ factors):
   Wire it a moment *magnitude*: a signed moment gives a negative diameter.
 - **Equivalent stress (von Mises)** — `σ_v = √(σ_b² + 3·τ_t²)`.
 
-And one to check a section once its size is known:
+And the formulas around them, from the load to the check:
 
-- **Bending stress** — `σ = M·c/I`, at distance `c` from the neutral axis.
+- **Power from torque and speed** and **Torque from power and speed** —
+  `P = 2π·n·T`, two variants of one relation.
+- **Polar moment**, solid `J = π·d⁴/32` or hollow `J = π·(d_o⁴ − d_i⁴)/32`,
+  and **Torsional shear stress** `τ = T·r/J`.
+- **Moment of inertia**, solid `I = π·d⁴/64` or hollow
+  `I = π·(d_o⁴ − d_i⁴)/64`, and **Bending stress** `σ = M·c/I`, at
+  distance `c` from the neutral axis.
+- **Shear stress** — `τ = F/A`, the average over a loaded section.
+- **Factor of safety** — `n = σ_yield/σ_allow`.
 
 ### Load
 

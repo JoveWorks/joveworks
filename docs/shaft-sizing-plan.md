@@ -30,7 +30,9 @@ Where the implementation differs from the text below:
   diameter, equivalent stress) moved to the public Mechanics catalogue
   (`basic-mechanics.json`), with Dutch text; the built-in Mechanics nodes
   catalogue keeps only what needs the shaft solve.
-- Then moved back (2026-11-18), with `mechanics.beam.bending-stress`, so
+- Then moved back (2026-11-18), with the shaft-relevant records of the
+  example catalogue (power/torque, torsion, shear, round-section second
+  moment, bending stress, factor of safety), so
   the Shafts catalogue is complete on its own and a deployment can publish
   it without the example Mechanics catalogue. Ids, versions and hashes are
   unchanged and pinned in `packages/nodes/src/mechanicsNodes.test.ts`.

@@ -106,8 +106,8 @@ const shaftReactions: Formula = {
  * belong to the private catalogue.
  *
  * Release 0.34.1 shipped the four `mechanics.shaft.*` records in this
- * catalogue and `mechanics.beam.bending-stress` in the example one; every
- * id, version and hash is unchanged (pinned in `mechanicsNodes.test.ts`).
+ * catalogue and the others below in the example one; every id, version and
+ * hash is unchanged (pinned in `mechanicsNodes.test.ts`).
  */
 function tr(en: string, nl: string): LocalizedText {
   return { en, nl };
@@ -201,8 +201,143 @@ const beamBendingStress: Formula = {
   status: 'unverified',
 };
 
+/**
+ * The rest of a shaft check, as the example Mechanics catalogue shipped
+ * them (citations and units included, since both are part of the hash):
+ * torque from power and speed, torsion, direct shear, the second moment of a
+ * round section, and the factor of safety.
+ */
+const rotationPowerFromTorque: Formula = {
+  id: 'mechanics.rotation.power-from-torque',
+  version: 1,
+  description: tr('Transmitted power from torque and rotational speed.', 'Overgedragen vermogen uit koppel en toerental.'),
+  outputs: [{ kind: 'numeric', name: 'P', unit: parseUnit('W') }],
+  inputs: [
+    { kind: 'numeric', name: 'T', unit: parseUnit('Nm') },
+    { kind: 'numeric', name: 'n', unit: parseUnit('rpm'), validRange: { min: 0 } },
+  ],
+  expressions: { P: '2 * pi * n * T' },
+  citation: 'Power from torque and speed',
+  variantOf: 'mechanics.rotation.power-torque-relation',
+  status: 'unverified',
+};
+
+const rotationTorqueFromPower: Formula = {
+  id: 'mechanics.rotation.torque-from-power',
+  version: 1,
+  description: tr('Torque from transmitted power and rotational speed — same relation, solved for T.', 'Koppel van overgedragen vermogen en rotatiesnelheid - dezelfde relatie, opgelost voor T.'),
+  outputs: [{ kind: 'numeric', name: 'T', unit: parseUnit('Nm') }],
+  inputs: [
+    { kind: 'numeric', name: 'P', unit: parseUnit('W'), validRange: { min: 0 } },
+    { kind: 'numeric', name: 'n', unit: parseUnit('rpm'), validRange: { min: 0 } },
+  ],
+  expressions: { T: 'P / (2 * pi * n)' },
+  citation: 'Torque from power and speed',
+  variantOf: 'mechanics.rotation.power-torque-relation',
+  status: 'unverified',
+};
+
+const torsionPolarMomentSolid: Formula = {
+  id: 'mechanics.torsion.polar-moment-solid',
+  version: 1,
+  description: tr('Polar moment of area of a solid circular shaft.', 'Polair oppervlaktemoment van een massieve cirkelvormige as.'),
+  outputs: [{ kind: 'numeric', name: 'J', unit: parseUnit('mm⁴') }],
+  inputs: [
+    { kind: 'numeric', name: 'd', unit: parseUnit('mm'), validRange: { min: 0 } },
+  ],
+  expressions: { J: 'pi * d**4 / 32' },
+  citation: 'Solid shaft — polar moment',
+  status: 'unverified',
+};
+
+const torsionPolarMomentHollow: Formula = {
+  id: 'mechanics.torsion.polar-moment-hollow',
+  version: 1,
+  description: tr('Polar moment of area of a hollow circular shaft.', 'Polair oppervlaktemoment van een holle cirkelvormige as.'),
+  outputs: [{ kind: 'numeric', name: 'J', unit: parseUnit('mm⁴') }],
+  inputs: [
+    { kind: 'numeric', name: 'd_o', unit: parseUnit('mm'), validRange: { min: 0 } },
+    { kind: 'numeric', name: 'd_i', unit: parseUnit('mm'), validRange: { min: 0 } },
+  ],
+  expressions: { J: 'pi * (d_o**4 - d_i**4) / 32' },
+  citation: 'Hollow shaft — polar moment',
+  status: 'unverified',
+};
+
+const torsionShearStress: Formula = {
+  id: 'mechanics.torsion.shear-stress',
+  version: 1,
+  description: tr('Torsional shear stress at radius r from the shaft axis.', 'Torsieschuifspanning bij straal r vanaf de as van de as.'),
+  outputs: [{ kind: 'numeric', name: 'tau', unit: parseUnit('MPa') }],
+  inputs: [
+    { kind: 'numeric', name: 'T', unit: parseUnit('Nm') },
+    { kind: 'numeric', name: 'r', unit: parseUnit('mm'), validRange: { min: 0 } },
+    { kind: 'numeric', name: 'J', unit: parseUnit('mm⁴'), validRange: { min: 0 } },
+  ],
+  expressions: { tau: 'T * r / J' },
+  citation: 'Torsional shear stress',
+  status: 'unverified',
+};
+
+const stressShear: Formula = {
+  id: 'mechanics.stress.shear',
+  version: 1,
+  description: tr('Average shear stress over a loaded cross-section.', 'Gemiddelde schuifspanning over een belaste doorsnede.'),
+  outputs: [{ kind: 'numeric', name: 'tau', unit: parseUnit('MPa') }],
+  inputs: [
+    { kind: 'numeric', name: 'F', unit: parseUnit('N'), validRange: { min: 0 } },
+    { kind: 'numeric', name: 'A', unit: parseUnit('mm²'), validRange: { min: 0 } },
+  ],
+  expressions: { tau: 'F / A' },
+  citation: 'Shear stress',
+  status: 'unverified',
+};
+
+const beamMomentOfInertiaCircle: Formula = {
+  id: 'mechanics.beam.moment-of-inertia-circle',
+  version: 1,
+  description: tr('Second moment of area of a solid circular cross-section about its centroid.', 'Tweede oppervlaktemoment van een massieve cirkelvormige dwarsdoorsnede rond zijn zwaartepunt.'),
+  outputs: [{ kind: 'numeric', name: 'I', unit: parseUnit('mm⁴') }],
+  inputs: [
+    { kind: 'numeric', name: 'd', unit: parseUnit('mm'), validRange: { min: 0 } },
+  ],
+  expressions: { I: 'pi * d**4 / 64' },
+  citation: 'Circular section — moment of inertia',
+  status: 'unverified',
+};
+
+const beamMomentOfInertiaHollowCircle: Formula = {
+  id: 'mechanics.beam.moment-of-inertia-hollow-circle',
+  version: 1,
+  description: tr('Second moment of area of a hollow circular (tube) cross-section about its centroid.', 'Tweede oppervlaktemoment van een holle cirkelvormige (buis) dwarsdoorsnede rond zijn zwaartepunt.'),
+  outputs: [{ kind: 'numeric', name: 'I', unit: parseUnit('mm⁴') }],
+  inputs: [
+    { kind: 'numeric', name: 'd_o', unit: parseUnit('mm'), validRange: { min: 0 } },
+    { kind: 'numeric', name: 'd_i', unit: parseUnit('mm'), validRange: { min: 0 } },
+  ],
+  expressions: { I: 'pi * (d_o**4 - d_i**4) / 64' },
+  citation: 'Hollow circular section — moment of inertia',
+  status: 'unverified',
+};
+
+const stressFactorOfSafety: Formula = {
+  id: 'mechanics.stress.factor-of-safety',
+  version: 1,
+  description: tr('Design factor of safety against yield.', 'Ontwerpfactor van veiligheid tegen opbrengst.'),
+  outputs: [{ kind: 'numeric', name: 'n', unit: parseUnit('') }],
+  inputs: [
+    { kind: 'numeric', name: 'sigma_yield', unit: parseUnit('MPa'), validRange: { min: 0 } },
+    { kind: 'numeric', name: 'sigma_allow', unit: parseUnit('MPa'), validRange: { min: 0 } },
+  ],
+  expressions: { n: 'sigma_yield / sigma_allow' },
+  citation: 'Factor of safety',
+  status: 'unverified',
+};
+
 export const MECHANICS_OPERATIONS: readonly Formula[] = [
   shaftCalculation, shaftReactions,
   shaftSectionModulus, shaftEquivalentMoment, shaftRequiredDiameter, shaftEquivalentStress,
   beamBendingStress,
+  rotationPowerFromTorque, rotationTorqueFromPower, torsionPolarMomentSolid, torsionPolarMomentHollow, torsionShearStress,
+  stressShear, beamMomentOfInertiaCircle, beamMomentOfInertiaHollowCircle, stressFactorOfSafety,
 ];
