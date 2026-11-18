@@ -14,7 +14,7 @@
  * `mechanicsLegacyNodes.ts` for the NodeBooks saved against it.
  */
 
-import type { Formula, Port } from '@joveworks/schema';
+import type { Formula, LocalizedText, Port } from '@joveworks/schema';
 import { parseUnit } from '@joveworks/units';
 import { text } from './draft.js';
 
@@ -97,9 +97,112 @@ const shaftReactions: Formula = {
 };
 
 /**
- * Only what needs the kernel's shaft solve. The plain sizing formulas that
- * follow a moment diagram (section moduli, von Mises, required diameter)
- * are ordinary expressions and live in the public Mechanics catalogue
- * (`packages/editor/src/catalogues/examples/basic-mechanics.json`).
+ * Static sizing of a round shaft (`docs/shaft-sizing-plan.md`): the plain
+ * strength-of-materials steps between a moment diagram and a diameter, and
+ * the bending stress the stepped-shaft sample draws. They are ordinary
+ * expressions, but they ship here with the diagrams rather than in the
+ * example Mechanics catalogue, so a deployment can offer shafts without the
+ * general mechanics examples. No fatigue — notch, size and surface factors
+ * belong to the private catalogue.
+ *
+ * Release 0.34.1 shipped the four `mechanics.shaft.*` records in this
+ * catalogue and `mechanics.beam.bending-stress` in the example one; every
+ * id, version and hash is unchanged (pinned in `mechanicsNodes.test.ts`).
  */
-export const MECHANICS_OPERATIONS: readonly Formula[] = [shaftCalculation, shaftReactions];
+function tr(en: string, nl: string): LocalizedText {
+  return { en, nl };
+}
+
+/** Section moduli of a solid or hollow round shaft: W_b = π·(d⁴ − d_i⁴)/(32·d), W_p = 2·W_b; a bore needs d_i < d. */
+const shaftSectionModulus: Formula = {
+  id: 'mechanics.shaft.section-modulus',
+  version: 1,
+  label: tr('Section moduli of a round shaft', 'Weerstandsmomenten van een ronde as'),
+  description: tr('Bending and torsion moduli', 'Buig- en torsieweerstandsmoment'),
+  outputs: [
+    { kind: 'numeric', name: 'W_b', unit: parseUnit('mm³'), description: tr('Axial section modulus, for bending', 'Axiaal weerstandsmoment, voor buiging') },
+    { kind: 'numeric', name: 'W_p', unit: parseUnit('mm³'), description: tr('Polar section modulus, for torsion', 'Polair weerstandsmoment, voor torsie') },
+  ],
+  inputs: [
+    { kind: 'numeric', name: 'd', unit: parseUnit('mm'), description: tr('Outer diameter', 'Buitendiameter') },
+    {
+      kind: 'numeric', name: 'd_i', unit: parseUnit('mm'), default: 0,
+      description: tr('Bore diameter — 0 for a solid shaft, otherwise less than d', 'Boringdiameter — 0 voor een massieve as, anders kleiner dan d'),
+    },
+  ],
+  expressions: { W_b: 'pi * (d**4 - d_i**4) / (32 * d)', W_p: '2 * W_b' },
+  status: 'unverified',
+};
+
+/** Bending and torsion combined by von Mises into one equivalent bending moment. */
+const shaftEquivalentMoment: Formula = {
+  id: 'mechanics.shaft.equivalent-moment',
+  version: 1,
+  label: tr('Equivalent moment (von Mises)', 'Vergelijkingsmoment (von Mises)'),
+  description: tr('M_v = √(M² + 0.75·T²)', 'M_v = √(M² + 0.75·T²)'),
+  outputs: [{ kind: 'numeric', name: 'M_v', unit: parseUnit('Nmm'), description: tr('Equivalent bending moment', 'Vergelijkend buigmoment') }],
+  inputs: [
+    { kind: 'numeric', name: 'M', unit: parseUnit('Nmm'), description: tr('Bending moment', 'Buigmoment') },
+    { kind: 'numeric', name: 'T', unit: parseUnit('Nmm'), default: 0, description: tr('Torque', 'Torsiemoment') },
+  ],
+  expressions: { M_v: 'sqrt(M**2 + 0.75 * T**2)' },
+  status: 'unverified',
+};
+
+/** σ = M/W_b rearranged for a solid round shaft. Wants a moment magnitude: a signed moment gives a negative diameter. */
+const shaftRequiredDiameter: Formula = {
+  id: 'mechanics.shaft.required-diameter',
+  version: 1,
+  label: tr('Required diameter of a solid shaft', 'Benodigde diameter van een massieve as'),
+  description: tr('Smallest solid diameter', 'Kleinste massieve diameter'),
+  outputs: [{ kind: 'numeric', name: 'd', unit: parseUnit('mm'), description: tr('Required diameter', 'Benodigde diameter') }],
+  inputs: [
+    {
+      kind: 'numeric', name: 'M_v', unit: parseUnit('Nmm'),
+      description: tr('Equivalent (or resultant) bending moment, a magnitude', 'Vergelijkend (of resulterend) buigmoment, een grootte'),
+    },
+    { kind: 'numeric', name: 'sigma_allow', unit: parseUnit('N/mm²'), description: tr('Allowable bending stress', 'Toelaatbare buigspanning') },
+  ],
+  expressions: { d: 'cbrt(32 * M_v / (pi * sigma_allow))' },
+  status: 'unverified',
+};
+
+/** Bending and torsional stress combined by von Mises. */
+const shaftEquivalentStress: Formula = {
+  id: 'mechanics.shaft.equivalent-stress',
+  version: 1,
+  label: tr('Equivalent stress (von Mises)', 'Vergelijkspanning (von Mises)'),
+  description: tr('σ_v = √(σ_b² + 3·τ_t²)', 'σ_v = √(σ_b² + 3·τ_t²)'),
+  outputs: [{ kind: 'numeric', name: 'sigma_v', unit: parseUnit('N/mm²'), description: tr('Equivalent stress', 'Vergelijkspanning') }],
+  inputs: [
+    { kind: 'numeric', name: 'sigma_b', unit: parseUnit('N/mm²'), description: tr('Bending stress', 'Buigspanning') },
+    { kind: 'numeric', name: 'tau_t', unit: parseUnit('N/mm²'), default: 0, description: tr('Torsional shear stress', 'Torsieschuifspanning') },
+  ],
+  expressions: { sigma_v: 'sqrt(sigma_b**2 + 3 * tau_t**2)' },
+  status: 'unverified',
+};
+
+/**
+ * σ = M·c/I, as the example Mechanics catalogue shipped it — the citation
+ * and the `Nm` moment unit included, since both are part of its hash.
+ */
+const beamBendingStress: Formula = {
+  id: 'mechanics.beam.bending-stress',
+  version: 1,
+  description: tr('Bending stress at distance c from the neutral axis.', 'Buigspanning op afstand c van de neutrale as.'),
+  outputs: [{ kind: 'numeric', name: 'sigma', unit: parseUnit('MPa') }],
+  inputs: [
+    { kind: 'numeric', name: 'M', unit: parseUnit('Nm') },
+    { kind: 'numeric', name: 'c', unit: parseUnit('mm'), validRange: { min: 0 } },
+    { kind: 'numeric', name: 'I', unit: parseUnit('mm⁴'), validRange: { min: 0 } },
+  ],
+  expressions: { sigma: 'M * c / I' },
+  citation: 'Bending stress',
+  status: 'unverified',
+};
+
+export const MECHANICS_OPERATIONS: readonly Formula[] = [
+  shaftCalculation, shaftReactions,
+  shaftSectionModulus, shaftEquivalentMoment, shaftRequiredDiameter, shaftEquivalentStress,
+  beamBendingStress,
+];

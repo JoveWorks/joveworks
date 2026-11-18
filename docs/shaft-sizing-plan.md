@@ -30,6 +30,10 @@ Where the implementation differs from the text below:
   diameter, equivalent stress) moved to the public Mechanics catalogue
   (`basic-mechanics.json`), with Dutch text; the built-in Mechanics nodes
   catalogue keeps only what needs the shaft solve.
+- Then moved back (2026-11-18), with `mechanics.beam.bending-stress`, so
+  the Shafts catalogue is complete on its own and a deployment can publish
+  it without the example Mechanics catalogue. Ids, versions and hashes are
+  unchanged and pinned in `packages/nodes/src/mechanicsNodes.test.ts`.
 - The `plane` picker defaults to `y`. The editor now resolves a node's
   formula by its full reference, as the kernel does, so a v1 node shows v1
   ports.
