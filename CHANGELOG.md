@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.35.0](https://github.com/JoveWorks/joveworks/compare/v0.34.1...v0.35.0) (2026-11-19)
+
+### Refactoring
+
+* move the shaft sizing formulas to the public Mechanics catalogue ([8c75798](https://github.com/JoveWorks/joveworks/commit/8c7579843fde00d808ac387d18e99a5772379dae))
+* name the built-in mechanics catalogue Shafts ([e91540c](https://github.com/JoveWorks/joveworks/commit/e91540c53b01b5a42460b2e8cdda86c2be6035ec))
+* **nodes:** keep the shaft sizing formulas in the Shafts catalogue ([d770e32](https://github.com/JoveWorks/joveworks/commit/d770e32eb205d60135bcbc13ae57acf73e4f5947))
+* **nodes:** move the rest of a shaft check into the Shafts catalogue ([c1f0a0e](https://github.com/JoveWorks/joveworks/commit/c1f0a0ee2ccd35b78cb5270b1b9e3b32db635e94))
+
+### Documentation
+
+* add November project review ([82b3847](https://github.com/JoveWorks/joveworks/commit/82b38472f4044f81df7cbcc9e832816c14e0b4c6))
 ## [0.34.1](https://github.com/JoveWorks/joveworks/compare/v0.34.0...v0.34.1) (2026-11-13)
 
 ### Fixes
