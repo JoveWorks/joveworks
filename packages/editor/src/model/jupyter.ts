@@ -501,8 +501,15 @@ function attribute(object: string, name: string): string {
   return PLAIN_NAME.test(name) && !RESERVED.has(name) ? `${object}.${name}` : `getattr(${object}, ${pyString(name)})`;
 }
 
+/**
+ * Every boundary Python's tokenizer ends a physical line at — a bare `\r`
+ * included — plus the other ones `str.splitlines` knows, so no character in a
+ * label can end the comment early and leave the rest of it as code.
+ */
+const LINE_BREAK = /\r\n|[\n\r\v\f\x1c-\x1e\x85\u2028\u2029]/u;
+
 function comment(text: string): string[] {
-  return text.split(/\r?\n/u).map((line) => `# ${line}`.trimEnd());
+  return text.split(LINE_BREAK).map((line) => `# ${line}`.trimEnd());
 }
 
 const NODE_NAMES: Readonly<Record<GraphNode['kind'], string>> = {
@@ -1187,7 +1194,7 @@ export function pythonText(notebook: JupyterNotebook): string {
   const blocks = notebook.cells.map((cell) => {
     const text = cell.source.join('');
     if (cell.cell_type === 'code') return `# %%\n${text}`;
-    return `# %% [markdown]\n${text.split('\n').map((line) => `# ${line}`.trimEnd()).join('\n')}`;
+    return `# %% [markdown]\n${comment(text).join('\n')}`;
   });
   return `${blocks.join('\n\n')}\n`;
 }
