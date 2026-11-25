@@ -10,7 +10,8 @@
  */
 
 import { parseCatalogue, serializeCatalogue, type Catalogue } from './formula.js';
-import { parseDocument, serializeDocument, type GraphDocument } from './document.js';
+import { serializeDocument, type GraphDocument } from './document.js';
+import { migrateDocument } from './migration.js';
 import { fail, readJsonText, type JsonValue } from './json.js';
 import { parseDocument as parseYamlDocument, stringify as stringifyYaml, visit } from 'yaml';
 
@@ -71,8 +72,13 @@ function writeYamlText(value: JsonValue): string {
   });
 }
 
+/**
+ * Every app load path comes through here, so this is where a document saved
+ * by an older build is upgraded — not merely parsed — and where one saved by
+ * a newer build is refused with the "newer version of JoveWorks" message.
+ */
 export function loadDocument(text: string): GraphDocument {
-  return parseDocument(readJsonText(text));
+  return migrateDocument(readJsonText(text));
 }
 
 /** Indented, because these files are read, diffed and reviewed by people. */

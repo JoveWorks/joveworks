@@ -2,11 +2,15 @@ import { describe, expect, it } from 'vitest';
 
 import { SchemaError } from './errors.js';
 import { formulaHash } from './formula.js';
+import { emptyDocument, serializeDocument } from './document.js';
 import {
   catalogueFormatFromFileName,
   loadCatalogue,
+  loadDocument,
   saveCatalogue,
+  saveDocument,
 } from './io.js';
+import { DOCUMENT_SCHEMA_VERSION } from './version.js';
 
 const yaml = `
 schemaVersion: 1
@@ -126,5 +130,20 @@ describe('catalogue text formats', () => {
     expect(() => loadCatalogue(yaml.replace('id: invented', 'id: !course invented'), 'yaml')).toThrow(
       SchemaError,
     );
+  });
+});
+
+describe('document text', () => {
+  it('round-trips a current document', () => {
+    const document = emptyDocument('doc-1', 'Empty study');
+    expect(loadDocument(saveDocument(document))).toEqual(document);
+  });
+
+  it('goes through the migration entry point, so a newer schemaVersion is named as such', () => {
+    const text = JSON.stringify({
+      ...serializeDocument(emptyDocument('doc-1', 'Empty study')),
+      schemaVersion: DOCUMENT_SCHEMA_VERSION + 1,
+    });
+    expect(() => loadDocument(text)).toThrow(/newer version of JoveWorks/);
   });
 });
