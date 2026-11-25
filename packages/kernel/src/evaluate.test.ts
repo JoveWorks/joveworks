@@ -2406,12 +2406,63 @@ describe('compare nodes', () => {
     expect(verdict.data).toEqual(['pass', 'fail']);
   });
 
-  it('lines a swept threshold up elementwise with the value, sharing the same axis', () => {
+  it('lines a swept threshold up with the value by axis, when it is computed from the same sweep', () => {
+    const document = documentOf(
+      [
+        input('F', list([1000, 4000], 'N')),
+        input('A', scalar(20, 'mm²')),
+        input('A_limit', scalar(10, 'mm²')),
+        formulaNode('p', refTo('pressure')),
+        formulaNode('limit', refTo('pressure')),
+        compareNode('c', '<=', { value: 1, unit: 'N/mm²' }),
+      ],
+      [
+        wire('F.value', 'p.F'),
+        wire('A.value', 'p.A'),
+        wire('F.value', 'limit.F'),
+        wire('A_limit.value', 'limit.A'),
+        wire('p.p', 'c.value'),
+        wire('limit.p', 'c.threshold'),
+      ],
+    );
+    // 50 <= 100 and 200 <= 400: one bound per load, both along F's own axis.
+    const verdict = valueAt(evaluateDocument(document, catalogues), 'c', 'verdict') as CategoricalSeries;
+    expect(verdict.data).toEqual(['pass', 'pass']);
+  });
+
+  it('broadcasts a threshold over the value\'s other axes — a limit per load across a d × load study', () => {
+    const document = documentOf(
+      [
+        input('F', list([1000, 4000], 'N')),
+        input('A', list([10, 20], 'mm²')),
+        input('A_limit', scalar(8, 'mm²')),
+        formulaNode('p', refTo('pressure')),
+        formulaNode('limit', refTo('pressure')),
+        compareNode('c', '<=', { value: 1, unit: 'N/mm²' }),
+      ],
+      [
+        wire('F.value', 'p.F'),
+        wire('A.value', 'p.A'),
+        wire('F.value', 'limit.F'),
+        wire('A_limit.value', 'limit.A'),
+        wire('p.p', 'c.value'),
+        wire('limit.p', 'c.threshold'),
+      ],
+    );
+    // Limits 125 and 500 by load. Paired by load every cell passes (100, 50 ≤ 125;
+    // 400, 200 ≤ 500); paired along the area axis instead, 400 ≤ 125 would fail.
+    const evaluation = evaluateDocument(document, catalogues);
+    const verdict = valueAt(evaluation, 'c', 'verdict') as CategoricalSeries;
+    expect(verdict.axes.map((axis) => axis.id)).toEqual((valueAt(evaluation, 'p', 'p') as NumericSeries).axes.map((axis) => axis.id));
+    expect(verdict.data).toEqual(['pass', 'pass', 'pass', 'pass']);
+  });
+
+  it('refuses a threshold swept over an unrelated axis, even of the same length, rather than pairing it by position', () => {
     const document = documentOf(
       [
         input('F', list([1000, 4000], 'N'), { axisLabel: 'load' }),
         input('A', scalar(20, 'mm²')),
-        input('limit', list([60, 300], 'N/mm²'), { axisLabel: 'load' }),
+        input('limit', list([60, 300], 'N/mm²'), { axisLabel: 'allowable' }),
         formulaNode('p', refTo('pressure')),
         compareNode('c', '<=', { value: 1, unit: 'N/mm²' }),
       ],
@@ -2422,9 +2473,7 @@ describe('compare nodes', () => {
         wire('limit.value', 'c.threshold'),
       ],
     );
-    // 50 <= 60 (pass), 200 <= 300 (pass) — a per-point limit, not a grid.
-    const verdict = valueAt(evaluateDocument(document, catalogues), 'c', 'verdict') as CategoricalSeries;
-    expect(verdict.data).toEqual(['pass', 'pass']);
+    expect(() => evaluateDocument(document, catalogues)).toThrow(/varies along 'allowable'.*zip/u);
   });
 
   it('feeds a verdict into a table column, showing which swept points fail', () => {
@@ -2473,7 +2522,7 @@ describe('compare nodes', () => {
         wire('limit.value', 'c.threshold'),
       ],
     );
-    expect(() => evaluateDocument(document, catalogues)).toThrow(/one bound per point/u);
+    expect(() => evaluateDocument(document, catalogues)).toThrow(/threshold varies along/u);
   });
 });
 

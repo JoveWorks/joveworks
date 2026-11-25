@@ -2016,18 +2016,22 @@ function evaluateCompare(
   if (threshold.kind !== 'numeric') {
     throw new KernelError('a comparison needs a numeric threshold, not a categorical one', thresholdKey);
   }
-  if (threshold.data.length !== 1 && threshold.data.length !== value.data.length) {
+  // Paired by axis, like every other place two series meet: the threshold
+  // may vary along any of the value's axes and is broadcast over the rest.
+  // Pairing by position instead matched two unrelated sweeps of equal length
+  // cell for cell, in silence, and refused `d × T` against a limit over `d`.
+  const foreign = threshold.axes.filter((axis) => !value.axes.some((own) => own.id === axis.id));
+  if (foreign.length > 0) {
     throw new KernelError(
-      `the threshold has ${threshold.data.length} values, but the value it compares against has ` +
-        `${value.data.length} — a swept threshold needs one bound per point`,
+      `the threshold varies along ${foreign.map((axis) => `'${axis.label}'`).join(', ')}, which the value ` +
+        'it compares against does not — compute the threshold from the value\'s own sweep, or pair the two lists with a zip',
       thresholdKey,
     );
   }
 
   const compare = comparator(node.comparison);
-  const data = value.data.map((cell, i) =>
-    compare(cell, threshold.data[threshold.data.length === 1 ? 0 : i] as number) ? 'pass' : 'fail',
-  );
+  const bound = reader(threshold, value.axes);
+  const data = value.data.map((cell, i) => (compare(cell, bound(i)) ? 'pass' : 'fail'));
   return { kind: 'categorical', axes: value.axes, data };
 }
 
