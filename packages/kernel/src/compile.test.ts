@@ -199,6 +199,13 @@ describe('dimensions of an expression', () => {
     expect(() => dimensionOf('exp(d)', ports)).toThrow(/pure number/u);
   });
 
+  it('has a base-10 logarithm beside the natural one', () => {
+    expect(compileExpression('log10(x)')({ x: 1000 })).toBeCloseTo(3, 12);
+    expect(compileExpression('log(x)')({ x: Math.E })).toBeCloseTo(1, 12);
+    expect(dimensionOf('log10(n)', ports)).toEqual(DIMENSIONLESS);
+    expect(() => dimensionOf('log10(F)', ports)).toThrow(/pure number/u);
+  });
+
   it('keeps the dimension through rounding', () => {
     expect(dimensionOf('floor(d)', ports)).toEqual(LENGTH);
     expect(dimensionOf('abs(F)', ports)).toEqual(FORCE);

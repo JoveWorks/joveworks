@@ -156,6 +156,7 @@ const SPECS: readonly FunctionSpec[] = [
   pure('cosh', Math.cosh),
   pure('tanh', Math.tanh),
   pure('log', Math.log),
+  pure('log10', Math.log10),
   pure('exp', Math.exp),
 ];
 

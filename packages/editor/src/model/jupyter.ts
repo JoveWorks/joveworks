@@ -351,7 +351,7 @@ const CALLS: Readonly<Record<Dialect, Readonly<Record<string, string>>>> = {
   numpy: {
     abs: 'np.abs', sqrt: 'np.sqrt', cbrt: 'np.cbrt', floor: 'np.floor', ceil: 'np.ceil',
     sin: 'np.sin', cos: 'np.cos', tan: 'np.tan', asin: 'np.arcsin', acos: 'np.arccos', atan: 'np.arctan',
-    sinh: 'np.sinh', cosh: 'np.cosh', tanh: 'np.tanh', log: 'np.log', exp: 'np.exp',
+    sinh: 'np.sinh', cosh: 'np.cosh', tanh: 'np.tanh', log: 'np.log', log10: 'np.log10', exp: 'np.exp',
   },
 };
 
@@ -469,6 +469,8 @@ function print(expr: Expr, context: PrintContext, minimum = ADD): string {
       if (expr.callee === 'min' || expr.callee === 'max') return extremum(context.dialect, expr.callee === 'min', args);
       // `Math.round` rounds a half up; Python's and NumPy's round it to even.
       if (expr.callee === 'round') return `${CALLS[context.dialect]['floor']}(${args[0]} + 0.5)`;
+      // SymPy has no log10 of its own; a second argument is its base.
+      if (expr.callee === 'log10' && context.dialect === 'sympy') return `sp.log(${args[0]}, 10)`;
       const callee = CALLS[context.dialect][expr.callee];
       if (callee === undefined) throw new Untranslatable(expr.callee);
       return `${callee}(${args.join(', ')})`;

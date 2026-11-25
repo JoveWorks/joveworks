@@ -12,6 +12,10 @@ describe('toLatex', () => {
     expect(latex('x / 2[m]')).toBe('\\frac{x}{2\\,\\mathrm{m}}');
   });
 
+  it('tells the two logarithms apart', () => {
+    expect(latex('log(x) + log10(y)')).toBe('\\ln\\left(x\\right) + \\log_{10}\\left(y\\right)');
+  });
+
   it('joins multiplication with \\cdot', () => {
     expect(latex('a*b + c')).toBe('a \\cdot b + c');
   });
