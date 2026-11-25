@@ -72,6 +72,7 @@ import { IntelligentPlotControls } from './IntelligentPlotControls';
 import { NotebookSliderControl } from './NotebookSliderControl';
 import { phrase, ui } from '../i18n';
 import { exposedSlidersFor, notebookDisplayOf, notebookSectionId, readingOrder, withSliderValue } from '../model/notebook';
+import { acceptFormulaUpdate, formulaChangeText, FormulaUpdateButton } from '../canvas/formulaUpdate';
 
 /**
  * Enter finishes the field (blurs it, same as `fields.tsx`'s `TextField`);
@@ -957,7 +958,12 @@ export function Notebook({ onClose }: { readonly onClose: () => void }): ReactEl
           <ul>
             {analysis.warnings.map((warning) => (
               <li key={`${warning.kind}-${warning.nodeId ?? ''}-${warning.message}`}>
-                {warning.message}
+                {formulaChangeText(warning, locale)}{' '}
+                <FormulaUpdateButton
+                  warning={warning}
+                  locale={locale}
+                  onAccept={(nodeId, to) => edit((current) => acceptFormulaUpdate(current, nodeId, to))}
+                />
               </li>
             ))}
           </ul>

@@ -44,6 +44,7 @@ const DUTCH_PHRASES: Readonly<Record<string, string>> = {
   'Hide canvas controls': 'Canvasknoppen verbergen', 'Show canvas controls': 'Canvasknoppen tonen',
   'Move up': 'Omhoog verplaatsen', 'Move down': 'Omlaag verplaatsen', 'Delete section': 'Sectie verwijderen', 'Delete group': 'Groep verwijderen', 'Collapse group': 'Groep samenvouwen', 'Expand group': 'Groep uitvouwen',
   'Not in a section': 'Niet in een sectie', 'Worth a look': 'Even nakijken',
+  'Update to version': 'Bijwerken naar versie', 'Version': 'Versie',
   'Click to edit the raw text': 'Klik om de onbewerkte tekst te bewerken',
   'what this section establishes': 'wat deze sectie vastlegt',
   'Add new': 'Nieuw toevoegen', 'On this canvas': 'Op dit canvas',
