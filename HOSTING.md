@@ -535,10 +535,8 @@ the cloud *interface*, not the cloud *code*. Strings like "Save to Cloud" are
 still present in the bundle, unreachable. What matters operationally is that
 nothing calls them, so no Hub request is ever made.
 
-Note that the prebuilt stable bundle of option 1 is built **with**
-`VITE_CLOUD=hub`, because some schools do link to it through a Hub. If you want
-a cloud-free deployment, build it yourself with option 4 or 2, or ask for a
-bundle built without the flag.
+The prebuilt stable bundle of option 1 is built **without** `VITE_CLOUD`, so
+it is already this cloud-free deployment.
 
 This also means the app makes **no outbound network requests** beyond loading
 its own assets from your server — worth stating plainly if your security review
