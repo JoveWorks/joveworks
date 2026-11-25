@@ -39,6 +39,7 @@ import { notebookDisplayOf } from './model/notebook';
 import { DisplayProvider, type NotebookDisplay } from './present/display';
 import { SettingsContext } from './settings-context';
 import {
+  claimAutosaveSnapshot,
   clearAutosaveSnapshot,
   clearSetAsideSnapshot,
   loadAutosaveSnapshot,
@@ -264,7 +265,9 @@ function startupDocument(
   const snapshot = loadAutosaveSnapshot();
   if (snapshot !== undefined) {
     try {
-      return { document: loadDocument(snapshot.text), restored: true };
+      const document = loadDocument(snapshot.text);
+      claimAutosaveSnapshot(snapshot);
+      return { document, restored: true };
     } catch (error) {
       setAsideAutosaveSnapshot(snapshot);
       return { document: fallback, restored: false, unreadable: error instanceof Error ? error.message : String(error) };
@@ -804,15 +807,18 @@ function AppShell(): ReactElement {
     // restored autosave suppresses it) without the introduction tour they
     // had still never seen. It also resurrected the slot that Save had just
     // cleared, on the way out of a document safely on disk.
-    const snapshot = (): void => {
+    const snapshot = (leaving: boolean): void => {
       if (!isDirtyRef.current) return;
-      saveAutosaveSnapshot(saveDocument(documentRef.current));
+      saveAutosaveSnapshot(saveDocument(documentRef.current), leaving);
     };
-    const interval = window.setInterval(snapshot, AUTOSAVE_INTERVAL_MS);
-    window.addEventListener('beforeunload', snapshot);
+    const tick = (): void => snapshot(false);
+    // Marked as left, so a tab opened next may take the work over.
+    const leave = (): void => snapshot(true);
+    const interval = window.setInterval(tick, AUTOSAVE_INTERVAL_MS);
+    window.addEventListener('beforeunload', leave);
     return () => {
       window.clearInterval(interval);
-      window.removeEventListener('beforeunload', snapshot);
+      window.removeEventListener('beforeunload', leave);
     };
   }, []);
 
