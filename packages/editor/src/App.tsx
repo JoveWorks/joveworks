@@ -50,6 +50,7 @@ import { cacheCatalogue, cachedCatalogueTexts } from './io/catalogueCache';
 import { documentFileName, jupyterFileName, openTextFile, pythonFileName, saveTextFile, userEquationsFileName } from './io/files';
 import {
   loadRecentDocuments,
+  RECENT_DOCUMENTS_KEY,
   recordRecentDocument,
   type RecentDocument,
 } from './io/recentDocuments';
@@ -449,6 +450,20 @@ function AppShell(): ReactElement {
   // Serializing the whole document is not free, and this sat on every render
   // — a pan or a hover included. The document is immutable state, so its
   // identity changes exactly when its text can.
+  // Bumped whenever the Recent list in localStorage changes, so the File menu
+  // reads it only then (see `recentDocuments`).
+  const [recentsVersion, setRecentsVersion] = useState(0);
+  const rememberRecent = (recent: GraphDocument): void => {
+    recordRecentDocument(recent);
+    setRecentsVersion((version) => version + 1);
+  };
+  useEffect(() => {
+    const changed = (event: StorageEvent): void => {
+      if (event.key === null || event.key === RECENT_DOCUMENTS_KEY) setRecentsVersion((version) => version + 1);
+    };
+    window.addEventListener('storage', changed);
+    return () => window.removeEventListener('storage', changed);
+  }, []);
   const isDirty = useMemo(
     () => savedSnapshot === undefined || saveDocument(document) !== savedSnapshot,
     [document, savedSnapshot],
@@ -649,7 +664,7 @@ function AppShell(): ReactElement {
       for (const catalogue of loadedCatalogues) cacheCatalogue(catalogue.id, saveCatalogue(catalogue));
       resetDocument(loadedDocument);
       if (bindCloud) setCloudWorkspaceBinding({ source, catalogues: publication.catalogues });
-      recordRecentDocument(loadedDocument);
+      rememberRecent(loadedDocument);
       clearAutosaveSnapshot();
       pushNotice(`Opened ${publication.title} from ${source.title}.`);
     } catch (error) {
@@ -675,7 +690,7 @@ function AppShell(): ReactElement {
     setWorkspaceAccessRevision((current) => current + 1);
     setHubWorkspace(created.workspace);
     const text = saveDocument(documentRef.current);
-    recordRecentDocument(documentRef.current);
+    rememberRecent(documentRef.current);
     clearAutosaveSnapshot();
     setSavedSnapshot(text);
     pushNotice(`Saved to cloud workspace ${created.workspace.id}. Share: ${new URL(`/w/${created.workspace.id}`, `${created.workspace.hubUrl}/`)}`);
@@ -701,7 +716,7 @@ function AppShell(): ReactElement {
     const saved = await saveWorkspace(hubWorkspace, draft, token);
     setHubWorkspace(saved);
     const text = saveDocument(documentRef.current);
-    recordRecentDocument(documentRef.current);
+    rememberRecent(documentRef.current);
     clearAutosaveSnapshot();
     setSavedSnapshot(text);
     pushNotice(`Saved to cloud workspace ${saved.id}.`);
@@ -724,7 +739,7 @@ function AppShell(): ReactElement {
     setHubWorkspace(workspace);
     resetDocument(workspace.document);
     setCloudWorkspaceBinding(binding);
-    recordRecentDocument(workspace.document);
+    rememberRecent(workspace.document);
     clearAutosaveSnapshot();
     pushNotice(`Opened ${workspace.title} from cloud workspace ${workspace.id}.`);
   };
@@ -929,7 +944,7 @@ function AppShell(): ReactElement {
   const saveToFile = (): void => {
     const text = saveDocument(documentRef.current);
     saveTextFile(documentFileName(documentRef.current.title), text);
-    recordRecentDocument(documentRef.current);
+    rememberRecent(documentRef.current);
     clearAutosaveSnapshot();
     setSavedSnapshot(text);
     analytics.track({ name: 'document_saved' });
@@ -1086,7 +1101,7 @@ function AppShell(): ReactElement {
     try {
       const loaded = loadDocument(file.text);
       resetDocument(loaded);
-      recordRecentDocument(loaded);
+      rememberRecent(loaded);
       clearAutosaveSnapshot();
     } catch (error) {
       analytics.track({ name: 'document_load_failed', props: { reason: 'invalid_file' } });
@@ -1104,7 +1119,7 @@ function AppShell(): ReactElement {
     try {
       const loaded = loadDocument(recent.text);
       resetDocument(loaded);
-      recordRecentDocument(loaded);
+      rememberRecent(loaded);
     } catch (error) {
       analytics.track({ name: 'document_load_failed', props: { reason: 'invalid_file' } });
       pushNotice(`Could not reopen "${recent.title}": ${messageOf(error)}`);
@@ -1151,11 +1166,9 @@ function AppShell(): ReactElement {
 
   // Open/save belong in a conventional File/Edit/View/Help ribbon, top-left
   // — not wherever the individual actions used to live.
-  // Recent is read fresh on every render rather than kept in its own state:
-  // the list only changes as a side effect of actions that already trigger a
-  // re-render (Open, Save, picking a recent entry), so there is nothing an
-  // extra state variable would keep in sync that a plain read doesn't.
-  const recentDocuments = loadRecentDocuments();
+  // Recent holds up to eight whole documents, so it is read again only when
+  // it can have changed: when this tab records one, or another tab does.
+  const recentDocuments = useMemo(() => loadRecentDocuments(), [recentsVersion]);
   const fileMenuItems: readonly MenuItem[] = [
     { label: t('New'), onClick: () => guardDiscard(newDocument) },
     { label: t('Open…'), onClick: () => guardDiscard(() => void openDocumentFile()) },
