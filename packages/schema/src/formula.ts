@@ -335,6 +335,46 @@ export interface Formula {
   readonly status: FormulaStatus;
   /** Why it is quarantined. Required when it is, so the UI has something to show. */
   readonly quarantineReason?: LocalizedText;
+  /**
+   * What changed at each version past the first, written by the catalogue's
+   * maintainer — `{ version: 2, note: "unit tag corrected" }`. A student whose
+   * graph still names an older version is shown every note since that one,
+   * next to the offer to update. Reader-facing, so outside the hash: fixing a
+   * note's wording must not flag every saved graph changed.
+   */
+  readonly changes?: readonly FormulaChange[];
+}
+
+export interface FormulaChange {
+  /** The version this change produced: at least 2, at most the record's own. */
+  readonly version: number;
+  readonly note: LocalizedText;
+}
+
+/** Ascending, one per version, each between 2 and the record's own version. */
+function parseFormulaChanges(value: JsonValue, path: string, version: number): readonly FormulaChange[] {
+  const changes = readArray(value, path).map((entry, i): FormulaChange => {
+    const at = join(path, `[${i}]`);
+    const object = readObject(entry, at);
+    return {
+      version: readInteger(required(object, 'version', at), join(at, 'version'), 2),
+      note: parseLocalizedText(required(object, 'note', at), join(at, 'note')),
+    };
+  });
+  changes.forEach((change, i) => {
+    const at = join(join(path, `[${i}]`), 'version');
+    if (change.version > version) fail(at, `is ${change.version}, past the record's own version ${version}`);
+    const previous = changes[i - 1];
+    if (previous !== undefined && change.version <= previous.version) {
+      fail(at, `is ${change.version} — changes are listed once per version, oldest first`);
+    }
+  });
+  return changes;
+}
+
+/** The notes a graph pinned at `since` has not seen yet, oldest first. */
+export function changesSince(formula: Formula, since: number): readonly FormulaChange[] {
+  return (formula.changes ?? []).filter((change) => change.version > since);
 }
 
 /**
@@ -970,6 +1010,7 @@ export function parseFormula(value: JsonValue, path: string): Formula {
     ),
     status,
     ...put('quarantineReason', quarantineReason),
+    ...put('changes', optional(object, 'changes', path, (value_, path_) => parseFormulaChanges(value_, path_, version))),
   };
 }
 
@@ -1018,6 +1059,14 @@ export function serializeFormula(formula: Formula): JsonObject {
     ...(formula.quarantineReason === undefined
       ? {}
       : { quarantineReason: serializeLocalizedText(formula.quarantineReason) }),
+    ...(formula.changes === undefined
+      ? {}
+      : {
+          changes: formula.changes.map((change) => ({
+            version: change.version,
+            note: serializeLocalizedText(change.note),
+          })),
+        }),
   };
 }
 

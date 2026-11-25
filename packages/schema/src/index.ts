@@ -92,6 +92,7 @@ export {
   findFormula,
   parseFormula,
   serializeFormula,
+  changesSince,
   formulaHash,
   formulaRef,
   parseFormulaRef,
@@ -104,6 +105,7 @@ export {
 } from './formula.js';
 export type {
   Formula,
+  FormulaChange,
   FormulaStatus,
   FormulaRef,
   RefMatch,

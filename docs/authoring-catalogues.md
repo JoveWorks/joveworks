@@ -372,6 +372,24 @@ Fields:
     (`isEvaluable` returns false). Use it for a formula you know is wrong or
     whose unit tag you could not resolve — never delete or silently fix such
     a record; quarantine keeps it visible.
+- **changes** — optional, and the maintainer's to write: one note per version
+  past the first, oldest first, saying what changed and why.
+
+  ```yaml
+  version: 3
+  changes:
+    - version: 2
+      note: Unit tag corrected to N/mm², per R&M 16.34.
+    - version: 3
+      note:
+        en: Sum now runs over both pulleys.
+        nl: De som loopt nu over beide schijven.
+  ```
+
+  Bump `version` whenever a record changes what it computes, and add its
+  note in the same edit. A student whose NodeBook names an older version sees
+  every note since then on the node, with an offer to update it. Notes are
+  outside the hash, so fixing a note's wording flags nothing.
 
 ## Ports
 
