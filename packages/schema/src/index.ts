@@ -275,7 +275,13 @@ export {
   plotViewChanged,
 } from './document.js';
 
-export { migrateDocument, runMigrationChain, DOCUMENT_MIGRATIONS } from './migration.js';
+export {
+  CATALOGUE_MIGRATIONS,
+  DOCUMENT_MIGRATIONS,
+  migrateCatalogue,
+  migrateDocument,
+  runMigrationChain,
+} from './migration.js';
 export type { SchemaMigrationStep } from './migration.js';
 
 export {

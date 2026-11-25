@@ -147,3 +147,15 @@ describe('document text', () => {
     expect(() => loadDocument(text)).toThrow(/newer version of JoveWorks/);
   });
 });
+
+describe('catalogue versions', () => {
+  it('goes through the migration entry point, so a newer catalogue schemaVersion is named as such', () => {
+    expect(() => loadCatalogue(yaml.replace('schemaVersion: 1', 'schemaVersion: 2'), 'yaml')).toThrow(
+      /catalogue was made for a newer version of JoveWorks/,
+    );
+  });
+
+  it('still opens a current catalogue', () => {
+    expect(loadCatalogue(yaml, 'yaml').formulas.map((formula) => formula.id)).toEqual(['invented.product']);
+  });
+});

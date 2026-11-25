@@ -16,11 +16,11 @@
  * `migrateDocument` (`migration.ts`) is the chain-walker for
  * `DOCUMENT_SCHEMA_VERSION` specifically: a student's NodeBook has to survive
  * being saved on one JoveWorks build and reopened on another, so a foreign
- * *document* version is bridged where possible, one step at a time. That
- * reasoning applies to the document version alone — a catalogue on a version
- * this build does not understand still gets the same
- * hard, named refusal `readSchemaVersion` below always gave, because nothing
- * here migrates catalogue content.
+ * *document* version is bridged where possible, one step at a time.
+ * `migrateCatalogue` is the same walker for `CATALOGUE_SCHEMA_VERSION`, for
+ * the copies on a school's LMS and in students' caches. Both leave
+ * `readSchemaVersion` below strict: it is what the parsers check *after* a
+ * migration, when anything but the current version is a bug.
  *
  * Real files exist now: hundreds of students save NodeBooks, so "regenerate
  * the file" is no longer an answer. A format change is additive (an optional

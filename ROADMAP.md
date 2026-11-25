@@ -6,8 +6,9 @@
 like. Generic mechanics content, not R&M-specific, so this lives in the public
 repo's node library and should be referenceable from the notebook.
 
-**2. What about migration to newer versions?** Documents have a migration path.
-Catalogues still have no migration path and refuse an unknown schema version.
+**2. What about migration to newer versions?** Documents and catalogues both
+load through a migration chain (`packages/schema/src/migration.ts`) and refuse
+a newer schema version by name.
 
 **3. Change: What is the {table XX} notation in RM catalogue?** Decide how to
 integrate tables as catalogue lookup items. Under discussion in

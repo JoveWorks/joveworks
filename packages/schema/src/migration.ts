@@ -41,7 +41,8 @@ import {
   type JsonValue,
 } from './json.js';
 import { parseDocument, type GraphDocument } from './document.js';
-import { DOCUMENT_SCHEMA_VERSION } from './version.js';
+import { parseCatalogue, type Catalogue } from './formula.js';
+import { CATALOGUE_SCHEMA_VERSION, DOCUMENT_SCHEMA_VERSION } from './version.js';
 
 /** One step: the raw JSON of a document at version N, upgraded to version N+1's shape. */
 export type SchemaMigrationStep = (raw: JsonObject) => JsonObject;
@@ -114,4 +115,39 @@ export function migrateDocument(value: JsonValue, path = ''): GraphDocument {
 
   const upgraded = runMigrationChain(DOCUMENT_MIGRATIONS, object, version, DOCUMENT_SCHEMA_VERSION, path);
   return parseDocument(upgraded, path);
+}
+
+/**
+ * The same table for catalogues, keyed the same way. Catalogue schemaVersion 1
+ * is the only one that has shipped, so it is empty for the same reason
+ * `DOCUMENT_MIGRATIONS` is.
+ */
+export const CATALOGUE_MIGRATIONS: Readonly<Record<number, SchemaMigrationStep>> = {};
+
+/**
+ * `migrateDocument` for catalogues — the entry point `loadCatalogue` uses.
+ *
+ * Catalogues need it for the opposite reason documents do: nobody can reach
+ * in to rewrite the copies on a school's LMS or cached in students' browsers,
+ * so a build that bumps `CATALOGUE_SCHEMA_VERSION` has to keep reading every
+ * older one. A catalogue newer than this build is refused in words a student
+ * can act on. The release rule that follows: a stable build that reads a new
+ * catalogue version ships before any catalogue in that version is published.
+ */
+export function migrateCatalogue(value: JsonValue, path = ''): Catalogue {
+  const object = readObject(value, path);
+  const field = join(path, 'schemaVersion');
+  const version = readInteger(required(object, 'schemaVersion', path), field, 1);
+
+  if (version > CATALOGUE_SCHEMA_VERSION) {
+    fail(
+      field,
+      `is ${version} — this catalogue was made for a newer version of JoveWorks than this ` +
+        `build understands (this build reads up to catalogue schemaVersion ${CATALOGUE_SCHEMA_VERSION}). ` +
+        'Open it with a newer JoveWorks, or with the nightly channel, instead.',
+    );
+  }
+
+  const upgraded = runMigrationChain(CATALOGUE_MIGRATIONS, object, version, CATALOGUE_SCHEMA_VERSION, path);
+  return parseCatalogue(upgraded, path);
 }

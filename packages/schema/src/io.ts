@@ -9,9 +9,9 @@
  * adapter, so a Tauri build can replace it without touching this package.
  */
 
-import { parseCatalogue, serializeCatalogue, type Catalogue } from './formula.js';
+import { serializeCatalogue, type Catalogue } from './formula.js';
 import { serializeDocument, type GraphDocument } from './document.js';
-import { migrateDocument } from './migration.js';
+import { migrateCatalogue, migrateDocument } from './migration.js';
 import { fail, readJsonText, type JsonValue } from './json.js';
 import { parseDocument as parseYamlDocument, stringify as stringifyYaml, visit } from 'yaml';
 
@@ -87,7 +87,7 @@ export function saveDocument(document: GraphDocument): string {
 }
 
 export function loadCatalogue(text: string, format: CatalogueFormat = 'json'): Catalogue {
-  return parseCatalogue(format === 'yaml' ? readYamlText(text) : readJsonText(text));
+  return migrateCatalogue(format === 'yaml' ? readYamlText(text) : readJsonText(text));
 }
 
 export function saveCatalogue(catalogue: Catalogue, format: CatalogueFormat = 'json'): string {
