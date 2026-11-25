@@ -85,6 +85,8 @@ import {
   axes as documentAxes,
   hasUnit,
   isRange,
+  changesSince,
+  formulaRef,
   matchRef,
   axisLength,
   type AxisNode,
@@ -269,6 +271,7 @@ function lookupFormula(
     message:
       `'${ref.id}' has changed since this graph was saved (it referenced version ` +
       `${ref.version}, hash ${ref.hash}) — results may differ from the ones recorded`,
+    formulaUpdate: { to: formulaRef(first), changes: changesSince(first, ref.version) },
   });
   return first;
 }

@@ -7,6 +7,8 @@
  * at rather than a result that cannot exist.
  */
 
+import type { FormulaChange, FormulaRef } from '@joveworks/schema';
+
 export const WARNING_KINDS = [
   /** The catalogue's formula no longer matches the reference the graph saved. */
   'formulaChanged',
@@ -91,4 +93,13 @@ export interface Warning {
   readonly message: string;
   /** The node to attach it to on the canvas, where there is one. */
   readonly nodeId?: string;
+  /**
+   * `formulaChanged` only: the reference the node would pin if the student
+   * accepted the formula it is now computed with, and the maintainer's notes
+   * for every version since the one the graph saved.
+   */
+  readonly formulaUpdate?: {
+    readonly to: FormulaRef;
+    readonly changes: readonly FormulaChange[];
+  };
 }

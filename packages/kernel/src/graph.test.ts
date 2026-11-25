@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ANGLE, AREA, DIMENSIONLESS, FORCE, FREQUENCY, LENGTH, TORQUE, dimension, parseUnit } from '@joveworks/units';
-import type { GraphDocument, JsonObject } from '@joveworks/schema';
+import { formulaHash, type GraphDocument, type JsonObject } from '@joveworks/schema';
 
 import { KernelError } from './errors.js';
 import {
@@ -14,6 +14,7 @@ import {
   wouldCycle,
 } from './graph.js';
 import {
+  AREA as AREA_FORMULA,
   CATALOGUE,
   catalogueOf,
   closureNode,
@@ -105,6 +106,25 @@ describe('resolution', () => {
     const { warnings } = resolveGraph(stale, catalogues);
     expect(warnings).toHaveLength(1);
     expect(warnings[0]?.kind).toBe('formulaChanged');
+  });
+
+  it('offers the formula it computes with, and every note since the version the graph saved', () => {
+    const corrected = catalogueOf([{
+      ...AREA_FORMULA,
+      version: 3,
+      changes: [
+        { version: 2, note: 'Invented: h defaults differently.' },
+        { version: 3, note: 'Invented: w is read in mm.' },
+      ],
+    }]);
+    const stale = documentOf(
+      [input('w', scalar(20, 'mm')), formulaNode('area', { id: 'area', version: 2, hash: 'stale' })],
+      [wire('w.value', 'area.w')],
+    );
+    const [warning] = resolveGraph(stale, [corrected]).warnings;
+    const formula = corrected.formulas[0]!;
+    expect(warning?.formulaUpdate?.to).toEqual({ id: 'area', version: 3, hash: formulaHash(formula) });
+    expect(warning?.formulaUpdate?.changes.map((change) => change.note.en)).toEqual(['Invented: w is read in mm.']);
   });
 });
 
