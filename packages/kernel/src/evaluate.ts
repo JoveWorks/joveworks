@@ -137,6 +137,7 @@ import { buildDistribution, type DistributionPanel } from './distribution.js';
 import { inverseNormal, wilsonInterval } from './normal.js';
 import {
   LARGE_GRID,
+  assertGridSize,
   broadcastBoolean,
   broadcastSeries,
   gridSize,
@@ -669,6 +670,9 @@ function runEvaluation(
   const axisByNode = resolution.axes;
   const largeGrid = options.largeGrid ?? LARGE_GRID;
   const skip = options.skip;
+  // Before any range is expanded: an oversized count is refused on its own
+  // node, not allocated on the keystroke that typed it.
+  for (const [nodeId, axis] of axisByNode) assertGridSize([axis], nodeId);
 
   // Output nodes are always sinks — `resolveGraph` never records an edge
   // *from* an output port — so a Feasibility or Best Design node's position
@@ -1637,6 +1641,7 @@ function evaluateFormula(
     ...regularInputs.map(({ value }) => value.axes),
     ...variadicInputs.flatMap(({ edgeValues }) => edgeValues.map((value) => value.axes)),
   );
+  assertGridSize(axes, nodeId);
   const cells = gridSize(axes);
   if (cells >= largeGrid) {
     warnings.push({
@@ -2453,6 +2458,7 @@ function evaluateShaft(
     ...acting.flatMap((value) => loadSeries(value).map((series) => series.axes)),
     ...(plane === undefined ? [] : [plane.axes]),
   );
+  assertGridSize(axes, nodeId);
   const cells = gridSize(axes);
   if (cells >= largeGrid) {
     warnings.push({

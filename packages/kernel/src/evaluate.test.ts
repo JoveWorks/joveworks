@@ -1545,6 +1545,30 @@ describe('sweeps', () => {
     expect(evaluation.warnings.map((warning) => warning.kind)).toContain('largeGrid');
     expect(numeric(valueAt(evaluation, 'area', 'A')).data).toHaveLength(10_000);
   });
+
+  it('refuses a sweep past a million points on its own node, before allocating it', () => {
+    const document = documentOf(
+      [input('w', linear(1, 100, 2_000_000, 'mm')), formulaNode('area', refTo('area'))],
+      [wire('w.value', 'area.w')],
+    );
+    const attempt = (): unknown => evaluateDocument(document, catalogues);
+    expect(attempt).toThrow(/this sweep has 2,000,000 points — JoveWorks evaluates at most 1,000,000/u);
+    expect(attempt).toThrow(expect.objectContaining({ where: 'w' }));
+  });
+
+  it('refuses a node whose sweeps combine past a million cells, and still allows a million', () => {
+    const at = (points: number) =>
+      documentOf(
+        [
+          input('w', linear(1, 100, points, 'mm')),
+          input('h', linear(1, 100, 1000, 'mm')),
+          formulaNode('area', refTo('area')),
+        ],
+        [wire('w.value', 'area.w'), wire('h.value', 'area.h')],
+      );
+    expect(() => evaluateDocument(at(1001), catalogues)).toThrow(/would evaluate 1,001,000 points .* at most 1,000,000/u);
+    expect(numeric(valueAt(evaluateDocument(at(1000), catalogues), 'area', 'A')).data).toHaveLength(1_000_000);
+  });
 });
 
 describe('range nodes — bounds and count from wired ports', () => {
