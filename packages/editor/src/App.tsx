@@ -38,7 +38,14 @@ import { GraphContext } from './graph-context';
 import { notebookDisplayOf } from './model/notebook';
 import { DisplayProvider, type NotebookDisplay } from './present/display';
 import { SettingsContext } from './settings-context';
-import { clearAutosaveSnapshot, loadAutosaveSnapshot, saveAutosaveSnapshot } from './io/autosave';
+import {
+  clearAutosaveSnapshot,
+  clearSetAsideSnapshot,
+  loadAutosaveSnapshot,
+  loadSetAsideSnapshot,
+  saveAutosaveSnapshot,
+  setAsideAutosaveSnapshot,
+} from './io/autosave';
 import { cacheCatalogue, cachedCatalogueTexts } from './io/catalogueCache';
 import { documentFileName, jupyterFileName, openTextFile, pythonFileName, saveTextFile, userEquationsFileName } from './io/files';
 import {
@@ -229,30 +236,50 @@ function exampleDocument(
 /** A linked example takes priority because opening that URL is an explicit
  * request. Otherwise, an autosave snapshot left over from a session that never
  * hit Save takes priority over the usual startup document — recovery from an
- * accidental close should not require a prompt to get back to work. A
- * corrupted snapshot falls back to the usual default silently. */
+ * accidental close should not require a prompt to get back to work.
+ *
+ * A snapshot that will not open is set aside rather than dropped, and the
+ * reason is returned so the student is told: falling back to the default
+ * silently let the next autosave overwrite their work. A set-aside snapshot is
+ * tried again on every later start that has no newer autosave, so the build
+ * that can read it brings it back. */
 function startupDocument(
   catalogues: readonly Catalogue[],
   locale: AppLocale,
-): { readonly document: GraphDocument; readonly restored: boolean; readonly example?: ExampleId } {
+): {
+  readonly document: GraphDocument;
+  readonly restored: boolean;
+  readonly example?: ExampleId;
+  /** Why the autosave could not be opened, when it was just set aside. */
+  readonly unreadable?: string;
+} {
   const linkedExample = exampleIdFromUrl(new URL(window.location.href));
   if (linkedExample !== undefined) {
     const linkedDocument = exampleDocument(linkedExample, catalogues, locale);
     if (linkedDocument !== undefined) return { document: linkedDocument, restored: false, example: linkedExample };
   }
 
+  const fallback = padPressure([baseCatalogue()], locale) ?? emptyDocument('untitled', 'Untitled');
   const snapshot = loadAutosaveSnapshot();
   if (snapshot !== undefined) {
     try {
       return { document: loadDocument(snapshot.text), restored: true };
-    } catch {
-      // Falls through to the default document below.
+    } catch (error) {
+      setAsideAutosaveSnapshot(snapshot);
+      return { document: fallback, restored: false, unreadable: error instanceof Error ? error.message : String(error) };
     }
   }
-  return {
-    document: padPressure([baseCatalogue()], locale) ?? emptyDocument('untitled', 'Untitled'),
-    restored: false,
-  };
+  const setAside = loadSetAsideSnapshot();
+  if (setAside !== undefined) {
+    try {
+      const document = loadDocument(setAside.text);
+      clearSetAsideSnapshot();
+      return { document, restored: true };
+    } catch {
+      // Still unreadable; it stays set aside, and the student was told once.
+    }
+  }
+  return { document: fallback, restored: false };
 }
 
 function publicationLinkFromUrl(): { readonly hubUrl: string; readonly publicationId: string } | undefined {
@@ -380,7 +407,7 @@ function AppShell(): ReactElement {
       storeUserEquations(next);
       return next;
     });
-  const [{ document: initialDocument, restored: restoredAutosave, example: linkedExample }] = useState(() =>
+  const [{ document: initialDocument, restored: restoredAutosave, example: linkedExample, unreadable: unreadableAutosave }] = useState(() =>
     startupDocument(catalogues, loadAppLocale()),
   );
   const [history, setHistory] = useState<History<GraphDocument>>(() => initHistory(initialDocument));
@@ -557,11 +584,14 @@ function AppShell(): ReactElement {
   const [restoredAutosaveNoticeId] = useState(() =>
     restoredAutosave ? crypto.randomUUID() : undefined,
   );
-  const [notices, setNotices] = useState<readonly { readonly id: string; readonly message: string }[]>(() =>
-    restoredAutosaveNoticeId === undefined
+  // Seeded like the restore notice, and for the same StrictMode reason; it is
+  // not dismissed on a timer, since it reports work the student has to act on.
+  const [notices, setNotices] = useState<readonly { readonly id: string; readonly message: string }[]>(() => [
+    ...(restoredAutosaveNoticeId === undefined ? [] : [{ id: restoredAutosaveNoticeId, message: copy.restoredAutosave }]),
+    ...(unreadableAutosave === undefined
       ? []
-      : [{ id: restoredAutosaveNoticeId, message: copy.restoredAutosave }],
-  );
+      : [{ id: crypto.randomUUID(), message: `${copy.unreadableAutosave} (${unreadableAutosave})` }]),
+  ]);
   const dismissNotice = (id: string): void =>
     setNotices((current) => current.filter((notice) => notice.id !== id));
 
