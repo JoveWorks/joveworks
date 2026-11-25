@@ -130,7 +130,7 @@ export {
 } from './graph.js';
 export type { ChannelType, ConnectionCheck, PortType, Resolution } from './graph.js';
 
-export { percentile, reduceAlong, scanAlong } from './statistics.js';
+export { numericExtent, percentile, reduceAlong, scanAlong } from './statistics.js';
 export type { StatisticRequest, StatisticResult } from './statistics.js';
 export { buildDistribution, distributionBinCount, ecdf, histogram } from './distribution.js';
 export type { DistributionPanel, HistogramBin, EcdfPoint, NormalFit } from './distribution.js';

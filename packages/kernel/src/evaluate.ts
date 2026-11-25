@@ -119,7 +119,7 @@ import { canonicalUnit, endpointKey, resolveGraph, type PortType, type Resolutio
 import { evaluateSensitivity, type SensitivityRankingResult } from './sensitivity.js';
 import { crossingsAlong, select, type SelectResult } from './select.js';
 import { interpolate } from './interpolate.js';
-import { reduceAlong } from './statistics.js';
+import { numericExtent, reduceAlong } from './statistics.js';
 import {
   deflection as shaftDeflection,
   moment as shaftMoment,
@@ -3348,7 +3348,7 @@ function outputResult(
     const spread = feasible
       .map((ok, i) => (ok ? (scores.data[i] as number) : Number.NaN))
       .filter((entry) => Number.isFinite(entry));
-    if (feasibleCount > 1 && Math.min(...spread) === Math.max(...spread)) {
+    if (feasibleCount > 1 && numericExtent(spread)[0] === numericExtent(spread)[1]) {
       warnings.push({
         kind: 'bestDesignFlat',
         nodeId: node.id,

@@ -1,4 +1,4 @@
-import type { OutputResult, PlotAxis, PlotMeasureResult } from '@joveworks/kernel';
+import { numericExtent, type OutputResult, type PlotAxis, type PlotMeasureResult } from '@joveworks/kernel';
 import {
   PLOT_STRUCTURAL_FIELDS,
   plotViewChanged,
@@ -240,7 +240,8 @@ function panelFor(
 
 function decades(measures: readonly PlotMeasureResult[]): number {
   const values = measures.flatMap((measure) => measure.series.data);
-  return Math.log10(Math.max(...values) / Math.min(...values));
+  const [low, high] = numericExtent(values);
+  return Math.log10(high / low);
 }
 
 /** The `Auto · …` sentence for a measure drawn from a stored inference. */
@@ -407,7 +408,10 @@ export function inferPlotView(natures: AxisNatures, group: readonly PlotMeasureR
   }
   const values = group.map((measure) => measure.series.data);
   const positive = values.every((data) => data.length > 0 && data.every((value) => Number.isFinite(value) && value > 0));
-  const wide = values.some((data) => Math.max(...data) / Math.min(...data) >= LOG_VALUE_RATIO);
+  const wide = values.some((data) => {
+    const [low, high] = numericExtent(data);
+    return high / low >= LOG_VALUE_RATIO;
+  });
   return structuralView(type, roles, numericScales(natures, axes, {}), positive && wide ? 'log' : 'linear');
 }
 

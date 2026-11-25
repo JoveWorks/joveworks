@@ -22,7 +22,7 @@
 
 import { useMemo, type ReactElement } from 'react';
 
-import { canonicalUnit, evaluateDocument, receiverSampleValue, type EvaluationOptions } from '@joveworks/kernel';
+import { canonicalUnit, evaluateDocument, numericExtent, receiverSampleValue, type EvaluationOptions } from '@joveworks/kernel';
 import { DIMENSIONLESS } from '@joveworks/units';
 import { DEFAULT_MONTE_CARLO_SAMPLE_LIMIT, MONTE_CARLO_SAMPLE_PORT, type GraphDocument } from '@joveworks/schema';
 
@@ -106,8 +106,7 @@ function Histogram({
 }): ReactElement | null {
   if (values.length === 0 || (!showHistogram && !showMeanBand)) return null;
 
-  const low = Math.min(...values);
-  const high = Math.max(...values);
+  const [low, high] = numericExtent(values);
   const span = high - low || 1;
   const x = (value: number): number => ((value - low) / span) * width;
 
@@ -119,7 +118,7 @@ function Histogram({
     const index = Math.min(bins - 1, Math.max(0, Math.floor(((value - low) / span) * bins)));
     counts[index] = (counts[index] ?? 0) + 1;
   }
-  const maxCount = Math.max(...counts, 1);
+  const maxCount = Math.max(numericExtent(counts)[1], 1);
   const barWidth = width / bins;
 
   const showLabel = showMeanBand && mean !== undefined && meanLabel !== undefined;

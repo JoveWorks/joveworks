@@ -40,6 +40,7 @@ import {
   candidateAt,
   gridSize,
   indexer,
+  numericExtent,
   unionAxes,
   type Axis,
   type PlotAxis,
@@ -341,10 +342,10 @@ export function contourGrid(result: PlotResult, series2: PlotAxis): {
     rectangle: {
       width: xs.length,
       height: ys.length,
-      x1: Math.min(...xs),
-      x2: Math.max(...xs),
-      y1: Math.min(...ys),
-      y2: Math.max(...ys),
+      x1: numericExtent(xs)[0],
+      x2: numericExtent(xs)[1],
+      y1: numericExtent(ys)[0],
+      y2: numericExtent(ys)[1],
     },
   };
 }
@@ -372,8 +373,7 @@ function contourColorbar(
   const displayed = result.series.data
     .map((value) => fromCanonical(value, result.unit))
     .filter(Number.isFinite);
-  const minimum = Math.min(...displayed);
-  const maximum = Math.max(...displayed);
+  const [minimum, maximum] = numericExtent(displayed);
   const format = (value: number): string => value.toLocaleString(undefined, { maximumSignificantDigits: 3 });
 
   const scale = document.createElement('div');

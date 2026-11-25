@@ -17,6 +17,7 @@
 
 import type { ReactElement } from 'react';
 
+import { numericExtent } from '@joveworks/kernel';
 import { fromCanonical } from '@joveworks/units';
 
 import type { Reading } from '../model/values';
@@ -51,8 +52,7 @@ export function Sparkline({
   const thresholdValue = threshold === undefined ? undefined : fromCanonical(threshold, reading.unit);
   // The domain stretches to include the threshold, not just the data, so a
   // sweep that never crosses it still shows how far off it is.
-  const low = Math.min(...values, ...(thresholdValue === undefined ? [] : [thresholdValue]));
-  const high = Math.max(...values, ...(thresholdValue === undefined ? [] : [thresholdValue]));
+  const [low, high] = numericExtent(thresholdValue === undefined ? values : [...values, thresholdValue]);
   const span = high - low;
 
   const innerLength = axes.length === 0 ? values.length : (axes.at(-1)?.length as number);
