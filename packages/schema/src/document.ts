@@ -1485,7 +1485,7 @@ function parsePlotInference(value: JsonValue, path: string): PlotInference {
 
 function parseOutput(value: JsonValue, path: string): Output {
   const object = readObject(value, path);
-  const kind = readEnum(required(object, 'kind', path), join(path, 'kind'), OUTPUT_KINDS);
+  const kind = readGrowingKind(required(object, 'kind', path), join(path, 'kind'), OUTPUT_KINDS, 'an output kind');
 
   switch (kind) {
     case 'print':
@@ -1772,6 +1772,26 @@ function parseFileField(value: JsonValue, path: string, sources: number): FileFi
   };
 }
 
+/**
+ * A `kind` this build does not know, on a list that grows with JoveWorks
+ * (node kinds, output kinds), almost always means the document came from a
+ * newer build — the nightly channel, say. Unknown *keys* are ignored, but an
+ * unknown kind cannot be: there is nothing to read it as. So say what a
+ * student can act on, in the same words `migrateDocument` uses for a newer
+ * `schemaVersion`, rather than listing every kind this build does know.
+ */
+function readGrowingKind<T extends string>(value: JsonValue | undefined, path: string, allowed: readonly T[], what: string): T {
+  const text = readString(value, path);
+  if (!(allowed as readonly string[]).includes(text)) {
+    fail(
+      path,
+      `is '${text}', ${what} this build of JoveWorks does not know — the document was probably made with ` +
+        'a newer version of JoveWorks. Open it with a newer JoveWorks, or with the nightly channel, instead.',
+    );
+  }
+  return text as T;
+}
+
 export const NODE_KINDS = [
   'input',
   'range',
@@ -1918,7 +1938,7 @@ function parseNode(value: JsonValue, path: string): GraphNode {
     ...put('displayUnits', optional(object, 'displayUnits', path, parseDisplayUnits)),
     ...put('note', optional(object, 'note', path, readString)),
   };
-  const kind = readEnum(required(object, 'kind', path), join(path, 'kind'), NODE_KINDS);
+  const kind = readGrowingKind(required(object, 'kind', path), join(path, 'kind'), NODE_KINDS, 'a node kind');
 
   switch (kind) {
     case 'input':
