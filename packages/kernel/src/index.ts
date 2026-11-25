@@ -158,6 +158,7 @@ export type {
   EvaluationOptions,
   FeasibilityResult,
   DistributionResult,
+  ReliabilityDesign,
   ReliabilityEstimate,
   ReliabilityResult,
   OutputResult,

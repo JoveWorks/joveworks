@@ -432,6 +432,23 @@ export interface ReliabilityEstimate {
 export interface ReliabilityResult extends OutputBase {
   readonly kind: 'reliability';
   readonly confidence: number;
+  /**
+   * Over every trial. When the checks also vary along a design axis these
+   * pool the designs — a failure probability that describes no design — so
+   * a reader should show `designs` instead whenever it is present.
+   */
+  readonly checks: readonly ReliabilityEstimate[];
+  readonly combined?: ReliabilityEstimate;
+  /**
+   * One set of estimates per design cell, over that design's trials only:
+   * present when the referenced checks vary along any axis besides the trial
+   * axis. `at` names the design on each of those axes.
+   */
+  readonly designs?: readonly ReliabilityDesign[];
+}
+
+export interface ReliabilityDesign {
+  readonly at: readonly AxisCoordinate[];
   readonly checks: readonly ReliabilityEstimate[];
   readonly combined?: ReliabilityEstimate;
 }
@@ -3513,11 +3530,33 @@ function outputResult(
     });
     const checks = checkResults.map((check) => reliabilityEstimate(check.nodeId, check.results, confidence));
     const studyAxes = unionAxes(...checkResults.map((check) => check.series.axes));
-    const combinedVerdicts = checkResults.length === 0
-      ? []
-      : feasibleMask(checkResults, studyAxes).mask;
+    const { perCheck, mask: combinedVerdicts } = checkResults.length === 0
+      ? { perCheck: [], mask: [] }
+      : feasibleMask(checkResults, studyAxes);
     const combined = checkResults.length === 0 ? undefined : reliabilityEstimate('all', combinedVerdicts, confidence);
-    if ([...checks, ...(combined === undefined ? [] : [combined])].some((estimate) => estimate.unresolved)) {
+
+    // Every axis but the trial axis is a design. Pooling trials across them
+    // answers "how often does a random design from this sweep fail", which
+    // nobody asked; each design gets its own estimate over its own trials.
+    const designAxes = hasTrials && trialAxis !== undefined ? studyAxes.filter((axis) => axis.id !== trialAxis.id) : [];
+    const designs = designAxes.length === 0 ? undefined : (() => {
+      const designOf = indexer({ kind: 'numeric', axes: designAxes, data: [] }, studyAxes);
+      const members = Array.from({ length: gridSize(designAxes) }, () => [] as number[]);
+      for (let cell = 0; cell < gridSize(studyAxes); cell += 1) members[designOf(cell)]?.push(cell);
+      const readouts = readAxisReadouts(resolution, values);
+      return members.map((cells, design): ReliabilityDesign => {
+        const pick = (verdicts: readonly boolean[]): boolean[] => cells.map((cell) => verdicts[cell] as boolean);
+        return {
+          at: coordinatesAt(designAxes, design, readouts),
+          checks: checkResults.map((check, i) => reliabilityEstimate(check.nodeId, pick(perCheck[i] ?? []), confidence)),
+          ...(checkResults.length === 0 ? {} : { combined: reliabilityEstimate('all', pick(combinedVerdicts), confidence) }),
+        };
+      });
+    })();
+    const reported = designs === undefined
+      ? [...checks, ...(combined === undefined ? [] : [combined])]
+      : designs.flatMap((design) => [...design.checks, ...(design.combined === undefined ? [] : [design.combined])]);
+    if (reported.some((estimate) => estimate.unresolved)) {
       warnings.push({
         kind: 'reliabilityUnresolved',
         nodeId: node.id,
@@ -3530,6 +3569,7 @@ function outputResult(
       confidence,
       checks,
       ...(combined === undefined ? {} : { combined }),
+      ...(designs === undefined ? {} : { designs }),
     };
   }
 

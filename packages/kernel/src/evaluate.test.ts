@@ -285,6 +285,45 @@ describe('Reliability outputs', () => {
     expect(evaluateDocument(document, catalogues).warnings.some((warning) => warning.kind === 'reliabilityNoTrials')).toBe(true);
   });
 
+  it('reports each design over its own trials, instead of pooling the designs', () => {
+    // Four draws, one of them at or above 0.5 (see the test above). Shifted by
+    // a design offset d and checked against 1: d = 0 always fails, d = 0.5
+    // fails three times in four, d = 2 never fails. Pooled, that is 7 in 12 —
+    // a failure probability belonging to none of the three.
+    const document = documentOf(
+      [
+        monteCarloGeneratorNode('draw', uniformDraw(0, 1), 4, ''),
+        input('d', list([0, 0.5, 2], ''), { axisLabel: 'offset' }),
+        closureNode('shifted', 'x + d'),
+        outputNode('check', { kind: 'check', comparison: '>=', threshold: { value: 1, unit: '' } }),
+        outputNode('reliability', { kind: 'reliability', checks: ['check'] }),
+      ],
+      [wire('draw.value', 'shifted.x'), wire('d.value', 'shifted.d'), wire('shifted.result', 'check.value')],
+    );
+    const report = evaluateDocument(document, catalogues).outputs.find(
+      (entry) => entry.nodeId === 'reliability',
+    ) as ReliabilityResult;
+    expect(report.combined).toMatchObject({ trials: 12, failures: 7 });
+    expect(report.designs?.map((design) => design.at.map((entry) => [entry.axis.label, entry.value]))).toEqual([
+      [['offset', 0]],
+      [['offset', 0.5]],
+      [['offset', 2]],
+    ]);
+    expect(report.designs?.map((design) => [design.combined?.trials, design.combined?.failures])).toEqual([
+      [4, 4],
+      [4, 3],
+      [4, 0],
+    ]);
+    expect(report.designs?.map((design) => design.checks[0]?.failures)).toEqual([4, 3, 0]);
+  });
+
+  it('has no per-design report when only the trials vary', () => {
+    const report = evaluateDocument(study(0.5), catalogues).outputs.find(
+      (entry) => entry.nodeId === 'reliability',
+    ) as ReliabilityResult;
+    expect(report.designs).toBeUndefined();
+  });
+
   it('allows an empty check list as an unfinished report', () => {
     const document = documentOf([outputNode('reliability', { kind: 'reliability', checks: [] })], []);
     const report = evaluateDocument(document, catalogues).outputs[0] as ReliabilityResult;
