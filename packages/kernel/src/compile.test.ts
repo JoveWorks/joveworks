@@ -97,11 +97,21 @@ describe('compiled closures', () => {
     expect(compileExpression('sdev(xs)')({ xs: [2, 4, 4, 4, 5, 5, 7, 9] })).toBeCloseTo(2.13809, 4);
   });
 
+  it('refuses the spread of a single value rather than answering NaN', () => {
+    expect(() => compileExpression('sdev(xs)')({ xs: [4] })).toThrow(/sdev\(\) needs at least two values/u);
+  });
+
   it('picks a value out of a variadic port by a 0-based index, computed like any other argument', () => {
     expect(compileExpression('at(xs, 1)')({ xs: [10, 20, 30] })).toBe(20);
     expect(compileExpression('at(xs, i)')({ xs: [10, 20, 30], i: 2 })).toBe(30);
     expect(compileExpression('at(xs, i + 1)')({ xs: [10, 20, 30], i: 0 })).toBe(20);
     expect(() => compileExpression('at(xs)')).toThrow(/takes one argument plus an index/u);
+  });
+
+  it('refuses an index past either end, instead of carrying undefined on as a number', () => {
+    expect(() => compileExpression('at(xs, 5)')({ xs: [10, 20, 30] })).toThrow(/index 5 of 3 values/u);
+    expect(() => compileExpression('at(xs, -1)')({ xs: [10, 20, 30] })).toThrow(/index -1 of 3 values/u);
+    expect(() => compileExpression('at(xs, i)')({ xs: [10, 20, 30], i: Number.NaN })).toThrow(/at\(\) asks for index/u);
   });
 
   it('refuses a value where a series belongs, and the reverse', () => {

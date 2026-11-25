@@ -38,6 +38,19 @@ describe('a record checked against its own expression', () => {
     }
   });
 
+  it('refuses a port named after a built-in constant, which the expression would never read', () => {
+    const shadowed = only({
+      id: 'shadowed',
+      version: 1,
+      output: { kind: 'numeric', name: 'y', unit: '' },
+      inputs: [{ kind: 'numeric', name: 'pi', unit: '' }],
+      expression: 'pi * 2',
+      description: 'Invented: its port is hidden behind the constant.',
+      status: 'unverified',
+    });
+    expect(() => checkFormulaDimensions(shadowed)).toThrow(/port 'pi', which is a built-in constant/u);
+  });
+
   it('catches an output unit the expression does not produce', () => {
     const wrong = only({
       id: 'wrong',
