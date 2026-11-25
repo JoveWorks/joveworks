@@ -11,6 +11,7 @@ import { evaluateDocument, valueAt } from './evaluate.js';
 import { isVariadicTarget } from './graph.js';
 import { catalogueOf, documentOf, formulaNode, input, list, refTo, wire } from './invented.fixtures.js';
 import type { NumericSeries, PortValue } from './series.js';
+import { pointTerms, solve, spanTerms } from './shaft.js';
 
 const z: JsonObject = { kind: 'numeric', name: 'z', unit: 'mm' };
 const acting: JsonObject = { kind: 'load', name: 'acting', variadic: true };
@@ -378,5 +379,50 @@ describe('a pack of loads and supports', () => {
       wire('S.shaft', 'M.shaft'),
     ]);
     expect(() => evaluateDocument(mixed, [CATALOGUE])).toThrow(/bundle/u);
+  });
+});
+
+describe('the shaft solver on short, thick shafts', () => {
+  // Steel, E = 210 000 N/mm²: on these the reactions' flexibilities L³/EI are
+  // many orders smaller than the slope and offset coefficients they share a
+  // row with, which once read as a singular system.
+  const stiffness = (d: number): number => (210_000 * Math.PI * d ** 4) / 64;
+
+  it.each([
+    [100, 200],
+    [150, 150],
+    [200, 100],
+  ])('holds a fixed–fixed Ø%d × %d mm shaft: P/2 at each end and ∓PL/8 at the walls', (d, span) => {
+    const solution = solve(
+      pointTerms(span / 2, -1000, 0),
+      [{ at: 0, fixed: true }, { at: span, fixed: true }],
+      [{ start: 0, stiffness: stiffness(d) }],
+      0,
+    );
+    const [left, right] = solution.reactions;
+    expect(left?.force).toBeCloseTo(500, 6);
+    expect(right?.force).toBeCloseTo(500, 6);
+    expect(Math.abs(left?.moment ?? 0)).toBeCloseTo((1000 * span) / 8, 4);
+    expect((left?.moment ?? 0) + (right?.moment ?? 0)).toBeCloseTo(0, 4);
+  });
+
+  it('holds a Ø300 shaft on three simple supports 60 mm apart: 5qL/4 on the middle one', () => {
+    const solution = solve(
+      spanTerms(0, 120, -2),
+      [{ at: 0, fixed: false }, { at: 60, fixed: false }, { at: 120, fixed: false }],
+      [{ start: 0, stiffness: stiffness(300) }],
+      0,
+    );
+    expect(solution.reactions.map((reaction) => reaction.force)).toEqual([
+      expect.closeTo((3 * 2 * 60) / 8, 6),
+      expect.closeTo((5 * 2 * 60) / 4, 6),
+      expect.closeTo((3 * 2 * 60) / 8, 6),
+    ]);
+  });
+
+  it('still refuses a single simple support and two supports at one place', () => {
+    const segments = [{ start: 0, stiffness: stiffness(100) }];
+    expect(() => solve(pointTerms(50, -1000, 0), [{ at: 0, fixed: false }], segments, 0)).toThrow(/cannot hold/);
+    expect(() => solve(pointTerms(50, -1000, 0), [{ at: 0, fixed: false }, { at: 0, fixed: false }], segments, 0)).toThrow(/cannot hold/);
   });
 });

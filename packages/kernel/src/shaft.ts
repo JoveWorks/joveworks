@@ -119,21 +119,31 @@ function integral(term: Term, segments: readonly Segment[], origin: number, z: n
   return sign * term.coefficient * total;
 }
 
-/** Gaussian elimination with partial pivoting, each row scaled to its largest entry first. */
-function solveLinear(matrix: number[][], rhs: number[]): number[] | undefined {
+/**
+ * Gaussian elimination with partial pivoting, each row scaled to its largest
+ * entry first. `columnScale[j]` is the size of unknown j's unit: column j is
+ * multiplied by it and the answer for j divided back, so the caller can make
+ * every unknown commensurable before elimination sees it. A pivot is
+ * rejected relative to the largest pivot taken so far, not absolutely.
+ */
+function solveLinear(matrix: number[][], rhs: number[], columnScale: readonly number[]): number[] | undefined {
   const n = rhs.length;
+  for (const current of matrix) for (let j = 0; j < n; j += 1) current[j] = (current[j] as number) * (columnScale[j] as number);
   for (let row = 0; row < n; row += 1) {
     const scale = Math.max(...(matrix[row] as number[]).map(Math.abs));
     if (scale === 0) return undefined;
     matrix[row] = (matrix[row] as number[]).map((value) => value / scale);
     rhs[row] = (rhs[row] as number) / scale;
   }
+  let largestPivot = 0;
   for (let col = 0; col < n; col += 1) {
     let pivot = col;
     for (let row = col + 1; row < n; row += 1) {
       if (Math.abs((matrix[row] as number[])[col] as number) > Math.abs((matrix[pivot] as number[])[col] as number)) pivot = row;
     }
-    if (Math.abs((matrix[pivot] as number[])[col] as number) < 1e-10) return undefined;
+    const size = Math.abs((matrix[pivot] as number[])[col] as number);
+    largestPivot = Math.max(largestPivot, size);
+    if (size === 0 || size < 1e-10 * largestPivot) return undefined;
     [matrix[col], matrix[pivot]] = [matrix[pivot] as number[], matrix[col] as number[]];
     [rhs[col], rhs[pivot]] = [rhs[pivot] as number, rhs[col] as number];
     const top = matrix[col] as number[];
@@ -152,7 +162,7 @@ function solveLinear(matrix: number[][], rhs: number[]): number[] | undefined {
     for (let j = row + 1; j < n; j += 1) sum -= (current[j] as number) * (x[j] as number);
     x[row] = sum / (current[row] as number);
   }
-  return x;
+  return x.map((value, j) => value * (columnScale[j] as number));
 }
 
 /**
@@ -190,7 +200,25 @@ export function solve(applied: readonly Term[], restraints: readonly Restraint[]
     row((term) => slopeOf([term], restraint.at), 1, 0, slopeOf(applied, restraint.at));
   }
 
-  const x = matrix.length === n ? solveLinear(matrix, rhs) : undefined;
+  // Measure every unknown as a force before eliminating. In a deflection row
+  // a reaction's coefficient is a flexibility of order L³/EI while the slope
+  // and offset carry z and 1, so for a short, thick shaft a well-posed
+  // indeterminate system would otherwise read as singular. Taking the moments
+  // in units of F·L, the slope in F·L²/EI and the offset in F·L³/EI puts every
+  // entry of a row on the same scale.
+  const positions = [...applied.map((term) => term.at), ...restraints.map((restraint) => restraint.at)];
+  const extent = positions.length === 0 ? 0 : Math.max(...positions) - Math.min(...positions);
+  const length = Number.isFinite(extent) && extent > 0 ? extent : 1;
+  const stiffnesses = segments.map((segment) => segment.stiffness);
+  const typical = Math.sqrt(Math.min(...stiffnesses) * Math.max(...stiffnesses));
+  const stiffness = Number.isFinite(typical) && typical > 0 ? typical : 1;
+  const columnScale = [
+    ...restraints.map(() => 1),
+    ...restraints.filter((restraint) => restraint.fixed).map(() => length),
+    length ** 2 / stiffness,
+    length ** 3 / stiffness,
+  ];
+  const x = matrix.length === n ? solveLinear(matrix, rhs, columnScale) : undefined;
   if (x === undefined) {
     throw new KernelError(
       restraints.length === 0
