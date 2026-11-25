@@ -8,6 +8,7 @@ import { createRoot } from 'react-dom/client';
 // this entry chunk while React Flow's stayed in the editor's lazy one — which
 // loads later, and shrank every port on the canvas. Both routes now load what
 // they need from the module that needs it.
+import { ErrorBoundary } from './ErrorBoundary';
 import { parseRoute, type AppRoute } from './router';
 
 const Editor = lazy(() => import('./EditorEntry'));
@@ -32,6 +33,8 @@ if (root === null) throw new Error('index.html has no #root to mount into');
 
 createRoot(root).render(
   <StrictMode>
-    <RoutedApp />
+    <ErrorBoundary>
+      <RoutedApp />
+    </ErrorBoundary>
   </StrictMode>,
 );
