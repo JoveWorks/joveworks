@@ -195,32 +195,42 @@ function initialCatalogues(): readonly Catalogue[] {
  * to stay off the profiler for graphs of the size this app targets. */
 const AUTOSAVE_INTERVAL_MS = 30_000;
 
-/** A linked example takes priority because opening that URL is an explicit
- * request. Otherwise, an autosave snapshot left over from a session that never
- * hit Save takes priority over the usual startup document — recovery from an
- * accidental close should not require a prompt to get back to work. A
- * corrupted snapshot falls back to the usual default silently. */
+/** Every example the app can open by id. A `Record` over `ExampleId`, so
+ * adding an id without its builder is a type error, not a silent fallback to
+ * some other example. */
+const EXAMPLE_BUILDERS: Readonly<Record<
+  ExampleId,
+  (catalogues: readonly Catalogue[], locale: AppLocale) => GraphDocument | undefined
+>> = {
+  'platform-footprint': platformFootprint,
+  'pad-pressure': padPressure,
+  'monte-carlo-clearance': monteCarloClearance,
+  'reliability-load-strength': reliabilityLoadStrength,
+  'belt-lab': beltLab,
+  'pressfit-lab': pressfitLab,
+  'cantilever-hollow-sections': cantileverHollowSections,
+  'shaft-sizing': shaftSizing,
+  'stepped-shaft-stress': steppedShaftStress,
+  'milling-power-envelope': millingPowerEnvelope,
+  'depth-of-field': depthOfField,
+  'zoom-depth-of-field': zoomDepthOfField,
+  'aperture-decision': apertureDecision,
+  'wildlife-camera-comparison': wildlifeCameraComparison,
+};
+
 function exampleDocument(
   id: ExampleId,
   catalogues: readonly Catalogue[],
   locale: AppLocale,
 ): GraphDocument | undefined {
-  if (id === 'pad-pressure') return padPressure(catalogues, locale);
-  if (id === 'platform-footprint') return platformFootprint(catalogues, locale);
-  if (id === 'monte-carlo-clearance') return monteCarloClearance(catalogues, locale);
-  if (id === 'reliability-load-strength') return reliabilityLoadStrength(catalogues, locale);
-  if (id === 'belt-lab') return beltLab(catalogues, locale);
-  if (id === 'pressfit-lab') return pressfitLab(catalogues, locale);
-  if (id === 'cantilever-hollow-sections') return cantileverHollowSections(catalogues, locale);
-  if (id === 'shaft-sizing') return shaftSizing(catalogues, locale);
-  if (id === 'stepped-shaft-stress') return steppedShaftStress(catalogues, locale);
-  if (id === 'depth-of-field') return depthOfField(catalogues, locale);
-  if (id === 'zoom-depth-of-field') return zoomDepthOfField(catalogues, locale);
-  if (id === 'aperture-decision') return apertureDecision(catalogues, locale);
-  if (id === 'wildlife-camera-comparison') return wildlifeCameraComparison(catalogues, locale);
-  return millingPowerEnvelope(catalogues, locale);
+  return EXAMPLE_BUILDERS[id](catalogues, locale);
 }
 
+/** A linked example takes priority because opening that URL is an explicit
+ * request. Otherwise, an autosave snapshot left over from a session that never
+ * hit Save takes priority over the usual startup document — recovery from an
+ * accidental close should not require a prompt to get back to work. A
+ * corrupted snapshot falls back to the usual default silently. */
 function startupDocument(
   catalogues: readonly Catalogue[],
   locale: AppLocale,
