@@ -446,7 +446,13 @@ function AppShell(): ReactElement {
   const [savedSnapshot, setSavedSnapshot] = useState<string | undefined>(() =>
     restoredAutosave ? undefined : saveDocument(initialDocument),
   );
-  const isDirty = savedSnapshot === undefined || saveDocument(document) !== savedSnapshot;
+  // Serializing the whole document is not free, and this sat on every render
+  // — a pan or a hover included. The document is immutable state, so its
+  // identity changes exactly when its text can.
+  const isDirty = useMemo(
+    () => savedSnapshot === undefined || saveDocument(document) !== savedSnapshot,
+    [document, savedSnapshot],
+  );
   // Loading a different document (open file, a sample) starts a fresh undo
   // history — there is nothing to gain from undoing back into a document
   // that is no longer open, same as most editors treat "open a file". It
