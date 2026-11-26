@@ -2,6 +2,53 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.36.0](https://github.com/JoveWorks/joveworks/compare/v0.35.0...v0.36.0) (2026-11-26)
+
+### ⚠ BREAKING CHANGES
+
+* **kernel:** a document that compared against a threshold swept over
+  a different axis of the same length now reports an error on that node
+  instead of a verdict. Pair the lists with a zip, or compute the threshold
+  from the value's own sweep.
+
+### Features
+
+* **editor:** highlight everything a hovered port or wire reaches ([f09b077](https://github.com/JoveWorks/joveworks/commit/f09b077905dbbc37c67fbebf00f5631d036db7cf))
+* **editor:** offer to update a node to a changed catalogue formula ([572eef9](https://github.com/JoveWorks/joveworks/commit/572eef90fc98bbecbd88a077eda271712cca12b1))
+* **editor:** peek into a collapsed group by hovering its title ([d2ffce6](https://github.com/JoveWorks/joveworks/commit/d2ffce62439aaa8a12e2d4e03c8bfd891d5ef66b))
+* **editor:** show a crash notice instead of a blank page ([659231f](https://github.com/JoveWorks/joveworks/commit/659231fa348d8744019faf58a3ad11bccdffc3de))
+* **editor:** show a reliability report per design over a design sweep ([9f415e9](https://github.com/JoveWorks/joveworks/commit/9f415e983c554206143a9cb0e0df63985ba0a43b))
+* **kernel:** add log10 beside the natural log ([82e73ab](https://github.com/JoveWorks/joveworks/commit/82e73ab41b17b5feac326f38b4caa0bfc3880886))
+* **kernel:** report reliability per design, not pooled across designs ([d320c71](https://github.com/JoveWorks/joveworks/commit/d320c713a283dc3ff64a8e3d86080768d6408de8))
+* **kernel:** say what a changed formula would update to, and why ([573e876](https://github.com/JoveWorks/joveworks/commit/573e8760570257a8e51cbb93e640ef11131685de))
+* **schema:** let a formula record say what changed at each version ([632317e](https://github.com/JoveWorks/joveworks/commit/632317e6d15b913490ae3d3aefa9430dcf058570))
+* **schema:** load catalogues through a migration chain ([a0a02ae](https://github.com/JoveWorks/joveworks/commit/a0a02ae13e392dd9b4a91e2db8e8d5a7ead72643))
+
+### Fixes
+
+* **editor:** give each tab its own autosave slot ([d9a0106](https://github.com/JoveWorks/joveworks/commit/d9a010617cb9c8e9507474b9544350f1a9272c44))
+* **editor:** keep a label's every line inside its exported comment ([9de1fcd](https://github.com/JoveWorks/joveworks/commit/9de1fcd609c741c505939ac83260ded93d4c737b))
+* **editor:** set an unreadable autosave aside instead of losing it ([c751697](https://github.com/JoveWorks/joveworks/commit/c7516979cdcd5ea2c1684ba9606fce82eabcbad2))
+* **kernel:** pair a wired Compare threshold with its value by axis ([15f7f35](https://github.com/JoveWorks/joveworks/commit/15f7f35e95b5815570871e2fb892c5c652940dc2))
+* **kernel:** refuse a study past a million cells instead of freezing ([274e1d9](https://github.com/JoveWorks/joveworks/commit/274e1d9db96bb6fa77e0454240a464b3283a129d))
+* **kernel:** refuse at() past the end, sdev() of one value, and a port named pi ([cce5926](https://github.com/JoveWorks/joveworks/commit/cce59267a7a3ff1a97019a7aa55a5c9a6b0df256))
+* **kernel:** solve statically indeterminate stiff shafts ([6073198](https://github.com/JoveWorks/joveworks/commit/60731983ebca016bd4c74d5eef58d540d16fa71d))
+* **schema:** migrate documents on every load path ([a652f3a](https://github.com/JoveWorks/joveworks/commit/a652f3a3691240d6fd4153fd83659942931c3afd))
+* **schema:** name an unknown node or output kind as a newer JoveWorks ([e4db0e8](https://github.com/JoveWorks/joveworks/commit/e4db0e8ae8a289c04f8814f71cbde4dd1087851b))
+* take the extent of a grid without spreading it onto the stack ([f9841e3](https://github.com/JoveWorks/joveworks/commit/f9841e392fd01985521d44b189bf9a952b1db9b7))
+
+### Performance
+
+* **editor:** read the Recent list only when it changes ([3d5b14c](https://github.com/JoveWorks/joveworks/commit/3d5b14ca2f7b1cfc6ca332f700744d0c53b390b1))
+* **editor:** serialize the document for isDirty only when it changes ([19d5038](https://github.com/JoveWorks/joveworks/commit/19d5038a38db8dffb1d6324365c1d88c5675c55e))
+
+### Refactoring
+
+* **editor:** look up examples in a record keyed by every ExampleId ([5433324](https://github.com/JoveWorks/joveworks/commit/54333242714cb5597dc872bf2a894ada9ab48021))
+
+### Documentation
+
+* **roadmap:** drop finished and out-of-scope items ([7b920d3](https://github.com/JoveWorks/joveworks/commit/7b920d3f4b6d0861c0d77bd6dadf3660f449f488))
 ## [0.35.0](https://github.com/JoveWorks/joveworks/compare/v0.34.1...v0.35.0) (2026-11-19)
 
 ### Refactoring
