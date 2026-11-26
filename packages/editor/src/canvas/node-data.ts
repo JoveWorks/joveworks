@@ -18,6 +18,10 @@ export interface CanvasNodeData extends Record<string, unknown> {
   readonly onLayoutGestureEnd?: () => void;
   /** Canvas-only geometry while a frame resize is in progress. */
   readonly layoutSize?: { readonly width: number; readonly height: number };
+  /** A collapsed group drawn expanded, read-only, while the pointer is over it. */
+  readonly peeking?: boolean;
+  /** Starts (an id) or ends (undefined) a peek into a collapsed group. */
+  readonly onPeek?: (groupId?: string) => void;
 }
 
 export type CanvasFlowNode = FlowNode<CanvasNodeData>;

@@ -2135,6 +2135,30 @@ aside.bottom .palette-list section {
   stroke: color-mix(in srgb, var(--accent) 55%, var(--muted));
 }
 
+/* Peeking into a collapsed group draws it expanded and read-only, in place,
+   with everything else faded back — nothing moves and nothing in the
+   document changes. Members sit above the faded neighbours (zIndex in
+   Canvas.tsx) and ignore the pointer, so values can be read, not edited. */
+.react-flow__node.peek-faded,
+.react-flow__edge.peek-faded {
+  opacity: 0.15;
+  pointer-events: none;
+}
+
+.react-flow__node.peek-member .node {
+  pointer-events: none;
+}
+
+.frame.group.peeking {
+  border: 1px solid var(--accent);
+  background: color-mix(in srgb, var(--paper) 88%, transparent);
+  box-shadow: var(--shadow-md);
+}
+
+.frame.group.peeking .group-frame-outline {
+  display: none;
+}
+
 /*
  * A plain outline is a rectangle regardless of the element's own
  * border-radius — Chrome and Safari never clip it — so on a rounded card

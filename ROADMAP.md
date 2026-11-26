@@ -171,12 +171,12 @@ neighbours, and a collapsed group is ringed when any member is reached. Past
 the first hop the walk is node-level: a reached node counts all its outputs
 as reached, so a formula node with several outputs can overstate its reach.
 
-**18. Peek into a collapsed group** — expanding a collapsed group today opens
-all of its nodes onto the canvas, which reflows the layout just to look
-inside. A `peek` would show the group's contents temporarily (an overlay or
-popover, dismissed on leave or Escape) without expanding it and without
-touching the document. Decide whether a peek is read-only or allows editing a
-value in place.
+**18. Peek into a collapsed group** — done, read-only. Hovering a collapsed
+group's title draws the group expanded in place with everything else faded, until the pointer leaves the
+group's area or Escape is pressed. Members cannot be moved, selected, wired
+or edited during a peek; nothing in `collapsedGroups` or the document
+changes. Editing a value in place remains open if read-only proves too
+little.
 
 **19. Domain node kinds as extensions, not core** — Shaft, Support, Load,
 Distributed load and Shaft view are built into the document schema and the

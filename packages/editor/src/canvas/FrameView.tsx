@@ -29,21 +29,25 @@ export function FrameView({ id, selected, data }: NodeProps<CanvasFlowNode>): Re
   if (frame === undefined) return null;
 
   const highlighted = hoveredIds.has(id);
-  const collapsed = frame.kind === 'group' && collapsedGroups.has(id);
+  const peeking = data?.peeking === true;
+  // A peeked group is drawn expanded but stays collapsed in fact: no resize
+  // handles, and its toggle still says "Expand".
+  const collapsed = frame.kind === 'group' && collapsedGroups.has(id) && !peeking;
+  const collapsedInFact = frame.kind === 'group' && collapsedGroups.has(id);
   const ports = collapsed ? groupPorts(document, id) : undefined;
   const size = ports === undefined ? (data?.layoutSize ?? frame.size) : collapsedGroupSize(ports);
-  const collapseLabel = phrase(locale, collapsed ? 'Expand group' : 'Collapse group');
+  const collapseLabel = phrase(locale, collapsedInFact ? 'Expand group' : 'Collapse group');
   const highlightedGroupPorts = new Set(data?.highlightedGroupPorts ?? []);
   const interfaceHighlighted = (data?.highlighted ?? false) || highlightedGroupPorts.size > 0;
 
   return (
     <div
-      className={`frame ${frame.kind ?? 'section'}${collapsed ? ' collapsed' : ''}${hovered ? ' hovered' : ''}${selected ? ' selected' : ''}${highlighted || interfaceHighlighted ? ' highlighted' : ''}`}
+      className={`frame ${frame.kind ?? 'section'}${collapsed ? ' collapsed' : ''}${peeking ? ' peeking' : ''}${hovered ? ' hovered' : ''}${selected ? ' selected' : ''}${highlighted || interfaceHighlighted ? ' highlighted' : ''}`}
       style={{ width: size.width, height: size.height }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      {!collapsed ? <NodeResizer
+      {!collapsedInFact ? <NodeResizer
         nodeId={id}
         isVisible={hovered || (selected ?? false)}
         minWidth={160}
@@ -70,6 +74,9 @@ export function FrameView({ id, selected, data }: NodeProps<CanvasFlowNode>): Re
         // canvas.  In particular, it must win over a wire crossing the title.
         onPointerDown={(event) => event.stopPropagation()}
         onClick={(event) => event.stopPropagation()}
+        // Hovering a collapsed group's title peeks inside it; leaving the
+        // group's area or pressing Escape ends the peek (Canvas.tsx).
+        onMouseEnter={collapsedInFact ? () => data?.onPeek?.(id) : undefined}
       >
         {frame.kind === 'group' ? (
           <button
@@ -83,7 +90,7 @@ export function FrameView({ id, selected, data }: NodeProps<CanvasFlowNode>): Re
               toggleGroupCollapsed(id);
             }}
           >
-            <span aria-hidden="true">{collapsed ? '▸' : '▾'}</span>
+            <span aria-hidden="true">{collapsedInFact ? '▸' : '▾'}</span>
           </button>
         ) : null}
         <TitleField

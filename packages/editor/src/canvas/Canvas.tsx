@@ -760,6 +760,10 @@ export function Canvas({
   // without recording anything in the graph document.
   const [hoveredEdgeId, setHoveredEdgeId] = useState<string | undefined>(undefined);
   const [hoveredPort, setHoveredPort] = useState<HoveredCanvasPort | undefined>(undefined);
+  // A peek shows one collapsed group's contents in place, read-only, for as
+  // long as the pointer stays over it — a view state like hover, never a
+  // change to `collapsedGroups` or the document.
+  const [peekedGroup, setPeekedGroup] = useState<string | undefined>(undefined);
   const [findQuery, setFindQuery] = useState<string | undefined>(undefined);
   const flow = useReactFlow();
   const clipboard = useRef<{ document: GraphDocument; selected: ReadonlySet<string> } | undefined>(
@@ -982,6 +986,49 @@ export function Canvas({
     };
   }, [connectedNodeIds, document.edges, hoveredEdgeId, hoveredPort, hoveredPortEdges]);
 
+  const activePeek = peekedGroup !== undefined && collapsedGroups.has(peekedGroup) ? peekedGroup : undefined;
+  // What the canvas draws as collapsed: the real set, less the group being peeked.
+  const shownCollapsed = useMemo(() => {
+    if (activePeek === undefined) return collapsedGroups;
+    const shown = new Set(collapsedGroups);
+    shown.delete(activePeek);
+    return shown;
+  }, [activePeek, collapsedGroups]);
+  const peekMembers = useMemo(
+    () => (activePeek === undefined ? new Set<string>() : nodesInGroup(renderedDocument, activePeek)),
+    [activePeek, renderedDocument],
+  );
+  const peekFrames = useMemo(() => {
+    if (activePeek === undefined) return new Set<string>();
+    const frames = new Set([activePeek]);
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (const frame of renderedDocument.frames) {
+        if (frame.frameId !== undefined && frames.has(frame.frameId) && !frames.has(frame.id)) {
+          frames.add(frame.id);
+          changed = true;
+        }
+      }
+    }
+    return frames;
+  }, [activePeek, renderedDocument.frames]);
+
+  // Expanding the group for real ends its peek, so re-collapsing it later
+  // does not reopen one the pointer has long since left.
+  useEffect(() => {
+    if (peekedGroup !== undefined && activePeek === undefined) setPeekedGroup(undefined);
+  }, [activePeek, peekedGroup]);
+
+  useEffect(() => {
+    if (activePeek === undefined) return undefined;
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') setPeekedGroup(undefined);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [activePeek]);
+
   useEffect(() => {
     if (rejectedUnitConnection === undefined) return undefined;
     const timeout = window.setTimeout(() => setRejectedUnitConnection(undefined), 4_000);
@@ -1044,12 +1091,13 @@ export function Canvas({
           .sort((a, b) => b.size.width * b.size.height - a.size.width * a.size.height)
           .map((frame, index) => [frame.id, -renderedDocument.frames.length + index] as const),
       );
-      const hidden = hiddenByCollapsedGroups(renderedDocument, collapsedGroups);
+      const hidden = hiddenByCollapsedGroups(renderedDocument, shownCollapsed);
       const portsByGroup = new Map(
         renderedDocument.frames
-          .filter((frame) => frame.kind === 'group' && collapsedGroups.has(frame.id))
+          .filter((frame) => frame.kind === 'group' && shownCollapsed.has(frame.id))
           .map((frame) => [frame.id, groupPorts(renderedDocument, frame.id)] as const),
       );
+      const peeking = activePeek !== undefined;
       return [
         ...renderedDocument.frames.map((frame) => {
           const ports = portsByGroup.get(frame.id);
@@ -1068,6 +1116,12 @@ export function Canvas({
             !macroHighlighted &&
             [...nodesInGroup(renderedDocument, frame.id)].some((id) => farReach.nodes.has(id));
           const size = ports === undefined ? frame.size : collapsedGroupSize(ports);
+          const inPeek = peekFrames.has(frame.id);
+          const className = nodeClasses([
+            macroReached ? 'node-reached' : undefined,
+            peeking && !inPeek ? 'peek-faded' : undefined,
+            frame.id === activePeek ? 'peek-frame' : undefined,
+          ]);
           return {
             id: frame.id,
             type: 'frame',
@@ -1078,11 +1132,16 @@ export function Canvas({
               onPortHover: setHoveredPort,
               onLayoutGestureEnd: commitLayoutPreview,
               layoutSize: size,
+              peeking: frame.id === activePeek,
+              onPeek: setPeekedGroup,
             },
             selected: selected.has(frame.id),
             selectable: true,
-            ...(macroReached ? { className: 'node-reached' } : {}),
-            ...sizeOf(measured, frame.id),
+            ...(inPeek ? { draggable: false } : {}),
+            ...(className === undefined ? {} : { className }),
+            // A peeked frame's size is the expanded one; a measurement taken
+            // while it was collapsed would only mislead React Flow.
+            ...(frame.id === activePeek ? {} : sizeOf(measured, frame.id)),
             // A group’s controls must sit above its wires, but ordinary nodes
             // still follow it in the projection and therefore win where they
             // overlap. Sections remain fully behind the calculation.
@@ -1092,10 +1151,12 @@ export function Canvas({
           };
         }),
         ...renderedDocument.nodes.map((node) => {
+          const inPeek = peekMembers.has(node.id);
           const className = nodeClasses([
             rejectedEndpointIds.has(node.id) ? 'connection-refused' : undefined,
             matchedNodeIds.has(node.id) ? 'node-search-match' : undefined,
             farReach.nodes.has(node.id) ? 'node-reached' : undefined,
+            peeking ? (inPeek ? 'peek-member' : 'peek-faded') : undefined,
           ]);
           const data: CanvasNodeData = {
             highlighted: connectedNodeIds.has(node.id),
@@ -1108,6 +1169,8 @@ export function Canvas({
             position: node.position,
             data,
             selected: selected.has(node.id),
+            // A peek is read-only: its members cannot be moved, picked or wired.
+            ...(inPeek ? { draggable: false, selectable: false, connectable: false, zIndex: 1000 } : {}),
             ...(className === undefined ? {} : { className }),
             ...(hidden.has(node.id) ? { hidden: true } : {}),
             ...sizeOf(measured, node.id),
@@ -1115,7 +1178,7 @@ export function Canvas({
         }),
       ];
     },
-    [collapsedGroups, commitLayoutPreview, connectedNodeIds, farReach, highlightedPorts, matchedNodeIds, measured, rejectedEndpointIds, renderedDocument, selected],
+    [activePeek, commitLayoutPreview, connectedNodeIds, farReach, highlightedPorts, matchedNodeIds, measured, peekFrames, peekMembers, rejectedEndpointIds, renderedDocument, selected, shownCollapsed],
   );
 
   const edges = useMemo<FlowEdge[]>(() => {
@@ -1124,12 +1187,24 @@ export function Canvas({
     // same slot FormulaNodeView assigned it: position among edges sharing this
     // (node, port), in document order, which is exactly how that view counts.
     const slotOf = new Map<string, number>();
+    const edgeClass = (edge: Edge): string | undefined =>
+      nodeClasses([
+        edge.id === hoveredEdgeId || hoveredPortEdges.some((candidate) => candidate.id === edge.id)
+          ? 'edge-hovered'
+          : farReach.edges.has(edge.id)
+            ? 'edge-reached'
+            : undefined,
+        activePeek !== undefined && !peekMembers.has(edge.from.node) && !peekMembers.has(edge.to.node)
+          ? 'peek-faded'
+          : undefined,
+      ]);
     return document.edges.flatMap((edge) => {
       const key = `${edge.to.node}.${edge.to.port}`;
       const slot = slotOf.get(key) ?? 0;
       slotOf.set(key, slot + 1);
-      const sourceGroup = collapsedGroupForNode(document, collapsedGroups, edge.from.node);
-      const targetGroup = collapsedGroupForNode(document, collapsedGroups, edge.to.node);
+      const className = edgeClass(edge);
+      const sourceGroup = collapsedGroupForNode(document, shownCollapsed, edge.from.node);
+      const targetGroup = collapsedGroupForNode(document, shownCollapsed, edge.to.node);
       if (sourceGroup !== undefined && sourceGroup === targetGroup) return [];
       return {
         id: edge.id,
@@ -1145,14 +1220,10 @@ export function Canvas({
           ? { type: 'bundle' }
           : {}),
         selected: selected.has(edge.id),
-        ...(edge.id === hoveredEdgeId || hoveredPortEdges.some((candidate) => candidate.id === edge.id)
-          ? { className: 'edge-hovered' }
-          : farReach.edges.has(edge.id)
-            ? { className: 'edge-reached' }
-            : {}),
+        ...(className === undefined ? {} : { className }),
       };
     });
-  }, [collapsedGroups, document, farReach, hoveredEdgeId, hoveredPortEdges, selected]);
+  }, [activePeek, document, farReach, hoveredEdgeId, hoveredPortEdges, peekMembers, selected, shownCollapsed]);
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
@@ -1677,6 +1748,16 @@ export function Canvas({
       <ReactFlow
         onPointerMove={(event) => {
           cursor.current = { x: event.clientX, y: event.clientY };
+          if (activePeek === undefined) return;
+          const frame = renderedDocument.frames.find((candidate) => candidate.id === activePeek);
+          if (frame === undefined) return;
+          const at = flow.screenToFlowPosition(cursor.current);
+          const inside =
+            at.x >= frame.position.x &&
+            at.y >= frame.position.y &&
+            at.x <= frame.position.x + frame.size.width &&
+            at.y <= frame.position.y + frame.size.height;
+          if (!inside) setPeekedGroup(undefined);
         }}
         nodes={nodes}
         edges={edges}
