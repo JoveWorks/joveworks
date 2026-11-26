@@ -146,13 +146,6 @@ the NodeBook should pair them in a section, or that this is the section frame's
 job already and nothing needs to change. Decide before adding a fifth thing a
 Plot node can be configured to do.
 
-**15. Nice to have: link to a PDF** — a formula, a node or a section pointing at
-the page of a source document it came from. R&M citations already exist as
-metadata (`citation` on a formula); this is the step from "eq. 11.14" to
-something clickable. Out of scope for this repository as far as R&M content
-goes — the restricted catalogue lives elsewhere — so what is decided here is
-only the *field* and how the editor renders it, not any particular target.
-
 **16. SI prefixes for compound units** — under the 'si' number format a
 single prefixable unit picks its prefix (`12500 N` reads `12.50 kN`), but a
 compound one never does: `prefixableAtomOf` refuses anything that is not one
@@ -162,21 +155,6 @@ one — whether `N/mm²` should become `MPa` (R&M itself writes `N/mm²`), and
 which atom of a product takes the prefix (`kN·m` versus `N·km`). Needs a
 rule from the course side before anything in `formatQuantity` or
 `siAxisUnit` changes.
-
-**17. Show every affected node, not just the next one** — done. Hovering an
-output port or a wire rings everything downstream; hovering an input port
-rings everything upstream that feeds it (`hoverReach` in
-`canvas/reach.ts`). Far nodes and wires get a quieter ring than the direct
-neighbours, and a collapsed group is ringed when any member is reached. Past
-the first hop the walk is node-level: a reached node counts all its outputs
-as reached, so a formula node with several outputs can overstate its reach.
-
-**18. Peek into a collapsed group** — done, read-only. Hovering a collapsed
-group's title draws the group expanded in place with everything else faded, until the pointer leaves the
-group's area or Escape is pressed. Members cannot be moved, selected, wired
-or edited during a peek; nothing in `collapsedGroups` or the document
-changes. Editing a value in place remains open if read-only proves too
-little.
 
 **19. Domain node kinds as extensions, not core** — Shaft, Support, Load,
 Distributed load and Shaft view are built into the document schema and the
