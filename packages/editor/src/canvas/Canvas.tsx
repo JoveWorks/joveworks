@@ -96,8 +96,10 @@ import {
   groupPortHandle,
   groupPorts,
   hiddenByCollapsedGroups,
+  nodesInGroup,
 } from '../model/collapsedGroups';
 import { BundleEdge } from './BundleEdge';
+import { hoverReach } from './reach';
 import { CanvasFind } from './CanvasFind';
 import { ClosureNodeView } from './ClosureNodeView';
 import { CompareNodeView } from './CompareNodeView';
@@ -969,6 +971,17 @@ export function Canvas({
     return new Map([...ports.entries()].map(([nodeId, set]) => [nodeId, [...set]] as const));
   }, [document.edges, hoveredEdgeId, hoveredPort, hoveredPortEdges]);
 
+  // Beyond the direct neighbours: everything the hovered port or wire reaches,
+  // ringed more quietly so the wire under the pointer stays the loudest thing.
+  const farReach = useMemo(() => {
+    const reach = hoverReach(document.edges, hoveredPort, hoveredEdgeId);
+    const direct = new Set([...(hoveredEdgeId === undefined ? [] : [hoveredEdgeId]), ...hoveredPortEdges.map((edge) => edge.id)]);
+    return {
+      nodes: new Set([...reach.nodes].filter((id) => !connectedNodeIds.has(id))),
+      edges: new Set([...reach.edges].filter((id) => !direct.has(id))),
+    };
+  }, [connectedNodeIds, document.edges, hoveredEdgeId, hoveredPort, hoveredPortEdges]);
+
   useEffect(() => {
     if (rejectedUnitConnection === undefined) return undefined;
     const timeout = window.setTimeout(() => setRejectedUnitConnection(undefined), 4_000);
@@ -1048,6 +1061,12 @@ export function Canvas({
             return [groupPortHandle(kind, port)];
           });
           const macroHighlighted = interfacePorts.some((port) => connectedNodeIds.has(port.nodeId));
+          // A collapsed group stands in for its members, so it is reached
+          // when any of them is.
+          const macroReached =
+            ports !== undefined &&
+            !macroHighlighted &&
+            [...nodesInGroup(renderedDocument, frame.id)].some((id) => farReach.nodes.has(id));
           const size = ports === undefined ? frame.size : collapsedGroupSize(ports);
           return {
             id: frame.id,
@@ -1062,6 +1081,7 @@ export function Canvas({
             },
             selected: selected.has(frame.id),
             selectable: true,
+            ...(macroReached ? { className: 'node-reached' } : {}),
             ...sizeOf(measured, frame.id),
             // A group’s controls must sit above its wires, but ordinary nodes
             // still follow it in the projection and therefore win where they
@@ -1075,6 +1095,7 @@ export function Canvas({
           const className = nodeClasses([
             rejectedEndpointIds.has(node.id) ? 'connection-refused' : undefined,
             matchedNodeIds.has(node.id) ? 'node-search-match' : undefined,
+            farReach.nodes.has(node.id) ? 'node-reached' : undefined,
           ]);
           const data: CanvasNodeData = {
             highlighted: connectedNodeIds.has(node.id),
@@ -1094,7 +1115,7 @@ export function Canvas({
         }),
       ];
     },
-    [collapsedGroups, commitLayoutPreview, connectedNodeIds, highlightedPorts, matchedNodeIds, measured, rejectedEndpointIds, renderedDocument, selected],
+    [collapsedGroups, commitLayoutPreview, connectedNodeIds, farReach, highlightedPorts, matchedNodeIds, measured, rejectedEndpointIds, renderedDocument, selected],
   );
 
   const edges = useMemo<FlowEdge[]>(() => {
@@ -1126,10 +1147,12 @@ export function Canvas({
         selected: selected.has(edge.id),
         ...(edge.id === hoveredEdgeId || hoveredPortEdges.some((candidate) => candidate.id === edge.id)
           ? { className: 'edge-hovered' }
-          : {}),
+          : farReach.edges.has(edge.id)
+            ? { className: 'edge-reached' }
+            : {}),
       };
     });
-  }, [collapsedGroups, document, hoveredEdgeId, hoveredPortEdges, selected]);
+  }, [collapsedGroups, document, farReach, hoveredEdgeId, hoveredPortEdges, selected]);
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {

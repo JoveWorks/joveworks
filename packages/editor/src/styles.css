@@ -2113,6 +2113,28 @@ aside.bottom .palette-list section {
   box-shadow: inset 0 0 0 2px var(--accent);
 }
 
+/* The rest of what a hovered port or wire reaches, past its direct
+   neighbours (`hoverReach` in canvas/reach.ts). Quieter than the highlight
+   above: no accent border and a thinner, paler wire, so the wire under the
+   pointer stays the loudest thing on the canvas. A collapsed group is
+   reached when any of its members is. */
+.react-flow__node.node-reached .node {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent), var(--shadow-sm);
+}
+
+.react-flow__node.node-reached .frame.group.collapsed {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.react-flow__edge.edge-reached .react-flow__edge-path {
+  stroke: color-mix(in srgb, var(--accent) 55%, var(--muted));
+  stroke-width: 2;
+}
+
+.react-flow__edge.edge-reached .bundle-edge-outer {
+  stroke: color-mix(in srgb, var(--accent) 55%, var(--muted));
+}
+
 /*
  * A plain outline is a rectangle regardless of the element's own
  * border-radius — Chrome and Safari never clip it — so on a rounded card
