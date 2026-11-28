@@ -105,4 +105,19 @@ describe('v1 fixture shapes', () => {
       { id: 'fixture.product', version: 2, hash: '6666666666666666' },
     ]);
   });
+
+  it('catalogue-table-graph.json: a table node and a table-column input, saved before tables were their own entity', () => {
+    const document = migrateDocument(loadFixture('v1', 'catalogue-table-graph.json'));
+    expect(document.nodes.find((node) => node.id === 'frames')).toMatchObject({
+      kind: 'table',
+      table: { id: 'fixture.frames', version: 1, hash: '7777777777777777' },
+      rows: ['S1', 'S3'],
+      columns: ['h'],
+    });
+    expect(document.nodes.find((node) => node.id === 'frames')).not.toHaveProperty('allRows');
+    expect(document.nodes.find((node) => node.id === 'every')).toMatchObject({
+      kind: 'input',
+      value: { kind: 'tableColumn', table: 'fixture.frames', column: 'frame' },
+    });
+  });
 });

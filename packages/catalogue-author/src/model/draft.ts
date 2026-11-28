@@ -92,6 +92,12 @@ export interface DraftCatalogue {
    * every formula's "?" off from the book.
    */
   readonly sourceJson?: JsonValue;
+  /**
+   * The catalogue's `tables`, round-tripped untouched like `lookupJson`:
+   * there is no table editor yet, so tables are written as JSON in the
+   * catalogue repository, and saving here must not drop them.
+   */
+  readonly tablesJson?: JsonValue;
   readonly formulas: readonly DraftFormula[];
 }
 
@@ -235,6 +241,9 @@ export function draftCatalogueFromReal(catalogue: Catalogue): DraftCatalogue {
     name: draftLocalizedTextFromReal(catalogue.name),
     restricted: catalogue.restricted,
     ...(catalogue.source === undefined ? {} : { sourceJson: serializeCatalogue(catalogue).source }),
+    ...(catalogue.tables === undefined || catalogue.tables.length === 0
+      ? {}
+      : { tablesJson: serializeCatalogue(catalogue).tables }),
     formulas: catalogue.formulas.map(draftFormulaFromReal),
   };
 }

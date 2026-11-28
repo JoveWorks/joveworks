@@ -13,7 +13,7 @@ export { SchemaError } from './errors.js';
 export type { JsonObject, JsonValue } from './json.js';
 export { canonicalJson } from './json.js';
 
-export { DOCUMENT_SCHEMA_VERSION, CATALOGUE_SCHEMA_VERSION } from './version.js';
+export { DOCUMENT_SCHEMA_VERSION, CATALOGUE_SCHEMA_VERSION, OLDEST_CATALOGUE_SCHEMA_VERSION } from './version.js';
 
 export {
   canonicalValue,
@@ -99,6 +99,8 @@ export {
   matchRef,
   parseCatalogue,
   serializeCatalogue,
+  referable,
+  catalogueTables,
   sourceHref,
   isRelativeLink,
 } from './formula.js';
@@ -116,6 +118,15 @@ export type {
   LookupAxis,
   LookupCell,
 } from './formula.js';
+
+export {
+  parseCatalogueTable,
+  serializeCatalogueTable,
+  tableHash,
+  tableFormula,
+  formulaTable,
+} from './table.js';
+export type { CatalogueTable, TableColumn } from './table.js';
 
 export { fnv1a64, hashRecord } from './hash.js';
 

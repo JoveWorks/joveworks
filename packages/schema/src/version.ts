@@ -31,25 +31,37 @@
 import { fail, join, readInteger, required, type JsonObject } from './json.js';
 
 export const DOCUMENT_SCHEMA_VERSION = 1;
-export const CATALOGUE_SCHEMA_VERSION = 1;
+/**
+ * 2 added `tables`. A version-1 catalogue still reads exactly as before —
+ * it simply has none — which is what lets the lookup formulas that are really
+ * tables move across in a later catalogue migration, rather than every
+ * cached catalogue being refused the day this build ships.
+ */
+export const CATALOGUE_SCHEMA_VERSION = 2;
+/** The oldest catalogue schemaVersion this build still reads. */
+export const OLDEST_CATALOGUE_SCHEMA_VERSION = 1;
 
 /**
  * Read and check one artefact's `schemaVersion`. `expected` and `artefact`
  * make the refusal specific — which artefact, which version — rather than a
- * bare number that could belong to either.
+ * bare number that could belong to either. `oldest` admits the earlier
+ * versions an artefact still reads as they are, without a migration.
  */
 export function readSchemaVersion(
   object: JsonObject,
   path: string,
   expected: number,
   artefact: string,
+  oldest = expected,
 ): number {
   const field = join(path, 'schemaVersion');
   const version = readInteger(required(object, 'schemaVersion', path), field, 1);
-  if (version !== expected) {
+  if (version < oldest || version > expected) {
     fail(
       field,
-      `is ${version}, but this build reads ${artefact} schemaVersion ${expected} only.`,
+      oldest === expected
+        ? `is ${version}, but this build reads ${artefact} schemaVersion ${expected} only.`
+        : `is ${version}, but this build reads ${artefact} schemaVersion ${oldest} to ${expected} only.`,
     );
   }
   return version;

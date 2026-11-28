@@ -470,7 +470,17 @@ describe('catalogues', () => {
 
   it('refuses a version it does not read, rather than guessing', () => {
     expect(() => parseCatalogue({ ...catalogue, schemaVersion: CATALOGUE_SCHEMA_VERSION + 1 })).toThrow(
-      /schemaVersion: is 2, but this build reads catalogue schemaVersion 1 only/,
+      /schemaVersion: is 3, but this build reads catalogue schemaVersion 1 to 2 only/,
+    );
+  });
+
+  it('still reads a version-1 catalogue as it is', () => {
+    expect(parseCatalogue({ ...catalogue, schemaVersion: 1 }).schemaVersion).toBe(1);
+  });
+
+  it('refuses tables in a version-1 catalogue, which predates them', () => {
+    expect(() => parseCatalogue({ ...catalogue, schemaVersion: 1, tables: [] })).toThrow(
+      /tables: needs catalogue schemaVersion 2/,
     );
   });
 

@@ -92,7 +92,12 @@ own top-level array on `Catalogue`, beside `formulas`:
   (`FormulaLookup`-like axis plus columns), so evaluation does not change.
   The kernel keeps a single code path for "a table of rows".
 
-Adding `tables` is additive: older builds ignore the unknown key.
+**Catalogue schemaVersion 2.** `tables` arrives with a version bump, so a
+later catalogue migration has a clean line to walk: a version-1 catalogue is
+one whose tables, if any, are still lookup formulas. This build reads both
+versions (`OLDEST_CATALOGUE_SCHEMA_VERSION = 1`); `tables` in a version-1
+file is refused. A build that predates this one refuses a version-2 catalogue
+outright, which is acceptable because the editor is deployed, not installed.
 
 **Moving a lookup formula into `tables` is not additive** for any build that
 reads the new catalogue file but predates this change: it loses that formula.
@@ -154,16 +159,17 @@ interface TableNode extends NodeBase {
 
 ### Two states
 
-- **Compact** (the default once anything is selected): the node reads like
-  every other source — the key port and one port per projected column, each
-  with its reading, sparkline and handle — plus one summary line:
-  `3 of 25 rows · 132S…200L`, or `all 25 rows`.
-- **Expanded**: the full grid, grown in place, about 600 px wide, scrolling
-  inside the card with the header row and the key column sticky. It uses the
-  shell's existing expand toggle (`expanded` / `toggleExpanded`), not a local
-  `showAll`. Clicking in the grid never changes the state; only the toggle
-  does. A freshly dropped node starts expanded, since an empty table has
-  nothing else to show.
+- **Compact**: the node reads like every other source — the key port and
+  one port per projected column, each with its reading, sparkline and
+  handle — plus one summary line: `3 of 25 rows · 132S…200L`, or
+  `all 25 rows`.
+- **Open**: the full grid, grown in place to about 600 px, scrolling inside
+  the card with the header row and the key column sticky. The grid is the
+  node's *detail*, so it opens the way every node's detail does — on hover,
+  on selection, or pinned with the shell's pin — and a node with nothing
+  picked is held open (`NodeShell`'s `forceOpen`) because the table is all it
+  has to show. Clicking in the grid never changes the state: the pointer is
+  over the node, so it stays open.
 
 The local `showAll` state and the "show the N selected / show all N rows"
 button are removed. The current behaviour — the grid collapsing to the picked
@@ -202,9 +208,9 @@ Rows follow spreadsheet conventions; columns only accumulate from cells.
 - Each numeric header keeps its unit picker; the cells are respelled in the
   picked unit, as now.
 - The citation and description stay in the node's detail.
-- The grid gets its own class (`node-table-grid` becomes catalogue-table
-  only). `LutNodeView` currently reuses that class; it gets its own so the
-  lookup table's appearance does not change.
+- The grid gets its own class, `node-catalogue-grid`, beside the shared
+  `node-table-grid` that the lookup table and shaft grids also use. Every new
+  rule is scoped to it, so neither of those changes.
 
 ### Ports
 
@@ -322,7 +328,8 @@ Closed in discussion on 2026-11-28:
    grid are confusing.
 4. **Row clicks follow spreadsheet rules**: plain replaces, Shift extends,
    Ctrl/Cmd toggles.
-5. **The grid expands in place**, using the shell's expand toggle.
+5. **The grid expands in place**, as the node's detail: open on hover,
+   selection or the pin, and held open while nothing is picked.
 6. **A cell click never removes a column**; columns drop from their header.
    A plain click on a highlighted cell narrows to its row.
 7. **"All rows" follows the catalogue**, stored as `allRows`.
@@ -334,6 +341,9 @@ Closed in discussion on 2026-11-28:
     formulas.
 11. **Selection, not filter.** "All profiles with `P_max` ≥ 5 kW" is the
     part-selection node of `docs/feature-review.md`, a later piece of work.
+12. **Catalogue schemaVersion 2** introduces `tables`, so the lookup formulas
+    that are really tables can be moved by a catalogue migration afterwards.
+    Version 1 still reads unchanged.
 
 Content questions for the private catalogue repository, not this plan:
 interval-valued cells (16-1's `350…1200 N/mm²`, probably two columns), prose

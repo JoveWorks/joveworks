@@ -90,4 +90,31 @@ describe('validateCatalogue', () => {
     expect(validation.catalogue?.source).toEqual(source);
     expect(validation.catalogue?.formulas[0]?.href).toBe('#eq-1.2');
   });
+
+  describe('tables, which the tool has no editor for yet', () => {
+    const table = {
+      id: 'demo.widgets',
+      version: 1,
+      description: { en: 'Invented widget sizes.' },
+      key: { name: 'size' },
+      columns: [{ name: 'w', unit: 'mm' }],
+      rows: [['S', 10], ['M', 12]],
+    };
+
+    it('keeps them through a load and save', () => {
+      const validation = validateCatalogue({ ...catalogueWith([validFormula()]), tablesJson: [table] });
+      expect(validation.catalogueErrors).toEqual([]);
+      expect(validation.catalogue?.tables?.map((entry) => entry.id)).toEqual(['demo.widgets']);
+    });
+
+    it('reports a formula that takes a table’s id', () => {
+      const validation = validateCatalogue({
+        ...catalogueWith([validFormula()]),
+        tablesJson: [{ ...table, id: validFormula().id }],
+      });
+      expect(validation.catalogueErrors.map((error) => error.message)).toEqual([
+        expect.stringContaining("is also the id of one of this catalogue's tables"),
+      ]);
+    });
+  });
 });

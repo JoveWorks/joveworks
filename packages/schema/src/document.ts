@@ -1159,8 +1159,15 @@ export interface TableNode extends NodeBase {
   readonly kind: 'table';
   /** The catalogue lookup formula whose table this draws. Never embedded. */
   readonly table: FormulaRef;
-  /** The selected rows, as coordinates on the table's single axis. */
+  /** The selected rows, as coordinates on the table's single axis. Ignored while `allRows` is set. */
   readonly rows: readonly (number | string)[];
+  /**
+   * Every row, *including rows the catalogue adds later* — "every standard
+   * size in the table", which a frozen list of keys does not mean. Saved
+   * with `rows: []`, so a build that predates the field opens the node with
+   * nothing selected rather than failing. Absent means the explicit `rows`.
+   */
+  readonly allRows?: true;
   /** The projected output columns — this node's ports, in the table's own order. */
   readonly columns: readonly string[];
   /** What the axis is called while several rows are selected. Defaults to `label`. */
@@ -1387,7 +1394,7 @@ export function axes(document: GraphDocument): readonly AxisNode[] {
       (node.kind === 'input' && isRange(node.value)) ||
       node.kind === 'range' ||
       (node.kind === 'file' && node.sources.length > 1) ||
-      (node.kind === 'table' && node.rows.length > 1) ||
+      (node.kind === 'table' && (node.allRows === true || node.rows.length > 1)) ||
       (node.kind === 'lut' && lutRows(node) > 1) ||
       (node.kind === 'zip' && hasZipInput(document, node.id)) ||
       node.kind === 'shaft' ||
@@ -1997,6 +2004,7 @@ function parseNode(value: JsonValue, path: string): GraphNode {
         table: parseFormulaRef(required(object, 'table', path), join(path, 'table')),
         rows,
         columns,
+        ...(optional(object, 'allRows', path, readBoolean) === true ? { allRows: true as const } : {}),
         ...put('axisLabel', optional(object, 'axisLabel', path, readString)),
       };
     }
@@ -2244,8 +2252,11 @@ function serializeNode(node: GraphNode): JsonObject {
       return {
         ...base,
         table: serializeFormulaRef(node.table),
-        rows: [...node.rows],
+        // Never both: an older build reads `rows` alone, and an empty list
+        // is the honest reading of "all of them" for a build that cannot say so.
+        rows: node.allRows === true ? [] : [...node.rows],
         columns: [...node.columns],
+        ...(node.allRows === true ? { allRows: true } : {}),
         ...put('axisLabel', node.axisLabel),
       };
     case 'lut':

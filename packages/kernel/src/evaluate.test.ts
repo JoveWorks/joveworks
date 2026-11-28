@@ -31,6 +31,7 @@ import {
   fileSource,
   formulaNode,
   input,
+  interpolateNode,
   linear,
   list,
   monteCarloGeneratorNode,
@@ -43,6 +44,7 @@ import {
   scalar,
   selectNode,
   slider,
+  tableCatalogueOf,
   tableNode,
   uniformDraw,
   variadicWires,
@@ -720,6 +722,112 @@ describe('table nodes', () => {
     // 1, 3 and 9 kN against a 2.5 kN bound: the 20 mm bore is the first that
     // passes, and the answer is a bore the table actually holds.
     expect(numeric(valueAt(evaluation, 'first', 'at')).data).toEqual([20]);
+  });
+});
+
+/**
+ * A catalogue's own `tables`: the same node over a table declared as one,
+ * rather than as a lookup formula. Invented throughout.
+ */
+describe('catalogue tables', () => {
+  const frames = {
+    id: 'frames', version: 1,
+    description: { en: 'Invented frame table.' },
+    key: { name: 'frame' },
+    columns: [{ name: 'h', unit: 'mm' }, { name: 'F', unit: 'kN' }],
+    rows: [['S1', 71, 1], ['S2', 80, 2], ['S3', 90, 4]],
+  };
+  const bores = {
+    id: 'bores', version: 1,
+    description: { en: 'Invented bore table.' },
+    key: { name: 'bore', unit: 'mm' },
+    columns: [{ name: 'load', unit: 'kN' }],
+    rows: [[10, 1], [20, 3], [30, 9]],
+  };
+  const catalogue = tableCatalogueOf([frames, bores]);
+
+  it('selects rows of a declared table exactly as of a lookup formula', () => {
+    const document = documentOf([tableNode('frames', refTo('frames', catalogue), ['S1', 'S3'], ['h'])], []);
+    const evaluation = evaluateDocument(document, [catalogue]);
+    expect(numeric(valueAt(evaluation, 'frames', 'h')).data).toEqual([71, 90]);
+    expect(evaluation.warnings).toEqual([]);
+  });
+
+  it('sweeps every row, in table order, when all rows are selected', () => {
+    const document = documentOf(
+      [tableNode('frames', refTo('frames', catalogue), [], ['h'], { allRows: true })],
+      [],
+    );
+    const h = numeric(valueAt(evaluateDocument(document, [catalogue]), 'frames', 'h'));
+    expect(h.data).toEqual([71, 80, 90]);
+    expect(h.axes.map((axis) => axis.id)).toEqual(['frames']);
+  });
+
+  it('lets a row the catalogue adds join an all-rows sweep, but not an explicit one', () => {
+    const grown = tableCatalogueOf([{ ...frames, rows: [...frames.rows, ['S4', 100, 8]] }]);
+    const all = documentOf([tableNode('frames', refTo('frames', catalogue), [], ['h'], { allRows: true })], []);
+    expect(numeric(valueAt(evaluateDocument(all, [grown]), 'frames', 'h')).data).toEqual([71, 80, 90, 100]);
+    const picked = documentOf([tableNode('frames', refTo('frames', catalogue), ['S1', 'S2', 'S3'], ['h'])], []);
+    expect(numeric(valueAt(evaluateDocument(picked, [grown]), 'frames', 'h')).data).toEqual([71, 80, 90]);
+  });
+
+  it('keeps an all-rows selection an axis over a one-row table', () => {
+    const single = tableCatalogueOf([{ ...frames, rows: [['S1', 71, 1]] }]);
+    const document = documentOf([tableNode('frames', refTo('frames', single), [], ['h'], { allRows: true })], []);
+    const h = numeric(valueAt(evaluateDocument(document, [single]), 'frames', 'h'));
+    expect(h.data).toEqual([71]);
+    expect(h.axes.map((axis) => axis.id)).toEqual(['frames']);
+  });
+
+  it('opens a reference saved while the table was a lookup formula, and warns once', () => {
+    const before = catalogueOf([
+      {
+        id: 'frames', version: 1,
+        output: [{ kind: 'numeric', name: 'h', unit: 'mm' }, { kind: 'numeric', name: 'F', unit: 'kN' }],
+        inputs: [{ kind: 'categorical', name: 'frame', domain: ['S1', 'S2', 'S3'], default: 'S1' }],
+        lookup: {
+          axes: [{ input: 'frame', kind: 'categorical', values: ['S1', 'S2', 'S3'] }],
+          values: { h: [71, 80, 90], F: [1, 2, 4] },
+        },
+        description: 'Invented frame table.', status: 'unverified',
+      },
+    ], 'tables-test');
+    const document = documentOf([tableNode('frames', refTo('frames', before), ['S2'], ['h'])], []);
+    const evaluation = evaluateDocument(document, [catalogue]);
+    expect(numeric(valueAt(evaluation, 'frames', 'h')).data).toEqual([80]);
+    expect(evaluation.warnings.filter((warning) => warning.kind === 'formulaChanged')).toEqual([
+      expect.objectContaining({ nodeId: 'frames' }),
+    ]);
+  });
+
+  it("resolves a table-column range against a declared table's key", () => {
+    const document = documentOf([input('every', { kind: 'tableColumn', table: 'bores', column: 'bore' })], []);
+    expect(numeric(valueAt(evaluateDocument(document, [catalogue]), 'every', 'value')).data).toEqual([10, 20, 30]);
+  });
+
+  it('is read by a computed value through Interpolate, with all rows selected', () => {
+    const document = documentOf(
+      [
+        tableNode('t', refTo('bores', catalogue), [], ['load'], { allRows: true }),
+        input('d', scalar(25, 'mm')),
+        interpolateNode('k', 'nextUp'),
+      ],
+      [wire('t.bore', 'k.xs'), wire('t.load', 'k.ys'), wire('d.value', 'k.x')],
+    );
+    // 25 mm is over 20 and up to 30: the 30 mm row, 9 kN.
+    expect(numeric(valueAt(evaluateDocument(document, [catalogue]), 'k', 'y')).data).toEqual([9000]);
+  });
+
+  it('reduces an all-rows axis with firstPassing', () => {
+    const document = documentOf(
+      [
+        tableNode('bores', refTo('bores', catalogue), [], ['load'], { allRows: true }),
+        compareNode('ok', '>=', { value: 2.5, unit: 'kN' }),
+        selectNode('first', 'firstPassing'),
+      ],
+      [wire('bores.load', 'ok.value'), wire('ok.verdict', 'first.value'), wire('bores.bore', 'first.along')],
+    );
+    expect(numeric(valueAt(evaluateDocument(document, [catalogue]), 'first', 'at')).data).toEqual([20]);
   });
 });
 

@@ -15,6 +15,7 @@
 import {
   CATALOGUE_SCHEMA_VERSION,
   DOCUMENT_SCHEMA_VERSION,
+  findFormula,
   formulaRef,
   parseCatalogue,
   parseDocument,
@@ -32,6 +33,22 @@ export function catalogueOf(formulas: readonly JsonObject[], id = 'test'): Catal
     name: 'Invented formulas',
     restricted: false,
     formulas: [...formulas],
+  });
+}
+
+/** A catalogue declaring `tables`, and the formulas beside them if any. */
+export function tableCatalogueOf(
+  tables: readonly JsonObject[],
+  id = 'tables-test',
+  formulas: readonly JsonObject[] = [],
+): Catalogue {
+  return parseCatalogue({
+    schemaVersion: CATALOGUE_SCHEMA_VERSION,
+    id,
+    name: 'Invented tables',
+    restricted: false,
+    formulas: [...formulas],
+    tables: [...tables],
   });
 }
 
@@ -373,7 +390,8 @@ export const CATALOGUE: Catalogue = catalogueOf(FORMULAS);
 
 /** The reference a graph node holds: id, version and hash, never the record. */
 export function refTo(id: string, catalogue: Catalogue = CATALOGUE): FormulaRef {
-  const formula = catalogue.formulas.find((entry) => entry.id === id);
+  // Tables included, as the formula forms a document's reference resolves to.
+  const formula = findFormula(catalogue, id);
   if (formula === undefined) throw new Error(`no fixture formula '${id}'`);
   return formulaRef(formula);
 }

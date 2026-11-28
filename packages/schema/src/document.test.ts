@@ -384,6 +384,43 @@ describe('round-tripping', () => {
     expect(axes(parseDocument(tableWith(['S1', 'S2']))).map((node) => node.id)).toEqual(['frames']);
   });
 
+  describe('a table node selecting all rows', () => {
+    const allOf = (extra: Record<string, unknown> = {}): Record<string, unknown> => ({
+      ...study,
+      nodes: [
+        {
+          kind: 'table',
+          id: 'frames',
+          position: { x: 0, y: 0 },
+          table: { id: 'invented.frames', version: 1, hash: 'abc123' },
+          rows: [],
+          columns: ['h'],
+          allRows: true,
+          ...extra,
+        },
+      ],
+      edges: [],
+    });
+
+    it('round-trips', () => {
+      expect(serializeDocument(parseDocument(allOf()))).toEqual(allOf());
+    });
+
+    it('is an axis whatever its explicit rows say', () => {
+      expect(axes(parseDocument(allOf())).map((node) => node.id)).toEqual(['frames']);
+    });
+
+    it('saves an empty row list beside it, for a build that cannot read the field', () => {
+      const saved = serializeDocument(parseDocument(allOf({ rows: ['S1'] })));
+      expect(saved.nodes[0]).toMatchObject({ rows: [], allRows: true });
+    });
+
+    it('reads a node saved without the field as its explicit rows, as it always did', () => {
+      const { allRows: _absent, ...node } = (allOf().nodes as Record<string, unknown>[])[0] as Record<string, unknown>;
+      expect(parseDocument({ ...allOf(), nodes: [node] }).nodes[0]).not.toHaveProperty('allRows');
+    });
+  });
+
   it('rejects a logarithmic range node whose literal endpoints are not both above zero', () => {
     const withRange = {
       ...study,

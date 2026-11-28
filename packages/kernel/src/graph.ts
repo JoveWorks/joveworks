@@ -86,6 +86,7 @@ import {
   hasUnit,
   isRange,
   matchRef,
+  referable,
   axisLength,
   type AxisNode,
   type Catalogue,
@@ -95,6 +96,7 @@ import {
   type StatisticNode,
   type Edge,
   type Formula,
+  type FormulaLookup,
   type FormulaRef,
   type GraphDocument,
   type GraphNode,
@@ -237,7 +239,9 @@ export interface ResolvedTable {
 function indexFormulas(catalogues: readonly Catalogue[]): ReadonlyMap<string, readonly Formula[]> {
   const index = new Map<string, Formula[]>();
   for (const catalogue of catalogues) {
-    for (const formula of catalogue.formulas) {
+    // Tables included, as their formula forms and ahead of the formulas: a
+    // reference saved while a table was still a lookup formula finds it.
+    for (const formula of referable(catalogue)) {
       const existing = index.get(formula.id);
       if (existing === undefined) index.set(formula.id, [formula]);
       else existing.push(formula);
@@ -308,6 +312,13 @@ function resolveTable(
     throw new KernelError(`'${formula.id}' has no input '${axis.input}' for its own axis`, node.id);
   }
 
+  // Every row the table has *now*, so a row the catalogue adds joins the
+  // sweep — the one thing "all of them" means that a list of keys cannot.
+  if (node.allRows === true) {
+    const columns = projectedColumns(node, formula, lookup);
+    return { formula, axis, key, rows: axis.values.map((_value, row) => row), columns };
+  }
+
   const rows: number[] = [];
   for (const coordinate of node.rows) {
     const row = axis.values.indexOf(coordinate);
@@ -327,14 +338,17 @@ function resolveTable(
     throw new KernelError(`none of this selection's rows are in '${formula.id}' any more`, node.id);
   }
 
-  const columns = node.columns.map((name) => {
+  return { formula, axis, key, rows, columns: projectedColumns(node, formula, lookup) };
+}
+
+function projectedColumns(node: TableNode, formula: Formula, lookup: FormulaLookup): readonly OutputPort[] {
+  return node.columns.map((name) => {
     const port = formula.outputs.find((candidate) => candidate.name === name);
     if (port === undefined || lookup.columns[name] === undefined) {
       throw new KernelError(`'${formula.id}' has no column '${name}'`, node.id);
     }
     return port;
   });
-  return { formula, axis, key, rows, columns };
 }
 
 // --- port inventories -------------------------------------------------------

@@ -1323,8 +1323,11 @@ function tableValues(
   const table = resolution.tables.get(node.id);
   if (table === undefined) throw new KernelError('this table could not be resolved', node.id);
   if (table.rows.length === 0) return [];
-  const axis = table.rows.length > 1 ? axes.get(node.id) : undefined;
-  if (table.rows.length > 1 && axis === undefined) {
+  // "All rows" is an axis even over a one-row table (`axes` in document.ts
+  // cannot know how long the table is), so it follows the node, not the count.
+  const swept = node.allRows === true || table.rows.length > 1;
+  const axis = swept ? axes.get(node.id) : undefined;
+  if (swept && axis === undefined) {
     throw new KernelError('several rows introduce an axis, and this node has none', node.id);
   }
   const over = axis === undefined ? [] : [axis];

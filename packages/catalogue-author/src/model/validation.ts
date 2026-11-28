@@ -141,6 +141,7 @@ function catalogueMetaJson(draft: DraftCatalogue): JsonObject {
     name: localizedTextJson(draft.name),
     restricted: draft.restricted,
     ...(draft.sourceJson === undefined ? {} : { source: draft.sourceJson }),
+    ...(draft.tablesJson === undefined ? {} : { tables: draft.tablesJson }),
     formulas: [],
   };
 }
@@ -197,6 +198,12 @@ export function validateCatalogue(draft: DraftCatalogue): CatalogueValidation {
     if (seenBefore) {
       catalogueErrors.push({
         message: `formulas[${index}].id: '${formula.id}' appears twice in this catalogue`,
+      });
+    }
+    // Tables and formulas share one namespace (`parseCatalogue`).
+    if (meta?.tables?.some((table) => table.id === formula.id) === true) {
+      catalogueErrors.push({
+        message: `formulas[${index}].id: '${formula.id}' is also the id of one of this catalogue's tables`,
       });
     }
   }

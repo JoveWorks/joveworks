@@ -51,7 +51,7 @@ describe('each artefact refuses a foreign version and names itself', () => {
 
   it('parseCatalogue names "catalogue" in its refusal', () => {
     expect(() => parseCatalogue({ ...catalogueJson, schemaVersion: CATALOGUE_SCHEMA_VERSION + 1 })).toThrow(
-      /schemaVersion: is 2, but this build reads catalogue schemaVersion 1 only/,
+      /schemaVersion: is 3, but this build reads catalogue schemaVersion 1 to 2 only/,
     );
   });
 });
@@ -84,7 +84,7 @@ describe('bumping one artefact does not disturb another artefact already on disk
     // catalogue format" the same way.
     expect(() =>
       readSchemaVersion({ schemaVersion: CATALOGUE_SCHEMA_VERSION }, '', CATALOGUE_SCHEMA_VERSION + 1, 'catalogue'),
-    ).toThrow(/catalogue schemaVersion 2 only/);
+    ).toThrow(new RegExp(`catalogue schemaVersion ${CATALOGUE_SCHEMA_VERSION + 1} only`));
 
     // A student's saved NodeBook, untouched by that catalogue bump, must
     // still open.

@@ -43,7 +43,8 @@ import {
   type OutputPort,
   type Port,
 } from './port.js';
-import { CATALOGUE_SCHEMA_VERSION, readSchemaVersion } from './version.js';
+import { CATALOGUE_SCHEMA_VERSION, OLDEST_CATALOGUE_SCHEMA_VERSION, readSchemaVersion } from './version.js';
+import { parseCatalogueTable, serializeCatalogueTable, tableFormula, type CatalogueTable } from './table.js';
 import {
   dimensionsEqual,
   divideDimensions,
@@ -1038,6 +1039,15 @@ export function serializeFormula(formula: Formula): JsonObject {
  */
 const HASH_CACHE = new WeakMap<Formula, string>();
 
+/**
+ * Pin the hash a formula reports, for a formula that is the *form* of
+ * something else: a catalogue table read as a one-axis lookup hashes as its
+ * table (`tableHash` in `table.ts`), not as the record it was synthesised into.
+ */
+export function rememberHash(formula: Formula, hash: string): void {
+  HASH_CACHE.set(formula, hash);
+}
+
 /** The content hash, taken over the serialized record. */
 export function formulaHash(formula: Formula): string {
   const cached = HASH_CACHE.get(formula);
@@ -1127,6 +1137,12 @@ export interface Catalogue {
   /** The book the citations point into, when it can be opened online. */
   readonly source?: CatalogueSource;
   readonly formulas: readonly Formula[];
+  /**
+   * Tables of records — standard sizes, one part per row — each offered in
+   * the palette as a table node. Absent on a catalogue that declares none,
+   * and on every catalogue of schemaVersion 1, which predates them.
+   */
+  readonly tables?: readonly CatalogueTable[];
 }
 
 /**
@@ -1205,17 +1221,31 @@ export function isRelativeLink(link: string): boolean {
 
 export function parseCatalogue(value: JsonValue, path = ''): Catalogue {
   const object = readObject(value, path);
-  const schemaVersion = readSchemaVersion(object, path, CATALOGUE_SCHEMA_VERSION, 'catalogue');
+  const schemaVersion = readSchemaVersion(object, path, CATALOGUE_SCHEMA_VERSION, 'catalogue', OLDEST_CATALOGUE_SCHEMA_VERSION);
   const formulas = readArray(required(object, 'formulas', path), join(path, 'formulas')).map(
     (entry, i) => parseFormula(entry, `${join(path, 'formulas')}[${i}]`),
   );
+  // Version 1 predates tables. Refusing them there, rather than reading
+  // them anyway, keeps the line a later catalogue migration walks clean:
+  // a version-1 file is one whose tables, if any, are still lookup formulas.
+  if (schemaVersion < 2 && object.tables !== undefined) {
+    fail(join(path, 'tables'), 'needs catalogue schemaVersion 2 — version 1 predates tables');
+  }
+  const tables = (optional(object, 'tables', path, readArray) ?? []).map((entry, i) =>
+    parseCatalogueTable(entry, `${join(path, 'tables')}[${i}]`),
+  );
 
+  // One namespace for both: a document's reference names an id and nothing
+  // else, so a table and a formula of one id would be one reference to two
+  // things.
   const seen = new Set<string>();
-  for (const [i, formula] of formulas.entries()) {
-    if (seen.has(formula.id)) {
-      fail(`${join(path, 'formulas')}[${i}].id`, `'${formula.id}' appears twice in this catalogue`);
+  for (const [field, records] of [['formulas', formulas], ['tables', tables]] as const) {
+    for (const [i, record] of records.entries()) {
+      if (seen.has(record.id)) {
+        fail(`${join(path, field)}[${i}].id`, `'${record.id}' appears twice in this catalogue`);
+      }
+      seen.add(record.id);
     }
-    seen.add(formula.id);
   }
 
   return {
@@ -1225,6 +1255,7 @@ export function parseCatalogue(value: JsonValue, path = ''): Catalogue {
     restricted: readBoolean(required(object, 'restricted', path), join(path, 'restricted')),
     ...put('source', optional(object, 'source', path, parseCatalogueSource)),
     formulas,
+    ...(tables.length === 0 ? {} : { tables }),
   };
 }
 
@@ -1236,10 +1267,29 @@ export function serializeCatalogue(catalogue: Catalogue): JsonObject {
     restricted: catalogue.restricted,
     ...(catalogue.source === undefined ? {} : { source: serializeCatalogueSource(catalogue.source) }),
     formulas: catalogue.formulas.map(serializeFormula),
+    ...(catalogueTables(catalogue).length === 0
+      ? {}
+      : { tables: catalogueTables(catalogue).map(serializeCatalogueTable) }),
   };
+}
+
+/**
+ * Every record a document can reference in this catalogue, as formulas: its
+ * tables' formula forms first, then its formulas. Tables first, so a
+ * reference saved while a table was still a lookup formula — and moved since
+ * — finds the table.
+ */
+export function referable(catalogue: Catalogue): readonly Formula[] {
+  const tables = catalogueTables(catalogue);
+  return tables.length === 0 ? catalogue.formulas : [...tables.map(tableFormula), ...catalogue.formulas];
+}
+
+/** A catalogue's tables, none when it declares none. */
+export function catalogueTables(catalogue: Catalogue): readonly CatalogueTable[] {
+  return catalogue.tables ?? [];
 }
 
 /** Look a reference up the way the editor does: by id, then check it matches. */
 export function findFormula(catalogue: Catalogue, id: string): Formula | undefined {
-  return catalogue.formulas.find((formula) => formula.id === id);
+  return referable(catalogue).find((formula) => formula.id === id);
 }
