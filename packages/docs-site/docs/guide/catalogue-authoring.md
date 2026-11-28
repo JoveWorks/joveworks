@@ -55,10 +55,13 @@ offending formula. **Export** stays disabled until the whole catalogue is
 clean — there is no way to save out something that fails its own dimension
 check. Export writes a `<catalogue-id>.yaml` file to your downloads.
 
-One current limit: the app edits one output per formula. A formula that
+Two current limits. The app edits one output per formula: a formula that
 needs to answer with several values at once (or read from a lookup table)
 still round-trips through **Import**/**Export** untouched, but editing it
-means writing YAML by hand — see below.
+means writing YAML by hand. And the app has no editor for
+[tables](#tables) at all: it keeps a catalogue's tables untouched when it
+exports, so you write tables by hand and keep using the app for the
+formulas — see below.
 
 ## Load it into JoveWorks
 
@@ -121,54 +124,83 @@ of the two limits above it rather than restating their algebra.
 
 ### Tables
 
-A table of records — standard sizes, one part per row — goes in `tables`,
-beside `formulas`. Each table becomes its own entry in the palette, under
-your catalogue and below its formulas, and drops a
-[catalogue table](./node-reference#catalogue-table) node.
+A table of standard sizes — motor frames, belt profiles, bearing bores — goes
+in `tables`, beside `formulas`. Each table becomes its own entry in the
+palette, under your catalogue and below its formulas, and drops a
+[catalogue table](./node-reference#catalogue-table) node: the student sees
+the whole table and clicks the rows and columns they want.
 
 ```yaml
+schemaVersion: 2
+id: my-catalogue
+name:
+  en: Human-readable name
+restricted: false
+formulas: []
 tables:
-  - id: my.topic.widgets
+  - id: my.motors.frames
     version: 1
     label:
-      en: Widget sizes
+      en: Motor frame sizes
     description:
-      en: Standard widget sizes.
-    citation: Table 3-2
+      en: Standard motor frame sizes.
+    citation: Table 2-4
     key:
-      name: size
+      name: frame
     columns:
-      - name: w
+      - name: h
         unit: mm
       - name: P
         unit: W
         preferredUnit: kW
-      - name: grade
+      - name: profile
+      - name: z
+        unit: ""
     rows:
-      - [S, 10, 250, soft]
-      - [M, 12, 500, soft]
-      - [L, 16, ~, hard]
+      - ["71", 71, 370, ~, ~]
+      - ["80", 80, 750, SPZ, 1]
+      - ["90S", 90, 1100, SPZ, 2]
 ```
 
-- **One key column**, named in `key`, which names each row. Every row needs
-  one and no two rows share one. A numeric key (one with a `unit`) has to
-  rise from row to row.
-- A column **without a `unit` holds names** — a profile, a designation —
-  rather than numbers.
-- Each row lists the key first, then one cell per column, in order. Leave a
-  cell empty (`~` in YAML, `null` in JSON) where the table has no value.
-- Ids are shared with formulas: a table and a formula in one catalogue
-  cannot have the same id.
-- A table over **two** keys — a profile *and* a diameter band — cannot be
-  written here. Keep it as a lookup formula.
+**The fields.** `id`, `version`, `description`, `key`, `columns` and `rows`
+are required. `label` is the palette entry's name (without one it shows the
+`citation`, or else the id), `citation` is searchable in the palette, and
+`href` links the table into your catalogue's book exactly as it does for a
+formula. `key` and each column are `{ name, unit?, description? }`, and a
+column may add a `preferredUnit` to be shown in first.
 
-Tables need `schemaVersion: 2`. A version-1 catalogue still loads exactly
-as before; it just has no tables. Changing a table's label, description or
-citation does not flag saved NodeBooks as changed; changing its rows, keys
-or units does, so bump its `version` when you do.
+**The rows.** Each row lists the key first, then one cell per column, in the
+order `columns` declares them.
+
+- A column **with a `unit`** holds numbers in that unit; `unit: ""` is a
+  plain number, such as a count.
+- A column **without a `unit`** holds names — a profile, a designation.
+- **`~` is an empty cell** (`null` in JSON). Use it where the book prints a
+  dash: a dash typed as text is refused in a column of numbers, and becomes a
+  real name in a column of names.
+
+**The key** names each row. Every row has one and no two share one; a key
+with a `unit` is a number and must rise from row to row. **Quote keys that
+look like numbers** — YAML reads a bare `71` as a number, which a key of
+names refuses; `"71"` and `90S` are names. The rows stay in the order you
+write them, and that is the order a student's sweep runs in, so write them
+the way the book does.
+
+**Table or lookup formula?** A table is for rows *the student picks*. When a
+computed value should choose the row — a diameter fetching its key width —
+the student can pick all rows and read them through an
+[Interpolate](./node-reference#interpolate) node, so a table still works.
+Use a lookup formula only for a table keyed by **two** things, such as a
+profile and a diameter band; a table cannot hold that.
+
+**Versions.** Tables need `schemaVersion: 2`; a version-1 catalogue still
+loads, it just cannot hold tables. A saved NodeBook pins a table by its id,
+`version` and content: changing the label, description or citation leaves
+it alone, while changing a row, the key or a column's name or unit flags it
+as changed — so bump the table's `version` when you do.
 
 The complete field-by-field guide, including a full worked example with
-several formulas, lives in
+several formulas and a table record, lives in
 [`docs/authoring-catalogues.md`](https://github.com/JoveWorks/joveworks/blob/main/docs/authoring-catalogues.md).
 
 ## Validate before distributing

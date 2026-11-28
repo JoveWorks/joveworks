@@ -22,7 +22,7 @@ This guide is for catalogues with no such source.
 ## File shape
 
 ```yaml
-schemaVersion: 1
+schemaVersion: 2
 id: my-catalogue
 name:
   en: Human-readable name
@@ -30,6 +30,11 @@ name:
 restricted: false
 formulas: []
 ```
+
+Write `schemaVersion: 2` for a new catalogue. A catalogue written as
+version 1 still loads, upgraded on the way in (`CATALOGUE_MIGRATIONS` in
+`packages/schema/src/migration.ts`); the only difference is that version 1
+cannot hold [tables](#a-table-record).
 
 `packages/editor/src/catalogues/examples/running.yaml` is a complete bundled example
 covering pace, race-time projection, grade, and climbing rate. The next
@@ -89,7 +94,7 @@ change its meaning — expressions containing `#` or `:`, for example.
 > validation, the same file just written with braces and quoted keys instead
 > of indentation:
 > ```json
-> { "schemaVersion": 1, "id": "my-catalogue", "name": { "en": "Human-readable name" }, "restricted": false, "formulas": [] }
+> { "schemaVersion": 2, "id": "my-catalogue", "name": { "en": "Human-readable name" }, "restricted": false, "formulas": [] }
 > ```
 > JSON remains the canonical export and browser-cache format; YAML is an input
 > syntax over the same data model, not a second one. Every example from here
@@ -103,7 +108,7 @@ engineering. Field meanings are explained in the sections below; skim this
 once for shape, then come back to it after reading them.
 
 ```yaml
-schemaVersion: 1
+schemaVersion: 2
 id: workshop-fasteners
 name:
   en: Workshop fasteners (example)
@@ -428,6 +433,112 @@ A port's `name` is the symbol used in `expression` — keep it the way you'd
 write it in the formula (`sigma`, `F`, `A`), not a display label; a longer
 label belongs in `description`.
 
+## A table record
+
+A table of standard sizes — motor frames, belt profiles, bearing bores — is
+not a formula. It goes in its own list, `tables`, beside `formulas`
+(`packages/schema/src/table.ts`). Each table becomes its own palette entry,
+under the catalogue and below its formulas, and drops a **catalogue table**
+node: the student sees the whole table and clicks the rows and columns they
+want.
+
+```yaml
+schemaVersion: 2
+id: workshop-motors
+name:
+  en: Workshop motors (example)
+restricted: false
+formulas: []
+tables:
+  - id: workshop.motors.frames
+    version: 1
+    label:
+      en: Motor frame sizes
+    description:
+      en: Invented frame sizes, for the shape of a table record only.
+    citation: Table 2-4
+    href: "#tab-2.4"
+    key:
+      name: frame
+      description:
+        en: Frame size, as stamped on the motor.
+    columns:
+      - name: h
+        unit: mm
+        description:
+          en: Shaft height.
+      - name: P
+        unit: W
+        preferredUnit: kW
+      - name: profile
+      - name: z
+        unit: ""
+    rows:
+      - ["71", 71, 370, ~, ~]
+      - ["80", 80, 750, SPZ, 1]
+      - ["90S", 90, 1100, SPZ, 2]
+      - ["90L", 90, 1500, SPA, 2]
+```
+
+### Fields
+
+| Field | | Meaning |
+|---|---|---|
+| `id` | required | A namespaced id, like a formula's. Shared with formulas: no table and formula in one catalogue may have the same id. |
+| `version` | required | An integer from 1. Bump it whenever the rows, the key or a column's name or unit changes — that is what a saved NodeBook pins. |
+| `description` | required | What the table is. Shown when hovering its palette entry. |
+| `label` | optional | The palette entry's name. Without one, the palette shows `citation`, or else the id. |
+| `citation` | optional | Where the table comes from, `Table 2-4`. Searchable in the palette. |
+| `href` | optional | A link into the catalogue's book, exactly as for a formula (see [Linking to the book](#linking-to-the-book)). |
+| `key` | required | The column that names each row: `{ name, unit?, description? }`. |
+| `columns` | required | The other columns, at least one: `{ name, unit?, preferredUnit?, description? }`. |
+| `rows` | required | At least one row. Each row is a list: the key first, then one cell per column, in the order `columns` declares them. |
+
+A column's `name` is the port's symbol, as a formula's port name is: keep it
+the way the book writes it (`h`, `F_0`, `d_dk`). Names are unique within one
+table, key included.
+
+### What a cell may hold
+
+- **A column with a `unit` holds numbers**, written in that unit. `unit: ""`
+  is a plain number with no dimension — a count, a ratio. `preferredUnit`
+  only changes which unit the column is shown in first; the cells stay in
+  `unit`.
+- **A column without a `unit` holds names** — a profile, a designation — and
+  each cell is a string. Such a column needs at least one name in it.
+- **`~` (YAML) or `null` (JSON) is an empty cell** — the table has no value
+  for that row. Use it wherever the book prints a dash: a dash written as
+  text, `−`, is refused in a numeric column and is read as a real name in a
+  column of names.
+
+### The key
+
+- Every row has a key, and no two rows share one.
+- A key **with** a `unit` is a number, and has to rise from row to row.
+- A key **without** a unit names the row. **Quote names that look like
+  numbers:** YAML reads a bare `71` as the number 71, and a key of names
+  refuses a number. `"71"`, `"80"` and `90S` are all names.
+
+The rows are kept in the order you write them, and that order is what a
+student's sweep runs in — "the next size up" means the next row down. Write
+them the way the book does.
+
+### Table or lookup formula?
+
+A table is for rows **the student picks**: the node has no inputs, and the
+selection is made by clicking. A lookup formula (`lookup`, below) is for a
+row **a computed value picks** — a diameter computed upstream fetching its
+key width — and for anything keyed by more than one thing, such as a profile
+*and* a diameter band. A table with one key cannot express the second.
+
+A student can still drive a table by a computed value: pick all its rows and
+read them through an Interpolate node. So a table of standard sizes that is
+sometimes picked and sometimes looked up belongs in `tables`.
+
+The catalogue-author app does not edit tables yet. It keeps a catalogue's
+tables untouched when it saves, so write them here, by hand, and edit the
+formulas in the app as usual.
+
 ## Units are canonical internally: mm, N, s, rad, K
 
 Write every port's display unit however is natural for a reader (`kN`,
@@ -483,5 +594,7 @@ a similar constraint) are a repository-boundary problem, not a schema
 problem — see `CLAUDE.md`'s "Distribution restriction" section. This guide is
 about the mechanics of writing a valid catalogue; whether you may write and
 share a *particular* formula's content is a separate question this file does
-not answer. Table-backed (`lookup`) formulas, needed for a categorical input
-or a data-table output, are also out of scope here.
+not answer. Table-backed (`lookup`) formulas — a table a computed value reads
+from, or one keyed by more than one thing — are also out of scope here; a
+table of records a student picks from is covered in
+[A table record](#a-table-record).
