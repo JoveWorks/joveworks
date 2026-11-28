@@ -177,11 +177,12 @@ base library. The node kind names stay in the document format, and a
 NodeBook whose domain is missing says which domain it needs.
 
 Steps, each leaving the build green and shaft behaviour unchanged:
-1. Move the bundled catalogues and books from `packages/editor/src/catalogues/`
-   to `domains/`.
-2. Schema registry: parsing and saving for domain node kinds, port kinds,
-   output kinds and formula evaluator fields; the scattered
-   `kind === 'load' || kind === 'shaft'` checks become one predicate.
+1. ~~Move the bundled catalogues and books from `packages/editor/src/catalogues/`
+   to `domains/`.~~ Done.
+2. ~~Schema registry~~ Done: `schema/src/domain.ts`. Domain kinds join the
+   core unions by declaration merging and register their parsers; the
+   schema's shaft code is all in `schema/src/shafts.ts`, still registered
+   from the schema's index (and `test/setup-domains.ts`) until step 4.
 3. Kernel registry: port typing, evaluation, the sweep axis a node adds
    (`ShaftNode` is an `AxisNode`), sensitivity and warnings.
 4. Move the shaft code into `domains/examples/`; the core no longer names it.

@@ -64,6 +64,7 @@ import {
   type LocalizedText,
 } from './localization.js';
 import type { Unit } from '@joveworks/units';
+import { domainPortDefinition, domainPortKinds, isDomainPort, type DomainPort, type DomainPortTypes } from './domain.js';
 
 /**
  * What a numeric port declares: a concrete display unit, or a generic
@@ -72,12 +73,12 @@ import type { Unit } from '@joveworks/units';
 export type PortUnit = Unit | GenericDimension;
 
 export function isGenericPort(port: Port): boolean {
-  if (port.kind === 'categorical' || port.kind === 'bundle' || port.kind === 'load' || port.kind === 'shaft') return false;
-  return isGenericDimension(port.unit);
+  return port.kind === 'numeric' && isGenericDimension(port.unit);
 }
 
-export const PORT_KINDS = ['numeric', 'categorical', 'bundle', 'load', 'shaft'] as const;
-export type PortKind = (typeof PORT_KINDS)[number];
+/** The core's port kinds. A domain adds its own (`domainPortKinds`). */
+export const PORT_KINDS = ['numeric', 'categorical', 'bundle'] as const;
+export type PortKind = (typeof PORT_KINDS)[number] | keyof DomainPortTypes;
 
 /**
  * A port's valid range, in the port's own display unit.
@@ -94,7 +95,8 @@ export interface ValidRange {
 export const MONOTONICITY = ['increasing', 'decreasing'] as const;
 export type Monotonicity = (typeof MONOTONICITY)[number];
 
-interface PortBase {
+/** The fields every port has, whatever its kind — a domain's port kinds extend it too. */
+export interface PortBase {
   /** The symbol as R&M writes it — `F_t`, `d_dg`. Unique within a formula. */
   readonly name: string;
   readonly description?: LocalizedText;
@@ -192,29 +194,10 @@ export interface BundlePort extends PortBase {
 }
 
 /**
- * One or more loads on a shaft — what a Load or Distributed load node
- * produces (`LoadNode`, `DistributedLoadNode` in `document.ts`). A load is a
- * structured value, not a number: a position and what acts there, kept
- * together on one wire so nothing downstream has to pair a position with a
- * force by wire order. `variadic` takes one wire per load, point and
- * distributed alike. Input-only — only those two node kinds produce one.
+ * Every port: the core's three kinds, and any a domain adds (`domain.ts`) —
+ * a structured value such as a load, never a number, so with no unit.
  */
-export interface LoadPort extends PortBase {
-  readonly kind: 'load';
-  readonly variadic?: boolean;
-}
-
-/**
- * A whole shaft — its extent along z, Young's modulus and the second moment
- * of area of each section — as a Shaft node produces it (`ShaftNode` in
- * `document.ts`). Input-only, and never variadic: a diagram is drawn on one
- * shaft.
- */
-export interface ShaftPort extends PortBase {
-  readonly kind: 'shaft';
-}
-
-export type Port = NumericPort | CategoricalPort | BundlePort | LoadPort | ShaftPort;
+export type Port = NumericPort | CategoricalPort | BundlePort | DomainPort;
 
 /** What a formula may produce. A `NumericPort` here is never `variadic` — a formula produces one value, not several. */
 export type OutputPort = NumericPort | CategoricalPort;
@@ -224,8 +207,8 @@ export type OutputPort = NumericPort | CategoricalPort;
  * generic port — which has no dimension until the wiring binds one.
  */
 export function portDimension(port: Port): Dimension | undefined {
-  if (port.kind === 'bundle' || port.kind === 'load' || port.kind === 'shaft') return undefined;
   if (port.kind === 'categorical') return DIMENSIONLESS;
+  if (port.kind !== 'numeric') return undefined;
   return isGenericDimension(port.unit) ? undefined : port.unit.dimension;
 }
 
@@ -273,7 +256,12 @@ export function parsePort(value: JsonValue, path: string): Port {
   const object = readObject(value, path);
   const name = readName(required(object, 'name', path), join(path, 'name'));
   const description = optional(object, 'description', path, parseLocalizedText);
-  const kind = readEnum(required(object, 'kind', path), join(path, 'kind'), PORT_KINDS);
+  const read = readEnum(required(object, 'kind', path), join(path, 'kind'), [...PORT_KINDS, ...domainPortKinds()]);
+  const domainKind = domainPortDefinition(read);
+  if (domainKind !== undefined) {
+    return { kind: read, name, ...put('description', description), ...domainKind.parse(object, path) } as Port;
+  }
+  const kind = read as (typeof PORT_KINDS)[number];
 
   if (kind === 'categorical') {
     const domain = readStringArray(required(object, 'domain', path), join(path, 'domain'));
@@ -303,13 +291,6 @@ export function parsePort(value: JsonValue, path: string): Port {
     );
     return { kind, name, channels, ...put('description', description) };
   }
-
-  if (kind === 'load') {
-    const variadic = optional(object, 'variadic', path, readBoolean);
-    return { kind, name, ...put('description', description), ...put('variadic', variadic) };
-  }
-
-  if (kind === 'shaft') return { kind, name, ...put('description', description) };
 
   const unit = parsePortUnitField(required(object, 'unit', path), join(path, 'unit'));
   const preferredUnit = optional(object, 'preferredUnit', path, parsePreferredUnit);
@@ -354,6 +335,7 @@ export function serializePort(port: Port): JsonObject {
     name: port.name,
     ...(port.description === undefined ? {} : { description: serializeLocalizedText(port.description) }),
   };
+  if (isDomainPort(port)) return { ...base, ...(domainPortDefinition(port.kind)?.serialize(port as never) ?? {}) };
   if (port.kind === 'categorical') {
     return {
       ...base,
@@ -365,10 +347,6 @@ export function serializePort(port: Port): JsonObject {
   if (port.kind === 'bundle') {
     return { ...base, channels: port.channels.map((channel) => channel.symbol) };
   }
-  if (port.kind === 'load') {
-    return { ...base, ...put('variadic', port.variadic) };
-  }
-  if (port.kind === 'shaft') return base;
   return {
     ...base,
     unit: port.unit.symbol,
@@ -394,7 +372,7 @@ export function serializePort(port: Port): JsonObject {
  * used to make them: `$A*$B` is exactly what `multiply` produces.
  */
 export function asInputPort(port: Port, path: string): Port {
-  if (port.kind !== 'categorical' && port.kind !== 'bundle' && port.kind !== 'load' && port.kind !== 'shaft' && isGenericDimension(port.unit)) {
+  if (port.kind === 'numeric' && isGenericDimension(port.unit)) {
     if (bareVariable(port.unit) === undefined) {
       fail(
         join(path, 'unit'),
@@ -415,12 +393,7 @@ export function asOutputPort(port: Port, path: string): OutputPort {
   if (port.kind === 'bundle') {
     fail(path, "a bundle is 'pack's own output only — a catalogue formula cannot produce one");
   }
-  if (port.kind === 'load') {
-    fail(path, 'a load is produced by a Load node only — a catalogue formula cannot produce one');
-  }
-  if (port.kind === 'shaft') {
-    fail(path, 'a shaft is produced by a Shaft node only — a catalogue formula cannot produce one');
-  }
+  if (isDomainPort(port)) fail(path, domainPortDefinition(port.kind)?.outputRefusal ?? 'a catalogue formula cannot produce this kind of port');
   if (port.kind === 'numeric' && port.variadic === true) {
     fail(path, "'variadic' is an input-only flag — a formula cannot produce several values");
   }

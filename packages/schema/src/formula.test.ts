@@ -135,7 +135,7 @@ describe('several outputs', () => {
   it('still demands an expression when no table answers', () => {
     const { lookup: _lookup, ...withoutTable } = table;
     expect(() => parse(withoutTable)).toThrow(
-      /expression: is required unless a lookup or a shaft diagram answers for every output/,
+      /expression: is required unless a lookup or another evaluator answers for every output/,
     );
   });
 

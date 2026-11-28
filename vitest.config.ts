@@ -20,5 +20,6 @@ export default defineConfig({
     // The sample and catalogue tests exercise the opt-in example catalogues.
     env: { VITE_EXAMPLE_CATALOGUES: 'on' },
     include: ['packages/*/src/**/*.test.{ts,tsx}', 'test/**/*.test.ts'],
+    setupFiles: ['./test/setup-domains.ts'],
   },
 });
