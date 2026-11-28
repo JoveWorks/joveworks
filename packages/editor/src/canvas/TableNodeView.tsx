@@ -9,17 +9,27 @@
  * feature is here, in the grid: you read the table, you click, and the click
  * *is* the selection the document stores.
  *
- * Three gestures, one model underneath:
+ * The node is bound to its table when it is dropped from the palette — each
+ * table a catalogue declares is its own entry — and never switches: a row
+ * of one table means nothing in another.
  *
- * - a **row key** toggles that row — the rows are the sweep;
- * - a **column header** toggles that column's port — the projection, because
- *   a twenty-column table would otherwise be a twenty-port node;
- * - a **cell** does both at once, which is what "select cells" means when the
- *   thing being selected has to stay a whole part.
+ * Two states. **Compact**, the node reads like any other source: the key
+ * port and one port per projected column, under a line saying what is
+ * picked. **Open** — hovered, selected, pinned, or with nothing picked yet —
+ * the whole grid. Clicking in the grid never changes which, so the table
+ * never vanishes from under the pointer.
  *
- * A column with a wire attached cannot be un-projected: its port is the far
- * end of that wire, and removing it silently would break the graph elsewhere
- * to serve a click made here. The header says so rather than going dead.
+ * The click rules (`rowsAfterGesture`, `docs/table-input-node-plan.md` §4):
+ *
+ * - a plain click on a cell or row key selects **only** that row — one
+ *   design is the common case; Ctrl/Cmd-click toggles one row; Shift-click
+ *   adds the range from the last plain or Ctrl click;
+ * - the key column's header, or Ctrl/Cmd+A in the grid, selects every row —
+ *   stored as "all", so rows the catalogue adds later join the sweep;
+ * - a cell click also projects its column. Ctrl/Cmd on a cell of a picked
+ *   row drops that column instead and leaves the row: unpicking a value means
+ *   "not this output". A column with a wire on it is never dropped, from a
+ *   cell or its header, and the header marks it with a lock.
  *
  * The rows are held in the *table's* order, never in click order, so the
  * sweep always runs the way the catalogue is written — which is what an
@@ -29,14 +39,7 @@
 import { useState, type ReactElement } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 
-import {
-  formulaRef,
-  localize,
-  type Catalogue,
-  type Formula,
-  type LookupCell,
-  type TableNode,
-} from '@joveworks/schema';
+import { localize, type Formula, type LookupCell, type TableNode } from '@joveworks/schema';
 import {
   convert,
   dimensionsEqual,
@@ -57,19 +60,6 @@ import { Sparkline } from './Sparkline';
 import type { CanvasFlowNode } from './node-data';
 import { TitleField, TitleText } from './TitleField';
 import { DisplayUnitPicker } from './DisplayUnitPicker';
-import { browsable } from '../model/browsable';
-
-/**
- * Every table a node like this can be bound to: a lookup over exactly one
- * axis. A two-axis table's row is not a part on its own — picking the
- * profile still leaves the diameter band unanswered — and a source node has
- * nothing to answer a second axis with, so those stay ordinary formula nodes.
- */
-export function selectableTables(catalogues: readonly Catalogue[]): readonly Formula[] {
-  return browsable(catalogues).flatMap((catalogue) =>
-    catalogue.formulas.filter((formula) => formula.lookup?.axes.length === 1),
-  );
-}
 
 /**
  * The unit a column is read in: the one picked in its header, else the one
@@ -105,19 +95,125 @@ export function cellText(
   return toSignificantFigures(value, 4, format);
 }
 
+/** A table node's row selection: an explicit list, or every row there is. */
+export interface RowSelection {
+  readonly rows: readonly (number | string)[];
+  readonly all: boolean;
+}
+
 /**
- * The selection after clicking row `key`, always left in the table's own
+ * How a row was clicked. `only` is a plain click, `toggle` Ctrl/Cmd, `range`
+ * Shift — the spreadsheet conventions, so nothing here has to be learned.
+ */
+export type RowGesture = 'only' | 'toggle' | 'range';
+
+/** The gesture a click's modifier keys mean. */
+export function gestureOf(event: { readonly shiftKey: boolean; readonly ctrlKey: boolean; readonly metaKey: boolean }): RowGesture {
+  if (event.shiftKey) return 'range';
+  return event.ctrlKey || event.metaKey ? 'toggle' : 'only';
+}
+
+/**
+ * The row selection after clicking row `key`, always left in the table's own
  * order — an engineer's "the next size up" is the catalogue's order, not the
  * order the rows happened to be clicked in, and the sweep is what that order
  * ends up meaning.
+ *
+ * - `only` selects that row alone. On the one row already selected, it
+ *   changes nothing: that is already what was asked for.
+ * - `toggle` adds or removes that row. From "all", removing one leaves an
+ *   explicit list of the rest.
+ * - `range` adds every row from `anchor` to `key`, both included. With no
+ *   anchor it adds `key` alone.
+ *
+ * Any of them ends an "all" selection as an explicit list: the click was
+ * about particular rows.
  */
-export function rowsAfterClick(
-  current: readonly (number | string)[],
+export function rowsAfterGesture(
+  current: RowSelection,
   keys: readonly (number | string)[],
   key: number | string,
-): readonly (number | string)[] {
-  const next = current.includes(key) ? current.filter((row) => row !== key) : [...current, key];
-  return keys.filter((candidate) => next.includes(candidate));
+  gesture: RowGesture,
+  anchor?: number | string,
+): RowSelection {
+  const held = current.all ? keys : current.rows;
+  let next: readonly (number | string)[];
+  if (gesture === 'only') {
+    next = [key];
+  } else if (gesture === 'toggle') {
+    next = held.includes(key) ? held.filter((row) => row !== key) : [...held, key];
+  } else {
+    const from = anchor === undefined ? -1 : keys.indexOf(anchor);
+    const to = keys.indexOf(key);
+    const span = from < 0 ? [key] : keys.slice(Math.min(from, to), Math.max(from, to) + 1);
+    next = [...held, ...span];
+  }
+  return { rows: keys.filter((candidate) => next.includes(candidate)), all: false };
+}
+
+/** The key column's header, or Ctrl/Cmd+A: every row, or — from every row — none. */
+export function allRowsToggled(current: RowSelection): RowSelection {
+  return current.all ? { rows: [], all: false } : { rows: [], all: true };
+}
+
+/**
+ * The projection with column `name` added, in the table's own column order —
+ * what a cell click does to the columns whenever it picks a value.
+ */
+export function columnsAfterCellClick(
+  current: readonly string[],
+  order: readonly string[],
+  name: string,
+): readonly string[] {
+  return current.includes(name) ? current : order.filter((candidate) => candidate === name || current.includes(candidate));
+}
+
+/** Both selections a cell click can change. */
+export interface CellSelection {
+  readonly selection: RowSelection;
+  readonly columns: readonly string[];
+}
+
+/**
+ * A click on the cell at row `key`, column `name`. A cell is a value the node
+ * answers with, so:
+ *
+ * - **Ctrl/Cmd on a cell of a picked row** toggles the *column* — the output
+ *   that value is on — and leaves the row alone: unpicking a value means "not
+ *   this output", not "not this part". A wired column stays, as from its
+ *   header. To drop a row, Ctrl/Cmd-click its key.
+ * - Every other click picks the row by `rowsAfterGesture` and projects the
+ *   column whenever the row ends up picked.
+ */
+export function afterCellClick(
+  current: CellSelection,
+  keys: readonly (number | string)[],
+  order: readonly string[],
+  wired: ReadonlySet<string>,
+  key: number | string,
+  name: string,
+  gesture: RowGesture,
+  anchor?: number | string,
+): CellSelection {
+  const rowPicked = current.selection.all || current.selection.rows.includes(key);
+  if (gesture === 'toggle' && rowPicked) {
+    return { selection: current.selection, columns: columnsAfterClick(current.columns, order, wired, name) };
+  }
+  const selection = rowsAfterGesture(current.selection, keys, key, gesture, anchor);
+  const picked = selection.all || selection.rows.includes(key);
+  return { selection, columns: picked ? columnsAfterCellClick(current.columns, order, name) : current.columns };
+}
+
+/**
+ * What a compact node says it has picked: `all 25 rows`, `3 of 25 rows ·
+ * 132S…200L`, or a prompt when nothing is.
+ */
+export function selectionSummary(selection: RowSelection, keys: readonly (number | string)[]): string {
+  if (selection.all) return `all ${keys.length} rows`;
+  const rows = selection.rows.filter((row) => keys.includes(row));
+  if (rows.length === 0) return 'no rows picked — open the table to pick';
+  const named = rows.length <= 2 ? rows.join(', ') : `${String(rows[0])}…${String(rows[rows.length - 1])}`;
+  return `${rows.length} of ${keys.length} ${keys.length === 1 ? 'row' : 'rows'} · ${named}`;
 }
 
 /**
@@ -141,12 +237,22 @@ export function columnsAfterClick(
   return order.filter((candidate) => next.includes(candidate));
 }
 
+/** A padlock, for the header of a column whose port has a wire on it. */
+function Lock(): ReactElement {
+  return (
+    <svg className="node-catalogue-lock" viewBox="0 0 16 16" aria-hidden="true">
+      <rect x="3" y="7" width="10" height="7" rx="1" />
+      <path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" />
+    </svg>
+  );
+}
+
 export function TableNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>): ReactElement | null {
   const { document, analysis, catalogues, edit, expanded, toggleExpanded, hovered } = useGraph();
   const { numberFormat, locale } = useSettings();
   const format = toUnitsFormat(numberFormat);
-  /** Whether the whole table is shown, or only what has been picked out of it. */
-  const [showAll, setShowAll] = useState(false);
+  /** Where a Shift-click range starts: the last row clicked without Shift. View state, never saved. */
+  const [anchor, setAnchor] = useState<number | string>();
   const node = document.nodes.find((candidate) => candidate.id === id);
   if (node === undefined || node.kind !== 'table') return null;
 
@@ -155,7 +261,8 @@ export function TableNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>)
   const lookup = formula?.lookup;
   const axis = lookup?.axes[0];
   const keys = axis?.values ?? [];
-  const pickedRows = new Set<number | string>(node.rows);
+  const selection: RowSelection = { rows: node.rows, all: node.allRows === true };
+  const pickedRows = new Set<number | string>(selection.all ? keys : node.rows);
   const projected = new Set(node.columns);
   // A port with a wire leaving it is the far end of somebody else's
   // connection; the projection is not free to drop it.
@@ -165,13 +272,46 @@ export function TableNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>)
 
   const columnOrder = (formula?.outputs ?? []).map((port) => port.name);
 
-  const toggleRow = (key: number | string): void =>
+  const select = (next: RowSelection, columns?: readonly string[]): void =>
     edit((current) =>
-      updateNode<TableNode>(current, id, (entry) => ({
-        ...entry,
-        rows: [...rowsAfterClick(entry.rows, keys, key)],
-      })),
+      updateNode<TableNode>(current, id, (entry) => {
+        const { allRows: _was, ...rest } = entry;
+        return {
+          ...rest,
+          rows: next.all ? [] : [...next.rows],
+          ...(next.all ? { allRows: true as const } : {}),
+          columns: columns === undefined ? entry.columns : [...columns],
+        };
+      }),
     );
+
+  type Modifiers = { readonly shiftKey: boolean; readonly ctrlKey: boolean; readonly metaKey: boolean };
+
+  /** A row key: the row alone, by the click's modifiers. */
+  const clickRow = (key: number | string, event: Modifiers): void => {
+    const gesture = gestureOf(event);
+    if (gesture !== 'range') setAnchor(key);
+    select(rowsAfterGesture(selection, keys, key, gesture, anchor));
+  };
+
+  /** A cell: its row and its column together (`afterCellClick`). */
+  const clickCell = (key: number | string, name: string, event: Modifiers): void => {
+    const gesture = gestureOf(event);
+    if (gesture !== 'range') setAnchor(key);
+    const next = afterCellClick(
+      { selection, columns: node.columns },
+      keys,
+      columnOrder,
+      wired,
+      key,
+      name,
+      gesture,
+      anchor,
+    );
+    select(next.selection, next.columns);
+  };
+
+  const toggleAll = (): void => select(allRowsToggled(selection));
 
   const toggleColumn = (name: string): void =>
     edit((current) =>
@@ -181,38 +321,6 @@ export function TableNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>)
       })),
     );
 
-  /** A cell means both selections at once — its row, and its column. */
-  const pickCell = (key: number | string, name: string): void => {
-    // Both already on: the click can only mean "not this part after all".
-    if (pickedRows.has(key) && projected.has(name)) {
-      toggleRow(key);
-      return;
-    }
-    edit((current) =>
-      updateNode<TableNode>(current, id, (entry) => ({
-        ...entry,
-        rows: entry.rows.includes(key) ? entry.rows : [...rowsAfterClick(entry.rows, keys, key)],
-        columns: entry.columns.includes(name)
-          ? entry.columns
-          : [...columnsAfterClick(entry.columns, columnOrder, wired, name)],
-      })),
-    );
-  };
-
-  /** Switching tables cannot carry a selection across; nothing means the same. */
-  const bindTable = (formulaId: string): void => {
-    const picked = selectableTables(catalogues).find((candidate) => candidate.id === formulaId);
-    if (picked === undefined) return;
-    edit((current) =>
-      updateNode<TableNode>(current, id, (entry) => {
-        // Nor a unit: a column of the same name in the other table need not
-        // be the same quantity, and a unit of the wrong dimension is an error.
-        const { displayUnits: _stale, ...rest } = entry;
-        return { ...rest, table: formulaRef(picked), rows: [], columns: [] };
-      }),
-    );
-  };
-
   const setDisplayUnit = (name: string, unit: Unit): void =>
     edit((current) =>
       updateNode<TableNode>(current, id, (entry) => ({
@@ -221,11 +329,109 @@ export function TableNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>)
       })),
     );
 
-  // Once something is picked, the node shows what was picked — a
-  // twenty-five-row table is not a thing to keep on the canvas after you
-  // have chosen three sizes out of it — with the whole table one click away.
-  const visibleKeys = showAll || pickedRows.size === 0 ? keys : keys.filter((key) => pickedRows.has(key));
   const ports = axis === undefined ? node.columns : [axis.input, ...node.columns];
+  const nothingPicked = !selection.all && node.rows.length === 0;
+
+  const grid =
+    lookup === undefined || axis === undefined ? null : (
+      <div
+        className="node-table-grid node-catalogue-grid nodrag nowheel"
+        tabIndex={0}
+        onKeyDown={(event) => {
+          if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a') {
+            // The grid's own "select all", not the canvas's or the page's.
+            event.preventDefault();
+            event.stopPropagation();
+            toggleAll();
+          }
+        }}
+      >
+        <table>
+          <thead>
+            <tr>
+              <th
+                className={`row-key${selection.all ? ' all' : ''}`}
+                title={
+                  selection.all
+                    ? 'Every row is in the sweep, including rows the catalogue adds later. Click to clear.'
+                    : 'Pick every row, including rows the catalogue adds later (Ctrl/Cmd+A).'
+                }
+                onClick={toggleAll}
+              >
+                <ParameterLabel name={axis.input} />
+              </th>
+              {formula?.outputs.map((port) => {
+                const unit = columnUnit(node, port);
+                const isWired = wired.has(port.name);
+                return (
+                  <th
+                    key={port.name}
+                    className={`${projected.has(port.name) ? 'projected' : ''}${isWired ? ' wired' : ''}`}
+                    title={
+                      isWired
+                        ? `'${port.name}' has a wire attached — disconnect it before dropping the column.`
+                        : projected.has(port.name)
+                          ? `Stop reading '${port.name}' off this table.`
+                          : `Read '${port.name}' off this table.`
+                    }
+                    onClick={() => toggleColumn(port.name)}
+                  >
+                    {isWired ? <Lock /> : null}
+                    <ParameterLabel name={port.name} />
+                    {unit === undefined ? null : (
+                      // The unit is its own control inside a header that is
+                      // itself a button: choosing MPa must not also toggle
+                      // the column it was chosen for.
+                      <span onClick={(event) => event.stopPropagation()}>
+                        {' '}
+                        <DisplayUnitPicker
+                          unit={unit}
+                          prefixes
+                          onChange={(next) => setDisplayUnit(port.name, next)}
+                        />
+                      </span>
+                    )}
+                  </th>
+                );
+              })}
+            </tr>
+          </thead>
+          <tbody>
+            {keys.map((key, row) => {
+              const picked = pickedRows.has(key);
+              return (
+                <tr key={String(key)} className={picked ? 'selected' : undefined}>
+                  <th
+                    scope="row"
+                    title="Click to pick this row alone; Ctrl/Cmd-click to add or drop it; Shift-click to add a range."
+                    onClick={(event) => clickRow(key, event)}
+                  >
+                    {String(key)}
+                  </th>
+                  {formula?.outputs.map((port) => {
+                    const isProjected = projected.has(port.name);
+                    return (
+                      <td
+                        key={port.name}
+                        className={`${isProjected ? 'projected' : ''}${picked && isProjected ? ' picked' : ''}`}
+                        onClick={(event) => clickCell(key, port.name, event)}
+                      >
+                        {cellText(
+                          lookup.columns[port.name]?.[row],
+                          format,
+                          port.kind === 'numeric' && !isGenericDimension(port.unit) ? port.unit : undefined,
+                          columnUnit(node, port),
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    );
 
   return (
     <NodeShell
@@ -236,6 +442,9 @@ export function TableNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>)
       highlighted={data?.highlighted === true || hovered.has(id)}
       {...(analysis.problems.has(id) ? { problem: analysis.problems.get(id) } : {})}
       expanded={expanded.has(id)}
+      // Nothing picked yet means the table is all this node has to show — a
+      // compact card of no ports would be a node with nothing to click.
+      forceOpen={nothingPicked && grid !== null}
       onToggleExpanded={() => toggleExpanded(id)}
       onDelete={() => edit((current) => reframe(removeNodes(current, new Set([id]))))}
       dataTour={`table-${id}`}
@@ -264,118 +473,23 @@ export function TableNodeView({ id, selected, data }: NodeProps<CanvasFlowNode>)
             : localize(formula.label, locale)
       }
       detail={
-        <>
-          <label className="node-table-pick">
-            table
-            <select
-              className="nodrag"
-              value={node.table.id}
-              title="Which catalogue table this node draws. Changing it clears the selection — a row of one table means nothing in another."
-              onChange={(event) => bindTable(event.target.value)}
-            >
-              {selectableTables(catalogues).map((candidate) => (
-                <option key={candidate.id} value={candidate.id}>
-                  {candidate.label === undefined ? candidate.id : localize(candidate.label, locale)}
-                </option>
-              ))}
-            </select>
-          </label>
-          {formula?.description === undefined ? null : (
-            <p className="node-table-about">{localize(formula.description, locale)}</p>
-          )}
-          {formula?.citation === undefined ? null : (
-            <p className="node-table-about">{formula.citation}</p>
-          )}
-        </>
+        grid === null ? undefined : (
+          <>
+            {grid}
+            {formula?.description === undefined ? null : (
+              <p className="node-table-about">{localize(formula.description, locale)}</p>
+            )}
+            {formula?.citation === undefined ? null : (
+              <p className="node-table-about">{formula.citation}</p>
+            )}
+          </>
+        )
       }
     >
       {lookup === undefined || axis === undefined ? (
         <p className="node-table-missing">this table is not in the loaded catalogues</p>
       ) : (
-        <>
-          <div className="node-table-grid nodrag">
-            <table>
-              <thead>
-                <tr>
-                  <th className="row-key" title="Each row is one entry of the table — one part.">
-                    <ParameterLabel name={axis.input} />
-                  </th>
-                  {formula?.outputs.map((port) => {
-                    const unit = columnUnit(node, port);
-                    return (
-                      <th
-                        key={port.name}
-                        className={`${projected.has(port.name) ? 'projected' : ''}${wired.has(port.name) ? ' wired' : ''}`}
-                        title={
-                          wired.has(port.name)
-                            ? `'${port.name}' has a wire attached — disconnect it before dropping the column.`
-                            : projected.has(port.name)
-                              ? `Stop reading '${port.name}' off this table.`
-                              : `Read '${port.name}' off this table.`
-                        }
-                        onClick={() => toggleColumn(port.name)}
-                      >
-                        <ParameterLabel name={port.name} />
-                        {unit === undefined ? null : (
-                          // The unit is its own control inside a header that is
-                          // itself a button: choosing MPa must not also toggle
-                          // the column it was chosen for.
-                          <span onClick={(event) => event.stopPropagation()}>
-                            {' '}
-                            <DisplayUnitPicker
-                              unit={unit}
-                              prefixes
-                              onChange={(next) => setDisplayUnit(port.name, next)}
-                            />
-                          </span>
-                        )}
-                      </th>
-                    );
-                  })}
-                </tr>
-              </thead>
-              <tbody>
-                {visibleKeys.map((key) => (
-                  <tr key={String(key)} className={pickedRows.has(key) ? 'selected' : undefined}>
-                    <th
-                      scope="row"
-                      title={pickedRows.has(key) ? 'Drop this row from the sweep.' : 'Add this row to the sweep.'}
-                      onClick={() => toggleRow(key)}
-                    >
-                      {String(key)}
-                    </th>
-                    {formula?.outputs.map((port) => (
-                      <td
-                        key={port.name}
-                        className={projected.has(port.name) ? 'projected' : undefined}
-                        onClick={() => pickCell(key, port.name)}
-                      >
-                        {cellText(
-                          lookup.columns[port.name]?.[keys.indexOf(key)],
-                          format,
-                          port.kind === 'numeric' && !isGenericDimension(port.unit) ? port.unit : undefined,
-                          columnUnit(node, port),
-                        )}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {pickedRows.size === 0 ? null : (
-            <button
-              type="button"
-              className="node-table-expand nodrag"
-              onClick={() => setShowAll(!showAll)}
-            >
-              {showAll
-                ? `show the ${pickedRows.size} selected`
-                : `show all ${keys.length} rows`}
-            </button>
-          )}
-        </>
+        <p className="node-catalogue-summary">{selectionSummary(selection, keys)}</p>
       )}
 
       {/* The row key first, then a row per projected column: the same

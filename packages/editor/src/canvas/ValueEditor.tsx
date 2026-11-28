@@ -17,6 +17,7 @@ import {
   DEFAULT_SLIDER_FIGURES,
   RENARD_SERIES,
   localize,
+  referable,
   type RenardSeries,
   type ScalarValue,
   type ValueSpec,
@@ -271,7 +272,10 @@ export function ValueKindSelect({ value, onChange }: Props): ReactElement {
       value={kind}
       onChange={(event) => onChange(converted(value, event.target.value as Kind))}
     >
-      {Object.entries(labels).map(([option, label]) => (
+      {/* "table column" is retired — a table node selecting all rows does
+          what it did and shows the table — so it is offered only to a node
+          that already holds one, which keeps an old NodeBook editable. */}
+      {Object.entries(labels).filter(([option]) => option !== 'tableColumn' || kind === 'tableColumn').map(([option, label]) => (
         <option key={option} value={option}>
           {label}
         </option>
@@ -351,8 +355,10 @@ export function ValueFields({ value, onChange, onSliderChange, onSliderCommit }:
   const format = useValueFormat();
   const { catalogues } = useGraph();
   const { locale } = useSettings();
+  // Tables included, as their formula forms: an old table-column input whose
+  // table has moved into the catalogue's `tables` still names it here.
   const lookupFormulas = browsable(catalogues).flatMap((catalogue) =>
-    catalogue.formulas.filter((formula) => formula.lookup !== undefined),
+    referable(catalogue).filter((formula) => formula.lookup !== undefined),
   );
 
   const setUnit = (text: string): void => {

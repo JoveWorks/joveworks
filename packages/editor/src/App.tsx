@@ -18,6 +18,7 @@ import { ReactFlowProvider, useReactFlow } from '@xyflow/react';
 import {
   catalogueFormatFromFileName,
   emptyDocument,
+  catalogueTables,
   loadCatalogue,
   localize,
   loadDocument,
@@ -1012,7 +1013,10 @@ function AppShell(): ReactElement {
       // Canonical JSON means startup never needs to remember its input syntax.
       cacheCatalogue(loaded.id, saveCatalogue(loaded));
       analytics.track({ name: 'catalogue_loaded' });
-      pushNotice(`Loaded ${localize(loaded.name, locale)} — ${loaded.formulas.length} formulas.`);
+      pushNotice(
+        `Loaded ${localize(loaded.name, locale)} — ${loaded.formulas.length} formulas` +
+          (catalogueTables(loaded).length === 0 ? '.' : `, ${catalogueTables(loaded).length} tables.`),
+      );
     } catch (error) {
       analytics.track({ name: 'catalogue_load_failed', props: { reason: 'invalid_file' } });
       pushNotice(`That file is not a catalogue: ${messageOf(error)}`);

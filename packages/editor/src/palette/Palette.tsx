@@ -42,7 +42,6 @@ import { monteCarloSampleCount, monteCarloSampleLimit } from '../model/monteCarl
 import { DEFAULT_READER } from '../files/readers';
 import { loadFavourites, saveFavourites } from '../model/palettePreferences';
 import { converted } from '../canvas/ValueEditor';
-import { selectableTables } from '../canvas/TableNodeView';
 import { starterColumns } from '../model/lut';
 import { ContextMenu } from '../canvas/ContextMenu';
 import { newDistributedLoadNode, newLoadNode, newShaftNode, newSupportNode } from '../canvas/quickAdd';
@@ -138,7 +137,12 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
       if (list === undefined) byCatalogue.set(entry.catalogue.id, [entry]);
       else list.push(entry);
     }
-    return [...byCatalogue.entries()];
+    // A catalogue's tables below its formulas, search results included: a
+    // match keeps its place in the catalogue rather than its rank.
+    return [...byCatalogue.entries()].map(
+      ([id, list]) =>
+        [id, [...list.filter((entry) => entry.table === undefined), ...list.filter((entry) => entry.table !== undefined)]] as const,
+    );
   }, [found]);
   const addFormula = (formula: Formula): void =>
     edit((current) =>
@@ -263,7 +267,41 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
     return axis?.kind === 'categorical' ? axis.values : undefined;
   };
 
+  /** A table: drops a table node, and says how many rows it has rather than listing its columns. */
+  const tableEntry = (entry: PaletteEntry, keyPrefix = ''): ReactElement => {
+    const { formula, table } = entry;
+    const title = formula.label === undefined ? formula.citation ?? formula.id : localize(formula.label, locale);
+    const rows = table?.rows.length ?? 0;
+    return (
+      <li key={`${keyPrefix}table:${formula.id}`}>
+        <button
+          type="button"
+          className="entry entry-table"
+          title={[localize(formula.description, locale), formula.citation].filter(Boolean).join(' — ')}
+          onClick={() => addCatalogueTable(formula)}
+          onContextMenu={(event) => {
+            event.preventDefault();
+            setMenu({ entry, x: event.clientX, y: event.clientY });
+          }}
+        >
+          <span className="entry-id">
+            <svg className="entry-table-mark" viewBox="0 0 16 16" aria-hidden="true">
+              <rect x="2" y="3" width="12" height="10" rx="1" />
+              <path d="M2 6.5h12M6 6.5V13" />
+            </svg>
+            {title}
+          </span>
+          <span className="entry-output">
+            {formula.citation === undefined || formula.label === undefined ? '' : `${formula.citation} · `}
+            {`${rows} ${rows === 1 ? 'row' : 'rows'}`}
+          </span>
+        </button>
+      </li>
+    );
+  };
+
   const formulaEntry = (entry: PaletteEntry, keyPrefix = ''): ReactElement => {
+    if (entry.table !== undefined) return tableEntry(entry, keyPrefix);
     const { formula } = entry;
     const title = formula.label === undefined
       ? formula.citation ?? formula.id
@@ -366,27 +404,24 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
     });
 
   /**
-   * Bound to a table on the way in — a table node without one has no ports
-   * and nothing to draw, and the first single-axis table is as good a
-   * starting point as any, since the node's own dropdown switches it. The
-   * selection starts empty: the two clicks that fill it in are the feature.
+   * Bound to its table on the way in, for good — each table is its own
+   * palette entry, and a row of one table means nothing in another. The
+   * selection starts empty, so the node opens on the whole grid: the clicks
+   * that fill it in are the feature.
    */
-  const addTable = (): void => {
-    const [first] = selectableTables(catalogues);
-    if (first === undefined) return;
+  const addCatalogueTable = (formula: Formula): void =>
     edit((current) => {
-      const id = uniqueId(current, 'table');
+      const id = uniqueId(current, formula.id.replace(/^.*\./u, '').replace(/[^\w]/gu, '_'));
       return addNode(current, {
         kind: 'table',
         id,
-        label: id,
-        table: formulaRef(first),
+        label: formula.label === undefined ? id : localize(formula.label, locale),
+        table: formulaRef(formula),
         rows: [],
         columns: [],
         position: position(),
       });
     });
-  };
 
   /**
    * Dropped with a two-row starter table rather than empty, unlike a file
@@ -452,17 +487,6 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
     // A source like the five above it, not a routing node: it starts a graph
     // rather than doing anything to values already in one.
     { id: 'builtin:input:file', label: copy.file, summary: copy.fileSummary, insert: addFile },
-    {
-      id: 'builtin:input:table',
-      label: copy.catalogueTable,
-      summary: copy.catalogueTableSummary,
-      insert: addTable,
-      disabled: selectableTables(catalogues).length === 0,
-      title:
-        selectableTables(catalogues).length === 0
-          ? 'Needs a loaded catalogue with a table in it'
-          : undefined,
-    },
     { id: 'builtin:input:lut', label: copy.lookupTable, summary: copy.lookupTableSummary, insert: addLut },
     { id: 'builtin:general:interpolate', label: copy.interpolate, summary: copy.interpolateSummary, insert: addInterpolate },
     { id: 'builtin:general:compare', label: copy.compare, summary: copy.compareSummary, insert: addCompare },
@@ -670,7 +694,13 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
         {isCollapsed ? null : (
           <ul>
             {leading.map((action) => actionEntry(action))}
-            {list.map((entry) => formulaEntry(entry))}
+            {list.filter((entry) => entry.table === undefined).map((entry) => formulaEntry(entry))}
+            {list.some((entry) => entry.table !== undefined) ? (
+              <li className="palette-subheading" aria-hidden="true">
+                {copy.tables}
+              </li>
+            ) : null}
+            {list.filter((entry) => entry.table !== undefined).map((entry) => formulaEntry(entry))}
           </ul>
         )}
       </section>

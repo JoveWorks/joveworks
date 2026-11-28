@@ -46,6 +46,12 @@ interface Props {
   readonly selected?: boolean;
   readonly highlighted?: boolean;
   readonly expanded?: boolean;
+  /**
+   * Open regardless of hover, selection or the pin, without showing the pin
+   * as pressed — for a node whose detail is the only thing it has to show
+   * yet, such as a table node with nothing picked out of it.
+   */
+  readonly forceOpen?: boolean;
   readonly onToggleExpanded?: () => void;
   readonly onDelete: () => void;
   /** Always drawn — the value, and the handles a wire attaches to. */
@@ -93,6 +99,7 @@ export function NodeShell({
   selected = false,
   highlighted,
   expanded = false,
+  forceOpen = false,
   onToggleExpanded,
   onDelete,
   children,
@@ -116,7 +123,7 @@ export function NodeShell({
   // hover or the marquee's own live selection opening a node mid-drag would
   // grow that box out from under the very rectangle it was fully inside of.
   // Freeze at collapsed-or-pinned for the drag; a pin (`expanded`) still wins.
-  const open = expanded || (!marqueeActive && (selected || hovered));
+  const open = forceOpen || expanded || (!marqueeActive && (selected || hovered));
   const help: string | undefined = helpUrl ?? NODE_HELP_URLS[kind];
   return (
     <div

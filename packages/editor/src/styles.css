@@ -986,6 +986,27 @@ aside.bottom .palette-list section {
   font-size: 11px;
 }
 
+/* A catalogue's tables, listed below its formulas under their own small
+   heading — one level under the catalogue's, so it reads as a part of it. */
+.palette .palette-subheading {
+  margin: 6px 0 2px;
+  padding: 0 4px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.palette .entry-table-mark {
+  width: 12px;
+  height: 12px;
+  margin-right: 4px;
+  vertical-align: -1px;
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 1.3;
+}
+
 .palette .empty,
 .palette-footer {
   color: var(--muted);
@@ -1858,21 +1879,70 @@ aside.bottom .palette-list section {
   cursor: pointer;
 }
 
-.node .node-table-pick {
-  display: flex;
-  gap: 6px;
-  align-items: center;
+.node .node-table-about {
+  margin: 4px 0 0;
   font-size: 11px;
   color: var(--muted);
 }
 
-.node .node-table-pick select {
-  flex: 1;
-  min-width: 0;
+/* --- the catalogue table node's own grid -------------------------------
+   The shared `.node-table-grid` rules above also draw the lookup table's and
+   the shaft's grids; everything below is scoped to the catalogue table, so
+   neither of those changes when this one does. */
+
+/* Open, the table gets room to be read: about 600px, against the compact
+   card's 300px. Compact, it is a source like any other. */
+.node-table.open {
+  width: 600px;
 }
 
-.node .node-table-about {
-  margin: 4px 0 0;
+.node .node-catalogue-grid {
+  max-height: 320px;
+}
+
+.node .node-catalogue-grid:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
+}
+
+/* The selection is drawn as the shape it really is — every picked row ×
+   every projected column, the cells the node answers with — rather than as
+   whole rows, so two cells picked in different rows and columns light four. */
+.node .node-catalogue-grid tr.selected td {
+  background: transparent;
+}
+
+.node .node-catalogue-grid td.picked {
+  background: var(--hover-bg);
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.node .node-catalogue-grid tr.selected th {
+  color: var(--ink);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.node .node-catalogue-grid thead th.row-key {
+  cursor: pointer;
+}
+
+.node .node-catalogue-grid thead th.row-key.all {
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+.node .node-catalogue-lock {
+  width: 10px;
+  height: 10px;
+  margin-right: 3px;
+  vertical-align: -1px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+}
+
+.node .node-catalogue-summary {
+  margin: 0 0 4px;
   font-size: 11px;
   color: var(--muted);
 }

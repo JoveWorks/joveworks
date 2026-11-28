@@ -1,0 +1,267 @@
+{
+  "schemaVersion": 2,
+  "id": "public-tables-demo",
+  "name": {
+    "en": "Example tables",
+    "nl": "Voorbeeldtabellen"
+  },
+  "restricted": false,
+  "formulas": [
+    {
+      "id": "demo.double",
+      "version": 1,
+      "output": {
+        "kind": "numeric",
+        "name": "y",
+        "unit": "mm"
+      },
+      "inputs": [
+        {
+          "kind": "numeric",
+          "name": "x",
+          "unit": "mm",
+          "default": 1
+        }
+      ],
+      "expression": "2*x",
+      "description": {
+        "en": "Invented formula, so the catalogue has one above its tables."
+      },
+      "status": "unverified"
+    }
+  ],
+  "tables": [
+    {
+      "id": "demo.motor-frames",
+      "version": 1,
+      "label": {
+        "en": "Motor frames (invented)"
+      },
+      "description": {
+        "en": "Invented motor frame sizes — not R&M content."
+      },
+      "citation": "Table 0-21",
+      "key": {
+        "name": "frame"
+      },
+      "columns": [
+        {
+          "name": "h",
+          "unit": "mm"
+        },
+        {
+          "name": "a",
+          "unit": "mm"
+        },
+        {
+          "name": "b",
+          "unit": "mm"
+        },
+        {
+          "name": "d",
+          "unit": "mm"
+        },
+        {
+          "name": "P",
+          "unit": "kW"
+        },
+        {
+          "name": "F_0",
+          "unit": "kN"
+        },
+        {
+          "name": "profile"
+        },
+        {
+          "name": "z",
+          "unit": ""
+        }
+      ],
+      "rows": [
+        [
+          "56",
+          56,
+          90,
+          70,
+          9,
+          0.09,
+          0.5,
+          null,
+          null
+        ],
+        [
+          "63",
+          63,
+          101,
+          79,
+          11,
+          0.18,
+          0.8,
+          null,
+          null
+        ],
+        [
+          "71",
+          71,
+          114,
+          89,
+          14,
+          0.37,
+          1.2,
+          "SPZ",
+          1
+        ],
+        [
+          "80",
+          80,
+          128,
+          100,
+          19,
+          0.75,
+          1.6,
+          "SPZ",
+          1
+        ],
+        [
+          "90S",
+          90,
+          144,
+          112,
+          24,
+          1.1,
+          2.0,
+          "SPZ",
+          1
+        ],
+        [
+          "90L",
+          90,
+          144,
+          112,
+          24,
+          1.5,
+          2.4,
+          "SPZ",
+          2
+        ],
+        [
+          "100L",
+          100,
+          160,
+          125,
+          28,
+          2.2,
+          2.9,
+          "SPA",
+          2
+        ],
+        [
+          "112M",
+          112,
+          179,
+          140,
+          28,
+          4,
+          3.4,
+          "SPA",
+          2
+        ],
+        [
+          "132S",
+          132,
+          211,
+          165,
+          38,
+          5.5,
+          4.6,
+          "SPA",
+          2
+        ],
+        [
+          "132M",
+          132,
+          211,
+          165,
+          38,
+          7.5,
+          5.2,
+          "SPB",
+          3
+        ],
+        [
+          "160M",
+          160,
+          256,
+          200,
+          42,
+          11,
+          6.8,
+          "SPB",
+          3
+        ],
+        [
+          "160L",
+          160,
+          256,
+          200,
+          42,
+          15,
+          7.4,
+          "SPB",
+          4
+        ]
+      ]
+    },
+    {
+      "id": "demo.bores",
+      "version": 1,
+      "label": {
+        "en": "Bore loads (invented)"
+      },
+      "description": {
+        "en": "Invented bore sizes with a numeric key."
+      },
+      "citation": "Table 0-5",
+      "key": {
+        "name": "bore",
+        "unit": "mm"
+      },
+      "columns": [
+        {
+          "name": "C",
+          "unit": "kN"
+        }
+      ],
+      "rows": [
+        [
+          10,
+          1.2
+        ],
+        [
+          12,
+          1.9
+        ],
+        [
+          15,
+          2.8
+        ],
+        [
+          17,
+          3.6
+        ],
+        [
+          20,
+          5.1
+        ],
+        [
+          25,
+          7.4
+        ],
+        [
+          30,
+          10.2
+        ]
+      ]
+    }
+  ]
+}

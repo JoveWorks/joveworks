@@ -16,6 +16,10 @@ import {
   loadCatalogue,
   isRelativeLink,
   ports,
+  catalogueTables,
+  referable,
+  tableFormula,
+  type CatalogueTable,
   sourceHref,
   type Catalogue,
   type Formula,
@@ -36,8 +40,11 @@ import { DOCS_BASE_URL } from '../help-links';
 import { fuzzySearch } from './fuzzy';
 
 export interface PaletteEntry {
+  /** For a table, its formula form (`tableFormula`): what a reference to it resolves to. */
   readonly formula: Formula;
   readonly catalogue: Catalogue;
+  /** Set when the entry is one of the catalogue's tables, which drops a table node, not a formula node. */
+  readonly table?: CatalogueTable;
 }
 
 /** The base library, parsed the same way a loaded file is. */
@@ -189,7 +196,7 @@ export function formulaSource(
   formula: Formula,
   locale: AppLocale,
 ): { readonly href: string; readonly title?: string } | undefined {
-  const catalogue = catalogues.find((candidate) => candidate.formulas.includes(formula));
+  const catalogue = catalogues.find((candidate) => referable(candidate).includes(formula));
   if (catalogue === undefined) return undefined;
   const link = sourceHref(catalogue, formula);
   const href = link === undefined ? undefined : hostedLink(catalogue, link);
@@ -199,9 +206,12 @@ export function formulaSource(
 }
 
 export function entries(catalogues: readonly Catalogue[]): readonly PaletteEntry[] {
-  return browsable(catalogues).flatMap((catalogue) =>
-    catalogue.formulas.map((formula) => ({ formula, catalogue })),
-  );
+  // A catalogue's tables after its formulas, which is where the palette
+  // lists them: below the expressions, in the catalogue that declares them.
+  return browsable(catalogues).flatMap((catalogue) => [
+    ...catalogue.formulas.map((formula) => ({ formula, catalogue })),
+    ...catalogueTables(catalogue).map((table) => ({ formula: tableFormula(table), catalogue, table })),
+  ]);
 }
 
 /**
@@ -213,6 +223,7 @@ export function search(list: readonly PaletteEntry[], query: string, locale: App
     [
       formula.id,
       formula.citation ?? '',
+      formula.label === undefined ? '' : localize(formula.label, locale),
       localize(formula.description, locale),
       ...ports(formula).map((port) => `${port.name} ${port.description === undefined ? '' : localize(port.description, locale)}`),
     ]

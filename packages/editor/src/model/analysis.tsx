@@ -45,6 +45,7 @@ import {
 import {
   findFormula,
   matchRef,
+  referable,
   type FormulaRef,
   isEvaluable,
   isGenericPort,
@@ -144,7 +145,9 @@ export function lookupRef(
 ): { readonly formula: Formula; readonly catalogue: Catalogue } | undefined {
   let fallback: { readonly formula: Formula; readonly catalogue: Catalogue } | undefined;
   for (const catalogue of catalogues) {
-    for (const formula of catalogue.formulas) {
+    // Tables as their formula forms, ahead of the formulas — the kernel's
+    // own index order (`indexFormulas`), so both land on the same record.
+    for (const formula of referable(catalogue)) {
       if (formula.id !== ref.id) continue;
       if (matchRef(ref, formula) === 'match') return { formula, catalogue };
       fallback ??= { formula, catalogue };

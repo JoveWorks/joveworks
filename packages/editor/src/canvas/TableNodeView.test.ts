@@ -4,7 +4,18 @@ import type { TableNode } from '@joveworks/schema';
 import { PLAIN_NUMBER_FORMAT, parseUnit } from '@joveworks/units';
 
 import { displayUnitChoices } from './DisplayUnitPicker';
-import { cellText, columnUnit, columnsAfterClick, rowsAfterClick } from './TableNodeView';
+import {
+  afterCellClick,
+  allRowsToggled,
+  cellText,
+  columnUnit,
+  columnsAfterCellClick,
+  columnsAfterClick,
+  gestureOf,
+  rowsAfterGesture,
+  selectionSummary,
+  type RowSelection,
+} from './TableNodeView';
 
 /**
  * The two selections a table node holds, and the rules that keep each of them
@@ -15,18 +26,109 @@ describe("a table node's selections", () => {
   const keys = ['71', '80', '90S', '90L', '100L'];
   const columns = ['h', 'a', 'F', 'profile'];
 
-  it('keeps rows in the table’s order, not the order they were clicked', () => {
-    let rows: readonly (number | string)[] = [];
-    for (const key of ['100L', '71', '90S']) rows = rowsAfterClick(rows, keys, key);
-    expect(rows).toEqual(['71', '90S', '100L']);
+  const picked = (rows: readonly (number | string)[]): RowSelection => ({ rows, all: false });
+  const none = picked([]);
+  const every: RowSelection = { rows: [], all: true };
+
+  it('reads the modifier keys as spreadsheet gestures', () => {
+    expect(gestureOf({ shiftKey: false, ctrlKey: false, metaKey: false })).toBe('only');
+    expect(gestureOf({ shiftKey: false, ctrlKey: true, metaKey: false })).toBe('toggle');
+    expect(gestureOf({ shiftKey: false, ctrlKey: false, metaKey: true })).toBe('toggle');
+    expect(gestureOf({ shiftKey: true, ctrlKey: true, metaKey: false })).toBe('range');
   });
 
-  it('drops a row that is clicked again', () => {
-    expect(rowsAfterClick(['71', '90S'], keys, '71')).toEqual(['90S']);
+  it('selects only the row a plain click lands on', () => {
+    expect(rowsAfterGesture(picked(['71', '90S']), keys, '100L', 'only')).toEqual(picked(['100L']));
+  });
+
+  it('changes nothing on a plain click on the one row already picked', () => {
+    expect(rowsAfterGesture(picked(['80']), keys, '80', 'only')).toEqual(picked(['80']));
+  });
+
+  it('narrows to one row on a plain click on a row already among several', () => {
+    expect(rowsAfterGesture(picked(['71', '80']), keys, '80', 'only')).toEqual(picked(['80']));
+  });
+
+  it('adds and drops single rows with Ctrl/Cmd, keeping the table’s order', () => {
+    let selection = none;
+    for (const key of ['100L', '71', '90S']) selection = rowsAfterGesture(selection, keys, key, 'toggle');
+    expect(selection).toEqual(picked(['71', '90S', '100L']));
+    expect(rowsAfterGesture(selection, keys, '71', 'toggle')).toEqual(picked(['90S', '100L']));
+  });
+
+  it('adds a range with Shift, in either direction, to what is already picked', () => {
+    expect(rowsAfterGesture(picked(['71']), keys, '90L', 'range', '80')).toEqual(picked(['71', '80', '90S', '90L']));
+    expect(rowsAfterGesture(none, keys, '80', 'range', '90L')).toEqual(picked(['80', '90S', '90L']));
+  });
+
+  it('adds just the row on a Shift-click with no anchor yet', () => {
+    expect(rowsAfterGesture(picked(['71']), keys, '90S', 'range')).toEqual(picked(['71', '90S']));
+  });
+
+  it('ends an all-rows selection as an explicit list on any row click', () => {
+    expect(rowsAfterGesture(every, keys, '80', 'toggle')).toEqual(picked(['71', '90S', '90L', '100L']));
+    expect(rowsAfterGesture(every, keys, '80', 'only')).toEqual(picked(['80']));
+  });
+
+  it('toggles every row from the key header, and back to none', () => {
+    expect(allRowsToggled(picked(['71']))).toEqual(every);
+    expect(allRowsToggled(every)).toEqual(none);
   });
 
   it('holds numeric row keys as numbers, so they stay coordinates', () => {
-    expect(rowsAfterClick([], [10, 20, 30], 20)).toEqual([20]);
+    expect(rowsAfterGesture(none, [10, 20, 30], 20, 'only')).toEqual(picked([20]));
+  });
+
+  it('projects a cell’s column, and never drops one, on a cell click', () => {
+    expect(columnsAfterCellClick(['profile'], columns, 'h')).toEqual(['h', 'profile']);
+    expect(columnsAfterCellClick(['h', 'profile'], columns, 'h')).toEqual(['h', 'profile']);
+  });
+
+  describe('a cell click', () => {
+    const at = (rows: readonly string[], projected: readonly string[]) => ({ selection: picked(rows), columns: projected });
+
+    it('with Ctrl/Cmd on a picked cell drops its column and keeps the row', () => {
+      expect(afterCellClick(at(['80'], ['h', 'F']), keys, columns, new Set(), '80', 'h', 'toggle')).toEqual(
+        at(['80'], ['F']),
+      );
+    });
+
+    it('with Ctrl/Cmd in a picked row adds a column not yet projected, and keeps the row', () => {
+      expect(afterCellClick(at(['80'], ['h']), keys, columns, new Set(), '80', 'F', 'toggle')).toEqual(
+        at(['80'], ['h', 'F']),
+      );
+    });
+
+    it('with Ctrl/Cmd keeps a wired column, as its header does', () => {
+      expect(afterCellClick(at(['80'], ['h']), keys, columns, new Set(['h']), '80', 'h', 'toggle')).toEqual(
+        at(['80'], ['h']),
+      );
+    });
+
+    it('with Ctrl/Cmd in an unpicked row adds the row and the column', () => {
+      expect(afterCellClick(at(['80'], ['h']), keys, columns, new Set(), '90S', 'F', 'toggle')).toEqual(
+        at(['80', '90S'], ['h', 'F']),
+      );
+    });
+
+    it('with Ctrl/Cmd in an all-rows selection drops the column, and every row stays', () => {
+      const all = { selection: every, columns: ['h', 'F'] };
+      expect(afterCellClick(all, keys, columns, new Set(), '80', 'h', 'toggle')).toEqual({ selection: every, columns: ['F'] });
+    });
+
+    it('plain picks only its row and projects its column', () => {
+      expect(afterCellClick(at(['71', '80'], ['h']), keys, columns, new Set(), '90S', 'F', 'only')).toEqual(
+        at(['90S'], ['h', 'F']),
+      );
+    });
+  });
+
+  it('says what a compact node has picked', () => {
+    expect(selectionSummary(every, keys)).toBe('all 5 rows');
+    expect(selectionSummary(picked(['80']), keys)).toBe('1 of 5 rows · 80');
+    expect(selectionSummary(picked(['71', '80']), keys)).toBe('2 of 5 rows · 71, 80');
+    expect(selectionSummary(picked(['80', '90S', '90L']), keys)).toBe('3 of 5 rows · 80…90L');
+    expect(selectionSummary(none, keys)).toMatch(/no rows picked/u);
   });
 
   it('keeps projected columns in the table’s own column order', () => {
