@@ -9,6 +9,7 @@ import { readFileSync } from 'node:fs';
  */
 
 import {
+  changesSince,
   expressionOf,
   soleExpression,
   findFormula,
@@ -367,6 +368,14 @@ describe('references by id, version and hash', () => {
     expect(matchRef(formulaRef(formula), translated)).toBe('match');
   });
 
+  it('does not change a reference when a change note is written or reworded', () => {
+    const v2 = { ...product, version: 2 };
+    const noted = parse({ ...v2, changes: [{ version: 2, note: 'Invented correction.' }] });
+    const reworded = parse({ ...v2, changes: [{ version: 2, note: { en: 'Reworded.', nl: 'Herschreven.' } }] });
+    expect(formulaHash(noted)).toBe(formulaHash(parse(v2)));
+    expect(formulaHash(reworded)).toBe(formulaHash(noted));
+  });
+
   it('does not change a reference when a link into the source is added', () => {
     const formula = parse();
     const linked = parse({ ...product, href: '#eq-1.2B' });
@@ -470,17 +479,7 @@ describe('catalogues', () => {
 
   it('refuses a version it does not read, rather than guessing', () => {
     expect(() => parseCatalogue({ ...catalogue, schemaVersion: CATALOGUE_SCHEMA_VERSION + 1 })).toThrow(
-      /schemaVersion: is 3, but this build reads catalogue schemaVersion 1 to 2 only/,
-    );
-  });
-
-  it('still reads a version-1 catalogue as it is', () => {
-    expect(parseCatalogue({ ...catalogue, schemaVersion: 1 }).schemaVersion).toBe(1);
-  });
-
-  it('refuses tables in a version-1 catalogue, which predates them', () => {
-    expect(() => parseCatalogue({ ...catalogue, schemaVersion: 1, tables: [] })).toThrow(
-      /tables: needs catalogue schemaVersion 2/,
+      /schemaVersion: is 3, but this build reads catalogue schemaVersion 2 only/,
     );
   });
 
@@ -976,5 +975,35 @@ describe('shaft formulas', () => {
       /dimension its quantity is answered in/u,
     );
     expect(() => parseFormula(withShaft({ quantities: ['moment', 'shear'] }), '')).toThrow(/one output per quantity/u);
+  });
+});
+
+describe('change notes', () => {
+  const v3 = {
+    ...product,
+    version: 3,
+    changes: [
+      { version: 2, note: 'Invented: a unit tag corrected.' },
+      { version: 3, note: { en: 'Invented: a sum widened.', nl: 'Verzonnen: een som verbreed.' } },
+    ],
+  };
+
+  it('round-trip, and are read oldest first since a given version', () => {
+    const formula = parse(v3);
+    expect(serializeFormula(formula)['changes']).toEqual([
+      { version: 2, note: { en: 'Invented: a unit tag corrected.' } },
+      { version: 3, note: { en: 'Invented: a sum widened.', nl: 'Verzonnen: een som verbreed.' } },
+    ]);
+    expect(parse(serializeFormula(formula))).toEqual(formula);
+    expect(changesSince(formula, 1).map((change) => change.version)).toEqual([2, 3]);
+    expect(changesSince(formula, 2).map((change) => change.version)).toEqual([3]);
+    expect(changesSince(formula, 3)).toEqual([]);
+    expect(changesSince(parse(), 0)).toEqual([]);
+  });
+
+  it('are refused past the record\'s own version, out of order, or for version 1', () => {
+    expect(() => parse({ ...v3, version: 2 })).toThrow(/past the record's own version 2/u);
+    expect(() => parse({ ...v3, changes: [...v3.changes].reverse() })).toThrow(/oldest first/u);
+    expect(() => parse({ ...v3, changes: [{ version: 1, note: 'x' }] })).toThrow(/version/u);
   });
 });

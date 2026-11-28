@@ -5,6 +5,7 @@ import {
   candidateAt,
   gridSize,
   indexer,
+  numericExtent,
   unionAxes,
   type Axis,
   type PlotAxis,
@@ -65,7 +66,7 @@ function colorForValueAxis(panel: PlotPanel, axis: PlotValueAxis): string | unde
 function canonicalExtentOf(measures: readonly PlotMeasureResult[]): readonly [number, number] {
   const data = measures.flatMap((measure) => measure.series.data).filter((value) => Number.isFinite(value));
   if (data.length === 0) return [0, 0];
-  return [Math.min(...data), Math.max(...data)];
+  return numericExtent(data);
 }
 
 /** A linear map from one range onto another, degenerate ranges landing on the target's midpoint. */
@@ -286,10 +287,10 @@ export function contourGridForPanel(panel: PlotPanel, valueUnit: Unit): {
     rectangle: {
       width: xs.length,
       height: ys.length,
-      x1: Math.min(...xs),
-      x2: Math.max(...xs),
-      y1: Math.min(...ys),
-      y2: Math.max(...ys),
+      x1: numericExtent(xs)[0],
+      x2: numericExtent(xs)[1],
+      y1: numericExtent(ys)[0],
+      y2: numericExtent(ys)[1],
     },
   };
 }
@@ -305,8 +306,7 @@ export function contourLegendLevels(panel: PlotPanel, valueUnit: Unit): {
     .map((value) => fromCanonical(value, valueUnit))
     .filter(Number.isFinite);
   if (values.length === 0) return undefined;
-  const minimum = Math.min(...values);
-  const maximum = Math.max(...values);
+  const [minimum, maximum] = numericExtent(values);
   return {
     minimum,
     maximum,

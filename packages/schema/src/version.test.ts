@@ -51,7 +51,7 @@ describe('each artefact refuses a foreign version and names itself', () => {
 
   it('parseCatalogue names "catalogue" in its refusal', () => {
     expect(() => parseCatalogue({ ...catalogueJson, schemaVersion: CATALOGUE_SCHEMA_VERSION + 1 })).toThrow(
-      /schemaVersion: is 3, but this build reads catalogue schemaVersion 1 to 2 only/,
+      /schemaVersion: is 3, but this build reads catalogue schemaVersion 2 only/,
     );
   });
 });

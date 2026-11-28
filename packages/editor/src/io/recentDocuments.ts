@@ -9,7 +9,8 @@
 
 import { type GraphDocument, saveDocument } from '@joveworks/schema';
 
-const RECENT_KEY = 'joveworks:recent';
+/** Exported so another tab's change to the list can be recognised by its `storage` event. */
+export const RECENT_DOCUMENTS_KEY = 'joveworks:recent';
 const MAX_RECENT = 8;
 
 export interface RecentDocument {
@@ -21,7 +22,7 @@ export interface RecentDocument {
 
 export function loadRecentDocuments(): readonly RecentDocument[] {
   try {
-    const raw = window.localStorage.getItem(RECENT_KEY);
+    const raw = window.localStorage.getItem(RECENT_DOCUMENTS_KEY);
     if (raw === null) return [];
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return [];
@@ -51,7 +52,7 @@ export function recordRecentDocument(document: GraphDocument): void {
     };
     const rest = loadRecentDocuments().filter((existing) => existing.id !== document.id);
     const next = [entry, ...rest].slice(0, MAX_RECENT);
-    window.localStorage.setItem(RECENT_KEY, JSON.stringify(next));
+    window.localStorage.setItem(RECENT_DOCUMENTS_KEY, JSON.stringify(next));
   } catch {
     // Private browsing, or storage full: the Recent list is a convenience
     // that degrades to empty, not a requirement the app fails over.

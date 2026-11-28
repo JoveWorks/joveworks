@@ -99,7 +99,9 @@ jobs:
         # hosting under a subpath.
         env:
           JOVEWORKS_CHANNEL: stable
-          VITE_CLOUD: hub
+          # No VITE_CLOUD: the stable bundle schools host has no cloud
+          # surface. Hub is not in use, and its client is due a rework
+          # before any school build carries it again.
           JOVEWORKS_BASE_PATH: ./
         run: pnpm build:bundle
 

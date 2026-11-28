@@ -114,6 +114,7 @@ const CALL_MACROS: Readonly<Record<string, string>> = {
   cosh: '\\cosh',
   tanh: '\\tanh',
   log: '\\ln',
+  log10: '\\log_{10}',
   exp: '\\exp',
 };
 

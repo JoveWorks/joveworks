@@ -4,6 +4,25 @@ import { KernelError } from './errors.js';
 import { broadcastSeries, gridSize, indexer, type Axis, type NumericSeries, type Series } from './series.js';
 import type { Warning } from './warnings.js';
 
+/**
+ * `[Math.min(...values), Math.max(...values)]`, in a loop. The spread form
+ * puts every value on the call stack, and V8 throws `RangeError: Maximum call
+ * stack size exceeded` somewhere past 100 000 of them — a 400 × 400 grid —
+ * so anything that can hold one value per grid cell comes through here.
+ * Same answers as the spread: a NaN anywhere gives NaN, nothing gives
+ * `[Infinity, -Infinity]`.
+ */
+export function numericExtent(values: Iterable<number>): readonly [number, number] {
+  let low = Infinity;
+  let high = -Infinity;
+  for (const value of values) {
+    if (Number.isNaN(value)) return [Number.NaN, Number.NaN];
+    if (value < low) low = value;
+    if (value > high) high = value;
+  }
+  return [low, high];
+}
+
 /** R type-7 / NumPy-default percentile, with linear interpolation. */
 export function percentile(values: readonly number[], percent: number): number {
   if (values.length === 0) return Number.NaN;
@@ -56,8 +75,8 @@ function calculate(request: StatisticRequest, values: readonly (number | string)
         case 'mean': return numeric.reduce((sum, value) => sum + value, 0) / numeric.length;
         case 'median': return percentile(numeric, 50);
         case 'stddev': return sample(numeric);
-        case 'min': return Math.min(...numeric);
-        case 'max': return Math.max(...numeric);
+        case 'min': return numericExtent(numeric)[0];
+        case 'max': return numericExtent(numeric)[1];
         case 'percentile': return percentile(numeric, request.percentile ?? 50);
       }
     }

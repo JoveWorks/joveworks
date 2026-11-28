@@ -156,6 +156,7 @@ const SPECS: readonly FunctionSpec[] = [
   pure('cosh', Math.cosh),
   pure('tanh', Math.tanh),
   pure('log', Math.log),
+  pure('log10', Math.log10),
   pure('exp', Math.exp),
 ];
 
@@ -173,7 +174,8 @@ export interface ReductionSpec {
   readonly name: string;
   /** How many plain scalar arguments follow the variadic-port argument. Defaults to 0. */
   readonly extraArity?: number;
-  readonly apply: (values: readonly number[], extra: readonly number[]) => number;
+  /** `where` locates a refusal, for the input no dimension check can see — an index past the end, say. */
+  readonly apply: (values: readonly number[], extra: readonly number[], where: string | undefined) => number;
   readonly dimension: (argument: Dimension, where: string | undefined, extra: readonly Dimension[]) => Dimension;
 }
 
@@ -241,8 +243,9 @@ const REDUCTION_SPECS: readonly ReductionSpec[] = [
     // measurements, not the whole population, which is the usual case a
     // tolerance is built from.
     name: 'sdev',
-    apply: (values) => {
+    apply: (values, _extra, where) => {
       const n = values.length;
+      if (n < 2) throw new KernelError(`sdev() needs at least two values to spread, and has ${n}`, where);
       const mean = values.reduce((total, value) => total + value, 0) / n;
       const variance = values.reduce((total, value) => total + (value - mean) ** 2, 0) / (n - 1);
       return Math.sqrt(variance);
@@ -254,7 +257,16 @@ const REDUCTION_SPECS: readonly ReductionSpec[] = [
     // series it selects from. 0-based, so "the third value" reads as `at(xs, 2)`.
     name: 'at',
     extraArity: 1,
-    apply: (values, extra) => values[Math.round(extra[0] as number)] as number,
+    apply: (values, extra, where) => {
+      const index = Math.round(extra[0] as number);
+      if (!(index >= 0 && index < values.length)) {
+        throw new KernelError(
+          `at() asks for index ${String(extra[0])} of ${values.length} values — the first is at(xs, 0), the last at(xs, ${values.length - 1})`,
+          where,
+        );
+      }
+      return values[index] as number;
+    },
     dimension: (argument, where, extra) => {
       const index = extra[0] as Dimension;
       if (!dimensionsEqual(index, DIMENSIONLESS)) {

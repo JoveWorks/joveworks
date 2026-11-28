@@ -351,7 +351,7 @@ const CALLS: Readonly<Record<Dialect, Readonly<Record<string, string>>>> = {
   numpy: {
     abs: 'np.abs', sqrt: 'np.sqrt', cbrt: 'np.cbrt', floor: 'np.floor', ceil: 'np.ceil',
     sin: 'np.sin', cos: 'np.cos', tan: 'np.tan', asin: 'np.arcsin', acos: 'np.arccos', atan: 'np.arctan',
-    sinh: 'np.sinh', cosh: 'np.cosh', tanh: 'np.tanh', log: 'np.log', exp: 'np.exp',
+    sinh: 'np.sinh', cosh: 'np.cosh', tanh: 'np.tanh', log: 'np.log', log10: 'np.log10', exp: 'np.exp',
   },
 };
 
@@ -469,6 +469,8 @@ function print(expr: Expr, context: PrintContext, minimum = ADD): string {
       if (expr.callee === 'min' || expr.callee === 'max') return extremum(context.dialect, expr.callee === 'min', args);
       // `Math.round` rounds a half up; Python's and NumPy's round it to even.
       if (expr.callee === 'round') return `${CALLS[context.dialect]['floor']}(${args[0]} + 0.5)`;
+      // SymPy has no log10 of its own; a second argument is its base.
+      if (expr.callee === 'log10' && context.dialect === 'sympy') return `sp.log(${args[0]}, 10)`;
       const callee = CALLS[context.dialect][expr.callee];
       if (callee === undefined) throw new Untranslatable(expr.callee);
       return `${callee}(${args.join(', ')})`;
@@ -501,8 +503,15 @@ function attribute(object: string, name: string): string {
   return PLAIN_NAME.test(name) && !RESERVED.has(name) ? `${object}.${name}` : `getattr(${object}, ${pyString(name)})`;
 }
 
+/**
+ * Every boundary Python's tokenizer ends a physical line at — a bare `\r`
+ * included — plus the other ones `str.splitlines` knows, so no character in a
+ * label can end the comment early and leave the rest of it as code.
+ */
+const LINE_BREAK = /\r\n|[\n\r\v\f\x1c-\x1e\x85\u2028\u2029]/u;
+
 function comment(text: string): string[] {
-  return text.split(/\r?\n/u).map((line) => `# ${line}`.trimEnd());
+  return text.split(LINE_BREAK).map((line) => `# ${line}`.trimEnd());
 }
 
 const NODE_NAMES: Readonly<Record<GraphNode['kind'], string>> = {
@@ -1187,7 +1196,7 @@ export function pythonText(notebook: JupyterNotebook): string {
   const blocks = notebook.cells.map((cell) => {
     const text = cell.source.join('');
     if (cell.cell_type === 'code') return `# %%\n${text}`;
-    return `# %% [markdown]\n${text.split('\n').map((line) => `# ${line}`.trimEnd()).join('\n')}`;
+    return `# %% [markdown]\n${comment(text).join('\n')}`;
   });
   return `${blocks.join('\n\n')}\n`;
 }

@@ -289,3 +289,26 @@ export function broadcastBoolean(
  * legitimate is discovering the cost after the browser stops responding.
  */
 export const LARGE_GRID = 10_000;
+
+/**
+ * The refusal past the warning: a study this large is a typo — a few extra
+ * digits on a point count — far more often than it is a study, and computing
+ * it freezes the tab on the keystroke. Refused with a message on the node
+ * instead, before anything is allocated.
+ */
+export const MAX_GRID = 1_000_000;
+
+const count = (cells: number): string => cells.toLocaleString('en-US');
+
+/** Refuse one sweep, or the grid a node's sweeps combine into, past `MAX_GRID`. */
+export function assertGridSize(axes: readonly Axis[], nodeId: string): void {
+  const cells = gridSize(axes);
+  if (cells <= MAX_GRID) return;
+  throw new KernelError(
+    axes.length === 1
+      ? `this sweep has ${count(cells)} points — JoveWorks evaluates at most ${count(MAX_GRID)}; use fewer points`
+      : `this node would evaluate ${count(cells)} points (${axes.map((axis) => `${axis.label}: ${axis.length}`).join(' × ')}) — ` +
+        `JoveWorks evaluates at most ${count(MAX_GRID)}; sweep fewer points or fewer inputs at once`,
+    nodeId,
+  );
+}

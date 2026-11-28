@@ -131,6 +131,7 @@ function formulaJson(formula: DraftFormula): JsonObject {
   const quarantineReason = localizedTextJson(formula.quarantineReason);
   if (Object.keys(quarantineReason).length > 0) out['quarantineReason'] = quarantineReason;
   if (formula.lookupJson !== undefined) out['lookup'] = formula.lookupJson;
+  if (formula.changesJson !== undefined) out['changes'] = formula.changesJson;
   return out;
 }
 

@@ -13,7 +13,7 @@ export { SchemaError } from './errors.js';
 export type { JsonObject, JsonValue } from './json.js';
 export { canonicalJson } from './json.js';
 
-export { DOCUMENT_SCHEMA_VERSION, CATALOGUE_SCHEMA_VERSION, OLDEST_CATALOGUE_SCHEMA_VERSION } from './version.js';
+export { DOCUMENT_SCHEMA_VERSION, CATALOGUE_SCHEMA_VERSION } from './version.js';
 
 export {
   canonicalValue,
@@ -92,6 +92,7 @@ export {
   findFormula,
   parseFormula,
   serializeFormula,
+  changesSince,
   formulaHash,
   formulaRef,
   parseFormulaRef,
@@ -106,6 +107,7 @@ export {
 } from './formula.js';
 export type {
   Formula,
+  FormulaChange,
   FormulaStatus,
   FormulaRef,
   RefMatch,
@@ -286,7 +288,13 @@ export {
   plotViewChanged,
 } from './document.js';
 
-export { migrateDocument, runMigrationChain, DOCUMENT_MIGRATIONS } from './migration.js';
+export {
+  CATALOGUE_MIGRATIONS,
+  DOCUMENT_MIGRATIONS,
+  migrateCatalogue,
+  migrateDocument,
+  runMigrationChain,
+} from './migration.js';
 export type { SchemaMigrationStep } from './migration.js';
 
 export {

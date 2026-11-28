@@ -39,11 +39,20 @@ import { GraphContext } from './graph-context';
 import { notebookDisplayOf } from './model/notebook';
 import { DisplayProvider, type NotebookDisplay } from './present/display';
 import { SettingsContext } from './settings-context';
-import { clearAutosaveSnapshot, loadAutosaveSnapshot, saveAutosaveSnapshot } from './io/autosave';
+import {
+  claimAutosaveSnapshot,
+  clearAutosaveSnapshot,
+  clearSetAsideSnapshot,
+  loadAutosaveSnapshot,
+  loadSetAsideSnapshot,
+  saveAutosaveSnapshot,
+  setAsideAutosaveSnapshot,
+} from './io/autosave';
 import { cacheCatalogue, cachedCatalogueTexts } from './io/catalogueCache';
 import { documentFileName, jupyterFileName, openTextFile, pythonFileName, saveTextFile, userEquationsFileName } from './io/files';
 import {
   loadRecentDocuments,
+  RECENT_DOCUMENTS_KEY,
   recordRecentDocument,
   type RecentDocument,
 } from './io/recentDocuments';
@@ -196,54 +205,86 @@ function initialCatalogues(): readonly Catalogue[] {
  * to stay off the profiler for graphs of the size this app targets. */
 const AUTOSAVE_INTERVAL_MS = 30_000;
 
-/** A linked example takes priority because opening that URL is an explicit
- * request. Otherwise, an autosave snapshot left over from a session that never
- * hit Save takes priority over the usual startup document — recovery from an
- * accidental close should not require a prompt to get back to work. A
- * corrupted snapshot falls back to the usual default silently. */
+/** Every example the app can open by id. A `Record` over `ExampleId`, so
+ * adding an id without its builder is a type error, not a silent fallback to
+ * some other example. */
+const EXAMPLE_BUILDERS: Readonly<Record<
+  ExampleId,
+  (catalogues: readonly Catalogue[], locale: AppLocale) => GraphDocument | undefined
+>> = {
+  'platform-footprint': platformFootprint,
+  'pad-pressure': padPressure,
+  'monte-carlo-clearance': monteCarloClearance,
+  'reliability-load-strength': reliabilityLoadStrength,
+  'belt-lab': beltLab,
+  'pressfit-lab': pressfitLab,
+  'cantilever-hollow-sections': cantileverHollowSections,
+  'shaft-sizing': shaftSizing,
+  'stepped-shaft-stress': steppedShaftStress,
+  'milling-power-envelope': millingPowerEnvelope,
+  'depth-of-field': depthOfField,
+  'zoom-depth-of-field': zoomDepthOfField,
+  'aperture-decision': apertureDecision,
+  'wildlife-camera-comparison': wildlifeCameraComparison,
+};
+
 function exampleDocument(
   id: ExampleId,
   catalogues: readonly Catalogue[],
   locale: AppLocale,
 ): GraphDocument | undefined {
-  if (id === 'pad-pressure') return padPressure(catalogues, locale);
-  if (id === 'platform-footprint') return platformFootprint(catalogues, locale);
-  if (id === 'monte-carlo-clearance') return monteCarloClearance(catalogues, locale);
-  if (id === 'reliability-load-strength') return reliabilityLoadStrength(catalogues, locale);
-  if (id === 'belt-lab') return beltLab(catalogues, locale);
-  if (id === 'pressfit-lab') return pressfitLab(catalogues, locale);
-  if (id === 'cantilever-hollow-sections') return cantileverHollowSections(catalogues, locale);
-  if (id === 'shaft-sizing') return shaftSizing(catalogues, locale);
-  if (id === 'stepped-shaft-stress') return steppedShaftStress(catalogues, locale);
-  if (id === 'depth-of-field') return depthOfField(catalogues, locale);
-  if (id === 'zoom-depth-of-field') return zoomDepthOfField(catalogues, locale);
-  if (id === 'aperture-decision') return apertureDecision(catalogues, locale);
-  if (id === 'wildlife-camera-comparison') return wildlifeCameraComparison(catalogues, locale);
-  return millingPowerEnvelope(catalogues, locale);
+  return EXAMPLE_BUILDERS[id](catalogues, locale);
 }
 
+/** A linked example takes priority because opening that URL is an explicit
+ * request. Otherwise, an autosave snapshot left over from a session that never
+ * hit Save takes priority over the usual startup document — recovery from an
+ * accidental close should not require a prompt to get back to work.
+ *
+ * A snapshot that will not open is set aside rather than dropped, and the
+ * reason is returned so the student is told: falling back to the default
+ * silently let the next autosave overwrite their work. A set-aside snapshot is
+ * tried again on every later start that has no newer autosave, so the build
+ * that can read it brings it back. */
 function startupDocument(
   catalogues: readonly Catalogue[],
   locale: AppLocale,
-): { readonly document: GraphDocument; readonly restored: boolean; readonly example?: ExampleId } {
+): {
+  readonly document: GraphDocument;
+  readonly restored: boolean;
+  readonly example?: ExampleId;
+  /** Why the autosave could not be opened, when it was just set aside. */
+  readonly unreadable?: string;
+} {
   const linkedExample = exampleIdFromUrl(new URL(window.location.href));
   if (linkedExample !== undefined) {
     const linkedDocument = exampleDocument(linkedExample, catalogues, locale);
     if (linkedDocument !== undefined) return { document: linkedDocument, restored: false, example: linkedExample };
   }
 
+  const fallback = padPressure([baseCatalogue()], locale) ?? emptyDocument('untitled', 'Untitled');
   const snapshot = loadAutosaveSnapshot();
   if (snapshot !== undefined) {
     try {
-      return { document: loadDocument(snapshot.text), restored: true };
-    } catch {
-      // Falls through to the default document below.
+      const document = loadDocument(snapshot.text);
+      claimAutosaveSnapshot(snapshot);
+      return { document, restored: true };
+    } catch (error) {
+      setAsideAutosaveSnapshot(snapshot);
+      return { document: fallback, restored: false, unreadable: error instanceof Error ? error.message : String(error) };
     }
   }
-  return {
-    document: padPressure([baseCatalogue()], locale) ?? emptyDocument('untitled', 'Untitled'),
-    restored: false,
-  };
+  const setAside = loadSetAsideSnapshot();
+  if (setAside !== undefined) {
+    try {
+      const document = loadDocument(setAside.text);
+      clearSetAsideSnapshot();
+      return { document, restored: true };
+    } catch {
+      // Still unreadable; it stays set aside, and the student was told once.
+    }
+  }
+  return { document: fallback, restored: false };
 }
 
 function publicationLinkFromUrl(): { readonly hubUrl: string; readonly publicationId: string } | undefined {
@@ -371,7 +412,7 @@ function AppShell(): ReactElement {
       storeUserEquations(next);
       return next;
     });
-  const [{ document: initialDocument, restored: restoredAutosave, example: linkedExample }] = useState(() =>
+  const [{ document: initialDocument, restored: restoredAutosave, example: linkedExample, unreadable: unreadableAutosave }] = useState(() =>
     startupDocument(catalogues, loadAppLocale()),
   );
   const [history, setHistory] = useState<History<GraphDocument>>(() => initHistory(initialDocument));
@@ -410,7 +451,27 @@ function AppShell(): ReactElement {
   const [savedSnapshot, setSavedSnapshot] = useState<string | undefined>(() =>
     restoredAutosave ? undefined : saveDocument(initialDocument),
   );
-  const isDirty = savedSnapshot === undefined || saveDocument(document) !== savedSnapshot;
+  // Serializing the whole document is not free, and this sat on every render
+  // — a pan or a hover included. The document is immutable state, so its
+  // identity changes exactly when its text can.
+  // Bumped whenever the Recent list in localStorage changes, so the File menu
+  // reads it only then (see `recentDocuments`).
+  const [recentsVersion, setRecentsVersion] = useState(0);
+  const rememberRecent = (recent: GraphDocument): void => {
+    recordRecentDocument(recent);
+    setRecentsVersion((version) => version + 1);
+  };
+  useEffect(() => {
+    const changed = (event: StorageEvent): void => {
+      if (event.key === null || event.key === RECENT_DOCUMENTS_KEY) setRecentsVersion((version) => version + 1);
+    };
+    window.addEventListener('storage', changed);
+    return () => window.removeEventListener('storage', changed);
+  }, []);
+  const isDirty = useMemo(
+    () => savedSnapshot === undefined || saveDocument(document) !== savedSnapshot,
+    [document, savedSnapshot],
+  );
   // Loading a different document (open file, a sample) starts a fresh undo
   // history — there is nothing to gain from undoing back into a document
   // that is no longer open, same as most editors treat "open a file". It
@@ -548,11 +609,14 @@ function AppShell(): ReactElement {
   const [restoredAutosaveNoticeId] = useState(() =>
     restoredAutosave ? crypto.randomUUID() : undefined,
   );
-  const [notices, setNotices] = useState<readonly { readonly id: string; readonly message: string }[]>(() =>
-    restoredAutosaveNoticeId === undefined
+  // Seeded like the restore notice, and for the same StrictMode reason; it is
+  // not dismissed on a timer, since it reports work the student has to act on.
+  const [notices, setNotices] = useState<readonly { readonly id: string; readonly message: string }[]>(() => [
+    ...(restoredAutosaveNoticeId === undefined ? [] : [{ id: restoredAutosaveNoticeId, message: copy.restoredAutosave }]),
+    ...(unreadableAutosave === undefined
       ? []
-      : [{ id: restoredAutosaveNoticeId, message: copy.restoredAutosave }],
-  );
+      : [{ id: crypto.randomUUID(), message: `${copy.unreadableAutosave} (${unreadableAutosave})` }]),
+  ]);
   const dismissNotice = (id: string): void =>
     setNotices((current) => current.filter((notice) => notice.id !== id));
 
@@ -604,7 +668,7 @@ function AppShell(): ReactElement {
       for (const catalogue of loadedCatalogues) cacheCatalogue(catalogue.id, saveCatalogue(catalogue));
       resetDocument(loadedDocument);
       if (bindCloud) setCloudWorkspaceBinding({ source, catalogues: publication.catalogues });
-      recordRecentDocument(loadedDocument);
+      rememberRecent(loadedDocument);
       clearAutosaveSnapshot();
       pushNotice(`Opened ${publication.title} from ${source.title}.`);
     } catch (error) {
@@ -630,7 +694,7 @@ function AppShell(): ReactElement {
     setWorkspaceAccessRevision((current) => current + 1);
     setHubWorkspace(created.workspace);
     const text = saveDocument(documentRef.current);
-    recordRecentDocument(documentRef.current);
+    rememberRecent(documentRef.current);
     clearAutosaveSnapshot();
     setSavedSnapshot(text);
     pushNotice(`Saved to cloud workspace ${created.workspace.id}. Share: ${new URL(`/w/${created.workspace.id}`, `${created.workspace.hubUrl}/`)}`);
@@ -656,7 +720,7 @@ function AppShell(): ReactElement {
     const saved = await saveWorkspace(hubWorkspace, draft, token);
     setHubWorkspace(saved);
     const text = saveDocument(documentRef.current);
-    recordRecentDocument(documentRef.current);
+    rememberRecent(documentRef.current);
     clearAutosaveSnapshot();
     setSavedSnapshot(text);
     pushNotice(`Saved to cloud workspace ${saved.id}.`);
@@ -679,7 +743,7 @@ function AppShell(): ReactElement {
     setHubWorkspace(workspace);
     resetDocument(workspace.document);
     setCloudWorkspaceBinding(binding);
-    recordRecentDocument(workspace.document);
+    rememberRecent(workspace.document);
     clearAutosaveSnapshot();
     pushNotice(`Opened ${workspace.title} from cloud workspace ${workspace.id}.`);
   };
@@ -744,15 +808,18 @@ function AppShell(): ReactElement {
     // restored autosave suppresses it) without the introduction tour they
     // had still never seen. It also resurrected the slot that Save had just
     // cleared, on the way out of a document safely on disk.
-    const snapshot = (): void => {
+    const snapshot = (leaving: boolean): void => {
       if (!isDirtyRef.current) return;
-      saveAutosaveSnapshot(saveDocument(documentRef.current));
+      saveAutosaveSnapshot(saveDocument(documentRef.current), leaving);
     };
-    const interval = window.setInterval(snapshot, AUTOSAVE_INTERVAL_MS);
-    window.addEventListener('beforeunload', snapshot);
+    const tick = (): void => snapshot(false);
+    // Marked as left, so a tab opened next may take the work over.
+    const leave = (): void => snapshot(true);
+    const interval = window.setInterval(tick, AUTOSAVE_INTERVAL_MS);
+    window.addEventListener('beforeunload', leave);
     return () => {
       window.clearInterval(interval);
-      window.removeEventListener('beforeunload', snapshot);
+      window.removeEventListener('beforeunload', leave);
     };
   }, []);
 
@@ -884,7 +951,7 @@ function AppShell(): ReactElement {
   const saveToFile = (): void => {
     const text = saveDocument(documentRef.current);
     saveTextFile(documentFileName(documentRef.current.title), text);
-    recordRecentDocument(documentRef.current);
+    rememberRecent(documentRef.current);
     clearAutosaveSnapshot();
     setSavedSnapshot(text);
     analytics.track({ name: 'document_saved' });
@@ -1044,7 +1111,7 @@ function AppShell(): ReactElement {
     try {
       const loaded = loadDocument(file.text);
       resetDocument(loaded);
-      recordRecentDocument(loaded);
+      rememberRecent(loaded);
       clearAutosaveSnapshot();
     } catch (error) {
       analytics.track({ name: 'document_load_failed', props: { reason: 'invalid_file' } });
@@ -1062,7 +1129,7 @@ function AppShell(): ReactElement {
     try {
       const loaded = loadDocument(recent.text);
       resetDocument(loaded);
-      recordRecentDocument(loaded);
+      rememberRecent(loaded);
     } catch (error) {
       analytics.track({ name: 'document_load_failed', props: { reason: 'invalid_file' } });
       pushNotice(`Could not reopen "${recent.title}": ${messageOf(error)}`);
@@ -1109,11 +1176,9 @@ function AppShell(): ReactElement {
 
   // Open/save belong in a conventional File/Edit/View/Help ribbon, top-left
   // — not wherever the individual actions used to live.
-  // Recent is read fresh on every render rather than kept in its own state:
-  // the list only changes as a side effect of actions that already trigger a
-  // re-render (Open, Save, picking a recent entry), so there is nothing an
-  // extra state variable would keep in sync that a plain read doesn't.
-  const recentDocuments = loadRecentDocuments();
+  // Recent holds up to eight whole documents, so it is read again only when
+  // it can have changed: when this tab records one, or another tab does.
+  const recentDocuments = useMemo(() => loadRecentDocuments(), [recentsVersion]);
   const fileMenuItems: readonly MenuItem[] = [
     { label: t('New'), onClick: () => guardDiscard(newDocument) },
     { label: t('Open…'), onClick: () => guardDiscard(() => void openDocumentFile()) },

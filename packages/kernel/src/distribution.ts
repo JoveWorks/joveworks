@@ -1,6 +1,6 @@
 import { indexer, type Axis, type NumericSeries } from './series.js';
 import { normalCdf } from './normal.js';
-import { percentile } from './statistics.js';
+import { numericExtent, percentile } from './statistics.js';
 import type { Warning } from './warnings.js';
 
 export interface HistogramBin { readonly x1: number; readonly x2: number; readonly count: number; readonly density: number }
@@ -29,8 +29,7 @@ export function distributionBinCount(samples: readonly number[]): number {
 
 export function histogram(samples: readonly number[], requested?: number): readonly HistogramBin[] {
   if (samples.length === 0) return [];
-  const min = Math.min(...samples);
-  const max = Math.max(...samples);
+  const [min, max] = numericExtent(samples);
   const count = requested ?? distributionBinCount(samples);
   const width = max === min ? 1 : (max - min) / count;
   const totals = new Array<number>(count).fill(0);

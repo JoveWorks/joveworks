@@ -6,15 +6,17 @@
 like. Generic mechanics content, not R&M-specific, so this lives in the public
 repo's node library and should be referenceable from the notebook.
 
-**2. What about migration to newer versions?** Documents have a migration path.
-Catalogues still have no migration path and refuse an unknown schema version.
+**2. What about migration to newer versions?** Documents and catalogues both
+load through a migration chain (`packages/schema/src/migration.ts`) and refuse
+a newer schema version by name.
 
 **3. Change: What is the {table XX} notation in RM catalogue?** Done in
 the editor: catalogues declare `tables` (catalogue schemaVersion 2), each one a
 palette entry that drops a catalogue table node, picked by clicking cells. See
 [docs/table-input-node-plan.md](docs/table-input-node-plan.md). Left: moving the
-R&M tables in the private catalogue from lookup formulas into `tables`, and the
-catalogue migration from version 1 that would do it automatically (item 2).
+R&M tables in the private catalogue from lookup formulas into `tables`, which
+the catalogue migration step 1 → 2 (`CATALOGUE_MIGRATIONS[1]`) can do once it
+knows which lookups are tables.
 
 **4. Change: equation R&M 16.3 uses betahat_1** The hat is currently not
 present as a caret on the letter. Out of scope for this repo — R&M catalogue
@@ -140,13 +142,6 @@ the NodeBook should pair them in a section, or that this is the section frame's
 job already and nothing needs to change. Decide before adding a fifth thing a
 Plot node can be configured to do.
 
-**15. Nice to have: link to a PDF** — a formula, a node or a section pointing at
-the page of a source document it came from. R&M citations already exist as
-metadata (`citation` on a formula); this is the step from "eq. 11.14" to
-something clickable. Out of scope for this repository as far as R&M content
-goes — the restricted catalogue lives elsewhere — so what is decided here is
-only the *field* and how the editor renders it, not any particular target.
-
 **16. SI prefixes for compound units** — under the 'si' number format a
 single prefixable unit picks its prefix (`12500 N` reads `12.50 kN`), but a
 compound one never does: `prefixableAtomOf` refuses anything that is not one
@@ -156,21 +151,6 @@ one — whether `N/mm²` should become `MPa` (R&M itself writes `N/mm²`), and
 which atom of a product takes the prefix (`kN·m` versus `N·km`). Needs a
 rule from the course side before anything in `formatQuantity` or
 `siAxisUnit` changes.
-
-**17. Show every affected node, not just the next one** — hovering a port or
-wire highlights only the nodes one wire away (`connectedNodeIds` in
-`canvas/Canvas.tsx`), so what a change actually reaches has to be traced hop by
-hop. The highlight should follow the whole downstream closure (and arguably
-the upstream one for an input port), through collapsed groups too. Worth
-deciding whether the far nodes get a quieter ring than the direct neighbours,
-so the immediate wire stays readable.
-
-**18. Peek into a collapsed group** — expanding a collapsed group today opens
-all of its nodes onto the canvas, which reflows the layout just to look
-inside. A `peek` would show the group's contents temporarily (an overlay or
-popover, dismissed on leave or Escape) without expanding it and without
-touching the document. Decide whether a peek is read-only or allows editing a
-value in place.
 
 **19. Domain node kinds as extensions, not core** — Shaft, Support, Load,
 Distributed load and Shaft view are built into the document schema and the

@@ -43,6 +43,8 @@ interface Props {
   /** Why the node is not `ok`, in the kernel's words. */
   readonly problem?: ReactNode;
   readonly warning?: string;
+  /** Something to do about the warning, drawn inside it — accepting a changed formula, say. */
+  readonly warningAction?: ReactNode;
   readonly selected?: boolean;
   readonly highlighted?: boolean;
   readonly expanded?: boolean;
@@ -96,6 +98,7 @@ export function NodeShell({
   subtitle,
   problem,
   warning,
+  warningAction,
   selected = false,
   highlighted,
   expanded = false,
@@ -165,7 +168,12 @@ export function NodeShell({
           {problem === undefined ? null : <span className="reason">{problem}</span>}
         </div>
       )}
-      {warning === undefined ? null : <div className="node-warning">{warning}</div>}
+      {warning === undefined ? null : (
+        <div className="node-warning">
+          {warning}
+          {warningAction}
+        </div>
+      )}
 
       {open && detail !== undefined ? (
         <div className="node-detail">

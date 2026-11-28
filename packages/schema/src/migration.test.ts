@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { DOCUMENT_MIGRATIONS, migrateDocument, runMigrationChain, type SchemaMigrationStep } from './migration.js';
+import { CATALOGUE_MIGRATIONS, DOCUMENT_MIGRATIONS, migrateDocument, runMigrationChain, type SchemaMigrationStep } from './migration.js';
 import { emptyDocument, serializeDocument } from './document.js';
 import { DOCUMENT_SCHEMA_VERSION } from './version.js';
 import type { JsonObject } from './json.js';
@@ -12,6 +12,10 @@ describe('the real document migration table', () => {
     // `DOCUMENT_MIGRATIONS` (a recorded no-op if the schema was only
     // widened, per this file's header) and update this test to match.
     expect(DOCUMENT_MIGRATIONS).toEqual({});
+  });
+
+  it('has one catalogue step, 1 → 2, where tables arrived', () => {
+    expect(Object.keys(CATALOGUE_MIGRATIONS)).toEqual(['1']);
   });
 
   it('opens a current document unchanged — no step runs when the version is already current', () => {

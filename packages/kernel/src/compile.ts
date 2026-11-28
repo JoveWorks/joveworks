@@ -231,7 +231,7 @@ function compileNode(expr: Expr, where: string | undefined): CompiledExpression 
           const length = seriesLength(env, names, callee, where);
           const values = new Array<number>(length);
           for (let index = 0; index < length; index += 1) values[index] = element(env, index);
-          return reduction.apply(values, compiledExtra.map((arg) => arg(env)));
+          return reduction.apply(values, compiledExtra.map((arg) => arg(env)), where);
         };
       }
 

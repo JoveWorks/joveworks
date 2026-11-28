@@ -272,6 +272,31 @@ describe('compiling a graph to a Jupyter notebook', () => {
     expect(script.split('\n').some((line) => line.endsWith(' '))).toBe(false);
   });
 
+  it('writes log10 as NumPy\'s, and as SymPy\'s log with a base', () => {
+    const exported = (output: JsonObject): string => python(compile(
+      [
+        { kind: 'input', id: 'u', position: at(0), label: 'u', value: { kind: 'scalar', value: 100, unit: '' } },
+        { kind: 'closure', id: 'own', position: at(100), label: 'r', expression: 'log10(m)' },
+        { kind: 'output', id: 'out', position: at(200), output },
+      ],
+      [wire('u.value', 'own.m'), wire('own.result', 'out.value')],
+    ));
+    expect(exported({ kind: 'print', unit: '' })).toContain('r = np.log10(u)');
+    expect(exported({ kind: 'equation' })).toContain('r_eq = sp.log(sym.m, 10)');
+  });
+
+  it('keeps a label with a bare carriage return inside its comment, where Python would end the line', () => {
+    const result = compile([
+      { kind: 'output', id: 'shown', position: at(0), label: 'x\rprint("from a label")', output: { kind: 'print', unit: 'm' } },
+    ], []);
+    expect(python(result)).toContain('from a label');
+    for (const text of [python(result), pythonText(result.notebook)]) {
+      for (const line of text.split(/\r\n|\r|\n/u)) {
+        if (line.includes('from a label')) expect(line.startsWith('# ')).toBe(true);
+      }
+    }
+  });
+
   it('is a well-formed nbformat 4.5 file', () => {
     const notebook = JSON.parse(jupyterText(study().notebook)) as { nbformat: number; cells: { id: string; cell_type: string; outputs?: unknown[] }[] };
     expect(notebook.nbformat).toBe(4);

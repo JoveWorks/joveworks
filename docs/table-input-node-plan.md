@@ -92,12 +92,16 @@ own top-level array on `Catalogue`, beside `formulas`:
   (`FormulaLookup`-like axis plus columns), so evaluation does not change.
   The kernel keeps a single code path for "a table of rows".
 
-**Catalogue schemaVersion 2.** `tables` arrives with a version bump, so a
-later catalogue migration has a clean line to walk: a version-1 catalogue is
-one whose tables, if any, are still lookup formulas. This build reads both
-versions (`OLDEST_CATALOGUE_SCHEMA_VERSION = 1`); `tables` in a version-1
-file is refused. A build that predates this one refuses a version-2 catalogue
-outright, which is acceptable because the editor is deployed, not installed.
+**Catalogue schemaVersion 2.** `tables` arrives with a version bump, so the
+catalogue migration chain has a clean line to walk: a version-1 catalogue is
+one whose tables, if any, are still lookup formulas. `CATALOGUE_MIGRATIONS[1]`
+(`migration.ts`) brings a version-1 file up to 2 — today by changing only
+its stamp, later by moving those lookups into `tables` — and refuses
+`tables` in a version-1 file. `parseCatalogue` itself stays strict at the
+current version. A build that predates this one refuses a version-2
+catalogue, naming it as made for a newer JoveWorks, so per AGENTS.md the
+stable build that reads version 2 ships before any version-2 catalogue is
+published.
 
 **Moving a lookup formula into `tables` is not additive** for any build that
 reads the new catalogue file but predates this change: it loses that formula.

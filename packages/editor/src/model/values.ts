@@ -7,7 +7,7 @@
  * the same way and only the rendering differs.
  */
 
-import { canonicalUnit, type Series } from '@joveworks/kernel';
+import { canonicalUnit, numericExtent, type Series } from '@joveworks/kernel';
 import { DIMENSIONLESS, PLAIN_NUMBER_FORMAT, type NumberFormat, type Unit } from '@joveworks/units';
 import { AT_PORT, VALUE_PORT, Y_PORT, type GraphNode } from '@joveworks/schema';
 
@@ -51,7 +51,7 @@ export function reading(
 export function extent(reading: Reading): readonly [number, number] | undefined {
   if (reading.series.kind !== 'numeric' || reading.series.data.length === 0) return undefined;
   const { data } = reading.series;
-  return [Math.min(...data), Math.max(...data)];
+  return numericExtent(data);
 }
 
 /** One line for a node body or a notebook entry. */

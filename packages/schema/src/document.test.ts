@@ -1231,3 +1231,20 @@ describe('plot measure states', () => {
     expect(effectivePlotView({ id: 'value', inferred, view: { type: 'heatmap' } })).toEqual({ type: 'heatmap' });
   });
 });
+
+describe('a document from a newer build', () => {
+  it('names an unknown node kind as a newer JoveWorks, not as a list of the kinds this build knows', () => {
+    const document = { ...study, nodes: [{ kind: 'gearbox', id: 'g', position: { x: 0, y: 0 } }], edges: [] };
+    expect(() => parseDocument(document)).toThrow(/is 'gearbox', a node kind .*newer version of JoveWorks/u);
+    expect(() => parseDocument(document)).not.toThrow(/expected one of/u);
+  });
+
+  it('does the same for an unknown output kind', () => {
+    const document = {
+      ...study,
+      nodes: [{ kind: 'output', id: 'o', position: { x: 0, y: 0 }, output: { kind: 'hologram' } }],
+      edges: [],
+    };
+    expect(() => parseDocument(document)).toThrow(/is 'hologram', an output kind .*newer version of JoveWorks/u);
+  });
+});

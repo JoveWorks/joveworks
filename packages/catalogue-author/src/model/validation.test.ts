@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { emptyCatalogue, emptyFormula, emptyPort, type DraftCatalogue, type DraftFormula } from './draft';
+import { draftCatalogueFromReal, emptyCatalogue, emptyFormula, emptyPort, type DraftCatalogue, type DraftFormula } from './draft';
 import { validateCatalogue } from './validation';
 
 function catalogueWith(formulas: readonly DraftFormula[]): DraftCatalogue {
@@ -89,6 +89,14 @@ describe('validateCatalogue', () => {
     expect(validation.catalogueErrors).toEqual([]);
     expect(validation.catalogue?.source).toEqual(source);
     expect(validation.catalogue?.formulas[0]?.href).toBe('#eq-1.2');
+  });
+
+  it('keeps the maintainer\'s change notes through a load and save, though nothing edits them', () => {
+    const changes = [{ version: 2, note: { en: 'Invented: a sum corrected.' } }];
+    const first = validateCatalogue(catalogueWith([{ ...validFormula(), version: '2', changesJson: changes }]));
+    expect(first.catalogue?.formulas[0]?.changes).toEqual(changes);
+    const reloaded = validateCatalogue(draftCatalogueFromReal(first.catalogue!));
+    expect(reloaded.catalogue?.formulas[0]?.changes).toEqual(changes);
   });
 
   describe('tables, which the tool has no editor for yet', () => {

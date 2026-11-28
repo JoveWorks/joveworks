@@ -82,11 +82,17 @@ tools/extract/    One-off Python extraction scripts, retained for provenance, no
   used by hundreds of students, whose NodeBooks and cached catalogues nobody
   can reach in to rewrite. Grow the format by adding optional fields, where an
   absent field means the old behaviour; the parsers ignore unknown keys, so an
-  older build still opens a newer file. Never rename, remove, or change the
-  meaning of a persisted field without a `DOCUMENT_SCHEMA_VERSION` bump and a
-  step in `packages/schema/src/migration.ts`, covered by a fixture under
-  `packages/schema/fixtures/documents/`. Catalogues have no migration path yet, so a
-  catalogue change that is not additive needs a decision from the user first.
+  older build still opens a newer file that only adds fields. A new node or
+  output kind (or enum member) is not forward-compatible: an older build
+  refuses that document, saying it came from a newer JoveWorks. Never
+  rename, remove, or change the meaning of a persisted field without a
+  `DOCUMENT_SCHEMA_VERSION` bump and a step in
+  `packages/schema/src/migration.ts`, covered by a fixture under
+  `packages/schema/fixtures/documents/`. Catalogues migrate the same way
+  (`CATALOGUE_SCHEMA_VERSION`, `CATALOGUE_MIGRATIONS`), but a non-additive
+  catalogue change still needs a decision from the user first: the stable
+  build that reads the new version has to ship before any catalogue in it is
+  published.
 - The editor is desktop-only. Preserve its palette/canvas/notebook layout and
   avoid introducing a permanent inspector without an explicit product decision.
 

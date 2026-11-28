@@ -12,7 +12,7 @@
 
 import {
   localize,
-  parseCatalogue,
+  migrateCatalogue,
   loadCatalogue,
   isRelativeLink,
   ports,
@@ -134,7 +134,7 @@ function bundledCatalogueIds(): ReadonlySet<string> {
  */
 export function bundledCatalogues(): readonly Catalogue[] {
   return [
-    ...[...Object.values(bundledCatalogueModules), ...Object.values(exampleCatalogueModules)].map((data) => parseCatalogue(data)),
+    ...[...Object.values(bundledCatalogueModules), ...Object.values(exampleCatalogueModules)].map((data) => migrateCatalogue(data)),
     ...[...Object.values(bundledYamlCatalogueModules), ...Object.values(exampleYamlCatalogueModules)].map((text) => loadCatalogue(text, 'yaml')),
   ];
 }

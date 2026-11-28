@@ -119,7 +119,7 @@ import { canonicalUnit, endpointKey, resolveGraph, type PortType, type Resolutio
 import { evaluateSensitivity, type SensitivityRankingResult } from './sensitivity.js';
 import { crossingsAlong, select, type SelectResult } from './select.js';
 import { interpolate } from './interpolate.js';
-import { reduceAlong } from './statistics.js';
+import { numericExtent, reduceAlong } from './statistics.js';
 import {
   deflection as shaftDeflection,
   moment as shaftMoment,
@@ -137,6 +137,7 @@ import { buildDistribution, type DistributionPanel } from './distribution.js';
 import { inverseNormal, wilsonInterval } from './normal.js';
 import {
   LARGE_GRID,
+  assertGridSize,
   broadcastBoolean,
   broadcastSeries,
   gridSize,
@@ -432,6 +433,23 @@ export interface ReliabilityEstimate {
 export interface ReliabilityResult extends OutputBase {
   readonly kind: 'reliability';
   readonly confidence: number;
+  /**
+   * Over every trial. When the checks also vary along a design axis these
+   * pool the designs — a failure probability that describes no design — so
+   * a reader should show `designs` instead whenever it is present.
+   */
+  readonly checks: readonly ReliabilityEstimate[];
+  readonly combined?: ReliabilityEstimate;
+  /**
+   * One set of estimates per design cell, over that design's trials only:
+   * present when the referenced checks vary along any axis besides the trial
+   * axis. `at` names the design on each of those axes.
+   */
+  readonly designs?: readonly ReliabilityDesign[];
+}
+
+export interface ReliabilityDesign {
+  readonly at: readonly AxisCoordinate[];
   readonly checks: readonly ReliabilityEstimate[];
   readonly combined?: ReliabilityEstimate;
 }
@@ -652,6 +670,9 @@ function runEvaluation(
   const axisByNode = resolution.axes;
   const largeGrid = options.largeGrid ?? LARGE_GRID;
   const skip = options.skip;
+  // Before any range is expanded: an oversized count is refused on its own
+  // node, not allocated on the keystroke that typed it.
+  for (const [nodeId, axis] of axisByNode) assertGridSize([axis], nodeId);
 
   // Output nodes are always sinks — `resolveGraph` never records an edge
   // *from* an output port — so a Feasibility or Best Design node's position
@@ -1623,6 +1644,7 @@ function evaluateFormula(
     ...regularInputs.map(({ value }) => value.axes),
     ...variadicInputs.flatMap(({ edgeValues }) => edgeValues.map((value) => value.axes)),
   );
+  assertGridSize(axes, nodeId);
   const cells = gridSize(axes);
   if (cells >= largeGrid) {
     warnings.push({
@@ -2019,18 +2041,22 @@ function evaluateCompare(
   if (threshold.kind !== 'numeric') {
     throw new KernelError('a comparison needs a numeric threshold, not a categorical one', thresholdKey);
   }
-  if (threshold.data.length !== 1 && threshold.data.length !== value.data.length) {
+  // Paired by axis, like every other place two series meet: the threshold
+  // may vary along any of the value's axes and is broadcast over the rest.
+  // Pairing by position instead matched two unrelated sweeps of equal length
+  // cell for cell, in silence, and refused `d × T` against a limit over `d`.
+  const foreign = threshold.axes.filter((axis) => !value.axes.some((own) => own.id === axis.id));
+  if (foreign.length > 0) {
     throw new KernelError(
-      `the threshold has ${threshold.data.length} values, but the value it compares against has ` +
-        `${value.data.length} — a swept threshold needs one bound per point`,
+      `the threshold varies along ${foreign.map((axis) => `'${axis.label}'`).join(', ')}, which the value ` +
+        'it compares against does not — compute the threshold from the value\'s own sweep, or pair the two lists with a zip',
       thresholdKey,
     );
   }
 
   const compare = comparator(node.comparison);
-  const data = value.data.map((cell, i) =>
-    compare(cell, threshold.data[threshold.data.length === 1 ? 0 : i] as number) ? 'pass' : 'fail',
-  );
+  const bound = reader(threshold, value.axes);
+  const data = value.data.map((cell, i) => (compare(cell, bound(i)) ? 'pass' : 'fail'));
   return { kind: 'categorical', axes: value.axes, data };
 }
 
@@ -2435,6 +2461,7 @@ function evaluateShaft(
     ...acting.flatMap((value) => loadSeries(value).map((series) => series.axes)),
     ...(plane === undefined ? [] : [plane.axes]),
   );
+  assertGridSize(axes, nodeId);
   const cells = gridSize(axes);
   if (cells >= largeGrid) {
     warnings.push({
@@ -3351,7 +3378,7 @@ function outputResult(
     const spread = feasible
       .map((ok, i) => (ok ? (scores.data[i] as number) : Number.NaN))
       .filter((entry) => Number.isFinite(entry));
-    if (feasibleCount > 1 && Math.min(...spread) === Math.max(...spread)) {
+    if (feasibleCount > 1 && numericExtent(spread)[0] === numericExtent(spread)[1]) {
       warnings.push({
         kind: 'bestDesignFlat',
         nodeId: node.id,
@@ -3512,11 +3539,33 @@ function outputResult(
     });
     const checks = checkResults.map((check) => reliabilityEstimate(check.nodeId, check.results, confidence));
     const studyAxes = unionAxes(...checkResults.map((check) => check.series.axes));
-    const combinedVerdicts = checkResults.length === 0
-      ? []
-      : feasibleMask(checkResults, studyAxes).mask;
+    const { perCheck, mask: combinedVerdicts } = checkResults.length === 0
+      ? { perCheck: [], mask: [] }
+      : feasibleMask(checkResults, studyAxes);
     const combined = checkResults.length === 0 ? undefined : reliabilityEstimate('all', combinedVerdicts, confidence);
-    if ([...checks, ...(combined === undefined ? [] : [combined])].some((estimate) => estimate.unresolved)) {
+
+    // Every axis but the trial axis is a design. Pooling trials across them
+    // answers "how often does a random design from this sweep fail", which
+    // nobody asked; each design gets its own estimate over its own trials.
+    const designAxes = hasTrials && trialAxis !== undefined ? studyAxes.filter((axis) => axis.id !== trialAxis.id) : [];
+    const designs = designAxes.length === 0 ? undefined : (() => {
+      const designOf = indexer({ kind: 'numeric', axes: designAxes, data: [] }, studyAxes);
+      const members = Array.from({ length: gridSize(designAxes) }, () => [] as number[]);
+      for (let cell = 0; cell < gridSize(studyAxes); cell += 1) members[designOf(cell)]?.push(cell);
+      const readouts = readAxisReadouts(resolution, values);
+      return members.map((cells, design): ReliabilityDesign => {
+        const pick = (verdicts: readonly boolean[]): boolean[] => cells.map((cell) => verdicts[cell] as boolean);
+        return {
+          at: coordinatesAt(designAxes, design, readouts),
+          checks: checkResults.map((check, i) => reliabilityEstimate(check.nodeId, pick(perCheck[i] ?? []), confidence)),
+          ...(checkResults.length === 0 ? {} : { combined: reliabilityEstimate('all', pick(combinedVerdicts), confidence) }),
+        };
+      });
+    })();
+    const reported = designs === undefined
+      ? [...checks, ...(combined === undefined ? [] : [combined])]
+      : designs.flatMap((design) => [...design.checks, ...(design.combined === undefined ? [] : [design.combined])]);
+    if (reported.some((estimate) => estimate.unresolved)) {
       warnings.push({
         kind: 'reliabilityUnresolved',
         nodeId: node.id,
@@ -3529,6 +3578,7 @@ function outputResult(
       confidence,
       checks,
       ...(combined === undefined ? {} : { combined }),
+      ...(designs === undefined ? {} : { designs }),
     };
   }
 

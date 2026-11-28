@@ -74,6 +74,12 @@ export interface DraftFormula {
    */
   readonly lookupJson?: JsonValue;
   /**
+   * The maintainer's change notes (`Formula.changes`), round-tripped the same
+   * way: there is no editor for them yet, and dropping them on save would lose
+   * what students are told when they update.
+   */
+  readonly changesJson?: JsonValue;
+  /**
    * The same treatment for a record answering with several outputs: the one
    * `expression` field above edits a single relation, so a per-output map
    * round-trips as captured JSON rather than being flattened to whichever
@@ -231,6 +237,7 @@ export function draftFormulaFromReal(formula: Formula): DraftFormula {
     status: formula.status,
     quarantineReason: draftLocalizedTextFromReal(formula.quarantineReason),
     ...(formula.lookup === undefined ? {} : { lookupJson: serializeFormula(formula).lookup }),
+    ...(formula.changes === undefined ? {} : { changesJson: serializeFormula(formula).changes }),
     ...(formula.outputs.length === 1 ? {} : { expressionJson: serializeFormula(formula).expression }),
   };
 }

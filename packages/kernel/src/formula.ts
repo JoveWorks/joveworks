@@ -47,6 +47,7 @@ import {
 } from './compile.js';
 import { connectable } from './dimensions.js';
 import { KernelError } from './errors.js';
+import { CONSTANTS } from './functions.js';
 import { parseExpression, parsePredicate } from './parse.js';
 
 /** The quarantine gate, stated once so every path through the kernel uses the same one. */
@@ -134,6 +135,13 @@ export function compileClosureFormula(formula: Formula, where?: string): Compile
  * distinct base dimensions, which proves the case for all of them.
  */
 export function checkFormulaDimensions(formula: Formula): void {
+  // A constant is read before the environment, so a port of the same name
+  // would be silently ignored: `pi * 2` with a port `pi = 10` gives 6.28.
+  for (const port of [...formula.inputs, ...formula.outputs] as readonly Port[]) {
+    if (CONSTANTS[port.name] !== undefined) {
+      throw new KernelError(`'${formula.id}' names a port '${port.name}', which is a built-in constant — rename the port`);
+    }
+  }
   const names = [...genericVariablesOf(formula)].sort();
   if (names.length > BASE_DIMENSIONS.length) {
     throw new KernelError(

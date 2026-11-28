@@ -16,11 +16,11 @@
  * `migrateDocument` (`migration.ts`) is the chain-walker for
  * `DOCUMENT_SCHEMA_VERSION` specifically: a student's NodeBook has to survive
  * being saved on one JoveWorks build and reopened on another, so a foreign
- * *document* version is bridged where possible, one step at a time. That
- * reasoning applies to the document version alone — a catalogue on a version
- * this build does not understand still gets the same
- * hard, named refusal `readSchemaVersion` below always gave, because nothing
- * here migrates catalogue content.
+ * *document* version is bridged where possible, one step at a time.
+ * `migrateCatalogue` is the same walker for `CATALOGUE_SCHEMA_VERSION`, for
+ * the copies on a school's LMS and in students' caches. Both leave
+ * `readSchemaVersion` below strict: it is what the parsers check *after* a
+ * migration, when anything but the current version is a bug.
  *
  * Real files exist now: hundreds of students save NodeBooks, so "regenerate
  * the file" is no longer an answer. A format change is additive (an optional
@@ -32,36 +32,29 @@ import { fail, join, readInteger, required, type JsonObject } from './json.js';
 
 export const DOCUMENT_SCHEMA_VERSION = 1;
 /**
- * 2 added `tables`. A version-1 catalogue still reads exactly as before —
- * it simply has none — which is what lets the lookup formulas that are really
- * tables move across in a later catalogue migration, rather than every
- * cached catalogue being refused the day this build ships.
+ * 2 added `tables`. A version-1 catalogue reaches it through
+ * `CATALOGUE_MIGRATIONS[1]` (`migration.ts`), which is where the lookup
+ * formulas that are really tables will move across.
  */
 export const CATALOGUE_SCHEMA_VERSION = 2;
-/** The oldest catalogue schemaVersion this build still reads. */
-export const OLDEST_CATALOGUE_SCHEMA_VERSION = 1;
 
 /**
  * Read and check one artefact's `schemaVersion`. `expected` and `artefact`
  * make the refusal specific — which artefact, which version — rather than a
- * bare number that could belong to either. `oldest` admits the earlier
- * versions an artefact still reads as they are, without a migration.
+ * bare number that could belong to either.
  */
 export function readSchemaVersion(
   object: JsonObject,
   path: string,
   expected: number,
   artefact: string,
-  oldest = expected,
 ): number {
   const field = join(path, 'schemaVersion');
   const version = readInteger(required(object, 'schemaVersion', path), field, 1);
-  if (version < oldest || version > expected) {
+  if (version !== expected) {
     fail(
       field,
-      oldest === expected
-        ? `is ${version}, but this build reads ${artefact} schemaVersion ${expected} only.`
-        : `is ${version}, but this build reads ${artefact} schemaVersion ${oldest} to ${expected} only.`,
+      `is ${version}, but this build reads ${artefact} schemaVersion ${expected} only.`,
     );
   }
   return version;

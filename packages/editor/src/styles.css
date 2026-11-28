@@ -43,6 +43,10 @@
   --verdict-pass: #3ca951;
   --verdict-fail: #ff725c;
 
+  /* A contour key's threshold marker: an orange outside both the viridis
+     and cividis ramps it sits on, and outside the state colours. */
+  --threshold: #c2410c;
+
   --notice-bg: #fff7ed;
   --hover-bg: #e8eefc;
   --badge-pass-bg: #ecfdf3;
@@ -55,34 +59,6 @@
   --shadow-lg: 0 8px 24px rgb(0 0 0 / 20%);
 
   color-scheme: light;
-}
-
-.stress-report {
-  display: grid;
-  gap: 0.75rem;
-}
-
-.stress-design + .stress-design {
-  border-top: 1px solid var(--border, #d7d7d7);
-  padding-top: 0.75rem;
-}
-
-.stress-headline,
-.stress-empty {
-  margin: 0.25rem 0;
-}
-
-.stress-summary {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.9em;
-}
-
-.stress-summary th,
-.stress-summary td {
-  border-bottom: 1px solid var(--border, #d7d7d7);
-  padding: 0.28rem 0.4rem;
-  text-align: left;
 }
 
 /* Dark values follow the OS preference unless the user has explicitly chosen
@@ -105,6 +81,7 @@
 
     --kind-input: #22d3ee;
     --kind-output: #a78bfa;
+    --threshold: #fb923c;
 
     --notice-bg: #3a2a15;
     --hover-bg: #263248;
@@ -139,6 +116,7 @@
 
   --kind-input: #22d3ee;
   --kind-output: #a78bfa;
+  --threshold: #fb923c;
 
   --notice-bg: #3a2a15;
   --hover-bg: #263248;
@@ -2205,6 +2183,52 @@ aside.bottom .palette-list section {
   box-shadow: inset 0 0 0 2px var(--accent);
 }
 
+/* The rest of what a hovered port or wire reaches, past its direct
+   neighbours (`hoverReach` in canvas/reach.ts). Quieter than the highlight
+   above: no accent border and a thinner, paler wire, so the wire under the
+   pointer stays the loudest thing on the canvas. A collapsed group is
+   reached when any of its members is. */
+.react-flow__node.node-reached .node {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent), var(--shadow-sm);
+}
+
+.react-flow__node.node-reached .frame.group.collapsed {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.react-flow__edge.edge-reached .react-flow__edge-path {
+  stroke: color-mix(in srgb, var(--accent) 55%, var(--muted));
+  stroke-width: 2;
+}
+
+.react-flow__edge.edge-reached .bundle-edge-outer {
+  stroke: color-mix(in srgb, var(--accent) 55%, var(--muted));
+}
+
+/* Peeking into a collapsed group draws it expanded and read-only, in place,
+   with everything else faded back — nothing moves and nothing in the
+   document changes. Members sit above the faded neighbours (zIndex in
+   Canvas.tsx) and ignore the pointer, so values can be read, not edited. */
+.react-flow__node.peek-faded,
+.react-flow__edge.peek-faded {
+  opacity: 0.15;
+  pointer-events: none;
+}
+
+.react-flow__node.peek-member .node {
+  pointer-events: none;
+}
+
+.frame.group.peeking {
+  border: 1px solid var(--accent);
+  background: color-mix(in srgb, var(--paper) 88%, transparent);
+  box-shadow: var(--shadow-md);
+}
+
+.frame.group.peeking .group-frame-outline {
+  display: none;
+}
+
 /*
  * A plain outline is a rectangle regardless of the element's own
  * border-radius — Chrome and Safari never clip it — so on a rounded card
@@ -4112,7 +4136,7 @@ aside.bottom .palette-list section {
   left: -2px;
   right: -2px;
   height: 2px;
-  background: #c2410c;
+  background: var(--threshold);
 }
 
 .notebook .contour-colorbar-threshold-value {
@@ -4120,7 +4144,7 @@ aside.bottom .palette-list section {
   left: 0;
   right: 0;
   transform: translateY(50%);
-  color: #c2410c;
+  color: var(--threshold);
   font-weight: 600;
 }
 
@@ -4242,6 +4266,54 @@ aside.bottom .palette-list section {
   border-bottom: 1px solid var(--line);
   padding: 1px 4px;
   text-align: right;
+}
+
+/* --- stress report and reliability card -------------------------------- */
+
+/* Both are the best-design card's kind of output: a sentence that states the
+   finding, then the house table (above) that backs it. Only the label column
+   reads left; every number stays right-aligned in tabular figures. */
+.stress-report {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.stress-design + .stress-design {
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.stress-headline {
+  margin: 0 0 4px;
+  font-weight: 600;
+}
+
+.stress-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.stress-summary {
+  margin-top: 4px;
+}
+
+.stress-summary th:first-child,
+.stress-summary td:first-child,
+.reliability-card th:first-child,
+.reliability-card td:first-child {
+  text-align: left;
+}
+
+.reliability-card {
+  overflow-x: auto;
+}
+
+/* Over a design sweep each design opens its own group of rows. */
+.reliability-card .reliability-design th {
+  padding-top: 6px;
+  font-weight: 600;
 }
 
 .notebook th {
@@ -4451,25 +4523,6 @@ aside.bottom .palette-list section {
   margin: 20mm 40mm;
 }
 
-.histogram-bars {
-  display: flex;
-  align-items: end;
-  gap: 1px;
-  height: 12rem;
-  border-bottom: 1px solid var(--border);
-}
-
-.histogram-bars > span {
-  flex: 1;
-  min-width: 2px;
-  background: var(--accent);
-}
-
-.ecdf { width: 100%; height: 12rem; }
-.reliability-card { overflow-x: auto; }
-.reliability-card table { width: 100%; border-collapse: collapse; }
-.reliability-card th, .reliability-card td { padding: 0.3rem 0.5rem; text-align: left; border-bottom: 1px solid var(--border); }
-
 @media print {
   /* A submittable document is always light/ink-on-paper, regardless of the
      screen theme — force every token back to its light value. */
@@ -4487,6 +4540,7 @@ aside.bottom .palette-list section {
     --state-fail: #b91c1c;
     --kind-input: #0e7490;
     --kind-output: #7c3aed;
+    --threshold: #c2410c;
     --notice-bg: #fff7ed;
     --hover-bg: #e8eefc;
     --badge-pass-bg: #ecfdf3;

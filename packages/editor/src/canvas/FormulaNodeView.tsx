@@ -44,6 +44,7 @@ import { slotHandleId } from './portSlots';
 import { TitleField, TitleText } from './TitleField';
 import { DisplayUnitPicker } from './DisplayUnitPicker';
 import { PORT_VALUE_HINT, PortValueField, UNCHOSEN } from './PortValueField';
+import { acceptFormulaUpdate, formulaChangeText, FormulaUpdateButton } from './formulaUpdate';
 
 /** The stored plane values stay `x`, `y`, `resultant`; this is how the picker reads them. */
 const PLANE_CHOICES: Readonly<Record<string, string>> = {
@@ -64,10 +65,17 @@ export function FormulaNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
   const source = analysis.sources.get(id);
   const state = analysis.states.get(id) ?? 'ok';
   const problem = analysis.problems.get(id);
-  const warning = analysis.warnings
-    .filter((entry) => entry.nodeId === id)
-    .map((entry) => entry.message)
-    .join(' ');
+  const nodeWarnings = analysis.warnings.filter((entry) => entry.nodeId === id);
+  const warning = nodeWarnings.map((entry) => formulaChangeText(entry, locale)).join(' ');
+  const changed = nodeWarnings.find((entry) => entry.formulaUpdate !== undefined);
+  const warningAction =
+    changed === undefined ? undefined : (
+      <FormulaUpdateButton
+        warning={changed}
+        locale={locale}
+        onAccept={(nodeId, to) => edit((current) => acceptFormulaUpdate(current, nodeId, to))}
+      />
+    );
 
   // Without the catalogue there is no port list to draw — which is exactly what
   // a graph opened without its catalogue looks like, and saying so is better
@@ -216,6 +224,7 @@ export function FormulaNodeView({ id, selected, data }: NodeProps<CanvasFlowNode
       state={state}
       {...(problem === undefined ? {} : { problem })}
       {...(warning.length === 0 ? {} : { warning })}
+      {...(warningAction === undefined ? {} : { warningAction })}
       selected={selected ?? false}
       highlighted={data?.highlighted === true || hovered.has(id)}
       expanded={expanded.has(id)}

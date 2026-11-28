@@ -372,6 +372,24 @@ Fields:
     (`isEvaluable` returns false). Use it for a formula you know is wrong or
     whose unit tag you could not resolve — never delete or silently fix such
     a record; quarantine keeps it visible.
+- **changes** — optional, and the maintainer's to write: one note per version
+  past the first, oldest first, saying what changed and why.
+
+  ```yaml
+  version: 3
+  changes:
+    - version: 2
+      note: Unit tag corrected to N/mm², per R&M 16.34.
+    - version: 3
+      note:
+        en: Sum now runs over both pulleys.
+        nl: De som loopt nu over beide schijven.
+  ```
+
+  Bump `version` whenever a record changes what it computes, and add its
+  note in the same edit. A student whose NodeBook names an older version sees
+  every note since then on the node, with an offer to update it. Notes are
+  outside the hash, so fixing a note's wording flags nothing.
 
 ## Ports
 
@@ -427,12 +445,14 @@ expression accept either an angle-dimensioned or a dimensionless argument.
   applies* (`appliesWhen`, `variantOf`), never lives inside one.
 - Allowed functions (`packages/kernel/src/functions.ts`): `abs`, `sqrt`,
   `cbrt`, `min`, `max`, `floor`, `ceil`, `round`, `sin`, `cos`, `tan`, `asin`,
-  `acos`, `atan`, `sinh`, `cosh`, `tanh`, `log`, `exp`, plus the constant
+  `acos`, `atan`, `sinh`, `cosh`, `tanh`, `log`, `log10`, `exp`, plus the constant
   `pi`. Reductions `sum`, `prod`, `least`, `greatest` apply only to a
   variadic port's whole set of wires.
 - `sin`/`cos`/`tan` accept an angle or a dimensionless argument;
   `asin`/`acos`/`atan` always *return* an angle; `log`/`exp`/`sinh` etc.
-  require a dimensionless argument. `min`/`max` require identical dimensions
+  require a dimensionless argument. `log` is the **natural** logarithm; R&M's
+  `lg` is the base-10 one and transcribes as `log10`, never as `log`.
+  `min`/`max` require identical dimensions
   across arguments. Rounding preserves dimension.
 - A bare numeric literal facing a dimensioned value takes that dimension, in
   canonical units — so `F < 1000` in a newton context is 1000 N. Two

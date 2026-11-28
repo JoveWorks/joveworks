@@ -9,9 +9,8 @@
  * disabling it, exactly like `VITE_ANALYTICS` in `analytics.ts`.
  *
  * The consequence for our own deploys is that they must opt in: Netlify's
- * nightly and the release workflow's stable bundle both set
- * `VITE_CLOUD=hub`. A build that forgets it loses the Cloud menu, which is
- * visible immediately rather than subtly wrong.
+ * nightly sets `VITE_CLOUD=hub`. The release workflow's stable bundle — the
+ * one schools host — deliberately does not, so it has no cloud surface.
  *
  * This gates the *interface*, not the module graph: hub.ts and the dialogs
  * are still imported and still in the bundle. Keeping them out of the build
