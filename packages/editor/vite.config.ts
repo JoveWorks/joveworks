@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
 
@@ -27,6 +27,27 @@ const { version } = JSON.parse(readFileSync(rootPackageJson, 'utf-8')) as { vers
  */
 const VIEWER_BUDGET = 360 * 1024;
 
+/*
+ * Catalogues and books used to be dropped into `packages/editor/src/catalogues/`;
+ * they now live in a domain folder, `domains/<name>/` (ROADMAP item 19). A
+ * school's build that still copies files to the old place would otherwise
+ * build without its catalogue and say nothing, so refuse it instead.
+ */
+function retiredCatalogueFolderGuard() {
+  return {
+    name: 'joveworks-retired-catalogue-folder',
+    buildStart() {
+      const retired = fileURLToPath(new URL('./src/catalogues/', import.meta.url));
+      if (existsSync(retired) && readdirSync(retired).length > 0) {
+        throw new Error(
+          'packages/editor/src/catalogues/ is no longer read: move its catalogues to ' +
+            'domains/<your-domain>/catalogues/ and its books to domains/<your-domain>/books/ (see HOSTING.md)',
+        );
+      }
+    },
+  };
+}
+
 function viewerBundleGuard() {
   return {
     name: 'joveworks-viewer-bundle-guard',
@@ -53,8 +74,12 @@ function viewerBundleGuard() {
       // The editor's canvas library, and any catalogue at all: a reader is
       // sent a report, never the graph editor and never the formula content
       // it was computed from. The kernel is neither — it is the arithmetic
-      // and the index bookkeeping the figures need to draw at all.
-      const forbidden = [...reachable].flatMap((chunk) => chunk.moduleIds).find((id) => id.includes('/@xyflow/') || id.includes('/src/catalogues/'));
+      // and the index bookkeeping the figures need to draw at all. A
+      // domain's code may reach the viewer (its result views draw there);
+      // its catalogues may not.
+      const forbidden = [...reachable]
+        .flatMap((chunk) => chunk.moduleIds)
+        .find((id) => id.includes('/@xyflow/') || /\/domains\/[^/]+\/catalogues\//.test(id));
       if (forbidden !== undefined) throw new Error(`viewer bundle includes forbidden module ${forbidden}`);
       const compressed = [...reachable].reduce((bytes, chunk) => bytes + gzipSync(chunk.code).byteLength, 0);
       if (compressed > VIEWER_BUDGET) throw new Error(`viewer JavaScript is ${compressed} bytes gzipped; budget is ${VIEWER_BUDGET}`);
@@ -65,7 +90,7 @@ function viewerBundleGuard() {
 // A static client-side app: no backend, no server-side rendering, and
 // nothing here that a `file://` or a plain static host could not serve.
 export default defineConfig({
-  plugins: [react(), viewerBundleGuard()],
+  plugins: [react(), retiredCatalogueFolderGuard(), viewerBundleGuard()],
   define: {
     __APP_VERSION__: JSON.stringify(version),
     // Lets a bug report read "nightly 0.21.0" instead of an ambiguous

@@ -48,6 +48,7 @@ packages/units/   Canonical units, dimension algebra, and port typing
 packages/kernel/  DAG evaluation, broadcasting, and expression handling
 packages/nodes/   Unrestricted base-node library
 packages/editor/  React Flow editor, notebook view, and outputs
+domains/          Course- and subject-specific content, one folder per domain
 tools/extract/    One-off Python extraction scripts, retained for provenance, not re-run
 ```
 

@@ -36,7 +36,7 @@ version 1 still loads, upgraded on the way in (`CATALOGUE_MIGRATIONS` in
 `packages/schema/src/migration.ts`); the only difference is that version 1
 cannot hold [tables](#a-table-record).
 
-`packages/editor/src/catalogues/examples/running.yaml` is a complete bundled example
+`domains/examples/catalogues/running.yaml` is a complete bundled example
 covering pace, race-time projection, grade, and climbing rate. The next
 section builds a second one from scratch, field by field.
 
@@ -62,9 +62,9 @@ formulas:
     href: "#eq-2.3"
 ```
 
-- **url** — the book. A relative url means a book that ships beside the
-  catalogue in `packages/editor/src/catalogues/`: an `.html` file, such as
-  `photography.html` next to `photography.json`, or, for a book of several
+- **url** — the book. A relative url means a book that ships in the
+  `books/` folder of the catalogue's domain (`domains/<name>/books/`): an
+  `.html` file, such as `photography.html` for `photography.json`, or, for a book of several
   pages with its own stylesheet and figures, a folder with an `index.html`,
   with `url: your-book/index.html`. Several catalogue files can share one
   book. The docs site publishes it unchanged at `/docs/books/`

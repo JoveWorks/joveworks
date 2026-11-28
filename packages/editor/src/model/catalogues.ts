@@ -71,22 +71,27 @@ import { browsable } from './browsable';
 
 export { browsable };
 
-const bundledCatalogueModules = import.meta.glob<JsonValue>('../catalogues/*.json', {
-  eager: true,
-  import: 'default',
-});
+/**
+ * The catalogues of every domain in the build: each `domains/<name>/`
+ * folder at the repository root ships its `catalogues/*.{json,yaml,yml}`
+ * (ROADMAP item 19). A school adds its own domain by adding a folder; the
+ * whole folder is what moves to another deployment.
+ */
+const domainCatalogueModules = import.meta.glob<JsonValue>(
+  ['../../../../domains/*/catalogues/*.json', '!../../../../domains/examples/**'],
+  { eager: true, import: 'default' },
+);
 
-const bundledYamlCatalogueModules = import.meta.glob<string>('../catalogues/*.{yaml,yml}', {
-  eager: true,
-  import: 'default',
-  query: '?raw',
-});
+const domainYamlCatalogueModules = import.meta.glob<string>(
+  ['../../../../domains/*/catalogues/*.{yaml,yml}', '!../../../../domains/examples/**'],
+  { eager: true, import: 'default', query: '?raw' },
+);
 
 /**
- * The example catalogues in `src/catalogues/examples/` — photography,
- * running, machining and basic mechanics — ship only when the build sets
- * `VITE_EXAMPLE_CATALOGUES=on`. The public Netlify build asks for them; a
- * school deploying its own course catalogue leaves the flag unset. Vite
+ * The upstream examples domain, `domains/examples/` — photography,
+ * running, machining, basic mechanics and the tables demo — ships only when
+ * the build sets `VITE_EXAMPLE_CATALOGUES=on`. The public Netlify build asks
+ * for it; a school deploying its own domain leaves the flag unset. Vite
  * replaces the env check with a literal, so without the flag the ternary
  * folds to `{}` and Rollup drops the example files from the bundle entirely
  * rather than just hiding them. The samples built on them hide themselves
@@ -95,16 +100,16 @@ const bundledYamlCatalogueModules = import.meta.glob<string>('../catalogues/*.{y
 const EXAMPLES_ENABLED = import.meta.env.VITE_EXAMPLE_CATALOGUES === 'on';
 
 const exampleCatalogueModules = EXAMPLES_ENABLED
-  ? import.meta.glob<JsonValue>('../catalogues/examples/*.json', { eager: true, import: 'default' })
+  ? import.meta.glob<JsonValue>('../../../../domains/examples/catalogues/*.json', { eager: true, import: 'default' })
   : {};
 
 const exampleYamlCatalogueModules = EXAMPLES_ENABLED
-  ? import.meta.glob<string>('../catalogues/examples/*.{yaml,yml}', { eager: true, import: 'default', query: '?raw' })
+  ? import.meta.glob<string>('../../../../domains/examples/catalogues/*.{yaml,yml}', { eager: true, import: 'default', query: '?raw' })
   : {};
 
 /**
  * A relative source link made absolute. A bundled catalogue's book ships
- * beside it and is published by the docs site at `<docs>/books/` (see
+ * in its domain's `books/` folder and is published by the docs site at `<docs>/books/` (see
  * packages/docs-site/docs/.vitepress/books.ts): `photography.html#eq-1.1`
  * becomes `<docs>/books/photography.html#eq-1.1`, and a book of several pages,
  * `rm/ch02.html#eq-2.1`, keeps its own folder. A loaded file cannot bring its
@@ -125,17 +130,17 @@ function bundledCatalogueIds(): ReadonlySet<string> {
 }
 
 /**
- * Every catalogue that ships with the app alongside the base nodes: files
- * dropped in `src/catalogues/`, plus the examples when they are switched
- * on — textbook-independent, `restricted: false`, hand-authored per
+ * Every catalogue that ships with the app alongside the base nodes: the
+ * catalogues of each domain in `domains/`, plus the examples domain when it
+ * is switched on — textbook-independent, `restricted: false`, hand-authored per
  * `docs/authoring-catalogues.md` rather than extracted from a source. Unlike
  * the R&M catalogue these need no LMS handout — nothing in them is
  * restricted, so there is no reason to make a student import them by hand.
  */
 export function bundledCatalogues(): readonly Catalogue[] {
   return [
-    ...[...Object.values(bundledCatalogueModules), ...Object.values(exampleCatalogueModules)].map((data) => migrateCatalogue(data)),
-    ...[...Object.values(bundledYamlCatalogueModules), ...Object.values(exampleYamlCatalogueModules)].map((text) => loadCatalogue(text, 'yaml')),
+    ...[...Object.values(domainCatalogueModules), ...Object.values(exampleCatalogueModules)].map((data) => migrateCatalogue(data)),
+    ...[...Object.values(domainYamlCatalogueModules), ...Object.values(exampleYamlCatalogueModules)].map((text) => loadCatalogue(text, 'yaml')),
   ];
 }
 

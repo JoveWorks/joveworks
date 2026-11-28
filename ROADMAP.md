@@ -152,16 +152,40 @@ which atom of a product takes the prefix (`kN·m` versus `N·km`). Needs a
 rule from the course side before anything in `formatQuantity` or
 `siAxisUnit` changes.
 
-**19. Domain node kinds as extensions, not core** — Shaft, Support, Load,
-Distributed load and Shaft view are built into the document schema and the
-kernel (`ShaftNode` and friends in `schema/src/document.ts`, the shaft
-branches of `kernel/src/graph.ts` and `evaluate.ts`), because each carries a
-value kind the kernel must reason about: a load or shaft wire, an axis, a solve
-per grid cell. A catalogue can only declare formulas, so they could not live in
-one. The formulas themselves are already in the separate Mechanics catalogue,
-and the solver is self-contained in `kernel/src/shaft.ts`. A proper split needs
-an extension interface: a domain package that registers its node kinds, value
-kinds, port typing, evaluation, editor views and palette entries, so the core
-stays domain-free. Resolution and evaluation are a switch over node kinds
-today, so this is a real refactor. Saved documents must keep opening unchanged
-(the node kinds stay in the document format whatever package owns them).
+**19. Domains: everything course-specific in one folder** — JoveWorks
+itself stays generic; anything specific to one subject or one school lives
+in a *domain*, a folder under `domains/` that can be copied to another
+deployment as a whole. A domain holds `catalogues/` (JSON or YAML),
+`books/` (the HTML books they cite), sample NodeBooks as saved files, and
+optionally code: a kernel entry (no React) and an editor entry, registered
+at build time — never loaded at runtime. A domain of YAML alone needs no
+code and no build knowledge. `domains/examples/` is the upstream examples
+and builds only with `VITE_EXAMPLE_CATALOGUES=on`; every other domain
+folder always builds. Restricted content (R&M) never goes in a domain:
+whatever is in one is sent to every visitor.
+
+The shafts are the first domain with code. Shaft, Support, Load,
+Distributed load and Shaft view are built into the schema and kernel today
+(`ShaftNode` and friends in `schema/src/document.ts`, the `load` and
+`shaft` port kinds, the `shaft:` formula evaluator, the shaft branches of
+`kernel/src/graph.ts` and `evaluate.ts`, the solver in `kernel/src/shaft.ts`),
+and the Shafts catalogue ships with the core. They move to the examples
+domain; nobody uses them yet (the school build is at 0.35), so the earlier
+shaft records (`mechanicsLegacyNodes.ts`) are dropped rather than carried.
+Torque↔power and factor of safety are not shaft-specific and move to the
+base library. The node kind names stay in the document format, and a
+NodeBook whose domain is missing says which domain it needs.
+
+Steps, each leaving the build green and shaft behaviour unchanged:
+1. Move the bundled catalogues and books from `packages/editor/src/catalogues/`
+   to `domains/`.
+2. Schema registry: parsing and saving for domain node kinds, port kinds,
+   output kinds and formula evaluator fields; the scattered
+   `kind === 'load' || kind === 'shaft'` checks become one predicate.
+3. Kernel registry: port typing, evaluation, the sweep axis a node adds
+   (`ShaftNode` is an `AxisNode`), sensitivity and warnings.
+4. Move the shaft code into `domains/examples/`; the core no longer names it.
+5. Editor registry: node views, result views, palette and quick-add
+   entries, tours; sample NodeBooks become files a domain ships.
+6. Composition: the editor and the published-NodeBook viewer both register
+   the domains in the build.

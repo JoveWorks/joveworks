@@ -22,9 +22,9 @@ describe('bundled public catalogues', () => {
 
 describe('the photography book', () => {
   const catalogue = bundledCatalogues().find(({ id }) => id === 'public-photography');
-  const book = readFileSync(new URL('../catalogues/examples/photography.html', import.meta.url), 'utf-8');
+  const book = readFileSync(new URL('../../../../domains/examples/books/photography.html', import.meta.url), 'utf-8');
 
-  it('is the book the catalogue cites, next to it', () => {
+  it('is the book the catalogue cites, in its domain', () => {
     expect(catalogue?.source?.url).toBe('photography.html');
   });
 

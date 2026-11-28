@@ -124,12 +124,13 @@ RUN git clone --depth 1 --branch $JOVEWORKS_REF \
     https://github.com/joveworks/joveworks /src
 WORKDIR /src
 
-# The editor globs src/catalogues/ at build time, so copying files in is the
-# entire integration — no patching of JoveWorks source is required.
-COPY catalogue/*.yaml packages/editor/src/catalogues/
+# The editor globs every domains/<name>/ folder at build time, so copying
+# files in is the entire integration — no patching of JoveWorks source is
+# required.
+COPY catalogue/*.yaml domains/your-institution/catalogues/
 # The textbook, published at /docs/books/your-institution-book/; drop this
 # line if you have none. See "Adding your course book" under option 4.
-COPY book/ packages/editor/src/catalogues/your-institution-book/
+COPY book/ domains/your-institution/books/your-institution-book/
 
 ENV JOVEWORKS_CHANNEL=your-institution
 RUN pnpm install --frozen-lockfile && pnpm build:bundle
@@ -154,7 +155,7 @@ needs source changes:
 | `JOVEWORKS_BASE_PATH` | Where the editor is served. Defaults to `/`. For a subpath, give the absolute path (`/joveworks/`): the docs then build for `/joveworks/docs/` too. `./` makes the editor itself work at any path, but leaves the docs built for `/docs/`. |
 | `JOVEWORKS_DOCS_BASE_PATH` | Overrides where the docs are built for; must be absolute. Only needed with a relative `JOVEWORKS_BASE_PATH`, e.g. `JOVEWORKS_BASE_PATH=./ JOVEWORKS_DOCS_BASE_PATH=/joveworks/docs/`. |
 | `VITE_CLOUD` | Leave unset to compile out all cloud features. See below. |
-| `VITE_EXAMPLE_CATALOGUES` | Set to `on` to include the example catalogues in `packages/editor/src/catalogues/examples/` (photography, running, machining, basic mechanics) and the samples built on them. Leave unset to leave them out. Your own catalogues in `src/catalogues/` are bundled either way. |
+| `VITE_EXAMPLE_CATALOGUES` | Set to `on` to include the examples domain, `domains/examples/` (photography, running, machining, basic mechanics), and the samples built on them. Leave unset to leave it out. Your own domain is bundled either way. |
 
 **The cost to weigh:** you now own a container image, which means patching its
 base images on your usual schedule. That is strictly more ongoing work than a
@@ -235,29 +236,40 @@ push fail on your side, without anything being sent.
 
 ### Adding your catalogue
 
-The editor bundles every `*.json`, `*.yaml` and `*.yml` file found directly in
-`packages/editor/src/catalogues/` at build time. Adding a catalogue means
-putting your files there and committing them:
+Everything your course adds to JoveWorks lives in one folder of its own, a
+*domain*: `domains/your-institution/`. The editor bundles every `*.json`,
+`*.yaml` and `*.yml` file in each domain's `catalogues/` folder at build
+time. Adding a catalogue means putting your files there and committing them:
 
 ```bash
-cp ~/course/your-institution-*.yaml packages/editor/src/catalogues/
-git add packages/editor/src/catalogues/your-institution-*.yaml
+mkdir -p domains/your-institution/catalogues
+cp ~/course/*.yaml domains/your-institution/catalogues/
+git add domains/your-institution
 git commit -m "Add course catalogue"
 git push origin main
 ```
+
+Moving to another deployment, or handing the course to a colleague, is
+copying that one folder.
 
 Changing a formula works the same way: edit the file, commit, push, and CI
 rebuilds. Students get the change on their next page load, because asset
 filenames are content-hashed.
 
-Give your files a distinctive prefix, like `your-institution-` above. Upstream
-never edits files it didn't create, so with prefixed names your catalogue
-commits cannot conflict when you merge a release.
+Give the folder a distinctive name, like `your-institution` above. Upstream
+never edits a domain it didn't create, so your catalogue commits cannot
+conflict when you merge a release.
 
-The example catalogues upstream ships live in the `examples/` subfolder and
+The examples upstream ships are their own domain, `domains/examples/`, and
 are left out of the build unless you set `VITE_EXAMPLE_CATALOGUES=on`. Leave
-the files there even if you never use them: deleting them from your fork
-would conflict on every release that touches them.
+the folder there even if you never use it: deleting it from your fork would
+conflict on every release that touches it.
+
+**Upgrading from 0.36 or earlier:** catalogues and books used to go in
+`packages/editor/src/catalogues/`. Move them into your domain (catalogues to
+`catalogues/`, books to `books/`); a build that still finds files in the old
+folder stops with an error saying so, rather than leaving your catalogue
+out without a word.
 
 ### Adding your course book
 
@@ -266,20 +278,22 @@ publish it with the docs. Each formula's "?" then opens the equation the
 formula comes from, and resting on the "?" shows a preview of it. The book
 must be HTML; a PDF cannot be linked to an equation.
 
-Four steps: put the book in the catalogues folder, point the catalogue at it,
+Four steps: put the book in your domain's books folder, point the catalogue at it,
 give each formula its anchor, and check.
 
-**1. Put the book next to your catalogue.** Copy the book's whole built site,
-as one folder, into `packages/editor/src/catalogues/`. The folder must
-contain an `index.html`; that is how it is recognised as a book. Give it the
-same prefix as your catalogue files:
+**1. Put the book in your domain.** Copy the book's whole built site, as one
+folder, into `domains/your-institution/books/`. The folder must contain an
+`index.html`; that is how it is recognised as a book. Books from every domain
+are published side by side, so give it a name no other domain will use,
+such as one starting with your domain's name:
 
 ```bash
 # The book's build output: index.html (the contents), one page per chapter,
 # and its stylesheet, scripts and figures. For a LaTeX book built with its
 # own HTML script, this is typically html/_site/ after the build.
-cp -r ~/course/book/html/_site packages/editor/src/catalogues/your-institution-book
-git add packages/editor/src/catalogues/your-institution-book
+mkdir -p domains/your-institution/books
+cp -r ~/course/book/html/_site domains/your-institution/books/your-institution-book
+git add domains/your-institution/books/your-institution-book
 git commit -m "Add course book"
 ```
 
@@ -434,7 +448,7 @@ Then, for each change:
    must print nothing:
 
    ```bash
-   git log upstream/main..fix-axis-labels -- packages/editor/src/catalogues/
+   git log upstream/main..fix-axis-labels -- domains/your-institution/
    git diff upstream/main...fix-axis-labels | grep -i your-institution
    ```
 

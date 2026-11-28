@@ -1,10 +1,10 @@
 /*
  * The books the bundled catalogues cite, published under /docs/books/.
  *
- * A catalogue's book lives beside it in the catalogues folder: an `.html`
- * file — `photography.html` next to `photography.json` — or, for a book of
- * several pages with its own stylesheet and figures, a folder with an
- * `index.html`. Each is published under its own name, so several catalogue
+ * A catalogue's book lives in its domain's `books/` folder
+ * (`domains/<name>/books/`, ROADMAP item 19): an `.html` file —
+ * `photography.html` for `photography.json` — or, for a book of several
+ * pages with its own stylesheet and figures, a folder with an `index.html`. Each is published under its own name, so several catalogue
  * files can share one book: the chapters of a textbook all citing `rm/`.
  * The editor resolves a bundled catalogue's relative `source.url` against
  * `<docs>/books/` (see `hostedLink` in packages/editor/src/model/catalogues.ts),
@@ -12,7 +12,7 @@
  * between its pages keep working and its address never changes, and served
  * from the source folder in dev, at the same path.
  *
- * The example catalogues' books follow the editor's own switch,
+ * The examples domain's books follow the editor's own switch,
  * VITE_EXAMPLE_CATALOGUES: a school's build publishes only its own books.
  */
 
@@ -21,12 +21,14 @@ import { extname, join, normalize, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Plugin } from "vite";
 
-const CATALOGUES = fileURLToPath(new URL("../../../editor/src/catalogues/", import.meta.url));
+const DOMAINS = fileURLToPath(new URL("../../../../domains/", import.meta.url));
 
 /** Book name (as published) → its file or folder on disk. */
 function books(): ReadonlyMap<string, string> {
-  const folders = [CATALOGUES];
-  if (process.env.VITE_EXAMPLE_CATALOGUES === "on") folders.push(join(CATALOGUES, "examples"));
+  const folders = readdirSync(DOMAINS)
+    .filter((domain) => domain !== "examples" || process.env.VITE_EXAMPLE_CATALOGUES === "on")
+    .map((domain) => join(DOMAINS, domain, "books"))
+    .filter((folder) => existsSync(folder));
   const found = new Map<string, string>();
   for (const folder of folders) {
     for (const entry of readdirSync(folder)) {

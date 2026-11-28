@@ -29,6 +29,16 @@ Edit `AGENTS.md`/`CLAUDE.md` when project-wide working rules change. Edit `ROADM
 
 ---
 
+## `domains/` — course- and subject-specific content (ROADMAP item 19)
+
+Each folder is one domain, copied between deployments as a whole: its `catalogues/*.{json,yaml,yml}` are bundled into the editor (`model/catalogues.ts`) and its `books/` published with the docs (`packages/docs-site/docs/.vitepress/books.ts`). Every domain is always bundled except `examples/`, which needs `VITE_EXAMPLE_CATALOGUES=on` (Netlify sets it, as do the vitest config and `packages/editor/.env.development` for the dev server). A school's fork adds its own folder. The editor's build refuses files left in the retired `packages/editor/src/catalogues/`.
+
+- `examples/catalogues/basic-mechanics.json` — public, textbook-independent mechanics formula catalogue (stress, etc.).
+- `examples/catalogues/machining.json` — public machining/milling formula catalogue (speeds, feeds, power, torque) used by the `millingPowerEnvelope` sample.
+- `examples/catalogues/photography.json` — public photography catalogue (thin lens, depth of field, sensor format, exposure, flash, macro, diffraction) used by the depth-of-field, aperture-decision and wildlife-camera samples; its book is `examples/books/photography.html`.
+- `examples/catalogues/running.yaml` — public YAML example catalogue for pace, race projections, route grade, and climbing rate.
+- `examples/catalogues/tables-demo.json` — public demo of catalogue tables.
+
 ## `packages/schema/` — versioned formula and graph data contract
 
 No evaluation logic lives here — just types, parsing (untrusted JSON → typed records), serialization, and structural validation. Edit this package when you're changing *what a graph or catalogue file can contain*.
@@ -139,7 +149,7 @@ The React app. Largest package by far. `AGENTS.md`: desktop-only, no properties 
 
 - `model/document.ts` — every graph edit as a pure function over `GraphDocument`: `connect`, `removeNodes`, table-column management, frame/section grouping (`groupIntoSection`, `reframe`), renaming with column-label sync. **Edit here for any "what happens when you do X on the canvas" logic that isn't rendering.**
 - `model/analysis.tsx` — runs the kernel over a graph that's still being built: per-node readiness (`ok`/`incomplete`/`quarantined`/`blocked`/`error`), retrying with bad nodes dropped rather than blanking the whole canvas. `analyse()` is what every node view reads to know its state/problem text.
-- `model/catalogues.ts` — loaded-catalogue management: `baseCatalogue()`, `bundledCatalogues()` (auto-glob of `src/catalogues/*.{json,yaml,yml}`, plus `examples/` when `VITE_EXAMPLE_CATALOGUES=on`), `withCatalogue`/`removeCatalogue`, palette `search()`.
+- `model/catalogues.ts` — loaded-catalogue management: `baseCatalogue()`, `bundledCatalogues()` (auto-glob of `domains/*/catalogues/*.{json,yaml,yml}`, the `examples` domain only when `VITE_EXAMPLE_CATALOGUES=on`), `withCatalogue`/`removeCatalogue`, palette `search()`.
 - `model/layout.ts` — `autoArrange`: maps a `GraphDocument` onto the abstract layered-layout algorithm (frames as compound blocks, loose outputs pulled to a bottom row), with a grid-pack fallback for cyclic documents.
 - `model/layered-layout.ts` — the actual Sugiyama-style algorithm (longest-path ranking, barycenter crossing reduction) over abstract `LayoutBlock`/`LayoutEdge`, independent of `GraphDocument`.
 - `model/layout-constants.ts` — shared nominal node size/gap constants every layout pass must agree on.
@@ -262,15 +272,6 @@ same report through the same code instead of three renderers drifting apart
 - `analytics/documentEvents.ts` — classifies a document edit (before/after) into analytics events (`node_added`, `sweep_configured`, `plot_created`, …) without inspecting graph content.
 - `analytics/analytics.test.ts`, `analytics/documentEvents.test.ts`.
 
-### `src/catalogues/` — bundled unrestricted catalogues
-
-Files directly in `src/catalogues/` are always bundled (this is where a school's fork drops its own); files in `examples/` are bundled only when the build sets `VITE_EXAMPLE_CATALOGUES=on` (Netlify does, as do the vitest config and `packages/editor/.env.development` for the dev server). Both via `import.meta.glob` in `model/catalogues.ts`.
-
-- `catalogues/examples/basic-mechanics.json` — public, textbook-independent mechanics formula catalogue (stress, etc.).
-- `catalogues/examples/machining.json` — public machining/milling formula catalogue (speeds, feeds, power, torque) used by the `millingPowerEnvelope` sample.
-- `catalogues/examples/photography.json` — public photography catalogue (thin lens, depth of field, sensor format, exposure, flash, macro, diffraction) used by the depth-of-field, aperture-decision and wildlife-camera samples.
-- `catalogues/examples/running.yaml` — public YAML example catalogue for pace, race projections, route grade, and climbing rate.
-
 ### Package root
 
 - `index.html` — Vite entry HTML.
@@ -336,7 +337,7 @@ Live here (not inside a package) because each needs more than one package, or ne
 - `test/base-nodes-end-to-end.test.ts` — the base node library run through the whole kernel stack (catalogue load → typed ports → generic binding → sweep → check → plot), with zero textbook content, proving the public stack works standalone.
 - `test/belt-goldens.test.ts` — milestone 1's acceptance criterion: the belt-lab graph reproduced end-to-end against known golden values. Requires `JOVEWORKS_CATALOGUE` env var pointing at the private catalogue; skips otherwise.
 - `test/catalogue-check.test.ts` — runs the kernel's dimension checker over every formula in an externally-supplied (private) catalogue. Also gated on `JOVEWORKS_CATALOGUE`.
-- `test/machining-catalogue.test.ts` — validates the *public* `packages/editor/src/catalogues/examples/machining.json` bundle mechanically (namespacing, dimension soundness) — runs unconditionally, no private catalogue needed.
+- `test/machining-catalogue.test.ts` — validates the *public* `domains/examples/catalogues/machining.json` bundle mechanically (namespacing, dimension soundness) — runs unconditionally, no private catalogue needed.
 - `test/project-references.test.ts` — copies the workspace to a scratch dir, injects an illegal cross-package import, and asserts `tsc -b` refuses it — verifies the dependency-direction enforcement actually works, not just that the config exists.
 
 ---
