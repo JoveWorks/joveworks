@@ -9,17 +9,12 @@ repo's node library and should be referenceable from the notebook.
 **2. What about migration to newer versions?** Documents have a migration path.
 Catalogues still have no migration path and refuse an unknown schema version.
 
-**3. Change: What is the {table XX} notation in RM catalogue?** Decide how to
-integrate tables as catalogue lookup items. Under discussion in
-[docs/table-input-node-plan.md](docs/table-input-node-plan.md), which proposes a
-table input node over the existing `FormulaLookup` machinery and lists the open
-decisions still to settle. The shape asked for from the course side is direct
-manipulation rather than a lookup expression: the node draws the table, a
-student **selects cells**, and the selection *is* the node's output — with a
-multi-cell selection producing a range on every output port at once, so picking
-four candidate sizes out of a table sweeps them the same way a `list` range
-does. That makes the table a first-class sweep source and not just a function
-call, which is the part the plan has to answer.
+**3. Change: What is the {table XX} notation in RM catalogue?** Done in
+the editor: catalogues declare `tables` (catalogue schemaVersion 2), each one a
+palette entry that drops a catalogue table node, picked by clicking cells. See
+[docs/table-input-node-plan.md](docs/table-input-node-plan.md). Left: moving the
+R&M tables in the private catalogue from lookup formulas into `tables`, and the
+catalogue migration from version 1 that would do it automatically (item 2).
 
 **4. Change: equation R&M 16.3 uses betahat_1** The hat is currently not
 present as a caret on the letter. Out of scope for this repo — R&M catalogue

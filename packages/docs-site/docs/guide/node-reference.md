@@ -25,8 +25,9 @@ save the first click:
 Two more kinds exist only as a later switch, not a palette shortcut,
 because starting one from scratch needs nothing typed yet: **slider**
 (a scalar with drag bounds) and **categorical list** (a swept series of
-named choices). A **table column** kind exists too, pulled from catalogue
-data rather than typed — see below.
+named choices). An older **table column** kind still opens in saved
+NodeBooks, but new work uses a [catalogue table](#catalogue-table) instead —
+see below.
 
 ### Value and slider — a single number
 
@@ -104,12 +105,57 @@ sweeps, since `linspace` and a "spacing" between fit classes have no
 meaning. Use it to compare interference across a handful of named fits in
 one plot or table rather than rebuilding the graph for each.
 
+### Catalogue table
+
+A table from a catalogue — motor frame sizes, belt profiles, standard
+bores — drawn on the node, with the rows you want picked by clicking them.
+Each table a catalogue declares is its own entry in the palette, listed
+under that catalogue below its formulas, and searchable by name or by the
+book's table number. Dropping one binds the node to that table for good.
+
+**The table is the interface.** Hover the node, select it, or pin it open,
+and the whole table is drawn; a table with nothing picked yet stays open
+until you pick something. Clicking never closes it.
+
+| Click | Rows | Columns |
+|---|---|---|
+| a cell or a row's key | picks **only** that row | makes the cell's column an output |
+| Ctrl/Cmd-click a row's key | adds or drops that row | — |
+| Ctrl/Cmd-click a cell in a picked row | — | adds or drops that cell's column |
+| Ctrl/Cmd-click a cell in another row | adds that row | makes the cell's column an output |
+| Shift-click | adds every row from the last one clicked | the same |
+| the key column's heading, or Ctrl/Cmd+A | picks **all** rows | — |
+| a column's heading | — | adds or drops that column as an output |
+
+A row is one part, so its columns always travel together: one row picked
+gives a single value on every output, several rows give one sweep, and the
+width and height read in the same point always come from the same part. The
+rows run in the table's own order, whatever order you clicked them in — the
+order an engineer means by "the next size up". Every picked row × every
+output column is highlighted, because those are exactly the values the node
+answers with.
+
+**All rows** means every row the table has, including rows a later version
+of the catalogue adds. Picking rows one by one freezes the list instead.
+
+A column with a wire leaving it shows a lock and cannot be dropped, from a
+cell or from its heading; take the wire off first.
+
+Folded away, the node shows what is picked (`3 of 25 rows · 132S…200L`),
+the row key and one output per column, like any other input.
+
+**Picked by you, never by a wire.** A catalogue table has no inputs. When a
+value computed elsewhere should choose the row — a shaft diameter fetching
+its key width — pick all rows and read them through an
+[Interpolate](#interpolate) node, or use the catalogue's lookup formula
+instead.
+
 ### Table column
 
-Pulled straight from a catalogue's own table data — a column of standard
-bearing bores, say — rather than typed at all. It sweeps like a list, but
-its values and length live in the table it names, so changing the
-catalogue changes the sweep without editing the input node.
+The older way to sweep a catalogue table: an input whose values are every
+key of a table. It still opens and evaluates in a NodeBook that has one, but
+it is no longer offered for new inputs — a [catalogue table](#catalogue-table)
+with all rows picked does the same and shows you the table.
 
 ### File
 
@@ -396,7 +442,8 @@ its focal length, a [lookup table](#lookup-table) read through
 Reads a table column at a point. Wire a table's key column into `xs`, the
 column you want answered into `ys`, and the point to look up into `x`; the
 answer comes out on `y`, in `ys`'s own unit. The table can come from a
-[lookup table](#lookup-table), a catalogue table, or anything else that
+[lookup table](#lookup-table), a [catalogue table](#catalogue-table) with all
+rows picked, or anything else that
 varies along one set of rows. Sweep `x` and the answer is swept too.
 
 The `mode` picks how a point becomes a row:

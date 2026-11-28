@@ -182,18 +182,21 @@ Rows follow spreadsheet conventions; columns only accumulate from cells.
 | Gesture | Rows | Columns |
 |---|---|---|
 | plain click on a cell or row key | select **only** this row | add the cell's column if not projected |
-| Ctrl/Cmd-click | toggle this row | add the cell's column when the row is added |
+| Ctrl/Cmd-click a row key | toggle this row | — |
+| Ctrl/Cmd-click a cell in a picked row | — | toggle the cell's column (a wired one stays) |
+| Ctrl/Cmd-click a cell in another row | add this row | add the cell's column |
 | Shift-click | select the range from the anchor row to this one, in table order | add the cell's column |
 | click the key column's header, or Ctrl/Cmd+A in the grid | toggle **all rows** (`allRows`) | — |
 | click a column header | — | toggle that column's port |
 
 - The **anchor** for Shift is the last row clicked without Shift. It is view
   state, not stored.
-- A cell click **never removes a column**. A column is a port, possibly with a
-  wire on it, so dropping one is an explicit act on its header.
+- Ctrl/Cmd on a cell of a picked row toggles its **column**, not its row:
+  unpicking a value means "not this output". Changed after the first browser
+  check, where dropping the row read as wrong. A wired column is never
+  dropped, from a cell or its header.
 - A plain click on a highlighted cell narrows the selection to that row; when
-  it is already the only row, nothing changes. Ctrl-click on it removes the
-  row.
+  it is already the only row, nothing changes.
 - Any click that makes an explicit row selection clears `allRows`.
 - Rows are always held in the **table's order**, never click order, so the
   sweep runs the way the catalogue is written ("the next size up").
@@ -330,8 +333,9 @@ Closed in discussion on 2026-11-28:
    Ctrl/Cmd toggles.
 5. **The grid expands in place**, as the node's detail: open on hover,
    selection or the pin, and held open while nothing is picked.
-6. **A cell click never removes a column**; columns drop from their header.
-   A plain click on a highlighted cell narrows to its row.
+6. **Ctrl/Cmd on a picked cell drops its column, not its row** (revised after
+   the first browser check); rows drop with Ctrl/Cmd on their key. A plain
+   click on a highlighted cell narrows to its row.
 7. **"All rows" follows the catalogue**, stored as `allRows`.
 8. **The lookup table is out of scope** — it builds ranges from the user's
    own values and does not share this view.

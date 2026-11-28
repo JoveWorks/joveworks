@@ -88,7 +88,7 @@ A range is not just `start..stop..step`. Five kinds, each earning its place:
 | **Linear** — `linspace(20, 60, 21)` | The default. Fixed **number of points**, both endpoints included |
 | **Logarithmic** — `logspace(1e4, 1e8, 40)` | Power laws and anything spanning decades |
 | **Explicit list** — `{25, 30, 35, 40}` | **Standard sizes** — the realistic design case |
-| **Table column** | A series pulled from catalogue data |
+| **Catalogue table** | Rows picked out of a catalogue table — a node of its own, not an input kind |
 | **Categorical list** — `{H7, H8, K7}` | Fit classes and other named values, on an ordinal axis |
 
 **Logarithmic ranges are not optional for this course.** Fatigue and Wöhler S–N

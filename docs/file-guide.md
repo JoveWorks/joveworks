@@ -36,13 +36,14 @@ No evaluation logic lives here — just types, parsing (untrusted JSON → typed
 - `src/json.ts` — the hand-written JSON boundary readers (`readObject`, `readString`, `required`, `optional`, `canonicalJson`, `put`, etc.) every other parser in this package is built from. Edit when you need a new primitive-reading helper or change how required/optional fields are handled.
 - `src/errors.ts` — `SchemaError`, the one error type for anything this package rejects; carries a dotted field path.
 - `src/hash.ts` — `fnv1a64`/`hashRecord`: the content hash a graph stores alongside a formula id+version, used to detect when a catalogue has changed under a saved graph.
-- `src/version.ts` — `DOCUMENT_SCHEMA_VERSION`, `CATALOGUE_SCHEMA_VERSION` and the version-stamp check on load. Prefer an additive, optional field; bump the document version only for a change that is not additive, together with a step in `src/migration.ts` (saved documents must stay readable — see AGENTS.md).
+- `src/version.ts` — `DOCUMENT_SCHEMA_VERSION`, `CATALOGUE_SCHEMA_VERSION` (2, since `tables`; version 1 still reads, as `OLDEST_CATALOGUE_SCHEMA_VERSION`) and the version-stamp check on load. Prefer an additive, optional field; bump the document version only for a change that is not additive, together with a step in `src/migration.ts` (saved documents must stay readable — see AGENTS.md).
 - `src/migration.ts` — `migrateDocument`, the per-version upgrade chain a saved document walks before `parseDocument` validates it. Add a step here for every document version bump.
 - `src/localization.ts` — `LocalizedText` (a `{en, nl, ...}` map), `localize()`. Edit when adding a new UI locale or changing fallback resolution.
 - `src/quantity.ts` — `Quantity` (authored magnitude + unit), `parseUnitField`/`parsePortUnitField`, `canonicalValue` — the one place a document's authored number crosses into the kernel's canonical units.
 - `src/port.ts` — `Port` (numeric/categorical/spectrum/bundle), `PortUnit`, `ValidRange`, `portDimension`, generic-signature rules (`asInputPort`/`asOutputPort`). Edit when adding a new port kind or changing what a formula's inputs/outputs can declare.
 - `src/value.ts` — `ValueSpec`: everything an input node can hold — scalar, slider, categorical, spectrum, and the range kinds (`linear`, `logarithmic`, `list`, `renard`, `tableColumn`, `categoricalList`). Edit when adding a new sweep/range kind.
 - `src/formula.ts` — `Formula`, `FormulaLookup` (table-backed evaluators), `Catalogue`, `FormulaRef`/`matchRef` (how a graph references a formula by id+version+hash without embedding it), `formulaHash`. Edit when changing what a catalogue record can carry (status, `appliesWhen`, `variantOf`, lookup tables, etc.).
+- `src/table.ts` — `CatalogueTable`, a catalogue's `tables` entry (one key column, rows of records), its parse/serialise, `tableHash`, and `tableFormula`: the table read as a one-axis lookup formula, which is what the kernel evaluates and a document's reference resolves to. Edit when changing what a catalogue table can carry.
 - `src/document.ts` — `GraphDocument` and every `GraphNode` kind (input, formula, output, compare, closure, waypoint, pack, unpack, monteCarloGenerator, monteCarloReceiver), including an input slider's optional `exposeInNotebook` marker; `Output` variants (print/check/plot/table/equation), `Frame`, `Edge`, plus `parseDocument`/`serializeDocument` and structural reference checks. **The biggest file to know** — edit when adding a new node kind or output kind.
 - `src/io.ts` — the four public entry points: `loadDocument`/`saveDocument`/`loadCatalogue`/`saveCatalogue` (text ↔ typed record). No `fs`/`fetch` — that's the editor's job.
 - `src/index.ts` — the package's public export surface. Update when you add an export elsewhere in this package.
@@ -165,6 +166,7 @@ The React app. Largest package by far. `AGENTS.md`: desktop-only, no properties 
 
 - `canvas/Canvas.tsx` — the canvas itself: React Flow wiring, `typesConnect` (cheap live check) vs `canConnect` (authoritative check on drop), node/edge change handlers, right-click menus, selection, canvas-level keyboard shortcuts, find-in-canvas. **The central canvas file.**
 - `canvas/NodeShell.tsx` — shared chrome every node kind uses: title, state badge/colour, expand/collapse, pin-open, delete/help buttons.
+- `canvas/TableNodeView.tsx` — the catalogue table node: the grid drawn in the node's detail, and the click rules (`rowsAfterGesture`, `allRowsToggled`, `columnsAfterCellClick`, `columnsAfterClick`) that turn clicks into the stored row selection and column projection.
 - `canvas/node-data.ts` — `CanvasNodeData`/`CanvasFlowNode` types (highlight state, port-hover callback) threaded through React Flow's generic node type.
 - `canvas/fields.tsx` — the small editable field primitives (`TextField`, `NumberField`) every node's value editing is built from — commit-on-blur/Enter, hold-while-typing.
 - `canvas/InputNodeView.tsx` — the input node: scalar/slider/range value editor, sparkline when swept, and the slider-only `Expose in NodeBook` authoring checkbox.
@@ -321,8 +323,9 @@ hand; this gives it a form instead of a text editor.
   adapter, not shared as a package for two functions.
 - `vite.config.ts` — `base: '/author/'`; outputs to `build/` (kept separate
   from `tsc`'s `dist/`, same split as the editor).
-- Out of scope for now: editing a formula's `FormulaLookup` table (round-trips
-  untouched) and cross-catalogue id-collision checking.
+- Out of scope for now: editing a formula's `FormulaLookup` table or a
+  catalogue's `tables` (both round-trip untouched) and cross-catalogue
+  id-collision checking.
 
 ---
 

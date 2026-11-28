@@ -13,8 +13,8 @@ Two ways to write one:
   checkout. This is the way to reach for first, and covers everything a
   straightforward formula needs.
 - **Hand-written YAML**, for scripting many records at once or for the few
-  things the app's forms don't yet expose (a formula with several outputs, or
-  a table-backed lookup). Covered further down.
+  things the app's forms don't yet expose (a formula with several outputs, a
+  table-backed lookup, or a table of standard sizes). Covered further down.
 
 Either way, `restricted` is a statement of intent, not an access control: set
 it `false` only for content you actually have the right to redistribute. It
@@ -76,7 +76,7 @@ way you'd hand them anything else you made.
 The same schema, without the app. A catalogue is:
 
 ```yaml
-schemaVersion: 1
+schemaVersion: 2
 id: my-catalogue
 name:
   en: Human-readable name
@@ -118,6 +118,54 @@ keyed by output name, and may key `appliesWhen` the same way where only some
 outputs stop applying. Outputs are computed in declared order and each may
 name any output declared before it, so a total is written as the difference
 of the two limits above it rather than restating their algebra.
+
+### Tables
+
+A table of records — standard sizes, one part per row — goes in `tables`,
+beside `formulas`. Each table becomes its own entry in the palette, under
+your catalogue and below its formulas, and drops a
+[catalogue table](./node-reference#catalogue-table) node.
+
+```yaml
+tables:
+  - id: my.topic.widgets
+    version: 1
+    label:
+      en: Widget sizes
+    description:
+      en: Standard widget sizes.
+    citation: Table 3-2
+    key:
+      name: size
+    columns:
+      - name: w
+        unit: mm
+      - name: P
+        unit: W
+        preferredUnit: kW
+      - name: grade
+    rows:
+      - [S, 10, 250, soft]
+      - [M, 12, 500, soft]
+      - [L, 16, ~, hard]
+```
+
+- **One key column**, named in `key`, which names each row. Every row needs
+  one and no two rows share one. A numeric key (one with a `unit`) has to
+  rise from row to row.
+- A column **without a `unit` holds names** — a profile, a designation —
+  rather than numbers.
+- Each row lists the key first, then one cell per column, in order. Leave a
+  cell empty (`~` in YAML, `null` in JSON) where the table has no value.
+- Ids are shared with formulas: a table and a formula in one catalogue
+  cannot have the same id.
+- A table over **two** keys — a profile *and* a diameter band — cannot be
+  written here. Keep it as a lookup formula.
+
+Tables need `schemaVersion: 2`. A version-1 catalogue still loads exactly
+as before; it just has no tables. Changing a table's label, description or
+citation does not flag saved NodeBooks as changed; changing its rows, keys
+or units does, so bump its `version` when you do.
 
 The complete field-by-field guide, including a full worked example with
 several formulas, lives in
