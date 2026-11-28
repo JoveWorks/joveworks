@@ -299,6 +299,7 @@ export {
   domainOutputKinds,
   domainPortKinds,
   domainEvaluators,
+  domainEvaluation,
   isDomainNode,
   isDomainOutput,
   isDomainPort,

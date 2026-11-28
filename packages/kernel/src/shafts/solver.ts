@@ -29,7 +29,7 @@
  * Canonical units throughout (mm, N, N·mm, N/mm²).
  */
 
-import { KernelError } from './errors.js';
+import { KernelError } from '../errors.js';
 
 export interface Term {
   readonly coefficient: number;

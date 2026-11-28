@@ -61,19 +61,8 @@ import {
   WEIGHTS_PORT,
   PERCENTILE_PORT,
   STATISTIC_RESULT_PORT,
-  LOAD_PORT,
-  SUPPORT_PORT,
-  LOAD_FIELD_UNITS,
-  loadFieldValue,
-  loadNodeFields,
-  SHAFT_PORT,
-  SHAFT_Z_PORT,
-  SHAFT_PROFILE_PORT,
-  SHAFT_I_PORT,
-  ACTING_PORT,
-  SHAFT_FIELD_UNITS,
-  shaftFieldValue,
-  shaftNodeFields,
+  isDomainNode,
+  isDomainPort,
   START_PORT,
   STOP_PORT,
   COUNT_PORT,
@@ -120,20 +109,27 @@ import { KernelError } from './errors.js';
 import { parseExpression } from './parse.js';
 import type { Axis } from './series.js';
 import type { Warning } from './warnings.js';
+import { domainAxis, isStructuredKind, kernelNode, kernelOutput, kernelPortKind, type ResolveContext } from './domain.js';
 
 /**
  * One channel of a `bundle`-kind port's per-channel type list. A pack channel
  * is whatever was wired to it — numeric with its own dimension, categorical,
- * or a load or support (see their branches in `resolveGraph`).
+ * or a domain's structured value whose kind may be packed (`packable` in
+ * `domain.ts`), such as a load.
  */
 export type ChannelType =
   | { readonly kind: 'numeric'; readonly dimension: Dimension }
   | { readonly kind: 'categorical' }
-  | { readonly kind: 'load' };
+  | { readonly kind: Exclude<PortKind, 'numeric' | 'categorical' | 'bundle'> };
 
-/** A bundle of loads and supports only — what a shaft's `acting` port takes as well as single loads. */
-export function isLoadBundle(type: PortType): boolean {
-  return type.kind === 'bundle' && (type.channels ?? []).length > 0 && (type.channels ?? []).every((channel) => channel.kind === 'load');
+/** A bundle of `kind` values only — what a variadic port of that structured kind takes as well as single wires. */
+export function isBundleOf(type: PortType, kind: PortKind): boolean {
+  return type.kind === 'bundle' && (type.channels ?? []).length > 0 && (type.channels ?? []).every((channel) => channel.kind === kind);
+}
+
+/** Whether a declared port takes one wire per value: a variadic numeric port, or a domain's variadic structured one. */
+function isVariadicPort(port: Port): boolean {
+  return (port.kind === 'numeric' || isDomainPort(port)) && (port as { readonly variadic?: boolean }).variadic === true;
 }
 
 /** The type of one port of one node: enough to decide whether an edge may attach. */
@@ -436,9 +432,8 @@ export function outputPortNames(node: GraphNode): readonly string[] {
   // front *is* a scatter, and wiring mass into `x` is placing it on the
   // picture about to be read.
   if (node.output.kind === 'pareto') return [X_PORT, Y_PORT];
-  // A shaft view draws a shaft, what acts on it, and any diagrams of it —
-  // the last two take a wire per load or diagram.
-  if (node.output.kind === 'shaftView') return [SHAFT_PORT, ACTING_PORT];
+  const domain = kernelOutput(node.output.kind);
+  if (domain !== undefined) return domain.ports(node.output as never);
   return [VALUE_PORT];
 }
 
@@ -490,8 +485,8 @@ function portType(port: Port, bindings: ReadonlyMap<string, Dimension>): PortTyp
   // unreachable from `formula`/`closure` resolution — kept only so `Port`'s
   // full union type-checks here.
   if (port.kind === 'bundle') return { kind: 'bundle' };
-  if (port.kind === 'load') return { kind: 'load' };
-  if (port.kind === 'shaft') return { kind: 'shaft' };
+  // A domain's structured port has a kind and nothing else to resolve.
+  if (port.kind !== 'numeric') return { kind: port.kind };
   if (!isGenericDimension(port.unit)) {
     return { kind: port.kind, dimension: port.unit.dimension, unit: port.preferredUnit ?? port.unit };
   }
@@ -657,8 +652,10 @@ function axisOf(
     if (length === undefined) throw new KernelError('this zip has not been measured yet', node.id);
     return { id: node.id, label: node.axisLabel ?? node.label ?? node.id, length, order };
   }
-  if (node.kind === 'shaft') {
-    return { id: node.id, label: node.axisLabel ?? 'z', length: node.count, order };
+  if (isDomainNode(node)) {
+    const domain = domainAxis(node, order);
+    if (domain === undefined) throw new KernelError(`nothing in this build reads the axis of a '${node.kind}' node`, node.id);
+    return domain;
   }
   if (node.kind === 'table') {
     // The rows that survived resolution, not the rows the document names —
@@ -795,11 +792,9 @@ export function resolveGraph(
       ? 'a number'
       : kind === 'categorical'
         ? 'a category'
-        : kind === 'load'
-          ? 'a load or a support'
-          : kind === 'shaft'
-            ? 'a shaft'
-            : 'a bundle of channels';
+        : kind === 'bundle'
+          ? 'a bundle of channels'
+          : (kernelPortKind(kind)?.noun ?? `a ${kind}`);
 
   const checkKind = (source: PortType, target: PortType, where: string): void => {
     if (source.kind === target.kind) return;
@@ -851,12 +846,12 @@ export function resolveGraph(
     for (const port of formula.inputs) {
       const key = endpointKey(nodeId, port.name);
       const generic =
-        port.kind !== 'categorical' && port.kind !== 'bundle' && port.kind !== 'load' && port.kind !== 'shaft' && isGenericDimension(port.unit)
+        port.kind === 'numeric' && isGenericDimension(port.unit)
           ? port.unit
           : undefined;
       // A variadic port takes one edge per wired value; every other port
       // takes exactly one, which `oneEdge` throws on if not true.
-      const variadic = (port.kind === 'numeric' || port.kind === 'load') && port.variadic === true;
+      const variadic = isVariadicPort(port);
       const edges = variadic ? (incoming.get(key) ?? []) : oneEdgeArray(key);
       if (edges.length === 0) {
         // A variadic port collects wires and takes no inline value
@@ -872,8 +867,8 @@ export function resolveGraph(
 
       for (const edge of edges) {
         const source = sourceType(edge);
-        // A pack of loads and supports lands on an `acting` port as the loads it holds.
-        if (variadic && declared.kind === 'load' && isLoadBundle(source)) continue;
+        // A pack of structured values lands on a variadic port of their kind as the values it holds.
+        if (variadic && isStructuredKind(declared.kind) && isBundleOf(source, declared.kind)) continue;
         checkKind(source, declared, key);
 
         if (generic !== undefined) {
@@ -926,7 +921,48 @@ export function resolveGraph(
     }
   };
 
+  /** What a domain's node or output is given to type its own ports with (`ResolveContext` in `domain.ts`). */
+  const resolveContext = (node: GraphNode): ResolveContext => {
+    const at = (port: string): string => endpointKey(node.id, port);
+    return {
+      document,
+      target: (port, type) => targets.set(at(port), type),
+      source: (port, type) => sources.set(at(port), type.kind === 'numeric' ? displayOverride(node, port, type) : type),
+      wired: (port) => {
+        const edge = oneEdge(at(port));
+        return edge === undefined ? undefined : sourceType(edge);
+      },
+      wiredAll: (port) => (incoming.get(at(port)) ?? []).map((edge) => ({ edge, type: sourceType(edge) })),
+      checkKind: (source, target, port) => checkKind(source, target, at(port)),
+      field: (port, reference, typed) => {
+        const key = at(port);
+        const type: PortType = { kind: 'numeric', dimension: reference.dimension, unit: typed ?? reference };
+        targets.set(key, type);
+        const edge = oneEdge(key);
+        if (edge === undefined) return;
+        const source = sourceType(edge);
+        checkKind(source, type, key);
+        if (source.dimension !== undefined) assertConnectable(source.dimension, reference.dimension, key);
+      },
+      structuredInputs: (port, kind) => {
+        const key = at(port);
+        targets.set(key, { kind });
+        for (const edge of incoming.get(key) ?? []) {
+          const source = sourceType(edge);
+          if (!isBundleOf(source, kind)) checkKind(source, { kind }, key);
+        }
+      },
+    };
+  };
+
   for (const node of order) {
+    if (isDomainNode(node)) {
+      const definition = kernelNode(node.kind);
+      if (definition === undefined) throw new KernelError(`nothing in this build reads a '${node.kind}' node`, node.id);
+      definition.resolve(node as never, resolveContext(node));
+      continue;
+    }
+
     if (node.kind === 'input') {
       sources.set(endpointKey(node.id, VALUE_PORT), inputValueType(node, tableColumns.get(node.id)));
       continue;
@@ -1259,8 +1295,8 @@ export function resolveGraph(
           continue;
         }
         const source = sourceType(edge);
-        // A load or a shaft is routed like a category: carried as it is, nothing to bind.
-        if (source.kind === 'categorical' || source.kind === 'load' || source.kind === 'shaft') {
+        // A domain's structured value is routed like a category: carried as it is, nothing to bind.
+        if (source.kind === 'categorical' || isStructuredKind(source.kind)) {
           const type: PortType = { kind: source.kind };
           targets.set(inKey, type);
           sources.set(outKey, type);
@@ -1324,9 +1360,9 @@ export function resolveGraph(
         const edge = oneEdge(inKey);
         if (edge === undefined) continue;
         const source = sourceType(edge);
-        if (source.kind === 'categorical' || source.kind === 'load') {
+        if (source.kind === 'categorical' || kernelPortKind(source.kind)?.packable === true) {
           targets.set(inKey, { kind: source.kind });
-          channels.push({ kind: source.kind });
+          channels.push({ kind: source.kind } as ChannelType);
           continue;
         }
         checkKind(source, { kind: 'numeric' }, inKey);
@@ -1365,57 +1401,6 @@ export function resolveGraph(
             : { kind: channel.kind },
         );
       }
-      continue;
-    }
-
-    if (node.kind === 'shaft') {
-      // A range's shape again: each wireable field is a port of a fixed
-      // dimension, its typed value the fallback.
-      for (const field of shaftNodeFields(node)) {
-        const key = endpointKey(node.id, field);
-        const reference = SHAFT_FIELD_UNITS[field];
-        const type: PortType = { kind: 'numeric', dimension: reference.dimension, unit: shaftFieldValue(node, field)?.unit ?? reference };
-        targets.set(key, type);
-        const edge = oneEdge(key);
-        if (edge === undefined) continue;
-        const source = sourceType(edge);
-        checkKind(source, type, key);
-        if (source.dimension !== undefined) assertConnectable(source.dimension, reference.dimension, key);
-      }
-      sources.set(endpointKey(node.id, SHAFT_PORT), { kind: 'shaft' });
-      const zUnit = node.from.unit;
-      sources.set(endpointKey(node.id, SHAFT_Z_PORT), displayOverride(node, SHAFT_Z_PORT, { kind: 'numeric', dimension: zUnit.dimension, unit: zUnit }));
-      const iUnit = node.section.kind === 'secondMoment' ? node.section.I.unit : SHAFT_FIELD_UNITS.I;
-      sources.set(endpointKey(node.id, SHAFT_I_PORT), displayOverride(node, SHAFT_I_PORT, { kind: 'numeric', dimension: iUnit.dimension, unit: iUnit }));
-      if (node.section.kind !== 'secondMoment') {
-        const dUnit = node.section.kind === 'stepped' ? node.section.unit : node.section.d.unit;
-        sources.set(
-          endpointKey(node.id, SHAFT_PROFILE_PORT),
-          displayOverride(node, SHAFT_PROFILE_PORT, { kind: 'numeric', dimension: dUnit.dimension, unit: dUnit }),
-        );
-      }
-      continue;
-    }
-
-    if (node.kind === 'load' || node.kind === 'distributedLoad' || node.kind === 'support') {
-      // `RangeNode`'s shape with a fixed dimension per field: each field is
-      // a port, typed by `LOAD_FIELD_UNITS`, its typed value the fallback.
-      for (const field of node.kind === 'support' ? (['at'] as const) : loadNodeFields(node)) {
-        const key = endpointKey(node.id, field);
-        const reference = LOAD_FIELD_UNITS[field];
-        const type: PortType = {
-          kind: 'numeric',
-          dimension: reference.dimension,
-          unit: (node.kind === 'support' ? node.at : loadFieldValue(node, field))?.unit ?? reference,
-        };
-        targets.set(key, type);
-        const edge = oneEdge(key);
-        if (edge === undefined) continue;
-        const source = sourceType(edge);
-        checkKind(source, type, key);
-        if (source.dimension !== undefined) assertConnectable(source.dimension, reference.dimension, key);
-      }
-      sources.set(endpointKey(node.id, node.kind === 'support' ? SUPPORT_PORT : LOAD_PORT), { kind: 'load' });
       continue;
     }
 
@@ -1580,18 +1565,12 @@ export function resolveGraph(
       continue;
     }
 
-    if (node.kind === 'output' && node.output.kind === 'shaftView') {
-      const shaftKey = endpointKey(node.id, SHAFT_PORT);
-      targets.set(shaftKey, { kind: 'shaft' });
-      const shaftEdge = oneEdge(shaftKey);
-      if (shaftEdge !== undefined) checkKind(sourceType(shaftEdge), { kind: 'shaft' }, shaftKey);
-      const actingKey = endpointKey(node.id, ACTING_PORT);
-      targets.set(actingKey, { kind: 'load' });
-      for (const edge of incoming.get(actingKey) ?? []) {
-        const source = sourceType(edge);
-        if (!isLoadBundle(source)) checkKind(source, { kind: 'load' }, actingKey);
+    if (node.kind === 'output') {
+      const domainOutput = kernelOutput(node.output.kind);
+      if (domainOutput !== undefined) {
+        domainOutput.resolve(node, resolveContext(node));
+        continue;
       }
-      continue;
     }
 
     // An output node accepts whatever is wired to it — it renders a value, it
@@ -1683,26 +1662,22 @@ export function resolveGraph(
     }
   }
 
-  // A load is a structured value only a shaft diagram's load port reads.
-  // Most nodes take whatever is wired to them (an output, a compare, a
-  // select), so the port's own type cannot refuse it; the node kind does. A
-  // formula's ports already refused it by kind (`checkKind`); a waypoint
-  // or a pack only carries it on to somewhere that is checked in turn.
-  const carriesLoads = new Set(['formula', 'waypoint', 'pack']);
+  // A domain's structured value (a load, a shaft) is read only where a port
+  // declares its kind. Most nodes take whatever is wired to them (an output,
+  // a compare, a select), so the port's own type cannot refuse it; the node
+  // kind does. A formula's ports already refused it by kind (`checkKind`); a
+  // waypoint or a pack only carries it on to somewhere that is checked in
+  // turn; a domain's own node or output typed its ports itself.
+  const carriesStructured = new Set(['formula', 'waypoint', 'pack']);
   const byId = new Map(document.nodes.map((node) => [node.id, node] as const));
   for (const edge of document.edges) {
     const carried = sources.get(endpointKey(edge.from.node, edge.from.port))?.kind;
-    if (carried !== 'load' && carried !== 'shaft') continue;
+    const structured = carried === undefined ? undefined : kernelPortKind(carried);
+    if (structured === undefined) continue;
     const target = byId.get(edge.to.node);
-    if (carriesLoads.has(target?.kind ?? '')) continue;
-    // A shaft view draws them; its own ports have already checked the kind.
-    if (target?.kind === 'output' && target.output.kind === 'shaftView') continue;
-    throw new KernelError(
-      carried === 'load'
-        ? "this wire carries a load or a support, which only a shaft diagram's 'acting' port takes"
-        : "this wire carries a shaft, which only a shaft diagram's 'shaft' port takes",
-      endpointKey(edge.to.node, edge.to.port),
-    );
+    if (target === undefined || carriesStructured.has(target.kind) || isDomainNode(target)) continue;
+    if (target.kind === 'output' && kernelOutput(target.output.kind) !== undefined) continue;
+    throw new KernelError(structured.stranded, endpointKey(edge.to.node, edge.to.port));
   }
 
   // Every edge must name ports that exist. Sources are validated as they are
@@ -1756,15 +1731,15 @@ export function isVariadicTarget(
   }
 
   if (node.kind === 'output') {
-    return node.output.kind === 'shaftView' && to.port === ACTING_PORT;
+    return kernelOutput(node.output.kind)?.variadic.includes(to.port) ?? false;
   }
 
   if (node.kind !== 'formula') return false;
   for (const catalogue of catalogues) {
     const formula = catalogue.formulas.find((entry) => matchRef(node.formula, entry) === 'match');
     const port = formula?.inputs.find((candidate) => candidate.name === to.port);
-    // A shaft diagram's `acting` port joins wires the same way a numeric one does.
-    if (port !== undefined) return (port.kind === 'numeric' || port.kind === 'load') && port.variadic === true;
+    // A variadic structured port (a shaft diagram's `acting`) joins wires the same way a numeric one does.
+    if (port !== undefined) return isVariadicPort(port);
   }
   return false;
 }

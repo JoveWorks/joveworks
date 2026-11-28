@@ -7,8 +7,8 @@
 import { describe, expect, it } from 'vitest';
 import type { JsonObject } from '@joveworks/schema';
 
-import { evaluateDocument, valueAt } from './evaluate.js';
-import { resolveGraph } from './graph.js';
+import { evaluateDocument, valueAt } from '../evaluate.js';
+import { resolveGraph } from '../graph.js';
 import {
   CATALOGUE,
   compareNode,
@@ -22,8 +22,9 @@ import {
   scalar,
   waypointNode,
   wire,
-} from './invented.fixtures.js';
-import type { LoadValue, PortValue } from './series.js';
+} from '../invented.fixtures.js';
+import type { PortValue } from '../series.js';
+import type { LoadValue } from './values.js';
 
 const quantity = (value: number, unit: string): JsonObject => ({ value, unit });
 

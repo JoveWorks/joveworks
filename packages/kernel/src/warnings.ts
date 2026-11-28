@@ -8,6 +8,7 @@
  */
 
 import type { FormulaChange, FormulaRef } from '@joveworks/schema';
+import type { DomainWarningTypes } from './domain.js';
 
 export const WARNING_KINDS = [
   /** The catalogue's formula no longer matches the reference the graph saved. */
@@ -16,8 +17,6 @@ export const WARNING_KINDS = [
   'tableRowMissing',
   /** The product of the axis lengths has grown large enough to warn about. */
   'largeGrid',
-  'shaftSupports',
-  'shaftView',
   /** A formula was used outside its `appliesWhen` condition. */
   'appliesWhen',
   /** A plot names an axis its data does not vary along. */
@@ -86,7 +85,8 @@ export const WARNING_KINDS = [
   'candidateStale',
 ] as const;
 
-export type WarningKind = (typeof WARNING_KINDS)[number];
+/** Every warning kind: the core's, and any a domain raises (`DomainWarningTypes` in `domain.ts`). */
+export type WarningKind = (typeof WARNING_KINDS)[number] | keyof DomainWarningTypes;
 
 export interface Warning {
   readonly kind: WarningKind;

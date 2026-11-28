@@ -75,8 +75,6 @@ export {
   gridSize,
   indexer,
   isSeries,
-  loadSeries,
-  shaftSeries,
   reader,
   scalarSeries,
   unionAxes,
@@ -85,11 +83,6 @@ export type {
   Axis,
   BundleValue,
   CategoricalSeries,
-  LoadValue,
-  PointLoadValue,
-  SpanLoadValue,
-  SupportValue,
-  ShaftValue,
   NumericSeries,
   PortValue,
   Series,
@@ -165,10 +158,6 @@ export type {
   OutputResult,
   ParetoPoint,
   ParetoResult,
-  ShaftViewResult,
-  ShaftViewMark,
-  ShaftViewPlane,
-  ShaftViewSpan,
   PlotAxis,
   PlotResult,
   PlotMeasureResult,
@@ -190,3 +179,48 @@ export { toLatex } from './toLatex.js';
 
 export { WARNING_KINDS } from './warnings.js';
 export type { Warning, WarningKind } from './warnings.js';
+
+// What a domain adds to the kernel (ROADMAP item 19).
+export {
+  registerKernelPortKind,
+  registerKernelNode,
+  registerKernelOutput,
+  registerKernelEvaluator,
+  kernelPortKind,
+  kernelNode,
+  kernelOutput,
+  kernelEvaluator,
+  isDomainValue,
+  isStructuredKind,
+} from './domain.js';
+export type {
+  DomainValueTypes,
+  DomainResultTypes,
+  DomainWarningTypes,
+  DomainValue,
+  DomainResult,
+  KernelPortKindDefinition,
+  KernelNodeDefinition,
+  KernelOutputDefinition,
+  KernelEvaluatorDefinition,
+  KernelAxisDefinition,
+  ResolveContext,
+  EvaluateContext,
+} from './domain.js';
+export { inputPortValue, valueAtEdge } from './evaluate.js';
+export type { OutputBase } from './evaluate.js';
+
+// The shafts domain, still registered from here until it moves to
+// domains/examples/ (ROADMAP item 19, step 4).
+export { loadSeries, shaftSeries } from './shafts/index.js';
+export type {
+  LoadValue,
+  PointLoadValue,
+  SpanLoadValue,
+  SupportValue,
+  ShaftValue,
+  ShaftViewMark,
+  ShaftViewPlane,
+  ShaftViewResult,
+  ShaftViewSpan,
+} from './shafts/index.js';

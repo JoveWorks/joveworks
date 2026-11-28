@@ -183,8 +183,9 @@ Steps, each leaving the build green and shaft behaviour unchanged:
    core unions by declaration merging and register their parsers; the
    schema's shaft code is all in `schema/src/shafts.ts`, still registered
    from the schema's index (and `test/setup-domains.ts`) until step 4.
-3. Kernel registry: port typing, evaluation, the sweep axis a node adds
-   (`ShaftNode` is an `AxisNode`), sensitivity and warnings.
+3. ~~Kernel registry~~ Done: `kernel/src/domain.ts`; the kernel's shaft
+   code is all in `kernel/src/shafts/`, registered from the kernel's index
+   until step 4.
 4. Move the shaft code into `domains/examples/`; the core no longer names it.
 5. Editor registry: node views, result views, palette and quick-add
    entries, tours; sample NodeBooks become files a domain ships.

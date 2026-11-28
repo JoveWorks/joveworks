@@ -28,6 +28,7 @@ import {
   type Dimension,
 } from '@joveworks/units';
 import {
+  domainEvaluation,
   appliesWhenOf,
   expressionOf,
   isEvaluable,
@@ -166,7 +167,7 @@ function basisDimension(base: BaseDimension): Dimension {
 function genericVariablesOf(formula: Formula): ReadonlySet<string> {
   const variables = new Set<string>();
   for (const port of [...formula.outputs, ...formula.inputs] as readonly Port[]) {
-    if (port.kind === 'categorical' || port.kind === 'bundle' || port.kind === 'load' || port.kind === 'shaft' || !isGenericDimension(port.unit)) continue;
+    if (port.kind !== 'numeric' || !isGenericDimension(port.unit)) continue;
     for (const variable of Object.keys(port.unit.variables)) variables.add(variable);
   }
   return variables;
@@ -182,7 +183,7 @@ function checkRecord(formula: Formula, bindings: Bindings, where: string): Dimen
   for (const port of formula.inputs) {
     const dimension = portDimensionUnder(port, bindings, where);
     if (dimension === undefined) {
-      if (formula.lookup !== undefined || formula.shaft !== undefined) continue;
+      if (formula.lookup !== undefined || domainEvaluation(formula) !== undefined) continue;
       throw new KernelError(
         `'${port.name}' is categorical, and using one in an expression needs a table`,
         where,
@@ -240,7 +241,7 @@ function checkRecord(formula: Formula, bindings: Bindings, where: string): Dimen
 
 /** A port's dimension under the bindings, or `undefined` when it is categorical. */
 function portDimensionUnder(port: Port, bindings: Bindings, where: string): Dimension | undefined {
-  if (port.kind === 'categorical' || port.kind === 'bundle' || port.kind === 'load' || port.kind === 'shaft') return undefined;
+  if (port.kind !== 'numeric') return undefined;
   if (!isGenericDimension(port.unit)) return port.unit.dimension;
   try {
     return resolveGeneric(port.unit, bindings);

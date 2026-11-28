@@ -21,6 +21,7 @@ import { isGenericDimension, type Unit } from '@joveworks/units';
 import {
   VALUE_PORT,
   axes as documentAxes,
+  isDomainNode,
   isRange,
   renardValues,
   type AxisNode,
@@ -32,6 +33,7 @@ import {
   type ValueSpec,
 } from '@joveworks/schema';
 
+import { kernelNode } from './domain.js';
 import { KernelError } from './errors.js';
 import { evaluateDocument, valueAt } from './evaluate.js';
 import { resolveGraph, type ResolvedTableColumn, type Resolution } from './graph.js';
@@ -244,11 +246,11 @@ function collapseAxis(node: AxisNode, tableColumn: ResolvedTableColumn | undefin
     // collapsed inputs already makes.
     return node;
   }
-  if (node.kind === 'shaft') {
-    // The positions along a shaft are geometry, not an uncertain input: they
-    // collapse to the shaft's midpoint, the same way a range collapses to its
-    // own, and the diagrams are read there.
-    return { ...node, count: 1 };
+  // A domain's axis node says what its collapsed self is (`collapse` in `domain.ts`).
+  if (isDomainNode(node)) {
+    const collapse = kernelNode(node.kind)?.axis?.collapse;
+    if (collapse === undefined) throw new KernelError(`nothing in this build collapses a '${node.kind}' axis`, node.id);
+    return collapse(node as never);
   }
   // `documentAxes` only ever includes an `input` node here when its value is
   // a range — the same invariant `axisOf` in graph.ts relies on.

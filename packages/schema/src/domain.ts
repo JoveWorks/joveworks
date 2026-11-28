@@ -166,3 +166,15 @@ export function isDomainOutput(output: Output): output is DomainOutput {
 export function isDomainPort(port: Port): port is DomainPort {
   return ports.has(port.kind);
 }
+
+/**
+ * The domain evaluator a formula carries, if any: its key (`shaft`) and its
+ * parsed value. At most one — the parser refuses a second.
+ */
+export function domainEvaluation(formula: object): { readonly key: string; readonly value: unknown } | undefined {
+  const fields = formula as Readonly<Record<string, unknown>>;
+  for (const key of evaluators.keys()) {
+    if (fields[key] !== undefined) return { key, value: fields[key] };
+  }
+  return undefined;
+}

@@ -7,11 +7,11 @@
 import { describe, expect, it } from 'vitest';
 import type { JsonObject } from '@joveworks/schema';
 
-import { evaluateDocument, valueAt } from './evaluate.js';
-import { isVariadicTarget } from './graph.js';
-import { catalogueOf, documentOf, formulaNode, input, list, refTo, wire } from './invented.fixtures.js';
-import type { NumericSeries, PortValue } from './series.js';
-import { pointTerms, solve, spanTerms } from './shaft.js';
+import { evaluateDocument, valueAt } from '../evaluate.js';
+import { isVariadicTarget } from '../graph.js';
+import { catalogueOf, documentOf, formulaNode, input, list, refTo, wire } from '../invented.fixtures.js';
+import type { NumericSeries, PortValue } from '../series.js';
+import { pointTerms, solve, spanTerms } from './solver.js';
 
 const z: JsonObject = { kind: 'numeric', name: 'z', unit: 'mm' };
 const acting: JsonObject = { kind: 'load', name: 'acting', variadic: true };
