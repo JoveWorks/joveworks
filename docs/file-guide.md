@@ -38,6 +38,12 @@ Each folder is one domain, copied between deployments as a whole: its `catalogue
 - `examples/catalogues/photography.json` — public photography catalogue (thin lens, depth of field, sensor format, exposure, flash, macro, diffraction) used by the depth-of-field, aperture-decision and wildlife-camera samples; its book is `examples/books/photography.html`.
 - `examples/catalogues/running.yaml` — public YAML example catalogue for pace, race projections, route grade, and climbing rate.
 - `examples/catalogues/tables-demo.json` — public demo of catalogue tables.
+- `examples/catalogues/shafts.json` — the Shafts catalogue: the Shaft calculation and Support reaction diagrams (the `shaft:` evaluator) and the static sizing formulas. Ids, versions and hashes pinned in `examples/shafts/catalogue.test.ts`.
+- `examples/kernel.ts` — the examples domain's code entry without React: loads `shafts/schema.ts` and `shafts/kernel/`, which registers the shafts' kinds. Imported by `packages/editor/src/domains.ts` and `test/setup-domains.ts`; nothing in the core packages imports it.
+- `examples/shafts/schema.ts` — the shafts' part of the formats: Shaft, Support, Load and Distributed load nodes, the Shaft view output, the `load`/`shaft` port kinds and the `shaft:` evaluator, registered through `packages/schema/src/domain.ts`.
+- `examples/shafts/kernel/` — the shafts' part of the kernel, registered through `packages/kernel/src/domain.ts`: `values.ts` (`LoadValue`, `ShaftValue`), `solver.ts` (the support-reaction solve and the diagrams), `evaluate.ts` (Load, Support and Shaft nodes, the `shaft:` evaluator, the Shaft view), `index.ts` (typing and registrations). Its tests use the kernel's invented fixtures by relative path.
+- `examples/shafts/end-to-end.test.ts` — the Shafts catalogue through the kernel, checked against closed-form beam results.
+- `examples/tsconfig.json` — the domain's code as a TypeScript project of its own, referencing units, schema and kernel only, so a domain's non-React code cannot import the editor. `paths` stands in for workspace links (a domain is a folder, not a package); the editor's `tsconfig.json` and `vite.config.ts` resolve `@joveworks/*` the same way.
 
 ## `packages/schema/` — versioned formula and graph data contract
 
@@ -56,7 +62,6 @@ No evaluation logic lives here — just types, parsing (untrusted JSON → typed
 - `src/table.ts` — `CatalogueTable`, a catalogue's `tables` entry (one key column, rows of records), its parse/serialise, `tableHash`, and `tableFormula`: the table read as a one-axis lookup formula, which is what the kernel evaluates and a document's reference resolves to. Edit when changing what a catalogue table can carry.
 - `src/document.ts` — `GraphDocument` and every `GraphNode` kind (input, formula, output, compare, closure, waypoint, pack, unpack, monteCarloGenerator, monteCarloReceiver), including an input slider's optional `exposeInNotebook` marker; `Output` variants (print/check/plot/table/equation), `Frame`, `Edge`, plus `parseDocument`/`serializeDocument` and structural reference checks. **The biggest file to know** — edit when adding a new node kind or output kind.
 - `src/domain.ts` — what a domain adds to the formats (ROADMAP item 19): the empty `DomainNodeTypes`/`DomainAxisNodeTypes`/`DomainOutputTypes`/`DomainPortTypes` interfaces a domain fills by declaration merging, so its kinds join `GraphNode`, `AxisNode`, `Output` and `Port`; `registerDomainNode`/`Output`/`Port`/`Evaluator`, which hand the parsers its reading and writing; and the `isDomainNode`/`isDomainOutput`/`isDomainPort` guards the core narrows with. The core files never name a domain kind. Tested with an invented domain in `domain.test.ts`.
-- `src/shafts.ts` — the shafts domain's schema part: Shaft, Support, Load and Distributed load nodes, the Shaft view output, the `load`/`shaft` port kinds and the `shaft:` formula evaluator, registered through `domain.ts`. The only schema file that names shafts; moves to `domains/examples/` in step 4.
 - `src/io.ts` — the four public entry points: `loadDocument`/`saveDocument`/`loadCatalogue`/`saveCatalogue` (text ↔ typed record). No `fs`/`fetch` — that's the editor's job.
 - `src/index.ts` — the package's public export surface. Update when you add an export elsewhere in this package.
 - `src/*.test.ts` — one test file per module above (`document.test.ts`, `formula.test.ts`, `port.test.ts`, `value.test.ts`), exercising parse/serialize round-trips and validation errors with invented (non-R&M) fixtures.
@@ -104,7 +109,6 @@ The half of the project that "has to be right." No React, no formula content —
 - `src/toLatex.ts` — `Expr` → LaTeX string, for the equation output node's typeset rendering (duplicates `editor/src/Symbol.tsx`'s name-rendering rules rather than sharing, since the kernel can't depend on the editor).
 - `src/warnings.ts` — `Warning`/`WarningKind`: the non-fatal things the kernel reports (formula changed, large grid, `appliesWhen` violated, plot axis flat/dropped/facet-ignored).
 - `src/domain.ts` — what a domain adds to the kernel (ROADMAP item 19), the counterpart of the schema's `domain.ts`: `registerKernelPortKind` (a structured value's noun, whether a pack may carry it, what a stranded wire is told, the numbers inside it), `registerKernelNode` (typing through a `ResolveContext`, evaluation, an optional axis of its own), `registerKernelOutput` and `registerKernelEvaluator`, plus `DomainValueTypes`/`DomainResultTypes`/`DomainWarningTypes` filled by declaration merging. The generic rules for structured values — carried whole, routed through waypoints, packed, joined on variadic ports — live in `graph.ts` and `evaluate.ts` and name no domain. Tested with an invented domain in `domain.test.ts`.
-- `src/shafts/` — the shafts domain's kernel part, registered through `domain.ts`: `values.ts` (`LoadValue`, `ShaftValue`), `solver.ts` (the support-reaction solve and the diagrams), `evaluate.ts` (Load, Support and Shaft nodes, the `shaft:` evaluator, the Shaft view), `index.ts` (typing and registrations). Nothing else in the kernel imports it but the index; it moves to `domains/examples/` in step 4.
 - `src/invented.fixtures.ts` — test-only builders (`catalogueOf`, `documentOf`, invented formulas like `AREA`/`PRESSURE`/`COMBINE`) that go through the real parser so tests exercise the same path a loaded file does. **Every formula here is invented — no R&M content, per `AGENTS.md`.**
 - `src/index.ts` — public export surface.
 - `src/*.test.ts` — `parse.test.ts`, `compile.test.ts`, `formula.test.ts`, `closure.test.ts`, `graph.test.ts`, `evaluate.test.ts`, `bundle-nodes.test.ts`, `random.test.ts`, `toLatex.test.ts` — unit tests per module above, all built on `invented.fixtures.ts`.
@@ -119,6 +123,7 @@ The always-available arithmetic catalogue (add/multiply/sqrt/trig/…) plus the 
 - `src/operations.ts` — every base arithmetic/trig/rounding/reduction node as a `Formula` record (`add`, `subtract`, `multiply`, `divide`, `square`, `squareRoot`, `sine`, `floor`, `sum`, `pi`, …), built from generic dimension signatures (`$A`, `$A*$B`). Edit here to add a new base operation node.
 - `src/iso286.ts` — public ISO 286 hole/shaft limit-deviation lookup formulas (`iso286Limits`, the two `Formula` records with `FormulaLookup` tables), built from `iso286-data.ts`.
 - `src/iso286-data.ts` — **generated, do not edit by hand.** Raw ISO 286 IT-grade/hole/shaft tables as `as const` arrays.
+- `src/generalMechanics.ts` — three mechanics relations general enough for the base library (power ↔ torque at a speed, factor of safety against yield), kept under the ids, versions and hashes they shipped with in the Shafts catalogue.
 - `src/catalogue.ts` — `BASE_CATALOGUE`/`baseCatalogueJson()`: wraps `OPERATIONS` as a `Catalogue`, round-tripped through the real parser (the "authoring path" this package holds itself to).
 - `src/index.ts` — public export surface.
 - `src/catalogue.test.ts` — round-trip and shape tests for the base catalogue.
@@ -133,7 +138,8 @@ The React app. Largest package by far. `AGENTS.md`: desktop-only, no properties 
 ### Top level (`src/`)
 
 - `src/App.tsx` — the app shell: owns `document`/`catalogues` state, the undo history, autosave, the File/Edit/View/Help ribbon, panel layout (palette | canvas | notebook), tutorial/dialog wiring. **The one file to read to understand top-level app state.**
-- `src/main.tsx` — mount point, nothing else.
+- `src/main.tsx` — mount point; imports `src/domains.ts` first.
+- `src/domains.ts` — registers the domains the build includes before either route parses anything. Names `domains/examples/kernel.ts` directly for now (ROADMAP item 19, step 6 makes it a glob).
 - `src/graph-context.ts` — `GraphContext`: the document, catalogues, `edit`/`editLive`/`commitEdit`, selection/hover state, Monte Carlo playback — shared because React Flow node components can't be handed props directly.
 - `src/settings-context.ts` — `SettingsContext`: locale, number format, minimap/snap/theme/contour-palette preferences.
 - `src/i18n.ts` — the `en`/`nl` UI string tables (`UI`, `phrase()`) and locale helpers.

@@ -11,12 +11,6 @@ import {
   START_PORT,
   STOP_PORT,
   COUNT_PORT,
-  LOAD_PORT,
-  SUPPORT_PORT,
-  SHAFT_PORT,
-  SHAFT_Z_PORT,
-  POINT_LOAD_FIELDS,
-  SPAN_LOAD_FIELDS,
   STATISTIC_RESULT_PORT,
   VALUE_PORT,
   VERDICT_PORT,
@@ -29,6 +23,14 @@ import {
 
 import { defaultOutput, NEW_COLUMN, NEW_PLOT_MEASURE } from '../model/document';
 import { monteCarloSampleCount, monteCarloSampleLimit } from '../model/monteCarlo';
+import {
+  LOAD_PORT,
+  POINT_LOAD_FIELDS,
+  SHAFT_PORT,
+  SHAFT_Z_PORT,
+  SPAN_LOAD_FIELDS,
+  SUPPORT_PORT,
+} from '../../../../domains/examples/kernel';
 
 export type QuickAddChoice =
   | { readonly kind: 'formula'; readonly formula: Formula; readonly port: string }

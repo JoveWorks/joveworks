@@ -43,8 +43,6 @@ import {
   THRESHOLD_PORT,
   VALUE_PORT,
   VERDICT_PORT,
-  loadFieldValue,
-  loadNodeFields,
   START_PORT,
   STOP_PORT,
   COUNT_PORT,
@@ -130,7 +128,6 @@ const HELPERS = `
 GRID = [%GRID%]          # how many points each swept input has
 N_AXES = len(GRID)
 
-
 def sweep(values, axis):
     """A swept input. Each sweep varies along its own array axis, so combining two gives a grid."""
     values = np.asarray(values)
@@ -138,7 +135,6 @@ def sweep(values, axis):
         values = values.astype(float)
     GRID[axis] = values.size
     return values.reshape((-1,) + (1,) * (N_AXES - 1 - axis))
-
 
 def along(value, *axes):
     """\`value\` as an array over just these sweep axes, in this order - what a plot wants."""
@@ -150,11 +146,9 @@ def along(value, *axes):
     full = np.broadcast_to(value, [GRID[k] if k in axes else 1 for k in range(N_AXES)])
     return np.transpose(full, list(axes) + rest).reshape([GRID[k] for k in axes])
 
-
 def symbols(**described):
     """The symbols of one equation, each with its description - HM.MyHelp(equation) lists them."""
     return SimpleNamespace(**{name: HM.MySymbol(name, text) for name, text in described.items()})
-
 
 def evaluate(equation, sym, /, **values):
     """Put numbers (or whole sweeps) into a symbolic equation."""
@@ -163,7 +157,6 @@ def evaluate(equation, sym, /, **values):
     function = sp.lambdify([getattr(sym, name) for name in names], equation, 'numpy')
     with np.errstate(all='ignore'):
         return np.asarray(function(*numbers), dtype=float)[()]
-
 
 def show(name, value, unit=NO_UNIT, figures=4):
     """Print a result in the unit it should be read in."""
@@ -178,7 +171,6 @@ def show(name, value, unit=NO_UNIT, figures=4):
         low, high = np.nanmin(value), np.nanmax(value)
         print(f'{name} = {low:.{figures}g} ... {high:.{figures}g} {unit.symbol}'.rstrip() + f'  ({value.size} values)')
 
-
 def check(name, value, comparison, threshold, unit=NO_UNIT, figures=4):
     """An assertion: does the value keep to its bound - everywhere, if it is swept?"""
     value = np.asarray(value, dtype=float)
@@ -191,7 +183,6 @@ def check(name, value, comparison, threshold, unit=NO_UNIT, figures=4):
         mark = 'pass' if passed.all() else 'FAIL' if not passed.any() else 'part'
         print(f'[{mark}] {name} {bound}: holds at {int(passed.sum())} of {passed.size} points')
     return passed
-
 
 def table(columns, figures=4):
     """A swept study as rows: one row per point of the grid."""
@@ -233,7 +224,6 @@ except ImportError:                        # not installed - stand-ins that do t
         def MyHelp(expression):
             display(expression)
 
-
 class Unit(float):
     """A conversion factor into the units everything is computed in, that remembers how it is written."""
 
@@ -242,11 +232,14 @@ class Unit(float):
         unit.symbol = symbol
         return unit
 
-
 NO_UNIT = Unit(1.0)
 COMPARISONS = {'<': operator.lt, '<=': operator.le, '>': operator.gt, '>=': operator.ge,
                '==': operator.eq, '!=': operator.ne}
 `.trim();
+import {
+  loadFieldValue,
+  loadNodeFields,
+} from '../../../../domains/examples/kernel';
 
 /** A construct the printer has no faithful Python for — the node is carried over instead. */
 class Untranslatable extends Error {}

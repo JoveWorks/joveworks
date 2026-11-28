@@ -4,6 +4,7 @@
     { "path": "./packages/units" },
     { "path": "./packages/schema" },
     { "path": "./packages/kernel" },
+    { "path": "./domains/examples" },
     { "path": "./packages/nodes" },
     { "path": "./packages/editor" },
     { "path": "./packages/catalogue-author" }

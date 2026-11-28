@@ -63,6 +63,8 @@ import {
   STATISTIC_RESULT_PORT,
   isDomainNode,
   isDomainPort,
+  type AnyDomainNode,
+  type AnyDomainPort,
   START_PORT,
   STOP_PORT,
   COUNT_PORT,
@@ -486,7 +488,7 @@ function portType(port: Port, bindings: ReadonlyMap<string, Dimension>): PortTyp
   // full union type-checks here.
   if (port.kind === 'bundle') return { kind: 'bundle' };
   // A domain's structured port has a kind and nothing else to resolve.
-  if (port.kind !== 'numeric') return { kind: port.kind };
+  if (port.kind !== 'numeric') return { kind: (port as AnyDomainPort).kind as PortKind };
   if (!isGenericDimension(port.unit)) {
     return { kind: port.kind, dimension: port.unit.dimension, unit: port.preferredUnit ?? port.unit };
   }
@@ -653,8 +655,9 @@ function axisOf(
     return { id: node.id, label: node.axisLabel ?? node.label ?? node.id, length, order };
   }
   if (isDomainNode(node)) {
+    const { kind, id }: AnyDomainNode = node;
     const domain = domainAxis(node, order);
-    if (domain === undefined) throw new KernelError(`nothing in this build reads the axis of a '${node.kind}' node`, node.id);
+    if (domain === undefined) throw new KernelError(`nothing in this build reads the axis of a '${kind}' node`, id);
     return domain;
   }
   if (node.kind === 'table') {
@@ -957,8 +960,9 @@ export function resolveGraph(
 
   for (const node of order) {
     if (isDomainNode(node)) {
-      const definition = kernelNode(node.kind);
-      if (definition === undefined) throw new KernelError(`nothing in this build reads a '${node.kind}' node`, node.id);
+      const { kind, id }: AnyDomainNode = node;
+      const definition = kernelNode(kind);
+      if (definition === undefined) throw new KernelError(`nothing in this build reads a '${kind}' node`, id);
       definition.resolve(node as never, resolveContext(node));
       continue;
     }

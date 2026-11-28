@@ -64,7 +64,7 @@ import {
   type LocalizedText,
 } from './localization.js';
 import type { Unit } from '@joveworks/units';
-import { domainPortDefinition, domainPortKinds, isDomainPort, type DomainPort, type DomainPortTypes } from './domain.js';
+import { domainPortDefinition, domainPortKinds, isDomainPort, type AnyDomainPort, type DomainPort, type DomainPortTypes } from './domain.js';
 
 /**
  * What a numeric port declares: a concrete display unit, or a generic
@@ -335,7 +335,10 @@ export function serializePort(port: Port): JsonObject {
     name: port.name,
     ...(port.description === undefined ? {} : { description: serializeLocalizedText(port.description) }),
   };
-  if (isDomainPort(port)) return { ...base, ...(domainPortDefinition(port.kind)?.serialize(port as never) ?? {}) };
+  if (isDomainPort(port)) {
+    const domain: AnyDomainPort = port;
+    return { ...base, ...(domainPortDefinition(domain.kind)?.serialize(port as never) ?? {}) };
+  }
   if (port.kind === 'categorical') {
     return {
       ...base,
@@ -393,7 +396,10 @@ export function asOutputPort(port: Port, path: string): OutputPort {
   if (port.kind === 'bundle') {
     fail(path, "a bundle is 'pack's own output only — a catalogue formula cannot produce one");
   }
-  if (isDomainPort(port)) fail(path, domainPortDefinition(port.kind)?.outputRefusal ?? 'a catalogue formula cannot produce this kind of port');
+  if (isDomainPort(port)) {
+    const domain: AnyDomainPort = port;
+    fail(path, domainPortDefinition(domain.kind)?.outputRefusal ?? 'a catalogue formula cannot produce this kind of port');
+  }
   if (port.kind === 'numeric' && port.variadic === true) {
     fail(path, "'variadic' is an input-only flag — a formula cannot produce several values");
   }

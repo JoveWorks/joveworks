@@ -2,9 +2,8 @@
  * The shafts domain's part of the kernel (ROADMAP item 19): typing and
  * evaluating the Load, Distributed load, Support and Shaft nodes, the
  * `shaft:` formula evaluator, and the Shaft view output, registered through
- * the kernel's `domain.ts`. Nothing in the core kernel imports this folder;
- * the kernel's index does, for now, so the shafts keep working until they
- * move to `domains/examples/` with their schema part.
+ * the kernel's `domain.ts`. Part of the examples domain; `../../kernel.ts`
+ * loads it, which is what registers the kinds.
  */
 
 import {
@@ -26,15 +25,15 @@ import {
   type LoadNode,
   type ShaftNode,
   type SupportNode,
-} from '@joveworks/schema';
+} from '../schema.js';
 import {
   registerKernelEvaluator,
   registerKernelNode,
   registerKernelOutput,
   registerKernelPortKind,
   type ResolveContext,
-} from '../domain.js';
-import type { PortValue } from '../series.js';
+} from '@joveworks/kernel';
+import type { PortValue } from '@joveworks/kernel';
 import {
   evaluateLoad,
   evaluateShaft,
@@ -46,7 +45,7 @@ import {
 } from './evaluate.js';
 import { loadSeries, shaftSeries, type LoadValue, type ShaftValue } from './values.js';
 
-declare module '../domain.js' {
+declare module '@joveworks/kernel' {
   interface DomainValueTypes {
     load: LoadValue;
     shaft: ShaftValue;

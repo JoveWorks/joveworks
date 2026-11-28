@@ -186,7 +186,10 @@ Steps, each leaving the build green and shaft behaviour unchanged:
 3. ~~Kernel registry~~ Done: `kernel/src/domain.ts`; the kernel's shaft
    code is all in `kernel/src/shafts/`, registered from the kernel's index
    until step 4.
-4. Move the shaft code into `domains/examples/`; the core no longer names it.
+4. ~~Move the shaft code into `domains/examples/`~~ Done: the schema,
+   kernel and nodes packages compile without it. The editor's shaft views
+   still import the domain directly, and `packages/editor/src/domains.ts`
+   registers it in every build, until steps 5 and 6.
 5. Editor registry: node views, result views, palette and quick-add
    entries, tours; sample NodeBooks become files a domain ships.
 6. Composition: the editor and the published-NodeBook viewer both register

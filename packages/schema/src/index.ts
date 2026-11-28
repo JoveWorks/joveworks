@@ -12,12 +12,30 @@
 export { SchemaError } from './errors.js';
 export type { JsonObject, JsonValue } from './json.js';
 export { canonicalJson } from './json.js';
+// The readers every parser here is built from, for a domain's own (`domain.ts`).
+export {
+  fail,
+  join,
+  optional,
+  put,
+  readArray,
+  readBoolean,
+  readEnum,
+  readInteger,
+  readName,
+  readNumber,
+  readObject,
+  readString,
+  readStringArray,
+  required,
+} from './json.js';
 
 export { DOCUMENT_SCHEMA_VERSION, CATALOGUE_SCHEMA_VERSION } from './version.js';
 
 export {
   canonicalValue,
   serializeQuantity,
+  parseQuantity,
   parseUnitField,
   parsePortUnitField,
 } from './quantity.js';
@@ -314,52 +332,12 @@ export type {
   DomainOutput,
   DomainPort,
   DomainNodeDefinition,
+  AnyDomainNode,
+  AnyDomainOutput,
+  AnyDomainPort,
   DomainOutputDefinition,
   DomainPortDefinition,
   DomainEvaluatorDefinition,
 } from './domain.js';
 export type { NodeBase, CoreNode, CoreOutput } from './document.js';
 export type { PortBase } from './port.js';
-
-// The shafts domain, still registered from here until it moves to
-// domains/examples/ (ROADMAP item 19, step 4).
-export {
-  LOAD_PORT,
-  POINT_LOAD_FIELDS,
-  SPAN_LOAD_FIELDS,
-  LOAD_FIELD_UNITS,
-  loadNodeFields,
-  loadFieldValue,
-  SUPPORT_TYPES,
-  SUPPORT_PORT,
-  SHAFT_PORT,
-  SHAFT_Z_PORT,
-  SHAFT_PROFILE_PORT,
-  SHAFT_I_PORT,
-  ACTING_PORT,
-  SHAFT_SECTION_KINDS,
-  SHAFT_FIELD_UNITS,
-  shaftNodeFields,
-  shaftFieldValue,
-  SHAFT_ANSWERS,
-  SHAFT_QUANTITIES,
-  SHAFT_PLANES,
-} from './shafts.js';
-export type {
-  LoadNode,
-  DistributedLoadNode,
-  SupportNode,
-  SupportType,
-  ShaftNode,
-  ShaftSection,
-  ShaftStep,
-  ShaftViewOutput,
-  LoadField,
-  PointLoadField,
-  SpanLoadField,
-  LoadPort,
-  ShaftPort,
-  FormulaShaft,
-  ShaftAnswer,
-  ShaftQuantity,
-} from './shafts.js';

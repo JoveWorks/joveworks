@@ -11,16 +11,7 @@ import { Handle, Position, type NodeProps } from '@xyflow/react';
 
 import { dimensionsEqual, formatPlainNumber, parseUnit } from '@joveworks/units';
 import {
-  SHAFT_FIELD_UNITS,
-  SHAFT_PORT,
-  SHAFT_PROFILE_PORT,
-  SHAFT_I_PORT,
-  SHAFT_Z_PORT,
-  shaftFieldValue,
   type Quantity,
-  type ShaftNode,
-  type ShaftSection,
-  type ShaftStep,
 } from '@joveworks/schema';
 
 import { useGraph } from '../graph-context';
@@ -37,6 +28,17 @@ import { Sparkline } from './Sparkline';
 import { NumberField, TextField } from './fields';
 import type { CanvasFlowNode } from './node-data';
 import { TitleField, TitleText } from './TitleField';
+import {
+  SHAFT_FIELD_UNITS,
+  SHAFT_I_PORT,
+  SHAFT_PORT,
+  SHAFT_PROFILE_PORT,
+  SHAFT_Z_PORT,
+  shaftFieldValue,
+  type ShaftNode,
+  type ShaftSection,
+  type ShaftStep,
+} from '../../../../domains/examples/kernel';
 
 const SECTION_LABELS: Readonly<Record<ShaftSection['kind'], string>> = {
   round: 'round',

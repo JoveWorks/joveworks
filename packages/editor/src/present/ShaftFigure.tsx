@@ -18,11 +18,15 @@
 
 import type { ReactElement } from 'react';
 
-import type { ShaftViewMark, ShaftViewPlane, ShaftViewResult } from '@joveworks/kernel';
 import type { Unit } from '@joveworks/units';
 
 import { display } from '../model/quantity';
 import { useDisplay } from './display';
+import {
+  type ShaftViewMark,
+  type ShaftViewPlane,
+  type ShaftViewResult,
+} from '../../../../domains/examples/kernel';
 
 const WIDTH = 640;
 const LEFT = 64;

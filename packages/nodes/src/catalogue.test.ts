@@ -26,6 +26,7 @@ import {
 import {
   CATALOGUE_SCHEMA_VERSION,
   formulaHash,
+  formulaRef,
   isEvaluable,
   loadCatalogue,
   parseCatalogue,
@@ -39,14 +40,22 @@ import {
   ARRAY_CATALOGUE,
   ARRAY_OPERATIONS,
   BASE_CATALOGUE,
+  GENERAL_MECHANICS_OPERATIONS,
   OPERATIONS,
   arrayCatalogueJson,
   baseCatalogueJson,
   iso286Limits,
 } from './index.js';
 
-/** Every hand-authored base node, across both catalogues — everything `iso286.ts`'s lookups are not. */
-const HAND_AUTHORED: readonly Formula[] = [...OPERATIONS, ...ARRAY_OPERATIONS];
+/**
+ * Every hand-authored base node, across both catalogues — less the three
+ * general mechanics records (`generalMechanics.ts`), which kept the
+ * citations they shipped with in the Shafts catalogue: a citation is part
+ * of the hash, so dropping it would change every saved reference.
+ */
+const HAND_AUTHORED: readonly Formula[] = [...OPERATIONS, ...ARRAY_OPERATIONS].filter(
+  (formula) => !GENERAL_MECHANICS_OPERATIONS.includes(formula),
+);
 
 const MATH = 'base.math.';
 const ARRAY = 'base.array.';
@@ -134,6 +143,22 @@ describe.each([
   });
 });
 
+describe('the general mechanics records', () => {
+  // Moved from the Shafts catalogue when the shafts became a domain (ROADMAP
+  // item 19); pinned as they shipped, so saved NodeBooks resolve exactly.
+  it('keep the id, version and hash they shipped with', () => {
+    expect(GENERAL_MECHANICS_OPERATIONS.map((formula) => formulaRef(formula))).toEqual([
+      { id: 'mechanics.rotation.power-from-torque', version: 1, hash: '179fe27117903227' },
+      { id: 'mechanics.rotation.torque-from-power', version: 1, hash: '449bc00bc24b1866' },
+      { id: 'mechanics.stress.factor-of-safety', version: 1, hash: '630d5d9b89524eed' },
+    ]);
+  });
+
+  it('are in the base library', () => {
+    for (const formula of GENERAL_MECHANICS_OPERATIONS) expect(BASE_CATALOGUE.formulas).toContain(formula);
+  });
+});
+
 describe('what the library carries', () => {
   it('cites nothing — arithmetic is not textbook content', () => {
     for (const formula of HAND_AUTHORED) {
@@ -193,11 +218,7 @@ describe('what the library carries', () => {
   // reduction-specific — so the honest invariant here is two-way and scoped
   // to what `HAND_AUTHORED` actually covers (`operations.ts`/`arrayNodes.ts`
   // built through `draft.ts`): every reduction in this pair of catalogues
-  // has one, and nothing else in them does. `mechanicsNodes.ts`'s shaft
-  // formulas declare `variadic` ports too (`position`/`force`,
-  // `start`/`end`/`rate`), by the same convention — they are just built
-  // directly rather than through `draft.ts` and are not part of
-  // `HAND_AUTHORED`, so this test does not see them.
+  // has one, and nothing else in them does.
   it('has a variadic input on each reduction and nowhere else', () => {
     const reductions = new Set([
       'sum',

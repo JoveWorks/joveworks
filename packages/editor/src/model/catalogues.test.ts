@@ -2,19 +2,18 @@ import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 import { CATALOGUE_SCHEMA_VERSION, formulaRef, parseCatalogue, sourceHref, tableFormula } from '@joveworks/schema';
-import { MECHANICS_LEGACY_CATALOGUE_ID, MECHANICS_LEGACY_OPERATIONS } from '@joveworks/nodes';
 
 import { baseCatalogue, builtInCatalogues, bundledCatalogues, entries, removeCatalogue, search } from './catalogues';
 import { lookupRef } from './analysis';
-import { browsable } from './browsable';
 
 describe('bundled public catalogues', () => {
-  it('ships the mechanics, machining, photography, running and example-table sets', () => {
+  it('ships the mechanics, machining, photography, running, shafts and example-table sets', () => {
     expect(bundledCatalogues().map(({ id }) => id).sort()).toEqual([
       'public-machining',
       'public-mechanics',
       'public-photography',
       'public-running',
+      'public-shafts',
       'public-tables-demo',
     ]);
   });
@@ -55,34 +54,12 @@ describe('catalogue search', () => {
   });
 });
 
-describe('the legacy mechanics catalogue', () => {
-  const catalogues = builtInCatalogues();
-  const ids = catalogues.map((catalogue) => catalogue.id);
-
-  it('loads after the current mechanics catalogue, and cannot be removed', () => {
-    expect(ids.indexOf('mechanics-legacy')).toBe(ids.indexOf('mechanics') + 1);
-    expect(removeCatalogue(catalogues, 'mechanics-legacy')).toHaveLength(catalogues.length);
-  });
-
-  it('is the catalogue browsable() hides, by its real id', () => {
-    expect(browsable(catalogues).map((catalogue) => catalogue.id)).toEqual(ids.filter((id) => id !== MECHANICS_LEGACY_CATALOGUE_ID));
-    expect(ids).toContain(MECHANICS_LEGACY_CATALOGUE_ID);
-  });
-
-  it('is never offered in the palette — the Shaft calculation replaces its diagrams', () => {
-    expect(entries(catalogues).some((entry) => entry.catalogue.id === 'mechanics-legacy')).toBe(false);
-    expect(entries(catalogues).filter((entry) => entry.formula.id === 'mechanics.shaft.moment')).toHaveLength(0);
-    expect(entries(catalogues).filter((entry) => entry.formula.id === 'mechanics.shaft.calculation')).toHaveLength(1);
-  });
-
-  it('still answers a v1 reference with the v1 record, and a node shows where it came from', () => {
-    const v1 = MECHANICS_LEGACY_OPERATIONS.find((formula) => formula.id === 'mechanics.shaft.moment');
-    if (v1 === undefined) throw new Error('no v1 moment record');
-    const found = lookupRef(catalogues, formulaRef(v1));
-    expect(found?.formula.version).toBe(1);
-    expect(found?.catalogue.id).toBe('mechanics-legacy');
-    // Nothing newer shares the id, so a stale reference still lands on the shipped record.
-    expect(lookupRef(catalogues, { id: 'mechanics.shaft.moment', version: 9, hash: 'gone' })?.formula.version).toBe(1);
+describe('the built-in libraries', () => {
+  it('are the base and array nodes and the bundled catalogues, and only the first two are permanent', () => {
+    const catalogues = builtInCatalogues();
+    expect(catalogues.slice(0, 2).map(({ id }) => id)).toEqual(['base', 'array']);
+    expect(removeCatalogue(catalogues, 'base')).toHaveLength(catalogues.length);
+    expect(removeCatalogue(catalogues, 'public-shafts')).toHaveLength(catalogues.length - 1);
   });
 });
 

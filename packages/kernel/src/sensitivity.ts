@@ -22,6 +22,7 @@ import {
   VALUE_PORT,
   axes as documentAxes,
   isDomainNode,
+  type AnyDomainNode,
   isRange,
   renardValues,
   type AxisNode,
@@ -248,8 +249,9 @@ function collapseAxis(node: AxisNode, tableColumn: ResolvedTableColumn | undefin
   }
   // A domain's axis node says what its collapsed self is (`collapse` in `domain.ts`).
   if (isDomainNode(node)) {
-    const collapse = kernelNode(node.kind)?.axis?.collapse;
-    if (collapse === undefined) throw new KernelError(`nothing in this build collapses a '${node.kind}' axis`, node.id);
+    const { kind, id }: AnyDomainNode = node;
+    const collapse = kernelNode(kind)?.axis?.collapse;
+    if (collapse === undefined) throw new KernelError(`nothing in this build collapses a '${kind}' axis`, id);
     return collapse(node as never);
   }
   // `documentAxes` only ever includes an `input` node here when its value is

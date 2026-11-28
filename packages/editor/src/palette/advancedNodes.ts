@@ -8,14 +8,8 @@
  * Two id spaces are gated:
  *  - `PaletteAction` ids (`builtin:...`), matched exactly.
  *  - Catalogue formula ids (`ADVANCED_FORMULA_IDS`), matched by `Formula.id`.
- *    Empty today — the mechanics nodes (mechanics.shaft.torque,
- *    mechanics.shaft.shear, mechanics.shaft.moment,
- *    mechanics.shaft.deflection, mechanics.shaft.reactions and the sizing
- *    formulas in packages/nodes/src/mechanicsNodes.ts) are an open product
- *    decision for beta (see task notes). Gating them later is exactly one
- *    line: add their formula ids to this set. (The earlier v1 records in
- *    mechanicsLegacyNodes.ts are never offered at all — their catalogue is
- *    hidden, `browsable` in model/catalogues.ts.)
+ *    Empty today. Gating a catalogue formula later is exactly one line:
+ *    add its id to this set.
  */
 
 /** The whole stochastic-analysis section (Monte Carlo generator/receiver,
@@ -40,10 +34,7 @@ export const ADVANCED_ACTION_IDS: ReadonlySet<string> = new Set([
   'builtin:select:argMax',
 ]);
 
-// See the module docstring: add mechanics formula ids here (e.g.
-// 'mechanics.shaft.torque', 'mechanics.shaft.shear', 'mechanics.shaft.moment', 'mechanics.shaft.reactions', ...) to gate
-// them behind the same preference. Left empty — shipping them in beta is an
-// open product decision, not part of this change.
+// See the module docstring: add a formula id here to gate it behind the same preference.
 export const ADVANCED_FORMULA_IDS: ReadonlySet<string> = new Set([]);
 
 export function isAdvancedAction(id: string): boolean {

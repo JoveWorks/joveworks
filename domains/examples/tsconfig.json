@@ -1,0 +1,25 @@
+{
+  // The examples domain's code without React: its kernel entry and what that
+  // loads. A project of its own so the dependency direction holds for a
+  // domain as for a package — it may import the schema, the units and the
+  // kernel, never the editor. `paths` stands in for the workspace links a
+  // package would have: a domain is a folder, not a package.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "dist",
+    "tsBuildInfoFile": "dist/.tsbuildinfo",
+    "paths": {
+      "@joveworks/units": ["../../packages/units/src/index.ts"],
+      "@joveworks/schema": ["../../packages/schema/src/index.ts"],
+      "@joveworks/kernel": ["../../packages/kernel/src/index.ts"]
+    }
+  },
+  "include": ["kernel.ts", "shafts/**/*.ts"],
+  "exclude": ["**/*.test.ts"],
+  "references": [
+    { "path": "../../packages/units" },
+    { "path": "../../packages/schema" },
+    { "path": "../../packages/kernel" }
+  ]
+}

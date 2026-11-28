@@ -1,3 +1,5 @@
+// First, so every kind a domain adds is registered before either route parses anything.
+import './domains';
 import { StrictMode, Suspense, lazy, useEffect, useState, type ReactElement } from 'react';
 import { createRoot } from 'react-dom/client';
 

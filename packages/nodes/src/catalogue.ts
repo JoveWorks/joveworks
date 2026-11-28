@@ -18,13 +18,9 @@ import {
 
 import { OPERATIONS } from './operations.js';
 import { ARRAY_OPERATIONS } from './arrayNodes.js';
-import { MECHANICS_OPERATIONS } from './mechanicsNodes.js';
-import { MECHANICS_LEGACY_OPERATIONS } from './mechanicsLegacyNodes.js';
 
 export const BASE_CATALOGUE_ID = 'base';
 export const ARRAY_CATALOGUE_ID = 'array';
-export const MECHANICS_CATALOGUE_ID = 'mechanics';
-export const MECHANICS_LEGACY_CATALOGUE_ID = 'mechanics-legacy';
 
 /**
  * The library as authored.
@@ -50,28 +46,6 @@ export const ARRAY_CATALOGUE: Catalogue = {
   formulas: ARRAY_OPERATIONS,
 };
 
-/** `mechanicsNodes.ts`'s beam/shaft diagrams — generic mechanics, not R&M content. */
-export const MECHANICS_CATALOGUE: Catalogue = {
-  schemaVersion: CATALOGUE_SCHEMA_VERSION,
-  id: MECHANICS_CATALOGUE_ID,
-  name: { en: 'Shafts', nl: 'Assen' },
-  restricted: false,
-  formulas: MECHANICS_OPERATIONS,
-};
-
-/**
- * The mechanics records release 0.33.0 shipped, kept so the NodeBooks saved
- * against them still resolve exactly (`mechanicsLegacyNodes.ts`). Loaded
- * after `MECHANICS_CATALOGUE` and never shown in the palette.
- */
-export const MECHANICS_LEGACY_CATALOGUE: Catalogue = {
-  schemaVersion: CATALOGUE_SCHEMA_VERSION,
-  id: MECHANICS_LEGACY_CATALOGUE_ID,
-  name: { en: 'Shafts (earlier version)', nl: 'Assen (eerdere versie)' },
-  restricted: false,
-  formulas: MECHANICS_LEGACY_OPERATIONS,
-};
-
 /**
  * A catalogue as a file, having been through the parser.
  *
@@ -85,12 +59,4 @@ export function baseCatalogueJson(): string {
 
 export function arrayCatalogueJson(): string {
   return saveCatalogue(parseCatalogue(serializeCatalogue(ARRAY_CATALOGUE)));
-}
-
-export function mechanicsCatalogueJson(): string {
-  return saveCatalogue(parseCatalogue(serializeCatalogue(MECHANICS_CATALOGUE)));
-}
-
-export function mechanicsLegacyCatalogueJson(): string {
-  return saveCatalogue(parseCatalogue(serializeCatalogue(MECHANICS_LEGACY_CATALOGUE)));
 }

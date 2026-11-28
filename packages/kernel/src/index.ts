@@ -69,6 +69,7 @@ export type { CompiledExpression, CompiledPredicate, DimensionScope, Env } from 
 export {
   LARGE_GRID,
   MAX_GRID,
+  assertGridSize,
   broadcastBoolean,
   broadcastSeries,
   categoricalScalar,
@@ -199,6 +200,7 @@ export type {
   DomainWarningTypes,
   DomainValue,
   DomainResult,
+  AnyDomainValue,
   KernelPortKindDefinition,
   KernelNodeDefinition,
   KernelOutputDefinition,
@@ -209,18 +211,3 @@ export type {
 } from './domain.js';
 export { inputPortValue, valueAtEdge } from './evaluate.js';
 export type { OutputBase } from './evaluate.js';
-
-// The shafts domain, still registered from here until it moves to
-// domains/examples/ (ROADMAP item 19, step 4).
-export { loadSeries, shaftSeries } from './shafts/index.js';
-export type {
-  LoadValue,
-  PointLoadValue,
-  SpanLoadValue,
-  SupportValue,
-  ShaftValue,
-  ShaftViewMark,
-  ShaftViewPlane,
-  ShaftViewResult,
-  ShaftViewSpan,
-} from './shafts/index.js';

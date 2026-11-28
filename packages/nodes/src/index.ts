@@ -29,10 +29,9 @@
  * `@joveworks/units/generic`. A port that declares `N` cannot express `add`.
  */
 
+export { GENERAL_MECHANICS_OPERATIONS } from './generalMechanics.js';
 export { OPERATIONS } from './operations.js';
 export { ARRAY_OPERATIONS } from './arrayNodes.js';
-export { MECHANICS_OPERATIONS } from './mechanicsNodes.js';
-export { MECHANICS_LEGACY_OPERATIONS } from './mechanicsLegacyNodes.js';
 export {
   ARRAY_CATALOGUE,
   ARRAY_CATALOGUE_ID,
@@ -40,12 +39,6 @@ export {
   BASE_CATALOGUE,
   BASE_CATALOGUE_ID,
   baseCatalogueJson,
-  MECHANICS_CATALOGUE,
-  MECHANICS_CATALOGUE_ID,
-  mechanicsCatalogueJson,
-  MECHANICS_LEGACY_CATALOGUE,
-  MECHANICS_LEGACY_CATALOGUE_ID,
-  mechanicsLegacyCatalogueJson,
 } from './catalogue.js';
 export {
   ISO286_FORMULAS,

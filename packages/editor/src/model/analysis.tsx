@@ -56,10 +56,6 @@ import {
   lutRows,
   MONTE_CARLO_SAMPLE_PORT,
   START_PORT,
-  SHAFT_PORT,
-  ACTING_PORT,
-  loadNodeFields,
-  shaftNodeFields,
   STOP_PORT,
   COUNT_PORT,
   OBJECTIVE_PORT,
@@ -78,6 +74,12 @@ import {
 } from '@joveworks/schema';
 
 import { Symbol } from '../Symbol';
+import {
+  ACTING_PORT,
+  SHAFT_PORT,
+  loadNodeFields,
+  shaftNodeFields,
+} from '../../../../domains/examples/kernel';
 
 /**
  * The `not connected: ...` reason, with each name rendered the same way its

@@ -5,7 +5,7 @@
  * whole and never broadcasts one into an expression.
  */
 
-import type { NumericSeries } from '../series.js';
+import type { NumericSeries } from '@joveworks/kernel';
 
 /**
  * What a Load or Distributed load node produces: one load on a shaft, every

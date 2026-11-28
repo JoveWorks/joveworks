@@ -13,13 +13,6 @@ import type { ReactElement } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 
 import {
-  LOAD_FIELD_UNITS,
-  LOAD_PORT,
-  loadFieldValue,
-  loadNodeFields,
-  type DistributedLoadNode,
-  type LoadField,
-  type LoadNode,
   type Quantity,
 } from '@joveworks/schema';
 
@@ -30,6 +23,15 @@ import { NodeShell } from './NodeShell';
 import { QuantityPortRow } from './QuantityPortRow';
 import type { CanvasFlowNode } from './node-data';
 import { TitleField } from './TitleField';
+import {
+  LOAD_FIELD_UNITS,
+  LOAD_PORT,
+  loadFieldValue,
+  loadNodeFields,
+  type DistributedLoadNode,
+  type LoadField,
+  type LoadNode,
+} from '../../../../domains/examples/kernel';
 
 interface FieldInfo {
   /** How the field is written on the node: `F_x` typesets as F with a subscript x. */

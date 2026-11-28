@@ -8,7 +8,16 @@
     "resolveJsonModule": true,
     "rootDir": "src",
     "outDir": "dist",
-    "tsBuildInfoFile": "dist/.tsbuildinfo"
+    "tsBuildInfoFile": "dist/.tsbuildinfo",
+    // A domain under domains/ is a folder, not a package, so it has no
+    // workspace links of its own: these resolve its imports of the packages
+    // (and the editor's own) to the same declarations.
+    "paths": {
+      "@joveworks/units": ["../units/src/index.ts"],
+      "@joveworks/schema": ["../schema/src/index.ts"],
+      "@joveworks/kernel": ["../kernel/src/index.ts"],
+      "@joveworks/nodes": ["../nodes/src/index.ts"]
+    }
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.json"],
   "exclude": ["src/**/*.test.ts"],
@@ -16,6 +25,7 @@
     { "path": "../kernel" },
     { "path": "../nodes" },
     { "path": "../schema" },
-    { "path": "../units" }
+    { "path": "../units" },
+    { "path": "../../domains/examples" }
   ]
 }

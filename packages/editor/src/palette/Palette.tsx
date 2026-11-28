@@ -18,7 +18,8 @@ import { useMemo, useState, type ReactElement } from 'react';
 import { useReactFlow } from '@xyflow/react';
 
 import { parseUnit, type Unit } from '@joveworks/units';
-import { ARRAY_CATALOGUE_ID, BASE_CATALOGUE_ID, MECHANICS_CATALOGUE_ID } from '@joveworks/nodes';
+import { ARRAY_CATALOGUE_ID, BASE_CATALOGUE_ID } from '@joveworks/nodes';
+import { SHAFTS_CATALOGUE_ID } from '../../../../domains/examples/kernel';
 import {
   localize,
   axes as documentAxes,
@@ -667,7 +668,7 @@ export function Palette({ onClose }: { readonly onClose: () => void }): ReactEle
 
   const catalogueSection = ([catalogueId, list]: (typeof grouped)[number]): ReactElement => {
     const isCollapsed = query.trim().length === 0 && collapsed.has(catalogueId);
-    const leading = catalogueId === MECHANICS_CATALOGUE_ID ? visibleMechanicsActions : [];
+    const leading = catalogueId === SHAFTS_CATALOGUE_ID ? visibleMechanicsActions : [];
     const count = list.length + leading.length;
     return (
       <section key={catalogueId}>

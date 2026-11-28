@@ -89,8 +89,23 @@ function viewerBundleGuard() {
 
 // A static client-side app: no backend, no server-side rendering, and
 // nothing here that a `file://` or a plain static host could not serve.
+/*
+ * A domain under `domains/` is a folder, not a workspace package, so nothing
+ * links `@joveworks/*` into it. Resolve those imports to the packages
+ * themselves — the same files the editor's own imports reach through its
+ * workspace links, so a domain and the core share one module, and one
+ * registry, rather than each loading a copy.
+ */
+const packageAlias = Object.fromEntries(
+  ['units', 'schema', 'kernel', 'nodes'].map((name) => [
+    `@joveworks/${name}`,
+    fileURLToPath(new URL(`../${name}`, import.meta.url)),
+  ]),
+);
+
 export default defineConfig({
   plugins: [react(), retiredCatalogueFolderGuard(), viewerBundleGuard()],
+  resolve: { alias: packageAlias },
   define: {
     __APP_VERSION__: JSON.stringify(version),
     // Lets a bug report read "nightly 0.21.0" instead of an ambiguous

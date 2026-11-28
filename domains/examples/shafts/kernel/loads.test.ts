@@ -5,10 +5,12 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import type { JsonObject } from '@joveworks/schema';
+import type {
+  JsonObject,
+} from '@joveworks/schema';
 
-import { evaluateDocument, valueAt } from '../evaluate.js';
-import { resolveGraph } from '../graph.js';
+import { evaluateDocument, valueAt } from '@joveworks/kernel';
+import { resolveGraph } from '@joveworks/kernel';
 import {
   CATALOGUE,
   compareNode,
@@ -22,8 +24,8 @@ import {
   scalar,
   waypointNode,
   wire,
-} from '../invented.fixtures.js';
-import type { PortValue } from '../series.js';
+} from '../../../../packages/kernel/src/invented.fixtures.js';
+import type { PortValue } from '@joveworks/kernel';
 import type { LoadValue } from './values.js';
 
 const quantity = (value: number, unit: string): JsonObject => ({ value, unit });

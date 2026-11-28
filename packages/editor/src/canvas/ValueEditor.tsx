@@ -28,7 +28,6 @@ import { useGraph } from '../graph-context';
 import { ui } from '../i18n';
 import { toUnitsFormat } from '../model/numberFormat';
 import { NumberField, TextField } from './fields';
-import { browsable } from '../model/browsable';
 
 type Kind = 'scalar' | 'slider' | 'linear' | 'logarithmic' | 'list' | 'renard' | 'categorical' | 'categoricalList' | 'tableColumn';
 
@@ -357,7 +356,7 @@ export function ValueFields({ value, onChange, onSliderChange, onSliderCommit }:
   const { locale } = useSettings();
   // Tables included, as their formula forms: an old table-column input whose
   // table has moved into the catalogue's `tables` still names it here.
-  const lookupFormulas = browsable(catalogues).flatMap((catalogue) =>
+  const lookupFormulas = catalogues.flatMap((catalogue) =>
     referable(catalogue).filter((formula) => formula.lookup !== undefined),
   );
 

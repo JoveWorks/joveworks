@@ -7,8 +7,6 @@
 import type { ReactElement } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 
-import { LOAD_FIELD_UNITS, SUPPORT_PORT, SUPPORT_TYPES, type SupportNode, type SupportType } from '@joveworks/schema';
-
 import { useGraph } from '../graph-context';
 import { reframe, removeNodes, renameNode, updateNode } from '../model/document';
 import { Symbol } from '../Symbol';
@@ -16,6 +14,13 @@ import { NodeShell } from './NodeShell';
 import { QuantityPortRow } from './QuantityPortRow';
 import type { CanvasFlowNode } from './node-data';
 import { TitleField } from './TitleField';
+import {
+  LOAD_FIELD_UNITS,
+  SUPPORT_PORT,
+  SUPPORT_TYPES,
+  type SupportNode,
+  type SupportType,
+} from '../../../../domains/examples/kernel';
 
 export const SUPPORT_LABELS: Readonly<Record<SupportType, string>> = {
   simple: 'simple',

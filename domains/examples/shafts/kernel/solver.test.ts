@@ -5,12 +5,14 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import type { JsonObject } from '@joveworks/schema';
+import type {
+  JsonObject,
+} from '@joveworks/schema';
 
-import { evaluateDocument, valueAt } from '../evaluate.js';
-import { isVariadicTarget } from '../graph.js';
-import { catalogueOf, documentOf, formulaNode, input, list, refTo, wire } from '../invented.fixtures.js';
-import type { NumericSeries, PortValue } from '../series.js';
+import { evaluateDocument, valueAt } from '@joveworks/kernel';
+import { isVariadicTarget } from '@joveworks/kernel';
+import { catalogueOf, documentOf, formulaNode, input, list, refTo, wire } from '../../../../packages/kernel/src/invented.fixtures.js';
+import type { NumericSeries, PortValue } from '@joveworks/kernel';
 import { pointTerms, solve, spanTerms } from './solver.js';
 
 const z: JsonObject = { kind: 'numeric', name: 'z', unit: 'mm' };

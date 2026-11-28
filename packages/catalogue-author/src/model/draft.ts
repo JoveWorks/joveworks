@@ -11,6 +11,7 @@
 
 import {
   appliesWhenOf,
+  isDomainPort,
   soleExpression,
   serializeCatalogue,
   serializeFormula,
@@ -162,6 +163,20 @@ function draftPortFromReal(port: Port): DraftPort {
     name: port.name,
     description: draftLocalizedTextFromReal(port.description),
   };
+  // A domain's structured port (a shaft diagram's loads) is the domain's to
+  // author; this tool models it no more than a bundle (see that case below).
+  const stub: DraftPort = {
+    ...base,
+    kind: 'numeric',
+    unit: '',
+    preferredUnit: '',
+    defaultValue: '',
+    validRange: { min: '', max: '' },
+    monotonic: '',
+    domain: '',
+    variadic: false,
+  };
+  if (isDomainPort(port)) return stub;
   switch (port.kind) {
     case 'categorical':
       return {
@@ -176,23 +191,10 @@ function draftPortFromReal(port: Port): DraftPort {
         variadic: false,
       };
     case 'bundle':
-    case 'load':
-    case 'shaft':
-      // No authored catalogue declares any of these (see packages/schema/src/port.ts):
-      // a bundle is `pack`'s alone, load and shaft ports are the built-in
-      // shaft diagrams'. Represented as an empty numeric stub rather than modelled
-      // properly, since this app never produces or expects one.
-      return {
-        ...base,
-        kind: 'numeric',
-        unit: '',
-        preferredUnit: '',
-        defaultValue: '',
-        validRange: { min: '', max: '' },
-        monotonic: '',
-        domain: '',
-        variadic: false,
-      };
+      // No authored catalogue declares one: a bundle is `pack`'s alone.
+      // Represented as an empty numeric stub rather than modelled properly,
+      // since this app never produces or expects one.
+      return stub;
     case 'numeric':
     default:
       return {

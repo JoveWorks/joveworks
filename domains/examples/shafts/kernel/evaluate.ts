@@ -8,32 +8,34 @@
 
 import { toCanonical, type Unit } from '@joveworks/units';
 import {
-  ACTING_PORT,
-  LOAD_FIELD_UNITS,
   domainMember,
-  SHAFT_PORT,
-  loadFieldValue,
-  shaftFieldValue,
   type ClosureNode,
-  type DistributedLoadNode,
   type Edge,
   type Endpoint,
   type Formula,
   type FormulaNode,
-  type FormulaShaft,
   type GraphDocument,
-  type LoadField,
-  type LoadNode,
   type OutputNode,
   type Port,
+} from '@joveworks/schema';
+import {
+  ACTING_PORT,
+  LOAD_FIELD_UNITS,
+  SHAFT_PORT,
+  loadFieldValue,
+  shaftFieldValue,
+  type DistributedLoadNode,
+  type FormulaShaft,
+  type LoadField,
+  type LoadNode,
   type ShaftNode,
   type ShaftStep,
   type SupportNode,
-} from '@joveworks/schema';
-import { packChannelIndices } from '../bundle.js';
-import { KernelError } from '../errors.js';
-import { inputPortValue, valueAtEdge, type OutputBase } from '../evaluate.js';
-import { endpointKey, type Resolution } from '../graph.js';
+} from '../schema.js';
+import { packChannelIndices } from '@joveworks/kernel';
+import { KernelError } from '@joveworks/kernel';
+import { inputPortValue, valueAtEdge, type OutputBase } from '@joveworks/kernel';
+import { endpointKey, type Resolution } from '@joveworks/kernel';
 import {
   assertGridSize,
   broadcastSeries,
@@ -45,8 +47,8 @@ import {
   type CategoricalSeries,
   type NumericSeries,
   type PortValue,
-} from '../series.js';
-import type { Warning } from '../warnings.js';
+} from '@joveworks/kernel';
+import type { Warning } from '@joveworks/kernel';
 import {
   deflection as shaftDeflection,
   moment as shaftMoment,

@@ -1,0 +1,610 @@
+{
+  "schemaVersion": 2,
+  "id": "public-shafts",
+  "name": {
+    "en": "Shafts",
+    "nl": "Assen"
+  },
+  "restricted": false,
+  "formulas": [
+    {
+      "id": "mechanics.shaft.calculation",
+      "version": 1,
+      "output": [
+        {
+          "kind": "numeric",
+          "name": "V",
+          "description": {
+            "en": "Shear force V(z)"
+          },
+          "unit": "N"
+        },
+        {
+          "kind": "numeric",
+          "name": "M",
+          "description": {
+            "en": "Bending moment M(z), positive when the shaft sags"
+          },
+          "unit": "Nmm"
+        },
+        {
+          "kind": "numeric",
+          "name": "y",
+          "description": {
+            "en": "Deflection y(z), zero at every support"
+          },
+          "unit": "mm"
+        },
+        {
+          "kind": "numeric",
+          "name": "theta",
+          "description": {
+            "en": "Slope θ(z) = dy/dz, zero at a fixed support"
+          },
+          "unit": "rad"
+        },
+        {
+          "kind": "numeric",
+          "name": "T",
+          "description": {
+            "en": "Torque T(z), the running total of applied torque"
+          },
+          "unit": "Nmm"
+        }
+      ],
+      "inputs": [
+        {
+          "kind": "shaft",
+          "name": "shaft",
+          "description": {
+            "en": "The shaft — its length, Young’s modulus and section, from a Shaft node"
+          }
+        },
+        {
+          "kind": "load",
+          "name": "acting",
+          "description": {
+            "en": "Everything acting on the shaft — wire each Load, Distributed load and Support node here"
+          },
+          "variadic": true
+        },
+        {
+          "kind": "categorical",
+          "name": "plane",
+          "description": {
+            "en": "Which forces to follow: y, the vertical ones; x, the horizontal ones; or the resultant √(x² + y²) of both. z runs along the shaft"
+          },
+          "domain": [
+            "x",
+            "y",
+            "resultant"
+          ],
+          "default": "y"
+        },
+        {
+          "kind": "numeric",
+          "name": "z",
+          "description": {
+            "en": "Where to read the diagrams — leave unwired for the whole shaft, or wire the positions of the sections to check"
+          },
+          "unit": "mm"
+        }
+      ],
+      "shaft": {
+        "answers": "diagrams",
+        "quantities": [
+          "shear",
+          "moment",
+          "deflection",
+          "slope",
+          "torque"
+        ],
+        "acting": "acting",
+        "shaft": "shaft",
+        "axis": "z",
+        "plane": "plane"
+      },
+      "label": {
+        "en": "Shaft calculation"
+      },
+      "description": {
+        "en": "Shear, moment and deflection"
+      },
+      "status": "unverified"
+    },
+    {
+      "id": "mechanics.shaft.reactions",
+      "version": 1,
+      "output": [
+        {
+          "kind": "numeric",
+          "name": "R",
+          "description": {
+            "en": "Reaction force, positive up"
+          },
+          "unit": "N"
+        },
+        {
+          "kind": "numeric",
+          "name": "M_R",
+          "description": {
+            "en": "Reaction moment, positive clockwise — zero unless the support is fixed"
+          },
+          "unit": "Nmm"
+        }
+      ],
+      "inputs": [
+        {
+          "kind": "shaft",
+          "name": "shaft",
+          "description": {
+            "en": "The shaft — its length, Young’s modulus and section, from a Shaft node"
+          }
+        },
+        {
+          "kind": "load",
+          "name": "acting",
+          "description": {
+            "en": "Everything acting on the shaft — wire each Load, Distributed load and Support node here"
+          },
+          "variadic": true
+        },
+        {
+          "kind": "load",
+          "name": "support",
+          "description": {
+            "en": "The support to report — one of those wired into acting"
+          }
+        },
+        {
+          "kind": "categorical",
+          "name": "plane",
+          "description": {
+            "en": "Which forces to follow: y, the vertical ones; x, the horizontal ones; or the resultant √(x² + y²) of both. z runs along the shaft"
+          },
+          "domain": [
+            "x",
+            "y",
+            "resultant"
+          ],
+          "default": "y"
+        }
+      ],
+      "shaft": {
+        "answers": "reactions",
+        "acting": "acting",
+        "shaft": "shaft",
+        "plane": "plane",
+        "support": "support"
+      },
+      "label": {
+        "en": "Support reaction"
+      },
+      "description": {
+        "en": "Force and moment at a support"
+      },
+      "status": "unverified"
+    },
+    {
+      "id": "mechanics.shaft.section-modulus",
+      "version": 1,
+      "output": [
+        {
+          "kind": "numeric",
+          "name": "W_b",
+          "description": {
+            "en": "Axial section modulus, for bending",
+            "nl": "Axiaal weerstandsmoment, voor buiging"
+          },
+          "unit": "mm³"
+        },
+        {
+          "kind": "numeric",
+          "name": "W_p",
+          "description": {
+            "en": "Polar section modulus, for torsion",
+            "nl": "Polair weerstandsmoment, voor torsie"
+          },
+          "unit": "mm³"
+        }
+      ],
+      "inputs": [
+        {
+          "kind": "numeric",
+          "name": "d",
+          "description": {
+            "en": "Outer diameter",
+            "nl": "Buitendiameter"
+          },
+          "unit": "mm"
+        },
+        {
+          "kind": "numeric",
+          "name": "d_i",
+          "description": {
+            "en": "Bore diameter — 0 for a solid shaft, otherwise less than d",
+            "nl": "Boringdiameter — 0 voor een massieve as, anders kleiner dan d"
+          },
+          "unit": "mm",
+          "default": 0
+        }
+      ],
+      "expression": {
+        "W_b": "pi * (d**4 - d_i**4) / (32 * d)",
+        "W_p": "2 * W_b"
+      },
+      "label": {
+        "en": "Section moduli of a round shaft",
+        "nl": "Weerstandsmomenten van een ronde as"
+      },
+      "description": {
+        "en": "Bending and torsion moduli",
+        "nl": "Buig- en torsieweerstandsmoment"
+      },
+      "status": "unverified"
+    },
+    {
+      "id": "mechanics.shaft.equivalent-moment",
+      "version": 1,
+      "output": {
+        "kind": "numeric",
+        "name": "M_v",
+        "description": {
+          "en": "Equivalent bending moment",
+          "nl": "Vergelijkend buigmoment"
+        },
+        "unit": "Nmm"
+      },
+      "inputs": [
+        {
+          "kind": "numeric",
+          "name": "M",
+          "description": {
+            "en": "Bending moment",
+            "nl": "Buigmoment"
+          },
+          "unit": "Nmm"
+        },
+        {
+          "kind": "numeric",
+          "name": "T",
+          "description": {
+            "en": "Torque",
+            "nl": "Torsiemoment"
+          },
+          "unit": "Nmm",
+          "default": 0
+        }
+      ],
+      "expression": "sqrt(M**2 + 0.75 * T**2)",
+      "label": {
+        "en": "Equivalent moment (von Mises)",
+        "nl": "Vergelijkingsmoment (von Mises)"
+      },
+      "description": {
+        "en": "M_v = √(M² + 0.75·T²)",
+        "nl": "M_v = √(M² + 0.75·T²)"
+      },
+      "status": "unverified"
+    },
+    {
+      "id": "mechanics.shaft.required-diameter",
+      "version": 1,
+      "output": {
+        "kind": "numeric",
+        "name": "d",
+        "description": {
+          "en": "Required diameter",
+          "nl": "Benodigde diameter"
+        },
+        "unit": "mm"
+      },
+      "inputs": [
+        {
+          "kind": "numeric",
+          "name": "M_v",
+          "description": {
+            "en": "Equivalent (or resultant) bending moment, a magnitude",
+            "nl": "Vergelijkend (of resulterend) buigmoment, een grootte"
+          },
+          "unit": "Nmm"
+        },
+        {
+          "kind": "numeric",
+          "name": "sigma_allow",
+          "description": {
+            "en": "Allowable bending stress",
+            "nl": "Toelaatbare buigspanning"
+          },
+          "unit": "N/mm²"
+        }
+      ],
+      "expression": "cbrt(32 * M_v / (pi * sigma_allow))",
+      "label": {
+        "en": "Required diameter of a solid shaft",
+        "nl": "Benodigde diameter van een massieve as"
+      },
+      "description": {
+        "en": "Smallest solid diameter",
+        "nl": "Kleinste massieve diameter"
+      },
+      "status": "unverified"
+    },
+    {
+      "id": "mechanics.shaft.equivalent-stress",
+      "version": 1,
+      "output": {
+        "kind": "numeric",
+        "name": "sigma_v",
+        "description": {
+          "en": "Equivalent stress",
+          "nl": "Vergelijkspanning"
+        },
+        "unit": "N/mm²"
+      },
+      "inputs": [
+        {
+          "kind": "numeric",
+          "name": "sigma_b",
+          "description": {
+            "en": "Bending stress",
+            "nl": "Buigspanning"
+          },
+          "unit": "N/mm²"
+        },
+        {
+          "kind": "numeric",
+          "name": "tau_t",
+          "description": {
+            "en": "Torsional shear stress",
+            "nl": "Torsieschuifspanning"
+          },
+          "unit": "N/mm²",
+          "default": 0
+        }
+      ],
+      "expression": "sqrt(sigma_b**2 + 3 * tau_t**2)",
+      "label": {
+        "en": "Equivalent stress (von Mises)",
+        "nl": "Vergelijkspanning (von Mises)"
+      },
+      "description": {
+        "en": "σ_v = √(σ_b² + 3·τ_t²)",
+        "nl": "σ_v = √(σ_b² + 3·τ_t²)"
+      },
+      "status": "unverified"
+    },
+    {
+      "id": "mechanics.beam.bending-stress",
+      "version": 1,
+      "output": {
+        "kind": "numeric",
+        "name": "sigma",
+        "unit": "MPa"
+      },
+      "inputs": [
+        {
+          "kind": "numeric",
+          "name": "M",
+          "unit": "Nm"
+        },
+        {
+          "kind": "numeric",
+          "name": "c",
+          "unit": "mm",
+          "validRange": {
+            "min": 0
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "I",
+          "unit": "mm⁴",
+          "validRange": {
+            "min": 0
+          }
+        }
+      ],
+      "expression": "M * c / I",
+      "description": {
+        "en": "Bending stress at distance c from the neutral axis.",
+        "nl": "Buigspanning op afstand c van de neutrale as."
+      },
+      "citation": "Bending stress",
+      "status": "unverified"
+    },
+    {
+      "id": "mechanics.torsion.polar-moment-solid",
+      "version": 1,
+      "output": {
+        "kind": "numeric",
+        "name": "J",
+        "unit": "mm⁴"
+      },
+      "inputs": [
+        {
+          "kind": "numeric",
+          "name": "d",
+          "unit": "mm",
+          "validRange": {
+            "min": 0
+          }
+        }
+      ],
+      "expression": "pi * d**4 / 32",
+      "description": {
+        "en": "Polar moment of area of a solid circular shaft.",
+        "nl": "Polair oppervlaktemoment van een massieve cirkelvormige as."
+      },
+      "citation": "Solid shaft — polar moment",
+      "status": "unverified"
+    },
+    {
+      "id": "mechanics.torsion.polar-moment-hollow",
+      "version": 1,
+      "output": {
+        "kind": "numeric",
+        "name": "J",
+        "unit": "mm⁴"
+      },
+      "inputs": [
+        {
+          "kind": "numeric",
+          "name": "d_o",
+          "unit": "mm",
+          "validRange": {
+            "min": 0
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "d_i",
+          "unit": "mm",
+          "validRange": {
+            "min": 0
+          }
+        }
+      ],
+      "expression": "pi * (d_o**4 - d_i**4) / 32",
+      "description": {
+        "en": "Polar moment of area of a hollow circular shaft.",
+        "nl": "Polair oppervlaktemoment van een holle cirkelvormige as."
+      },
+      "citation": "Hollow shaft — polar moment",
+      "status": "unverified"
+    },
+    {
+      "id": "mechanics.torsion.shear-stress",
+      "version": 1,
+      "output": {
+        "kind": "numeric",
+        "name": "tau",
+        "unit": "MPa"
+      },
+      "inputs": [
+        {
+          "kind": "numeric",
+          "name": "T",
+          "unit": "Nm"
+        },
+        {
+          "kind": "numeric",
+          "name": "r",
+          "unit": "mm",
+          "validRange": {
+            "min": 0
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "J",
+          "unit": "mm⁴",
+          "validRange": {
+            "min": 0
+          }
+        }
+      ],
+      "expression": "T * r / J",
+      "description": {
+        "en": "Torsional shear stress at radius r from the shaft axis.",
+        "nl": "Torsieschuifspanning bij straal r vanaf de as van de as."
+      },
+      "citation": "Torsional shear stress",
+      "status": "unverified"
+    },
+    {
+      "id": "mechanics.stress.shear",
+      "version": 1,
+      "output": {
+        "kind": "numeric",
+        "name": "tau",
+        "unit": "MPa"
+      },
+      "inputs": [
+        {
+          "kind": "numeric",
+          "name": "F",
+          "unit": "N",
+          "validRange": {
+            "min": 0
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "A",
+          "unit": "mm²",
+          "validRange": {
+            "min": 0
+          }
+        }
+      ],
+      "expression": "F / A",
+      "description": {
+        "en": "Average shear stress over a loaded cross-section.",
+        "nl": "Gemiddelde schuifspanning over een belaste doorsnede."
+      },
+      "citation": "Shear stress",
+      "status": "unverified"
+    },
+    {
+      "id": "mechanics.beam.moment-of-inertia-circle",
+      "version": 1,
+      "output": {
+        "kind": "numeric",
+        "name": "I",
+        "unit": "mm⁴"
+      },
+      "inputs": [
+        {
+          "kind": "numeric",
+          "name": "d",
+          "unit": "mm",
+          "validRange": {
+            "min": 0
+          }
+        }
+      ],
+      "expression": "pi * d**4 / 64",
+      "description": {
+        "en": "Second moment of area of a solid circular cross-section about its centroid.",
+        "nl": "Tweede oppervlaktemoment van een massieve cirkelvormige dwarsdoorsnede rond zijn zwaartepunt."
+      },
+      "citation": "Circular section — moment of inertia",
+      "status": "unverified"
+    },
+    {
+      "id": "mechanics.beam.moment-of-inertia-hollow-circle",
+      "version": 1,
+      "output": {
+        "kind": "numeric",
+        "name": "I",
+        "unit": "mm⁴"
+      },
+      "inputs": [
+        {
+          "kind": "numeric",
+          "name": "d_o",
+          "unit": "mm",
+          "validRange": {
+            "min": 0
+          }
+        },
+        {
+          "kind": "numeric",
+          "name": "d_i",
+          "unit": "mm",
+          "validRange": {
+            "min": 0
+          }
+        }
+      ],
+      "expression": "pi * (d_o**4 - d_i**4) / 64",
+      "description": {
+        "en": "Second moment of area of a hollow circular (tube) cross-section about its centroid.",
+        "nl": "Tweede oppervlaktemoment van een holle cirkelvormige (buis) dwarsdoorsnede rond zijn zwaartepunt."
+      },
+      "citation": "Hollow circular section — moment of inertia",
+      "status": "unverified"
+    }
+  ]
+}

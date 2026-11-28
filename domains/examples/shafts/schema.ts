@@ -2,28 +2,22 @@
  * The shafts domain's part of the formats (ROADMAP item 19): Shaft, Support,
  * Load and Distributed load nodes, the Shaft view output, the `load` and
  * `shaft` port kinds and the `shaft:` formula evaluator — everything the
- * schema knows about shafts, and the only file in it that does. It adds its
+ * formats know about shafts. It adds its
  * kinds through `domain.ts`: declaration merging for the types, and a
  * registration for the parsers, run when this module loads.
  *
- * It still lives in the schema package until the shafts move to their
- * domain folder (`domains/examples/`); nothing else in the schema imports it.
+ * Part of the examples domain; nothing in the schema package imports it.
+ * `../kernel.ts` loads it, which is what registers the kinds.
  */
 
 import { ANGLE, dimensionsEqual, FORCE, LENGTH, multiplyDimensions, parseUnit, type Dimension, type Unit } from '@joveworks/units';
 import {
-  registerDomainEvaluator,
-  registerDomainNode,
-  registerDomainOutput,
-  registerDomainPort,
-} from './domain.js';
-import type { NodeBase } from './document.js';
-import type { OutputPort, Port, PortBase } from './port.js';
-import { portDimension } from './port.js';
-import {
   fail,
   join,
   optional,
+  parseQuantity,
+  parseUnitField,
+  portDimension,
   put,
   readArray,
   readBoolean,
@@ -33,13 +27,22 @@ import {
   readNumber,
   readObject,
   readString,
+  registerDomainEvaluator,
+  registerDomainNode,
+  registerDomainOutput,
+  registerDomainPort,
   required,
+  serializeQuantity,
   type JsonObject,
   type JsonValue,
-} from './json.js';
-import { parseQuantity, parseUnitField, serializeQuantity, type Quantity } from './quantity.js';
+  type NodeBase,
+  type OutputPort,
+  type Port,
+  type PortBase,
+  type Quantity,
+} from '@joveworks/schema';
 
-declare module './domain.js' {
+declare module '@joveworks/schema' {
   interface DomainNodeTypes {
     load: LoadNode;
     distributedLoad: DistributedLoadNode;
@@ -56,9 +59,7 @@ declare module './domain.js' {
     load: LoadPort;
     shaft: ShaftPort;
   }
-}
 
-declare module './formula.js' {
   interface Formula {
     /** Optional shaft-diagram evaluator; a formula carrying it has no expression and no other evaluator. */
     readonly shaft?: FormulaShaft;

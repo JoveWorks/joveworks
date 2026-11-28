@@ -29,6 +29,7 @@ import type { Formula } from '@joveworks/schema';
 import { parseGenericDimension } from '@joveworks/units';
 import { buildFormulas, generic, genericVariadic, plain, text, type Draft } from './draft.js';
 import { ISO286_FORMULAS } from './iso286.js';
+import { GENERAL_MECHANICS_OPERATIONS } from './generalMechanics.js';
 
 const DRAFTS: readonly Draft[] = [
   // --- arithmetic, dimension-preserving ------------------------------------
@@ -325,4 +326,4 @@ const DUTCH_LABELS: Readonly<Record<string, string>> = {
   hyperbolicTangent: 'Hyperbolische tangens', logarithm: 'Natuurlijke logaritme', exponential: 'Exponentieel',
 };
 
-export const OPERATIONS: readonly Formula[] = [...buildFormulas(DRAFTS, DUTCH_LABELS), ...ISO286_FORMULAS];
+export const OPERATIONS: readonly Formula[] = [...buildFormulas(DRAFTS, DUTCH_LABELS), ...ISO286_FORMULAS, ...GENERAL_MECHANICS_OPERATIONS];

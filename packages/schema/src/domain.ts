@@ -21,9 +21,9 @@
  * between the core and a domain never changes a file.
  */
 
-import type { GraphNode, Output } from './document.js';
+import type { GraphNode, NodeBase, Output } from './document.js';
 import type { JsonObject, JsonValue } from './json.js';
-import type { Port } from './port.js';
+import type { Port, PortBase } from './port.js';
 
 /** Node kinds a domain adds, keyed by `kind`. Filled by declaration merging. */
 export interface DomainNodeTypes {}
@@ -41,6 +41,15 @@ export interface DomainOutputTypes {}
 export interface DomainPortTypes {}
 
 export type DomainNode = DomainNodeTypes[keyof DomainNodeTypes];
+
+/*
+ * What the core sees of a domain kind it does not know: the common fields
+ * and a kind string. Compiled without any domain, `DomainNode` is `never`, so
+ * past an `isDomainNode` guard the core reads the node through this instead.
+ */
+export type AnyDomainNode = NodeBase & { readonly kind: string };
+export type AnyDomainOutput = { readonly kind: string };
+export type AnyDomainPort = PortBase & { readonly kind: string };
 export type DomainAxisNode = DomainAxisNodeTypes[keyof DomainAxisNodeTypes];
 export type DomainOutput = DomainOutputTypes[keyof DomainOutputTypes];
 export type DomainPort = DomainPortTypes[keyof DomainPortTypes];

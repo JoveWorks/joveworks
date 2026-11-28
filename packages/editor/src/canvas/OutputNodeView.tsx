@@ -25,7 +25,10 @@
 import { useEffect, type MouseEvent, type ReactElement } from 'react';
 import { Handle, Position, useUpdateNodeInternals, type NodeProps } from '@xyflow/react';
 
-import { parseExpression, toLatex } from '@joveworks/kernel';
+import {
+  parseExpression,
+  toLatex,
+} from '@joveworks/kernel';
 import { parseUnit, type NumberFormat, type Unit } from '@joveworks/units';
 import {
   COMPARISONS,
@@ -35,8 +38,6 @@ import {
   THRESHOLD_PORT,
   VALUE_PORT,
   ALONG_PORT,
-  ACTING_PORT,
-  SHAFT_PORT,
   plotMeasures,
   plotThresholdPort,
   axes as documentAxes,
@@ -77,6 +78,10 @@ import type { CanvasFlowNode } from './node-data';
 import { slotHandleId } from './portSlots';
 import { NumberField, TextField } from './fields';
 import { TitleField, TitleText } from './TitleField';
+import {
+  ACTING_PORT,
+  SHAFT_PORT,
+} from '../../../../domains/examples/kernel';
 
 type Range = ReturnType<typeof documentAxes>[number];
 

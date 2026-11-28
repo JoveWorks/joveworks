@@ -78,6 +78,8 @@ import {
   type RangeNode,
   type ZipNode,
   hasZipInput,
+  type AnyDomainNode,
+  type AnyDomainOutput,
   domainEvaluation,
   isDomainNode,
   isDomainOutput,
@@ -107,7 +109,7 @@ import { evaluateSensitivity, type SensitivityRankingResult } from './sensitivit
 import { crossingsAlong, select, type SelectResult } from './select.js';
 import { interpolate } from './interpolate.js';
 import { numericExtent, reduceAlong } from './statistics.js';
-import { isDomainValue, kernelEvaluator, kernelNode, kernelOutput, kernelPortKind, type DomainResult } from './domain.js';
+import { isDomainValue, kernelEvaluator, kernelNode, kernelOutput, kernelPortKind, type AnyDomainValue, type DomainResult } from './domain.js';
 import { buildDistribution, type DistributionPanel } from './distribution.js';
 import { inverseNormal, wilsonInterval } from './normal.js';
 import {
@@ -631,10 +633,11 @@ function runEvaluation(
   for (const node of resolution.order) {
     if (skip?.has(node.id)) continue;
     if (isDomainNode(node)) {
-      const definition = kernelNode(node.kind);
-      if (definition === undefined) throw new KernelError(`nothing in this build evaluates a '${node.kind}' node`, node.id);
+      const domain: AnyDomainNode = node;
+      const definition = kernelNode(domain.kind);
+      if (definition === undefined) throw new KernelError(`nothing in this build evaluates a '${domain.kind}' node`, domain.id);
       const produced = definition.evaluate(node as never, { resolution, values, warnings, largeGrid });
-      for (const [port, value] of produced) values.set(endpointKey(node.id, port), value);
+      for (const [port, value] of produced) values.set(endpointKey(domain.id, port), value);
       continue;
     }
     switch (node.kind) {
@@ -1557,7 +1560,8 @@ function evaluateFormula(
       throw new KernelError(`'${port.name}' cannot hold a bundle — only 'unpack' can`, nodeId);
     }
     if (isDomainValue(value)) {
-      throw new KernelError(`'${port.name}' cannot hold ${kernelPortKind(value.kind)?.noun ?? value.kind} — only a port of its own kind can`, nodeId);
+      const { kind }: AnyDomainValue = value;
+      throw new KernelError(`'${port.name}' cannot hold ${kernelPortKind(kind)?.noun ?? kind} — only a port of its own kind can`, nodeId);
     }
     return { port, value };
   });
@@ -2257,7 +2261,8 @@ function checkZipMix(
     return;
   }
   if (isDomainValue(value)) {
-    for (const field of kernelPortKind(value.kind)?.series(value as never) ?? []) checkZipMix(nodeId, field, zips);
+    const { kind }: AnyDomainValue = value;
+    for (const field of kernelPortKind(kind)?.series(value as never) ?? []) checkZipMix(nodeId, field, zips);
     return;
   }
   for (const axis of value.axes) {
@@ -2298,7 +2303,8 @@ function sourceOf(
     throw new KernelError(`'${port}' is a bundle, which an output node cannot render`, key);
   }
   if (isDomainValue(value)) {
-    throw new KernelError(`'${port}' is ${kernelPortKind(value.kind)?.noun ?? value.kind}, which an output node cannot render`, key);
+    const { kind }: AnyDomainValue = value;
+    throw new KernelError(`'${port}' is ${kernelPortKind(kind)?.noun ?? kind}, which an output node cannot render`, key);
   }
   return { value, unit: displayUnit(resolution.targets.get(key)) };
 }
@@ -3037,9 +3043,10 @@ function outputResult(
   }
 
   if (isDomainOutput(output)) {
-    const domainOutput = kernelOutput(output.kind);
-    if (domainOutput === undefined) throw new KernelError(`nothing in this build draws a '${output.kind}' output`, node.id);
-    return { ...base, kind: output.kind, ...domainOutput.evaluate(node, { resolution, values, warnings, largeGrid: LARGE_GRID }) } as OutputResult;
+    const { kind }: AnyDomainOutput = output;
+    const domainOutput = kernelOutput(kind);
+    if (domainOutput === undefined) throw new KernelError(`nothing in this build draws a '${kind}' output`, node.id);
+    return { ...base, kind, ...domainOutput.evaluate(node, { resolution, values, warnings, largeGrid: LARGE_GRID }) } as OutputResult;
   }
 
   if (output.kind === 'sensitivity') {

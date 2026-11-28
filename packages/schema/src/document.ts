@@ -45,6 +45,8 @@ import {
   domainOutputKinds,
   isDomainNode,
   isDomainOutput,
+  type AnyDomainNode,
+  type AnyDomainOutput,
   type DomainAxisNode,
   type DomainNode,
   type DomainOutput,
@@ -1467,7 +1469,10 @@ function serializePlotMeasure(measure: PlotMeasure): JsonObject {
 }
 
 function serializeOutput(output: Output): JsonObject {
-  if (isDomainOutput(output)) return { kind: output.kind, ...(domainOutputDefinition(output.kind)?.serialize(output as never) ?? {}) };
+  if (isDomainOutput(output)) {
+    const domain: AnyDomainOutput = output;
+    return { kind: domain.kind, ...(domainOutputDefinition(domain.kind)?.serialize(output as never) ?? {}) };
+  }
   switch (output.kind) {
     case 'print':
       return {
@@ -1932,7 +1937,10 @@ function serializeNode(node: GraphNode): JsonObject {
     ...put('displayUnits', serializeDisplayUnits(node.displayUnits)),
     ...put('note', node.note),
   };
-  if (isDomainNode(node)) return { ...base, ...(domainNodeDefinition(node.kind)?.serialize(node as never) ?? {}) };
+  if (isDomainNode(node)) {
+    const domain: AnyDomainNode = node;
+    return { ...base, ...(domainNodeDefinition(domain.kind)?.serialize(node as never) ?? {}) };
+  }
   switch (node.kind) {
     case 'input':
       return {

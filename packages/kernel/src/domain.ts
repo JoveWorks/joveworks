@@ -36,6 +36,9 @@ export interface DomainWarningTypes {}
 export type DomainValue = DomainValueTypes[keyof DomainValueTypes];
 export type DomainResult = DomainResultTypes[keyof DomainResultTypes];
 
+/** What the core sees of a structured value it does not know: a kind string (see `AnyDomainNode` in the schema). */
+export type AnyDomainValue = { readonly kind: string };
+
 /**
  * A structured port kind's behaviour on a wire. `noun` is how an error
  * names what the wire carries ("a load or a support"); `stranded` is what

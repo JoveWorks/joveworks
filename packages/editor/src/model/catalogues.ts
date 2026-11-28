@@ -29,12 +29,8 @@ import type { AppLocale } from './editorSettings';
 import {
   ARRAY_CATALOGUE_ID,
   BASE_CATALOGUE_ID,
-  MECHANICS_CATALOGUE_ID,
-  MECHANICS_LEGACY_CATALOGUE_ID,
   arrayCatalogueJson,
   baseCatalogueJson,
-  mechanicsCatalogueJson,
-  mechanicsLegacyCatalogueJson,
 } from '@joveworks/nodes';
 import { DOCS_BASE_URL } from '../help-links';
 import { fuzzySearch } from './fuzzy';
@@ -56,20 +52,6 @@ export function baseCatalogue(): Catalogue {
 export function arrayCatalogue(): Catalogue {
   return loadCatalogue(arrayCatalogueJson());
 }
-
-/** The mechanics-node library (beam/shaft diagrams, ROADMAP item 8), parsed the same way a loaded file is. */
-export function mechanicsCatalogue(): Catalogue {
-  return loadCatalogue(mechanicsCatalogueJson());
-}
-
-/** The mechanics records an earlier release shipped, kept for the NodeBooks saved against them. */
-export function mechanicsLegacyCatalogue(): Catalogue {
-  return loadCatalogue(mechanicsLegacyCatalogueJson());
-}
-
-import { browsable } from './browsable';
-
-export { browsable };
 
 /**
  * The catalogues of every domain in the build: each `domains/<name>/`
@@ -148,18 +130,15 @@ export function bundledCatalogues(): readonly Catalogue[] {
  * The libraries that are always present, before anything is loaded.
  *
  * Every one of these ships `restricted: false` and is compiled into the app
- * rather than fetched, so a graph that uses a base, array or mechanics node
- * evaluates anywhere the app runs. The published-NodeBook viewer needs
+ * rather than fetched, so a graph that uses a base or array node evaluates
+ * anywhere the app runs. The published-NodeBook viewer needs
  * exactly the same set when it activates interactive controls: the Hub pins
  * only the catalogues a document *imported*, so re-evaluating against those
  * alone drops every base-library node — and with it every output downstream
  * of one.
  */
 export function builtInCatalogues(): readonly Catalogue[] {
-  // The legacy catalogue comes after the current one: a reference matching
-  // neither version exactly falls back to the first candidate the kernel
-  // finds (`lookupFormula` in graph.ts), which should be the current record.
-  return [baseCatalogue(), arrayCatalogue(), mechanicsCatalogue(), mechanicsLegacyCatalogue(), ...bundledCatalogues()];
+  return [baseCatalogue(), arrayCatalogue(), ...bundledCatalogues()];
 }
 
 /**
@@ -175,13 +154,8 @@ export function withCatalogue(
   return replaced.some((existing) => existing.id === loaded.id) ? replaced : [...replaced, loaded];
 }
 
-/** Base, Array and Shafts (and the earlier shaft records) are always present — none can be removed. */
-const PERMANENT_CATALOGUE_IDS = new Set([
-  BASE_CATALOGUE_ID,
-  ARRAY_CATALOGUE_ID,
-  MECHANICS_CATALOGUE_ID,
-  MECHANICS_LEGACY_CATALOGUE_ID,
-]);
+/** Base and Array are always present — neither can be removed. */
+const PERMANENT_CATALOGUE_IDS = new Set([BASE_CATALOGUE_ID, ARRAY_CATALOGUE_ID]);
 
 export function removeCatalogue(
   catalogues: readonly Catalogue[],
@@ -213,7 +187,7 @@ export function formulaSource(
 export function entries(catalogues: readonly Catalogue[]): readonly PaletteEntry[] {
   // A catalogue's tables after its formulas, which is where the palette
   // lists them: below the expressions, in the catalogue that declares them.
-  return browsable(catalogues).flatMap((catalogue) => [
+  return catalogues.flatMap((catalogue) => [
     ...catalogue.formulas.map((formula) => ({ formula, catalogue })),
     ...catalogueTables(catalogue).map((table) => ({ formula: tableFormula(table), catalogue, table })),
   ]);
