@@ -1,5 +1,5 @@
 /**
- * The Shafts catalogue (`../catalogues/shafts.json`) must keep resolving
+ * The Shafts catalogue (`./catalogues/shafts.json`) must keep resolving
  * exactly: every record's id, version and hash pinned as they shipped when
  * the shafts were still built into the core (release 0.36.0, and 0.34.1 for
  * the sizing records). The three general ones that moved to the base
@@ -11,7 +11,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { formulaRef, loadCatalogue } from '@joveworks/schema';
 
-import { SHAFTS_CATALOGUE_ID } from '../kernel.js';
+import { SHAFTS_CATALOGUE_ID } from './kernel.js';
 
 const SHIPPED = [
   { id: 'mechanics.shaft.calculation', version: 1, hash: '7642623a15bf9f02' },
@@ -29,7 +29,7 @@ const SHIPPED = [
   { id: 'mechanics.beam.moment-of-inertia-hollow-circle', version: 1, hash: 'ea8f90077578aa6e' },
 ];
 
-const catalogue = loadCatalogue(readFileSync(new URL('../catalogues/shafts.json', import.meta.url), 'utf8'));
+const catalogue = loadCatalogue(readFileSync(new URL('./catalogues/shafts.json', import.meta.url), 'utf8'));
 
 describe('the Shafts catalogue', () => {
   it('is the one the domain names', () => {

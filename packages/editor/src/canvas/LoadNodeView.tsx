@@ -31,7 +31,7 @@ import {
   type DistributedLoadNode,
   type LoadField,
   type LoadNode,
-} from '../../../../domains/examples/kernel';
+} from '../../../../domains/shafts/kernel';
 
 interface FieldInfo {
   /** How the field is written on the node: `F_x` typesets as F with a subscript x. */

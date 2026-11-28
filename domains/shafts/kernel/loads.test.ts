@@ -24,7 +24,7 @@ import {
   scalar,
   waypointNode,
   wire,
-} from '../../../../packages/kernel/src/invented.fixtures.js';
+} from '../../../packages/kernel/src/invented.fixtures.js';
 import type { PortValue } from '@joveworks/kernel';
 import type { LoadValue } from './values.js';
 

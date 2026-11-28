@@ -20,6 +20,7 @@ import { DOCUMENT_SCHEMA_VERSION } from './version.js';
  */
 
 registerDomainNode({
+  domain: 'test',
   kind: 'testCounter',
   parse: (object, path) => ({
     steps: readInteger(required(object, 'steps', path), join(path, 'steps'), 1),
@@ -29,12 +30,14 @@ registerDomainNode({
 });
 
 registerDomainOutput({
+  domain: 'test',
   kind: 'testGauge',
   parse: (object, path) => ({ colour: readString(required(object, 'colour', path), join(path, 'colour')) }),
   serialize: (output: { readonly colour: string }) => ({ colour: output.colour }),
 });
 
 registerDomainPort({
+  domain: 'test',
   kind: 'testToken',
   parse: () => ({}),
   serialize: () => ({}),
@@ -42,6 +45,7 @@ registerDomainPort({
 });
 
 registerDomainEvaluator({
+  domain: 'test',
   key: 'tally',
   noun: 'a tally',
   parse: (value, path) => {
@@ -140,5 +144,31 @@ describe('a domain evaluator', () => {
 
   it('stands alone: no expression beside it', () => {
     expect(() => parseFormula({ ...record, expression: '1' }, 'formula')).toThrow(/has no meaning beside a tally/);
+  });
+});
+
+describe('who owns a kind', () => {
+  const definition = { kind: 'testOwned', parse: () => ({}), serialize: () => ({}) };
+
+  it('lets the domain that owns a kind register it again', () => {
+    registerDomainNode({ ...definition, domain: 'test' });
+    expect(() => registerDomainNode({ ...definition, domain: 'test' })).not.toThrow();
+  });
+
+  it('refuses a second domain the same kind, naming both', () => {
+    registerDomainNode({ ...definition, domain: 'test' });
+    expect(() => registerDomainNode({ ...definition, domain: 'copy' })).toThrow(
+      /'testOwned' is a node kind of both the 'test' and the 'copy' domains/,
+    );
+  });
+
+  it("refuses a domain one of JoveWorks' own kinds", () => {
+    expect(() => registerDomainNode({ ...definition, kind: 'formula', domain: 'test' })).toThrow(/already one of JoveWorks' own node kinds/);
+    expect(() => registerDomainPort({ kind: 'numeric', domain: 'test', parse: () => ({}), serialize: () => ({}), outputRefusal: '' })).toThrow(
+      /own port kinds/,
+    );
+    expect(() =>
+      registerDomainEvaluator({ key: 'lookup', noun: 'x', domain: 'test', parse: () => 1, check: () => undefined, serialize: () => 1 }),
+    ).toThrow(/own formula evaluators/);
   });
 });

@@ -20,7 +20,7 @@ import {
   SUPPORT_TYPES,
   type SupportNode,
   type SupportType,
-} from '../../../../domains/examples/kernel';
+} from '../../../../domains/shafts/kernel';
 
 export const SUPPORT_LABELS: Readonly<Record<SupportType, string>> = {
   simple: 'simple',

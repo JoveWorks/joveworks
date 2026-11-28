@@ -159,38 +159,34 @@ deployment as a whole. A domain holds `catalogues/` (JSON or YAML),
 `books/` (the HTML books they cite), sample NodeBooks as saved files, and
 optionally code: a kernel entry (no React) and an editor entry, registered
 at build time — never loaded at runtime. A domain of YAML alone needs no
-code and no build knowledge. `domains/examples/` is the upstream examples
-and builds only with `VITE_EXAMPLE_CATALOGUES=on`; every other domain
-folder always builds. Restricted content (R&M) never goes in a domain:
-whatever is in one is sent to every visitor.
+code and no build knowledge. Restricted content (R&M) never goes in a
+domain: whatever is in one is sent to every visitor.
 
-The shafts are the first domain with code. Shaft, Support, Load,
-Distributed load and Shaft view are built into the schema and kernel today
-(`ShaftNode` and friends in `schema/src/document.ts`, the `load` and
-`shaft` port kinds, the `shaft:` formula evaluator, the shaft branches of
-`kernel/src/graph.ts` and `evaluate.ts`, the solver in `kernel/src/shaft.ts`),
-and the Shafts catalogue ships with the core. They move to the examples
-domain; nobody uses them yet (the school build is at 0.35), so the earlier
-shaft records (`mechanicsLegacyNodes.ts`) are dropped rather than carried.
-Torque↔power and factor of safety are not shaft-specific and move to the
-base library. The node kind names stay in the document format, and a
-NodeBook whose domain is missing says which domain it needs.
+`domains/examples/` is data only (the example catalogues and book).
+`domains/shafts/` is the first domain with code, and the worked example of
+one: node kinds, a structured port kind, a formula evaluator, an output and
+an axis of its own, with its tests. Nobody used the shafts yet (the school
+build is at 0.35), so the 0.33 shaft records were dropped; torque↔power and
+factor of safety moved to the base library.
 
-Steps, each leaving the build green and shaft behaviour unchanged:
-1. ~~Move the bundled catalogues and books from `packages/editor/src/catalogues/`
-   to `domains/`.~~ Done.
-2. ~~Schema registry~~ Done: `schema/src/domain.ts`. Domain kinds join the
-   core unions by declaration merging and register their parsers; the
-   schema's shaft code is all in `schema/src/shafts.ts`, still registered
-   from the schema's index (and `test/setup-domains.ts`) until step 4.
-3. ~~Kernel registry~~ Done: `kernel/src/domain.ts`; the kernel's shaft
-   code is all in `kernel/src/shafts/`, registered from the kernel's index
-   until step 4.
-4. ~~Move the shaft code into `domains/examples/`~~ Done: the schema,
-   kernel and nodes packages compile without it. The editor's shaft views
-   still import the domain directly, and `packages/editor/src/domains.ts`
-   registers it in every build, until steps 5 and 6.
-5. Editor registry: node views, result views, palette and quick-add
-   entries, tours; sample NodeBooks become files a domain ships.
-6. Composition: the editor and the published-NodeBook viewer both register
-   the domains in the build.
+A kind, a catalogue id, a formula id and a book name each belong to one
+domain: a second domain claiming one is refused, naming both (`claim` in
+the schema's and kernel's `domain.ts`, `checkDomainCatalogues`, the docs
+site's `books.ts`). A school that wants to change the shafts copies the
+folder and builds its copy instead of the upstream one — never both.
+
+Done: the catalogues and books moved to `domains/`; the schema and kernel
+registries (`schema/src/domain.ts`, `kernel/src/domain.ts`); the shafts
+moved out of the core, which now compiles without any domain; the
+ownership rule. Remaining:
+1. Editor registry: node views, result views, palette and quick-add
+   entries, tours; sample NodeBooks become files a domain ships. Until
+   then the editor's shaft views import `domains/shafts/` directly.
+2. Composition: domains found by glob (code as well as data) and chosen by
+   name — `JOVEWORKS_DOMAINS=examples,shafts` on Netlify, a school's own
+   list in its fork, dev included; unset meaning every domain but the
+   examples, as `VITE_EXAMPLE_CATALOGUES` does today. The editor and the
+   published-NodeBook viewer register the same list. Until then
+   `packages/editor/src/domains.ts` registers the shafts in every build.
+3. A NodeBook using a kind no domain in the build provides says which
+   domain it needs, rather than that it came from a newer JoveWorks.

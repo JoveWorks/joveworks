@@ -1,5 +1,5 @@
 {
-  // The examples domain's code without React: its kernel entry and what that
+  // The shafts domain's code without React: its kernel entry and what that
   // loads. A project of its own so the dependency direction holds for a
   // domain as for a package — it may import the schema, the units and the
   // kernel, never the editor. `paths` stands in for the workspace links a
@@ -15,7 +15,7 @@
       "@joveworks/kernel": ["../../packages/kernel/src/index.ts"]
     }
   },
-  "include": ["kernel.ts", "shafts/**/*.ts"],
+  "include": ["*.ts", "kernel/**/*.ts"],
   "exclude": ["**/*.test.ts"],
   "references": [
     { "path": "../../packages/units" },

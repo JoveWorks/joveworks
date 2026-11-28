@@ -11,7 +11,7 @@ import type {
 
 import { evaluateDocument, valueAt } from '@joveworks/kernel';
 import { isVariadicTarget } from '@joveworks/kernel';
-import { catalogueOf, documentOf, formulaNode, input, list, refTo, wire } from '../../../../packages/kernel/src/invented.fixtures.js';
+import { catalogueOf, documentOf, formulaNode, input, list, refTo, wire } from '../../../packages/kernel/src/invented.fixtures.js';
 import type { NumericSeries, PortValue } from '@joveworks/kernel';
 import { pointTerms, solve, spanTerms } from './solver.js';
 

@@ -31,6 +31,7 @@ interface Token {
 const LENGTH_UNIT = parseUnit('mm');
 
 registerDomainPort({
+  domain: 'test',
   kind: 'testToken',
   parse: (object) => (object['variadic'] === true ? { variadic: true } : {}),
   serialize: (port: { readonly variadic?: boolean }) => (port.variadic === true ? { variadic: true } : {}),
@@ -38,21 +39,24 @@ registerDomainPort({
 });
 
 registerDomainNode({
+  domain: 'test',
   kind: 'testDispenser',
   parse: (object) => ({ size: object['size'] }),
   serialize: (node: { readonly size: JsonObject }) => ({ size: node.size }),
 });
 
 registerDomainNode({
+  domain: 'test',
   kind: 'testRuler',
   parse: (object) => ({ marks: object['marks'] }),
   serialize: (node: { readonly marks: number }) => ({ marks: node.marks }),
   introducesAxis: () => true,
 });
 
-registerDomainOutput({ kind: 'testGauge', parse: () => ({}), serialize: () => ({}) });
+registerDomainOutput({ domain: 'test', kind: 'testGauge', parse: () => ({}), serialize: () => ({}) });
 
 registerDomainEvaluator({
+  domain: 'test',
   key: 'tally',
   noun: 'a tally',
   parse: (value) => value,
@@ -61,6 +65,7 @@ registerDomainEvaluator({
 });
 
 registerKernelPortKind({
+  domain: 'test',
   kind: 'testToken',
   noun: 'a token',
   packable: true,
@@ -69,6 +74,7 @@ registerKernelPortKind({
 });
 
 registerKernelNode({
+  domain: 'test',
   kind: 'testDispenser',
   resolve: (node: { readonly size: { readonly unit: string } }, context) => {
     context.field('size', LENGTH_UNIT, parseUnit(node.size.unit));
@@ -82,6 +88,7 @@ registerKernelNode({
 });
 
 registerKernelNode({
+  domain: 'test',
   kind: 'testRuler',
   resolve: (_node, context) => context.source('pos', { kind: 'numeric', dimension: LENGTH_UNIT.dimension, unit: LENGTH_UNIT }),
   evaluate: (node: { readonly id: string; readonly marks: number }, { resolution }) => {
@@ -106,12 +113,14 @@ function tokensAt(port: string, nodeId: string, context: Parameters<Parameters<t
 }
 
 registerKernelEvaluator({
+  domain: 'test',
   key: 'tally',
   evaluate: (node, formula, port: string, context) =>
     new Map<string, PortValue>([[formula.outputs[0]?.name ?? 'n', scalarSeries(tokensAt(port, node.id, context))]]),
 });
 
 registerKernelOutput({
+  domain: 'test',
   kind: 'testGauge',
   ports: () => ['tokens'],
   variadic: ['tokens'],
@@ -196,5 +205,13 @@ describe('a domain output', () => {
     expect(isVariadicTarget(document, [CATALOGUE], { node: 'g', port: 'tokens' })).toBe(true);
     const [gauge] = evaluateDocument(document, [CATALOGUE]).outputs as readonly (OutputResult & { readonly count?: number })[];
     expect(gauge).toMatchObject({ kind: 'testGauge', nodeId: 'g', count: 2 });
+  });
+});
+
+describe('who owns a kernel kind', () => {
+  it('refuses a second domain the same port kind, naming both', () => {
+    expect(() =>
+      registerKernelPortKind({ kind: 'testToken', domain: 'copy', noun: 'a token', packable: true, stranded: '', series: () => [] }),
+    ).toThrow(/'testToken' is a port kind of both the 'test' and the 'copy' domains/);
   });
 });

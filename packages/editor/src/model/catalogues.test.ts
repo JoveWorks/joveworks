@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { CATALOGUE_SCHEMA_VERSION, formulaRef, parseCatalogue, sourceHref, tableFormula } from '@joveworks/schema';
 
-import { baseCatalogue, builtInCatalogues, bundledCatalogues, entries, removeCatalogue, search } from './catalogues';
+import { baseCatalogue, builtInCatalogues, bundledCatalogues, checkDomainCatalogues, entries, removeCatalogue, search } from './catalogues';
 import { lookupRef } from './analysis';
 
 describe('bundled public catalogues', () => {
@@ -16,6 +16,55 @@ describe('bundled public catalogues', () => {
       'public-shafts',
       'public-tables-demo',
     ]);
+  });
+});
+
+describe('domains sharing data', () => {
+  // Invented records: one formula, under whatever ids the case needs.
+  const catalogue = (id: string, formulaId: string) =>
+    parseCatalogue({
+      schemaVersion: CATALOGUE_SCHEMA_VERSION,
+      id,
+      name: 'Invented',
+      restricted: false,
+      formulas: [
+        {
+          id: formulaId,
+          version: 1,
+          output: { kind: 'numeric', name: 'y', unit: '' },
+          inputs: [{ kind: 'numeric', name: 'a', unit: '' }],
+          expression: 'a * 2',
+          description: 'Invented.',
+          status: 'unverified',
+        },
+      ],
+    });
+
+  it('refuses one catalogue id from two domains, naming both', () => {
+    expect(() =>
+      checkDomainCatalogues([
+        { domain: 'shafts', catalogue: catalogue('shafts', 'demo.a') },
+        { domain: 'school', catalogue: catalogue('shafts', 'demo.b') },
+      ]),
+    ).toThrow(/the catalogue 'shafts' is in both the 'shafts' and the 'school' domains/);
+  });
+
+  it('refuses one formula id from two domains', () => {
+    expect(() =>
+      checkDomainCatalogues([
+        { domain: 'shafts', catalogue: catalogue('shafts', 'demo.a') },
+        { domain: 'school', catalogue: catalogue('school-shafts', 'demo.a') },
+      ]),
+    ).toThrow(/the formula 'demo.a' is in both/);
+  });
+
+  it('lets one domain share ids between its own catalogues', () => {
+    expect(() =>
+      checkDomainCatalogues([
+        { domain: 'school', catalogue: catalogue('school-a', 'demo.a') },
+        { domain: 'school', catalogue: catalogue('school-b', 'demo.a') },
+      ]),
+    ).not.toThrow();
   });
 });
 

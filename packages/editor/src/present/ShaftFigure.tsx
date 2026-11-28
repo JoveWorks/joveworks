@@ -26,7 +26,7 @@ import {
   type ShaftViewMark,
   type ShaftViewPlane,
   type ShaftViewResult,
-} from '../../../../domains/examples/kernel';
+} from '../../../../domains/shafts/kernel';
 
 const WIDTH = 640;
 const LEFT = 64;

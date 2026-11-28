@@ -79,7 +79,7 @@ import {
   SHAFT_PORT,
   loadNodeFields,
   shaftNodeFields,
-} from '../../../../domains/examples/kernel';
+} from '../../../../domains/shafts/kernel';
 
 /**
  * The `not connected: ...` reason, with each name rendered the same way its

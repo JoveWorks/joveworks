@@ -18,7 +18,7 @@
  * it raises.
  */
 
-import type { Edge, Formula, GraphDocument, GraphNode, OutputNode, PortKind } from '@joveworks/schema';
+import type { DomainOwned, Edge, Formula, GraphDocument, GraphNode, OutputNode, PortKind } from '@joveworks/schema';
 import type { Unit } from '@joveworks/units';
 import type { Axis, NumericSeries, PortValue } from './series.js';
 import type { PortType, Resolution } from './graph.js';
@@ -46,7 +46,7 @@ export type AnyDomainValue = { readonly kind: string };
  * `series` lists the numbers inside a value, so broadcasting and the zip
  * checks see the axes it varies along.
  */
-export interface KernelPortKindDefinition {
+export interface KernelPortKindDefinition extends DomainOwned {
   readonly kind: string;
   readonly noun: string;
   /** Whether a pack may carry it as a channel. */
@@ -103,7 +103,7 @@ export interface KernelAxisDefinition {
   readonly collapse: (node: never) => GraphNode;
 }
 
-export interface KernelNodeDefinition {
+export interface KernelNodeDefinition extends DomainOwned {
   readonly kind: string;
   resolve(node: never, context: ResolveContext): void;
   /** Every output port's value, by port name. */
@@ -111,7 +111,7 @@ export interface KernelNodeDefinition {
   readonly axis?: KernelAxisDefinition;
 }
 
-export interface KernelOutputDefinition {
+export interface KernelOutputDefinition extends DomainOwned {
   readonly kind: string;
   /** The output's input ports. */
   ports(output: never): readonly string[];
@@ -126,7 +126,7 @@ export interface KernelOutputDefinition {
  * A domain formula evaluator (`DomainEvaluatorDefinition` in the schema):
  * every output of a formula carrying `key`, computed from its parsed value.
  */
-export interface KernelEvaluatorDefinition {
+export interface KernelEvaluatorDefinition extends DomainOwned {
   readonly key: string;
   evaluate(
     node: { readonly id: string },
@@ -141,22 +141,36 @@ const nodes = new Map<string, KernelNodeDefinition>();
 const outputs = new Map<string, KernelOutputDefinition>();
 const evaluators = new Map<string, KernelEvaluatorDefinition>();
 
-// As in the schema, registering a kind again replaces it.
+/**
+ * As in the schema (`claim` in its `domain.ts`): a kind belongs to one
+ * domain, so a second domain registering it is refused, naming both, and the
+ * same domain registering again replaces its own.
+ */
+function claim<T extends DomainOwned>(registry: Map<string, T>, what: string, name: string, definition: T): void {
+  const existing = registry.get(name);
+  if (existing !== undefined && existing.domain !== definition.domain) {
+    throw new Error(
+      `'${name}' is a ${what} of both the '${existing.domain}' and the '${definition.domain}' domains — ` +
+        'a kind belongs to one domain, so build only one of them',
+    );
+  }
+  registry.set(name, definition);
+}
 
 export function registerKernelPortKind(definition: KernelPortKindDefinition): void {
-  portKinds.set(definition.kind, definition);
+  claim(portKinds, 'port kind', definition.kind, definition);
 }
 
 export function registerKernelNode(definition: KernelNodeDefinition): void {
-  nodes.set(definition.kind, definition);
+  claim(nodes, 'node kind', definition.kind, definition);
 }
 
 export function registerKernelOutput(definition: KernelOutputDefinition): void {
-  outputs.set(definition.kind, definition);
+  claim(outputs, 'output kind', definition.kind, definition);
 }
 
 export function registerKernelEvaluator(definition: KernelEvaluatorDefinition): void {
-  evaluators.set(definition.key, definition);
+  claim(evaluators, 'formula evaluator', definition.key, definition);
 }
 
 export function kernelPortKind(kind: string): KernelPortKindDefinition | undefined {

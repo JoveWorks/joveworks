@@ -120,10 +120,52 @@ function bundledCatalogueIds(): ReadonlySet<string> {
  * restricted, so there is no reason to make a student import them by hand.
  */
 export function bundledCatalogues(): readonly Catalogue[] {
-  return [
-    ...[...Object.values(domainCatalogueModules), ...Object.values(exampleCatalogueModules)].map((data) => migrateCatalogue(data)),
-    ...[...Object.values(domainYamlCatalogueModules), ...Object.values(exampleYamlCatalogueModules)].map((text) => loadCatalogue(text, 'yaml')),
+  const found = [
+    ...[...Object.entries(domainCatalogueModules), ...Object.entries(exampleCatalogueModules)].map(([path, data]) => ({
+      domain: domainOf(path),
+      catalogue: migrateCatalogue(data),
+    })),
+    ...[...Object.entries(domainYamlCatalogueModules), ...Object.entries(exampleYamlCatalogueModules)].map(([path, text]) => ({
+      domain: domainOf(path),
+      catalogue: loadCatalogue(text, 'yaml'),
+    })),
   ];
+  checkDomainCatalogues(found);
+  return found.map(({ catalogue }) => catalogue);
+}
+
+/** The domain a bundled file belongs to: its folder under `domains/`. */
+function domainOf(path: string): string {
+  return /(?:^|\/)domains\/([^/]+)\//u.exec(path)?.[1] ?? path;
+}
+
+/**
+ * Refuse two domains shipping the same catalogue id, or the same formula
+ * or table id — the data counterpart of a kind belonging to one domain
+ * (`claim` in the schema's `domain.ts`). A school that copies a domain into
+ * its own folder while the original is still built in would otherwise get
+ * two Shafts sections, and every saved NodeBook resolving to whichever copy
+ * matched its hash. Within one domain, a catalogue may share ids with
+ * another of its own on purpose.
+ */
+export function checkDomainCatalogues(found: readonly { readonly domain: string; readonly catalogue: Catalogue }[]): void {
+  const owners = new Map<string, string>();
+  const claim = (what: string, id: string, domain: string): void => {
+    const key = `${what}\u0000${id}`;
+    const owner = owners.get(key);
+    if (owner !== undefined && owner !== domain) {
+      throw new Error(
+        `the ${what} '${id}' is in both the '${owner}' and the '${domain}' domains — ` +
+          'build only one of them, or give the copy its own ids',
+      );
+    }
+    owners.set(key, domain);
+  };
+  for (const { domain, catalogue } of found) {
+    claim('catalogue', catalogue.id, domain);
+    for (const formula of catalogue.formulas) claim('formula', formula.id, domain);
+    for (const table of catalogueTables(catalogue)) claim('table', table.id, domain);
+  }
 }
 
 /**

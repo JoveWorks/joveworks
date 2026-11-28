@@ -19,7 +19,7 @@ import { useReactFlow } from '@xyflow/react';
 
 import { parseUnit, type Unit } from '@joveworks/units';
 import { ARRAY_CATALOGUE_ID, BASE_CATALOGUE_ID } from '@joveworks/nodes';
-import { SHAFTS_CATALOGUE_ID } from '../../../../domains/examples/kernel';
+import { SHAFTS_CATALOGUE_ID } from '../../../../domains/shafts/kernel';
 import {
   localize,
   axes as documentAxes,

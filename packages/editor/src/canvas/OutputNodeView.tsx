@@ -81,7 +81,7 @@ import { TitleField, TitleText } from './TitleField';
 import {
   ACTING_PORT,
   SHAFT_PORT,
-} from '../../../../domains/examples/kernel';
+} from '../../../../domains/shafts/kernel';
 
 type Range = ReturnType<typeof documentAxes>[number];
 

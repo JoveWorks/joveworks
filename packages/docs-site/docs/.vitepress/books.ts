@@ -25,16 +25,25 @@ const DOMAINS = fileURLToPath(new URL("../../../../domains/", import.meta.url));
 
 /** Book name (as published) → its file or folder on disk. */
 function books(): ReadonlyMap<string, string> {
-  const folders = readdirSync(DOMAINS)
+  const domains = readdirSync(DOMAINS)
     .filter((domain) => domain !== "examples" || process.env.VITE_EXAMPLE_CATALOGUES === "on")
-    .map((domain) => join(DOMAINS, domain, "books"))
-    .filter((folder) => existsSync(folder));
+    .filter((domain) => existsSync(join(DOMAINS, domain, "books")));
   const found = new Map<string, string>();
-  for (const folder of folders) {
+  const owner = new Map<string, string>();
+  for (const domain of domains) {
+    const folder = join(DOMAINS, domain, "books");
     for (const entry of readdirSync(folder)) {
       const path = join(folder, entry);
       const book = statSync(path).isDirectory() ? existsSync(join(path, "index.html")) : extname(entry) === ".html";
-      if (book) found.set(entry, path);
+      if (!book) continue;
+      // Every domain's books are published side by side, so two of one name
+      // would have one silently replace the other.
+      const other = owner.get(entry);
+      if (other !== undefined) {
+        throw new Error(`the book '${entry}' is in both the '${other}' and the '${domain}' domains — rename one of them`);
+      }
+      owner.set(entry, domain);
+      found.set(entry, path);
     }
   }
   return found;

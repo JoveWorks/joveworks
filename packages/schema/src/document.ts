@@ -45,6 +45,7 @@ import {
   domainOutputKinds,
   isDomainNode,
   isDomainOutput,
+  reserveCoreNames,
   type AnyDomainNode,
   type AnyDomainOutput,
   type DomainAxisNode,
@@ -481,6 +482,7 @@ export const OUTPUT_KINDS = [
   'distribution',
   'reliability',
 ] as const;
+reserveCoreNames('output kind', OUTPUT_KINDS);
 /** Every output kind: the core's, and any a domain adds (`domain.ts`). */
 export type OutputKind = (typeof OUTPUT_KINDS)[number] | keyof DomainOutputTypes;
 
@@ -1638,6 +1640,7 @@ export const NODE_KINDS = [
   'monteCarloGenerator',
   'monteCarloReceiver',
 ] as const;
+reserveCoreNames('node kind', NODE_KINDS);
 
 /**
  * The per-port fallbacks a formula or closure node carries. Both kinds store

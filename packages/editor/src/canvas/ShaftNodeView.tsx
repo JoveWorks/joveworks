@@ -38,7 +38,7 @@ import {
   type ShaftNode,
   type ShaftSection,
   type ShaftStep,
-} from '../../../../domains/examples/kernel';
+} from '../../../../domains/shafts/kernel';
 
 const SECTION_LABELS: Readonly<Record<ShaftSection['kind'], string>> = {
   round: 'round',

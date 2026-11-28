@@ -55,11 +55,20 @@ export type DomainOutput = DomainOutputTypes[keyof DomainOutputTypes];
 export type DomainPort = DomainPortTypes[keyof DomainPortTypes];
 
 /**
+ * What every registration carries: the domain that owns it, by its folder
+ * name under `domains/` (`shafts`). A kind is a name in the saved format, so
+ * it belongs to exactly one domain — see `claim` below.
+ */
+export interface DomainOwned {
+  readonly domain: string;
+}
+
+/**
  * How one domain node kind is read and written. `parse` and `serialize`
  * deal in the kind's own fields only; the common ones (`id`, `position`,
  * `label` and the rest) are the core's.
  */
-export interface DomainNodeDefinition {
+export interface DomainNodeDefinition extends DomainOwned {
   readonly kind: string;
   parse(object: JsonObject, path: string): JsonObject | Readonly<Record<string, unknown>>;
   serialize(node: never): JsonObject;
@@ -71,7 +80,7 @@ export interface DomainNodeDefinition {
 }
 
 /** How one domain output kind is read and written, apart from its `kind`. */
-export interface DomainOutputDefinition {
+export interface DomainOutputDefinition extends DomainOwned {
   readonly kind: string;
   parse(object: JsonObject, path: string): Readonly<Record<string, unknown>>;
   serialize(output: never): JsonObject;
@@ -84,7 +93,7 @@ export interface DomainOutputDefinition {
  * nodes produce one, never a catalogue formula — `outputRefusal` is what a
  * formula declaring one as its output is told.
  */
-export interface DomainPortDefinition {
+export interface DomainPortDefinition extends DomainOwned {
   readonly kind: string;
   parse(object: JsonObject, path: string): Readonly<Record<string, unknown>>;
   serialize(port: never): JsonObject;
@@ -100,7 +109,7 @@ export interface DomainPortDefinition {
  * `check` sees the formula's ports, to refuse a record that names an input
  * it does not have.
  */
-export interface DomainEvaluatorDefinition {
+export interface DomainEvaluatorDefinition extends DomainOwned {
   readonly key: string;
   /** What the evaluator is, for error messages: "a shaft diagram". */
   readonly noun: string;
@@ -114,23 +123,62 @@ const outputs = new Map<string, DomainOutputDefinition>();
 const ports = new Map<string, DomainPortDefinition>();
 const evaluators = new Map<string, DomainEvaluatorDefinition>();
 
-// Registering a kind again replaces it: a module evaluated twice (a hot
-// reload, two test files) must not leave two readers for one kind.
+type Registered = 'node kind' | 'output kind' | 'port kind' | 'formula evaluator';
+
+/**
+ * The names a domain may not take, because the core already has them: its
+ * own node, output and port kinds, and the fields of a formula record (a
+ * domain evaluator is one more such field). The modules that define them
+ * hand them in as they load (`reserveCoreNames`), so this one imports
+ * nothing of theirs and no import cycle forms.
+ */
+const CORE_NAMES: Record<Registered, Set<string>> = {
+  'node kind': new Set(),
+  'output kind': new Set(),
+  'port kind': new Set(),
+  'formula evaluator': new Set(),
+};
+
+export function reserveCoreNames(what: Registered, names: readonly string[]): void {
+  for (const name of names) CORE_NAMES[what].add(name);
+}
+
+/**
+ * Record `definition` as `name`'s, or refuse it. A kind is a name in the
+ * saved format, so two domains cannot both own one: a school that copies
+ * the shafts into its own domain while the upstream one is still built in
+ * would otherwise get whichever registered last, silently. The same domain
+ * registering again replaces its own — a module evaluated twice (a hot
+ * reload, two test files) must not leave two readers for one kind.
+ */
+function claim<T extends DomainOwned>(registry: Map<string, T>, what: Registered, name: string, definition: T): void {
+  if (CORE_NAMES[what].has(name)) {
+    throw new Error(`the '${definition.domain}' domain registers '${name}', which is already one of JoveWorks' own ${what}s`);
+  }
+  const existing = registry.get(name);
+  if (existing !== undefined && existing.domain !== definition.domain) {
+    throw new Error(
+      `'${name}' is a ${what} of both the '${existing.domain}' and the '${definition.domain}' domains — ` +
+        'a kind belongs to one domain, so build only one of them',
+    );
+  }
+  registry.set(name, definition);
+}
 
 export function registerDomainNode(definition: DomainNodeDefinition): void {
-  nodes.set(definition.kind, definition);
+  claim(nodes, 'node kind', definition.kind, definition);
 }
 
 export function registerDomainOutput(definition: DomainOutputDefinition): void {
-  outputs.set(definition.kind, definition);
+  claim(outputs, 'output kind', definition.kind, definition);
 }
 
 export function registerDomainPort(definition: DomainPortDefinition): void {
-  ports.set(definition.kind, definition);
+  claim(ports, 'port kind', definition.kind, definition);
 }
 
 export function registerDomainEvaluator(definition: DomainEvaluatorDefinition): void {
-  evaluators.set(definition.key, definition);
+  claim(evaluators, 'formula evaluator', definition.key, definition);
 }
 
 export function domainNodeDefinition(kind: string): DomainNodeDefinition | undefined {

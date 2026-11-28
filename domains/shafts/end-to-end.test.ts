@@ -23,7 +23,7 @@ import {
 import { baseCatalogueJson, arrayCatalogueJson } from '@joveworks/nodes';
 import { evaluateDocument, valueAt, type NumericSeries } from '@joveworks/kernel';
 
-const SHAFTS: Catalogue = loadCatalogue(readFileSync(new URL('../catalogues/shafts.json', import.meta.url), 'utf8'));
+const SHAFTS: Catalogue = loadCatalogue(readFileSync(new URL('./catalogues/shafts.json', import.meta.url), 'utf8'));
 const BASE: Catalogue = loadCatalogue(baseCatalogueJson());
 const ARRAY: Catalogue = loadCatalogue(arrayCatalogueJson());
 const catalogues = [SHAFTS];

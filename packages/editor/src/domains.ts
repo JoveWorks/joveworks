@@ -4,9 +4,9 @@
  * ahead of both routes, so the editor and the published-NodeBook viewer see
  * the same kinds.
  *
- * The shafts in `domains/examples/` are still named here directly, and
- * built into every build: the editor's own shaft views import them until
- * their editor part moves into the domain too. After that, domains are
- * found by glob and the examples follow `VITE_EXAMPLE_CATALOGUES`.
+ * The shafts domain (`domains/shafts/`) is still named here directly, and
+ * built into every build: the editor's own shaft views import it until its
+ * editor part moves into the domain too. After that, domains are found by
+ * glob and chosen by name (ROADMAP item 19, step 6).
  */
-import '../../../domains/examples/kernel';
+import '../../../domains/shafts/kernel';

@@ -64,7 +64,7 @@ import {
   type LocalizedText,
 } from './localization.js';
 import type { Unit } from '@joveworks/units';
-import { domainPortDefinition, domainPortKinds, isDomainPort, type AnyDomainPort, type DomainPort, type DomainPortTypes } from './domain.js';
+import { domainPortDefinition, domainPortKinds, isDomainPort, reserveCoreNames, type AnyDomainPort, type DomainPort, type DomainPortTypes } from './domain.js';
 
 /**
  * What a numeric port declares: a concrete display unit, or a generic
@@ -78,6 +78,7 @@ export function isGenericPort(port: Port): boolean {
 
 /** The core's port kinds. A domain adds its own (`domainPortKinds`). */
 export const PORT_KINDS = ['numeric', 'categorical', 'bundle'] as const;
+reserveCoreNames('port kind', PORT_KINDS);
 export type PortKind = (typeof PORT_KINDS)[number] | keyof DomainPortTypes;
 
 /**

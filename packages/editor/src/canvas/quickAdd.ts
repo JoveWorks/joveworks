@@ -30,7 +30,7 @@ import {
   SHAFT_Z_PORT,
   SPAN_LOAD_FIELDS,
   SUPPORT_PORT,
-} from '../../../../domains/examples/kernel';
+} from '../../../../domains/shafts/kernel';
 
 export type QuickAddChoice =
   | { readonly kind: 'formula'; readonly formula: Formula; readonly port: string }

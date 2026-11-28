@@ -239,7 +239,7 @@ COMPARISONS = {'<': operator.lt, '<=': operator.le, '>': operator.gt, '>=': oper
 import {
   loadFieldValue,
   loadNodeFields,
-} from '../../../../domains/examples/kernel';
+} from '../../../../domains/shafts/kernel';
 
 /** A construct the printer has no faithful Python for — the node is carried over instead. */
 class Untranslatable extends Error {}

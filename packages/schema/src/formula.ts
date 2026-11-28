@@ -29,7 +29,7 @@ import {
   type JsonValue,
 } from './json.js';
 import { hashRecord } from './hash.js';
-import { domainEvaluators } from './domain.js';
+import { domainEvaluators, reserveCoreNames } from './domain.js';
 import {
   parseLocalizedText,
   serializeLocalizedText,
@@ -58,6 +58,11 @@ import {
   LENGTH,
   type Dimension,
 } from '@joveworks/units';
+// The fields of a catalogue record, which a domain evaluator's key may not be.
+reserveCoreNames('formula evaluator', [
+  'id', 'version', 'output', 'inputs', 'expression', 'lookup', 'piecewise', 'deflection', 'label', 'description',
+  'citation', 'href', 'variantOf', 'appliesWhen', 'status', 'quarantineReason', 'changes',
+]);
 
 /** The dimension variables a port mentions — none, unless it is generic. */
 function portVariables(port: Port): readonly string[] {

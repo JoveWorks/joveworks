@@ -5,4 +5,4 @@
  * would load a domain's registrations, and a shaft in its fixture would read
  * as an unknown kind.
  */
-import '../domains/examples/kernel';
+import '../domains/shafts/kernel';

@@ -2,11 +2,12 @@
  * The shafts domain's part of the kernel (ROADMAP item 19): typing and
  * evaluating the Load, Distributed load, Support and Shaft nodes, the
  * `shaft:` formula evaluator, and the Shaft view output, registered through
- * the kernel's `domain.ts`. Part of the examples domain; `../../kernel.ts`
+ * the kernel's `domain.ts`. Part of the shafts domain; `../kernel.ts`
  * loads it, which is what registers the kinds.
  */
 
 import {
+  SHAFTS_DOMAIN,
   ACTING_PORT,
   LOAD_FIELD_UNITS,
   LOAD_PORT,
@@ -62,6 +63,7 @@ declare module '@joveworks/kernel' {
 }
 
 registerKernelPortKind({
+  domain: SHAFTS_DOMAIN,
   kind: 'load',
   noun: 'a load or a support',
   // Bundling a shaft's loads and supports into one wire is the point of a pack here.
@@ -71,6 +73,7 @@ registerKernelPortKind({
 });
 
 registerKernelPortKind({
+  domain: SHAFTS_DOMAIN,
   kind: 'shaft',
   noun: 'a shaft',
   packable: false,
@@ -92,6 +95,7 @@ function resolveLoad(node: LoadNode | DistributedLoadNode | SupportNode, context
 
 for (const kind of ['load', 'distributedLoad'] as const) {
   registerKernelNode({
+    domain: SHAFTS_DOMAIN,
     kind,
     resolve: (node: LoadNode | DistributedLoadNode, context) => resolveLoad(node, context),
     evaluate: (node: LoadNode | DistributedLoadNode, { resolution, values }) =>
@@ -100,6 +104,7 @@ for (const kind of ['load', 'distributedLoad'] as const) {
 }
 
 registerKernelNode({
+  domain: SHAFTS_DOMAIN,
   kind: 'support',
   resolve: (node: SupportNode, context) => resolveLoad(node, context),
   evaluate: (node: SupportNode, { resolution, values }) =>
@@ -107,6 +112,7 @@ registerKernelNode({
 });
 
 registerKernelNode({
+  domain: SHAFTS_DOMAIN,
   kind: 'shaft',
   resolve: (node: ShaftNode, context) => {
     // A range's shape again: each wireable field is a port of a fixed
@@ -144,6 +150,7 @@ registerKernelNode({
 });
 
 registerKernelOutput({
+  domain: SHAFTS_DOMAIN,
   kind: 'shaftView',
   // A shaft view draws a shaft, what acts on it, and any diagrams of it —
   // the last two take a wire per load or diagram.
@@ -159,6 +166,7 @@ registerKernelOutput({
 });
 
 registerKernelEvaluator({
+  domain: SHAFTS_DOMAIN,
   key: 'shaft',
   evaluate: (node, formula, spec: FormulaShaft, { resolution, values, warnings, largeGrid }) =>
     evaluateShaft(node, formula, spec, resolution, values, warnings, largeGrid),

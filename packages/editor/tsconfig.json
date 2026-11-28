@@ -26,6 +26,6 @@
     { "path": "../nodes" },
     { "path": "../schema" },
     { "path": "../units" },
-    { "path": "../../domains/examples" }
+    { "path": "../../domains/shafts" }
   ]
 }

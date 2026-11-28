@@ -6,8 +6,8 @@
  * kinds through `domain.ts`: declaration merging for the types, and a
  * registration for the parsers, run when this module loads.
  *
- * Part of the examples domain; nothing in the schema package imports it.
- * `../kernel.ts` loads it, which is what registers the kinds.
+ * Part of the shafts domain; nothing in the schema package imports it.
+ * `./kernel.ts` loads it, which is what registers the kinds.
  */
 
 import { ANGLE, dimensionsEqual, FORCE, LENGTH, multiplyDimensions, parseUnit, type Dimension, type Unit } from '@joveworks/units';
@@ -41,6 +41,9 @@ import {
   type PortBase,
   type Quantity,
 } from '@joveworks/schema';
+
+/** This domain's name — its folder under `domains/` — which owns every kind it registers. */
+export const SHAFTS_DOMAIN = 'shafts';
 
 declare module '@joveworks/schema' {
   interface DomainNodeTypes {
@@ -554,18 +557,21 @@ function checkShaft(shaft: FormulaShaft, inputs: readonly Port[], outputs: reado
 }
 
 registerDomainNode({
+  domain: SHAFTS_DOMAIN,
   kind: 'load',
   parse: (object, path) => parseLoadFields(object, path, POINT_LOAD_FIELDS, ['at']),
   serialize: (node: LoadNode) => serializeLoadFields(node),
 });
 
 registerDomainNode({
+  domain: SHAFTS_DOMAIN,
   kind: 'distributedLoad',
   parse: (object, path) => parseLoadFields(object, path, SPAN_LOAD_FIELDS, ['from', 'to']),
   serialize: (node: DistributedLoadNode) => serializeLoadFields(node),
 });
 
 registerDomainNode({
+  domain: SHAFTS_DOMAIN,
   kind: 'support',
   parse: (object, path) => ({
     at: parseLoadField(object['at'], join(path, 'at'), 'at', true) as Quantity,
@@ -575,6 +581,7 @@ registerDomainNode({
 });
 
 registerDomainNode({
+  domain: SHAFTS_DOMAIN,
   kind: 'shaft',
   parse: (object, path) => {
     const field = (key: 'from' | 'to' | 'E'): Quantity => parseShaftField(object[key], join(path, key), key, true) as Quantity;
@@ -599,9 +606,10 @@ registerDomainNode({
   introducesAxis: () => true,
 });
 
-registerDomainOutput({ kind: 'shaftView', parse: () => ({}), serialize: () => ({}) });
+registerDomainOutput({ domain: SHAFTS_DOMAIN, kind: 'shaftView', parse: () => ({}), serialize: () => ({}) });
 
 registerDomainPort({
+  domain: SHAFTS_DOMAIN,
   kind: 'load',
   parse: (object, path) => put('variadic', optional(object, 'variadic', path, readBoolean)),
   serialize: (port: LoadPort) => put('variadic', port.variadic),
@@ -609,6 +617,7 @@ registerDomainPort({
 });
 
 registerDomainPort({
+  domain: SHAFTS_DOMAIN,
   kind: 'shaft',
   parse: () => ({}),
   serialize: () => ({}),
@@ -616,6 +625,7 @@ registerDomainPort({
 });
 
 registerDomainEvaluator({
+  domain: SHAFTS_DOMAIN,
   key: 'shaft',
   noun: 'a shaft diagram',
   parse: parseShaft,

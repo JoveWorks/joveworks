@@ -331,6 +331,7 @@ export type {
   DomainNode,
   DomainOutput,
   DomainPort,
+  DomainOwned,
   DomainNodeDefinition,
   AnyDomainNode,
   AnyDomainOutput,
